@@ -175,7 +175,7 @@ class Space(System):
 		system (dict,System): System attributes
 		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,N,D,space,system=None,**kwargs):
+	def __init__(self,N,D,space=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
@@ -198,7 +198,7 @@ class Space(System):
 		Setup space attributes space,string,n
 		'''
 
-		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
+		wrapper = lambda func,dtype: (lambda *args,**kwargs: asscalar(func(*args,**kwargs),dtype=dtype))
 
 		funcs =  {
 			'spin':{
@@ -265,7 +265,7 @@ class Time(System):
 		system (dict,System): System attributes
 		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
+	def __init__(self,M,T=None,tau=None,P=None,time=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
@@ -288,7 +288,7 @@ class Time(System):
 		Setup time evolution attributes tau
 		'''
 
-		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
+		wrapper = lambda func,dtype: (lambda *args,**kwargs: asscalar(func(*args,**kwargs),dtype=dtype))
 
 		funcs =  {
 			'linear':{
@@ -324,14 +324,34 @@ class Time(System):
 
 	def __size__(self):
 
-		assert sum(var is not None for var in [self.M,self.T,self.tau]) > 1,'2 of 3 of M, T, tau must be non-None'
+		assert sum(var is not None for var in [self.M,self.T,self.tau]) > -1,'0 of 3 of M, T, tau must be non-None'
 
-		if (self.M is not None) and (self.T is not None) and (self.tau is None):
+		if (self.M is None) and (self.T is None) and (self.tau is None):
+			self.M = 1
+			self.T = self.M
+			self.tau = 1
+		elif (self.M is not None) and (self.T is None) and (self.tau is None):
+			self.T = self.M
+			self.tau = 1
+		elif (self.M is None) and (self.T is not None) and (self.tau is None):
+			self.M = self.T
+			self.tau = 1
+		elif (self.M is None) and (self.T is None) and (self.tau is not None):
+			self.M = 1/self.tau
+			self.T = 1
+		elif (self.M is not None) and (self.T is not None) and (self.tau is None):
 			self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.time)
 		elif (self.M is not None) and (self.T is None) and (self.tau is not None):
 			self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
 		elif (self.M is None) and (self.T is not None) and (self.tau is not None):
 			self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
+		elif (self.M is not None) and (self.T is not None) and (self.tau is not None):
+			pass
+		
+		self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
+		self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
+		self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.time)
+		
 		return 
 
 	def __str__(self):

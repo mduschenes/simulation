@@ -70,6 +70,9 @@ if backend in ['jax','jax.autograd']:
 	from jax.tree_util import register_pytree_node_class as tree_register
 	from jax.tree_util import tree_map as tree_map
 
+	import quimb as qu
+	import quimb.tensor as qtn
+
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
 
@@ -91,6 +94,9 @@ elif backend in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
+	import quimb as qu
+	import quimb.tensor as qtn
+
 	mapper = map
 
 elif backend in ['numpy']:
@@ -99,6 +105,9 @@ elif backend in ['numpy']:
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
+
+	import quimb as qu
+	import quimb.tensor as qtn
 
 	mapper = map
 
@@ -144,6 +153,7 @@ if backend in ['jax','jax.autograd']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray)
+	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate)
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -172,6 +182,7 @@ elif backend in ['autograd']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
+	tensors = (qtn.Tensor,qtn.TensorNetwork)
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -197,6 +208,7 @@ elif backend in ['numpy']:
 	inf = np.inf
 	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,)
+	tensors = (qtn.Tensor,qtn.TensorNetwork)
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -1920,7 +1932,7 @@ class array(np.ndarray):
 	'''
 	array class
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -1933,7 +1945,7 @@ class nparray(onp.ndarray):
 	'''
 	array class
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -1946,7 +1958,7 @@ class asndarray(onp.ndarray):
 	'''
 	array class
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -1958,7 +1970,7 @@ class asarray(np.ndarray):
 	'''
 	array class
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -1970,7 +1982,7 @@ class asscalar(np.ndarray):
 	'''
 	array class
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -1989,7 +2001,7 @@ class objs(onp.ndarray):
 	'''
 	array class of objects
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2002,7 +2014,7 @@ class asobjs(onp.ndarray):
 	'''
 	array class of objects
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2014,7 +2026,7 @@ class ones(array):
 	'''
 	array class of ones
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2027,7 +2039,7 @@ class zeros(array):
 	'''
 	array class of zeros
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2039,7 +2051,7 @@ class empty(array):
 	'''
 	array class of empty
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2051,7 +2063,7 @@ class full(array):
 	'''
 	array class of full
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2063,7 +2075,7 @@ class eye(array):
 	'''
 	array class of eye
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2075,7 +2087,7 @@ class arange(array):
 	'''
 	array class of arange
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2087,7 +2099,7 @@ class linspace(array):
 	'''
 	array class of linspace
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2099,7 +2111,7 @@ class logspace(array):
 	'''
 	array class of logspace
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2126,7 +2138,7 @@ class identity(array):
 	'''
 	array class of identity
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2139,7 +2151,7 @@ class hadamard(array):
 	'''
 	array class of hadamard
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2157,7 +2169,7 @@ class phasehadamard(array):
 	'''
 	array class of phaseshadamard
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2179,7 +2191,7 @@ class cnot(array):
 	'''
 	array class of cnot
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2201,7 +2213,7 @@ class toffoli(array):
 	'''
 	array class of toffoli
 	Args:
-		args (iterable): Array arguments
+		args (iterable): Array positional arguments
 		kwargs (dict): Array keyword arguments
 	Returns:
 		out (array): array
@@ -2226,6 +2238,53 @@ class toffoli(array):
 		else:
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
+
+
+
+
+class tensor(qtn.Tensor):
+	'''
+	tensor class
+	Args:
+		args (iterable): Tensor arguments
+		kwargs (dict): Tensor keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return qtn.Tensor(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
+class tensornetwork(qtn.TensorNetwork):
+	'''
+	tensornetwork class
+	Args:
+		args (iterable): Tensor arguments
+		kwargs (dict): Tensor keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return qtn.TensorNetwork(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
+class gate(qtn.Gate):
+	'''
+	gate class
+	Args:
+		args (iterable): Gate arguments
+		kwargs (dict): Gate keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return qtn.Gate(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
+
 
 if backend in ['jax']:
 
@@ -2486,8 +2545,10 @@ if backend in ['jax']:
 
 		if seed is None or isinstance(seed,(int)):
 			key = prng(seed)
-		else:
+		elif not is_key(seed):
 			key = asndarray(seed,dtype=uint)
+		else:
+			key = seed
 
 		if size:
 			key = generator.split(key,num=size)
