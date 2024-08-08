@@ -42,6 +42,25 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
+	@staticmethod
+	def decorator(func):
+		@wraps(func)
+		def wrapper(cls,*args,system=None,**kwargs):
+			# super().__init__(*args,system=system,**kwargs)
+			setter(kwargs,cls.properties,delimiter=delim,default=False)
+			setter(kwargs,system,delimiter=delim,default=False)
+			for attr in kwargs:
+				if kwargs[attr] is not None:
+					setattr(cls,attr,kwargs[attr])
+			return func(cls,*args,**kwargs)
+		return wrapper
+
+	@classmethod
+	@property
+	def properties(cls):
+		return properties(cls,methods=[sys._getframe().f_code.co_name])
+
+
 class Dict(Dictionary):
 	'''
 	Dictionary subclass with nested Dictionary elements
@@ -63,35 +82,35 @@ class Dict(Dictionary):
 		return
 
 	
-class Default(object):
-	'''
-	Default class
-	'''
+# class Default(object):
+# 	'''
+# 	Default class
+# 	'''
 
-	@staticmethod
-	def decorator(func):
-		@wraps(func)
-		def wrapper(cls,*args,**kwargs):
-			setter(kwargs,cls.properties,delimiter=delim,default=False)
-			for attr in kwargs:
-				if kwargs[attr] is not None:
-					setattr(cls,attr,kwargs[attr])
-			return func(cls,*args,**kwargs)
-		return wrapper
+# 	@staticmethod
+# 	def decorator(func):
+# 		@wraps(func)
+# 		def wrapper(cls,*args,**kwargs):
+# 			setter(kwargs,cls.properties,delimiter=delim,default=False)
+# 			for attr in kwargs:
+# 				if kwargs[attr] is not None:
+# 					setattr(cls,attr,kwargs[attr])
+# 			return func(cls,*args,**kwargs)
+# 		return wrapper
 
-	@classmethod
-	@property
-	def properties(cls):
-		return properties(cls,methods=[sys._getframe().f_code.co_name])
+# 	@classmethod
+# 	@property
+# 	def properties(cls):
+# 		return properties(cls,methods=[sys._getframe().f_code.co_name])
 
-	@classmethod
-	def get(cls,attr):
-		return getattr(cls,attr)
+# 	@classmethod
+# 	def get(cls,attr):
+# 		return getattr(cls,attr)
 
-	@classmethod
-	def set(cls,attr,value):
-		setattr(cls,attr,value)
-		return
+# 	@classmethod
+# 	def set(cls,attr,value):
+# 		setattr(cls,attr,value)
+# 		return
 
 def namespace(cls,signature=None,init=False,**kwargs):
 	'''

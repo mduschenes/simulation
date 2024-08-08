@@ -35,7 +35,7 @@ def main(*args,**kwargs):
 			"string":"noise",
 			"parameters":1e-12,
 			"N":2,"D":2,
-			"system":{"architecture":"tensor"}
+			"system":{"architecture":"mps"}
 		},		
 		"model":{
 			"operator":'X.X',
@@ -43,15 +43,15 @@ def main(*args,**kwargs):
 			"string":"operator",
 			"parameters":0.5,
 			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":"tensor"}
+			"system":{"architecture":"mps"}
 		},	
 		"state": {
 			"operator":"zero",
 			"site":None,
 			"string":"psi",
 			"parameters":True,
-			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":"tensor"}
+			"N":2,"D":2,"ndim":1,
+			"system":{"architecture":"mps"}
 			},
 	})
 
@@ -62,23 +62,37 @@ def main(*args,**kwargs):
 	state = state(**settings.state)
 
 	print('--- state ---')
-	print(state())
 	state.info(verbose=True)
+	print(state())
+	print('------')
+
+	model.__initialize__(state=state)
+
 	print()
-
-	model.__initialize__(state=state,parameters=dict())
-
 
 	print('--- model ---')
-	print(model.data)
-	print(model(model.parameters(model.parameters()),model.state()))
 	model.info(verbose=True)
+	print(model.data)
+	print('------')
+
+	print('--- contract ---')
+	print(model(model.parameters(model.parameters()),model.state()))
+	print('------')
+
 	print()
 
-	if model.ndim == 3:
+
+	print('--- einsum ---',model.ndim,state.ndim)
+	if model.ndim == 3 and state.ndim == 2:
 		print(einsum('uij,jk,ulk',model.data,model.state(),conjugate(model.data)))
-	elif model.ndim == 2:
+	elif model.ndim == 3 and state.ndim == 1:
+		print(einsum('uij,jk',model.data,model.state()))
+	elif model.ndim == 2 and state.ndim == 2:
 		print(einsum('ij,jk,lk',model.data,model.state(),conjugate(model.data)))
+	elif model.ndim == 2 and state.ndim == 1:
+		print(einsum('ij,jk',model.data,model.state()))
+	print('------')
+
 	print()
 
 

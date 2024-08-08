@@ -11,8 +11,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
-from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
-from src.utils import tensor,tensornetwork,gate
+from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,arange,diag
+from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
@@ -20,7 +20,7 @@ from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,diffe
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,iterables,datatype
 
-from src.iterables import Dict,Dictionary,Default,setter,getter,getattrs,hasattrs,namespace,permutations
+from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
@@ -33,7 +33,7 @@ from src.optimize import Objective,Metric
 delim = '.'
 objects = (*arrays,*tensors)
 
-class Basis(Default):
+class Basis(Dict):
 
 	N = 1
 	D = 2
@@ -58,79 +58,79 @@ class Basis(Default):
 		return len(cls.shape)
 
 	@classmethod
-	@Default.decorator
+	@System.decorator
 	def I(cls,*args,**kwargs):
 		data = identity(cls.D**cls.N,dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator
+	@System.decorator
 	def X(cls,*args,**kwargs):
 		data = array([[0,1],[1,0]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator
+	@System.decorator
 	def Y(cls,*args,**kwargs):
 		data = array([[0,-1j],[1j,0]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def Z(cls,*args,**kwargs):
 		data = array([[1,0],[0,-1]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator
+	@System.decorator
 	def H(cls,*args,**kwargs):
 		data = array([[1,1],[1,-1]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def S(cls,*args,**kwargs):
 		data = array([[1,0,],[0,1j]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator
+	@System.decorator
 	def CNOT(cls,*args,**kwargs):
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def U(cls,*args,**kwargs):
 		data = rand(shape=cls.shape,random=cls.random,key=cls.key,dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def PSI(cls,*args,**kwargs):
 		data = rand(shape=cls.shape,random=cls.random,key=cls.key,dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def ZERO(cls,*args,**kwargs):
 		data = array([1,*[0]*(cls.D-1)],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def ONE(cls,*args,**kwargs):
 		data = array([*[0]*(cls.D-1),1],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def PLUS(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def MINUS(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		index = slice(1,None,cls.D)
@@ -138,12 +138,13 @@ class Basis(Default):
 		return data
 
 	@classmethod
-	@Default.decorator	
+	@System.decorator	
 	def PROJECTOR(cls,*args,**kwargs):
 		data = zeros(cls.shape,dtype=cls.dtype)
 		index = tuple(map(int,cls.basis))
 		data[index] = 1
 		return data
+
 
 
 
@@ -454,7 +455,7 @@ class Object(System):
 	time = None
 	
 	basis = {
-		**{attr: Basis.get('I') for attr in [None]}
+		**{attr: Basis.I for attr in [None]}
 	}
 	default = None
 
@@ -686,11 +687,9 @@ class Object(System):
 		elif self.operator is None:
 			self.data = None
 		elif isinstance(self.operator,str):
-			self.data = tensorprod([self.basis.get(self.operator)(D=self.D,dtype=self.dtype) if i in self.site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if self.operator in self.basis else None
+			self.data = tensorprod([self.basis.get(self.operator)(D=self.D,system=self.system) if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) for i in range(self.N)]) if self.operator in self.basis else None
 		elif self.operator is not None:
-			self.data = tensorprod([self.basis.get(i)(D=self.D,dtype=self.dtype) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
-
-		self.identity = self.basis[self.default](N=self.N,D=self.D,system=self.system)if self.identity is None else self.identity
+			self.data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
 		if (self.samples is not None) and isinstance(self.data,objects) and (self.ndim is not None) and (self.data.ndim>self.ndim):
 			if isinstance(self.samples,int) and (self.samples > 0):
@@ -701,6 +700,17 @@ class Object(System):
 
 			if (self.samples is not None):
 				self.data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
+
+
+		if self.architecture is None or self.architecture in ['array']:
+			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
+		
+		elif self.architecture in ['tensor']:
+			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system)if self.identity is None else self.identity
+	
+		elif self.architecture in ['mps']:
+			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system)if self.identity is None else self.identity
+
 
 		if self.func is None:
 			def func(parameters=None,state=None):
@@ -722,35 +732,39 @@ class Object(System):
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
 
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array']:
 			contract = contraction(data,state) if self.contract is None else self.contract
 			grad_contract = gradient_contraction(data,state) if self.gradient_contract is None else self.gradient_contract
-		elif self.architecture in ['array']:
-			contract = contraction(data,state) if self.contract is None else self.contract
-			grad_contract = gradient_contraction(data,state) if self.gradient_contract is None else self.gradient_contract
+	
 		elif self.architecture in ['tensor']:
 			def contract(data,state):
 				return data(state)
 			def grad_contract(data,state):
-				return data(state)				
-		else:
-			contract = contraction(data,state) if self.contract is None else self.contract
-			grad_contract = gradient_contraction(data,state) if self.gradient_contract is None else self.gradient_contract
+				return data(state)
+	
+		elif self.architecture in ['mps']:
+			def contract(data,state):
+				return state.gate(data,where=self.site)
+			def grad_contract(data,state):
+				return state.gate(data,where=self.site)
+
 
 		self.func = func
 		self.gradient = gradient
 		self.contract = contract
 		self.gradient_contract = grad_contract
 
-		self.shape = data.shape if isinstance(data,arrays) else None
-		self.size = data.size if isinstance(data,arrays) else None
-		self.ndim = data.ndim if isinstance(data,arrays) else None
-		self.dtype = data.dtype if isinstance(data,arrays) else None
+		self.identity = identity
+
+		self.shape = data.shape if isinstance(data,arrays) else self.shape if self.shape is not None else None
+		self.size = data.size if isinstance(data,arrays) else self.size if self.size is not None else None
+		self.ndim = data.ndim if isinstance(data,arrays) else self.ndim if self.ndim is not None else None
+		self.dtype = data.dtype if isinstance(data,arrays) else self.dtype if self.dtype is not None else None
 
 		parameters = self.parameters()
 		state = self.state() if self.state is not None and self.state() is not None else self.identity
 
-		if self.architecture is None or self.architecture in ['array']:
+		if self.architecture is None or self.architecture in ['array','tensor']:
 			self.func = jit(self.func,parameters=parameters,state=state)
 			self.gradient = jit(self.gradient,parameters=parameters,state=state)
 			self.contract = jit(self.contract,state=state)
@@ -1175,7 +1189,7 @@ class Operator(Object):
 	time = None	
 	
 	basis = {
-		**{attr: Basis.get('I') for attr in ['I']},
+		**{attr: Basis.I for attr in ['I']},
 		}
 	default = 'I'
 
@@ -1239,10 +1253,10 @@ class Pauli(Object):
 	time = None		
 	
 	basis = {
-		**{attr: Basis.get('I') for attr in ['I']},
-		**{attr: Basis.get('X') for attr in ['X']},
-		**{attr: Basis.get('Y') for attr in ['Y']},
-		**{attr: Basis.get('Z') for attr in ['Z']},
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.X for attr in ['X']},
+		**{attr: Basis.Y for attr in ['Y']},
+		**{attr: Basis.Z for attr in ['Z']},
 			}
 	default = 'I'
 	
@@ -1272,29 +1286,29 @@ class Pauli(Object):
 
 		self.parameters.__initialize__(parameters=dict(obj=pi/2))
 
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array']:
 			if isinstance(operator,str):
-				data = tensorprod([self.basis.get(operator)(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
+				data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
 					for i in range(self.N)]) if operator in self.basis else None
 			elif operator is not None:
-				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
+				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
 					for i in range(self.N)]) if all(i in self.basis for i in operator) else None			
-		elif self.architecture in ['array']:
-			if isinstance(operator,str):
-				data = tensorprod([self.basis.get(operator)(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
-					for i in range(self.N)]) if operator in self.basis else None
-			elif operator is not None:
-				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
-					for i in range(self.N)]) if all(i in self.basis for i in operator) else None
+		
 		elif self.architecture in ['tensor']:
 			if isinstance(operator,str):
 				data = partial(gate,label='R%s'%(operator),qubits=site,parametrize=self.variable)
 			elif operator is not None:
-				data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=self.variable)
+				data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=self.variable)			
 		
+		elif self.architecture in ['mps']:
+			if isinstance(operator,str):
+				data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) for i in site]) if operator in self.basis else None
+			elif operator is not None:
+				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) for i in site]) if all(i in self.basis for i in operator) else None			
+
 		if self.parameters() is not None:
 
-			if self.architecture is None:
+			if self.architecture is None or self.architecture in ['array']:
 				def func(parameters=None,state=None):
 					parameters = self.parameters(parameters)	
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
@@ -1303,17 +1317,6 @@ class Pauli(Object):
 					grad = self.parameters.grad(parameters)
 					parameters = self.parameters(parameters)
 					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
 
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
@@ -1325,40 +1328,38 @@ class Pauli(Object):
 					parameters = self.parameters(parameters)
 					return grad*self.data(params=parameters+pi/2)
 
+			elif self.architecture in ['mps']:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)	
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
 		elif self.parameters() is None:
 		
-			if self.architecture is None:
+			if self.architecture is None or self.architecture in ['array']:
 				def func(parameters=None,state=None):
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
 					return self.data(params=parameters)
 
 				def gradient(parameters=None,state=None):
 					return grad*self.data(params=parameters+pi/2)
+
+			elif self.architecture in ['mps']:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		contract = None
 		gradient_contract = None
@@ -1402,13 +1403,13 @@ class Gate(Object):
 	time = None	
 
 	basis = {
-		**{attr: Basis.get('I') for attr in ['i']},
-		**{attr: Basis.get('X') for attr in ['x']},
-		**{attr: Basis.get('Y') for attr in ['y']},
-		**{attr: Basis.get('Z') for attr in ['z']},
-		**{attr: Basis.get('CNOT') for attr in ['CNOT','C','cnot']},
-		**{attr: Basis.get('H') for attr in ['HADAMARD','H']},
-		**{attr: Basis.get('S') for attr in ['PHASE','S']}
+		**{attr: Basis.I for attr in ['i']},
+		**{attr: Basis.X for attr in ['x']},
+		**{attr: Basis.Y for attr in ['y']},
+		**{attr: Basis.Z for attr in ['z']},
+		**{attr: Basis.CNOT for attr in ['CNOT','C','cnot']},
+		**{attr: Basis.H for attr in ['HADAMARD','H']},
+		**{attr: Basis.S for attr in ['PHASE','S']}
 		}
 	default = 'I'
 
@@ -1437,10 +1438,10 @@ class Gate(Object):
 		gradient_contract = None
 
 		if isinstance(operator,str):
-			data = tensorprod([self.basis.get(operator)(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
+			data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
 				for i in range(self.N)]) if operator in self.basis else None
 		elif operator is not None:
-			data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,dtype=self.dtype) if i in site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) 
+			data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
 				for i in range(self.N)]) if all(i in self.basis for i in operator) else None
 
 		hermitian = False
@@ -1482,8 +1483,8 @@ class Haar(Object):
 	time = None	
 
 	basis = {
-		**{attr: Basis.get('I') for attr in ['I']},
-		**{attr: Basis.get('U') for attr in ['U','random','haar']},
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.U for attr in ['U','random','haar']},
 		}
 	default = 'I'
 
@@ -1570,12 +1571,12 @@ class State(Object):
 	time = None	
 
 	basis = {
-		**{attr: Basis.get('I') for attr in ['I']},
-		**{attr: Basis.get('PSI') for attr in ['random','psi','haar']},
-		**{attr: Basis.get('ZERO') for attr in ['zero','zeros','0']},
-		**{attr: Basis.get('ONE') for attr in ['one','ones','1']},
-		**{attr: Basis.get('PLUS') for attr in ['plus','+']},
-		**{attr: Basis.get('MINUS') for attr in ['minus','-']},
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.PSI for attr in ['random','psi','haar']},
+		**{attr: Basis.ZERO for attr in ['zero','zeros','0']},
+		**{attr: Basis.ONE for attr in ['one','ones','1']},
+		**{attr: Basis.PLUS for attr in ['plus','+']},
+		**{attr: Basis.MINUS for attr in ['minus','-']},
 		}
 	default = 'I'
 	
@@ -1617,7 +1618,6 @@ class State(Object):
 			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
 			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
 			locality = len(operator)
-			samples = self.samples if self.samples is not None else 1
 
 			local = any((
 					all((operator[i] not in ['random','psi','haar'])
@@ -1626,62 +1626,62 @@ class State(Object):
 					)
 
 			data = []
-
-			for s in range(samples):
+			
+			for i in range(N):
 				
-				datum = []
-				
-				for i in range(N):
-					
-					if local:
-						shape = (self.D,)
-						seed = spawn(seed)
-					else:
-						shape = (self.D**self.N,)
+				if local:
+					shape = (self.D,)
+				else:
+					shape = (self.D**self.N,)
 
-					ndim = len(shape)
-					size = prod(shape)
+				ndim = len(shape)
+				size = prod(shape)
 
-					tmp = zeros(shape=shape,dtype=dtype)
+				obj = zeros(shape=shape,dtype=dtype)
 
-					if operator[i] in ['zero','zeros','0']:
-						tmp = inplace(tmp,0,1)
-					elif operator[i] in ['one','ones','1']:
-						tmp = inplace(tmp,-1,1)
-					elif operator[i] in ['plus','+']:
-						tmp = inplace(tmp,slice(None),1/sqrt(size))
-					elif operator[i] in ['minus','-']:
-						tmp = inplace(tmp,slice(None),(-1)**arange(size)/sqrt(size))
-					elif operator[i] in ['random','psi','haar']:
-						tmp = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
-					elif isinstance(self.data,objects):
-						tmp = self.data.reshape(N,*shape)[i]
-					else:
-						tmp = None
+				if operator[i] in ['zero','zeros','0']:
+					obj = inplace(obj,0,1)
+				elif operator[i] in ['one','ones','1']:
+					obj = inplace(obj,-1,1)
+				elif operator[i] in ['plus','+']:
+					obj = inplace(obj,slice(None),1/sqrt(size))
+				elif operator[i] in ['minus','-']:
+					obj = inplace(obj,slice(None),(-1)**arange(size)/sqrt(size))
+				elif operator[i] in ['random','psi','haar']:
+					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				elif isinstance(self.data,objects):
+					obj = self.data.reshape(N,*shape)[i]
+				else:
+					obj = None
 
-					if tmp is None:
-						datum = tmp
-						break
+				if obj is None:
+					data = obj
+					break
 
-					datum.append(tmp)
+				data.append(obj)
 
-					if not local:
-						break
-
-				if datum is not None:
-					if not isinstance(datum,objects) and not callable(datum):
-						datum = tensorprod(datum)
-
-					if datum.ndim < self.ndim:
-						datum = einsum('...i,...j->...ij',datum,conjugate(datum))
-
-				data.append(datum)
+				if not local:
+					break
 
 			if data is not None:
 				if len(data) == 1:
 					data = data[-1]
-				else:
-					data = array(data,dtype=self.dtype)
+			
+			if self.architecture is None or self.architecture in ['array']:
+
+				if data is not None:
+					data = tensorprod(data)
+
+				if data.ndim < self.ndim:
+					data = einsum('...i,...j->...ij',data,conjugate(data))
+
+				data = array(data,dtype=self.dtype)
+
+			elif self.architecture in ['tensor']:
+				data = mps(data)
+
+			elif self.architecture in ['mps']:
+				data = mps(data)
 
 		else:
 
@@ -1767,15 +1767,15 @@ class Noise(Object):
 	time = None
 
 	basis = {
-		**{attr: Basis.get('I') for attr in ['I','i']},
-		**{attr: Basis.get('I') for attr in ['eps','noise','rand']},
-		**{attr: Basis.get('I') for attr in ['depolarize']},
-		**{attr: Basis.get('I') for attr in ['amplitude']},
-		**{attr: Basis.get('PROJECTOR') for attr in ['projector']},
-		**{attr: Basis.get('X') for attr in ['flip','bitflip']},
-		**{attr: Basis.get('Y') for attr in ['flipphase']},
-		**{attr: Basis.get('Z') for attr in ['phase','dephase']},
-		**{attr: Basis.get('I') for attr in ['dephase-amplitude']},
+		**{attr: Basis.I for attr in ['I','i']},
+		**{attr: Basis.I for attr in ['eps','noise','rand']},
+		**{attr: Basis.I for attr in ['depolarize']},
+		**{attr: Basis.I for attr in ['amplitude']},
+		**{attr: Basis.PROJECTOR for attr in ['projector']},
+		**{attr: Basis.X for attr in ['flip','bitflip']},
+		**{attr: Basis.Y for attr in ['flipphase']},
+		**{attr: Basis.Z for attr in ['phase','dephase']},
+		**{attr: Basis.I for attr in ['dephase-amplitude']},
 		}
 	default = 'I'
 	
@@ -1846,35 +1846,35 @@ class Noise(Object):
 			for i in range(N):
 
 				if operator[i] is None:
-					datum = [self.basis[self.default](D=self.D,dtype=self.dtype)]
+					obj = [self.basis.get(self.default)(D=self.D,system=self.system)]
 				elif operator[i] in ['Z','z','phase','dephase']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i])*self.basis['Z'](D=self.D,dtype=self.dtype)]
+					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
+							sqrt(parameters[i])*self.basis['Z'](D=self.D,system=self.system)]
 				elif operator[i] in ['X','x','flip','bitflip']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							 sqrt(parameters[i])*self.basis['X'](D=self.D,dtype=self.dtype)]
+					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
+							 sqrt(parameters[i])*self.basis['X'](D=self.D,system=self.system)]
 				elif operator[i] in ['Y','y','flipphase']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							 sqrt(parameters[i])*self.basis['Y'](D=self.D,dtype=self.dtype)]
+					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
+							 sqrt(parameters[i])*self.basis['Y'](D=self.D,system=self.system)]
 				elif operator[i] in ['amplitude']:
-					datum = [self.basis['projector'](D=self.D,basis='00',dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['projector'](D=self.D,basis='11',dtype=self.dtype),
+					obj = [self.basis['projector'](D=self.D,basis='00',dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['projector'](D=self.D,basis='11',dtype=self.dtype),
 							sqrt(parameters[i])*self.basis['projector'](D=self.D,basis='01',dtype=self.dtype)]
 				elif operator[i] in ['dephase-amplitude']:
-					datum = [dots(*i) for i in permutations(
+					obj = [dots(*i) for i in permutations(
 						[self.basis['projector'](D=self.D,basis='00',dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['projector'](D=self.D,basis='11',dtype=self.dtype),
 							sqrt(parameters[i])*self.basis['projector'](D=self.D,basis='01',dtype=self.dtype)],
-						[sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i])*self.basis['Z'](D=self.D,dtype=self.dtype)]
+						[sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
+							sqrt(parameters[i])*self.basis['Z'](D=self.D,system=self.system)]
 						)
 						]
 				elif operator[i] in ['depolarize']:
-					datum = [sqrt(1-(self.D**2-1)*parameters[i]/(self.D**2))*self.basis['I'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,dtype=self.dtype)]
+					obj = [sqrt(1-(self.D**2-1)*parameters[i]/(self.D**2))*self.basis['I'](D=self.D,system=self.system),
+							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,system=self.system),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,system=self.system),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,system=self.system)]
 					
 					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
-					# datum = [self.basis['I'](D=self.D,dtype=self.dtype)]
+					# obj = [self.basis['I'](D=self.D,system=self.system)]
 
 					# def func(parameters=None,state=None):
 					# 	return (1-parameters)*state + (parameters)*self.data[0]
@@ -1889,9 +1889,9 @@ class Noise(Object):
 					# 	return grad
 
 				elif operator[i] in ['eps']:
-					datum = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
+					obj = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
-					datum = array(parameters[i],dtype=datatype(self.dtype))
+					obj = array(parameters[i],dtype=datatype(self.dtype))
 					seed = prng(reset=self.seed)
 			
 					def func(parameters=None,state=None):
@@ -1907,13 +1907,13 @@ class Noise(Object):
 						return grad
 
 				else:
-					datum = [self.basis[self.default](D=self.D,dtype=self.dtype)]
+					obj = [self.basis.get(self.default)(D=self.D,system=self.system)]
 
-				if isinstance(datum,objects):
-					data = datum
+				if isinstance(obj,objects):
+					data = obj
 					break
 
-				data.append(datum)
+				data.append(obj)
 
 				if not local:
 					break
@@ -2011,7 +2011,7 @@ class Operators(Object):
 		self.__time__()
 		self.__lattice__()
 
-		self.identity = self.basis[self.default](N=self.N,D=self.D,system=self.system)
+		self.identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system)
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -2048,7 +2048,7 @@ class Operators(Object):
 
 		if data is None:
 			data = None
-		elif all(isinstance(datum,Object) for datum in data):
+		elif all(isinstance(obj,Object) for obj in data):
 			for obj in objs:
 				objs[obj] = None
 		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
@@ -2581,7 +2581,7 @@ class Hamiltonian(Operators):
 		# Get data and kwargs
 		if data is None:
 			data = None
-		elif all(isinstance(datum,Object) for datum in data):
+		elif all(isinstance(obj,Object) for obj in data):
 			for obj in objs:
 				objs[obj] = None
 		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):

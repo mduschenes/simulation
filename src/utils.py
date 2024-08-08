@@ -155,7 +155,7 @@ if backend in ['jax','jax.autograd']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray)
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate)
+	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -2269,6 +2269,28 @@ class tensornetwork(qtn.TensorNetwork):
 	'''
 	def __new__(self,*args,**kwargs):
 		return qtn.TensorNetwork(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
+class mps(qtn.MatrixProductState):
+	'''
+	matrix product state class
+	Args:
+		data (iterable,int,str,object): Tensor data
+		args (iterable): Tensor arguments
+		kwargs (dict): Tensor keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,data,*args,**kwargs):
+		if isinstance(data,iterables):
+			return qtn.MPS_product_state(data,*args,**kwargs)
+		elif isinstance(data,str):
+			return qtn.MPS_computational_state(data,*args,**kwargs)
+		elif isinstance(data,integers):
+			return qtn.MPS_rand_state(data,*args,**kwargs)
+		else:
+			return qtn.MatrixProductState(data,*args,**kwargs)
 		# return super().__init__(self,*args,**kwargs)
 
 
