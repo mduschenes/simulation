@@ -3653,6 +3653,7 @@ def contraction(data=None,state=None,site=None):
 			
 			subscripts = 'ij,j->i'
 			shapes = (data.shape,state.shape)
+			print(shapes)
 			einsummation = einsum(subscripts,*shapes)
 			
 			def func(data,state):

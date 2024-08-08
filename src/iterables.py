@@ -47,12 +47,21 @@ class Dictionary(dict):
 		@wraps(func)
 		def wrapper(cls,*args,system=None,**kwargs):
 			# super().__init__(*args,system=system,**kwargs)
+			properties = deepcopy(cls.properties)
+			
 			setter(kwargs,cls.properties,delimiter=delim,default=False)
 			setter(kwargs,system,delimiter=delim,default=False)
 			for attr in kwargs:
 				if kwargs[attr] is not None:
 					setattr(cls,attr,kwargs[attr])
-			return func(cls,*args,**kwargs)
+			
+			out = func(cls,*args,**kwargs)
+			
+			for attr in properties:
+				setattr(cls,attr,properties[attr])
+			
+			return out
+		
 		return wrapper
 
 	@classmethod

@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,prng,einsum,conjugate
+from src.utils import argparser,jit,array,allclose,delim,prng,einsum,conjugate
 from src.utils import similarity
 from src.io import load,glob
 from src.system import Dict
@@ -21,7 +21,102 @@ from src.logger import Logger
 
 from src.quantum import Channel
 
-def main(*args,**kwargs):
+def test_architecture(*args,**kwargs):
+
+	data = {}
+	architectures = ['array','mps']
+	
+	for architecture in architectures:
+		cls = Dict({
+			"model":'src.quantum.Operator',
+			"state":'src.quantum.State',
+			})
+
+		settings = Dict({
+			"model":{
+				"operator":'X.Y',
+				"site":[0,2],
+				"string":"operator",
+				"parameters":0.25,
+				"N":3,"D":2,"ndim":2,
+				"system":{"seed":123,"architecture":architecture}
+			},	
+			"state": {
+				"data":"010",
+				"operator":"product",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
+				"N":3,"D":2,"ndim":1,
+				"system":{"seed":123,"architecture":architecture}
+				},
+		})
+
+		model = load(cls.model)
+		state = load(cls.state)
+
+		model = model(**settings.model)
+		state = state(**settings.state)
+
+		model.__initialize__(state=state)
+
+
+
+		# Model
+
+		value = model.data
+		
+		if architecture in ['array']:
+			value = array(value)
+		elif architecture in ['mps']:
+			value = array(value)
+
+		print('--- model ---')
+		model.info(verbose=True)
+		print(model.data)
+		print('------')
+
+
+		# State
+
+		value = state()
+		
+		if architecture in ['array']:
+			value = array(value)
+		elif architecture in ['mps']:
+			value = value.to_dense().reshape(-1)
+
+		print('--- state ---')
+		state.info(verbose=True)
+		print(value)
+		print('------')
+
+
+		# Value
+		
+		value = model(model.parameters(model.parameters()),model.state())
+
+		if architecture in ['array']:
+			value = array(value)
+		elif architecture in ['mps']:
+			value = value.to_dense().reshape(-1)
+
+		print('--- value ---')
+		print(value)
+		print('------')
+		
+
+		data[architecture] = value
+
+
+	assert allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
+
+	return
+
+
+def test_contract(*args,**kwargs):
+
+	architecture = 'array'
 
 	cls = Dict({
 		"model":'src.quantum.Operator',
@@ -30,20 +125,12 @@ def main(*args,**kwargs):
 
 	settings = Dict({
 		"model":{
-			"operator":"depolarize",
-			"site":None,
-			"string":"noise",
-			"parameters":1e-12,
-			"N":2,"D":2,
-			"system":{"architecture":"mps"}
-		},		
-		"model":{
 			"operator":'X.X',
 			"site":[0,1],
 			"string":"operator",
 			"parameters":0.5,
 			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":"mps"}
+			"system":{"architecture":architecture}
 		},	
 		"state": {
 			"operator":"zero",
@@ -51,7 +138,7 @@ def main(*args,**kwargs):
 			"string":"psi",
 			"parameters":True,
 			"N":2,"D":2,"ndim":1,
-			"system":{"architecture":"mps"}
+			"system":{"architecture":architecture}
 			},
 	})
 
@@ -102,15 +189,6 @@ def main(*args,**kwargs):
 	print(model(model.parameters(model.parameters()),model.state()))
 	print()
 
-
-	func = similarity(model,label=model.state,shape=model.shape,hermitian=True,unitary=False)
-	print(func(model.parameters(model.parameters()),model.state()))
-
-	return
-
-
-def test_quantum():
-	main()
 	return
 
 
@@ -119,4 +197,4 @@ if __name__ == '__main__':
 	arguments = 'settings'
 	args = argparser(arguments)
 
-	main(*args,**args)
+	test_architecture(*args,**args)

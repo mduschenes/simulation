@@ -18,7 +18,7 @@ from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,iterables,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -179,7 +179,7 @@ def trotter(iterable=None,p=None,verbose=False):
 		return p
 	elif p is None:
 		return iterable
-	elif not isinstance(p,int) or (p > P):
+	elif not isinstance(p,integers) or (p > P):
 		raise NotImplementedError('p = %r !< %d Not Implemented'%(p,P))
 
 	if iterable is None:
@@ -504,10 +504,12 @@ class Object(System):
 
 		basis = self.basis
 		default = self.default
+		
 		operator = self.operator if self.operator is not None else data
-		site = self.site if self.site is None or not isinstance(self.site,int) else [self.site]
+		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
 		locality = self.locality if self.locality is not None else self.N
 		string = self.string
+		
 		N = self.N	
 		D = self.D	
 
@@ -582,7 +584,6 @@ class Object(System):
 		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
 		ndim = self.ndim if self.ndim is not None else data.ndim if isinstance(data,arrays) else None
 		dtype = self.dtype if self.dtype is not None else data.dtype if isinstance(data,arrays) else None
-
 
 		self.data = data if data is not None else operator if operator is not None else None
 		self.operator = operator if operator is not None else None
@@ -692,7 +693,7 @@ class Object(System):
 			self.data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
 		if (self.samples is not None) and isinstance(self.data,objects) and (self.ndim is not None) and (self.data.ndim>self.ndim):
-			if isinstance(self.samples,int) and (self.samples > 0):
+			if isinstance(self.samples,integers) and (self.samples > 0):
 				shape,bounds,scale,seed,dtype = self.data.shape[:self.data.ndim-self.ndim], [0,1], 'normalize', self.seed, datatype(self.dtype)
 				self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
 			elif not isinstance(self.samples,objects):
@@ -1293,7 +1294,6 @@ class Pauli(Object):
 			elif operator is not None:
 				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
 					for i in range(self.N)]) if all(i in self.basis for i in operator) else None			
-		
 		elif self.architecture in ['tensor']:
 			if isinstance(operator,str):
 				data = partial(gate,label='R%s'%(operator),qubits=site,parametrize=self.variable)
@@ -1515,6 +1515,7 @@ class Haar(Object):
 		if not isinstance(data,objects) and not callable(data):
 			shape = (self.n,)*self.ndim
 			size = prod(shape)
+			ndim = len(shape)
 			random = getattr(self,'random','haar')
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
@@ -1572,7 +1573,7 @@ class State(Object):
 
 	basis = {
 		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.PSI for attr in ['random','psi','haar']},
+		**{attr: Basis.PSI for attr in ['random','psi','haar','product','string']},
 		**{attr: Basis.ZERO for attr in ['zero','zeros','0']},
 		**{attr: Basis.ONE for attr in ['one','ones','1']},
 		**{attr: Basis.PLUS for attr in ['plus','+']},
@@ -1608,74 +1609,91 @@ class State(Object):
 
 			N = self.N
 			D = self.D
+			ndim = self.ndim
+
+			basis = self.basis
 			default = self.default
+			system = self.system
+			dtype = self.dtype
 
 			random = getattr(self,'random','haar')
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
-			dtype = self.dtype
 
-			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
-			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
+			data = data
+			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
+			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
 			locality = len(operator)
 
-			local = any((
-					all((operator[i] not in ['random','psi','haar'])
-					for i in range(N)),
-					)
-					)
+			local = any(( 
+				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
+				))
 
-			data = []
+			objs = []
 			
 			for i in range(N):
 				
-				if local:
-					shape = (self.D,)
-				else:
-					shape = (self.D**self.N,)
-
-				ndim = len(shape)
+				shape = (D**N,) if not local else (D,)
 				size = prod(shape)
+				ndim = len(shape)
 
 				obj = zeros(shape=shape,dtype=dtype)
 
 				if operator[i] in ['zero','zeros','0']:
-					obj = inplace(obj,0,1)
+					index = 0
+					value = 1
+					obj = inplace(obj,index,value)
 				elif operator[i] in ['one','ones','1']:
-					obj = inplace(obj,-1,1)
+					index = -1
+					value = 1
+					obj = inplace(obj,index,value)
 				elif operator[i] in ['plus','+']:
-					obj = inplace(obj,slice(None),1/sqrt(size))
+					index = slice(None)
+					value = 1/sqrt(size)
+					obj = inplace(obj,index,value)
 				elif operator[i] in ['minus','-']:
-					obj = inplace(obj,slice(None),(-1)**arange(size)/sqrt(size))
-				elif operator[i] in ['random','psi','haar']:
+					index = slice(None)
+					value = (-1)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)
+				elif operator[i] in ['random','psi','haar','product']:
 					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
-				elif isinstance(self.data,objects):
-					obj = self.data.reshape(N,*shape)[i]
+				elif operator[i] in ['string']:
+					if self.architecture is None or self.architecture in ['array','tensor']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+					elif self.architecture in ['mps']:
+						local = False
+						obj = data
+				elif isinstance(data,arrays):
+					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
 				else:
 					obj = None
 
 				if obj is None:
-					data = obj
+					objs = obj
 					break
 
-				data.append(obj)
+				objs.append(obj)
 
 				if not local:
+					objs = objs[-1]
 					break
 
-			if data is not None:
-				if len(data) == 1:
-					data = data[-1]
-			
+			data = objs
+
 			if self.architecture is None or self.architecture in ['array']:
 
+				data = objs
+
 				if data is not None:
-					data = tensorprod(data)
 
-				if data.ndim < self.ndim:
-					data = einsum('...i,...j->...ij',data,conjugate(data))
+					data = tensorprod(data) if not isinstance(data,objects) else data
 
-				data = array(data,dtype=self.dtype)
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=self.dtype)
 
 			elif self.architecture in ['tensor']:
 				data = mps(data)
@@ -1826,58 +1844,69 @@ class Noise(Object):
 				return
 
 			N = self.N
+			D = self.D
+
+			shape = (D**N,)
+			size = prod(shape)
+			ndim = len(ndim)
+
+			basis = self.basis
 			default = self.default
-			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
-			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
+			system = self.system
+			dtype = self.dtype
+			
+			data = data
+			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
+			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
 			locality = len(operator) if operator is not None else None
 			parameters = self.parameters(self.parameters())
 			
-			parameters = [None]*self.N if parameters is None else [parameters[[self.site.index(i)%len(parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*self.N
+			parameters = [None]*N if parameters is None else [parameters[[site.index(i)%len(parameters)]] if i in site else default for i in range(N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*N
 
 			local = any(
 					True
 					for i in range(N)
 					)
 
-			data = []
+			objs = []
 
 			assert ((isinstance(parameters,scalars) and (operator is not None) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), 'Noise scale %r not in [0,1]'%(parameters)
 
 			for i in range(N):
 
 				if operator[i] is None:
-					obj = [self.basis.get(self.default)(D=self.D,system=self.system)]
+					obj = [basis.get(default)(D=D,system=system)]
 				elif operator[i] in ['Z','z','phase','dephase']:
-					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
-							sqrt(parameters[i])*self.basis['Z'](D=self.D,system=self.system)]
+					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
+							sqrt(parameters[i])*basis['Z'](D=D,system=system)]
 				elif operator[i] in ['X','x','flip','bitflip']:
-					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
-							 sqrt(parameters[i])*self.basis['X'](D=self.D,system=self.system)]
+					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
+							 sqrt(parameters[i])*basis['X'](D=D,system=system)]
 				elif operator[i] in ['Y','y','flipphase']:
-					obj = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
-							 sqrt(parameters[i])*self.basis['Y'](D=self.D,system=self.system)]
+					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
+							 sqrt(parameters[i])*basis['Y'](D=D,system=system)]
 				elif operator[i] in ['amplitude']:
-					obj = [self.basis['projector'](D=self.D,basis='00',dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['projector'](D=self.D,basis='11',dtype=self.dtype),
-							sqrt(parameters[i])*self.basis['projector'](D=self.D,basis='01',dtype=self.dtype)]
+					obj = [basis['projector'](D=D,basis='00',system=system) + sqrt(1-parameters[i])*basis['projector'](D=D,basis='11',system=system),
+							sqrt(parameters[i])*basis['projector'](D=D,basis='01',system=system)]
 				elif operator[i] in ['dephase-amplitude']:
 					obj = [dots(*i) for i in permutations(
-						[self.basis['projector'](D=self.D,basis='00',dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['projector'](D=self.D,basis='11',dtype=self.dtype),
-							sqrt(parameters[i])*self.basis['projector'](D=self.D,basis='01',dtype=self.dtype)],
-						[sqrt(1-parameters[i])*self.basis['I'](D=self.D,system=self.system),
-							sqrt(parameters[i])*self.basis['Z'](D=self.D,system=self.system)]
+						[basis['projector'](D=D,basis='00',system=system) + sqrt(1-parameters[i])*basis['projector'](D=D,basis='11',system=system),
+							sqrt(parameters[i])*basis['projector'](D=D,basis='01',system=system)],
+						[sqrt(1-parameters[i])*basis['I'](D=D,system=system),
+							sqrt(parameters[i])*basis['Z'](D=D,system=system)]
 						)
 						]
 				elif operator[i] in ['depolarize']:
-					obj = [sqrt(1-(self.D**2-1)*parameters[i]/(self.D**2))*self.basis['I'](D=self.D,system=self.system),
-							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,system=self.system),
-							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,system=self.system),
-							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,system=self.system)]
+					obj = [sqrt(1-(D**2-1)*parameters[i]/(D**2))*basis['I'](D=D,system=system),
+							sqrt(parameters[i]/(D**2))*basis['X'](D=D,system=system),
+							sqrt(parameters[i]/(D**2))*basis['Y'](D=D,system=system),
+							sqrt(parameters[i]/(D**2))*basis['Z'](D=D,system=system)]
 					
 					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
-					# obj = [self.basis['I'](D=self.D,system=self.system)]
+					# obj = [basis['I'](D=D,system=system)]
 
 					# def func(parameters=None,state=None):
-					# 	return (1-parameters)*state + (parameters)*self.data[0]
+					# 	return (1-parameters)*state + (parameters)*data[0]
 
 					# def gradient(parameters=None,state=None):
 					# 	return 0*state
@@ -1889,10 +1918,10 @@ class Noise(Object):
 					# 	return grad
 
 				elif operator[i] in ['eps']:
-					obj = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
+					obj = array([identity(size,system=system),diag((1+parameters[i])**(arange(size)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
-					obj = array(parameters[i],dtype=datatype(self.dtype))
-					seed = prng(reset=self.seed)
+					obj = array(parameters[i],dtype=datatype(dtype))
+					seed = prng(reset=seed)
 			
 					def func(parameters=None,state=None):
 						return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
@@ -1907,19 +1936,21 @@ class Noise(Object):
 						return grad
 
 				else:
-					obj = [self.basis.get(self.default)(D=self.D,system=self.system)]
+					obj = [basis.get(default)(D=D,system=system)]
 
 				if isinstance(obj,objects):
-					data = obj
+					objs = obj
 					break
 
-				data.append(obj)
+				objs.append(obj)
 
 				if not local:
 					break
 
+			data = objs
+
 			if not isinstance(data,objects) and not callable(data):
-				data = array([tensorprod(i)	for i in permutations(*data)],dtype=self.dtype)
+				data = array([tensorprod(i)	for i in permutations(*data)],dtype=dtype)
 
 		else:
 			data = self.data
@@ -2630,7 +2661,7 @@ class Hamiltonian(Operators):
 						if obj in [attr]:
 							value[obj] = [dict(zip(
 								indices[key],
-								s if not isinstance(s,int) else (s,))
+								s if not isinstance(s,integers) else (s,))
 							).get(i,int(i) if not isinstance(i,str) else i) 
 							for i in tmp[attr]]
 						else:
