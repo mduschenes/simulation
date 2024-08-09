@@ -23,6 +23,8 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 
 from src.system import Dict
 
+from src.parameters import Parameters
+
 
 def test_metric(path,tol):
 
@@ -180,8 +182,8 @@ def test_grad(path,tol):
 
 
 if __name__ == '__main__':
-	path = 'config/settings.json'
 	path = 'config/settings.test.json'	
+	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_metric(path,tol)
 	# test_objective(path,tol)

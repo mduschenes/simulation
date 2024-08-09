@@ -21,16 +21,16 @@ from src.train import train
 # logger = Logger()
 
 
-def test_train(settings,*args,**kwargs):
+def test_train(path,*args,**kwargs):
 
-	model = train(settings,*args,**kwargs)
+	model = train(path,*args,**kwargs)
 
 	return
 
 
 if __name__ == '__main__':
 
-	arguments = 'settings'
+	arguments = 'path'
 	args = argparser(arguments)
 
 	test_train(*args,**args)

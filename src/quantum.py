@@ -2344,15 +2344,16 @@ class Operators(Object):
 			size = len(kwargs.get(attr,[]))
 			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
 			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
+			default = None
 
 			if obj is None:
 				obj = obj
 			elif isinstance(obj,dict):
 				obj = obj.get(
 					tuple(objs.site[i]),obj.get(str(objs.string[i]),
-					obj.get(str(index),obj.get(int(index),None))))
+					obj.get(str(index),obj.get(int(index),default))))
 			elif isinstance(obj,iterables):
-				obj = obj[index%len(obj)] if len(obj) else None
+				obj = obj[index%len(obj)] if len(obj) else default
 			else:
 				obj = obj
 
@@ -2370,11 +2371,12 @@ class Operators(Object):
 			size = len(kwargs.get(attr,[]))
 			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
 			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
-			
+			default = ['M']
+
 			if obj is None:
-				obj = ['M']
+				obj = [j for j in default]
 			elif isinstance(obj,iterables):
-				obj = [*obj,'M']
+				obj = [*obj,*(j for j in default if j not in obj)]
 			else:
 				obj = obj
 

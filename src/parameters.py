@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
-from src.utils import pi,itg,arrays,scalars,integers,floats,delim,separ,cos,sin,exp
+from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
 
@@ -52,7 +52,7 @@ class Parameter(System):
 			seed (int, key): Random seed for initialization
 			random (str,dict): Random type for initialization
 			bounds (iterable[object]): Bounds of parameters
-			axis (iterable[str]): Attributes for additional dimensions of parameter
+			axis (str,int,iterable[str,int]): Attributes for additional dimensions of parameter
 			indices (int,iterable[int]): Indices of global parameters for parameter
 			func (callable): Function to wrap parameters with signature func(parameters)
 			constraint (callable): Function to constrain parameters with signature constraint(parameters)
@@ -144,7 +144,7 @@ class Parameter(System):
 		self.local = self.local if self.local is not None else True
 		self.method = self.method if self.method is not None else None
 		self.bounds = self.bounds if self.bounds is not None else [-1,1]
-		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
+		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if isinstance(self.axis,iterables) else [*((self.axis,) if (isinstance(self.axis,int) or getattr(self,self.axis,None) is not None) else ()),] if self.axis is not None else None
 
 		self.args = self.args if self.args is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
@@ -462,7 +462,7 @@ class Parameters(System):
 				seed (int, key): Random seed for initialization
 				random (str,dict): Random type for initialization
 				bounds (iterable[object]): Bounds of parameters
-				axis (iterable[str]): Attributes for additional dimensions of parameter
+				axis (str,int,iterable[str,int]): Attributes for additional dimensions of parameter
 				indices (int,iterable[int]): Indices of global parameters for parameter
 				func (callable): Function to wrap parameters with signature func(parameters)
 				constraint (callable): Function to constrain parameters with signature constraint(parameters)
@@ -506,14 +506,16 @@ class Parameters(System):
 
 				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
 
+				data[group][parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
+				data[group][parameter].local = local
+				data[group][parameter].indices = index+i if local else index
+				data[group][parameter].axis = list(sorted(list(set(self.parameters[parameter].axis)),key=lambda i: self.parameters[parameter].axis.index(i)))
+
 				data[group][parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
 				data[group][parameter].shape = (
 						*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
 						*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
 					)
-				data[group][parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
-				data[group][parameter].local = local
-				data[group][parameter].indices = index+i if local else index
 
 				kwargs = {
 					**self.parameters[parameter],

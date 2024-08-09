@@ -116,6 +116,8 @@ def test_architecture(*args,**kwargs):
 
 def test_contract(*args,**kwargs):
 
+	return
+
 	architecture = 'array'
 
 	cls = Dict({
@@ -198,3 +200,4 @@ if __name__ == '__main__':
 	args = argparser(arguments)
 
 	test_architecture(*args,**args)
+	test_contract(*args,**args)

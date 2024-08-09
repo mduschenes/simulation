@@ -4,6 +4,7 @@
 import os,sys,itertools,functools,datetime
 from natsort import natsorted
 from copy import deepcopy
+import pytest
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +12,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-os.environ['NUMPY_BACKEND'] = 'autograd'
+os.environ['NUMPY_BACKEND'] = 'jax'
 
 from src.utils import argparser
 from src.call import submit,command,call,cp,rm,echo,sed,sleep,touch
@@ -31,6 +32,7 @@ def callback(value,key,values,**kwargs):
 	values.update(value)
 	return
 
+@pytest.mark.filterwarnings(r"ignore:os\.fork")
 def test_parallelize(path):
 
 	paths = [path]
@@ -57,7 +59,7 @@ def test_parallelize(path):
 
 	return
 
-
+@pytest.mark.filterwarnings(r"ignore:os\.fork")
 def test_pooler(path):
 
 	paths = [path]

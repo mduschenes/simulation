@@ -9,6 +9,7 @@
 	},
 "hyperparameters":null,
 "boolean":{
+	"call":1,
 	"train":1,
 	"load":0,
 	"dump":0
@@ -182,7 +183,6 @@
 				"args":[],
 				"kwargs":{}
 				},
-			"attributes":["parameters.data"],				
 			"variable":false,"seed":123},								
 		"zz":{
 			"operator":["Z","Z"],"site":"i<j","string":"zz",
@@ -206,11 +206,10 @@
 				"args":[],
 				"kwargs":{}
 				},
-			"attributes":["parameters.data"],							
 			"variable":false,"seed":123},		
 		"noise":{
 			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1,"parameters":0},
+			"parameters":0,
 			"ndim":3,
 			"variable":false
 		}
