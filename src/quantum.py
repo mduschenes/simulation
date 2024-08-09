@@ -2139,7 +2139,6 @@ class Operators(Object):
 
 		self.conj = conj
 
-
 		# Set parameters
 		kwargs = dict(
 			parameters={i:self.data[i].parameters 
@@ -2149,6 +2148,7 @@ class Operators(Object):
 				} if parameters is None else parameters,
 			system=self.system
 		)
+
 		parameters = Parameters(**kwargs)
 
 		self.parameters = parameters

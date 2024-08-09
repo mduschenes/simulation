@@ -8304,19 +8304,35 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	bounds = bounding(bounds,dtype=dtype)
 	dtype = dtype if dtype is not None else None
 
-	if data is None and shape is None:
-		data = None
-		shape = None
-		random = None
-	elif data is not None and shape is None:
+	if data is None and shape is None and random is None:
+		data = data
+		shape = shape
+		random = random
+	elif data is not None and shape is None and random is None:
 		data = data
 		shape = None
-		random = None
-	elif data is None and shape is not None:
-		data = None
+		random = default
+	elif data is None and shape is not None and random is None:
+		data = data
 		shape = shape
-		random = random if random is not None else default
-	elif data is not None and shape is not None:
+		random = default
+	elif data is not None and shape is not None and random is None:
+		data = data
+		shape = shape
+		random = default		
+	elif data is None and shape is None and random is not None:
+		data = data
+		shape = ()
+		random = random
+	elif data is not None and shape is None and random is not None:
+		data = data
+		shape = None
+		random = default
+	elif data is None and shape is not None and random is not None:
+		data = data
+		shape = shape
+		random = random
+	elif data is not None and shape is not None and random is not None:
 		data = data
 		shape = shape
 		random = default
