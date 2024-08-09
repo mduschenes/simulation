@@ -561,14 +561,14 @@ def init(*args,**kwargs):
 	print(state())
 	print()
 
-	model.__initialize__(state=state,parameters=dict())
+	model.init(state=state,parameters=dict())
 
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))
 	print()
 
 
-	model.__initialize__(state=state,parameters=dict())
+	model.init(state=state,parameters=dict())
 
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))

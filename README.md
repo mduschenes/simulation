@@ -81,8 +81,8 @@ label = Label(**{
     })
 
 # Initialize label and model with state
-label.__initialize__(state=state)
-model.__initialize__(state=state)
+label.init(state=state)
+model.init(state=state)
 
 # Set optimizer arguments
 func = model.parameters.constraints

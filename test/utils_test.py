@@ -498,16 +498,16 @@ def test_rand(path,tol):
 
 	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,prng,backend
-	keys = prng(seed,reset=reset,size=size)
+	from src.utils import array,rand,spawn,backend
+	keys = spawn(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))
 
 	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,prng,backend
-	keys = prng(seed,reset=reset,size=size)
+	from src.utils import array,rand,spawn,backend
+	keys = spawn(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))

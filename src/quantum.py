@@ -11,12 +11,12 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
-from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,arange,diag
+from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,spawn,arange,diag
 from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
-from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
 
@@ -146,24 +146,6 @@ class Basis(Dict):
 		return data
 
 
-
-
-# Basis = {
-# 	'I': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: identity(D**(N if N is not None else 1),dtype=dtype)),
-# 	'X': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,1],[1,0]],dtype=dtype)),
-# 	'Y': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,-1j],[1j,0]],dtype=dtype)),
-# 	'Z': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0],[0,-1]],dtype=dtype)),
-# 	'H': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
-# 	'S': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0,],[0,1j]],dtype=dtype)),
-# 	'CNOT': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)),
-# 	'U': (lambda *args,N=N,D=D,ndim=ndim,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
-# 	'ZERO': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,0],dtype=dtype)),
-# 	'ONE': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([0,1],dtype=dtype)),
-# 	'PLUS': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,1,],dtype=dtype)/sqrt(D)),
-# 	'MINUS': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,-1,],dtype=dtype)/sqrt(D)),
-# 	'PROJECTOR': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: func(D)),
-# }
-
 def trotter(iterable=None,p=None,verbose=False):
 	'''
 	Trotterized iterable for order p or parameters for order p
@@ -224,7 +206,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 		kwargs = dict(
 			parameters=dict(parameters=dict(trotter=trotter(p=compilation.trotter)) if (data[i].unitary) else None),
 			)
-		data[i].__initialize__(**kwargs)
+		data[i].init(**kwargs)
 
 	# Filter None data
 	boolean = lambda i: (data[i] is not None) and (data[i].data is not None)
@@ -450,9 +432,7 @@ class Object(System):
 
 	N = None
 	D = None
-	M = None
 	space = None
-	time = None
 	
 	basis = {
 		**{attr: Basis.I for attr in [None]}
@@ -463,6 +443,7 @@ class Object(System):
 	unitary = None
 
 	defaults = dict(			
+		data=None,operator=None,site=None,string=None,system=None,
 		parameters=None,variable=False,
 		shape=None,size=None,ndim=None,
 		samples=None,identity=None,locality=None,
@@ -473,9 +454,9 @@ class Object(System):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,self.defaults,delimiter=delim,default=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)				
 
@@ -500,7 +481,7 @@ class Object(System):
 		elif (data is not None) and all(isinstance(i,Object) for i in data):
 			return
 
-		self.__space__()
+		self.spaces()
 
 		basis = self.basis
 		default = self.default
@@ -601,15 +582,15 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		self.__space__()
+		self.spaces()
 
-		self.__initialize__()
+		self.init()
 
 		self.info()
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -622,7 +603,7 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,conj=False,parameters=None):
 		'''
 		Initialize operator
 		Args:
@@ -634,7 +615,7 @@ class Object(System):
 
 		cls = Parameter
 		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
-			defaults = {}
+			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
 			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
 			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
@@ -647,7 +628,7 @@ class Object(System):
 		elif isinstance(self.parameters,cls):
 			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
 
-			self.parameters.__initialize__(**parameters)
+			self.parameters.init(**parameters)
 
 		else:
 			self.parameters = parameters
@@ -676,7 +657,7 @@ class Object(System):
 		do = (self.parameters() is not None)
 
 		if (do) and (((self.data is not None) or (self.operator is not None))):
-			self.__setup__(self.data,self.operator,self.site,self.string)
+			self.setup(self.data,self.operator,self.site,self.string)
 
 		if not do and not isinstance(self.data,objects) and not callable(self.data):
 			self.data = None
@@ -817,32 +798,44 @@ class Object(System):
 		'''
 		return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
 
-	def __space__(self,N=None,D=None,space=None,system=None):
+	def spaces(self,N=None,D=None,space=None,system=None):
 		'''
 		Set space attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
-			space (str,Space): Type of local space
+			space (str,dict,Space): Type of local space
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
-		N = self.N if N is None else N
-		D = self.D if D is None else D
 		space = self.space if space is None else space
-		system = self.system if system is None else system
 
-		self.space = Space(N,D,space,system=system)
+		defaults = dict(
+			N = self.N if N is None else N,
+			D = self.D if D is None else D,
+			space = self.space if space is None else space,
+			system = self.system if system is None else system,
+		)
+
+		if space is None:
+			space = dict(space=space)
+		elif not isinstance(space,dict):
+			space = dict(space=space)
+		else:
+			space = dict(**space)
+
+		setter(space,defaults,delimiter=delim,default=False)
+
+		self.space = Space(**space)
 
 		self.N = self.space.N
 		self.D = self.space.D		
 		self.n = self.space.n
-		self.g = self.space.g
 
 		return
 
 
-	def __time__(self,M=None,T=None,tau=None,P=None,time=None,system=None):
+	def times(self,M=None,T=None,tau=None,P=None,time=None,system=None):
 		'''
 		Set time attributes
 		Args:
@@ -850,17 +843,31 @@ class Object(System):
 			T (int): Simulation time
 			tau (float): Simulation time scale
 			P (int): Trotter order		
-			time (str,Time): Type of time evolution						
+			time (str,dict,Time): Type of time evolution						
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
-		M = self.M if M is None else M
-		T = self.T if T is None else T
-		tau = self.tau if tau is None else tau
-		P = self.P if P is None else P
-		time = self.time if time is None else time
-		system = self.system if system is None else system
 
-		self.time = Time(M,T,tau,P,time,system=system)	
+		time = self.time if time is None else time
+
+		defaults = dict(
+			M = self.M if M is None else M,
+			T = self.T if T is None else T,
+			tau = self.tau if tau is None else tau,
+			P = self.P if P is None else P,
+			time = self.time if time is None else time,
+			system = self.system if system is None else system,
+		)
+
+		if time is None:
+			time = dict(time=time)
+		elif not isinstance(time,dict):
+			time = dict(time=time)
+		else:
+			time = dict(**time)
+
+		setter(time,defaults,delimiter=delim,default=False)
+
+		self.time = Time(**time)
 
 		self.M = self.time.M
 		self.T = self.time.T
@@ -870,23 +877,37 @@ class Object(System):
 		return
 
 
-	def __lattice__(self,N=None,D=None,d=None,lattice=None,system=None):
+	def lattices(self,N=None,D=None,d=None,lattice=None,system=None):
 		'''
 		Set space attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			d (int): Spatial dimension
-			lattice (str,Lattice): Type of lattice		
+			lattice (str,dict,Lattice): Type of lattice		
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
-		N = self.N if N is None else N
-		D = self.D if D is None else D
-		d = self.d if d is None else d
-		lattice = self.lattice if lattice is None else lattice
-		system = self.system if system is None else system
 
-		self.lattice = Lattice(N,d,lattice,system=system)	
+		lattice = self.lattice if lattice is None else lattice
+
+		defaults = dict(
+			N = self.N if N is None else N,
+			D = self.D if D is None else D,
+			d = self.d if d is None else d,
+			lattice = self.lattice if lattice is None else lattice,
+			system = self.system if system is None else system,
+		)
+
+		if lattice is None:
+			lattice = dict(lattice=lattice)
+		elif not isinstance(lattice,dict):
+			lattice = dict(lattice=lattice)
+		else:
+			lattice = dict(**lattice)
+
+		setter(lattice,defaults,delimiter=delim,default=False)
+
+		self.lattice = Lattice(**lattice)
 
 		return
 
@@ -1028,7 +1049,7 @@ class Object(System):
 					substring = self.parameters()
 				else:
 					substring = (self.parameters(parameters) for parameters in (
-							self.parameters(self.parameters()) if self.parameters.shape
+							self.parameters(self.parameters()) if self.parameters().size>1
 							else (self.parameters(self.parameters()),))) 
 					substring = array([i for i in substring if i is not None])
 					if len(substring):
@@ -1185,7 +1206,7 @@ class Operator(Object):
 
 	N = None
 	D = 2
-	M = None
+	
 	space = None
 	time = None	
 	
@@ -1249,7 +1270,7 @@ class Pauli(Object):
 
 	N = None
 	D = 2
-	M = None
+	
 	space = None
 	time = None		
 	
@@ -1264,7 +1285,7 @@ class Pauli(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1285,7 +1306,7 @@ class Pauli(Object):
 		contract = None
 		gradient_contract = None
 
-		self.parameters.__initialize__(parameters=dict(obj=pi/2))
+		self.parameters.init(parameters=dict(obj=pi/2))
 
 		if self.architecture is None or self.architecture in ['array']:
 			if isinstance(operator,str):
@@ -1398,7 +1419,7 @@ class Gate(Object):
 
 	N = None
 	D = 2 
-	M = None
+	
 	space = None
 	time = None	
 
@@ -1416,7 +1437,7 @@ class Gate(Object):
 	hermitian = None
 	unitary = None
 	
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1478,7 +1499,7 @@ class Haar(Object):
 
 	N = None
 	D = 2
-	M = None
+	
 	space = None
 	time = None	
 
@@ -1491,7 +1512,7 @@ class Haar(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1567,7 +1588,7 @@ class State(Object):
 
 	N = None
 	D = 2
-	M = None
+	
 	space = None
 	time = None	
 
@@ -1584,7 +1605,7 @@ class State(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1780,7 +1801,7 @@ class Noise(Object):
 
 	N = None
 	D = 2
-	M = None
+	
 	space = None
 	time = None
 
@@ -1802,15 +1823,15 @@ class Noise(Object):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,self.defaults,delimiter=delim,default=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1921,7 +1942,7 @@ class Noise(Object):
 					obj = array([identity(size,system=system),diag((1+parameters[i])**(arange(size)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
 					obj = array(parameters[i],dtype=datatype(dtype))
-					seed = prng(reset=seed)
+					spawn(reset=seed)
 			
 					def func(parameters=None,state=None):
 						return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
@@ -1994,9 +2015,9 @@ class Operators(Object):
 		T (int): Simulation time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
-		space (str,Space): Type of local space
-		time (str,Time): Type of time evolution						
-		lattice (str,Lattice): Type of lattice	
+		space (str,dict,Space): Type of local space
+		time (str,dict,Time): Type of time evolution						
+		lattice (str,dict,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -2023,7 +2044,6 @@ class Operators(Object):
 		self.data = Dictionary()
 
 		self.n = None
-		self.g = None
 		
 		self.parameters = parameters
 		self.state = None
@@ -2038,9 +2058,9 @@ class Operators(Object):
 		
 		self.system = system
 
-		self.__space__()
-		self.__time__()
-		self.__lattice__()
+		self.spaces()
+		self.times()
+		self.lattices()
 
 		self.identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system)
 
@@ -2048,155 +2068,15 @@ class Operators(Object):
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
 
-		self.__setup__(data,operator,site,string)
+		self.setup(data,operator,site,string)
 
-		self.__initialize__()
+		self.init()
 
 		self.info()
 
 		return	
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup class
-		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-				operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-				string (iterable[str]): string labels of operators
-				kwargs (dict): Additional operator keyword arguments			
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional class keyword arguments			
-		'''
-
-		# Get operator,site,string from data
-		objs = Dictionary(operator=operator,site=site,string=string)
-
-		for obj in objs:
-			objs[obj] = [] if objs[obj] is None else objs[obj]
-
-		if data is None:
-			data = None
-		elif all(isinstance(obj,Object) for obj in data):
-			for obj in objs:
-				objs[obj] = None
-		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
-			for obj in objs:
-				objs[obj].extend([data[name][obj] for name in data])
-
-			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data] 
-				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
-				})
-
-			data = None
-
-		# Set site dependent attributes
-		attr = 'attributes'
-		defaults = ['parameters.data']
-		for i,attribute in enumerate([
-				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
-				for i in kwargs.pop(attr,[])]):
-			if isinstance(attribute,nulls):
-				continue
-			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
-			attribute = [attribute] if isinstance(attribute,str) else attribute
-			for attrs in attribute:
-				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-				if attr not in kwargs or not isinstance(kwargs[attr][i],dict) or not isinstance(getter(kwargs[attr][i],attrs,delimiter=delim),iterables):
-					continue
-				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
-
-
-		# Set class attributes
-		self.__extend__(data=data,**objs,**kwargs)
-
-		return
-
-
-	def __append__(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Append to class
-		Args:
-			data (str,Operator): data of operator
-			operator (str): string name of operator
-			site (int): site of local operator
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
-		'''
-		index = -1
-		self.__insert__(index,data,operator,site,string,**kwargs)
-		return
-
-	def __extend__(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup class
-		Args:
-			data (iterable[str,Operator]): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments			
-		'''
-
-
-		size = min([len(i) for i in (data,operator,site,string) if i is not None],default=0)
-
-		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size)
-		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)]
-		
-		if not size:
-			return
-
-		if data is None:
-			data = [None]*size
-		if operator is None:
-			operator = [None]*size
-		if site is None:
-			site = [None]*size
-		if string is None:
-			string = [None]*size						
-		if kwargs is None:
-			kwargs = [{}]*size	
-
-		for _data,_operator,_site,_string,_kwargs in zip(data,operator,site,string,kwargs):
-			self.__append__(_data,_operator,_site,_string,**_kwargs)
-
-		return
-
-
-	def __insert__(self,index,data,operator,site,string,**kwargs):
-		'''
-		Insert to class
-		Args:
-			index (int): index to insert operator
-			data (str,Operator): data of operator
-			operator (str): string name of operator
-			site (int): site of local operator
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments						
-		'''
-
-		if index == -1:
-			index = len(self)
-
-
-		cls = Operator
-		defaults = {}
-		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
-		
-		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,default=True)
-		setter(kwargs,defaults,default=False)
-
-		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
-
-		self.data = insert(self.data,index,{index: data})
-
-		return
-
-	def __initialize__(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
 		Setup class functions
 		Args:
@@ -2219,9 +2099,9 @@ class Operators(Object):
 			if data[i] is None:
 				self.data[i] = data[i]
 			elif isinstance(data[i],dict):
-				self.data[i].__initialize__(**data[i])
+				self.data[i].init(**data[i])
 			else:
-				self.data[i].__initialize__(data=data[i])
+				self.data[i].init(data=data[i])
 
 
 		# Set state
@@ -2233,6 +2113,17 @@ class Operators(Object):
 			state = None
 
 		self.state = state
+
+
+		# Set conjugate
+		if conj is None:
+			conj = False
+		elif conj is True:
+			conj = True
+		elif conj is False:
+			conj = False
+
+		self.conj = conj
 
 
 		# Set parameters
@@ -2258,7 +2149,8 @@ class Operators(Object):
 				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
 				state=self.state
 				)
-			self.data[i].__initialize__(**kwargs)
+			self.data[i].init(**kwargs)
+
 
 		# Set attributes
 		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
@@ -2271,11 +2163,10 @@ class Operators(Object):
 		elif self.state.ndim == 2:
 			hermitian = True
 			unitary = False
-		conj = conj if conj is not None else False
 
 		self.hermitian = hermitian
 		self.unitary = unitary
-		self.conj = conj
+
 
 		# Set functions
 		verbose = self.verbose and (self.func is not None)
@@ -2308,6 +2199,188 @@ class Operators(Object):
 
 		return
 
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup class
+		Args:
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
+				operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+				string (iterable[str]): string labels of operators
+				kwargs (dict): Additional operator keyword arguments			
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (iterable[str]): string labels of operators
+			kwargs (dict): Additional class keyword arguments		
+		'''
+
+		# Get operator,site,string from data
+		objs = Dictionary(operator=operator,site=site,string=string)
+
+		for obj in objs:
+			objs[obj] = [] if objs[obj] is None else objs[obj]
+
+		# Get data and kwargs
+		if data is None:
+			data = None
+		elif all(isinstance(obj,Object) for obj in data):
+			for obj in objs:
+				objs[obj] = None
+		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			for obj in objs:
+				objs[obj].extend([data[name][obj] for name in data])
+			
+			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data] 
+				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
+				})
+
+			data = None
+
+		# Lattice sites
+		sites = self.lattice # sites types on lattice
+		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
+
+		# Get number of operators
+		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
+		
+		# Get attribute of symbolic indices
+		attr = 'site'
+		attrs = {
+			'site': lambda attr,value,values,indices: [dict(zip(indices,
+								value if not isinstance(value,integers) else (value,))
+							).get(i,int(i) if not isinstance(i,str) else i) 
+							for i in values[attr]],
+			'string': lambda attr,value,values,indices:	values[attr]
+							# delim.join([
+							# '%s%s'%(str(i),str(dict(zip(indices,
+							# 	value if not isinstance(value,integers) else (value,))
+							# ).get(i,int(i) if not isinstance(i,str) else i))) 
+							# for i,j in zip(values[attr],values['operator'])])
+			}
+
+		# Get data
+		for index in range(size):
+
+			key = None
+			tmp = {obj: copy(objs[obj].pop(0)) for obj in objs}
+			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
+
+			if tmp[attr] is None:
+				key = None
+			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
+				key = tmp[attr]
+				tmp[attr] = indices[tmp[attr]]
+			elif isinstance(tmp[attr],scalars):
+				tmp[attr] = [tmp[attr]]
+			elif not isinstance(tmp[attr],scalars):
+				for i in tmp[attr]:
+					if i in indices:
+						key = i
+						tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
+			if key is not None:
+				for i,index in enumerate(sites(key)):
+					value = {}
+					for obj in objs:
+						
+						if obj in attrs:
+							value[obj] = attrs[obj](obj,index,tmp,indices[key])
+						else:
+							value[obj] = tmp[obj]
+
+					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
+						for obj in objs]
+					
+					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
+						continue
+
+					for obj in objs:
+						objs[obj].append(value[obj])
+					
+					for kwarg in kwargs:
+						kwargs[kwarg].append(copy(tmps[kwarg]))
+
+			else:
+				for obj in objs:
+					objs[obj].append(tmp[obj])	
+
+				for kwarg in kwargs:
+					kwargs[kwarg].append(copy(tmps[kwarg]))
+
+		# Set class dependent attributes 
+		# i.e) set parameters data with site-dependent data 
+		# i.e) set parameters shape with depth-M-dependent shape
+		attributes = {}
+		def decorator(func):
+			def wrapper(i,attr,attrs,objs,kwargs):
+				if kwargs.get(attr) is None:
+					kwargs[attr] = [None for j in range(i)]
+				if len(kwargs[attr]) < i:
+					kwargs[attr] = [*kwargs[attr],*[None for j in range(1+i-len(kwargs[attr]))]]
+				func(i,attr,attrs,objs,kwargs)
+				return
+			return wrapper
+
+		attribute = 'parameters.data'
+		@decorator
+		def func(i,attr,attrs,objs,kwargs):
+
+			if not isinstance(kwargs[attr][i],dict):
+				kwargs[attr][i] = dict(data=kwargs[attr][i])
+
+			size = len(kwargs.get(attr,[]))
+			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
+			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
+
+			if obj is None:
+				obj = obj
+			elif isinstance(obj,dict):
+				obj = obj.get(
+					tuple(objs.site[i]),obj.get(str(objs.string[i]),
+					obj.get(str(index),obj.get(int(index),None))))
+			elif isinstance(obj,iterables):
+				obj = obj[index] if len(obj)>index else None
+			else:
+				obj = obj
+
+			setter(kwargs[attr][i],{attrs:obj},delimiter=delim,default=True)
+			return
+		attributes[attribute] = func
+
+		attribute = 'parameters.shape'
+		@decorator
+		def func(i,attr,attrs,objs,kwargs):
+			
+			if not isinstance(kwargs[attr][i],dict):
+				kwargs[attr][i] = dict(data=kwargs[attr][i])
+
+			size = len(kwargs.get(attr,[]))
+			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
+			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
+			
+			if obj is None:
+				obj = (self.M,)
+			elif isinstance(obj,iterables):
+				obj = (*obj,self.M,)
+			else:
+				obj = obj
+
+			setter(kwargs[attr][i],{attrs:obj},delimiter=delim,default=True)
+			return			
+		attributes[attribute] = func
+
+		for attribute in attributes:
+			attr,attrs = attribute.split(delim)[0] if attribute.count(delim)>=0 else None,delim.join(attribute.split(delim)[1:]) if attribute.count(delim)>0 else None
+			size = len(kwargs.get(attr,[]))
+			for i in range(size):
+				attributes[attribute](i,attr,attrs,objs,kwargs)
+
+
+		# Set class attributes
+		self.extend(data=data,**objs,**kwargs)
+
+		return
+
+
 	def __call__(self,parameters=None,state=None):
 		'''
 		Class function
@@ -2334,6 +2407,7 @@ class Operators(Object):
 		'''		
 		return self.gradient(parameters=parameters,state=state)
 
+
 	def grad_automatic(self,parameters=None,state=None):
 		''' 
 		Class gradient
@@ -2345,6 +2419,7 @@ class Operators(Object):
 		'''		
 		return self.gradient_automatic(parameters=parameters,state=state)
 
+
 	def grad_finite(self,parameters=None,state=None):
 		''' 
 		Class gradient
@@ -2355,6 +2430,7 @@ class Operators(Object):
 			out (array): Return of function
 		'''		
 		return self.gradient_finite(parameters=parameters,state=state)
+
 
 	def grad_analytical(self,parameters=None,state=None):
 		''' 
@@ -2374,6 +2450,7 @@ class Operators(Object):
 	def __len__(self):
 		return len(self.data)
 
+
 	def __str__(self):
 		if self.data is not None:
 			size = len(self) if self.data is not None else 0
@@ -2392,6 +2469,89 @@ class Operators(Object):
 		else:
 			string = self.__class__.__name__
 		return string
+
+
+	def extend(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Extend to class
+		Args:
+			data (iterable[str,Operator]): data of operator
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (iterable[str]): string labels of operators
+			kwargs (dict): Additional operator keyword arguments			
+		'''
+
+
+		size = min([len(i) for i in (data,operator,site,string) if i is not None],default=0)
+
+		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size)
+		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)]
+		
+		if not size:
+			return
+
+		if data is None:
+			data = [None]*size
+		if operator is None:
+			operator = [None]*size
+		if site is None:
+			site = [None]*size
+		if string is None:
+			string = [None]*size						
+		if kwargs is None:
+			kwargs = [{}]*size	
+
+		for _data,_operator,_site,_string,_kwargs in zip(data,operator,site,string,kwargs):
+			self.append(_data,_operator,_site,_string,**_kwargs)
+
+		return
+
+
+	def append(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Append to class
+		Args:
+			data (str,Operator): data of operator
+			operator (str): string name of operator
+			site (int): site of local operator
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments			
+		'''
+		index = -1
+		self.insert(index,data,operator,site,string,**kwargs)
+		return
+
+
+	def insert(self,index,data,operator,site,string,**kwargs):
+		'''
+		Insert to class
+		Args:
+			index (int): index to insert operator
+			data (str,Operator): data of operator
+			operator (str): string name of operator
+			site (int): site of local operator
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments						
+		'''
+
+		if index == -1:
+			index = len(self)
+
+		cls = Operator
+		defaults = {}
+		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
+		
+		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
+		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,defaults,default=False)
+
+		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
+
+		self.data = insertion(self.data,index,{index: data})
+
+		return
+
 
 	def info(self,verbose=None):
 		'''
@@ -2424,7 +2584,7 @@ class Operators(Object):
 						substring = self.data[attr].parameters()
 					else:
 						substring = (self.data[attr].parameters(parameters) for parameters in (
-							self.parameters(self.parameters()) if self.parameters.shape
+							self.parameters(self.parameters()) if self.parameters.size>1
 							else (self.parameters(self.parameters()),)))
 						substring = array([i for i in substring if i is not None])
 						if len(substring):
@@ -2570,9 +2730,9 @@ class Hamiltonian(Operators):
 		T (int): Simulation time
 		tau (float): Simulation time scale
 		P (int): Trotter order		
-		space (str,Space): Type of local space
-		time (str,Time): Type of time evolution						
-		lattice (str,Lattice): Type of lattice		
+		space (str,dict,Space): Type of local space
+		time (str,dict,Time): Type of time evolution						
+		lattice (str,dict,Lattice): Type of lattice		
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -2587,209 +2747,21 @@ class Hamiltonian(Operators):
 				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
 		
 		return
-
-	def __setup__(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup class
-		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-				operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-				string (iterable[str]): string labels of operators
-				kwargs (dict): Additional operator keyword arguments			
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional class keyword arguments		
-		'''
-
-		# Get operator,site,string from data
-		objs = Dictionary(operator=operator,site=site,string=string)
-
-		for obj in objs:
-			objs[obj] = [] if objs[obj] is None else objs[obj]
-
-		# Get data and kwargs
-		if data is None:
-			data = None
-		elif all(isinstance(obj,Object) for obj in data):
-			for obj in objs:
-				objs[obj] = None
-		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
-			for obj in objs:
-				objs[obj].extend([data[name][obj] for name in data])
-			
-			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data] 
-				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
-				})
-
-			data = None
-
-		# Lattice sites
-		sites = self.lattice # sites types on lattice
-		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
-
-		# Get number of operators
-		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
-		
-		# Get attribute of symbolic indices
-		attr = 'site'
-
-		# Get data
-		for index in range(size):
-
-			key = None
-			tmp = {obj: copy(objs[obj].pop(0)) for obj in objs}
-			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
-
-			if tmp[attr] is None:
-				key = None
-			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
-				key = tmp[attr]
-				tmp[attr] = indices[tmp[attr]]
-			elif isinstance(tmp[attr],scalars):
-				tmp[attr] = [tmp[attr]]
-			elif not isinstance(tmp[attr],scalars):
-				for i in tmp[attr]:
-					if i in indices:
-						key = i
-						tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
-			if key is not None:
-				for i,s in enumerate(sites(key)):
-					value = {}
-					for obj in objs:
-						if obj in [attr]:
-							value[obj] = [dict(zip(
-								indices[key],
-								s if not isinstance(s,integers) else (s,))
-							).get(i,int(i) if not isinstance(i,str) else i) 
-							for i in tmp[attr]]
-						else:
-							value[obj] = tmp[obj]
-
-					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
-						for obj in objs]
-					
-					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
-						continue
-
-					for obj in objs:
-						objs[obj].append(value[obj])
-					
-					for kwarg in kwargs:
-						kwargs[kwarg].append(copy(tmps[kwarg]))
-
-			else:
-				for obj in objs:
-					objs[obj].append(tmp[obj])	
-
-				for kwarg in kwargs:
-					kwargs[kwarg].append(copy(tmps[kwarg]))
-
-		# Set site dependent attributes
-		attr = 'attributes'
-		defaults = ['parameters.data']
-		for i,attribute in enumerate([
-				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
-				for i in kwargs.pop(attr,[])]):
-			if isinstance(attribute,nulls):
-				continue
-			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
-			attribute = [attribute] if isinstance(attribute,str) else attribute
-			for attrs in attribute:
-				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-				if attr not in kwargs or not isinstance(kwargs[attr][i],dict) or not isinstance(getter(kwargs[attr][i],attrs,delimiter=delim),iterables):
-					continue
-				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
-
-		# Set class attributes
-		self.__extend__(data=data,**objs,**kwargs)
-
-		return
-
 
 
 class Unitary(Hamiltonian):
-	'''
-	Unitary class of Operators
-	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments						
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (iterable[str]): string labels of operators
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-		d (int): Spatial dimension
-		M (int): Number of time steps
-		T (int): Simulation time
-		tau (float): Simulation time scale		
-		P (int): Trotter order		
-		space (str,Space): Type of local space
-		time (str,Time): Type of time evolution
-		lattice (str,Lattice): Type of lattice
-		parameters (iterable[str],dict,Parameters): Type of parameters of operators		
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
-		
-		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
-
-		return
-
+	pass
 
 
 class Channel(Unitary):
-	'''
-	Channel class of Operators
-	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments			
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (iterable[str]): string labels of operators
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-		d (int): Spatial dimension
-		M (int): Number of time steps
-		T (int): Simulation time
-		tau (float): Simulation time scale		
-		P (int): Trotter order		
-		space (str,Space): Type of local space
-		time (str,Time): Type of time evolution
-		lattice (str,Lattice): Type of lattice
-		parameters (iterable[str],dict,Parameters): Type of parameters of operators				
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
-		
-		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
-
-		return
+	pass
 
 
 class Label(Operator):
 
 	N = None
 	D = None
-	M = None
+	
 	space = None
 	time = None
 
@@ -3122,12 +3094,12 @@ class Callback(System):
 					state = metric.state
 					label = metric.label
 
-					state.__initialize__(data=tmp.state)
-					label.__initialize__(state=state)
+					state.init(data=tmp.state)
+					label.init(state=state)
 
-					model.__initialize__(data=data,state=state)
+					model.init(data=data,state=state)
 
-					metric.__initialize__(model=model,state=state,label=label)
+					metric.init(model=model,state=state,label=label)
 
 					
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
@@ -3142,12 +3114,12 @@ class Callback(System):
 					state = state
 					label = label
 
-					state.__initialize__(data=default.state)
-					label.__initialize__(state=state)
+					state.init(data=default.state)
+					label.init(state=state)
 
-					model.__initialize__(data=data,state=state)
+					model.init(data=data,state=state)
 
-					metric.__initialize__(model=model,state=state,label=label)
+					metric.init(model=model,state=state,label=label)
 
 					state = state()
 					

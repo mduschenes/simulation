@@ -1004,6 +1004,7 @@ class Callback(Function):
 
 
 class Metric(System):
+	
 	def __init__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 		'''
 		Metric class for distance between operands
@@ -1042,11 +1043,11 @@ class Metric(System):
 
 		self.string = str(self.metric)
 
-		self.__setup__()
+		self.init()
 
 		return
 
-	def __setup__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
+	def init(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric attributes metric,string
 		Args:
@@ -1074,7 +1075,7 @@ class Metric(System):
 		if self.shapes is None:
 			self.shapes = ()
 
-		self.__initialize__()
+		self.init()
 
 		self.info()
 
@@ -1165,7 +1166,7 @@ class Metric(System):
 		return
 
 
-	def __initialize__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
+	def init(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric
 		Args:

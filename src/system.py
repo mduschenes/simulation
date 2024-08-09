@@ -171,7 +171,7 @@ class Space(System):
 	Args:
 		N (int): Number of spaces
 		D (int): Dimension of spaces
-		space (str,Space): Type of Hilbert space
+		space (str,dict,Space): Type of Hilbert space
 		system (dict,System): System attributes
 		kwargs (dict): Additional keyword arguments
 	'''
@@ -189,11 +189,11 @@ class Space(System):
 		self.dtype = datatype(self.dtype)
 		self.system = system
 
-		self.__setup__()
+		self.init()
 		
 		return
 
-	def __setup__(self):
+	def init(self):
 		'''
 		Setup space attributes space,string,n
 		'''
@@ -220,7 +220,13 @@ class Space(System):
 		}
 
 		if isinstance(self.space,Space):
-			self.space = self.space.space
+			space = self.space.space
+		elif isinstance(self.space,dict):
+			space = self.space.get('space')
+		else:
+			space = self.space
+
+		self.space = space
 
 		self.funcs = funcs[self.space]
 		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
@@ -261,7 +267,7 @@ class Time(System):
 		T (int): Simulation time
 		tau (float): Simulation time scale
 		P (int): Trotter order
-		time (str,Time): Type of Time evolution space
+		time (str,dict,Time): Type of Time evolution space
 		system (dict,System): System attributes
 		kwargs (dict): Additional keyword arguments
 	'''
@@ -279,36 +285,44 @@ class Time(System):
 		self.dtype = datatype(self.dtype)
 		self.system = system
 
-		self.__setup__()
+		self.init()
 		
 		return
 
-	def __setup__(self):
+	def init(self):
 		'''
-		Setup time evolution attributes tau
+		Setup time evolution attributes
 		'''
 
 		wrapper = lambda func,dtype: (lambda *args,**kwargs: asscalar(func(*args,**kwargs),dtype=dtype))
 
 		funcs =  {
 			'linear':{
-				'M': (lambda M,T,tau,time: round(self.T/self.tau)),
-				'T': (lambda M,T,tau,time: self.M*self.tau),
-				'tau': (lambda M,T,tau,time: self.T/self.M),
+				'M': (lambda M,T,tau,P,time: round(self.T/self.tau)),
+				'T': (lambda M,T,tau,P,time: self.M*self.tau),
+				'tau': (lambda M,T,tau,P,time: self.T/self.M),
+				'P': (lambda M,T,tau,P,time: 1),
 				},
 			None:{
-				'M': (lambda M,T,tau,time: round(self.T/self.tau)),
-				'T': (lambda M,T,tau,time: self.M*self.tau),
-				'tau': (lambda M,T,tau,time: self.T/self.M),
+				'M': (lambda M,T,tau,P,time: round(self.T/self.tau)),
+				'T': (lambda M,T,tau,P,time: self.M*self.tau),
+				'tau': (lambda M,T,tau,P,time: self.T/self.M),
+				'P': (lambda M,T,tau,P,time: 1 if P is None else P),				
 				},				
 			}
 
 		dtypes = {
-			'M': int,'T':self.dtype,'tau':self.dtype,
+			'M': int,'T':self.dtype,'tau':self.dtype,'P':int,
 		}
 
 		if isinstance(self.time,Time):
-			self.time = self.time.time
+			time = self.time.time
+		elif isinstance(self.time,dict):
+			time = self.time.get('time')
+		else:
+			time = self.time
+
+		self.time = time
 
 		self.funcs = funcs[self.time]
 		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
@@ -324,34 +338,39 @@ class Time(System):
 
 	def __size__(self):
 
-		assert sum(var is not None for var in [self.M,self.T,self.tau]) > -1,'0 of 3 of M, T, tau must be non-None'
+		assert sum(var is not None for var in [self.M,self.T,self.tau,self.P]) > -1,'0 of 4 of M, T, tau, P must be non-None'
 
 		if (self.M is None) and (self.T is None) and (self.tau is None):
 			self.M = 1
 			self.T = self.M
 			self.tau = 1
+			self.P = self.P
 		elif (self.M is not None) and (self.T is None) and (self.tau is None):
 			self.T = self.M
 			self.tau = 1
+			self.P = self.P			
 		elif (self.M is None) and (self.T is not None) and (self.tau is None):
 			self.M = self.T
 			self.tau = 1
+			self.P = self.P			
 		elif (self.M is None) and (self.T is None) and (self.tau is not None):
 			self.M = 1/self.tau
 			self.T = 1
+			self.P = self.P
 		elif (self.M is not None) and (self.T is not None) and (self.tau is None):
-			self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.time)
+			self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.P,self.time)
 		elif (self.M is not None) and (self.T is None) and (self.tau is not None):
-			self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
+			self.T = self.funcs['T'](self.T,self.M,self.tau,self.P,self.time)
 		elif (self.M is None) and (self.T is not None) and (self.tau is not None):
-			self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
+			self.M = self.funcs['M'](self.T,self.M,self.tau,self.P,self.time)
 		elif (self.M is not None) and (self.T is not None) and (self.tau is not None):
 			pass
 		
-		self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
-		self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
-		self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.time)
-		
+		self.M = self.funcs['M'](self.T,self.M,self.tau,self.P,self.time)
+		self.T = self.funcs['T'](self.T,self.M,self.tau,self.P,self.time)
+		self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.P,self.time)
+		self.P = self.funcs['P'](self.T,self.M,self.tau,self.P,self.time)
+
 		return 
 
 	def __str__(self):
@@ -367,7 +386,7 @@ class Lattice(object):
 	Args:
 		N (int): Lattice length along axis
 		d (int): Dimension of lattice
-		lattice (str,Lattice): Type of lattice, allowed strings in ['square']
+		lattice (str,dict,Lattice): Type of lattice, allowed strings in ['square']
 		kwargs (dict): Additional keyword Arguments
 	'''	
 	def __init__(self,N,d,lattice='square',**kwargs):
@@ -375,6 +394,8 @@ class Lattice(object):
 		# Define lattice
 		if isinstance(lattice,Lattice):
 			lattice = lattice.lattice
+		elif isinstance(lattice,dict):
+			lattice = lattice.get('lattice')
 		else:
 			lattice = lattice
 

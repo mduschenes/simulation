@@ -398,7 +398,7 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
-def insert(obj,index,value):
+def insertion(obj,index,value):
 	'''
 	Insert value into obj at index
 	Args:
@@ -2312,7 +2312,7 @@ class gate(qtn.Gate):
 
 if backend in ['jax']:
 
-	def prng(seed=None,size=False,reset=None,**kwargs):
+	def spawn(seed=None,size=False,reset=None,**kwargs):
 		'''
 		Generate prng key
 		Args:
@@ -2343,18 +2343,28 @@ if backend in ['jax']:
 		if seed is None:
 			seed = onp.random.randint(*bounds)
 
-		if isinstance(seed,(int)):
+		if isinstance(seed,integers):
 			seed = generator.key(seed)
 		else:
 			seed = asndarray(seed,dtype=uint)
 
 		if size:
-			key = spawn(seed,size=size)
+			key = generator.split(seed,num=size)
 		else:
 			key = seed
 
 		return key
 
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array,Key): Seed for random number generation or random key for future seeding
+		'''
+
+		onp.random.seed(seed)
+
+		return
 
 	def hashes(hashes=None):
 		'''
@@ -2431,11 +2441,11 @@ if backend in ['jax']:
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
-	def prng(seed=None,size=False,reset=None,**kwargs):
+	def spawn(seed=None,size=False,reset=None,**kwargs):
 		'''
 		Generate prng key
 		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
+			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
 			reset (bool,int): Reset seed
 			kwargs (dict): Additional keyword arguments for seeding			
@@ -2456,12 +2466,22 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed = generator.randint(*bounds)
 
 		if size:
-			key = spawn(seed,size=size)
+			key = generator.randint(*bounds,size=size)
 		else:
 			key = seed
 
 		return key
 
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array,Key): Seed for random number generation or random key for future seeding
+		'''
+
+		np.random.seed(seed)
+
+		return
 
 	def hashes(hashes=None):
 		'''
@@ -2539,93 +2559,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 if backend in ['jax']:
 
-	def seeded(seed=None):
-		'''
-		Set random seed
-		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
-		'''
-
-		onp.random.seed(seed)
-
-		return
-
-	def spawn(seed=None,size=None,**kwargs):
-		'''
-		Generate split prng key
-		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
-			size(bool,int): Number of splits of random key		
-			kwargs (dict): Additional keyword arguments for seeding
-		Returns:
-			key (key,list[key]): Random key
-		'''	
-
-		# TODO merge random seeding for different numpy backends (jax vs autograd)
-
-		bounds = [0,2**32]
-
-		generator = jax.random
-
-		if seed is None or isinstance(seed,(int)):
-			key = prng(seed)
-		elif not is_key(seed):
-			key = asndarray(seed,dtype=uint)
-		else:
-			key = seed
-
-		if size:
-			key = generator.split(key,num=size)
-		else:
-			_,key = generator.split(key)
-
-		return key
-
-elif backend in ['jax.autograd','autograd','numpy']:
-
-	def seeded(seed=None):
-		'''
-		Set random seed
-		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
-		'''
-
-		np.random.seed(seed)
-
-		return
-
-	def spawn(seed=None,size=None,**kwargs):
-		'''
-		Generate split prng key
-		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
-			size(bool,int): Number of splits of random key		
-			kwargs (dict): Additional keyword arguments for seeding
-		Returns:
-			key (key,list[key]): Random key
-		'''	
-
-		# TODO merge random seeding for different numpy backends (jax vs autograd)
-
-		bounds = [0,2**32]
-
-		generator = onp.random
-
-		if seed is None or isinstance(seed,(int)):
-			key = prng(seed)
-		else:
-			key = seed
-
-		if size:
-			key = generator.randint(*bounds,size=size)
-		else:
-			key = key
-
-		return key
-
-
-if backend in ['jax']:
-
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
 		Get random array
@@ -2655,7 +2588,7 @@ if backend in ['jax']:
 			key = seed
 		
 		_key = key
-		key = prng(key,reset=reset)
+		key = spawn(key,reset=reset)
 
 		generator = jax.random
 
@@ -2941,7 +2874,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		if seed is not None:
 			key = seed
 		
-		key = prng(key,reset=reset)
+		key = spawn(key,reset=reset)
 
 		generator = onp.random.RandomState(key)
 
@@ -3653,7 +3586,6 @@ def contraction(data=None,state=None,site=None):
 			
 			subscripts = 'ij,j->i'
 			shapes = (data.shape,state.shape)
-			print(shapes)
 			einsummation = einsum(subscripts,*shapes)
 			
 			def func(data,state):

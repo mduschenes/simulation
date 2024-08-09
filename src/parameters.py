@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
-from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
+from src.utils import pi,itg,arrays,scalars,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
 
@@ -26,14 +26,13 @@ from src.io import load,dump,join,split
 class Parameter(System):
 
 	defaults = dict(
-			string=None,
-			parameters=None,
-			shape=None,size=None,ndim=None,dtype=None,			
-			variable=None,local=None,method=None,group=None,
-			seed=None,random=None,bounds=None,axis=None,
-			indices=None,func=None,gradient=None,constraint=None,wrapper=None,
-			args=None,kwargs=None
-			)
+		data=None,string=None,parameters=None,
+		shape=None,size=None,ndim=None,dtype=None,			
+		variable=None,local=None,method=None,group=None,
+		seed=None,random=None,bounds=None,axis=None,
+		indices=None,func=None,gradient=None,constraint=None,wrapper=None,
+		args=None,kwargs=None
+		)
 
 	def __init__(self,data,*args,system=None,**kwargs):
 		'''
@@ -69,9 +68,9 @@ class Parameter(System):
 
 		super().__init__(*args,**kwargs)
 
-		self.__setup__()
+		self.setup()
 
-		self.__initialize__()
+		self.init()
 
 		return
 
@@ -124,14 +123,14 @@ class Parameter(System):
 			return self.constraint(*args,**kwargs)
 
 
-	def __setup__(self):
+	def setup(self):
 		'''
 		Setup class attributes
 		'''
 	
 		# Get data
 		self.dtype = datatype(self.dtype)		
-		self.shape = self.shape if self.shape is not None else None
+		self.shape = (self.shape,) if isinstance(self.shape,integers) else self.shape if self.shape is not None else getattr(self.data,'shape',None) if self.data is not None else None
 		self.data = array(self.data,dtype=self.dtype) if self.data is not None else empty(self.shape,dtype=self.dtype) if self.shape is not None else None
 
 		self.shape = self.shape if self.shape is not None else self.data.shape if self.data is not None else None
@@ -369,7 +368,7 @@ class Parameter(System):
 
 		return
 
-	def __initialize__(self,data=None,parameters=None,indices=None,variable=None):
+	def init(self,data=None,parameters=None,indices=None,variable=None):
 		'''
 		Initialize class data
 		Args:
@@ -406,7 +405,6 @@ class Parameter(System):
 			else:
 				self.parameters = Dict({**self.parameters,**parameters})
 
-
 		self.data = initialize(**self)
 
 		self.shape = self.data.shape if self.data is not None else self.shape
@@ -414,7 +412,7 @@ class Parameter(System):
 		self.ndim = self.data.ndim if self.data is not None else self.ndim
 		self.dtype = self.data.dtype if self.data is not None else self.dtype
 
-		self.__setup__()
+		self.setup()
 
 		return
 
@@ -480,11 +478,11 @@ class Parameters(System):
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
-		self.__setup__()
+		self.setup()
 
 		return
 
-	def __setup__(self):
+	def setup(self):
 		'''
 		Setup class
 		'''
@@ -504,8 +502,6 @@ class Parameters(System):
 			index = max((data[group][parameter].indices for group in data for parameter in data[group]),default=-1)+1
 			local = any(self.parameters[parameter].local for parameter in parameters)
 
-
-
 			for i,parameter in enumerate(parameters):
 
 				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
@@ -515,7 +511,7 @@ class Parameters(System):
 						*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
 						*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
 					)
-				data[group][parameter].seed = spawn(self.parameters[parameter].seed,size=len(parameters))[i]
+				data[group][parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
 				data[group][parameter].local = local
 				data[group][parameter].indices = index+i if local else index
 
@@ -547,7 +543,7 @@ class Parameters(System):
 			kwargs = dict(
 				indices=data[parameter].indices,
 				)
-			self.parameters[parameter].__initialize__(**kwargs)
+			self.parameters[parameter].init(**kwargs)
 
 		data = {str(self.parameters[parameter]):self.parameters[parameter] for parameter in self.parameters}
 
@@ -565,7 +561,7 @@ class Parameters(System):
 		return
 
 
-	def __initialize__(self,data=None,parameters=None,indices=None,variable=None):
+	def init(self,data=None,parameters=None,indices=None,variable=None):
 		'''
 		Initialize class data
 		Args:
@@ -632,34 +628,19 @@ class Parameters(System):
 		return sum(self[parameter].constraints(parameters) for parameter in self)
 
 	def __iter__(self):
-		return self.__iterdata__()
+		return self.data.__iter__()
 
 	def __getitem__(self,key):
-		return self.__getdata__(key)
+		return self.data.get(key)
 
 	def __setitem__(self,key,value):
 		super().__setitem__(key,value)
-		self.__setdata__(key,value)
+		if key in self.data:
+			self.data[key] = value
 		return
 
 	def __len__(self):
 		return self.data.__len__()
-
-	def __iterdata__(self):
-		return self.data.__iter__()
-
-	def __getdata__(self,key):
-		return self.data.get(key)
-
-	def __setdata__(self,key,value):
-		if key in self.data:
-			self.data[key] = value
-		return
-	
-	def __deldata__(self,key):
-		if key in self.data:
-			self.data.pop(key)
-		return
 
 	def __str__(self):
 		return ' '.join([str(self.data[parameter]) for parameter in self.data])

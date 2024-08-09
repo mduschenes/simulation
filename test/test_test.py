@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import gradient
-from src.utils import allclose,trace,dot,prng
+from src.utils import allclose,trace,dot,spawn
 
 from src.iterables import getter,setter,permuter,equalizer,namespace
 
@@ -40,7 +40,7 @@ def test_metric(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = prng(**settings.seed)
+	seed = spawn(**settings.seed)
 	func = None
 	arguments = ()
 	keywords = {}
@@ -49,8 +49,8 @@ def test_metric(path,tol):
 	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
-	label.__initialize__(state=state)
-	model.__initialize__(state=state)
+	label.init(state=state)
+	model.init(state=state)
 
 	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
 
@@ -81,7 +81,7 @@ def test_objective(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = prng(**settings.seed)
+	seed = spawn(**settings.seed)
 	func = None
 	arguments = ()
 	keywords = {}
@@ -91,8 +91,8 @@ def test_objective(path,tol):
 	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
-	label.__initialize__(state=state)
-	model.__initialize__(state=state)
+	label.init(state=state)
+	model.init(state=state)
 
 	parameters = model.parameters()
 	state = model.state()
@@ -132,7 +132,7 @@ def test_grad(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = prng(**settings.seed)
+	seed = spawn(**settings.seed)
 	func = None
 	arguments = ()
 	keywords = {}
@@ -141,8 +141,8 @@ def test_grad(path,tol):
 	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
-	label.__initialize__(state=state)
-	model.__initialize__(state=state)
+	label.init(state=state)
+	model.init(state=state)
 
 	parameters = model.parameters()
 	state = model.state()

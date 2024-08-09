@@ -15,6 +15,8 @@ from src.system import Dict
 
 from src.tensor import Model
 
+from src.train import train
+
 def main(settings,*args,**kwargs):
 
 	# Settings
@@ -88,19 +90,11 @@ def main(settings,*args,**kwargs):
 
 	return
 
-from src.iterables import Dict,namespace
-
-model = load(settings.cls.model)
-state = load(settings.cls.state)
-
-model = model(**{**settings.model,**dict(system=system)})
-state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
-
-model.__initialize__(state=state)
-
-
-parameters = model.parameters()
-state = model.state()		
+def main(settings,*args,**kwargs):
+	
+	train(settings,*args,**kwargs)
+	
+	return
 
 if __name__ == '__main__':
 

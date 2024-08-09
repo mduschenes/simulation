@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,allclose,delim,prng,einsum,conjugate
+from src.utils import argparser,jit,array,allclose,delim,spawn,einsum,conjugate
 from src.utils import similarity
 from src.io import load,glob
 from src.system import Dict
@@ -42,7 +42,7 @@ def test_architecture(*args,**kwargs):
 				"system":{"seed":123,"architecture":architecture}
 			},	
 			"state": {
-				"data":"010",
+				"data":None	,
 				"operator":"product",
 				"site":None,
 				"string":"psi",
@@ -58,7 +58,7 @@ def test_architecture(*args,**kwargs):
 		model = model(**settings.model)
 		state = state(**settings.state)
 
-		model.__initialize__(state=state)
+		model.init(state=state)
 
 
 
@@ -153,7 +153,7 @@ def test_contract(*args,**kwargs):
 	print(state())
 	print('------')
 
-	model.__initialize__(state=state)
+	model.init(state=state)
 
 	print()
 
@@ -183,7 +183,7 @@ def test_contract(*args,**kwargs):
 	print()
 
 
-	model.__initialize__(state=state,parameters=dict())
+	model.init(state=state,parameters=dict())
 
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))

@@ -1,36 +1,61 @@
 {
+"boolean":{
+	"call":1,
+	"train":0,
+	"load":0,
+	"dump":0
+	},
+"cls":{
+	"model":"src.quantum.Channel",
+	"state":"src.quantum.State"
+	},
+"model":{
+	"data":{
+		"z":{
+			"operator":["Z"],"site":"i","string":"z",
+			"parameters":0.5,
+			"variable":true,"seed":123
+		},
+		"xx":{
+			"operator":["X","X"],"site":">ij<","string":"xx",
+			"parameters":{"data":{"0":null,"1":null,"2":null,"3":null},"random":"random","seed":123},	
+			"variable":true,"seed":123
+		}
+	},
+	"N":3,
+	"D":2,
+	"d":1,
+	"M":10,
+	"P":1,
+	"S":4,
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square"
+	},
+"state": {
+	"operator":"zero",
+	"site":null,
+	"string":"psi",
+	"parameters":true,
+	"ndim":1,
+	"seed":123
+	},
+"callback":{},	
 "system":{
-	"seed":0,
-	"attrs":["model","label","data"]
-	},
-"model":{
-	"cls":"src.tensor.Model",
-	"args":[],
-	"kwargs":{}
-	},
-"model":{
-	"cls":"src.tensor.Model",
-	"args":[],
-	"kwargs":{"N":4,"D":2,"S":4,"d":1,"M":5,"structure":"mps","lattice":"square"}	
-	},	
-"label":{
-	"cls":"src.model.Label",
-	"args":[],
-	"kwargs":{"model":"src.tensor.Model","label":null,"variables":false,"args":[],"kwargs":{}}
-	},
-"data":{
-	"cls":"src.tensor.Data",
-	"args":[],
-	"kwargs":{"N":4,"D":2,"S":4,"d":1,"M":5,"structure":"mps","lattice":"square"}	
-	},
-"objective":{
-	"cls":"src.tensor.Objective",
-	"args":[],
-	"kwargs":{"metric":"fidelity"}
-	},
-"optimizer":{
-	"cls":"src.model.Optimizer",
-	"args":[],
-	"kwargs":{"optimizer":"adam","iterations":1e5,"progress":"progressbar","learning_rate":1e-2}
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":null,
+	"architecture":"array",
+	"seed":123,
+	"key":null,
+	"instance":null,
+	"cwd":"data",
+	"path":null,
+	"path":"data.hdf5",
+	"conf":"logging.conf",
+	"logger":"log.log",
+	"cleanup":false,
+	"verbose":"info"
 	}
-}	
+}

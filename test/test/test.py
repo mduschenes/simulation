@@ -9,7 +9,7 @@ PATHS = ['','../../']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,prng
+from src.utils import argparser,jit,allclose,delim,spawn
 from src.utils import similarity
 from src.io import load,glob
 from src.system import Dict
@@ -52,7 +52,7 @@ def main(*args,**kwargs):
 	print(state())
 	print()
 
-	model.__initialize__(state=state,parameters=dict())
+	model.init(state=state,parameters=dict())
 
 
 	print('--- model ---')
@@ -61,7 +61,7 @@ def main(*args,**kwargs):
 	print()
 
 
-	model.__initialize__(state=state,parameters=dict())
+	model.init(state=state,parameters=dict())
 
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))

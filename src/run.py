@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,prng,delim,union,is_equal
+from src.utils import copy,spawn,delim,union,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -135,7 +135,7 @@ def setup(settings):
 	size = sum(size)
 
 	if size:
-		seeds = prng(seed=seed,size=size,reset=reset)
+		seeds = spawn(seed=seed,size=size,reset=reset)
 		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])].tolist() for i,seedling in enumerate(seedlings)}
 		seeds = permuter(seedlings,groups=groups)
 	else:
