@@ -19,7 +19,7 @@ for PATH in PATHS:
 
 from src.utils import array,concatenate,padding
 from src.utils import to_repr,to_eval
-from src.utils import returnargs
+from src.utils import returnargs,isinstances
 from src.utils import arrays,scalars,iterables,nan,delim
 
 from src.iterables import getter,setter
@@ -823,7 +823,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				continue
 			else:
 				try:
-					if isinstance(wrapper(),dict):
+					if isinstances(wrapper,dict):
 						def wrapper(data,wrapper=wrapper):
 							if not data:
 								return data
@@ -911,7 +911,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	for wrapper in wrappers:
 		data = wrapper(data)
 
-	if isinstance(args['path'],str) and (any(((i in [None,'pd']) or (callable(i))) for i in args['wrapper'])):
+	if isinstance(args['path'],str) and (any(((i in [None,'pd']) or (isinstances(i,dict,reverse=True))) for i in args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
 	elif not isinstance(args['path'],dict) and (any(((i in [None,'pd'])) for i in args['wrapper'])):

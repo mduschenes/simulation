@@ -69,10 +69,14 @@ hyperparameters = settings.optimize
 system = settings.system
 
 # Initialize model classes (getting attributes common to previous model namespaces)
-model = Model(**{**settings.model,**dict(system=system)})
+model = Model(**{
+    **settings.model,
+    **dict(system=system)
+    })
 state = State(**{
     **namespace(State,model),
-    **settings.state,**dict(model=model,system=system)
+    **settings.state,
+    **dict(model=model,system=system)
     })
 label = Label(**{
     **namespace(Label,model),
@@ -81,8 +85,8 @@ label = Label(**{
     })
 
 # Initialize label and model with state
-label.init(state=state)
 model.init(state=state)
+label.init(state=state)
 
 # Set optimizer arguments
 func = model.parameters.constraints
@@ -131,22 +135,22 @@ Example settings `settings.json`
     "data":{
         "x":{
             "operator":["X"],"site":"i","string":"x",
-            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["x"]},
+            "parameters":null,
             "variable":true
         },
         "y":{
             "operator":["Y"],"site":"i","string":"y",
-            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["y"]},
+            "parameters":null,
             "variable":true
         },      
         "zz":{
             "operator":["Z","Z"],"site":"i<j","string":"zz",
-            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["zz"]},
+            "parameters":[1,0,-1],
             "variable":true
         },
         "noise":{
             "operator":"depolarize","site":null,"string":"noise",
-            "parameters":{"data":1e-12},
+            "parameters":1e-12,
             "variable":false
         }
     },

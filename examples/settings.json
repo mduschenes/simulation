@@ -9,29 +9,34 @@
 	"data":{
 		"x":{
 			"operator":["X"],"site":"i","string":"x",
-			"parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["x"]},
+			"parameters":"random",
 			"variable":true
 		},
 		"y":{
 			"operator":["Y"],"site":"i","string":"y",
-			"parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["y"]},
+			"parameters":"random",
 			"variable":true
-		},		
+		},	
+		"z":{
+			"operator":["Z"],"site":"i","string":"z",
+			"parameters":"random",
+			"variable":false
+		},				
 		"zz":{
 			"operator":["Z","Z"],"site":"i<j","string":"zz",
-			"parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["zz"]},
+			"parameters":[1,0,-1],
 			"variable":true
 		},
 		"noise":{
 			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1e-12},
+			"parameters":1e-12,
 			"variable":false
 		}
 	},
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
-	"M":500,
+	"M":50,
 	"tau":1,
 	"P":1,
 	"space":"spin",
@@ -47,7 +52,7 @@
 	"seed":12345,
 	"key":null,
 	"instance":null,
-	"cwd":".",
+	"cwd":"data",
 	"path":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
@@ -83,7 +88,6 @@
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,
-	"samples":1,
 	"seed":null
 	},
 "callback":{}

@@ -6791,6 +6791,28 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	return data
 
 
+def isinstances(obj,instances,reverse=False,args=(),kwargs={}):
+	'''
+	Check whether callable object return is instance
+	Args:
+		obj (object): Callable object
+		instances (type,iterable[type]): Instances of object return
+		reverse (bool): Reverse whether object is instance
+		args (iterable): Positional arguments for object
+		kwargs (dict): Keyword arguments for object
+	Returns:
+		boolean (bool): Whether object return is instance
+	'''
+	instances = tuple(instances) if isinstance(instances,iterables) else (instances,)
+
+	boolean = callable(obj)
+	if boolean:
+		try:
+			boolean = isinstance(obj(*args,**kwargs),instances)
+			boolean = not boolean if reverse else boolean
+		except:
+			pass
+	return boolean
 
 
 # @partial(jit,static_argnums=(2,3,4,))
@@ -8247,7 +8269,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	'''
 	Initialize data
 	Args:
-		data (array,str): data array or path to load data
+		data (array,str): data array or random type or path to load data
 		shape (iterable): shape of data
 		random (str,dict,callable): random type of initialization, 
 			dictionary of attributes {'interpolation' (dict): keyword arguments for interp(), 'size' (int): Number of interpolation points via shape[-1]//size}, or 
@@ -8260,10 +8282,15 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 		data (array): data
 	'''	
 
+	default = None
 	if data is None:
-		data = None
+		data = default
+	elif exists(data):
+		data = load(data,default=default)
 	elif isinstance(data,str):
-		data = load(data,default=None)
+		data,shape,random = default,(),data
+	else:
+		data = data
 
 	if shape is None:
 		shape = data.shape if data is not None else None
@@ -8460,4 +8487,4 @@ def bloch(state,path=None):
 
 
 
-from src.io import load,dump
+from src.io import load,dump,exists

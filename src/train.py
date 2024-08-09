@@ -26,7 +26,7 @@ def setup(settings):
 	'''
 
 	default = {}
-	defaults = dict(
+	defaults = Dict(
 		boolean=dict(call=None,train=None,load=None,dump=None),
 		cls=dict(model=None,state=None,label=None,callback=None),
 		model=dict(),state=dict(),label=dict(),callback=dict(),
@@ -36,11 +36,9 @@ def setup(settings):
 	if settings is None:
 		settings = default
 	elif isinstance(settings,str):
-		settings = load(settings,default=default)
+		settings = load(settings,default=default,wrapper=Dict)
 
 	setter(settings,defaults,delimiter=delim,default=False)
-
-	settings = Dict(settings)
 
 	return settings
 
@@ -72,7 +70,7 @@ def train(settings,*args,**kwargs):
 		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
 
 		model.init(state=state)
-	
+
 
 	if settings.boolean.train:
 

@@ -12,20 +12,25 @@
 "model":{
 	"data":{
 		"z":{
-			"operator":["Z"],"site":"i","string":"z",
+			"operator":["Z"],"site":"i","string":"Z",
 			"parameters":0.5,
 			"variable":true,"seed":123
 		},
 		"xx":{
-			"operator":["X","X"],"site":">ij<","string":"xx",
+			"operator":["X","X"],"site":">ij<","string":"XX",
 			"parameters":{"data":{"0":null,"1":null,"2":null,"3":null},"random":"random","seed":123},	
 			"variable":true,"seed":123
-		}
+		},
+		"noise":{
+			"operator":"depolarize","string":"Depolarize",
+			"parameters":{"data":1e-12,"random":"random","seed":123},	
+			"variable":false,"seed":123
+		}		
 	},
 	"N":3,
 	"D":2,
 	"d":1,
-	"M":10,
+	"M":5,
 	"P":1,
 	"S":4,
 	"space":"spin",

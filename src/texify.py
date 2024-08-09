@@ -851,17 +851,6 @@ class Texify(object):
 			values = funcs[func](strings,args,labels,usetex)
 			types[func] = values
 			strings.update({s: values[k][s] for k in values for s in values[k] if s not in strings})
-			# if func == 'derivative':
-			# 	for k in values:
-			# 		for v in values[k]:
-			# 			print(k,v,values[k][v])
-		# 	if func == 'monomials':
-		# 		print(func)
-		# 		for k in values:
-		# 			for v in values[k]:
-		# 				print(v)
-
-		# exit()
 
 		self.args = args
 		self.strings  = strings
@@ -908,9 +897,6 @@ class Texify(object):
 
 			s = scinotation(s,decimals=3,zero=True,usetex=usetex)
 
-			if (0) and (s not in self.strings):
-				print('texify',s,s in self.strings,findstring(s,self.strings,self.types,self.prefixes,self.labels,s))
-				pass
 			s = findstring(s,self.strings,self.types,self.prefixes,self.labels,replacements,s,usetex=usetex)
 			String = ' - '.join([String,s]) if len(String)>0 else s
 

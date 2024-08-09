@@ -131,12 +131,12 @@ class Parameter(System):
 		# Get data
 		self.dtype = datatype(self.dtype)		
 		self.shape = (self.shape,) if isinstance(self.shape,integers) else self.shape if self.shape is not None else getattr(self.data,'shape',None) if self.data is not None else None
-		self.data = array(self.data,dtype=self.dtype) if self.data is not None else empty(self.shape,dtype=self.dtype) if self.shape is not None else None
+		self.data = self.data if isinstance(self.data,str) else array(self.data,dtype=self.dtype) if self.data is not None else empty(self.shape,dtype=self.dtype) if self.shape is not None else None
 
-		self.shape = self.shape if self.shape is not None else self.data.shape if self.data is not None else None
-		self.size = self.size if self.size is not None else self.data.size if self.data is not None else prod(self.shape) if self.shape is not None else None
-		self.ndim = self.ndim if self.ndim is not None else self.data.ndim if self.data is not None else len(self.shape) if self.shape is not None else None
-		self.dtype = self.dtype if self.dtype is not None else self.data.dtype if self.data is not None else None
+		self.shape = self.shape if self.shape is not None else getattr(self.data,'shape',self.shape) if self.data is not None else None
+		self.size = self.size if self.size is not None else getattr(self.data,'size',self.size) if self.data is not None else prod(self.shape) if self.shape is not None else None
+		self.ndim = self.ndim if self.ndim is not None else getattr(self.data,'ndim',self.ndim) if self.data is not None else len(self.shape) if self.shape is not None else None
+		self.dtype = self.dtype if self.dtype is not None else getattr(self.data,'dtype',self.dtype) if self.data is not None else None
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
@@ -407,10 +407,10 @@ class Parameter(System):
 
 		self.data = initialize(**self)
 
-		self.shape = self.data.shape if self.data is not None else self.shape
-		self.size = self.data.size if self.data is not None else self.size
-		self.ndim = self.data.ndim if self.data is not None else self.ndim
-		self.dtype = self.data.dtype if self.data is not None else self.dtype
+		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
+		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
+		self.ndim = getattr(self.data,'ndim',self.ndim) if self.data is not None else self.ndim
+		self.dtype = getattr(self.data,'dtype',self.dtype) if self.data is not None else self.dtype
 
 		self.setup()
 

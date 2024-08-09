@@ -320,7 +320,7 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
 	
-	data = [jit(data[i]) for i in range(length)]
+	data = [jit(data[i]) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
 
 	def func(parameters,state=state,indices=indices):
 
@@ -552,7 +552,7 @@ class Object(System):
 			string = str(string)
 
 		N = max(self.N,max(site)+1 if site is not None else self.N) if N is not None else max(site)+1 if site is not None else 0
-		D = self.D if self.D is not None else data.size**(1/max(1,data.ndim*N)) if isinstance(data,objects) else 1
+		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		if not isinstance(operator,str) and len(site) != sum(i not in [default] for i in operator):
 			raise NotImplementedError('TODO: Allow for non-local sites %r and basis operators %r'%(site,operator))
@@ -561,10 +561,10 @@ class Object(System):
 		locality = min(locality,sum(i not in [default] for i in site),N)
 		operator = operator[:N] if not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 
-		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
-		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
-		ndim = self.ndim if self.ndim is not None else data.ndim if isinstance(data,arrays) else None
-		dtype = self.dtype if self.dtype is not None else data.dtype if isinstance(data,arrays) else None
+		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
+		size = self.size if self.size is not None else getattr(data,'size',self.size) if data is not None else None
+		ndim = self.ndim if self.ndim is not None else getattr(data,'ndim',self.ndim) if data is not None else None
+		dtype = self.dtype if self.dtype is not None else getattr(data,'dtype',self.dtype) if data is not None else None
 
 		self.data = data if data is not None else operator if operator is not None else None
 		self.operator = operator if operator is not None else None
@@ -627,7 +627,6 @@ class Object(System):
 
 		elif isinstance(self.parameters,cls):
 			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-
 			self.parameters.init(**parameters)
 
 		else:
@@ -672,17 +671,6 @@ class Object(System):
 			self.data = tensorprod([self.basis.get(self.operator)(D=self.D,system=self.system) if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) for i in range(self.N)]) if self.operator in self.basis else None
 		elif self.operator is not None:
 			self.data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
-
-		if (self.samples is not None) and isinstance(self.data,objects) and (self.ndim is not None) and (self.data.ndim>self.ndim):
-			if isinstance(self.samples,integers) and (self.samples > 0):
-				shape,bounds,scale,seed,dtype = self.data.shape[:self.data.ndim-self.ndim], [0,1], 'normalize', self.seed, datatype(self.dtype)
-				self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-			elif not isinstance(self.samples,objects):
-				self.samples = None
-
-			if (self.samples is not None):
-				self.data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
-
 
 		if self.architecture is None or self.architecture in ['array']:
 			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
@@ -738,10 +726,10 @@ class Object(System):
 
 		self.identity = identity
 
-		self.shape = data.shape if isinstance(data,arrays) else self.shape if self.shape is not None else None
-		self.size = data.size if isinstance(data,arrays) else self.size if self.size is not None else None
-		self.ndim = data.ndim if isinstance(data,arrays) else self.ndim if self.ndim is not None else None
-		self.dtype = data.dtype if isinstance(data,arrays) else self.dtype if self.dtype is not None else None
+		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
+		self.size = getattr(data,'size',self.size) if data is not None else self.size if self.size is not None else None
+		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
+		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
 
 		parameters = self.parameters()
 		state = self.state() if self.state is not None and self.state() is not None else self.identity
@@ -912,7 +900,9 @@ class Object(System):
 		return
 
 	def __str__(self):
-		if isinstance(self.operator,str):
+		if isinstance(self.string,str):
+			string = self.string
+		elif isinstance(self.operator,str):
 			string = self.operator
 		elif self.operator is not None and not isinstance(self.operator,objects) and not callable(self.operator):
 			string = '%s'%(delim.join(self.operator))
@@ -982,11 +972,14 @@ class Object(System):
 			data = self.func()
 		elif self.data is None and other.data is not None:
 			data = other.func()
-		elif self.data.ndim == 1 and other.data.ndim == 1:
+		elif isinstance(self.data,arrays) and self.data.ndim == 1 and other.data.ndim == 1:
 			data = self.func()*other.func()
-		elif self.data.ndim == 2 and other.data.ndim == 2:
+		elif isinstance(self.data,arrays) and self.data.ndim == 2 and other.data.ndim == 2:
 			data = self.func() @ other.func()
-
+		elif isinstance(self.data,objects):
+			data = self.func() @ other.func()
+		else:
+			data = self.func() @ other.func()
 
 		operator = []
 		site = []
@@ -1052,8 +1045,8 @@ class Object(System):
 							self.parameters(self.parameters()) if self.parameters().size>1
 							else (self.parameters(self.parameters()),))) 
 					substring = array([i for i in substring if i is not None])
-					if len(substring):
-						substring = norm(substring)/sqrt(len(substring))
+					if substring.size:
+						substring = norm(substring)/sqrt(substring.size)
 					else:
 						substring = None
 				if substring is not None:
@@ -1640,6 +1633,7 @@ class State(Object):
 			random = getattr(self,'random','haar')
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
+			samples = getattr(self,'samples',None)
 
 			data = data
 			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
@@ -1726,6 +1720,18 @@ class State(Object):
 
 			data = self.data
 
+		if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
+			if isinstance(samples,integers) and (samples > 0):
+				shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
+				samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+			elif not isinstance(samples,arrays):
+				samples = None
+
+			if (samples is not None):
+				data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
+		else:
+			samples = None
+
 		if self.ndim is None:
 			hermitian = True
 			unitary = False
@@ -1745,6 +1751,8 @@ class State(Object):
 		self.site = site if site is not None else self.site
 		self.string = string if string is not None else self.string
 		self.locality = len(self.site) if self.site is not None else self.locality
+
+		self.samples = samples
 
 		self.func = func
 		self.gradient = gradient
@@ -1869,7 +1877,7 @@ class Noise(Object):
 
 			shape = (D**N,)
 			size = prod(shape)
-			ndim = len(ndim)
+			ndim = len(shape)
 
 			basis = self.basis
 			default = self.default
@@ -1881,13 +1889,19 @@ class Noise(Object):
 			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
 			locality = len(operator) if operator is not None else None
 			parameters = self.parameters(self.parameters())
-			
-			parameters = [None]*N if parameters is None else [parameters[[site.index(i)%len(parameters)]] if i in site else default for i in range(N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*N
 
-			local = any(
-					True
-					for i in range(N)
-					)
+			if parameters is None:
+				parameters = [None for i in range(N)]
+			elif isinstance(parameters,scalars) or parameters.size <= 1:
+				parameters = [parameters for i in range(N)]
+			elif parameters.size == N:
+				parameters = [parameters[i] for i in range(N)]
+			elif parameters.size >= 1:
+				parameters = [norm(parameters)/sqrt(parameters.size) for i in range(N)]
+			else:
+				parameters = [None for i in range(N)]
+
+			local = any(True for i in range(N)) # TODO: Non-local noise and constant time-dependent noise
 
 			objs = []
 
@@ -1898,33 +1912,33 @@ class Noise(Object):
 				if operator[i] is None:
 					obj = [basis.get(default)(D=D,system=system)]
 				elif operator[i] in ['Z','z','phase','dephase']:
-					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
-							sqrt(parameters[i])*basis['Z'](D=D,system=system)]
+					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
+							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
 				elif operator[i] in ['X','x','flip','bitflip']:
-					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
-							 sqrt(parameters[i])*basis['X'](D=D,system=system)]
+					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
+							 sqrt(parameters[i])*Basis.X(D=D,system=system)]
 				elif operator[i] in ['Y','y','flipphase']:
-					obj = [sqrt(1-parameters[i])*basis['I'](D=D,system=system),
-							 sqrt(parameters[i])*basis['Y'](D=D,system=system)]
+					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
+							 sqrt(parameters[i])*Basis.Y(D=D,system=system)]
 				elif operator[i] in ['amplitude']:
-					obj = [basis['projector'](D=D,basis='00',system=system) + sqrt(1-parameters[i])*basis['projector'](D=D,basis='11',system=system),
-							sqrt(parameters[i])*basis['projector'](D=D,basis='01',system=system)]
+					obj = [Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.PROJECTOR(D=D,basis='01',system=system)]
 				elif operator[i] in ['dephase-amplitude']:
 					obj = [dots(*i) for i in permutations(
-						[basis['projector'](D=D,basis='00',system=system) + sqrt(1-parameters[i])*basis['projector'](D=D,basis='11',system=system),
-							sqrt(parameters[i])*basis['projector'](D=D,basis='01',system=system)],
-						[sqrt(1-parameters[i])*basis['I'](D=D,system=system),
-							sqrt(parameters[i])*basis['Z'](D=D,system=system)]
+						[Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.PROJECTOR(D=D,basis='01',system=system)],
+						[sqrt(1-parameters[i])*Basis.I(D=D,system=system),
+							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
 						)
 						]
 				elif operator[i] in ['depolarize']:
-					obj = [sqrt(1-(D**2-1)*parameters[i]/(D**2))*basis['I'](D=D,system=system),
-							sqrt(parameters[i]/(D**2))*basis['X'](D=D,system=system),
-							sqrt(parameters[i]/(D**2))*basis['Y'](D=D,system=system),
-							sqrt(parameters[i]/(D**2))*basis['Z'](D=D,system=system)]
+					obj = [sqrt(1-(D**2-1)*parameters[i]/(D**2))*Basis.I(D=D,system=system),
+							sqrt(parameters[i]/(D**2))*Basis.X(D=D,system=system),
+							sqrt(parameters[i]/(D**2))*Basis.Y(D=D,system=system),
+							sqrt(parameters[i]/(D**2))*Basis.Z(D=D,system=system)]
 					
 					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
-					# obj = [basis['I'](D=D,system=system)]
+					# obj = [Basis.I(D=D,system=system)]
 
 					# def func(parameters=None,state=None):
 					# 	return (1-parameters)*state + (parameters)*data[0]
@@ -2218,7 +2232,7 @@ class Operators(Object):
 		objs = Dictionary(operator=operator,site=site,string=string)
 
 		for obj in objs:
-			objs[obj] = [] if objs[obj] is None else objs[obj]
+			objs[obj] = [] if objs[obj] is None else objs[obj] if isinstance(objs[obj],list) else [objs[obj]]
 
 		# Get data and kwargs
 		if data is None:
@@ -2226,9 +2240,9 @@ class Operators(Object):
 		elif all(isinstance(obj,Object) for obj in data):
 			for obj in objs:
 				objs[obj] = None
-		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+		elif isinstance(data,dict) and all(isinstance(data[name],dict) for name in data for obj in objs) and all(any(obj in data[name] for obj in objs) for name in data):
 			for obj in objs:
-				objs[obj].extend([data[name][obj] for name in data])
+				objs[obj].extend([data[name].get(obj) for name in data])
 			
 			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data] 
 				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
@@ -2257,7 +2271,7 @@ class Operators(Object):
 							# ).get(i,int(i) if not isinstance(i,str) else i))) 
 							# for i,j in zip(values[attr],values['operator'])])
 			}
-
+		
 		# Get data
 		for index in range(size):
 
@@ -2338,7 +2352,7 @@ class Operators(Object):
 					tuple(objs.site[i]),obj.get(str(objs.string[i]),
 					obj.get(str(index),obj.get(int(index),None))))
 			elif isinstance(obj,iterables):
-				obj = obj[index] if len(obj)>index else None
+				obj = obj[index%len(obj)] if len(obj) else None
 			else:
 				obj = obj
 
@@ -2346,7 +2360,7 @@ class Operators(Object):
 			return
 		attributes[attribute] = func
 
-		attribute = 'parameters.shape'
+		attribute = 'parameters.axis'
 		@decorator
 		def func(i,attr,attrs,objs,kwargs):
 			
@@ -2358,9 +2372,9 @@ class Operators(Object):
 			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
 			
 			if obj is None:
-				obj = (self.M,)
+				obj = ['M']
 			elif isinstance(obj,iterables):
-				obj = (*obj,self.M,)
+				obj = [*obj,'M']
 			else:
 				obj = obj
 
@@ -2587,8 +2601,8 @@ class Operators(Object):
 							self.parameters(self.parameters()) if self.parameters.size>1
 							else (self.parameters(self.parameters()),)))
 						substring = array([i for i in substring if i is not None])
-						if len(substring):
-							substring = norm(substring)/sqrt(len(substring))
+						if substring.size:
+							substring = norm(substring)/sqrt(substring.size)
 						else:
 							substring = None
 					if substring is not None:
