@@ -713,10 +713,10 @@ class Object(System):
 
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
-		where = self.site
+		site = self.site
 
-		contract = contraction(data,state,where) if self.contract is None else self.contract
-		grad_contract = gradient_contraction(data,state,where) if self.gradient_contract is None else self.gradient_contract
+		contract = contraction(data,state,site) if self.contract is None else self.contract
+		grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contract
 
 		self.func = func
 		self.gradient = gradient
