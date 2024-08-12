@@ -3502,13 +3502,13 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None):
+def contraction(data=None,state=None,site=None):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		where (iterable[int,str]): Where data contracts with state
+		site (iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -3559,7 +3559,7 @@ def contraction(data=None,state=None,where=None):
 		elif isinstance(state,tensors):
 
 			def func(data,state):
-				return state.gate(data,where=where)
+				return state.gate(data,where=site)
 
 		elif isinstance(state,arrays):
 
@@ -3633,7 +3633,7 @@ def contraction(data=None,state=None,where=None):
 			elif isinstance(state,tensors):
 
 				def func(data,state):
-					return state.gate(data,where=where)
+					return state.gate(data,where=site)
 
 			elif isinstance(state,arrays):
 
@@ -3699,13 +3699,13 @@ def contraction(data=None,state=None,where=None):
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None):
+def gradient_contraction(data=None,state=None,site=None):
 	'''
 	Contract grad, data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		where (iterable[int,str]): Where data contracts with state		
+		site (iterable[int,str]): Where data contracts with state		
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
