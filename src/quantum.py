@@ -716,7 +716,12 @@ class Object(System):
 		site = self.site
 
 		contract = contraction(data,state,site) if self.contract is None else self.contract
-		grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contract
+		try:
+			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
+		except NotImplementedError as exception:
+			def grad_contract(grad,data,state):
+				return 0
+			print(exception)
 
 		self.func = func
 		self.gradient = gradient

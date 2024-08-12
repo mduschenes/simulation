@@ -3506,19 +3506,24 @@ def contraction(data=None,state=None,site=None):
 	'''
 	Contract data and state
 	Args:
-		data (array): Array of data of shape (n,n)
-		state (array): state of shape (n,) or (n,n)
+		data (array,tensor): Array of data of shape (n,n)
+		state (array,tensor): state of shape (n,) or (n,n)
 		site (iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
 
+	def func(data,state):
+		return data
+
 	if state is None:
+		wrapper = jit
+	elif isinstance(state,arrays):
 		wrapper = jit
 	elif isinstance(state,tensors):
 		wrapper = None
-	elif isinstance(state,arrays):
-		wrapper = jit
+	else:
+		wrapper = None
 
 	if data is None:
 
@@ -3527,11 +3532,6 @@ def contraction(data=None,state=None,site=None):
 			def func(data,state):
 				return data
 
-		elif isinstance(state,tensors):
-
-			def func(data,state):
-				return data
-		
 		elif isinstance(state,arrays):
 			
 			if state.ndim == 1:
@@ -3543,30 +3543,16 @@ def contraction(data=None,state=None,site=None):
 				
 				def func(data,state):
 					return data
-		
-	elif callable(data) and not isinstance(data,(*tensors,*arrays)):
 	
-		def func(data,state):
-			return data(state)
-
-	elif isinstance(data,tensors):
-
-		if state is None:
-
-			def func(data,state):
-				return data
-		
 		elif isinstance(state,tensors):
 
 			def func(data,state):
-				return state.gate(data,where=site)
+				return data
 
-		elif isinstance(state,arrays):
-
-			if state.ndim == 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-			elif state.ndim == 2:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
+	
+		def func(data,state):
+			return data(state)
 
 	elif isinstance(data,arrays):
 
@@ -3577,11 +3563,6 @@ def contraction(data=None,state=None,site=None):
 				def func(data,state):
 					return data
 			
-			elif isinstance(state,tensors):
-
-				def func(data,state):
-					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -3593,6 +3574,11 @@ def contraction(data=None,state=None,site=None):
 					
 					def func(data,state):
 						return data
+
+			elif isinstance(state,tensors):
+
+				def func(data,state):
+					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 1:
 			
@@ -3601,10 +3587,6 @@ def contraction(data=None,state=None,site=None):
 				def func(data,state):
 					return data
 
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -3616,6 +3598,10 @@ def contraction(data=None,state=None,site=None):
 					
 					def func(data,state):
 						return data
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 2:
 
@@ -3629,11 +3615,6 @@ def contraction(data=None,state=None,site=None):
 				
 				def func(data,state):
 					return einsummation(data,state)
-
-			elif isinstance(state,tensors):
-
-				def func(data,state):
-					return state.gate(data,where=site)
 
 			elif isinstance(state,arrays):
 
@@ -3655,6 +3636,10 @@ def contraction(data=None,state=None,site=None):
 					def func(data,state):
 						return einsummation(data,state,conjugate(data))
 
+			elif isinstance(state,tensors):
+
+				def func(data,state):
+					return state.gate(data,where=site)
 
 		elif data.ndim == 3:
 
@@ -3669,10 +3654,6 @@ def contraction(data=None,state=None,site=None):
 				def func(data,state):
 					return einsummation(data,state)
 
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -3680,7 +3661,7 @@ def contraction(data=None,state=None,site=None):
 					subscripts = 'uij,j->i'
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
-					
+				
 					def func(data,state):
 						return einsummation(data,state)
 
@@ -3689,10 +3670,32 @@ def contraction(data=None,state=None,site=None):
 					subscripts = 'uij,jk,ulk->il'
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
-
+				
 					def func(data,state):
 						return einsummation(data,state,conjugate(data))
 
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+	elif isinstance(data,tensors):
+
+		if state is None:
+
+			def func(data,state):
+				return data
+		
+		elif isinstance(state,arrays):
+
+			if state.ndim == 1:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+			elif state.ndim == 2:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+		elif isinstance(state,tensors):
+
+			def func(data,state):
+				return state.gate(data,where=site)
 
 	func = wrapper(func) if wrapper is not None else func
 
@@ -3703,19 +3706,24 @@ def gradient_contraction(data=None,state=None,site=None):
 	'''
 	Contract grad, data and state
 	Args:
-		data (array): Array of data of shape (n,n)
-		state (array): state of shape (n,) or (n,n)
+		data (array,tensor): Array of data of shape (n,n)
+		state (array,tensor): state of shape (n,) or (n,n)
 		site (iterable[int,str]): Where data contracts with state		
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
 
+	def func(grad,data,state):
+		return 0
+
 	if state is None:
+		wrapper = jit
+	elif isinstance(state,arrays):
 		wrapper = jit
 	elif isinstance(state,tensors):
 		wrapper = None
-	elif isinstance(state,arrays):
-		wrapper = jit
+	else:
+		wrapper = None
 
 	if data is None:
 		
@@ -3723,10 +3731,6 @@ def gradient_contraction(data=None,state=None,site=None):
 		
 			def func(grad,data,state):
 				return grad
-
-		elif isinstance(state,tensors):
-
-			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif isinstance(state,arrays):
 
@@ -3739,13 +3743,13 @@ def gradient_contraction(data=None,state=None,site=None):
 				
 				def func(grad,data,state):
 					return grad
-		
-	elif callable(data) and not isinstance(data,(*tensors,*arrays)):
 	
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+		elif isinstance(state,tensors):
 
-	elif isinstance(data,tensors):
+			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
+	
 		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 	elif isinstance(data,arrays):
@@ -3757,10 +3761,6 @@ def gradient_contraction(data=None,state=None,site=None):
 				def func(grad,data,state):
 					return grad
 			
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -3772,6 +3772,10 @@ def gradient_contraction(data=None,state=None,site=None):
 					
 					def func(grad,data,state):
 						return grad
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 1:
 			
@@ -3780,10 +3784,6 @@ def gradient_contraction(data=None,state=None,site=None):
 				def func(grad,data,state):
 					return grad
 
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -3795,6 +3795,10 @@ def gradient_contraction(data=None,state=None,site=None):
 					
 					def func(grad,data,state):
 						return grad
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 2:
 
@@ -3808,10 +3812,6 @@ def gradient_contraction(data=None,state=None,site=None):
 				
 				def func(grad,data,state):
 					return einsummation(grad,state)
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 			elif isinstance(state,arrays):
 
@@ -3834,6 +3834,10 @@ def gradient_contraction(data=None,state=None,site=None):
 						out = einsummation(grad,state,conjugate(data))
 						return out + dagger(out)
 
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 		elif data.ndim == 3:
 
 			if state is None:
@@ -3846,10 +3850,6 @@ def gradient_contraction(data=None,state=None,site=None):
 				
 				def func(grad,data,state):
 					return einsummation(grad,state)
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 			elif isinstance(state,arrays):
 
@@ -3871,6 +3871,14 @@ def gradient_contraction(data=None,state=None,site=None):
 					def func(grad,data,state):
 						out = einsummation(grad,state,conjugate(data))
 						return out + dagger(out)
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+	elif isinstance(data,tensors):
+
+		raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 	func = wrapper(func) if wrapper is not None else func
 

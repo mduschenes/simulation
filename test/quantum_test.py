@@ -222,26 +222,26 @@ def test_module(*args,**kwargs):
 						"parameters":pi,
 						"variable":True
 						},
-					"noise":{
-						"operator":"dephase",
-						"site":[0,1],
-						"string":"noise",
-						"parameters":1e-1,
-						"variable":False						
-						}						
+					# "noise":{
+					# 	"operator":"dephase",
+					# 	"site":[0,1],
+					# 	"string":"noise",
+					# 	"parameters":1e-1,
+					# 	"variable":False						
+					# 	}						
 					},
 				"N":2,"D":2,
 				"system":{"seed":123,"architecture":architecture}
 			},	
 			"state": {
-				# "data":None	,
-				# "operator":"product",
-				# "site":None,
-				# "string":"psi",
-				# "parameters":True,
-				# "N":2,"D":2,
-				# "ndim":1,
-				# "system":{"seed":123,"architecture":architecture}
+				"data":"random",
+				"operator":"product",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
+				"N":2,"D":2,
+				"ndim":1,
+				"system":{"seed":123,"architecture":architecture}
 				},
 		})
 
