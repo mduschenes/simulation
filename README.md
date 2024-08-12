@@ -89,7 +89,7 @@ model.init(state=state)
 label.init(state=state)
 
 # Set optimizer arguments
-func = model.parameters.constraints
+func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
 callback = Call(**{
     **namespace(Call,model),
     **settings.callback,

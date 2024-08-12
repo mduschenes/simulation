@@ -82,7 +82,7 @@ def train(settings,*args,**kwargs):
 
 		label.init(state=state)
 
-		func = model.parameters.constraints
+		func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
 		seed = spawn(**settings.seed)
 		hyperparameters = settings.optimize
 		arguments = ()

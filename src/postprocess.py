@@ -26,7 +26,7 @@ from src.io import load,dump,join,split,glob,cd,cwd,exists,dirname
 
 from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
-from src.quantum import Unitary
+from src.quantum import Hamiltonian
 
 
 
@@ -881,7 +881,7 @@ def postprocess(path,**kwargs):
 						continue
 
 					hyperparameters['sys']['path']['data']['log'] = None
-					U = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+					U = Hamiltonian(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 					U.load()
 
 					func = U.__func__

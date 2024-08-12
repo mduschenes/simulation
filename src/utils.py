@@ -3502,21 +3502,23 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,site=None):
+def contraction(data=None,state=None,where=None):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		site (iterable[int,str]): Where data contracts with state
+		where (iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
 
-	def default(data=None,state=None):
-		return data
-
-	subscripts = None
+	if state is None:
+		wrapper = jit
+	elif isinstance(state,tensors):
+		wrapper = None
+	elif isinstance(state,arrays):
+		wrapper = jit
 
 	if data is None:
 
@@ -3525,131 +3527,195 @@ def contraction(data=None,state=None,site=None):
 			def func(data,state):
 				return data
 
-		elif state.ndim == 1:
+		elif isinstance(state,tensors):
 
 			def func(data,state):
 				return data
-
-		elif state.ndim == 2:
+		
+		elif isinstance(state,arrays):
 			
-			def func(data,state):
-				return data
+			if state.ndim == 1:
+
+				def func(data,state):
+					return data
 	
-	elif data.ndim == 0:
-
-		if state is None:
+			elif state.ndim == 2:
+				
+				def func(data,state):
+					return data
 		
-			def func(data,state):
-				return data
-		
-		elif state.ndim == 1:
+	elif callable(data) and not isinstance(data,(*tensors,*arrays)):
+	
+		def func(data,state):
+			return data(state)
 
-			def func(data,state):
-				return data
-
-		elif state.ndim == 2:
-			
-			def func(data,state):
-				return data
-
-	elif data.ndim == 1:
-		
-		if state is None:
-		
-			def func(data,state):
-				return data
-
-		elif state.ndim == 1:
-
-			def func(data,state):
-				return data
-
-		elif state.ndim == 2:
-			
-			def func(data,state):
-				return data
-
-	elif data.ndim == 2:
+	elif isinstance(data,tensors):
 
 		if state is None:
 
-			state = data
-
-			subscripts = 'ij,kj->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
 			def func(data,state):
-				return einsummation(data,state)
-
-		elif state.ndim == 1:
-			
-			subscripts = 'ij,j->i'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state):
-				return einsummation(data,state)
-
-		elif state.ndim == 2:
-			
-			subscripts = 'ij,jk,lk->il'
-			shapes = (data.shape,state.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state):
-				return einsummation(data,state,conjugate(data))
-
-
-	elif data.ndim == 3:
-
-		if state is None:
-			
-			state = data
-
-			subscripts = 'uij,...j->i...'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state):
-				return einsummation(data,state)
-
-		elif state.ndim == 1:
-			
-			subscripts = 'uij,j->i'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state):
-				return einsummation(data,state)
-
-		elif state.ndim == 2:
-			
-			subscripts = 'uij,jk,ulk->il'
-			shapes = (data.shape,state.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
+				return data
+		
+		elif isinstance(state,tensors):
 
 			def func(data,state):
-				return einsummation(data,state,conjugate(data))
+				return state.gate(data,where=where)
 
-	func = jit(func)	
+		elif isinstance(state,arrays):
+
+			if state.ndim == 1:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+			elif state.ndim == 2:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+	elif isinstance(data,arrays):
+
+		if data.ndim == 0:
+
+			if state is None:
+			
+				def func(data,state):
+					return data
+			
+			elif isinstance(state,tensors):
+
+				def func(data,state):
+					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+
+					def func(data,state):
+						return data
+
+				elif state.ndim == 2:
+					
+					def func(data,state):
+						return data
+
+		elif data.ndim == 1:
+			
+			if state is None:
+			
+				def func(data,state):
+					return data
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+
+					def func(data,state):
+						return data
+
+				elif state.ndim == 2:
+					
+					def func(data,state):
+						return data
+
+		elif data.ndim == 2:
+
+			if state is None:
+
+				state = data
+
+				subscripts = 'ij,kj->ik'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+				
+				def func(data,state):
+					return einsummation(data,state)
+
+			elif isinstance(state,tensors):
+
+				def func(data,state):
+					return state.gate(data,where=where)
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+					
+					subscripts = 'ij,j->i'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state):
+						return einsummation(data,state)
+
+				elif state.ndim == 2:
+					
+					subscripts = 'ij,jk,lk->il'
+					shapes = (data.shape,state.shape,data.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state):
+						return einsummation(data,state,conjugate(data))
+
+
+		elif data.ndim == 3:
+
+			if state is None:
+				
+				state = data
+
+				subscripts = 'uij,...j->i...'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+				
+				def func(data,state):
+					return einsummation(data,state)
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+					
+					subscripts = 'uij,j->i'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state):
+						return einsummation(data,state)
+
+				elif state.ndim == 2:
+					
+					subscripts = 'uij,jk,ulk->il'
+					shapes = (data.shape,state.shape,data.shape)
+					einsummation = einsum(subscripts,*shapes)
+
+					def func(data,state):
+						return einsummation(data,state,conjugate(data))
+
+
+	func = wrapper(func) if wrapper is not None else func
 
 	return func
 
 
-def gradient_contraction(data=None,state=None,site=None):
+def gradient_contraction(data=None,state=None,where=None):
 	'''
 	Contract grad, data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		site (iterable[int,str]): Where data contracts with state		
+		where (iterable[int,str]): Where data contracts with state		
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
 
-	def default(grad,data,state):
-		return grad
+	if state is None:
+		wrapper = jit
+	elif isinstance(state,tensors):
+		wrapper = None
+	elif isinstance(state,arrays):
+		wrapper = jit
 
 	if data is None:
 		
@@ -3658,115 +3724,155 @@ def gradient_contraction(data=None,state=None,site=None):
 			def func(grad,data,state):
 				return grad
 
-		elif state.ndim == 1:
+		elif isinstance(state,tensors):
 
-			def func(grad,data,state):
-				return grad
+			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
-		elif state.ndim == 2:
-			
-			def func(grad,data,state):
-				return grad
+		elif isinstance(state,arrays):
+
+			if state.ndim == 1:
+
+				def func(grad,data,state):
+					return grad
+
+			elif state.ndim == 2:
+				
+				def func(grad,data,state):
+					return grad
+		
+	elif callable(data) and not isinstance(data,(*tensors,*arrays)):
 	
-	elif data.ndim == 0:
+		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
-		if state is None:
-		
-			def func(grad,data,state):
-				return grad
+	elif isinstance(data,tensors):
 
-		elif state.ndim == 1:
+		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
-			def func(grad,data,state):
-				return grad
+	elif isinstance(data,arrays):
 
-		elif state.ndim == 2:
+		if data.ndim == 0:
+
+			if state is None:
 			
-			def func(grad,data,state):
-				return grad
-
-	elif data.ndim == 1:
-		
-		if state is None:
-		
-			def func(grad,data,state):
-				return grad
-
-		elif state.ndim == 1:
-
-			def func(grad,data,state):
-				return grad
-
-		elif state.ndim == 2:
+				def func(grad,data,state):
+					return grad
 			
-			def func(grad,data,state):
-				return grad
+			elif isinstance(state,tensors):
 
-	elif data.ndim == 2:
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
-		if state is None:
+			elif isinstance(state,arrays):
 
-			state = data
+				if state.ndim == 1:
 
-			subscripts = 'ij,kj->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+					def func(grad,data,state):
+						return grad
+
+				elif state.ndim == 2:
+					
+					def func(grad,data,state):
+						return grad
+
+		elif data.ndim == 1:
 			
-			def func(grad,data,state):
-				return einsummation(grad,state)
-
-		elif state.ndim == 1:
-
-			subscripts = 'ij,j->i'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+			if state is None:
 			
-			def func(grad,data,state):
-				return einsummation(grad,state)
+				def func(grad,data,state):
+					return grad
 
-		elif state.ndim == 2:
-			
-			subscripts = 'ij,jk,lk->il'
-			shapes = (data.shape,state.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(grad,data,state):
-				out = einsummation(grad,state,conjugate(data))
-				return out + dagger(out)
+			elif isinstance(state,tensors):
 
-	elif data.ndim == 3:
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
-		if state is None:
+			elif isinstance(state,arrays):
 
-			state = data
+				if state.ndim == 1:
 
-			subscripts = 'uij,...j->i...'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(grad,data,state):
-				return einsummation(grad,state)
+					def func(grad,data,state):
+						return grad
 
-		elif state.ndim == 1:
-			
-			subscripts = 'uij,j->i'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(grad,data,state):
-				return einsummation(grad,state)
+				elif state.ndim == 2:
+					
+					def func(grad,data,state):
+						return grad
 
-		elif state.ndim == 2:
-			
-			subscripts = 'uij,jk,ulk->il'
-			shapes = (data.shape,state.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(grad,data,state):
-				out = einsummation(grad,state,conjugate(data))
-				return out + dagger(out)
+		elif data.ndim == 2:
 
-	func = jit(func)	
+			if state is None:
+
+				state = data
+
+				subscripts = 'ij,kj->ik'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+				
+				def func(grad,data,state):
+					return einsummation(grad,state)
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+
+					subscripts = 'ij,j->i'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state):
+						return einsummation(grad,state)
+
+				elif state.ndim == 2:
+					
+					subscripts = 'ij,jk,lk->il'
+					shapes = (data.shape,state.shape,data.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state):
+						out = einsummation(grad,state,conjugate(data))
+						return out + dagger(out)
+
+		elif data.ndim == 3:
+
+			if state is None:
+
+				state = data
+
+				subscripts = 'uij,...j->i...'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+				
+				def func(grad,data,state):
+					return einsummation(grad,state)
+
+			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,arrays):
+
+				if state.ndim == 1:
+					
+					subscripts = 'uij,j->i'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state):
+						return einsummation(grad,state)
+
+				elif state.ndim == 2:
+					
+					subscripts = 'uij,jk,ulk->il'
+					shapes = (data.shape,state.shape,data.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state):
+						out = einsummation(grad,state,conjugate(data))
+						return out + dagger(out)
+
+	func = wrapper(func) if wrapper is not None else func
 
 	return func
 

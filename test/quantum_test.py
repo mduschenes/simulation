@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,array,allclose,delim,spawn,einsum,conjugate
-from src.utils import similarity
+from src.utils import arrays,iterables,scalars,integers,floats,pi
 from src.io import load,glob
 from src.system import Dict
 from src.iterables import namespace
@@ -52,6 +52,8 @@ def test_architecture(*args,**kwargs):
 				},
 		})
 
+		verbose = True
+
 		model = load(cls.model)
 		state = load(cls.state)
 
@@ -72,7 +74,7 @@ def test_architecture(*args,**kwargs):
 			value = array(value)
 
 		print('--- model ---')
-		model.info(verbose=True)
+		model.info(verbose=verbose)
 		print(model.data)
 		print('------')
 
@@ -87,7 +89,7 @@ def test_architecture(*args,**kwargs):
 			value = value.to_dense().reshape(-1)
 
 		print('--- state ---')
-		state.info(verbose=True)
+		state.info(verbose=verbose)
 		print(value)
 		print('------')
 
@@ -109,7 +111,7 @@ def test_architecture(*args,**kwargs):
 		data[architecture] = value
 
 
-	assert allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
+	assert len(data)<2 or allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
 
 	return
 
@@ -144,6 +146,8 @@ def test_contract(*args,**kwargs):
 			},
 	})
 
+	verbose = True
+
 	model = load(cls.model)
 	state = load(cls.state)
 
@@ -151,7 +155,7 @@ def test_contract(*args,**kwargs):
 	state = state(**settings.state)
 
 	print('--- state ---')
-	state.info(verbose=True)
+	state.info(verbose=verbose)
 	print(state())
 	print('------')
 
@@ -160,7 +164,7 @@ def test_contract(*args,**kwargs):
 	print()
 
 	print('--- model ---')
-	model.info(verbose=True)
+	model.info(verbose=verbose)
 	print(model.data)
 	print('------')
 
@@ -193,11 +197,163 @@ def test_contract(*args,**kwargs):
 
 	return
 
+def test_module(*args,**kwargs):
+
+	data = {}
+	architectures = [
+		# None,
+		'array',
+		'mps'
+		]
+	
+	for architecture in architectures:
+		cls = Dict({
+			"model":'src.quantum.Module',
+			"state":'src.quantum.State',
+			})
+
+		settings = Dict({
+			"model":{
+				"data":{
+					"XX":{
+						"operator":['X','X'],
+						"site":[0,1],
+						"string":"xx",
+						"parameters":pi,
+						"variable":True
+						},
+					"noise":{
+						"operator":"dephase",
+						"site":[0,1],
+						"string":"noise",
+						"parameters":1e-1,
+						"variable":False						
+						}						
+					},
+				"N":2,"D":2,
+				"system":{"seed":123,"architecture":architecture}
+			},	
+			"state": {
+				# "data":None	,
+				# "operator":"product",
+				# "site":None,
+				# "string":"psi",
+				# "parameters":True,
+				# "N":2,"D":2,
+				# "ndim":1,
+				# "system":{"seed":123,"architecture":architecture}
+				},
+		})
+
+		verbose = False
+
+		model = load(cls.model)
+		state = load(cls.state)
+
+		model = model(**settings.model)
+		state = state(**settings.state)
+
+		model.init(state=state)
+
+
+
+		# Model
+
+		value = {i: model.data[i].data for i in model.data}
+
+		if architecture is None:
+			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
+		elif architecture in ['array']:
+			value = {i: array(value[i]) if value[i] is not None else None for i in value}
+		elif architecture in ['mps']:
+			value = {i: array(value[i]) if value[i] is not None else None for i in value}
+		else:
+			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
+
+		print('--- model ---')
+		model.info(verbose=verbose)
+		print(value)
+		print('------')
+
+
+		# State
+
+		value = state()
+		
+		if architecture is None:
+			value = array(value) if value is not None else None			
+		elif architecture in ['array']:
+			value = array(value) if value is not None else None
+		elif architecture in ['mps']:
+			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
+		else:
+			value = array(value) if value is not None else None						
+
+		print('--- state ---')
+		state.info(verbose=verbose)
+		print(value)
+		print('------')
+
+
+		# Value
+		
+		value = model(model.parameters(model.parameters()),model.state())
+
+		if architecture is None:
+			value = array(value) if value is not None else None			
+		elif architecture in ['array']:
+			value = array(value) if value is not None else None
+		elif architecture in ['mps']:
+			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
+		else:
+			value = array(value) if value is not None else None			
+
+		print('--- value ---')
+		print(value)
+		print('------')
+		
+
+		data[architecture] = value
+
+
+		# Grad
+		# grad_automatic = model.grad_automatic
+		# grad_finite = model.grad_finite
+		# grad_analytical = model.grad_analytical
+
+		# index = slice(None)
+		# print('-----')
+		# print(grad_automatic(parameters,state)[index])
+		# print()
+		# print('-----')
+		# print()
+		# print(grad_finite(parameters,state)[index])
+		# print()
+		# print('-----')
+		# print()	
+		# print(grad_analytical(parameters,state)[index])
+		# print()
+		# print('----- ratio -----')
+		# print()
+		# print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
+		# print()
+		# print('-----')
+		# print()
+		# assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
+		# assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
+		# assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
+
+
+	assert len(data)<2 or allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
+
+	return
+
 
 if __name__ == '__main__':
 
 	arguments = 'settings'
 	args = argparser(arguments)
 
-	test_architecture(*args,**args)
-	test_contract(*args,**args)
+	# test_architecture(*args,**args)
+	# test_contract(*args,**args)
+	test_module(*args,**args)

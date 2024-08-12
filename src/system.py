@@ -389,7 +389,12 @@ class Lattice(object):
 		lattice (str,dict,Lattice): Type of lattice, allowed strings in ['square']
 		kwargs (dict): Additional keyword Arguments
 	'''	
-	def __init__(self,N,d,lattice='square',**kwargs):
+	def __init__(self,N,d=None,lattice=None,**kwargs):
+
+		# Def variables
+		N = N if N is not None else 1
+		d = d if d is not None else 1
+		lattice = lattice if lattice is not None else None
 
 		# Define lattice
 		if isinstance(lattice,Lattice):
@@ -401,14 +406,18 @@ class Lattice(object):
 
 		# Define attributes
 		if lattice is None:
-			L = [0 for i in range(d)]
-			z = 0
+			L = [int(N**(1/d)) for i in range(d)]
+			z = 2*d
 			def edge(vertex,edges=None):
-				vertices = ()
+				site,position = self.site,self.position
+				coordinates = self.position(vertex)		
+				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1]
+				vertices = (site([(coordinates[j]+edge*(j==i))%(L[j]) for j in range(d)]) for i in range(d) for edge in edges)
 				return vertices
 			def boundary(edge):
-				boundary = False
-				return boundary
+				i,j = edge
+				boundary = any(map(lambda i,j: abs(i-j)>1,self.position(i),self.position(j)))
+				return boundary	
 		elif lattice in ['square']:
 			L = [int(N**(1/d)) for i in range(d)]
 			z = 2*d

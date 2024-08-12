@@ -27,6 +27,7 @@ from src.io import load,dump,join,split
 from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
+from src.params import Parameters,Parameter
 
 from src.optimize import Objective,Metric
 
@@ -286,7 +287,7 @@ def variables(data,state=None,conj=False,size=None,compilation=None,verbose=Fals
 
 
 
-def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
+def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
 	'''
 	Contract data and state
 	Args:
@@ -297,6 +298,7 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 		compilation (dict[str,int,bool]): Compilation options, allowed keys 
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
+		architecture (str): Architecture data structure of data
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract data with signature func(parameters,state,indices)
@@ -319,8 +321,14 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
-	
-	data = [jit(data[i]) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
+	if architecture is None or architecture in ['array','tensor']:
+		wrapper = jit
+	elif architecture in ['mps']:
+		wrapper = partial
+	else:
+		wrapper = jit
+
+	data = [wrapper(data[i]) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
 
 	def func(parameters,state=state,indices=indices):
 
@@ -331,14 +339,14 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 
 		return forloop(*indices,func,state)
 
-	func = jit(func)
+	func = wrapper(func)
 
 	return func			
 
 
 
 
-def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
+def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
 	'''
 	Contract gradient of data and state
 	Args:
@@ -349,6 +357,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbos
 		compilation (dict[str,int,bool]): Compilation options, allowed keys 
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
+		architecture (str): Architecture data structure of data
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract gradient with signature func(parameters,state,indices)
@@ -374,13 +383,19 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbos
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
+	if architecture is None or architecture in ['array','tensor']:
+		wrapper = jit
+	elif architecture in ['mps']:
+		wrapper = partial
+	else:
+		wrapper = jit
 
 	if verbose and data:
 		data[0].log(msg='Compiled:\n%r'%(data),verbose=verbose)
 	
 	data,grad,indexes = (
-		[jit(data[i]) for i in range(length)],
-		[jit(data[i].grad) for i in range(length)],
+		[wrapper(data[i]) for i in range(length)],
+		[wrapper(data[i].grad) for i in range(length)],
 		array(indexes)
 		)
 
@@ -399,8 +414,8 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbos
 	def false(i,out,parameters,state):
 		return out
 
-	true = jit(true)
-	false = jit(false)
+	true = wrapper(true)
+	false = wrapper(false)
 
 	def func(parameters,state=state,indices=indices):
 
@@ -413,7 +428,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbos
 
 		return forloop(*indices,func,out)
 
-	func = jit(func)
+	func = wrapper(func)
 
 	return func			
 
@@ -458,7 +473,13 @@ class Object(System):
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
-		super().__init__(**kwargs)				
+		super().__init__(**kwargs)	
+
+		do = not (
+			all(i is None for i in [self.data,self.operator]) or #,self.site,self.string,self.N,self.D]) or
+			isinstance(data,(dict)) or
+			((data is not None) and all(isinstance(i,Object) for i in data))
+			)	
 
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
@@ -472,15 +493,10 @@ class Object(System):
 
 			return
 		
-		elif (data is None) and (operator is None):
+		if not do:
+			self.init()
 			return
 		
-		elif isinstance(data,(dict)):
-			return
-
-		elif (data is not None) and all(isinstance(i,Object) for i in data):
-			return
-
 		self.spaces()
 
 		basis = self.basis
@@ -554,12 +570,9 @@ class Object(System):
 		N = max(self.N,max(site)+1 if site is not None else self.N) if N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
-		if not isinstance(operator,str) and len(site) != sum(i not in [default] for i in operator):
-			raise NotImplementedError('TODO: Allow for non-local sites %r and basis operators %r'%(site,operator))
-
-		site = site[:N]
+		site = site[:N] if site is not None else site
 		locality = min(locality,sum(i not in [default] for i in site),N)
-		operator = operator[:N] if not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		operator = operator[:N] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 
 		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
 		size = self.size if self.size is not None else getattr(data,'size',self.size) if data is not None else None
@@ -681,7 +694,6 @@ class Object(System):
 		elif self.architecture in ['mps']:
 			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system)if self.identity is None else self.identity
 
-
 		if self.func is None:
 			def func(parameters=None,state=None):
 				return self.data
@@ -701,23 +713,10 @@ class Object(System):
 
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
+		where = self.site
 
-		if self.architecture is None or self.architecture in ['array']:
-			contract = contraction(data,state) if self.contract is None else self.contract
-			grad_contract = gradient_contraction(data,state) if self.gradient_contract is None else self.gradient_contract
-	
-		elif self.architecture in ['tensor']:
-			def contract(data,state):
-				return data(state)
-			def grad_contract(data,state):
-				return data(state)
-	
-		elif self.architecture in ['mps']:
-			def contract(data,state):
-				return state.gate(data,where=self.site)
-			def grad_contract(data,state):
-				return state.gate(data,where=self.site)
-
+		contract = contraction(data,state,where) if self.contract is None else self.contract
+		grad_contract = gradient_contraction(data,state,where) if self.gradient_contract is None else self.gradient_contract
 
 		self.func = func
 		self.gradient = gradient
@@ -731,14 +730,23 @@ class Object(System):
 		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
 		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
 
-		parameters = self.parameters()
-		state = self.state() if self.state is not None and self.state() is not None else self.identity
-
 		if self.architecture is None or self.architecture in ['array','tensor']:
-			self.func = jit(self.func,parameters=parameters,state=state)
-			self.gradient = jit(self.gradient,parameters=parameters,state=state)
-			self.contract = jit(self.contract,state=state)
-			self.gradient_contract = jit(self.gradient_contract,state=state)
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+		elif self.architecture in ['mps']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = partial
+		else:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		self.func = wrapper(self.func,parameters=parameters,state=state)
+		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
+		self.contract = wrapper(self.contract,state=state)
+		self.gradient_contract = wrapper(self.gradient_contract,state=state)
  
 		return
 
@@ -867,7 +875,7 @@ class Object(System):
 
 	def lattices(self,N=None,D=None,d=None,lattice=None,system=None):
 		'''
-		Set space attributes
+		Set lattice attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
@@ -1198,7 +1206,7 @@ class Operator(Object):
 	'''
 
 	N = None
-	D = 2
+	D = None
 	
 	space = None
 	time = None	
@@ -1262,7 +1270,7 @@ class Pauli(Object):
 	'''
 
 	N = None
-	D = 2
+	D = None
 	
 	space = None
 	time = None		
@@ -1411,7 +1419,7 @@ class Gate(Object):
 	'''
 
 	N = None
-	D = 2 
+	D = None 
 	
 	space = None
 	time = None	
@@ -1491,7 +1499,7 @@ class Haar(Object):
 	'''
 
 	N = None
-	D = 2
+	D = None
 	
 	space = None
 	time = None	
@@ -1580,7 +1588,7 @@ class State(Object):
 	'''
 
 	N = None
-	D = 2
+	D = None
 	
 	space = None
 	time = None	
@@ -1808,7 +1816,7 @@ class Noise(Object):
 	'''
 
 	N = None
-	D = 2
+	D = None
 	
 	space = None
 	time = None
@@ -1939,16 +1947,12 @@ class Noise(Object):
 					
 					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
 					# obj = [Basis.I(D=D,system=system)]
-
 					# def func(parameters=None,state=None):
 					# 	return (1-parameters)*state + (parameters)*data[0]
-
 					# def gradient(parameters=None,state=None):
 					# 	return 0*state
-
 					# def contract(data=None,state=None):
 					# 	return data
-					
 					# def gradient_contract(grad=None,data=None,state=None):
 					# 	return grad
 
@@ -1960,13 +1964,10 @@ class Noise(Object):
 			
 					def func(parameters=None,state=None):
 						return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
-
 					def gradient(parameters=None,state=None):
 						return 0*state
-
 					def contract(data=None,state=None):
 						return data
-					
 					def gradient_contract(grad=None,data=None,state=None):
 						return grad
 
@@ -2009,6 +2010,266 @@ class Noise(Object):
 		self.unitary = unitary
 
 		return
+
+
+class Measurement(Object):
+	'''
+	Measurement class for Quantum Objects
+	Args:
+		data (iterable[str]): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.PROJECTOR for attr in ['measure','povm']},
+		}
+	default = 'I'
+	
+	hermitian = None
+	unitary = None
+
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup operator
+		Args:
+			data (iterable[str]): data of operator
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments				
+		'''
+
+		data = self.data if data is None else data
+		operator = self.operator if operator is None else operator
+		site = self.site if site is None else site
+		string = self.string if string is None else string
+
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
+		if not isinstance(data,objects) and not callable(data):
+
+			N = self.N
+			D = self.D
+			ndim = self.ndim
+
+			basis = self.basis
+			default = self.default
+			system = self.system
+			dtype = self.dtype
+
+			random = getattr(self,'random','haar')
+			seed = getattr(self,'seed',None)
+			reset = getattr(self,'reset',None)
+			samples = getattr(self,'samples',None)
+
+			data = data
+			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
+			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
+			locality = len(operator)
+
+			local = any(( 
+				all((operator[i] not in []) for i in range(N)),
+				))
+
+			objs = []
+			
+			for i in range(N):
+				
+				shape = (D**N,) if not local else (D,)
+				size = prod(shape)
+				ndim = len(shape)
+
+				obj = zeros(shape=shape,dtype=dtype)
+
+				if operator[i] in ['zero','zeros','0']:
+					index = 0
+					value = 1
+					obj = inplace(obj,index,value)
+				elif operator[i] in ['one','ones','1']:
+					index = -1
+					value = 1
+					obj = inplace(obj,index,value)
+				elif operator[i] in ['plus','+']:
+					index = slice(None)
+					value = 1/sqrt(size)
+					obj = inplace(obj,index,value)
+				elif operator[i] in ['minus','-']:
+					index = slice(None)
+					value = (-1)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)
+				elif operator[i] in ['random','psi','haar','product']:
+					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				elif operator[i] in ['string']:
+					if self.architecture is None or self.architecture in ['array','tensor']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+					elif self.architecture in ['mps']:
+						local = False
+						obj = data
+				elif isinstance(data,arrays):
+					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
+				else:
+					obj = None
+
+				if obj is None:
+					objs = obj
+					break
+
+				objs.append(obj)
+
+				if not local:
+					objs = objs[-1]
+					break
+
+			data = objs
+
+			if self.architecture is None or self.architecture in ['array']:
+
+				data = objs
+
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=self.dtype)
+
+			elif self.architecture in ['tensor']:
+				data = mps(data)
+
+			elif self.architecture in ['mps']:
+				data = mps(data)
+
+		else:
+
+			data = self.data
+
+
+		if self.parameters() is not None:
+
+			if self.architecture is None or self.architecture in ['array']:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)	
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			elif self.architecture in ['tensor']:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)	
+					return self.data(params=parameters)
+
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*self.data(params=parameters+pi/2)
+
+			elif self.architecture in ['mps']:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)	
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+		elif self.parameters() is None:
+		
+			if self.architecture is None or self.architecture in ['array']:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			elif self.architecture in ['tensor']:
+				def func(parameters=None,state=None):
+					return self.data(params=parameters)
+
+				def gradient(parameters=None,state=None):
+					return grad*self.data(params=parameters+pi/2)
+
+			elif self.architecture in ['mps']:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+
+
+		hermitian = None
+		unitary = None
+		
+		self.data = data
+
+		self.operator = operator if operator is not None else self.operator
+		self.site = site if site is not None else self.site
+		self.string = string if string is not None else self.string
+		self.locality = len(self.site) if self.site is not None else self.locality
+
+		self.samples = samples
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+		return
+
+
+	def __call__(self,parameters=None,state=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.gradient(parameters=parameters,state=state)
+		else:
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
+
 
 class Operators(Object):
 	'''
@@ -2057,12 +2318,12 @@ class Operators(Object):
 
 		self.data = Dictionary()
 
-		self.n = None
-		
 		self.parameters = parameters
 		self.state = None
-		self.identity = None
 		self.conj = False
+
+		self.n = None
+		self.identity = None
 
 		self.func = None
 		self.gradient = None
@@ -2099,6 +2360,16 @@ class Operators(Object):
 			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
 		'''
+
+		# Set attributes
+		if self.data is None:
+			self.data = Dictionary()
+		if self.state is None:
+			self.state = None
+		if self.conj is None:
+			self.conj = False
+		if self.parameters is None:
+			self.parameters = None
 
 		# Set data
 		if data is None:
@@ -2202,14 +2473,24 @@ class Operators(Object):
 		
 
 		# Set functions
-		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else self.identity
+		if self.architecture is None or self.architecture in ['array','tensor']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+		elif self.architecture in ['mps']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = partial
+		else:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity			
+			wrapper = jit
 
-		self.func = jit(self.func,parameters=parameters,state=state)
-		self.gradient = jit(self.gradient,parameters=parameters,state=state)
-		self.gradient_automatic = jit(self.gradient_automatic,parameters=parameters,state=state)
-		self.gradient_finite = jit(self.gradient_finite,parameters=parameters,state=state)
-		self.gradient_analytical = jit(self.gradient_analytical,parameters=parameters,state=state)
+		self.func = wrapper(self.func,parameters=parameters,state=state)
+		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
+		self.gradient_automatic = wrapper(self.gradient_automatic,parameters=parameters,state=state)
+		self.gradient_finite = wrapper(self.gradient_finite,parameters=parameters,state=state)
+		self.gradient_analytical = wrapper(self.gradient_analytical,parameters=parameters,state=state)
 
 		return
 
@@ -2764,13 +3045,162 @@ class Hamiltonian(Operators):
 		
 		return
 
-
 class Unitary(Hamiltonian):
 	pass
 
-
-class Channel(Unitary):
+class Channel(Hamiltonian):
 	pass
+
+
+class Module(Channel):
+
+	def init(self,data=None,state=None,conj=False,parameters=None):
+		''' 
+		Setup class functions
+		Args:
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
+			state (bool,array,Object): State to act on with class of shape self.shape, or class hyperparameters
+			conj (bool): conjugate
+			parameters (dict,array,Parameters): parameters of class
+		'''
+
+		# Set attributes
+		if self.data is None:
+			self.data = Dictionary()
+		if self.state is None:
+			self.state = None
+		if self.conj is None:
+			self.conj = False
+		if self.parameters is None:
+			self.parameters = None
+
+		# Set data
+		if data is None:
+			data = {}
+		elif data is True:
+			data = {}
+		elif data is False:
+			data = {i: None for i in self.data}
+		elif isinstance(data,dict):
+			data = {i: data[i] for i in data}
+		for i in data:
+			if data[i] is None:
+				self.data[i] = data[i]
+			elif isinstance(data[i],dict):
+				self.data[i].init(**data[i])
+			else:
+				self.data[i].init(data=data[i])
+
+
+		# Set state
+		if state is None:
+			state = self.state
+		elif state is True:
+			state = self.state
+		elif state is False:
+			state = None
+
+		self.state = state
+
+
+		# Set conjugate
+		if conj is None:
+			conj = False
+		elif conj is True:
+			conj = True
+		elif conj is False:
+			conj = False
+
+		self.conj = conj
+
+		# Set parameters
+		kwargs = dict(
+			parameters={i:self.data[i].parameters 
+				for i in self.data 
+				if ((self.data[i] is not None) and 
+					(self.data[i].data is not None))
+				} if parameters is None else parameters,
+			system=self.system
+		)
+
+		parameters = Parameters(**kwargs)
+
+		self.parameters = parameters
+
+		# Set data
+		for i in self.data:
+			
+			if self.data[i] is None:
+				continue
+
+			kwargs = dict(state=self.state)
+			self.data[i].init(**kwargs)
+
+
+		# Set attributes
+		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
+		if self.state is None or self.state() is None:
+			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
+			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
+		elif self.state.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state.ndim == 2:
+			hermitian = True
+			unitary = False
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+
+		# Set functions
+
+		def func(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
+			indices = [i for i in self.data if self.data[i] is not None and self.data[i](parameters,state) is not None]
+			out = state
+			for i in indices:
+				out = self.data[i](parameters,out)
+			return out
+
+		def grad(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity			
+			grad = zeros((*parameters.shape,*state.shape),dtype=state.dtype)
+			indices = [i for i in self.data if self.data[i].variable]
+			for i in indices:
+				out = state
+				for j in [j for j in indices if j<i]:
+					out = self.data[i](parameters,out)
+				out = self.data[i].grad(parameters,out)
+				for j in [j for j in indices if j>i]:
+					out = self.data[i](parameters,out)				
+				inplace(grad,i,out,'add')
+			return grad
+
+		grad_automatic = gradient(self,mode='fwd',move=True)
+		grad_finite = gradient(self,mode='finite',move=True)
+		grad_analytical = grad
+
+		grad = grad_automatic
+
+		self.func = func
+		self.gradient = grad
+		self.gradient_automatic = grad_automatic
+		self.gradient_finite = grad_finite
+		self.gradient_analytical = grad_analytical
+		
+
+		# Set functions
+		parameters = self.parameters(self.parameters())
+		state = self.state() if self.state is not None and self.state() is not None else self.identity
+
+		self.func = partial(self.func,parameters=parameters,state=state)
+		self.gradient = partial(self.gradient,parameters=parameters,state=state)
+		self.gradient_automatic = partial(self.gradient_automatic,parameters=parameters,state=state)
+		self.gradient_finite = partial(self.gradient_finite,parameters=parameters,state=state)
+		self.gradient_analytical = partial(self.gradient_analytical,parameters=parameters,state=state)
+
+		return
 
 
 class Label(Operator):
@@ -3146,9 +3576,15 @@ class Callback(System):
 					
 					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 					grad = model.grad_analytical
+					if model.architecture is None or model.architecture in ['array','tensor']:
+						wrapper = jit
+					elif model.architecture in ['mps']:
+						wrapper = partial
+					else:
+						wrapper = jit
 
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
-						function = hessian(jit(lambda parameters,state: metric(model(parameters,state))))
+						function = hessian(wrapper(lambda parameters,state: metric(model(parameters,state))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
 						function = fisher(model,grad,shapes=(shape,(*parameters.shape,*shape)),hermitian=metric.state.hermitian,unitary=model.unitary)
 

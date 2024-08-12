@@ -24,8 +24,6 @@ from src.plot import plot
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 
-from src.quantum import Unitary,Hamiltonian
-
 from src.iterables import namespace
 from src.system import Dict
 
