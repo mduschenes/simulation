@@ -59,7 +59,7 @@
 	"path":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
-	"logger":"log.log",
+	"logger":null,
 	"cleanup":false,
 	"verbose":"info"
 	}
