@@ -20,8 +20,6 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
 
-from src.train import train
-
 def test_architecture(*args,**kwargs):
 
 	data = {}
@@ -351,31 +349,6 @@ def test_module(*args,**kwargs):
 
 	return
 
-@pytest.mark.filterwarnings(r"ignore:The line search algorithm did not converge")
-def test_train_pauli(path,*args,tol=None,**kwargs):
-
-	path = 'config/settings.json'# if path is None else path
-	tol = 1e-10 if tol is None else tol
-
-	settings = path
-	args = ()
-	kwargs = {}
-
-	model,parameters,state,optimizer = train(settings,*args,**kwargs)
-
-	paths = [optimizer.cwd]
-	execute = True
-	verbose = True
-	for path in paths:
-		rm(path,execute=execute,verbose=verbose)
-
-	assert optimizer.track['objective'][-1] < tol, "Incorrect Optimization of %r"%(model)
-
-	print("Passed")
-
-	return
-
-
 
 if __name__ == '__main__':
 
@@ -385,5 +358,4 @@ if __name__ == '__main__':
 	# test_architecture(*args,**args)
 	# test_contract(*args,**args)
 	# test_module(*args,**args)
-	test_train_pauli(*args,**args)
 	# main(*args,**args)

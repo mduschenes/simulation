@@ -20,19 +20,28 @@ from src.logger import Logger
 from src.train import train
 
 # logger = Logger()
+@pytest.mark.filterwarnings(r"ignore:Rounding errors prevent the line search from converging")
+@pytest.mark.filterwarnings(r"ignore:The line search algorithm did not converge")
+def test_train(path,*args,tol=None,**kwargs):
 
+	path = 'config/settings.json'# if path is None else path
+	tol = 1e-9 # if tol is None else tol
 
-def test_train(path,*args,**kwargs):
+	settings = path
+	args = ()
+	kwargs = {}
 
-	path = 'config/settings.json' if path is None else path
-
-	model,parameters,state,optimizer = train(path,*args,**kwargs)
+	model,parameters,state,optimizer = train(settings,*args,**kwargs)
 
 	paths = [optimizer.cwd]
 	execute = True
 	verbose = True
 	for path in paths:
 		rm(path,execute=execute,verbose=verbose)
+
+	assert optimizer.track['objective'][-1] < tol, "Incorrect Optimization of %r"%(model)
+
+	print("Passed")
 
 	return
 

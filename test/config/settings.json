@@ -26,12 +26,12 @@
 		"z":{
 			"operator":["Z"],"site":"i","string":"z",
 			"parameters":{"data":"random","seed":123},
-			"variable":false
+			"variable":true
 		},				
 		"zz":{
 			"operator":["Z","Z"],"site":"i<j","string":"zz",
 			"parameters":{"data":"random","seed":123},
-			"variable":false
+			"variable":true
 		},
 		"noise":{
 			"operator":"depolarize","site":null,"string":"noise",
@@ -43,7 +43,7 @@
 	"N":3,
 	"D":2,
 	"d":1,
-	"M":4,
+	"M":100,
 	"tau":1,
 	"P":1,
 	"space":"spin",
@@ -56,7 +56,7 @@
 	"device":"cpu",
 	"backend":null,
 	"architecture":null,
-	"seed":null,
+	"seed":123,
 	"key":null,
 	"instance":null,
 	"cwd":"tmp.data",
@@ -67,8 +67,8 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":10,
-	"optimizer":"gd",
+	"iterations":25,
+	"optimizer":"cg",
 	"metric":"abs2",	
 	"alpha":1e-4,"beta":1e-4,
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -81,12 +81,12 @@
 		}	
 	},
 "label": {
-	"operator":"haar",
+	"operator":"X.X.X.X",
 	"site":null,
 	"string":"U",
-	"parameters":true,
+	"parameters":0.25,
 	"ndim":2,
-	"seed":null
+	"seed":123
 	},
 "state": {
 	"operator":"haar",
@@ -94,7 +94,7 @@
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,
-	"seed":null
+	"seed":123
 	},
 "callback":{}
 }
