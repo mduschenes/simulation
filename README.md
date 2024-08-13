@@ -157,7 +157,7 @@ Example settings `settings.json`
     "N":2,
     "D":2,
     "d":1,
-    "M":500,
+    "M":10,
     "tau":1,
     "P":1,
     "space":"spin",

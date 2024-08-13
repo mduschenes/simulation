@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import gradient
-from src.utils import allclose,trace,dot,spawn
+from src.utils import allclose,trace,dot
 
 from src.iterables import getter,setter,permuter,equalizer,namespace
 
@@ -42,7 +42,7 @@ def test_metric(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = spawn(**settings.seed)
+
 	func = None
 	arguments = ()
 	keywords = {}
@@ -83,7 +83,7 @@ def test_objective(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = spawn(**settings.seed)
+
 	func = None
 	arguments = ()
 	keywords = {}
@@ -123,8 +123,6 @@ def test_grad(path,tol):
 	if settings is None:
 		raise Exception("settings %s not loaded"%(path))
 
-
-
 	settings = Dict(settings)
 
 	model = load(settings.cls.model)
@@ -134,7 +132,7 @@ def test_grad(path,tol):
 
 	hyperparameters = settings.optimize
 	system = settings.system
-	seed = spawn(**settings.seed)
+
 	func = None
 	arguments = ()
 	keywords = {}
@@ -155,7 +153,7 @@ def test_grad(path,tol):
 	grad_analytical = model.grad_analytical
 
 	index = slice(None)
-	print('-----')
+	print('----- grad -----')	
 	print(grad_automatic(parameters,state)[index])
 	print()
 	print('-----')
@@ -182,8 +180,10 @@ def test_grad(path,tol):
 
 
 if __name__ == '__main__':
-	path = 'config/settings.test.json'	
 	path = 'config/settings.json'
+	path = 'config/test.json'	
+	path = 'config/tmp.json'
+
 	tol = 5e-8 
 	# test_metric(path,tol)
 	# test_objective(path,tol)

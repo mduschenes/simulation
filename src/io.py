@@ -213,7 +213,7 @@ def rm(path):
 	except Exception as exception:
 		try:
 			os.rmdir(path)
-		except:
+		except Exception as exception:
 			pass
 
 	return
@@ -682,7 +682,7 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj} 
 		for k in pickleables:
 			if not pickleables[k] or (not callables and callable(pickleables[k])):
-				logger.log(debug,'Exception : Cannot pickle (key,value) %r, %r'%(k,obj[k]))
+				logger.log(debug,'Exception: Cannot pickle (key,value) %r, %r'%(k,obj[k]))
 				obj.pop(k);
 				pickleables[k] = True		
 		return all([pickleables[k] for k in pickleables])
@@ -799,13 +799,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
 			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
-				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+				logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
 				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 					pass
 
 		data[name] = datum
@@ -941,10 +941,18 @@ def _load(obj,wr,ext,**kwargs):
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
+
+		path = os.path.basename(obj).strip('.')
+		data = getattr(importlib.import_module(path),module)
+
 		try:
 			path = os.path.basename(obj).strip('.')
 			data = getattr(importlib.import_module(path),module)
-		except:
+		except (SyntaxError,) as exception:
+			logger.log(info,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+			exception = SyntaxError
+			raise exception
+		except Exception as exception:
 			path = obj
 			spec = importlib.util.spec_from_file_location(module,path)
 			data = importlib.util.module_from_spec(spec)
@@ -1070,13 +1078,13 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
 			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+				logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
 				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 					pass
 		
 		logger.log(info*verbose,'Dump : %s'%(relpath(paths[name])))

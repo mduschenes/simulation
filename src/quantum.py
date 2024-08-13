@@ -27,11 +27,12 @@ from src.io import load,dump,join,split
 from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
-from src.params import Parameters,Parameter
+# from src.params import Parameters,Parameter
 
 from src.optimize import Objective,Metric
 
 delim = '.'
+separ = '_'
 objects = (*arrays,*tensors)
 
 class Basis(Dict):
@@ -198,7 +199,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	compilation = Dict({**dict(trotter=None,simplify=True),**(compilation if isinstance(compilation,dict) else {})})
+	compilation = Dict({**dict(trotter=None,simplify=False),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
@@ -237,7 +238,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 
 	# Filter trotterized data
 	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (data[i].unitary)
-	
+
 	obj = [j
 		for i in interleaver(
 		[trotter(i,p=compilation.trotter) for i in splitter([i for i in data if boolean(i)])],
@@ -303,7 +304,7 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 	Returns:
 		func (callable): contract data with signature func(parameters,state,indices)
 	'''
-	
+
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
@@ -475,12 +476,6 @@ class Object(System):
 
 		super().__init__(**kwargs)	
 
-		do = not (
-			all(i is None for i in [self.data,self.operator]) or #,self.site,self.string,self.N,self.D]) or
-			isinstance(data,(dict)) or
-			((data is not None) and all(isinstance(i,Object) for i in data))
-			)	
-
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
 				for attr in data:
@@ -493,16 +488,10 @@ class Object(System):
 
 			return
 		
-		if not do:
-			self.init()
-			return
-		
-		self.spaces()
-
 		basis = self.basis
 		default = self.default
 		
-		operator = self.operator if self.operator is not None else data
+		operator = self.operator if self.operator is not None else None
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
 		locality = self.locality if self.locality is not None else self.N
 		string = self.string
@@ -513,7 +502,7 @@ class Object(System):
 		# Set site,locality,operator
 		if site is None:
 			if operator is None:
-				site = [i for i in range(locality)]
+				site = site
 				locality = locality
 				operator = operator
 			elif isinstance(operator,str):
@@ -571,7 +560,7 @@ class Object(System):
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		site = site[:N] if site is not None else site
-		locality = min(locality,sum(i not in [default] for i in site),N)
+		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if site is not None else 0,N) if locality is not None or site is not None else None
 		operator = operator[:N] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 
 		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
@@ -585,7 +574,7 @@ class Object(System):
 		self.string = string if string is not None else None
 		self.system = system if system is not None else None
 
-		self.locality = max(locality if locality is not None else 0,len(self.site) if self.site is not None else 0)
+		self.locality = max(locality,len(self.site) if self.site is not None else 0) if locality is not None else None
 
 		self.N = N
 		self.D = D
@@ -595,24 +584,9 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		self.spaces()
-
-		self.init()
+		self.init(data=self.data,state=self.state,conj=self.conj,parameters=self.parameters)
 
 		self.info()
-
-		return
-
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup operator
-		Args:
-			data (iterable[str]): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
-		'''
 
 		return
 
@@ -625,25 +599,6 @@ class Object(System):
 			conj (bool): conjugate
 			parameters (array,dict): parameters
 		'''
-
-		cls = Parameter
-		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
-			defaults = dict()
-			parameters = parameters if parameters is not None else self.parameters
-			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
-			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
-			setter(parameters,defaults,delimiter=delim,default=False)
-			setter(parameters,self.parameters,delimiter=delim,default=False)
-
-			self.parameters = cls(**parameters)
-
-		elif isinstance(self.parameters,cls):
-			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			self.parameters.init(**parameters)
-
-		else:
-			self.parameters = parameters
 
 		if data is None:
 			data = self.data
@@ -658,6 +613,8 @@ class Object(System):
 			state = self.state
 		elif state is False:
 			state = None
+		elif not isinstance(state,(Object,*arrays,*objects)):
+			state = None
 
 		if conj is None:
 			conj = False
@@ -666,9 +623,30 @@ class Object(System):
 		self.state = state
 		self.conj = conj
 
+		cls = Parameter
+		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
+			defaults = dict()
+			parameters = parameters if parameters is not None else self.parameters
+			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
+			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(parameters,defaults,delimiter=delim,default=False)
+			setter(parameters,self.parameters,delimiter=delim,default=False)
+			self.parameters = cls(**parameters)
+
+		elif isinstance(self.parameters,cls):
+			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			self.parameters.init(**parameters)
+
+		else:
+			self.parameters = parameters
+
+		self.spaces()
+
 		do = (self.parameters() is not None)
 
 		if (do) and (((self.data is not None) or (self.operator is not None))):
+			
 			self.setup(self.data,self.operator,self.site,self.string)
 
 		if not do and not isinstance(self.data,objects) and not callable(self.data):
@@ -716,6 +694,8 @@ class Object(System):
 		site = self.site
 
 		contract = contraction(data,state,site) if self.contract is None else self.contract
+
+		# grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
 		try:
 			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
 		except NotImplementedError as exception:
@@ -753,6 +733,19 @@ class Object(System):
 		self.contract = wrapper(self.contract,state=state)
 		self.gradient_contract = wrapper(self.gradient_contract,state=state)
  
+		return
+
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup operator
+		Args:
+			data (iterable[str]): data of operator
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments			
+		'''
+
 		return
 
 	# @property
@@ -1029,64 +1022,145 @@ class Object(System):
 
 		return self.__class__(**kwargs)
 
-
 	def info(self,verbose=None):
 		'''
 		Log class information
 		Args:
 			verbose (bool,int,str): Verbosity of message			
 		'''		
+
 		msg = []
-		options = dict(align='<',space=1,width=2)		
+		options = dict(align='<',space=1,width=2)
 
-		for attr in ['string']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,self)
-			msg.append(string)
+		for attr in ['string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 
-		for attr in ['operator','shape','ndim','N','D','locality','site','parameters']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
-			msg.append(string)
+			if not hasattr(self,attr):
+				continue
 
-		string = []
-		for attr in [None,'variable','method','indices','local','site','shape','parameters']:
-			if attr is None:
-				attr = 'data.mean'
-				if self.parameters is None or self.parameters() is None:
-					substring = self.parameters()
-				else:
-					substring = (self.parameters(parameters) for parameters in (
-							self.parameters(self.parameters()) if self.parameters().size>1
-							else (self.parameters(self.parameters()),))) 
-					substring = array([i for i in substring if i is not None])
-					if substring.size:
-						substring = norm(substring)/sqrt(substring.size)
-					else:
-						substring = None
-				if substring is not None:
-					substring = '%0.4e'%(substring)
-				else:
-					substring = str(substring)
+			substring = getattr(self,attr,None)
+
+			if attr in ['data']:
+				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)]
 			else:
-				substring = getattrs(self.parameters,attr,default=None,delimiter=delim)
-				if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
-					substring = str(substring)
-				elif isinstance(substring,dict):
-					substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
-				elif substring is not None:
-					substring = '%0.4e'%(substring)
+				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring]
+			string = '%s: %s'%(attr,substring)
+			msg.append(string)
+
+		for attr in ['operator','locality','site']:
+			string = '%s: %s'%(attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
+			msg.append(string)
+
+		if isinstance(self,Operators):
+
+			for attr in (self.data if self.data is not None else []):
+				string = []
+				for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
+					
+					if subattr is None:
+						subattr = 'data.mean'
+						if self.parameters is None or self.parameters() is None:
+							substring = self.data[attr].parameters()
+						else:
+							substring = (self.data[attr].parameters(parameters) for parameters in (
+								self.parameters(self.parameters()) if self.parameters.size>1
+								else (self.parameters(self.parameters()),)))
+							substring = array([i for i in substring if i is not None])
+							if substring.size:
+								substring = norm(substring)/sqrt(substring.size)
+							else:
+								substring = None
+						if substring is not None:
+							substring = '%0.4e'%(substring)
+						else:
+							substring = str(substring)
+					else:
+						substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
+						if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
+							substring = str(substring)
+						elif isinstance(substring,dict):
+							substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
+						elif substring is not None:
+							substring = '%0.4e'%(substring)
+						else:
+							substring = str(substring)
+
+					substring = '%s : %s'%(subattr,'{:{align}{space}{width}}'.format(substring,**options))
+					
+					string.append(substring)
+
+				string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join(string))
+
+				msg.append(string)
+
+			for attr in ['parameters']:
+				string = []
+				for subattr in [None,'shape']:
+					if subattr is None:
+						subattr = attr
+						substring = ' '.join([str(i) for i in getattr(self,attr,[]) if getattr(self,attr)[i].variable])
+					else:
+						substring = getattr(self.parameters,subattr)
+					if isinstance(substring,(str,int,list,tuple,*arrays)):
+						substring = '%s'%(substring,)
+					elif substring is not None:
+						substring = '%0.4e'%(substring)
+					else:
+						substring = str(substring)
+					substring = '%s : %s'%(subattr,substring)
+
+					string.append(substring)
+
+				string = ', '.join(string)
+
+				msg.append(string)			
+
+
+		elif isinstance(self,Object):
+
+			string = []
+			for attr in [None,'variable','method','indices','local','site','shape','parameters']:
+				if attr is None:
+					attr = 'data.mean'
+					if self.parameters is None or self.parameters() is None:
+						substring = self.parameters()
+					else:
+						substring = (self.parameters(parameters) for parameters in (
+								self.parameters(self.parameters()) if self.parameters().size>1
+								else (self.parameters(self.parameters()),))) 
+						substring = array([i for i in substring if i is not None])
+						if substring.size:
+							substring = norm(substring)/sqrt(substring.size)
+						else:
+							substring = None
+					if substring is not None:
+						substring = '%0.4e'%(substring)
+					else:
+						substring = str(substring)
 				else:
-					substring = str(substring)
+					substring = getattrs(self.parameters,attr,default=None,delimiter=delim)
+					if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
+						substring = str(substring)
+					elif isinstance(substring,dict):
+						substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
+					elif substring is not None:
+						substring = '%0.4e'%(substring)
+					else:
+						substring = str(substring)
 
-			substring = '%s : %s'%(attr,'{:{align}{space}{width}}'.format(substring,**options))
+				substring = '%s : %s'%(attr,'{:{align}{space}{width}}'.format(substring,**options))
+				
+				string.append(substring)			
+
+			string = 'parameters.%s\n\t%s'%(self,'\n\t'.join(string))
 			
-			string.append(substring)
+			msg.append(string)
 
-		string = 'parameters.%s\n\t%s'%(self,'\n\t'.join(string))
-		msg.append(string)
 
 		msg = '\n'.join(msg)
+
 		
 		self.log(msg,verbose=verbose)
+
 		return
 
 	def norm(self):
@@ -1231,7 +1305,6 @@ class Operator(Object):
 
 		classes = [Gate,Pauli,Haar,State,Noise,Object]
 
-
 		for subclass in classes:
 			
 			if any(isinstance(obj,subclass) for obj in [data,operator]):
@@ -1240,14 +1313,18 @@ class Operator(Object):
 
 				break
 
-			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,objects) and not callable(obj)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
+			if not all(
+				j in subclass.basis for obj in [data,operator] 
+				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
+				for k in (obj if not isinstance(obj,str) else [obj]) 
+				for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
 
 			if cls is Operator:
+
 				self = subclass(**kwargs)
 			
 			else:
-		
 				for attr in subclass.__dict__:
 					setattr(cls,attr,getattr(subclass,attr))
 
@@ -2307,52 +2384,15 @@ class Operators(Object):
 		N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 
+		setter(kwargs,dict(
+			data=data,operator=operator,site=site,string=string,
+			N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
+			space=space,time=time,lattice=lattice,parameters=parameters,system=system),
+			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
+
 		super().__init__(**kwargs)
-
-		self.N = N
-		self.D = D
-		self.d = d
-		self.M = M
-		self.T = T
-		self.tau = tau
-		self.P = P
-		self.space = space
-		self.time = time
-		self.lattice = lattice
-
-		self.data = Dictionary()
-
-		self.parameters = parameters
-		self.state = None
-		self.conj = False
-
-		self.n = None
-		self.identity = None
-
-		self.func = None
-		self.gradient = None
-		self.gradient_automatic = None
-		self.gradient_finite = None
-		self.gradient_analytical = None
-		
-		self.system = system
-
-		self.spaces()
-		self.times()
-		self.lattices()
-
-		self.identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system)
-
-		self.shape = () if self.n is None else (self.n,self.n)
-		self.size = prod(self.shape)
-		self.ndim = len(self.shape)
-
-		self.setup(data,operator,site,string)
-
-		self.init()
-
-		self.info()
 
 		return	
 
@@ -2367,14 +2407,19 @@ class Operators(Object):
 		'''
 
 		# Set attributes
-		if self.data is None:
-			self.data = Dictionary()
-		if self.state is None:
-			self.state = None
-		if self.conj is None:
-			self.conj = False
-		if self.parameters is None:
-			self.parameters = None
+		
+		self.spaces()
+		self.times()
+		self.lattices()
+
+		self.identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system)
+
+		self.shape = () if self.n is None else (self.n,self.n)
+		self.size = prod(self.shape)
+		self.ndim = len(self.shape)
+		self.dtype = self.dtype if self.dtype is not None else None
+
+		self.setup(data)
 
 		# Set data
 		if data is None:
@@ -2384,12 +2429,14 @@ class Operators(Object):
 		elif data is False:
 			data = {i: None for i in self.data}
 		elif isinstance(data,dict):
-			data = {i: data[i] for i in data}
+			data = {i: data[i] for i in data if i in self.data}
 		for i in data:
 			if data[i] is None:
 				self.data[i] = data[i]
 			elif isinstance(data[i],dict):
 				self.data[i].init(**data[i])
+			elif isinstance(data[i],type(self.data[i])):
+				self.data[i] = data[i]
 			else:
 				self.data[i].init(data=data[i])
 
@@ -2784,7 +2831,6 @@ class Operators(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-
 		size = min([len(i) for i in (data,operator,site,string) if i is not None],default=0)
 
 		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size)
@@ -2836,9 +2882,44 @@ class Operators(Object):
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments						
 		'''
+		def datas(obj,data):
+			obj = insertion(data,index,obj)
+			return obj
 
-		if index == -1:
-			index = len(self)
+		def sites(obj,data):
+			obj = list(set(j 
+					for i in data
+					if data[i] is not None and data[i].site is not None
+					for j in (data[i].site 
+					if isinstance(data[i].site,iterables) else 
+					(data[i].site,)) if j is not None))
+			return obj
+
+		def operators(obj,data):
+			obj = [data[i].operator[data[i].site.index(j)] 
+				if isinstance(data[i].operator,iterables) and isinstance(data[i].site,iterables) and j in data[i].site 
+				else data[i].operator[j] if isinstance(data[i].operator,iterables) and len(data[i].operator)>j
+				else data[i].operator
+				for i in data 
+				for j in sites(obj,data)
+				if ((data[i] is not None and data[i].operator is not None and data[i].site is not None) and (
+					(isinstance(data[i].operator,iterables) and isinstance(data[i].site,iterables) and j in data[i].site) or
+					(isinstance(data[i].operator,iterables) and len(data[i].operator)>j) or
+					(not isinstance(data[i].operator,iterables) and data[i].operator is not None)))]
+			obj = list([separ.join(tuple(sorted(list(set(obj)),key = lambda i: obj.index(i))))
+				for j in sites(obj,data)])
+			return obj
+
+		def strings(obj,data):
+			obj = delim.join([self.data[i].string 
+				for i in self.data 
+				if self.data[i] is not None and self.data[i].string is not None])
+			return obj
+
+		def localities(obj,data):
+			obj = len(sites(obj,data))
+			return obj
+
 
 		cls = Operator
 		defaults = {}
@@ -2848,103 +2929,42 @@ class Operators(Object):
 		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
+		if not all(isinstance(self.data[i],Object) for i in self.data):
+			self.data = Dictionary()
+
+		if index == -1:
+			index = len(self)
+
 		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
-
-		self.data = insertion(self.data,index,{index: data})
-
-		return
-
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (bool,int,str): Verbosity of message			
-		'''		
-
-		msg = []
-		options = dict(align='<',space=1,width=2)
-
-		for attr in ['string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
-
-			substring = getattr(self,attr,None)
-
-			if attr in ['data']:
-				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)]
-			else:
-				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring]
-			string = '%s: %s'%(attr,substring)
-			msg.append(string)
-
-		for attr in (self.data if self.data is not None else []):
-			string = []
-			for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
-				
-				if subattr is None:
-					subattr = 'data.mean'
-					if self.parameters is None or self.parameters() is None:
-						substring = self.data[attr].parameters()
-					else:
-						substring = (self.data[attr].parameters(parameters) for parameters in (
-							self.parameters(self.parameters()) if self.parameters.size>1
-							else (self.parameters(self.parameters()),)))
-						substring = array([i for i in substring if i is not None])
-						if substring.size:
-							substring = norm(substring)/sqrt(substring.size)
-						else:
-							substring = None
-					if substring is not None:
-						substring = '%0.4e'%(substring)
-					else:
-						substring = str(substring)
-				else:
-					substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
-					if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
-						substring = str(substring)
-					elif isinstance(substring,dict):
-						substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
-					elif substring is not None:
-						substring = '%0.4e'%(substring)
-					else:
-						substring = str(substring)
-
-				substring = '%s : %s'%(subattr,'{:{align}{space}{width}}'.format(substring,**options))
-				
-				string.append(substring)
-
-			string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join(string))
-
-			msg.append(string)
-
-		for attr in ['parameters']:
-			string = []
-			for subattr in [None,'shape']:
-				if subattr is None:
-					subattr = attr
-					substring = str(getattr(self,attr,None))
-				else:
-					substring = getattr(self.parameters,subattr)
-				if isinstance(substring,(str,int,list,tuple,*arrays)):
-					substring = '%s'%(substring,)
-				elif substring is not None:
-					substring = '%0.4e'%(substring)
-				else:
-					substring = str(substring)
-				substring = '%s : %s'%(subattr,substring)
-
-				string.append(substring)
-
-			string = ', '.join(string)
-
-			msg.append(string)			
-
-		msg = '\n'.join(msg)
-
 		
-		self.log(msg,verbose=verbose)
+		operator = None
+		site = None
+		string = None
+		locality = None
+
+		data = datas({index:data},self.data)
+		operator = operators(operator,data)
+		site = sites(site,data)
+		string = strings(string,data)
+		locality = localities(locality,data)
+
+		shape = () if self.n is None else (self.n,self.n)
+		size = prod(self.shape)
+		ndim = len(self.shape)
+		dtype = self.dtype if self.dtype is not None else None
+
+		self.data = data
+		self.operator = operator
+		self.site = site
+		self.string = string
+		self.locality = locality
+
+		self.shape = shape
+		self.size = size
+		self.ndim = ndim
+		self.dtype = dtype
 
 		return
-
 
 	def dump(self,path=None):
 		'''
@@ -3056,7 +3076,6 @@ class Unitary(Hamiltonian):
 class Channel(Hamiltonian):
 	pass
 
-
 class Module(Channel):
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
@@ -3070,14 +3089,19 @@ class Module(Channel):
 		'''
 
 		# Set attributes
-		if self.data is None:
-			self.data = Dictionary()
-		if self.state is None:
-			self.state = None
-		if self.conj is None:
-			self.conj = False
-		if self.parameters is None:
-			self.parameters = None
+		
+		self.spaces()
+		self.times()
+		self.lattices()
+
+		self.identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system)
+
+		self.shape = () if self.n is None else (self.n,self.n)
+		self.size = prod(self.shape)
+		self.ndim = len(self.shape)
+		self.dtype = self.dtype if self.dtype is not None else None
+
+		self.setup(data)
 
 		# Set data
 		if data is None:
@@ -3087,12 +3111,14 @@ class Module(Channel):
 		elif data is False:
 			data = {i: None for i in self.data}
 		elif isinstance(data,dict):
-			data = {i: data[i] for i in data}
+			data = {i: data[i] for i in data if i in self.data}
 		for i in data:
 			if data[i] is None:
 				self.data[i] = data[i]
 			elif isinstance(data[i],dict):
 				self.data[i].init(**data[i])
+			elif isinstance(data[i],type(self.data[i])):
+				self.data[i] = data[i]
 			else:
 				self.data[i].init(data=data[i])
 
@@ -3138,7 +3164,10 @@ class Module(Channel):
 			if self.data[i] is None:
 				continue
 
-			kwargs = dict(state=self.state)
+			kwargs = dict(
+				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
+				state=self.state
+				)
 			self.data[i].init(**kwargs)
 
 
@@ -3179,7 +3208,7 @@ class Module(Channel):
 				out = self.data[i].grad(parameters,out)
 				for j in [j for j in indices if j>i]:
 					out = self.data[i](parameters,out)				
-				inplace(grad,i,out,'add')
+				grad = inplace(grad,i,out,'add')
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -3242,7 +3271,8 @@ class Label(Operator):
 		'''
 
 		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity
-		
+		parameters = self.parameters() if parameters is None and self.parameters is not None else parameters if parameters is not None else None
+
 		if state is None:
 			return self.func(parameters=parameters,state=state)
 		else:
@@ -3525,21 +3555,21 @@ class Callback(System):
 
 
 					defaults = Dictionary(
-						state=metric.state,
 						data={i: model.data[i] for i in model.data},
+						state=metric.state,
 						label=metric.label)
 
 					tmp = Dictionary(
-						state=metric.state,
 						data={i: model.data[i] for i in model.data if (not model.data[i].unitary)},
+						state=metric.state,
 						label=metric.label)
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						tmp.update(dict())
+						tmp.update(dict(data=tmp.data,state=tmp.state,label=tmp.label))
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						tmp.update(dict(data={i:False for i in tmp.data}))
+						tmp.update(dict(data={i:False for i in tmp.data},state=tmp.state,label=tmp.label))
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						tmp.update(dict(state=False,data={i:False for i in tmp.data}))
+						tmp.update(dict(data={i:False for i in tmp.data},state=False,label=tmp.label))
 				
 					data = tmp.data
 					state = metric.state
@@ -3725,6 +3755,22 @@ class Callback(System):
 
 			model.log(msg)
 
+
+			# parameters = attributes['parameters'][-1]
+			# params = metric.label.parameters()
+			# state = metric.state()
+			# label = metric.label()
+			# index = list(model.data)[0]
+			# print(model.data[index].parameters.parameters,metric.label.parameters.parameters,)
+			# print(parameters,model.parameters(parameters))
+			# print(params,metric.label.parameters(params))
+			# print(model(parameters,state))
+			# print(label)
+			# print(cos(model.data[index].parameters(parameters))*model.data[index].identity + -1j*sin(model.data[index].parameters(parameters))*model.data[index].data)
+			# print(model(parameters,state)-label)
+			# print()
+			# print()
+			# print()
 
 		return status
 

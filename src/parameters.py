@@ -15,13 +15,12 @@ for PATH in PATHS:
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,ones,zeros,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
-from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
+from src.utils import pi,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
 
 from src.system import System,Dict
 from src.io import load,dump,join,split
-
 
 class Parameter(System):
 
@@ -122,6 +121,53 @@ class Parameter(System):
 		else:
 			return self.constraint(*args,**kwargs)
 
+	def init(self,data=None,parameters=None,indices=None,variable=None):
+		'''
+		Initialize class data
+		Args:
+			data (array): Data of class, if None, shape must be not None to initialize data
+			parameters (array): Parameters of class
+			indices (array): Indices of parameters of class
+			variable (bool): Parameter is variable or constant
+		'''
+
+		# Set data
+		self.data = data if data is not None else self.data
+		self.indices = indices if indices is not None else self.indices
+		self.variable = variable if variable is not None else self.variable
+
+		if self.parameters is None:
+			if parameters is None:
+				self.parameters = parameters
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict(dict(parameters=parameters))
+			else:
+				self.parameters = Dict({i:parameters[i] for i in parameters})
+		elif not isinstance(self.parameters,dict):
+			if parameters is None:
+				self.parameters = Dict(dict(parameters=self.parameters))
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict(dict(parameters=parameters))
+			elif isinstance(parameters,dict):
+				self.parameters = Dict({**dict(parameters=self.parameters),**parameters})
+		elif isinstance(self.parameters,dict):
+			if parameters is None:
+				self.parameters = Dict({**self.parameters})
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict({**self.parameters,**dict(parameters=parameters)})
+			else:
+				self.parameters = Dict({**self.parameters,**parameters})
+
+		self.data = initialize(**self)
+
+		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
+		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
+		self.ndim = getattr(self.data,'ndim',self.ndim) if self.data is not None else self.ndim
+		self.dtype = getattr(self.data,'dtype',self.dtype) if self.data is not None else self.dtype
+
+		self.setup()
+
+		return
 
 	def setup(self):
 		'''
@@ -202,40 +248,37 @@ class Parameter(System):
 		
 		self.kwargs.update(defaults)
 
-		if self.data is None:
-			def wrapper(parameters):
-				return parameters
-			def gradient_wrapper(parameters):
-				return 1
-		elif self.indices is not None and self.parameters is not None:
+		boolean_wrapper = None
+		boolean_func = None
+		if self.indices is not None and self.parameters is not None:
+			boolean_wrapper = 0
 			def wrapper(parameters):
 				return self.kwargs['parameters']*parameters[self.indices]
 			def gradient_wrapper(parameters):
 				return self.kwargs['parameters']
 		elif self.indices is not None and self.parameters is None:
+			boolean_wrapper = 1			
 			def wrapper(parameters):
 				return parameters
 			def gradient_wrapper(parameters):
 				return 1				
 		elif self.indices is None and self.parameters is not None:
+			boolean_wrapper = 2			
 			def wrapper(parameters):
 				return self.kwargs['parameters']*parameters
 			def gradient_wrapper(parameters):
 				return self.kwargs['parameters']				
 		elif self.indices is None and self.parameters is None:
+			boolean_wrapper = 3			
 			def wrapper(parameters):
 				return parameters
 			def gradient_wrapper(parameters):
 				return 1
 		
-		self.wrapper = jit(wrapper)
-		self.gradient_wrapper = jit(gradient_wrapper)
-
-
 		if self.variable:
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-		
+				boolean_func = 4
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
 
@@ -243,7 +286,7 @@ class Parameter(System):
 					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))
 
 			elif self.method in ['bounded']:
-
+				boolean_func = 5
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(bound(parameters))
 
@@ -251,7 +294,7 @@ class Parameter(System):
 					return self.wrapper(gradient_bound(parameters))
 
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-		
+				boolean_func = 6
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
 
@@ -259,7 +302,7 @@ class Parameter(System):
 					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))
 
 			elif self.method in ['constrained']:					
-		
+				boolean_func = 7
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(bound(parameters))
 
@@ -267,7 +310,7 @@ class Parameter(System):
 					return self.wrapper(gradient_bound(parameters))
 
 			elif self.method in ['unconstrained']:					
-				
+				boolean_func = 8
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(parameters)
 
@@ -275,7 +318,7 @@ class Parameter(System):
 					return self.gradient_wrapper(parameters)
 
 			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-				
+				boolean_func = 9				
 				def func(parameters,*args,**kwargs):
 					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
@@ -283,7 +326,7 @@ class Parameter(System):
 					return 0
 
 			else:
-
+				boolean_func = 10
 				if isinstance(self.method,dict):
 					func = self.method.get('func')
 				elif isinstance(self.method,str):
@@ -358,61 +401,19 @@ class Parameter(System):
 
 		parameters = self.data if self.data is not None else None
 
+		wrapper = jit(wrapper)
+		gradient_wrapper = jit(gradient_wrapper)
+
 		func = jit(func,parameters=parameters)
 		gradient = jit(gradient,parameters=parameters)
 		constraint = jit(constraint,parameters=parameters)
 
+		self.wrapper = wrapper
+		self.gradient_wrapper = gradient_wrapper
+
 		self.func = func
 		self.gradient = gradient
 		self.constraint = constraint
-
-		return
-
-	def init(self,data=None,parameters=None,indices=None,variable=None):
-		'''
-		Initialize class data
-		Args:
-			data (array): Data of class, if None, shape must be not None to initialize data
-			parameters (array): Parameters of class
-			indices (array): Indices of parameters of class
-			variable (bool): Parameter is variable or constant
-		'''
-
-		# Set data
-		self.data = data if data is not None else self.data
-		self.indices = indices if indices is not None else self.indices
-		self.variable = variable if variable is not None else self.variable
-
-		if self.parameters is None:
-			if parameters is None:
-				self.parameters = parameters
-			elif not isinstance(parameters,dict):
-				self.parameters = Dict(dict(parameters=parameters))
-			else:
-				self.parameters = Dict({i:parameters[i] for i in parameters})
-		elif not isinstance(self.parameters,dict):
-			if parameters is None:
-				self.parameters = Dict(dict(parameters=self.parameters))
-			elif not isinstance(parameters,dict):
-				self.parameters = Dict(dict(parameters=parameters))
-			elif isinstance(parameters,dict):
-				self.parameters = Dict({**dict(parameters=self.parameters),**parameters})
-		elif isinstance(self.parameters,dict):
-			if parameters is None:
-				self.parameters = Dict({**self.parameters})
-			elif not isinstance(parameters,dict):
-				self.parameters = Dict({**self.parameters,**dict(parameters=parameters)})
-			else:
-				self.parameters = Dict({**self.parameters,**parameters})
-
-		self.data = initialize(**self)
-
-		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
-		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
-		self.ndim = getattr(self.data,'ndim',self.ndim) if self.data is not None else self.ndim
-		self.dtype = getattr(self.data,'dtype',self.dtype) if self.data is not None else self.dtype
-
-		self.setup()
 
 		return
 

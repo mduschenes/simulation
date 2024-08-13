@@ -1075,7 +1075,7 @@ class Metric(System):
 		if self.shapes is None:
 			self.shapes = ()
 
-		self.init()
+		self.setup()
 
 		self.info()
 
@@ -1166,7 +1166,7 @@ class Metric(System):
 		return
 
 
-	def init(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
+	def setup(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric
 		Args:
@@ -1731,7 +1731,7 @@ class Optimization(System):
 		msg = []
 
 		for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']:
-			string = '%s %s: %s'%('Optimizer',attr,getattr(self,attr))
+			string = '%s %s: %s'%('Optimizer',attr,getattrs(self,attr,delimiter=delim))
 			msg.append(string)
 
 		for attr in ['dtype']:
@@ -1777,7 +1777,6 @@ class Optimizer(Optimization):
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
-		# optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 
 		optimizer = hyperparameters.get('optimizer')
 		

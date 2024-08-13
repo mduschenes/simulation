@@ -12,14 +12,15 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,array,allclose,delim,spawn,einsum,conjugate
 from src.utils import arrays,iterables,scalars,integers,floats,pi
-from src.io import load,glob
+from src.io import load,dump,glob
+from src.call import rm,echo
 from src.system import Dict
 from src.iterables import namespace
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
 
-from src.quantum import Channel
+from src.train import train
 
 def test_architecture(*args,**kwargs):
 
@@ -234,14 +235,14 @@ def test_module(*args,**kwargs):
 				"system":{"seed":123,"architecture":architecture}
 			},	
 			"state": {
-				"data":"random",
-				"operator":"product",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
+				# "data":"random",
+				# "operator":"product",
+				# "site":None,
+				# "string":"psi",
+				# "parameters":True,
 				"N":2,"D":2,
-				"ndim":1,
-				"system":{"seed":123,"architecture":architecture}
+				# "ndim":1,
+				# "system":{"seed":123,"architecture":architecture}
 				},
 		})
 
@@ -346,14 +347,43 @@ def test_module(*args,**kwargs):
 
 	assert len(data)<2 or allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
 
+	print("Passed")
+
 	return
+
+@pytest.mark.filterwarnings(r"ignore:The line search algorithm did not converge")
+def test_train_pauli(path,*args,tol=None,**kwargs):
+
+	path = 'config/test.json'# if path is None else path
+	tol = 1e-10 if tol is None else tol
+
+	settings = path
+	args = ()
+	kwargs = {}
+
+	model,parameters,state,optimizer = train(settings,*args,**kwargs)
+
+	paths = [optimizer.cwd]
+	execute = True
+	verbose = True
+	for path in paths:
+		rm(path,execute=execute,verbose=verbose)
+
+	assert optimizer.track['objective'][-1] < tol, "Incorrect Optimization of %r"%(model)
+
+	print("Passed")
+
+	return
+
 
 
 if __name__ == '__main__':
 
-	arguments = 'settings'
+	arguments = 'path'
 	args = argparser(arguments)
 
 	# test_architecture(*args,**args)
 	# test_contract(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
+	test_train_pauli(*args,**args)
+	# main(*args,**args)

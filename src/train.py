@@ -16,11 +16,13 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
 
-def setup(settings):
+def setup(settings,*args,**kwargs):
 	'''
 	Setup settings
 	Args:
 		settings (dict,str): settings
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments
 	Returns:
 		settings (dict): settings
 	'''
@@ -38,6 +40,7 @@ def setup(settings):
 	elif isinstance(settings,str):
 		settings = load(settings,default=default,wrapper=Dict)
 
+	setter(settings,kwargs,delimiter=delim,default=True)
 	setter(settings,defaults,delimiter=delim,default=False)
 
 	return settings
@@ -48,12 +51,21 @@ def train(settings,*args,**kwargs):
 	Train model
 	Args:
 		settings (dict,str,iterable[str,dict]): settings
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments		
 	Returns:
 		model (object): Model instance
+		parameters (object): Model parameters
+		state (object): Model state
+		optimizer (object): Model optimizer
 	'''
 
-	settings = setup(settings)
+	settings = setup(settings,*args,**kwargs)
+	
 	model = None
+	parameters = None
+	state = None
+	optimizer = None
 
 
 	if settings.boolean.load:
@@ -104,13 +116,15 @@ def train(settings,*args,**kwargs):
 		model.dump()
 
 
-	return model
+	return model,parameters,state,optimizer
 
 def run(settings,*args,**kwargs):
 	'''
 	Run models
 	Args:
 		settings (dict,str,iterable[str,dict]): settings
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments		
 	Returns:
 		model (object): Model instance
 	'''
@@ -122,15 +136,19 @@ def run(settings,*args,**kwargs):
 	elif isinstance(settings,dict):
 		models = [settings]
 
-	models = {name: model for name,model in enumerate(models)}
+	models = {name: Dict(settings=settings,model=None,parameters=None,state=None,optimizer=None)
+		for name,settings in enumerate(models)}
 
-	for name in models:
+	for model in models:
 		
-		settings = models[name]
+		settings = models[name].settings
 
-		model = train(settings,*args,**kwargs)
+		model,parameters,state,optimizer = train(settings,*args,**kwargs)
 	
-		models[name] = model
+		models[name].model = model
+		models[name].parameters = parameters
+		models[name].state = state
+		models[name].optimizer = optimizer
 
 	if len(models) == 1:
 		models = models[name]

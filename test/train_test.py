@@ -12,6 +12,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,array,allclose,delim,spawn,einsum,conjugate
 from src.io import load,glob
+from src.call import rm
 from src.system import Dict
 from src.iterables import namespace
 from src.logger import Logger
@@ -23,7 +24,15 @@ from src.train import train
 
 def test_train(path,*args,**kwargs):
 
-	model = train(path,*args,**kwargs)
+	path = 'config/settings.json' if path is None else path
+
+	model,parameters,state,optimizer = train(path,*args,**kwargs)
+
+	paths = [optimizer.cwd]
+	execute = True
+	verbose = True
+	for path in paths:
+		rm(path,execute=execute,verbose=verbose)
 
 	return
 

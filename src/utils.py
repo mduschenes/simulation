@@ -3632,7 +3632,6 @@ def contraction(data=None,state=None,site=None):
 					subscripts = 'ij,jk,lk->il'
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
-					
 					def func(data,state):
 						return einsummation(data,state,conjugate(data))
 
@@ -3670,7 +3669,7 @@ def contraction(data=None,state=None,site=None):
 					subscripts = 'uij,jk,ulk->il'
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
-				
+
 					def func(data,state):
 						return einsummation(data,state,conjugate(data))
 
@@ -3878,7 +3877,7 @@ def gradient_contraction(data=None,state=None,site=None):
 
 	elif isinstance(data,tensors):
 
-		raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 	func = wrapper(func) if wrapper is not None else func
 

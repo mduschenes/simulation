@@ -86,7 +86,7 @@ class Parameter(System):
 		'''
 	
 		if parameters is not None:
-			return parameters
+			return self.func(parameters)
 		else:
 			return self.data
 
@@ -102,9 +102,37 @@ class Parameter(System):
 		'''
 	
 		if parameters is not None:
-			return 1
+			return self.gradient(parameters)
 		else:
 			return 0
+
+	def init(self,data=None,parameters=None,indices=None,variable=None):
+		'''
+		Initialize class data
+		Args:
+			data (array): Data of class, if None, shape must be not None to initialize data
+			parameters (array): Parameters of class
+			indices (array): Indices of parameters of class
+			variable (bool): Parameter is variable or constant
+		'''
+
+		# Set data
+		self.data = data if data is not None else self.data if self.data is not None else self.parameters if self.parameters is not None else None
+		self.indices = indices if indices is not None else self.indices
+		self.variable = variable if variable is not None else self.variable
+
+		self.parameters = parameters if parameters is not None else self.parameters
+
+		self.data = initialize(**self)
+
+		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
+		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
+		self.ndim = getattr(self.data,'ndim',self.ndim) if self.data is not None else self.ndim
+		self.dtype = getattr(self.data,'dtype',self.dtype) if self.data is not None else self.dtype
+
+		self.setup()
+
+		return
 
 	def setup(self):
 		'''
@@ -132,33 +160,25 @@ class Parameter(System):
 		self.args = self.args if self.args is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
-		return
+		print(self.indices)
 
-	def init(self,data=None,parameters=None,indices=None,variable=None):
-		'''
-		Initialize class data
-		Args:
-			data (array): Data of class, if None, shape must be not None to initialize data
-			parameters (array): Parameters of class
-			indices (array): Indices of parameters of class
-			variable (bool): Parameter is variable or constant
-		'''
+		if self.indices is None:
+			def func(parameters,*args,**kwargs):
+				return parameters
+			
+			def gradient(parameters,*args,**kwargs):
+				return 1
+		
+		elif self.indices is not None:
+			def func(parameters,*args,**kwargs):
+				print(parameters.shape,self.shape)
+				return parameters[self.indices]
+			
+			def gradient(parameters,*args,**kwargs):
+				return 1
 
-		# Set data
-		self.data = data if data is not None else self.data
-		self.indices = indices if indices is not None else self.indices
-		self.variable = variable if variable is not None else self.variable
-
-		self.parameters = self.data if parameters is not None else self.parameters
-
-		self.data = initialize(**self)
-
-		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
-		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
-		self.ndim = getattr(self.data,'ndim',self.ndim) if self.data is not None else self.ndim
-		self.dtype = getattr(self.data,'dtype',self.dtype) if self.data is not None else self.dtype
-
-		self.setup()
+		self.func = func
+		self.gradient = gradient
 
 		return
 
@@ -249,6 +269,11 @@ class Parameters(System):
 
 			data[parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
 			data[parameter].shape = self.parameters[parameter].shape
+
+			# data[group][parameter].shape = (
+			# 	*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
+			# 	*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+			# )
 
 			kwargs = {
 				**self.parameters[parameter],

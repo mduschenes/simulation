@@ -33,28 +33,28 @@ def test_object(path,tol):
 		'Pauli': {
 			'basis':'Pauli',
 			'kwargs':dict(
-				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',
+				operator=delim.join(['X','Y','Z']),site=[0,1,2],string='XYZ',
 				kwargs=dict(N=3,D=2,ndim=2,parameters=1,verbose=True),
 			),
 		},
 		'Haar':{
 			'basis':'Haar',
 			'kwargs': dict(
-				data=delim.join(['haar']*3),operator=None,site=[0,1,2],string='U',
+				operator=delim.join(['haar']*3),site=[0,1,2],string='U',
 				kwargs=dict(N=3,D=2,ndim=2,seed=1,parameters=1,verbose=True),
 			),
 		},
 		'Psi':{
 			'basis':'State',
 			'kwargs': dict(
-				data=delim.join(['minus']*2),operator=None,site=[0,1],string='-',
+				operator=delim.join(['minus']*2),site=[0,1],string='-',
 				kwargs=dict(N=2,D=2,ndim=1,seed=1,parameters=1,verbose=True),
 			),
 		},
 		'Noise':{
 			'basis':'Noise',
 			'kwargs': dict(
-				data=delim.join(['phase']*2),operator=None,site=[0,1],string='K',
+				operator=delim.join(['phase']*2),site=[0,1],string='K',
 				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25,verbose=True),
 			),
 		},
@@ -70,8 +70,8 @@ def test_object(path,tol):
 
 		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
 		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator.data,
-			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data %s != %r"%(operator.string,operator(operator.parameters))
-		assert tuple(operator.operator) == tuple(args['data'].split(delim)),"%r != %r"%(tuple(operator.operator),tuple(args['data'].split(delim)))
+			tensorprod([base.basis[i]() for i in args['operator'].split(delim)]))), "Operator.data %s != %r"%(operator.string,operator(operator.parameters))
+		assert tuple(operator.operator) == tuple(args['operator'].split(delim)),"%r != %r"%(tuple(operator.operator),tuple(args['operator'].split(delim)))
 
 		for attr in kwargs:
 			if attr in ['parameters']:
@@ -80,15 +80,15 @@ def test_object(path,tol):
 				assert getattrs(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
 
 
-	operator = Operator(data='haar',N=1,D=2,ndim=1,parameters=1,verbose=True)
+	operator = Operator(operator='haar',N=1,D=2,ndim=1,parameters=1,verbose=True)
 	print(type(operator),operator,operator(operator.parameters(),operator.identity),operator.operator,operator.site,operator.string,operator.parameters,operator)
 
-	operator = Operator('I',N=3,verbose=True)
-	print(operator)
+	operator = Operator(operator='I',N=3,D=2,string='identity',parameters=True,verbose=True)
 	print(type(operator),operator,operator(operator.parameters(),operator.identity),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
 
 
 	print("Passed")
+
 	return
 
 
@@ -463,6 +463,9 @@ def test_fisher(path,tol):
 
 		label.init(state=state)
 		model.init(state=state)
+
+		data = {i:None for i in model.data if not model.data[i].unitary}
+		model.init(data=data)
 		
 		parameters = model.parameters()
 		state = model.state()
@@ -868,21 +871,30 @@ def check_machine_precision(path,tol):
 
 
 if __name__ == '__main__':
-	path = 'config/settings.test.json'
-	path = 'config/settings.tmp.json'
+	path = 'config/test.json'	
 	path = 'config/settings.json'
 
 	tol = 5e-8 
 
-	func = check_machine_precision
-	func = check_fisher
-	func = check_fisher
-	func = test_object
-	func = test_data
-	func = test_initialization
-	func = test_hessian
-	func = test_fisher
-	func = test_model
-	args = ()
-	kwargs = dict(path=path,tol=tol,profile=False)
-	profile(func,*args,**kwargs)
+	# test_object(path,tol)
+	# test_logger(path,tol)
+	# test_data(path,tol)
+	# test_initialization(path,tol)
+	# test_hessian(path,tol)
+	# test_model(path,tol)
+
+	# test_fisher(path,tol)
+	test_object(path,tol)
+
+	# func = check_machine_precision
+	# func = check_fisher
+	# func = check_fisher
+	# func = test_object
+	# func = test_data
+	# func = test_initialization
+	# func = test_hessian
+	# func = test_fisher
+	# func = test_model
+	# args = ()
+	# kwargs = dict(path=path,tol=tol,profile=False)
+	# profile(func,*args,**kwargs)

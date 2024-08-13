@@ -190,8 +190,43 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	return
 
+def test_importlib(path=None,**kwargs):
+
+	import os,sys,importlib
+
+	objs = {"src.io":"load","src.quantum":"Object"}
+	
+	for attr in objs:
+		
+		obj = attr
+		module = objs[attr]
+
+		try:
+			path = os.path.basename(obj).strip('.')
+			data = getattr(importlib.import_module(path),module)
+		except (SyntaxError,TypeError) as exception:
+			logger.log(info,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+			exception = SyntaxError
+			raise exception
+		except Exception as exception:
+			path = obj
+			spec = importlib.util.spec_from_file_location(module,path)
+			data = importlib.util.module_from_spec(spec)
+			sys.modules[module] = data
+			spec.loader.exec_module(data)
+			data = getattr(data,module)
+
+		print(data)
+
+		assert data is not None
+
+	print('Passed')
+
+	return
+
 
 if __name__ == '__main__':
 	# test_load()
-	test_dump()
+	# test_dump()
+	test_importlib()
 

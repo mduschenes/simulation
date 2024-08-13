@@ -25,7 +25,8 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 from src.utils import integers,floats,delim,Null,null,scalars,arrays
 
 from src.iterables import Dict,Dictionary,getter,setter
-from src.io import join,split,rm,exists
+from src.io import join,split,exists
+from src.call import rm,echo
 from src.logger import Logger
 
 
@@ -115,10 +116,27 @@ class System(Dictionary):
 
 		return
 		
-	def __atexit__(self):
+	def __atexit__(self,cleanup=None):
 		'''
-		Cleanup upon class exit
+		Set cleanup state of class
+		Args:
+			cleanup (bool,str,iterable[str]): Cleanup paths and attributes of class
 		'''
+
+		cleanup = self.cleanup if cleanup is None else cleanup
+
+		if cleanup is None:
+			paths = []
+		elif isinstance(cleanup,bool):
+			paths = []
+		elif isinstance(cleanup,str):
+			paths = [getattr(self,cleanup,cleanup)]
+		else:
+			paths = [getattr(self,path,path) for path in cleanup]
+
+		for path in paths:
+			echo(path,execute=False,verbose=False)
+
 		return
 
 

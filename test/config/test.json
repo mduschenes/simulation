@@ -1,7 +1,80 @@
 {
-	"attr":{
-		"x":"x",
-		"y":"y",
-		"label":["b=$0,2$","c=@d,e@","f","g=%1,8,2%","h=#2,4,7#"]
-	}
+"cls":{
+	"model":"src.quantum.Channel",
+	"label":"src.quantum.Label",
+	"state":"src.quantum.State",
+	"callback":"src.quantum.Callback"
+	},
+"boolean":{
+	"call":1,
+	"train":1,
+	"load":0,
+	"dump":0
+	},
+"model":{
+	"data":{
+		"x":{
+			"operator":["X"],"site":"i","string":"x",
+			"parameters":{"data":"random","seed":123},
+			"variable":true
+		}
+	},
+	"N":1,
+	"D":2,
+	"d":1,
+	"M":1,
+	"tau":1,
+	"P":1,
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square"
+	},
+"system":{
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":null,
+	"architecture":null,
+	"seed":null,
+	"key":null,
+	"instance":null,
+	"cwd":"tmp.data",
+	"path":null,
+	"path":"data.hdf5",
+	"conf":"logging.conf",
+	"logger":"log.log",
+	"cleanup":false,
+	"verbose":"info"
+	},
+"optimize":{
+	"iterations":[0,20],
+	"optimizer":"gd",
+	"metric":"abs2",	
+	"alpha":1e-4,"beta":1e-4,
+	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
+	"track":{
+		"iteration":[],"objective":[],
+		"alpha":[],"beta":[],
+		"purity":[],
+		"N":[],"D":[],"d":[],"M":[],"tau":[],"P":[],
+		"noise.parameters":[]
+		}	
+	},
+"label": {
+	"operator":"X",
+	"site":null,
+	"string":"U",
+	"parameters":0.5,
+	"ndim":2,
+	"seed":null
+	},
+"state": {
+	"operator":"zero",
+	"site":null,
+	"string":"psi",
+	"parameters":null,
+	"ndim":2,
+	"seed":null
+	},
+"callback":{}
 }
