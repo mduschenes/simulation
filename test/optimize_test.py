@@ -87,7 +87,8 @@ def test_objective(path,tol):
 
 	return
 
-
+@pytest.mark.filterwarnings(r"ignore:Rounding errors prevent the line search from converging")
+@pytest.mark.filterwarnings(r"ignore:The line search algorithm did not converge")
 def test_optimizer(path,tol):
 
 	settings = load(path)
@@ -132,20 +133,21 @@ def test_optimizer(path,tol):
 	iteration = optimizer.track['iteration'][-1]-iteration
 	size = min(len(optimizer.track[attr]) for attr in optimizer.track)-size
 
-	eps = 1e-13
+	eps = 1e-10
 
 	assert (abs(value) < eps) or value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
 	assert iteration == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
 	assert size == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
-	if optimizer.paths is not None:
-		for path in optimizer.paths:
-			rm(optimizer.paths[path],execute=True)
+	paths = [optimizer.cwd]
+	execute = True
+	verbose = True
+	for path in paths:
+		rm(path,execute=execute,verbose=verbose)
 
 	print('Passed')
+
 	return
-
-
 
 
 

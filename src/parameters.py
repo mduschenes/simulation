@@ -15,12 +15,13 @@ for PATH in PATHS:
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,ones,zeros,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
-from src.utils import pi,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
+from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
 
 from src.system import System,Dict
 from src.io import load,dump,join,split
+
 
 class Parameter(System):
 
@@ -85,7 +86,7 @@ class Parameter(System):
 		'''
 	
 		if parameters is not None:
-			return self.func(*args,parameters=parameters,**kwargs)
+			return self.func(parameters)
 		else:
 			return self.data
 
@@ -101,25 +102,9 @@ class Parameter(System):
 		'''
 	
 		if parameters is not None:
-			return self.gradient(*args,parameters=parameters,**kwargs)
+			return self.gradient(parameters)
 		else:
 			return 0
-
-	def constraints(self,parameters=None,*args,**kwargs):
-		'''
-		Class constraints
-		Args:
-			parameters (array): parameters
-			args (iterable[object]): Positional arguments for function
-			kwargs (dict[str,object]): Keyword arguments for function	
-		Returns:
-			constraints (array): constraints
-		'''
-
-		if parameters is not None:
-			return self.constraint(*args,parameters=parameters,**kwargs)
-		else:
-			return self.constraint(*args,**kwargs)
 
 	def init(self,data=None,parameters=None,indices=None,variable=None):
 		'''
@@ -132,7 +117,7 @@ class Parameter(System):
 		'''
 
 		# Set data
-		self.data = data if data is not None else self.data
+		self.data = data if data is not None else self.data if self.data is not None else self.parameters if self.parameters is not None else None
 		self.indices = indices if indices is not None else self.indices
 		self.variable = variable if variable is not None else self.variable
 
@@ -193,227 +178,95 @@ class Parameter(System):
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if isinstance(self.axis,iterables) else [*((self.axis,) if (isinstance(self.axis,int) or getattr(self,self.axis,None) is not None) else ()),] if self.axis is not None else None
 
 		self.args = self.args if self.args is not None else ()
-		self.kwargs = self.kwargs if self.kwargs is not None else {}
+		self.kwargs = Dict(self.kwargs if self.kwargs is not None else {})
 
-		# Set functions
-		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+		self.kwargs.update(dict(
+			indices = self.indices,
+			parameters = prod((self.parameters[i] for i in self.parameters if self.parameters[i] is not None)) if isinstance(self.parameters,dict) else self.parameters,
+			))
 
-		defaults = {
-			'constants':{},
-			'lambda':0,
-			'coefficients':[1,2*pi],
-			'shift':[0,-pi/2],
-			'sigmoid':1,
-			'default':0
-			}
-		self.kwargs.update({attr: self.kwargs.get(attr,kwargs.get(attr,defaults[attr])) for attr in defaults})
 
-		for attr in self.kwargs:
-
-			if self.kwargs.get(attr) is None:
-				continue
-
-			if attr in ['lambda','coefficients','shift','sigmoid','default']:
-				
-				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
-			
-			elif attr in ['constants']:
-
-				if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
-					axis = -1
-					self.kwargs[attr] = {axis:self.kwargs[attr]}
-				for axis in list(self.kwargs[attr]):
-					constants = self.kwargs[attr].pop(axis)
-					indices = [int(i) for i in constants]
-					values = [array(constants[i],dtype=self.dtype) for i in constants]
-					axis = int(axis)
-					self.kwargs[attr][axis] = {i:j for i,j in zip(indices,values)}
-
-		defaults = {
-			'string':str(self),
-			'parameters': prod((self.parameters[i] for i in self.parameters if self.parameters[i] is not None)) if isinstance(self.parameters,dict) else self.parameters
-			}
-		self.kwargs.update(defaults)
-
-		defaults = {}
-		if self.method in ['time']:
-			try:
-				defaults.update({
-					'tau':getattr(self,'tau',None),
-					'scale':self.kwargs.get('scale',None)
-					}
-				)
-			except:
-				self.method = None
-		
-		self.kwargs.update(defaults)
-
-		boolean_wrapper = None
-		boolean_func = None
-		if self.indices is not None and self.parameters is not None:
-			boolean_wrapper = 0
-			def wrapper(parameters):
-				return self.kwargs['parameters']*parameters[self.indices]
-			def gradient_wrapper(parameters):
-				return self.kwargs['parameters']
-		elif self.indices is not None and self.parameters is None:
-			boolean_wrapper = 1			
-			def wrapper(parameters):
-				return parameters
-			def gradient_wrapper(parameters):
-				return 1				
-		elif self.indices is None and self.parameters is not None:
-			boolean_wrapper = 2			
-			def wrapper(parameters):
-				return self.kwargs['parameters']*parameters
-			def gradient_wrapper(parameters):
-				return self.kwargs['parameters']				
-		elif self.indices is None and self.parameters is None:
-			boolean_wrapper = 3			
-			def wrapper(parameters):
-				return parameters
-			def gradient_wrapper(parameters):
-				return 1
-		
 		if self.variable:
-
-			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-				boolean_func = 4
+			if self.indices is None and self.parameters is None:
+				
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
-
+					return parameters
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))
+					return 1
 
-			elif self.method in ['bounded']:
-				boolean_func = 5
+			elif self.indices is None and self.parameters is not None:
+				
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(bound(parameters))
-
+					return self.kwargs.parameters*parameters
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.wrapper(gradient_bound(parameters))
+					return self.kwargs.parameters
 
-			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-				boolean_func = 6
+			elif self.indices is not None and self.parameters is None:
+				
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
-
+					return parameters[self.indices]
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))
+					return 1
 
-			elif self.method in ['constrained']:					
-				boolean_func = 7
+			elif self.indices is not None and self.parameters is not None:
+				
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(bound(parameters))
-
+					return self.kwargs.parameters*parameters[self.indices]
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.wrapper(gradient_bound(parameters))
-
-			elif self.method in ['unconstrained']:					
-				boolean_func = 8
+					return self.kwargs.parameters
+			
+			else:
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(parameters)
-
+					return parameters
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.gradient_wrapper(parameters)
-
-			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-				boolean_func = 9				
+					return 1
+		else:
+			if self.indices is None and self.parameters is None:
+				
 				def func(parameters,*args,**kwargs):
-					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
-
+					return self.data
+				
 				def gradient(parameters,*args,**kwargs):
 					return 0
 
-			else:
-				boolean_func = 10
-				if isinstance(self.method,dict):
-					func = self.method.get('func')
-				elif isinstance(self.method,str):
-					func = self.method
-				else:
-					func = None
+			elif self.indices is None and self.parameters is not None:
 				
-				func = load(func)
-
-				if func is None:
-					def func(parameters,*args,**kwargs):
-						return self.wrapper(parameters)
-				else:
-					func = partial(func,self=self)
-	
-				def gradient(parameters,*args,**kwargs):
-					return self.gradient_wrapper(parameters)
-
-			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
-
-				def constraint(parameters,*args,**kwargs):
-					return self.kwargs['lambda']*sum(
-						((parameters[i]- self.kwargs['constants'][axis][i])**2).sum()/parameters.shape[-1]
-						for axis in self.kwargs['constants']
-						for i in self.kwargs['constants'][axis]
-						) if parameters.ndim else self.kwargs['default']
-
-			elif self.method in ['unconstrained']:
-
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['default']
-				
-			else:
-
-				if isinstance(self.method,dict):
-					constraint = self.method.get('constraint')
-				elif isinstance(self.method,str):
-					constraint = None
-				else:
-					constraint = None
-				
-				constraint = load(constraint)
-
-				if constraint is None:
-			
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['default']
-
-				else:
-					constraint = partial(constraint,self=self)
-
-		else:
-
-			if self.data is not None:
-
 				def func(parameters,*args,**kwargs):
-					return self.wrapper(self.data)
-
+					return self.kwargs.parameters*self.data
+				
 				def gradient(parameters,*args,**kwargs):
-					return self.gradient_wrapper(self.data)
+					return 0
 
+			elif self.indices is not None and self.parameters is None:
+				
+				def func(parameters,*args,**kwargs):
+					return self.data[self.indices]
+				
+				def gradient(parameters,*args,**kwargs):
+					return 0
+
+			elif self.indices is not None and self.parameters is not None:
+				
+				def func(parameters,*args,**kwargs):
+					return self.kwargs.parameters*self.data[self.indices]
+				
+				def gradient(parameters,*args,**kwargs):
+					return 0
+			
 			else:
 				def func(parameters,*args,**kwargs):
 					return self.data
-
+				
 				def gradient(parameters,*args,**kwargs):
-					return 0
-
-			def constraint(parameters,*args,**kwargs):
-				return self.kwargs['default']
-
-
-		parameters = self.data if self.data is not None else None
-
-		wrapper = jit(wrapper)
-		gradient_wrapper = jit(gradient_wrapper)
-
-		func = jit(func,parameters=parameters)
-		gradient = jit(gradient,parameters=parameters)
-		constraint = jit(constraint,parameters=parameters)
-
-		self.wrapper = wrapper
-		self.gradient_wrapper = gradient_wrapper
+					return 0							
 
 		self.func = func
 		self.gradient = gradient
-		self.constraint = constraint
 
 		return
 
@@ -487,51 +340,47 @@ class Parameters(System):
 		'''
 		Setup class
 		'''
+		if not isinstance(self.parameters,dict):
+			self.parameters = {str(self.parameters):self.parameters}
 
-		data = {self.parameters[parameter].group: {}
+		# cls = Parameter
+		# for parameter in self.parameters:
+		# 	if not isinstance(self.parameters[parameter],cls):
+		# 		self.parameters[parameter] = cls(**self.parameters[parameter])
+
+		data = {parameter: {} 
 			for parameter in self.parameters 
-			if (self.parameters[parameter].variable)
+			if self.parameters[parameter].variable
 			}
 
-		for group in data:
-			
-			parameters = [parameter 
-				for i,parameter in enumerate(self.parameters) 
-				if ((self.parameters[parameter].variable) and 
-				    (self.parameters[parameter].string in group))
-				]
-			index = max((data[group][parameter].indices for group in data for parameter in data[group]),default=-1)+1
-			local = any(self.parameters[parameter].local for parameter in parameters)
+		for i,parameter in enumerate(data):
 
-			for i,parameter in enumerate(parameters):
+			data[parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
 
-				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
+			data[parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
+			data[parameter].local = True
+			data[parameter].indices = i
+			data[parameter].axis = list(sorted(list(set(self.parameters[parameter].axis)),key=lambda i: self.parameters[parameter].axis.index(i)))
 
-				data[group][parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
-				data[group][parameter].local = local
-				data[group][parameter].indices = index+i if local else index
-				data[group][parameter].axis = list(sorted(list(set(self.parameters[parameter].axis)),key=lambda i: self.parameters[parameter].axis.index(i)))
+			data[parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
+			data[parameter].shape = (
+				*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
+				*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+			)
 
-				data[group][parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
-				data[group][parameter].shape = (
-						*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
-						*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
-					)
+			kwargs = {
+				**self.parameters[parameter],
+				**data[parameter],
+				}
 
-				kwargs = {
-					**self.parameters[parameter],
-					**data[group][parameter],
-					}
+			data[parameter].data = initialize(**kwargs)
 
-				data[group][parameter].data = initialize(**kwargs)
-
-		data = {parameter: data[group][parameter] for group in data for parameter in data[group]}
+		data = {parameter: data[parameter] for parameter in data}
 
 		indices = {parameter:data[parameter].indices for parameter in data}
-		parameters = {parameter: data[parameter].data for parameter in data}
+		parameters = array([data[parameter].data for parameter in data])
 
-		indices = {i: [parameter for parameter in indices if indices[parameter]==i] for i in sorted(set(indices[parameter] for parameter in indices))}		
-		parameters = array([parameters[indices[i][0]] for i in indices]).transpose()
+		parameters = parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()
 
 		shape = parameters.shape
 		size = parameters.size
@@ -540,7 +389,6 @@ class Parameters(System):
 
 		indices = {i: indices[i] for i in indices}
 		parameters = parameters.ravel()
-
 
 		for parameter in data:
 			kwargs = dict(
@@ -597,10 +445,10 @@ class Parameters(System):
 		Returns:
 			parameters (array): parameters
 		'''
-		if parameters is not None:
-			return parameters.reshape(self.shape)
-		else:
+		if parameters is None:
 			return self.parameters
+		else:
+			return parameters.reshape(self.shape)
 
 	def grad(self,parameters=None,*args,**kwargs):
 		'''
@@ -616,19 +464,6 @@ class Parameters(System):
 			return 1
 		else:
 			return 1
-
-	def constraints(self,parameters=None,*args,**kwargs):
-		'''
-		Class constraints
-		Args:
-			parameters (array): parameters
-			args (iterable[object]): Positional arguments for function
-			kwargs (dict[str,object]): Keyword arguments for function	
-		Returns:
-			parameters (array): parameters
-		'''
-		parameters = self(parameters)
-		return sum(self[parameter].constraints(parameters) for parameter in self)
 
 	def __iter__(self):
 		return self.data.__iter__()

@@ -151,7 +151,7 @@ class System(Dictionary):
 		if not isinstance(self.logger,Logger):
 			name = __name__
 			conf = join(self.conf,root=root) if exists(join(self.conf,root)) else self.conf
-			file = join(self.logger,root=root)
+			file = join(self.logger,root=root) if self.logger is not None else None
 			cleanup = self.cleanup
 
 			self.logger = Logger(name,conf,file=file,cleanup=cleanup)

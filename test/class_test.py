@@ -249,7 +249,9 @@ def test_data(path,tol):
 
 	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
+	
 	print('Passed')
+	
 	return
 
 def test_initialization(path,tol):
@@ -871,7 +873,6 @@ def check_machine_precision(path,tol):
 
 
 if __name__ == '__main__':
-	path = 'config/test.json'	
 	path = 'config/settings.json'
 
 	tol = 5e-8 
@@ -884,7 +885,8 @@ if __name__ == '__main__':
 	# test_model(path,tol)
 
 	# test_fisher(path,tol)
-	test_object(path,tol)
+	# test_object(path,tol)
+	test_data(path,tol)
 
 	# func = check_machine_precision
 	# func = check_fisher

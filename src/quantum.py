@@ -27,7 +27,6 @@ from src.io import load,dump,join,split
 from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
-# from src.params import Parameters,Parameter
 
 from src.optimize import Objective,Metric
 
@@ -1040,9 +1039,9 @@ class Object(System):
 			substring = getattr(self,attr,None)
 
 			if attr in ['data']:
-				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)]
+				substring = [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)] if isinstance(substring,dict) else substring if not isinstance(substring,arrays) else self
 			else:
-				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring]
+				substring = [substring[i] for i in substring] if isinstance(substring,dict) else substring
 			string = '%s: %s'%(attr,substring)
 			msg.append(string)
 
@@ -1414,7 +1413,7 @@ class Pauli(Object):
 
 			if self.architecture is None or self.architecture in ['array']:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
+					parameters = self.parameters(parameters)
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
@@ -2463,6 +2462,7 @@ class Operators(Object):
 		self.conj = conj
 
 		# Set parameters
+		cls = Parameters
 		kwargs = dict(
 			parameters={i:self.data[i].parameters 
 				for i in self.data 
@@ -2472,7 +2472,7 @@ class Operators(Object):
 			system=self.system
 		)
 
-		parameters = Parameters(**kwargs)
+		parameters = cls(**kwargs)
 
 		self.parameters = parameters
 
@@ -3145,6 +3145,7 @@ class Module(Channel):
 		self.conj = conj
 
 		# Set parameters
+		cls = Parameters
 		kwargs = dict(
 			parameters={i:self.data[i].parameters 
 				for i in self.data 
@@ -3154,7 +3155,7 @@ class Module(Channel):
 			system=self.system
 		)
 
-		parameters = Parameters(**kwargs)
+		parameters = cls(**kwargs)
 
 		self.parameters = parameters
 
@@ -3191,24 +3192,27 @@ class Module(Channel):
 
 		def func(parameters,state):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
-			indices = [i for i in self.data if self.data[i] is not None and self.data[i](parameters,state) is not None]
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			out = state
 			for i in indices:
-				out = self.data[i](parameters,out)
+				out = self.data[i%shape[1]](parameters[i//shape[1]],out)
 			return out
 
 		def grad(parameters,state):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity			
-			grad = zeros((*parameters.shape,*state.shape),dtype=state.dtype)
-			indices = [i for i in self.data if self.data[i].variable]
-			for i in indices:
+			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			for i in indexes:
 				out = state
-				for j in [j for j in indices if j<i]:
-					out = self.data[i](parameters,out)
-				out = self.data[i].grad(parameters,out)
-				for j in [j for j in indices if j>i]:
-					out = self.data[i](parameters,out)				
-				grad = inplace(grad,i,out,'add')
+				for j in (j for j in indices if j<i):
+					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
+				out = self.data[i%shape[1]].grad(parameters[i//shape[1]],out)
+				for j in (j for j in indices if j>i):
+					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
+				grad = inplace(grad,indexes.index(i),out,'add')
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -3754,23 +3758,6 @@ class Callback(System):
 
 
 			model.log(msg)
-
-
-			# parameters = attributes['parameters'][-1]
-			# params = metric.label.parameters()
-			# state = metric.state()
-			# label = metric.label()
-			# index = list(model.data)[0]
-			# print(model.data[index].parameters.parameters,metric.label.parameters.parameters,)
-			# print(parameters,model.parameters(parameters))
-			# print(params,metric.label.parameters(params))
-			# print(model(parameters,state))
-			# print(label)
-			# print(cos(model.data[index].parameters(parameters))*model.data[index].identity + -1j*sin(model.data[index].parameters(parameters))*model.data[index].data)
-			# print(model(parameters,state)-label)
-			# print()
-			# print()
-			# print()
 
 		return status
 

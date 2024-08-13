@@ -354,7 +354,7 @@ def test_module(*args,**kwargs):
 @pytest.mark.filterwarnings(r"ignore:The line search algorithm did not converge")
 def test_train_pauli(path,*args,tol=None,**kwargs):
 
-	path = 'config/test.json'# if path is None else path
+	path = 'config/settings.json'# if path is None else path
 	tol = 1e-10 if tol is None else tol
 
 	settings = path
