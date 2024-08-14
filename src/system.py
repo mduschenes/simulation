@@ -42,6 +42,7 @@ class System(Dictionary):
 		timestamp (str): timestamp for class
 		backend (str): backend for class
 		architecture (str): architecture for class
+		base (str): base for class
 		unit (int,float): units of values
 		verbose (bool,str): Verbosity of class	
 		args (dict,System): Additional system attributes
@@ -56,6 +57,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
+			'base':None,
 			'unit':None,			
 			'seed':None,
 			'key':None,

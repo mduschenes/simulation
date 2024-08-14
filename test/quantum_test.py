@@ -344,8 +344,6 @@ def test_state(*args,**kwargs):
 			},
 	})
 
-	verbose = True
-
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
 
@@ -369,6 +367,43 @@ def test_state(*args,**kwargs):
 
 	return
 
+def test_basis(*args,**kwargs):
+	settings = Dict({
+		"cls":{
+			"model":'src.quantum.Operator',
+			"state":'src.quantum.State'
+		},
+		"model":{
+			"operator":'X.Y',
+			"site":[0,2],
+			"string":"operator",
+			"parameters":0.25,
+			"N":3,"D":2,"ndim":2,
+			"system":{"seed":123,"architecture":"array","base":"pauli"}
+		},	
+		"state": {
+			"data":None	,
+			"operator":"product",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":3,"D":2,"ndim":1,
+			"system":{"seed":123,"architecture":"array","base":"pauli"}
+			},
+	})
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+
+	model = model(**settings.model)
+	state = state(**settings.state)
+
+	model.init(state=state)
+
+	print(model.base)
+
+	return
+
 
 if __name__ == '__main__':
 
@@ -379,5 +414,6 @@ if __name__ == '__main__':
 
 	# test_architecture(*args,**args)
 	# test_contract(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 	# test_state(*args,**args)
+	test_basis(*args,**args)
