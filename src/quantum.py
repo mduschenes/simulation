@@ -321,8 +321,14 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
-	if architecture is None or architecture in ['array','tensor']:
+	if architecture is None:
 		wrapper = jit
+	elif architecture in ['array']:		
+		wrapper = jit
+	elif architecture in ['tensor']:		
+		wrapper = jit
+	elif architecture in ['probability']:		
+		wrapper = jit				
 	elif architecture in ['mps']:
 		wrapper = partial
 	else:
@@ -383,8 +389,14 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,archit
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
-	if architecture is None or architecture in ['array','tensor']:
+	if architecture is None:
 		wrapper = jit
+	elif architecture in ['array']:
+		wrapper = jit
+	elif architecture in ['tensor']:
+		wrapper = jit
+	elif architecture in ['probability']:
+		wrapper = jit				
 	elif architecture in ['mps']:
 		wrapper = partial
 	else:
@@ -437,7 +449,7 @@ class Object(System):
 	'''
 	Base class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -649,42 +661,60 @@ class Object(System):
 			self.setup(self.data,self.operator,self.site,self.string)
 
 		if not do and not isinstance(self.data,objects) and not callable(self.data):
-			self.data = None
+			data = None
 		elif isinstance(self.data,objects) or callable(self.data):
-			pass
+			data = self.data
 		elif isinstance(self.operator,objects) or callable(self.operator):
-			self.data = self.operator
 			self.operator = self.string
+			data = self.operator
 		elif self.operator is None:
-			self.data = None
+			data = None
 		elif isinstance(self.operator,str):
-			self.data = tensorprod([self.basis.get(self.operator)(D=self.D,system=self.system) if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) for i in range(self.N)]) if self.operator in self.basis else None
+			data = tensorprod([self.basis.get(self.operator)(D=self.D,system=self.system) if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) for i in range(self.N)]) if self.operator in self.basis else None
 		elif self.operator is not None:
-			self.data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
+			data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
+		else:
+			data = self.data
 
-		if self.architecture is None or self.architecture in ['array']:
-			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
+		self.data = data
+
+		if self.state is None or self.state() is None:
+			def state(parameters=None,state=None):
+				return state
+		else:
+			state = self.state
 		
+		self.state = state
+
+
+		if self.architecture is None:
+			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
+
+		elif self.architecture in ['array']:
+			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
+
 		elif self.architecture in ['tensor']:
-			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system)if self.identity is None else self.identity
+			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity
+
+		elif self.architecture in ['probability']:
+			identity = array([self.basis.get(self.default)(D=self.D,system=self.system)]*self.N) if self.identity is None else self.identity
 	
 		elif self.architecture in ['mps']:
-			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system)if self.identity is None else self.identity
+			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity
+
+		else:
+			identity = self.basis.get(self.default)(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
+
 
 		if self.func is None:
 			def func(parameters=None,state=None):
 				return self.data
-
-			self.func = func
-
 		else:
 			func = self.func
 
 		if self.gradient is None:
 			def gradient(parameters=None,state=None):
 				return 0*self.data
-
-			self.gradient = gradient			
 		else:
 			gradient = self.gradient
 
@@ -714,14 +744,31 @@ class Object(System):
 		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
 		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
 
-		if self.architecture is None or self.architecture in ['array','tensor']:
+		if self.architecture is None:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = jit
+		
+		elif self.architecture in ['array']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['tensor']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['probability']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit							
+
 		elif self.architecture in ['mps']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = partial
+		
 		else:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
@@ -738,7 +785,7 @@ class Object(System):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -1039,7 +1086,7 @@ class Object(System):
 			substring = getattr(self,attr,None)
 
 			if attr in ['data']:
-				substring = [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)] if isinstance(substring,dict) else substring if not isinstance(substring,arrays) else self
+				substring = [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)] if isinstance(substring,dict) else substring if not isinstance(substring,arrays) else '\n%s'%(str(substring))
 			else:
 				substring = [substring[i] for i in substring] if isinstance(substring,dict) else substring
 			string = '%s: %s'%(attr,substring)
@@ -1275,7 +1322,7 @@ class Operator(Object):
 	'''
 	Class for Operator
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1342,7 +1389,7 @@ class Pauli(Object):
 	'''
 	Pauli class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1371,7 +1418,7 @@ class Pauli(Object):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -1390,28 +1437,78 @@ class Pauli(Object):
 
 		self.parameters.init(parameters=dict(obj=pi/2))
 
-		if self.architecture is None or self.architecture in ['array']:
-			if isinstance(operator,str):
-				data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
-					for i in range(self.N)]) if operator in self.basis else None
-			elif operator is not None:
-				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
-					for i in range(self.N)]) if all(i in self.basis for i in operator) else None			
-		elif self.architecture in ['tensor']:
-			if isinstance(operator,str):
-				data = partial(gate,label='R%s'%(operator),qubits=site,parametrize=self.variable)
-			elif operator is not None:
-				data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=self.variable)			
-		
-		elif self.architecture in ['mps']:
-			if isinstance(operator,str):
-				data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) for i in site]) if operator in self.basis else None
-			elif operator is not None:
-				data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) for i in site]) if all(i in self.basis for i in operator) else None			
+		if not isinstance(data,objects) and not callable(data):
+
+			N = self.N
+			D = self.D
+
+			basis = self.basis
+			default = self.default
+			variable = self.variable
+			architecture = self.architecture
+			system = self.system
+
+			if architecture is None:
+				if isinstance(operator,str):
+					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if operator in basis else None
+				elif operator is not None:
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if all(i in basis for i in operator) else None			
+			
+			elif architecture in ['array']:
+				if isinstance(operator,str):
+					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if operator in basis else None
+				elif operator is not None:
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if all(i in basis for i in operator) else None			
+			
+			elif architecture in ['tensor']:
+				if isinstance(operator,str):
+					data = partial(gate,label='R%s'%(operator),qubits=site,parametrize=variable)
+				elif operator is not None:
+					data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=variable)			
+
+			elif architecture in ['probability']:
+				if isinstance(operator,str):
+					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if operator in basis else None
+				elif operator is not None:
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if all(i in basis for i in operator) else None			
+			
+			elif architecture in ['mps']:
+				if isinstance(operator,str):
+					data = tensorprod([basis.get(operator)(D=D,system=system) for i in site]) if operator in basis else None
+				elif operator is not None:
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) for i in site]) if all(i in basis for i in operator) else None			
+
+			else:
+				if isinstance(operator,str):
+					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if operator in basis else None
+				elif operator is not None:
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if all(i in basis for i in operator) else None			
+
+		else:
+
+			data = self.data
 
 		if self.parameters() is not None:
 
-			if self.architecture is None or self.architecture in ['array']:
+			if self.architecture is None:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			elif self.architecture in ['array']:
 				def func(parameters=None,state=None):
 					parameters = self.parameters(parameters)
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
@@ -1431,9 +1528,29 @@ class Pauli(Object):
 					parameters = self.parameters(parameters)
 					return grad*self.data(params=parameters+pi/2)
 
+			elif self.architecture in ['probability']:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
 					parameters = self.parameters(parameters)	
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
+				def gradient(parameters=None,state=None):
+					grad = self.parameters.grad(parameters)
+					parameters = self.parameters(parameters)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			else:
+				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters)
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
@@ -1443,7 +1560,14 @@ class Pauli(Object):
 
 		elif self.parameters() is None:
 		
-			if self.architecture is None or self.architecture in ['array']:
+			if self.architecture is None:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			elif self.architecture in ['array']:
 				def func(parameters=None,state=None):
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
@@ -1457,12 +1581,27 @@ class Pauli(Object):
 				def gradient(parameters=None,state=None):
 					return grad*self.data(params=parameters+pi/2)
 
+			elif self.architecture in ['probability']:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
+			else:
+				def func(parameters=None,state=None):
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+
+				def gradient(parameters=None,state=None):
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+
 
 		contract = None
 		gradient_contract = None
@@ -1491,7 +1630,7 @@ class Gate(Object):
 	'''
 	Gate class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1523,7 +1662,7 @@ class Gate(Object):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -1540,12 +1679,27 @@ class Gate(Object):
 		contract = None
 		gradient_contract = None
 
-		if isinstance(operator,str):
-			data = tensorprod([self.basis.get(operator)(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
-				for i in range(self.N)]) if operator in self.basis else None
-		elif operator is not None:
-			data = tensorprod([self.basis.get(operator[site.index(i)])(D=self.D,system=self.system) if i in site else self.basis.get(self.default)(D=self.D,system=self.system) 
-				for i in range(self.N)]) if all(i in self.basis for i in operator) else None
+		if not isinstance(data,objects) and not callable(data):
+
+			N = self.N
+			D = self.D
+
+			basis = self.basis
+			default = self.default
+			variable = self.variable
+			architecture = self.architecture
+			system = self.system
+
+			if isinstance(operator,str):
+				data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					for i in range(N)]) if operator in basis else None
+			elif operator is not None:
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					for i in range(N)]) if all(i in basis for i in operator) else None
+
+		else:
+
+			data = self.data
 
 		hermitian = False
 		unitary = True
@@ -1571,7 +1725,7 @@ class Haar(Object):
 	'''
 	Haar class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1598,7 +1752,7 @@ class Haar(Object):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -1616,10 +1770,11 @@ class Haar(Object):
 		gradient_contract = None
 
 		if not isinstance(data,objects) and not callable(data):
+		
 			shape = (self.n,)*self.ndim
 			size = prod(shape)
 			ndim = len(shape)
-			random = getattr(self,'random','haar')
+			random = getattr(self,'random',None)
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
 			dtype = self.dtype
@@ -1628,6 +1783,7 @@ class Haar(Object):
 			operator = operator if operator else None
 
 			if operator in ['U','random','haar']:
+				random = 'haar'
 				data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 			else:
 				data = self.data		
@@ -1660,7 +1816,7 @@ class State(Object):
 	'''
 	State class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1691,7 +1847,7 @@ class State(Object):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -1716,10 +1872,11 @@ class State(Object):
 
 			basis = self.basis
 			default = self.default
+			architecture = self.architecture
 			system = self.system
 			dtype = self.dtype
 
-			random = getattr(self,'random','haar')
+			random = getattr(self,'random',None)
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
 			samples = getattr(self,'samples',None)
@@ -1747,30 +1904,73 @@ class State(Object):
 					index = 0
 					value = 1
 					obj = inplace(obj,index,value)
+				
 				elif operator[i] in ['one','ones','1']:
 					index = -1
 					value = 1
 					obj = inplace(obj,index,value)
+				
 				elif operator[i] in ['plus','+']:
 					index = slice(None)
 					value = 1/sqrt(size)
 					obj = inplace(obj,index,value)
+				
 				elif operator[i] in ['minus','-']:
 					index = slice(None)
 					value = (-1)**arange(size)/sqrt(size)
 					obj = inplace(obj,index,value)
+				
 				elif operator[i] in ['random','psi','haar','product']:
+					random = 'haar'
 					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				
 				elif operator[i] in ['string']:
-					if self.architecture is None or self.architecture in ['array','tensor']:
+					if self.architecture is None:
 						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
 						value = 1
 						obj = inplace(obj,index,value)
+					
+					elif self.architecture in ['array']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+					
+					elif self.architecture in ['tensor']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+					
+					elif self.architecture in ['probability']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+
 					elif self.architecture in ['mps']:
 						local = False
 						obj = data
+
+					else:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+				
+				elif operator[i] in ['probability']:
+					if isinstance(data,str) or random is not None:
+						random = data if isinstance(data,str) else random
+						scale = 'normalize'
+						obj = rand(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
+					elif isinstance(data,(*arrays,iterables)):
+						index = slice(None)
+						value = data
+						obj = inplace(obj,index,value)
+					else:
+						index = slice(None)
+						value = 1/size
+						obj = inplace(obj,index,value)
+
 				elif isinstance(data,arrays):
 					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
+				
 				else:
 					obj = None
 
@@ -1786,7 +1986,7 @@ class State(Object):
 
 			data = objs
 
-			if self.architecture is None or self.architecture in ['array']:
+			if self.architecture is None:
 
 				data = objs
 
@@ -1797,29 +1997,69 @@ class State(Object):
 					if data.ndim < self.ndim:
 						data = einsum('...i,...j->...ij',data,conjugate(data))
 
-					data = array(data,dtype=self.dtype)
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['array']:
+				
+				data = objs
+
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=dtype)								
+
+			elif self.architecture in ['probability']:
+
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
 
 			elif self.architecture in ['tensor']:
 				data = mps(data)
 
 			elif self.architecture in ['mps']:
 				data = mps(data)
+			
+			else:
+
+				data = objs
+
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=dtype)		
+
+			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
+				if isinstance(samples,integers) and (samples > 0):
+					shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
+					samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+				elif not isinstance(samples,arrays):
+					samples = None
+
+				if (samples is not None):
+					data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
+			else:
+				samples = None
 
 		else:
 
 			data = self.data
 
-		if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
-			if isinstance(samples,integers) and (samples > 0):
-				shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
-				samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-			elif not isinstance(samples,arrays):
-				samples = None
+		def func(parameters=None,state=None):
+			return self.data
 
-			if (samples is not None):
-				data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
-		else:
-			samples = None
+		def gradient(parameters=None,state=None):
+			return 0*self.data
 
 		if self.ndim is None:
 			hermitian = True
@@ -1840,8 +2080,6 @@ class State(Object):
 		self.site = site if site is not None else self.site
 		self.string = string if string is not None else self.string
 		self.locality = len(self.site) if self.site is not None else self.locality
-
-		self.samples = samples
 
 		self.func = func
 		self.gradient = gradient
@@ -1888,7 +2126,7 @@ class Noise(Object):
 	'''
 	Noise class for Quantum Objects
 	Args:
-		data (iterable[str]): data of operator
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
@@ -1932,7 +2170,7 @@ class Noise(Object):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data of operator
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
@@ -2000,18 +2238,23 @@ class Noise(Object):
 
 				if operator[i] is None:
 					obj = [basis.get(default)(D=D,system=system)]
+				
 				elif operator[i] in ['Z','z','phase','dephase']:
 					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
 							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
+				
 				elif operator[i] in ['X','x','flip','bitflip']:
 					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
 							 sqrt(parameters[i])*Basis.X(D=D,system=system)]
+				
 				elif operator[i] in ['Y','y','flipphase']:
 					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
 							 sqrt(parameters[i])*Basis.Y(D=D,system=system)]
+				
 				elif operator[i] in ['amplitude']:
 					obj = [Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
 							sqrt(parameters[i])*Basis.PROJECTOR(D=D,basis='01',system=system)]
+				
 				elif operator[i] in ['dephase-amplitude']:
 					obj = [dots(*i) for i in permutations(
 						[Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
@@ -2020,6 +2263,7 @@ class Noise(Object):
 							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
 						)
 						]
+				
 				elif operator[i] in ['depolarize']:
 					obj = [sqrt(1-(D**2-1)*parameters[i]/(D**2))*Basis.I(D=D,system=system),
 							sqrt(parameters[i]/(D**2))*Basis.X(D=D,system=system),
@@ -2039,6 +2283,7 @@ class Noise(Object):
 
 				elif operator[i] in ['eps']:
 					obj = array([identity(size,system=system),diag((1+parameters[i])**(arange(size)+2) - 1)])
+				
 				elif operator[i] in ['noise','rand']:
 					obj = array(parameters[i],dtype=datatype(dtype))
 					spawn(reset=seed)
@@ -2070,6 +2315,7 @@ class Noise(Object):
 				data = array([tensorprod(i)	for i in permutations(*data)],dtype=dtype)
 
 		else:
+			
 			data = self.data
 
 		hermitian = False
@@ -2091,266 +2337,6 @@ class Noise(Object):
 		self.unitary = unitary
 
 		return
-
-
-class Measurement(Object):
-	'''
-	Measurement class for Quantum Objects
-	Args:
-		data (iterable[str]): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-	
-	space = None
-	time = None	
-
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.PROJECTOR for attr in ['measure','povm']},
-		}
-	default = 'I'
-	
-	hermitian = None
-	unitary = None
-
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup operator
-		Args:
-			data (iterable[str]): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments				
-		'''
-
-		data = self.data if data is None else data
-		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
-		string = self.string if string is None else string
-
-		func = self.func
-		gradient = self.gradient
-		contract = None
-		gradient_contract = None
-
-		if not isinstance(data,objects) and not callable(data):
-
-			N = self.N
-			D = self.D
-			ndim = self.ndim
-
-			basis = self.basis
-			default = self.default
-			system = self.system
-			dtype = self.dtype
-
-			random = getattr(self,'random','haar')
-			seed = getattr(self,'seed',None)
-			reset = getattr(self,'reset',None)
-			samples = getattr(self,'samples',None)
-
-			data = data
-			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
-			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
-			locality = len(operator)
-
-			local = any(( 
-				all((operator[i] not in []) for i in range(N)),
-				))
-
-			objs = []
-			
-			for i in range(N):
-				
-				shape = (D**N,) if not local else (D,)
-				size = prod(shape)
-				ndim = len(shape)
-
-				obj = zeros(shape=shape,dtype=dtype)
-
-				if operator[i] in ['zero','zeros','0']:
-					index = 0
-					value = 1
-					obj = inplace(obj,index,value)
-				elif operator[i] in ['one','ones','1']:
-					index = -1
-					value = 1
-					obj = inplace(obj,index,value)
-				elif operator[i] in ['plus','+']:
-					index = slice(None)
-					value = 1/sqrt(size)
-					obj = inplace(obj,index,value)
-				elif operator[i] in ['minus','-']:
-					index = slice(None)
-					value = (-1)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)
-				elif operator[i] in ['random','psi','haar','product']:
-					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
-				elif operator[i] in ['string']:
-					if self.architecture is None or self.architecture in ['array','tensor']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-					elif self.architecture in ['mps']:
-						local = False
-						obj = data
-				elif isinstance(data,arrays):
-					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
-				else:
-					obj = None
-
-				if obj is None:
-					objs = obj
-					break
-
-				objs.append(obj)
-
-				if not local:
-					objs = objs[-1]
-					break
-
-			data = objs
-
-			if self.architecture is None or self.architecture in ['array']:
-
-				data = objs
-
-				if data is not None:
-
-					data = tensorprod(data) if not isinstance(data,objects) else data
-
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=self.dtype)
-
-			elif self.architecture in ['tensor']:
-				data = mps(data)
-
-			elif self.architecture in ['mps']:
-				data = mps(data)
-
-		else:
-
-			data = self.data
-
-
-		if self.parameters() is not None:
-
-			if self.architecture is None or self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['tensor']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return self.data(params=parameters)
-
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*self.data(params=parameters+pi/2)
-
-			elif self.architecture in ['mps']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-		elif self.parameters() is None:
-		
-			if self.architecture is None or self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['tensor']:
-				def func(parameters=None,state=None):
-					return self.data(params=parameters)
-
-				def gradient(parameters=None,state=None):
-					return grad*self.data(params=parameters+pi/2)
-
-			elif self.architecture in ['mps']:
-				def func(parameters=None,state=None):
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-
-
-		hermitian = None
-		unitary = None
-		
-		self.data = data
-
-		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
-		self.string = string if string is not None else self.string
-		self.locality = len(self.site) if self.site is not None else self.locality
-
-		self.samples = samples
-
-		self.func = func
-		self.gradient = gradient
-		self.contract = contract
-		self.gradient_contract = gradient_contract
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
-		return
-
-
-	def __call__(self,parameters=None,state=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.func(parameters=parameters,state=state)
-		else:
-			return self.contract(self.func(parameters=parameters,state=state),state=state)
-
-	def grad(self,parameters=None,state=None):
-		'''
-		Call operator gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.gradient(parameters=parameters,state=state)
-		else:
-			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
-
 
 class Operators(Object):
 	'''
@@ -2525,14 +2511,31 @@ class Operators(Object):
 		
 
 		# Set functions
-		if self.architecture is None or self.architecture in ['array','tensor']:
+		if self.architecture is None:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = jit
+		
+		elif self.architecture in ['array']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['tensor']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['probability']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit							
+
 		elif self.architecture in ['mps']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = partial
+	
 		else:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else self.identity			
@@ -3241,6 +3244,18 @@ class Module(Channel):
 		return
 
 
+class Measure(Object):
+	'''
+	Measure class for Quantum Objects
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
 class Label(Operator):
 
 	N = None
@@ -3615,7 +3630,13 @@ class Callback(System):
 					
 					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 					grad = model.grad_analytical
-					if model.architecture is None or model.architecture in ['array','tensor']:
+					if model.architecture is None:
+						wrapper = jit
+					elif model.architecture in ['array']:
+						wrapper = jit
+					elif model.architecture in ['tensor']:
+						wrapper = jit											
+					elif model.architecture in ['probability']:
 						wrapper = jit
 					elif model.architecture in ['mps']:
 						wrapper = partial

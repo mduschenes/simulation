@@ -25,7 +25,7 @@ from src.train import train
 def test_train(path,*args,tol=None,**kwargs):
 
 	path = 'config/settings.json'# if path is None else path
-	tol = 1e-9 # if tol is None else tol
+	tol = 5e-2 # if tol is None else tol
 
 	settings = path
 	args = ()

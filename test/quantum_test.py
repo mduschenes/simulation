@@ -26,12 +26,12 @@ def test_architecture(*args,**kwargs):
 	architectures = ['array','mps']
 	
 	for architecture in architectures:
-		cls = Dict({
-			"model":'src.quantum.Operator',
-			"state":'src.quantum.State',
-			})
 
 		settings = Dict({
+			"cls":{
+				"model":'src.quantum.Operator',
+				"state":'src.quantum.State'
+			},
 			"model":{
 				"operator":'X.Y',
 				"site":[0,2],
@@ -53,8 +53,8 @@ def test_architecture(*args,**kwargs):
 
 		verbose = True
 
-		model = load(cls.model)
-		state = load(cls.state)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
 
 		model = model(**settings.model)
 		state = state(**settings.state)
@@ -121,12 +121,11 @@ def test_contract(*args,**kwargs):
 
 	architecture = 'array'
 
-	cls = Dict({
-		"model":'src.quantum.Operator',
-		"state":'src.quantum.State',
-		})
-
 	settings = Dict({
+		"cls":{
+				"model":'src.quantum.Operator',
+				"state":'src.quantum.State'
+			},		
 		"model":{
 			"operator":'X.X',
 			"site":[0,1],
@@ -147,8 +146,8 @@ def test_contract(*args,**kwargs):
 
 	verbose = True
 
-	model = load(cls.model)
-	state = load(cls.state)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
 
 	model = model(**settings.model)
 	state = state(**settings.state)
@@ -206,12 +205,12 @@ def test_module(*args,**kwargs):
 		]
 	
 	for architecture in architectures:
-		cls = Dict({
-			"model":'src.quantum.Module',
-			"state":'src.quantum.State',
-			})
 
 		settings = Dict({
+			"cls":{
+				"model":'src.quantum.Module',
+				"state":'src.quantum.State'
+			},			
 			"model":{
 				"data":{
 					"XX":{
@@ -246,8 +245,8 @@ def test_module(*args,**kwargs):
 
 		verbose = False
 
-		model = load(cls.model)
-		state = load(cls.state)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
 
 		model = model(**settings.model)
 		state = state(**settings.state)
@@ -314,38 +313,59 @@ def test_module(*args,**kwargs):
 
 		data[architecture] = value
 
-
-		# Grad
-		# grad_automatic = model.grad_automatic
-		# grad_finite = model.grad_finite
-		# grad_analytical = model.grad_analytical
-
-		# index = slice(None)
-		# print('-----')
-		# print(grad_automatic(parameters,state)[index])
-		# print()
-		# print('-----')
-		# print()
-		# print(grad_finite(parameters,state)[index])
-		# print()
-		# print('-----')
-		# print()	
-		# print(grad_analytical(parameters,state)[index])
-		# print()
-		# print('----- ratio -----')
-		# print()
-		# print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
-		# print()
-		# print('-----')
-		# print()
-		# assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
-		# assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
-		# assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
-
-
 	assert len(data)<2 or allclose(*(data[architecture] for architecture in data)), "Error - Incorrect architecture contraction"
 
 	print("Passed")
+
+	return
+
+def test_state(*args,**kwargs):
+	settings = Dict({
+		"cls":{
+			"model":'src.quantum.Operator',
+			"state":'src.quantum.State'
+		},
+		"model":{
+			"operator":'X.Y',
+			"site":[0,2],
+			"string":"operator",
+			"parameters":0.25,
+			"N":3,"D":2,"ndim":2,
+			"system":{"seed":123,"architecture":"array"}
+		},	
+		"state": {
+			"data":None	,
+			"operator":"product",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":3,"D":2,"ndim":1,
+			"system":{"seed":123,"architecture":"array"}
+			},
+	})
+
+	verbose = True
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+
+	model = model(**settings.model)
+	state = state(**settings.state)
+
+	model.init(state=state)
+
+	data = {
+		"state":model(model.parameters(),model.state()),
+		"model":model(model.parameters(),model(model.parameters(),model.state())),
+		}
+
+	state.init(data=model(model.parameters(),model.state()))
+	model.init(state=state)
+
+	assert allclose(state(state.parameters(),state.state()),data['state']), "State not reinitialized with model data"
+	assert allclose(model(model.parameters(),model.state()),data['model']), "Model not reinitialized with state data"
+
+	print('Passed')
 
 	return
 
@@ -355,7 +375,9 @@ if __name__ == '__main__':
 	arguments = 'path'
 	args = argparser(arguments)
 
+	# main(*args,**args)
+
 	# test_architecture(*args,**args)
 	# test_contract(*args,**args)
-	# test_module(*args,**args)
-	# main(*args,**args)
+	test_module(*args,**args)
+	# test_state(*args,**args)

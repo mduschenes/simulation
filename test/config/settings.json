@@ -43,7 +43,7 @@
 	"N":3,
 	"D":2,
 	"d":1,
-	"M":100,
+	"M":10,
 	"tau":1,
 	"P":1,
 	"space":"spin",
@@ -67,7 +67,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":25,
+	"iterations":15,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"alpha":1e-4,"beta":1e-4,

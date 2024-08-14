@@ -45,6 +45,33 @@ def setup(settings,*args,**kwargs):
 
 	return settings
 
+def call(settings,*args,**kwargs):
+	'''
+	Call model
+	Args:
+		settings (dict,str,iterable[str,dict]): settings
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments		
+	Returns:
+		model (object): Model instance
+		state (object): Model state		
+	'''
+
+	settings = setup(settings,*args,**kwargs)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	system = settings.system
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	return model,state
 
 def train(settings,*args,**kwargs):
 	'''
@@ -62,6 +89,7 @@ def train(settings,*args,**kwargs):
 
 	settings = setup(settings,*args,**kwargs)
 	
+
 	model = None
 	parameters = None
 	state = None
