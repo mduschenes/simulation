@@ -462,7 +462,7 @@ def test_manifold(*args,**kwargs):
 	settings = Dict({
 		"cls":{
 			"model":'src.quantum.Manifold',
-			"state":'src.quantum.Probability'
+			"state":'src.quantum.State'
 		},
 		"model":{
 			'data':None,
@@ -472,7 +472,7 @@ def test_manifold(*args,**kwargs):
 		},
 		"state": {
 			"data":None	,
-			"operator":"product",
+			"operator":"probability",
 			"site":None,
 			"string":"psi",
 			"parameters":True,
@@ -489,7 +489,7 @@ def test_manifold(*args,**kwargs):
 
 	model.init(state=state)
 
-	print(model.base)
+	print(model.data)
 
 	return
 
@@ -543,6 +543,6 @@ if __name__ == '__main__':
 	# test_module(*args,**args)
 	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
-	test_state(*args,**args)
-	# test_manifold(*args,**args)
+	# test_state(*args,**args)
+	test_manifold(*args,**args)
 	# test_basis(*args,**args)
