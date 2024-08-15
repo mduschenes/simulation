@@ -367,6 +367,70 @@ def test_state(*args,**kwargs):
 
 	return
 
+
+def test_probability(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"state":'src.quantum.Probability'
+		},
+		"state": {
+			"data":None	,
+			"operator":"product",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":3,"D":2,"ndim":1,
+			"system":{"seed":123,"architecture":"array","base":"pauli"}
+			}
+		})
+
+	state = load(settings.cls.state)
+
+	state = state(**settings.state)
+
+	print(state.data)
+	print(state())
+	print(state.norm())
+
+	return
+
+def test_manifold(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"model":'src.quantum.Manifold',
+			"state":'src.quantum.Probability'
+		},
+		"model":{
+			'data':None,
+			'operator':'pauli',
+			'D':2,
+			'dtype':'complex'
+		},
+		"state": {
+			"data":None	,
+			"operator":"product",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":3,"D":2,"ndim":1,
+			"system":{"seed":123,"architecture":"array","base":"pauli"}
+			}
+		})
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+
+	model = model(**settings.model)
+	state = state(**settings.state)
+
+	model.init(state=state)
+
+	print(model.base)
+
+	return
+
 def test_basis(*args,**kwargs):
 	settings = Dict({
 		"cls":{
@@ -416,4 +480,6 @@ if __name__ == '__main__':
 	# test_contract(*args,**args)
 	# test_module(*args,**args)
 	# test_state(*args,**args)
-	test_basis(*args,**args)
+	test_probability(*args,**args)
+	# test_manifold(*args,**args)
+	# test_basis(*args,**args)

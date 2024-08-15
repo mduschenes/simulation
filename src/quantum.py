@@ -11,12 +11,12 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
-from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,spawn,arange,diag
+from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,spawn,arange,diag,inv
 from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
-from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
 
@@ -35,12 +35,24 @@ separ = '_'
 objects = (*arrays,*tensors)
 
 class Basis(Dict):
+	'''
+	Basis Class of operators
+	Args:
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		basis (str): Type of basis
+		args (iterable): Additional class positional arguments
+		kwargs (dict): Additional class keyword arguments
+	'''
 
 	N = 1
 	D = 2
+	
 	basis = None
-	dtype = 'complex'
-	random = 'haar'
+	
+	dtype = None
+	random = None
+	scale = None
 	key = None
 
 	@classmethod
@@ -112,36 +124,36 @@ class Basis(Dict):
 	@classmethod
 	@System.decorator	
 	def U(cls,*args,**kwargs):
-		data = rand(shape=cls.shape,random=cls.random,key=cls.key,dtype=cls.dtype)
+		data = rand(shape=cls.shape,random=cls.random,scale=cls.scale,key=cls.key,dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def PSI(cls,*args,**kwargs):
-		data = rand(shape=cls.shape,random=cls.random,key=cls.key,dtype=cls.dtype)
+	def psi(cls,*args,**kwargs):
+		data = rand(shape=cls.shape,random=cls.random,scale=cls.scale,key=cls.key,dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def ZERO(cls,*args,**kwargs):
+	def zero(cls,*args,**kwargs):
 		data = array([1,*[0]*(cls.D-1)],dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def ONE(cls,*args,**kwargs):
+	def one(cls,*args,**kwargs):
 		data = array([*[0]*(cls.D-1),1],dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def PLUS(cls,*args,**kwargs):
+	def plus(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def MINUS(cls,*args,**kwargs):
+	def minus(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		index = slice(1,None,cls.D)
 		data[index] *= -1
@@ -149,10 +161,233 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator	
-	def PROJECTOR(cls,*args,**kwargs):
+	def projector(cls,*args,**kwargs):
 		data = zeros(cls.shape,dtype=cls.dtype)
 		index = tuple(map(int,cls.basis))
 		data[index] = 1
+		return data
+
+
+class Manifold(System):
+
+	D = None
+	
+	basis = None
+
+	dtype = None
+	random = None
+	scale = None
+	key = None
+
+	defaults = dict(			
+		data=None,operator=None,site=None,string=None,system=None,
+		shape=None,size=None,ndim=None,dtype=None,
+		state=None,conj=None,
+		basis=None,inverse=None,identity=None,parameters=None,variable=False,
+		func=None,gradient=None
+		)
+
+	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):
+		'''
+		Manifold Class of basis
+		Generate positive operator valued measure basis and their overlap and inverse
+		Args:
+			data (str,array,tensor,Manifold): type of basis
+			operator (str): name of basis
+			site (iterable[int]): site of local basis
+			string (str): string label of basis
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+			args (iterable): Additional class positional arguments
+			kwargs (dict): Additional class keyword arguments
+		'''
+
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
+
+		super().__init__(**kwargs)	
+
+		self.init()
+
+		return
+
+	def init(self,data=None,state=None,conj=None,parameters=None,**kwargs):
+		'''
+		Initialize manifold
+		Args:
+			data (str,array,tensor,Manifold): type of basis
+			state (bool,dict,array,Probability): state of class of shape self.shape
+			conj (bool): conjugate
+			parameters (array,dict): parameters of class
+			kwargs (dict): Additional class keyword arguments			
+		'''
+
+		data = self.data if data is None else data
+		state = self.state if state is None else state
+		conj = self.conj if conj is None else conj
+		parameters = self.parameters if parameters is None else parameters
+
+		if self.state is None or not callable(state):
+			def state(parameters=None,state=state):
+				return state
+		else:
+			state = self.state
+
+		if self.parameters is None or not callable(parameters):
+			def parameters(parameters=parameters,state=None):
+				return parameters
+		else:
+			parameters = self.parameters			
+
+		self.state = state
+		self.conj = conj
+		self.parameters = parameters
+
+		self.setup(data)
+
+		return
+
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup manifold
+		Args:
+			data (str,array,tensor,Manifold): type of basis
+			operator (str): string names of basis
+			site (iterable[int]): site of local basis
+			string (str): string label of basis
+			kwargs (dict): Additional class keyword arguments			
+		'''
+
+		data = self.data if data is None else data
+		operator = self.operator if operator is None else operator
+		site = self.site if site is None else site
+		string = self.string if string is None else string
+
+		basis = self.basis
+
+		operator = data if isinstance(data,str) else operator if data is None else operator
+
+		basis = getattr(self,operator)(D=self.D,dtype=self.dtype) if operator is not None else None
+
+		data = self.inner(basis,basis) if basis is not None else None
+		inverse = self.inv(data) if data is not None else None
+		identity = array([1/len(basis)]*len(basis),dtype=self.dtype) if basis is not None else self.identity if self.identity is not None else None
+
+		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))] if basis is not None else self.shape
+		size = prod(shape) if shape is not None else None
+		ndim = len(shape) if shape is not None else None
+		dtype = data.dtype if data is not None else None
+
+		self.data = data
+		self.operator = operator
+		self.site = site
+		self.string = string
+
+		self.basis = basis
+		self.inverse = inverse
+		self.identity
+
+		self.shape = shape
+		self.size = size
+		self.ndim =  ndim
+		self.dtype = dtype
+
+		if self.basis is not None:
+			def func(parameters,state):
+				return einsum('...i,iu,ujk->...jk',state,self.inverse,self.basis)
+
+			def gradient(parameters,state):
+				return 0
+
+		else:
+			def func(parameters,state):
+				return None
+
+			def gradient(parameters,state):
+				return None
+
+		self.func = func
+		self.gradient = gradient
+
+
+		if self.architecture is None:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+		
+		elif self.architecture in ['array']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['tensor']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['probability']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit							
+
+		elif self.architecture in ['mps']:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = partial
+		
+		else:
+			parameters = self.parameters()
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		self.func = wrapper(self.func,parameters=parameters,state=state)
+		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
+
+		return
+
+	def __call__(self,parameters=None,state=None):
+		parameters = self.parameters() if parameters is None else parameters
+		state = self.state() if state is None else state
+		return self.func(parameters,state)
+
+	def __len__(self):
+		return len(self.basis)
+
+	def __str__(self):
+		if isinstance(self.string,str):
+			string = self.string
+		else:
+			string = self.__class__.__name__
+		return string
+
+	def __repr__(self):
+		return self.__str__()
+
+	def get(self,attr):
+		return getattr(self,attr)
+
+	def set(self,attr,value):
+		setattr(self,attr,value)
+		return
+
+	@classmethod
+	def dot(cls,data):
+		return einsum('uij,vij->uv',conjugate(data),data)
+	
+	@classmethod
+	def inv(cls,data):
+		return inv(data)
+
+	@classmethod
+	def pauli(cls,*args,**kwargs):
+		D = cls.D
+		data = (1/(D**2-1))*array([
+			[[1,0],[0,0]],
+			[[0,0],[0,1]],
+			[[1/D,1/D],[1/D,1/D]],
+
+			],dtype=cls.dtype)
+		data = identity(cls.D**cls.N,dtype=cls.dtype)
 		return data
 
 
@@ -480,10 +715,10 @@ class Object(System):
 
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
-		parameters=None,variable=False,
-		shape=None,size=None,ndim=None,
-		samples=None,identity=None,locality=None,
-		state=None,conj=False,
+		state=None,conj=False,parameters=None,variable=False,
+		locality=None,
+		shape=None,size=None,ndim=None,dtype=None,
+		samples=None,identity=None,manifold=None,
 		func=None,gradient=None,
 		contract=None,gradient_contract=None,
 		)
@@ -610,14 +845,15 @@ class Object(System):
 
 		return
 
-	def init(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,conj=False,parameters=None,**kwargs):
 		'''
 		Initialize operator
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
-			state (bool,dict,array,Object): State to act on with class of shape self.shape, or class hyperparameters
+			state (bool,dict,array,Object): state of class of shape self.shape
 			conj (bool): conjugate
-			parameters (array,dict): parameters
+			parameters (array,dict): parameters of class
+			kwargs (dict): Additional class keyword arguments			
 		'''
 
 		if data is None:
@@ -643,6 +879,8 @@ class Object(System):
 		self.state = state
 		self.conj = conj
 
+		self.spaces()
+
 		cls = Parameter
 		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
 			defaults = dict()
@@ -661,15 +899,12 @@ class Object(System):
 		else:
 			self.parameters = parameters
 
-		self.spaces()
 
-		do = (self.parameters() is not None)
-
-		if (do) and (((self.data is not None) or (self.operator is not None))):
-			
+		if (self.parameters() is not None) and (((self.data is not None) or (self.operator is not None))):
 			self.setup(self.data,self.operator,self.site,self.string)
+		
 
-		if not do and not isinstance(self.data,objects) and not callable(self.data):
+		if (self.parameters() is None) and (not isinstance(self.data,objects)) and (not callable(self.data)):
 			data = None
 		elif isinstance(self.data,objects) or callable(self.data):
 			data = self.data
@@ -687,8 +922,8 @@ class Object(System):
 
 		self.data = data
 
-		if self.state is None or self.state() is None:
-			def state(parameters=None,state=None):
+		if self.state is None or not callable(state):
+			def state(parameters=None,state=state):
 				return state
 		else:
 			state = self.state
@@ -1218,67 +1453,83 @@ class Object(System):
 
 		return
 
-	def norm(self):
+	def norm(self,data=None):
 		'''
 		Normalize class
 		Args:
 			data (array): Data to normalize			
+		Returns:
+			norm (array): Data to normalize
 		'''
 
-		try:
-			data = self(self.parameters)
-		except:
-			data = self.data
+		if data is None:
+			try:
+				data = self(self.parameters(),self.state())
+			except:
+				data = self.data
 
 		if data is None:
 			return
 		elif not isinstance(data,objects) and not callable(data):
 			return
 
-		shape = self.shape
-		ndim = self.ndim
-		dtype = self.dtype
-		hermitian = self.hermitian		
-		unitary = self.unitary	
-
 		norm = None
 		eps = None
 
-		if hermitian is None and unitary is None:
-			norm = None
-			eps = None
+		if self.architecture is None or self.architecture in ['array','tensor','mps']:
 		
-		elif ndim is None:
-			norm = None
-			eps = None
-		
-		elif ndim > 3:
-			if not hermitian and unitary:
-				norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
-				eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
-		
-		elif ndim == 3:
-			if not hermitian and not unitary:
-				norm = einsum('uij,uik->jk',conjugate(data),data)
-				eps = identity(shape[-2:],dtype=dtype)
-		
-		elif ndim == 2:
-			if hermitian and unitary:
-				norm = einsum('ii->',data)
-				eps = ones(shape[:-2],dtype=dtype)
-			elif not hermitian and unitary:
-				norm = einsum('ij,kj->ik',conjugate(data),data)
-				eps = identity(shape[-2:],dtype=dtype)
-			elif hermitian and not unitary:
-				norm = einsum('ii->',data)
-				eps = ones(shape[:-2],dtype=dtype)
+			shape = self.shape
+			ndim = self.ndim
+			dtype = self.dtype
+			hermitian = self.hermitian		
+			unitary = self.unitary	
+
+			if hermitian is None and unitary is None:
+				norm = None
+				eps = None
 			
+			elif ndim is None:
+				norm = None
+				eps = None
+			
+			elif ndim > 3:
+				if not hermitian and unitary:
+					norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
+					eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
+			
+			elif ndim == 3:
+				if not hermitian and not unitary:
+					norm = einsum('uij,uik->jk',conjugate(data),data)
+					eps = identity(shape[-2:],dtype=dtype)
+			
+			elif ndim == 2:
+				if hermitian and unitary:
+					norm = einsum('ii->',data)
+					eps = ones(shape[:-2],dtype=dtype)
+				elif not hermitian and unitary:
+					norm = einsum('ij,kj->ik',conjugate(data),data)
+					eps = identity(shape[-2:],dtype=dtype)
+				elif hermitian and not unitary:
+					norm = einsum('ii->',data)
+					eps = ones(shape[:-2],dtype=dtype)
+				
+			
+			elif ndim == 1:
+				if not hermitian and unitary:
+					norm = einsum('i,i->',conjugate(data),data)
+					eps = ones(shape=(),dtype=dtype)
 		
-		elif ndim == 1:
-			if not hermitian and unitary:
-				norm = einsum('i,i->',conjugate(data),data)
-				eps = ones(shape=(),dtype=dtype)
-		
+		elif self.architecture in ['probability']:
+			
+			shape = self.shape
+			ndim = self.ndim
+			dtype = self.dtype
+			hermitian = self.hermitian		
+			unitary = self.unitary	
+
+			norm = einsum('...->',data) if data is not None else None
+			eps = ones(shape=(),dtype=dtype) if data is not None else None
+
 		if norm is None or eps is None:
 			return
 
@@ -1286,7 +1537,7 @@ class Object(System):
 			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
 			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
 
-		return
+		return norm
 
 	def swap(self,i,j):
 		'''	
@@ -1326,73 +1577,6 @@ class Object(System):
 		self.ndim = data.ndim
 
 		return
-
-class Operator(Object):
-	'''
-	Class for Operator
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-	
-	space = None
-	time = None	
-	
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		}
-	default = 'I'
-
-	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
-
-		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
-
-		self = None
-
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
-
-		classes = [Gate,Pauli,Haar,State,Noise,Object]
-
-		for subclass in classes:
-			
-			if any(isinstance(obj,subclass) for obj in [data,operator]):
-
-				self = subclass(**kwargs)
-
-				break
-
-			if not all(
-				j in subclass.basis for obj in [data,operator] 
-				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
-				for k in (obj if not isinstance(obj,str) else [obj]) 
-				for j in ([k] if k in subclass.basis else k.split(delim))):
-				continue
-
-			if cls is Operator:
-
-				self = subclass(**kwargs)
-			
-			else:
-				for attr in subclass.__dict__:
-					setattr(cls,attr,getattr(subclass,attr))
-
-				self = subclass.__new__(cls,**kwargs)
-
-				subclass.__init__(self,**kwargs)
-
-			break
-
-		assert (self is not None),'TODO: All operators not in same class'
-
-		return self
-
 
 class Pauli(Object):
 	'''
@@ -1780,20 +1964,27 @@ class Haar(Object):
 
 		if not isinstance(data,objects) and not callable(data):
 		
+			N = self.N
+			D = self.D
+
+			basis = self.basis
+			default = self.default
+			variable = self.variable
+			architecture = self.architecture
+			system = self.system
+
 			shape = (self.n,)*self.ndim
 			size = prod(shape)
 			ndim = len(shape)
+			
 			random = getattr(self,'random',None)
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
 			dtype = self.dtype
 
-			data = zeros(shape=shape,dtype=dtype)  
-			operator = operator if operator else None
-
 			if operator in ['U','random','haar']:
 				random = 'haar'
-				data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				data = basis.get(operator)(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 			else:
 				data = self.data		
 
@@ -1821,315 +2012,6 @@ class Haar(Object):
 
 		return
 
-class State(Object):
-	'''
-	State class for Quantum Objects
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-	
-	space = None
-	time = None	
-
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.PSI for attr in ['random','psi','haar','product','string']},
-		**{attr: Basis.ZERO for attr in ['zero','zeros','0']},
-		**{attr: Basis.ONE for attr in ['one','ones','1']},
-		**{attr: Basis.PLUS for attr in ['plus','+']},
-		**{attr: Basis.MINUS for attr in ['minus','-']},
-		}
-	default = 'I'
-	
-	hermitian = None
-	unitary = None
-
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup operator
-		Args:
-			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments				
-		'''
-
-		data = self.data if data is None else data
-		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
-		string = self.string if string is None else string
-
-		func = self.func
-		gradient = self.gradient
-		contract = None
-		gradient_contract = None
-
-		if not isinstance(data,objects) and not callable(data):
-
-			N = self.N
-			D = self.D
-			ndim = self.ndim
-
-			basis = self.basis
-			default = self.default
-			architecture = self.architecture
-			system = self.system
-			dtype = self.dtype
-
-			random = getattr(self,'random',None)
-			seed = getattr(self,'seed',None)
-			reset = getattr(self,'reset',None)
-			samples = getattr(self,'samples',None)
-
-			data = data
-			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
-			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
-			locality = len(operator)
-
-			local = any(( 
-				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
-				))
-
-			objs = []
-			
-			for i in range(N):
-				
-				shape = (D**N,) if not local else (D,)
-				size = prod(shape)
-				ndim = len(shape)
-
-				obj = zeros(shape=shape,dtype=dtype)
-
-				if operator[i] in ['zero','zeros','0']:
-					index = 0
-					value = 1
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['one','ones','1']:
-					index = -1
-					value = 1
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['plus','+']:
-					index = slice(None)
-					value = 1/sqrt(size)
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['minus','-']:
-					index = slice(None)
-					value = (-1)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['random','psi','haar','product']:
-					random = 'haar'
-					obj = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
-				
-				elif operator[i] in ['string']:
-					if self.architecture is None:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-					
-					elif self.architecture in ['array']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-					
-					elif self.architecture in ['tensor']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)						
-					
-					elif self.architecture in ['probability']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-
-					elif self.architecture in ['mps']:
-						local = False
-						obj = data
-
-					else:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)						
-				
-				elif operator[i] in ['probability']:
-					if isinstance(data,str) or random is not None:
-						random = data if isinstance(data,str) else random
-						scale = 'normalize'
-						obj = rand(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-					elif isinstance(data,(*arrays,iterables)):
-						index = slice(None)
-						value = data
-						obj = inplace(obj,index,value)
-					else:
-						index = slice(None)
-						value = 1/size
-						obj = inplace(obj,index,value)
-
-				elif isinstance(data,arrays):
-					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
-				
-				else:
-					obj = None
-
-				if obj is None:
-					objs = obj
-					break
-
-				objs.append(obj)
-
-				if not local:
-					objs = objs[-1]
-					break
-
-			data = objs
-
-			if self.architecture is None:
-
-				data = objs
-
-				if data is not None:
-
-					data = tensorprod(data) if not isinstance(data,objects) else data
-
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)
-
-			elif self.architecture in ['array']:
-				
-				data = objs
-
-				if data is not None:
-
-					data = tensorprod(data) if not isinstance(data,objects) else data
-
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)								
-
-			elif self.architecture in ['probability']:
-
-				data = objs
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)
-
-			elif self.architecture in ['tensor']:
-				data = mps(data)
-
-			elif self.architecture in ['mps']:
-				data = mps(data)
-			
-			else:
-
-				data = objs
-
-				if data is not None:
-
-					data = tensorprod(data) if not isinstance(data,objects) else data
-
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)		
-
-			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
-				if isinstance(samples,integers) and (samples > 0):
-					shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
-					samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-				elif not isinstance(samples,arrays):
-					samples = None
-
-				if (samples is not None):
-					data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
-			else:
-				samples = None
-
-		else:
-
-			data = self.data
-
-		def func(parameters=None,state=None):
-			return self.data
-
-		def gradient(parameters=None,state=None):
-			return 0*self.data
-
-		if self.ndim is None:
-			hermitian = True
-			unitary = False
-		elif self.ndim == 1:
-			hermitian = False
-			unitary = True
-		elif self.ndim == 2:
-			hermitian = True
-			unitary = False
-		else:
-			hermitian = True
-			unitary = False
-		
-		self.data = data
-
-		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
-		self.string = string if string is not None else self.string
-		self.locality = len(self.site) if self.site is not None else self.locality
-
-		self.func = func
-		self.gradient = gradient
-		self.contract = contract
-		self.gradient_contract = gradient_contract
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
-		return
-
-
-	def __call__(self,parameters=None,state=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.func(parameters=parameters,state=state)
-		else:
-			return self.contract(self.func(parameters=parameters,state=state),state=state)
-
-	def grad(self,parameters=None,state=None):
-		'''
-		Call operator gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.gradient(parameters=parameters,state=state)
-		else:
-			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
-
-
 
 class Noise(Object):
 	'''
@@ -2154,7 +2036,7 @@ class Noise(Object):
 		**{attr: Basis.I for attr in ['eps','noise','rand']},
 		**{attr: Basis.I for attr in ['depolarize']},
 		**{attr: Basis.I for attr in ['amplitude']},
-		**{attr: Basis.PROJECTOR for attr in ['projector']},
+		**{attr: Basis.projector for attr in ['projector']},
 		**{attr: Basis.X for attr in ['flip','bitflip']},
 		**{attr: Basis.Y for attr in ['flipphase']},
 		**{attr: Basis.Z for attr in ['phase','dephase']},
@@ -2261,13 +2143,13 @@ class Noise(Object):
 							 sqrt(parameters[i])*Basis.Y(D=D,system=system)]
 				
 				elif operator[i] in ['amplitude']:
-					obj = [Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.PROJECTOR(D=D,basis='01',system=system)]
+					obj = [Basis.projector(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.projector(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.projector(D=D,basis='01',system=system)]
 				
 				elif operator[i] in ['dephase-amplitude']:
 					obj = [dots(*i) for i in permutations(
-						[Basis.PROJECTOR(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.PROJECTOR(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.PROJECTOR(D=D,basis='01',system=system)],
+						[Basis.projector(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.projector(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.projector(D=D,basis='01',system=system)],
 						[sqrt(1-parameters[i])*Basis.I(D=D,system=system),
 							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
 						)
@@ -2347,6 +2229,946 @@ class Noise(Object):
 
 		return
 
+
+class Amplitude(Object):
+	'''
+	State class for Quantum Objects
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
+		**{attr: Basis.zero for attr in ['zero','zeros','0']},
+		**{attr: Basis.one for attr in ['one','ones','1']},
+		**{attr: Basis.plus for attr in ['plus','+']},
+		**{attr: Basis.minus for attr in ['minus','-']},
+		}
+	default = 'I'
+	
+	hermitian = None
+	unitary = None
+
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup operator
+		Args:
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments				
+		'''
+
+		data = self.data if data is None else data
+		operator = self.operator if operator is None else operator
+		site = self.site if site is None else site
+		string = self.string if string is None else string
+
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
+		if not isinstance(data,objects) and not callable(data):
+
+			N = self.N
+			D = self.D
+			ndim = self.ndim
+
+			basis = self.basis
+			default = self.default
+			architecture = self.architecture
+			system = self.system
+			dtype = self.dtype
+
+			random = getattr(self,'random',None)
+			seed = getattr(self,'seed',None)
+			reset = getattr(self,'reset',None)
+			samples = getattr(self,'samples',None)
+
+			data = data
+			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
+			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
+			locality = len(operator)
+
+			local = any(( 
+				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
+				))
+
+			objs = []
+			
+			for i in range(N):
+				
+				shape = (D**N,) if not local else (D,)
+				size = prod(shape)
+				ndim = len(shape)
+
+				obj = zeros(shape=shape,dtype=dtype)
+
+				if operator[i] in ['zero','zeros','0']:
+					index = 0
+					value = 1
+					obj = inplace(obj,index,value)
+				
+				elif operator[i] in ['one','ones','1']:
+					index = -1
+					value = 1
+					obj = inplace(obj,index,value)
+				
+				elif operator[i] in ['plus','+']:
+					index = slice(None)
+					value = 1/sqrt(size)
+					obj = inplace(obj,index,value)
+				
+				elif operator[i] in ['minus','-']:
+					index = slice(None)
+					value = (-1)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)
+				
+				elif operator[i] in ['random','psi','haar','product']:
+					random = 'haar'
+					scale = '2'					
+					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
+				
+				elif operator[i] in ['string']:
+				
+					if self.architecture is None:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+					
+					elif self.architecture in ['array']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+					
+					elif self.architecture in ['tensor']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+					
+					elif self.architecture in ['probability']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+						obj = sqrt(obj)
+
+					elif self.architecture in ['mps']:
+						local = False
+						obj = data
+
+					else:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+				
+				elif operator[i] in ['probability']:
+				
+					if isinstance(data,str) or random is not None:
+						random = data if isinstance(data,str) else random
+						scale = '2'
+						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
+					elif isinstance(data,(*arrays,iterables)):
+						index = slice(None)
+						value = data
+						obj = inplace(obj,index,value)
+					else:
+						index = slice(None)
+						value = 1/sqrt(size)
+						obj = inplace(obj,index,value)
+
+				elif isinstance(data,arrays):
+					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
+				
+				else:
+					obj = None
+
+				if obj is None:
+					objs = obj
+					break
+
+				objs.append(obj)
+
+				if not local:
+					objs = objs[-1]
+					break
+
+			data = objs
+
+			if self.architecture is None:
+
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['array']:
+				
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=dtype)								
+
+			elif self.architecture in ['probability']:
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['tensor']:
+				data = mps(data)
+
+			elif self.architecture in ['mps']:
+				data = mps(data)
+			
+			else:
+
+				data = objs
+
+				if data is not None:
+
+					data = tensorprod(data) if not isinstance(data,objects) else data
+
+					if data.ndim < self.ndim:
+						data = einsum('...i,...j->...ij',data,conjugate(data))
+
+					data = array(data,dtype=dtype)		
+
+			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
+				if isinstance(samples,integers) and (samples > 0):
+					shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
+					samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+				elif not isinstance(samples,arrays):
+					samples = None
+
+				if (samples is not None):
+					data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
+			else:
+				samples = None
+
+		else:
+
+			data = self.data
+
+		def func(parameters=None,state=None):
+			return self.data
+
+		def gradient(parameters=None,state=None):
+			return 0*self.data
+
+		if self.ndim is None:
+			hermitian = True
+			unitary = False
+		elif self.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.ndim == 2:
+			hermitian = True
+			unitary = False
+		else:
+			hermitian = True
+			unitary = False
+
+		if self.architecture is None or self.architecture in ['array','tensor','mps']:
+			data = data
+			hermitian = hermitian
+			unitary = unitary
+		elif self.architecture in ['probability']:
+			data = abs2(data)
+			hermitian = None
+			unitary = None
+		else:
+			data = data
+			hermitian = hermitian
+			unitary = unitary
+		
+		self.data = data
+
+		self.operator = operator if operator is not None else self.operator
+		self.site = site if site is not None else self.site
+		self.string = string if string is not None else self.string
+		self.locality = len(self.site) if self.site is not None else self.locality
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+		return
+
+	def __call__(self,parameters=None,state=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.gradient(parameters=parameters,state=state)
+		else:
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
+
+	def norm(self,data=None):
+		'''
+		Normalize class
+		Args:
+			data (array): Data to normalize			
+		Returns:
+			norm (array): Data to normalize
+		'''
+
+		if data is None:
+			try:
+				data = self(self.parameters(),self.state())
+			except:
+				data = self.data
+
+		if data is None:
+			return
+		elif not isinstance(data,objects) and not callable(data):
+			return
+
+		norm = None
+		eps = None
+
+		if self.architecture is None or self.architecture in ['array','tensor','mps']:
+		
+			shape = self.shape
+			ndim = self.ndim
+			dtype = self.dtype
+			hermitian = self.hermitian		
+			unitary = self.unitary	
+
+			if hermitian is None and unitary is None:
+				norm = None
+				eps = None
+			
+			elif ndim is None:
+				norm = None
+				eps = None
+			
+			elif ndim > 3:
+				if not hermitian and unitary:
+					norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
+					eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
+			
+			elif ndim == 3:
+				if not hermitian and not unitary:
+					norm = einsum('uij,uik->jk',conjugate(data),data)
+					eps = identity(shape[-2:],dtype=dtype)
+			
+			elif ndim == 2:
+				if hermitian and unitary:
+					norm = einsum('ii->',data)
+					eps = ones(shape[:-2],dtype=dtype)
+				elif not hermitian and unitary:
+					norm = einsum('ij,kj->ik',conjugate(data),data)
+					eps = identity(shape[-2:],dtype=dtype)
+				elif hermitian and not unitary:
+					norm = einsum('ii->',data)
+					eps = ones(shape[:-2],dtype=dtype)
+				
+			
+			elif ndim == 1:
+				if not hermitian and unitary:
+					norm = einsum('i,i->',conjugate(data),data)
+					eps = ones(shape=(),dtype=dtype)
+		
+		elif self.architecture in ['probability']:
+			
+			shape = self.shape
+			ndim = self.ndim
+			dtype = self.dtype
+			hermitian = self.hermitian		
+			unitary = self.unitary	
+
+			norm = einsum('...->',data) if data is not None else None
+			eps = ones(shape=(),dtype=dtype) if data is not None else None
+
+		if norm is None or eps is None:
+			return
+
+		if dtype not in ['complex256','float128']:
+			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
+			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
+
+		return norm
+
+
+class Probability(Object):
+	'''
+	State class for Quantum Objects
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
+		**{attr: Basis.zero for attr in ['zero','zeros','0']},
+		**{attr: Basis.one for attr in ['one','ones','1']},
+		**{attr: Basis.plus for attr in ['plus','+']},
+		**{attr: Basis.minus for attr in ['minus','-']},
+		}
+	default = 'I'
+	
+	hermitian = None
+	unitary = None
+
+	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+		'''
+		Setup operator
+		Args:
+			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			string (str): string label of operator
+			kwargs (dict): Additional operator keyword arguments				
+		'''
+
+		data = self.data if data is None else data
+		operator = self.operator if operator is None else operator
+		site = self.site if site is None else site
+		string = self.string if string is None else string
+
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
+		if not isinstance(data,objects) and not callable(data):
+
+			N = self.N
+			D = self.D
+			ndim = self.ndim
+
+			basis = self.basis
+			default = self.default
+			architecture = self.architecture
+			system = self.system
+			dtype = self.dtype
+
+			random = getattr(self,'random',None)
+			seed = getattr(self,'seed',None)
+			reset = getattr(self,'reset',None)
+			samples = getattr(self,'samples',None)
+
+			data = data
+			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
+			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
+			locality = len(operator)
+
+			local = any(( 
+				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
+				))
+
+			objs = []
+			
+			for i in range(N):
+				
+				shape = (D**N,) if not local else (D,)
+				size = prod(shape)
+				ndim = len(shape)
+
+				obj = zeros(shape=shape,dtype=dtype)
+
+				if operator[i] in ['zero','zeros','0']:
+					index = 0
+					value = 1
+					obj = inplace(obj,index,value)
+					obj = abs2(obj)
+				
+				elif operator[i] in ['one','ones','1']:
+					index = -1
+					value = 1
+					obj = inplace(obj,index,value)
+					obj = abs2(obj)
+				
+				elif operator[i] in ['plus','+']:
+					index = slice(None)
+					value = 1/sqrt(size)
+					obj = inplace(obj,index,value)
+					obj = abs2(obj)
+				
+				elif operator[i] in ['minus','-']:
+					index = slice(None)
+					value = (-1)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)
+					obj = abs2(obj)
+				
+				elif operator[i] in ['random','psi','haar','product']:
+					random = 'haar'
+					scale = '2'
+					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
+					obj = abs2(obj)
+			
+				elif operator[i] in ['string']:
+					if self.architecture is None:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+						obj = abs2(obj)
+					
+					elif self.architecture in ['array']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+						obj = abs2(obj)
+					
+					elif self.architecture in ['tensor']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+						obj = abs2(obj)
+					
+					elif self.architecture in ['probability']:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)
+						obj = abs2(obj)
+
+					elif self.architecture in ['mps']:
+						local = False
+						obj = data
+
+					else:
+						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
+						value = 1
+						obj = inplace(obj,index,value)						
+						obj = abs2(obj)
+				
+				elif operator[i] in ['probability']:
+				
+					if isinstance(data,str) or random is not None:
+						random = data if isinstance(data,str) else random
+						scale = '2'
+						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
+						obj = abs2(obj)
+					
+					elif isinstance(data,(*arrays,iterables)):
+						index = slice(None)
+						value = data
+						obj = inplace(obj,index,value)
+				
+					else:
+						index = slice(None)
+						value = 1/sqrt(size)
+						obj = inplace(obj,index,value)
+						obj = abs2(obj)
+				
+				elif isinstance(data,arrays):
+					obj = data.reshape(N,*shape)[i] if data.size == N*size else data if data is not None else None
+				
+				else:
+					obj = None
+
+				if obj is None:
+					objs = obj
+					break
+
+				objs.append(obj)
+
+				if not local:
+					objs = objs[-1]
+					break
+
+			data = objs
+
+			if self.architecture is None:
+
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['array']:
+				
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)							
+
+			elif self.architecture in ['probability']:
+
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['tensor']:
+				
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
+
+			elif self.architecture in ['mps']:
+				data = mps(data)
+			
+			else:
+
+				data = objs
+
+				if data is not None:
+
+					data = array(data,dtype=dtype)
+
+
+			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
+				if isinstance(samples,integers) and (samples > 0):
+					shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
+					samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+				elif not isinstance(samples,arrays):
+					samples = None
+
+				if (samples is not None):
+					data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
+			else:
+				samples = None
+
+		else:
+
+			data = self.data
+
+		def func(parameters=None,state=None):
+			return self.data
+
+		def gradient(parameters=None,state=None):
+			return 0*self.data
+
+		hermitian = None
+		unitary = None
+
+		if self.architecture is None or self.architecture in ['array','tensor','mps']:
+			data = abs(data)
+			hermitian = hermitian
+			unitary = unitary
+		elif self.architecture in ['probability']:
+			data = abs(data)
+			hermitian = None
+			unitary = None
+		else:
+			data = abs(data)
+			hermitian = hermitian
+			unitary = unitary
+
+		self.data = data
+
+		self.operator = operator if operator is not None else self.operator
+		self.site = site if site is not None else self.site
+		self.string = string if string is not None else self.string
+		self.locality = len(self.site) if self.site is not None else self.locality
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+		return
+
+	def __call__(self,parameters=None,state=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.gradient(parameters=parameters,state=state)
+		else:
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
+
+	def norm(self,data=None):
+		'''
+		Normalize class
+		Args:
+			data (array): Data to normalize			
+		Returns:
+			norm (array): Data to normalize
+		'''
+
+		if data is None:
+			try:
+				data = self(self.parameters(),self.state())
+			except:
+				data = self.data
+
+		if data is None:
+			return
+		elif not isinstance(data,objects) and not callable(data):
+			return
+
+		norm = None
+		eps = None
+
+		if self.architecture is None or self.architecture in ['array','probability']:
+			shape = self.shape
+			ndim = self.ndim
+			dtype = self.dtype
+			hermitian = self.hermitian		
+			unitary = self.unitary	
+
+			norm = einsum('...->',data) if data is not None else None
+			eps = ones(shape=(),dtype=dtype) if data is not None else None
+
+		elif self.architecture in ['tensor','mps']:
+			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
+
+		if norm is None or eps is None:
+			return
+
+		if dtype not in ['complex256','float128']:
+			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
+			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
+
+		return norm
+
+
+class Data(Object):
+	'''
+	State class for Quantum Objects
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+	
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		}
+	default = 'I'
+
+	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
+
+		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+
+		self = None
+
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+
+		classes = [Amplitude,Probability,Object]
+
+		for subclass in classes:
+			
+			if any(isinstance(obj,subclass) for obj in [data,operator]):
+
+				self = subclass(**kwargs)
+
+				break
+
+			if not all(
+				j in subclass.basis for obj in [data,operator] 
+				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
+				for k in (obj if not isinstance(obj,str) else [obj]) 
+				for j in ([k] if k in subclass.basis else k.split(delim))):
+				continue
+
+			if cls is Operator:
+
+				self = subclass(**kwargs)
+			
+			else:
+				for attr in subclass.__dict__:
+					setattr(cls,attr,getattr(subclass,attr))
+
+				self = subclass.__new__(cls,**kwargs)
+
+				subclass.__init__(self,**kwargs)
+
+			break
+
+		assert (self is not None),'TODO: All operators not in same class'
+
+		return self
+
+
+class State(Data):
+	'''
+	State class for Quantum Objects
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+	
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
+		**{attr: Basis.zero for attr in ['zero','zeros','0']},
+		**{attr: Basis.one for attr in ['one','ones','1']},
+		**{attr: Basis.plus for attr in ['plus','+']},
+		**{attr: Basis.minus for attr in ['minus','-']},
+		}
+	default = 'I'
+
+	def __new__(cls,*args,**kwargs):
+
+		self = super().__new__(cls,*args,**kwargs)
+
+		return self
+
+	def __init__(self,*args,**kwargs):
+		return
+
+
+class Operator(Object):
+	'''
+	Class for Operator
+	Args:
+		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
+		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		string (str): string label of operator
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	N = None
+	D = None
+	
+	space = None
+	time = None	
+	
+	basis = {
+		**{attr: Basis.I for attr in ['I']},
+		}
+	default = 'I'
+
+	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
+
+		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+
+		self = None
+
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+
+		classes = [Gate,Pauli,Haar,Noise,State,Object]
+
+		for subclass in classes:
+			
+			if any(isinstance(obj,subclass) for obj in [data,operator]):
+
+				self = subclass(**kwargs)
+
+				break
+
+			if not all(
+				j in subclass.basis for obj in [data,operator] 
+				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
+				for k in (obj if not isinstance(obj,str) else [obj]) 
+				for j in ([k] if k in subclass.basis else k.split(delim))):
+				continue
+
+			if cls is Operator:
+
+				self = subclass(**kwargs)
+			
+			else:
+				for attr in subclass.__dict__:
+					setattr(cls,attr,getattr(subclass,attr))
+
+				self = subclass.__new__(cls,**kwargs)
+
+				subclass.__init__(self,**kwargs)
+
+			break
+
+		assert (self is not None),'TODO: All operators not in same class'
+
+		return self
+
 class Operators(Object):
 	'''
 	Class for Operators
@@ -2390,14 +3212,15 @@ class Operators(Object):
 
 		return	
 
-	def init(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,conj=False,parameters=None,**kwargs):
 		''' 
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
-			state (bool,array,Object): State to act on with class of shape self.shape, or class hyperparameters
+			state (bool,array,Object): state of class
 			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
+			kwargs (dict): Additional class keyword arguments			
 		'''
 
 		# Set attributes
@@ -2434,7 +3257,6 @@ class Operators(Object):
 			else:
 				self.data[i].init(data=data[i])
 
-
 		# Set state
 		if state is None:
 			state = self.state
@@ -2444,7 +3266,6 @@ class Operators(Object):
 			state = None
 
 		self.state = state
-
 
 		# Set conjugate
 		if conj is None:
@@ -2519,7 +3340,7 @@ class Operators(Object):
 		self.gradient_analytical = grad_analytical
 		
 
-		# Set functions
+		# Set wrapper
 		if self.architecture is None:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
@@ -3088,14 +3909,14 @@ class Unitary(Hamiltonian):
 class Channel(Hamiltonian):
 	pass
 
-class Module(Channel):
+class Module(Hamiltonian):
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
-			state (bool,array,Object): State to act on with class of shape self.shape, or class hyperparameters
+			state (bool,array,Object): state of class
 			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
 		'''
@@ -3212,7 +4033,7 @@ class Module(Channel):
 			return out
 
 		def grad(parameters,state):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity			
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
 			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
