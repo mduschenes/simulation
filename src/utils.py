@@ -3501,7 +3501,7 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,site=None):
+def contraction(data=None,state=None,site=None,string=None):
 	'''
 	Contract data and state
 	Args:
@@ -3511,6 +3511,7 @@ def contraction(data=None,state=None,site=None):
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
+	tag = None
 
 	def func(data,state):
 		return data
@@ -3635,9 +3636,9 @@ def contraction(data=None,state=None,site=None):
 						return einsummation(data,state,conjugate(data))
 
 			elif isinstance(state,tensors):
-
 				def func(data,state):
 					return state.gate(data,where=site)
+				tag = id(func)
 
 		elif data.ndim == 3:
 
@@ -3679,7 +3680,6 @@ def contraction(data=None,state=None,site=None):
 	elif isinstance(data,tensors):
 
 		if state is None:
-
 			def func(data,state):
 				return data
 		

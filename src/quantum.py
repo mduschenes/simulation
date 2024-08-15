@@ -168,6 +168,20 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator	
+	def plusi(cls,*args,**kwargs):
+		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator	
+	def minusi(cls,*args,**kwargs):
+		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
+		index = slice(1,None,cls.D)
+		data[index] *= -1
+		return data		
+
+	@classmethod
+	@System.decorator	
 	def projector(cls,*args,**kwargs):
 		data = zeros(cls.shape,dtype=cls.dtype)
 		index = tuple(map(int,cls.basis))
@@ -464,7 +478,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	compilation = Dict({**dict(trotter=None,simplify=False),**(compilation if isinstance(compilation,dict) else {})})
+	compilation = Dict({**dict(trotter=None,simplify=True),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
@@ -598,14 +612,21 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 	else:
 		wrapper = jit
 
+	wrapper = lambda func,*args,**kwargs: func
+
 	data = [wrapper(data[i]) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
 
 	def func(parameters,state=state,indices=indices):
 
+		print('init',state)
 		def func(i,out):
 			return function(parameters,out,indices=i)
 
 		state = obj if state is None else state
+
+		print(obj)
+		print(state)
+		exit()
 
 		return forloop(*indices,func,state)
 
@@ -723,10 +744,8 @@ class Object(System):
 	D = None
 	space = None
 	
-	basis = {
-		**{attr: Basis.I for attr in [None]}
-	}
-	default = None
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}}
 
 	hermitian = None
 	unitary = None
@@ -977,15 +996,18 @@ class Object(System):
 		state = self.state() if callable(self.state) else self.state
 		site = self.site
 
-		contract = contraction(data,state,site) if self.contract is None else self.contract
+		try:
+			contract = contraction(data,state,site,self.string) if self.contract is None else self.contract
+		except NotImplementedError as exception:
+			def contract(data,state):
+				return state
+			raise exception
 
-		# grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
 		try:
 			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
 		except NotImplementedError as exception:
 			def grad_contract(grad,data,state):
 				return 0
-			print(exception)
 
 		self.func = func
 		self.gradient = gradient
@@ -1591,13 +1613,14 @@ class Pauli(Object):
 	space = None
 	time = None		
 	
+	default = 'I'
 	basis = {
+		**{attr: Basis.I for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.X for attr in ['X']},
 		**{attr: Basis.Y for attr in ['Y']},
 		**{attr: Basis.Z for attr in ['Z']},
 			}
-	default = 'I'
 	
 	hermitian = None
 	unitary = None
@@ -1812,7 +1835,9 @@ class Gate(Object):
 	space = None
 	time = None	
 
+	default = 'I'
 	basis = {
+		**{attr: Basis.I for attr in [default]},
 		**{attr: Basis.I for attr in ['i']},
 		**{attr: Basis.X for attr in ['x']},
 		**{attr: Basis.Y for attr in ['y']},
@@ -1821,7 +1846,6 @@ class Gate(Object):
 		**{attr: Basis.H for attr in ['HADAMARD','H']},
 		**{attr: Basis.S for attr in ['PHASE','S']}
 		}
-	default = 'I'
 
 	hermitian = None
 	unitary = None
@@ -1906,12 +1930,13 @@ class Haar(Object):
 	
 	space = None
 	time = None	
-
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.unitary for attr in ['U','unitary','random','haar']},
-		}
+	
 	default = 'I'
+	basis = {
+		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.unitary for attr in ['U','random','haar']},
+		}
 
 	hermitian = None
 	unitary = None
@@ -2006,7 +2031,9 @@ class Noise(Object):
 	space = None
 	time = None
 
+	default = 'I'
 	basis = {
+		**{attr: Basis.I for attr in [default]},
 		**{attr: Basis.I for attr in ['I','i']},
 		**{attr: Basis.I for attr in ['eps','noise','rand']},
 		**{attr: Basis.I for attr in ['depolarize']},
@@ -2017,7 +2044,6 @@ class Noise(Object):
 		**{attr: Basis.Z for attr in ['phase','dephase']},
 		**{attr: Basis.I for attr in ['dephase-amplitude']},
 		}
-	default = 'I'
 	
 	hermitian = None
 	unitary = None
@@ -2223,13 +2249,17 @@ class Amplitude(Object):
 	space = None
 	time = None	
 
+	default = 'I'
 	basis = {
+		**{attr: Basis.I for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
 		**{attr: Basis.one for attr in ['one','ones','1']},
 		**{attr: Basis.plus for attr in ['plus','+']},
 		**{attr: Basis.minus for attr in ['minus','-']},
+		**{attr: Basis.plus for attr in ['plusi','+i']},
+		**{attr: Basis.minus for attr in ['minusi','-i']},		
 		}
 	default = 'I'
 	
@@ -2312,6 +2342,16 @@ class Amplitude(Object):
 					index = slice(None)
 					value = (-1)**arange(size)/sqrt(size)
 					obj = inplace(obj,index,value)
+
+				elif operator[i] in ['plusi','+i']:
+					index = slice(None)
+					value = (1j)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)
+				
+				elif operator[i] in ['minusi','-i']:
+					index = slice(None)
+					value = (-1j)**arange(size)/sqrt(size)
+					obj = inplace(obj,index,value)					
 				
 				elif operator[i] in ['psi','state','random','haar','product']:
 					random = 'haar'
@@ -2579,11 +2619,11 @@ class Probability(Object):
 	space = None
 	time = None	
 
+	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in ['I']},
+		**{attr: Basis.I for attr in [default]},
 		**{attr: Basis.state for attr in ['probability']},
 		}
-	default = 'I'
 	
 	hermitian = None
 	unitary = None
@@ -2834,9 +2874,9 @@ class State(Object):
 	
 	space = None
 	time = None	
-	
-	basis = {**Object.basis,**Probability.basis,**Amplitude.basis,}
-	default = 'I'
+
+	default = 'I'	
+	basis = {**{attr: Basis.I for attr in [default]},**Object.basis,**Probability.basis,**Amplitude.basis,}
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
@@ -2901,11 +2941,9 @@ class Operator(Object):
 	
 	space = None
 	time = None	
-	
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		}
-	default = 'I'
+
+	default = 'I'	
+	basis = {**{attr: Basis.I for attr in [default]}}
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
@@ -2915,7 +2953,7 @@ class Operator(Object):
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
 
-		classes = [Gate,Pauli,Haar,Noise,State,Object]
+		classes = [Channel,Module,Unitary,Hamiltonian,Gate,Pauli,Haar,Noise,State,Object]
 
 		for subclass in classes:
 			
@@ -2977,6 +3015,9 @@ class Operators(Object):
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
+	
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['operators']}}
 
 	def __init__(self,data=None,operator=None,site=None,string=None,
 		N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
@@ -3352,6 +3393,8 @@ class Operators(Object):
 
 		parameters = self.parameters(parameters)
 
+		print('calling',self,state,self.func)
+
 		return self.func(parameters=parameters,state=state)
 
 
@@ -3670,6 +3713,9 @@ class Hamiltonian(Operators):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['hamiltonian']}}
+
 	def __init__(self,data=None,operator=None,site=None,string=None,
 				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
@@ -3681,12 +3727,16 @@ class Hamiltonian(Operators):
 		return
 
 class Unitary(Hamiltonian):
-	pass
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['unitary']}}
 
 class Channel(Hamiltonian):
-	pass
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['channel']}}
 
 class Module(Hamiltonian):
+	default = 'I'
+	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
@@ -3847,6 +3897,15 @@ class Module(Hamiltonian):
 		self.gradient_automatic = partial(self.gradient_automatic,parameters=parameters,state=state)
 		self.gradient_finite = partial(self.gradient_finite,parameters=parameters,state=state)
 		self.gradient_analytical = partial(self.gradient_analytical,parameters=parameters,state=state)
+
+
+		# # Convert amplitude to probability formalism
+		# cls = Manifold
+		# operator = self.base
+		# parameters = self.parameters(self.parameters())
+		# states = cls(operator=self.base)
+
+		# data = self.func(parameters,state)
 
 		return
 

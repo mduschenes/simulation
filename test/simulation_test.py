@@ -115,40 +115,6 @@ def test_simulation(*args,path=None,tol=None,**kwargs):
 	return
 
 
-def test_probability(*args,path=None,tol=None,**kwargs):
-	settings = Dict({
-		"cls":{
-			"model":'src.quantum.Operator',
-			"state":'src.quantum.State'			
-		},
-		"model":{
-			"operator":'X.X.X',
-			"site":[0,1,2],
-			"string":"operator",
-			"parameters":0.25,
-			"N":3,"D":2,"ndim":2,
-			"system":{"seed":123456789,"architecture":"probability"}
-		},	
-		"state": {
-			"data":[0.3,0.7],
-			"operator":"probability",
-			"site":None,
-			"string":"probability",
-			"parameters":True,
-			"N":3,"D":2,"ndim":1,
-			"system":{"seed":123456789,"verbose":True,"architecture":"probability"}
-			},
-	})
-
-	verbose = True
-
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
-
-	model = model(**settings.model)
-	state = state(**settings.state)
-
-	return
 
 
 if __name__ == '__main__':
