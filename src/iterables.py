@@ -48,9 +48,10 @@ class Dictionary(dict):
 		def wrapper(cls,*args,system=None,**kwargs):
 			# super().__init__(*args,system=system,**kwargs)
 			properties = deepcopy(cls.properties)
-			
+
+			setter(kwargs,dict(system=system),delimiter=delim,default=False)
+			setter(kwargs,system,delimiter=delim,default=False)			
 			setter(kwargs,cls.properties,delimiter=delim,default=False)
-			setter(kwargs,system,delimiter=delim,default=False)
 			for attr in kwargs:
 				if kwargs[attr] is not None:
 					setattr(cls,attr,kwargs[attr])

@@ -6,16 +6,16 @@ import os,sys
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','..']
+PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,allclose,delim,spawn,einsum,conjugate
-from src.utils import arrays,iterables,scalars,integers,floats,pi
+from src.utils import argparser,jit,array,allclose,product,spawn,einsum,conjugate
+from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.io import load,dump,glob
 from src.call import rm,echo
 from src.system import Dict
-from src.iterables import namespace,permuter,setter,getter,delim
+from src.iterables import namespace,permuter,setter,getter
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
@@ -24,18 +24,18 @@ def test_architecture(*args,**kwargs):
 
 	data = {}
 
-	kwargs = {'model.system.architecture':['array','mps'],'state.system.architecture':['array','mps']}
-	groups = [['model.system.architecture','state.system.architecture']]
+	kwargs = {"model.system.architecture":["array","mps"],"state.system.architecture":["array","mps"]}
+	groups = [["model.system.architecture","state.system.architecture"]]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 	
 		settings = Dict({
 			"cls":{
-				"model":'src.quantum.Operator',
-				"state":'src.quantum.State'
+				"model":"src.quantum.Operator",
+				"state":"src.quantum.State"
 			},
 			"model":{
-				"operator":'X.Y',
+				"operator":"X.Y",
 				"site":[0,2],
 				"string":"operator",
 				"parameters":0.25,
@@ -71,50 +71,52 @@ def test_architecture(*args,**kwargs):
 
 		value = model.data
 		
-		if kwargs['model.system.architecture'] ['array']:
+		if kwargs["model.system.architecture"] in ["array"]:
 			value = array(value)
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = array(value)
 
-		print('--- model ---')
+		print("--- model ---")
 		model.info(verbose=verbose)
 		print(model.data)
-		print('------')
+		print("------")
 
 
 		# State
 
 		value = state()
 		
-		if kwargs['model.system.architecture'] ['array']:
+		if kwargs["model.system.architecture"] in ["array"]:
 			value = array(value)
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = value.to_dense().reshape(-1)
 
-		print('--- state ---')
+		print("--- state ---")
 		state.info(verbose=verbose)
 		print(value)
-		print('------')
+		print("------")
 
 
 		# Value
 		
 		value = model(model.parameters(model.parameters()),model.state())
 
-		if kwargs['model.system.architecture'] ['array']:
+		if kwargs["model.system.architecture"] in ["array"]:
 			value = array(value)
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = value.to_dense().reshape(-1)
 
-		print('--- value ---')
+		print("--- value ---")
 		print(value)
-		print('------')
+		print("------")
 		
 
 		data[i] = value
 
 
 	assert len(data)<2 or allclose(*(data[i] for i in data)), "Error - Incorrect architecture contraction"
+
+	print("Passed")
 
 	return
 
@@ -123,15 +125,15 @@ def test_contract(*args,**kwargs):
 
 	return
 
-	architecture = 'array'
+	architecture = "array"
 
 	settings = Dict({
 		"cls":{
-				"model":'src.quantum.Operator',
-				"state":'src.quantum.State'
+				"model":"src.quantum.Operator",
+				"state":"src.quantum.State"
 			},		
 		"model":{
-			"operator":'X.X',
+			"operator":"X.X",
 			"site":[0,1],
 			"string":"operator",
 			"parameters":0.5,
@@ -156,37 +158,37 @@ def test_contract(*args,**kwargs):
 	model = model(**settings.model)
 	state = state(**settings.state)
 
-	print('--- state ---')
+	print("--- state ---")
 	state.info(verbose=verbose)
 	print(state())
-	print('------')
+	print("------")
 
 	model.init(state=state)
 
 	print()
 
-	print('--- model ---')
+	print("--- model ---")
 	model.info(verbose=verbose)
 	print(model.data)
-	print('------')
+	print("------")
 
-	print('--- contract ---')
+	print("--- contract ---")
 	print(model(model.parameters(model.parameters()),model.state()))
-	print('------')
+	print("------")
 
 	print()
 
 
-	print('--- einsum ---',model.ndim,state.ndim)
+	print("--- einsum ---",model.ndim,state.ndim)
 	if model.ndim == 3 and state.ndim == 2:
-		print(einsum('uij,jk,ulk',model.data,model.state(),conjugate(model.data)))
+		print(einsum("uij,jk,ulk",model.data,model.state(),conjugate(model.data)))
 	elif model.ndim == 3 and state.ndim == 1:
-		print(einsum('uij,jk',model.data,model.state()))
+		print(einsum("uij,jk",model.data,model.state()))
 	elif model.ndim == 2 and state.ndim == 2:
-		print(einsum('ij,jk,lk',model.data,model.state(),conjugate(model.data)))
+		print(einsum("ij,jk,lk",model.data,model.state(),conjugate(model.data)))
 	elif model.ndim == 2 and state.ndim == 1:
-		print(einsum('ij,jk',model.data,model.state()))
-	print('------')
+		print(einsum("ij,jk",model.data,model.state()))
+	print("------")
 
 	print()
 
@@ -203,20 +205,20 @@ def test_module(*args,**kwargs):
 
 	data = {}
 
-	kwargs = {'model.system.architecture':['array','mps'],'state.system.architecture':['array','mps']}
-	groups = [['model.system.architecture','state.system.architecture']]
+	kwargs = {"model.system.architecture":["array","mps"],"state.system.architecture":["array","mps"]}
+	groups = [["model.system.architecture","state.system.architecture"]]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
-				"model":'src.quantum.Module',
-				"state":'src.quantum.State'
+				"model":"src.quantum.Module",
+				"state":"src.quantum.State"
 			},			
 			"model":{
 				"data":{
 					"XX":{
-						"operator":['X','X'],
+						"operator":["X","X"],
 						"site":[0,1],
 						"string":"xx",
 						"parameters":pi,
@@ -263,56 +265,56 @@ def test_module(*args,**kwargs):
 
 		value = {i: model.data[i].data for i in model.data}
 
-		if architecture is None:
+		if kwargs["model.system.architecture"] is None:
 			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
-		elif kwargs['model.system.architecture'] ['array']:
+		elif kwargs["model.system.architecture"] in ["array"]:
 			value = {i: array(value[i]) if value[i] is not None else None for i in value}
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = {i: array(value[i]) if value[i] is not None else None for i in value}
 		else:
 			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
 
-		print('--- model ---')
+		print("--- model ---")
 		model.info(verbose=verbose)
 		print(value)
-		print('------')
+		print("------")
 
 
 		# State
 
 		value = state()
 		
-		if architecture is None:
+		if kwargs["model.system.architecture"] is None:
 			value = array(value) if value is not None else None			
-		elif kwargs['model.system.architecture'] ['array']:
+		elif kwargs["model.system.architecture"] in ["array"]:
 			value = array(value) if value is not None else None
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
 		else:
 			value = array(value) if value is not None else None						
 
-		print('--- state ---')
+		print("--- state ---")
 		state.info(verbose=verbose)
 		print(value)
-		print('------')
+		print("------")
 
 
 		# Value
 		
 		value = model(model.parameters(model.parameters()),model.state())
 
-		if architecture is None:
+		if kwargs["model.system.architecture"] is None:
 			value = array(value) if value is not None else None			
-		elif kwargs['model.system.architecture'] ['array']:
+		elif kwargs["model.system.architecture"] in ["array"]:
 			value = array(value) if value is not None else None
-		elif kwargs['model.system.architecture'] ['mps']:
+		elif kwargs["model.system.architecture"] in ["mps"]:
 			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
 		else:
 			value = array(value) if value is not None else None			
 
-		print('--- value ---')
+		print("--- value ---")
 		print(value)
-		print('------')
+		print("------")
 		
 
 		data[i] = value
@@ -325,14 +327,14 @@ def test_module(*args,**kwargs):
 
 def test_amplitude(*args,**kwargs):
 
-	kwargs = {'state.ndim':[1,2]}
+	kwargs = {"state.ndim":[1,2]}
 	groups = None
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
-				"state":'src.quantum.Amplitude'
+				"state":"src.quantum.Amplitude"
 			},
 			"state": {
 				"data":"011",
@@ -351,7 +353,7 @@ def test_amplitude(*args,**kwargs):
 
 		state = state(**settings.state)
 
-		print(settings['state']['operator'],type(state))
+		print(settings["state"]["operator"],type(state))
 		print(state.data)
 		print(state(state.parameters(),state.state()))
 		print(state.norm())
@@ -365,14 +367,14 @@ def test_amplitude(*args,**kwargs):
 
 def test_probability(*args,**kwargs):
 
-	kwargs = {'state.ndim':[1]}
+	kwargs = {"state.ndim":[1]}
 	groups = None
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
-				"state":'src.quantum.Probability'
+				"state":"src.quantum.Probability"
 			},
 			"state": {
 				"data":[1/2]*2,
@@ -391,7 +393,7 @@ def test_probability(*args,**kwargs):
 
 		state = state(**settings.state)
 
-		print(settings['state']['operator'],type(state))
+		print(settings["state"]["operator"],type(state))
 		print(state.data)
 		print(state(state.parameters(),state.state()))
 		print(state.norm())
@@ -406,24 +408,24 @@ def test_probability(*args,**kwargs):
 def test_state(*args,**kwargs):
 
 	kwargs = {
-		'cls.state':['src.quantum.State','src.quantum.Operator'],
-		'state.data':[
+		"cls.state":["src.quantum.State","src.quantum.Operator"],
+		"state.data":[
 			"random",
 			[1/2]*2
 			],
-		'state.operator':[
-			'product',
-			'probability'
+		"state.operator":[
+			"product",
+			"probability"
 			],
-		'state.ndim':[1],
+		"state.ndim":[1],
 		}
-	groups = [['state.data','state.operator']]
+	groups = [["state.data","state.operator"]]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
-				"state":'src.quantum.State'
+				"state":"src.quantum.State"
 			},
 			"state": {
 				"data":"random",
@@ -444,7 +446,7 @@ def test_state(*args,**kwargs):
 
 		state = state(**settings.state)
 
-		print(settings['cls']['state'],settings['state']['operator'],type(state))
+		print(settings["cls"]["state"],settings["state"]["operator"],type(state))
 		print(state.data)
 		print(state(state.parameters(),state.state()))
 		print(state.norm())
@@ -459,48 +461,72 @@ def test_state(*args,**kwargs):
 
 def test_manifold(*args,**kwargs):
 
-	settings = Dict({
-		"cls":{
-			"model":'src.quantum.Manifold',
-			"state":'src.quantum.State'
-		},
-		"model":{
-			'data':None,
-			'operator':'pauli',
-			'D':2,
-			'dtype':'complex'
-		},
-		"state": {
-			"data":None	,
-			"operator":"probability",
-			"site":None,
-			"string":"psi",
-			"parameters":True,
-			"N":3,"D":2,"ndim":1,
-			"system":{"seed":12345,"dtype":"complex","architecture":"array","base":"pauli"}
-			}
-		})
+	kwargs = {
+		"model.operator":["pauli","tetrad","trine"],
+		"state.D":[4,4,3],
+		}
+	groups = [["model.operator","state.D",]]
 
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
-	model = model(**settings.model)
-	state = state(**settings.state)
+		settings = Dict({
+			"cls":{
+				"model":"src.quantum.Manifold",
+				"state":"src.quantum.State",
+				"basis":"src.quantum.Basis",
+			},
+			"model":{
+				"data":None,
+				"operator":"pauli",
+				"string":"povm",
+				"D":2,
+				"dtype":"complex"
+			},
+			"state": {
+				"data":"random"	,
+				"operator":"probability",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
+				"N":3,"D":4,"ndim":1,
+				"system":{"seed":12345,"dtype":"complex","architecture":"array","base":"pauli"}
+				}
+			})
 
-	model.init(state=state)
+		setter(settings,kwargs,delimiter=delim,default=True)
 
-	print(model.data)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		basis = load(settings.cls.basis)
+
+		model = model(**settings.model)
+		state = state(**settings.state)
+
+		model.init(state=state)
+
+
+		print(settings['model']['operator'])
+		print(model,len(model))
+		print(model.identity)
+		print(model.data)
+		print(model.inverse)
+		print(model.dot(model.data,model.inverse))
+		print(model())
+		print()
+
+		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
+		assert allclose(model.dot(model.data,model.inverse),basis.I(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
 
 	return
 
 def test_basis(*args,**kwargs):
 	settings = Dict({
 		"cls":{
-			"model":'src.quantum.Operator',
-			"state":'src.quantum.State'
+			"model":"src.quantum.Operator",
+			"state":"src.quantum.State"
 		},
 		"model":{
-			"operator":'X.Y',
+			"operator":"X.Y",
 			"site":[0,2],
 			"string":"operator",
 			"parameters":0.25,
@@ -531,18 +557,17 @@ def test_basis(*args,**kwargs):
 	return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-	arguments = 'path'
+	arguments = "path"
 	args = argparser(arguments)
 
 	# main(*args,**args)
 
-	# test_architecture(*args,**args)
-	# test_contract(*args,**args)
+	test_architecture(*args,**args)
 	# test_module(*args,**args)
 	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	test_manifold(*args,**args)
+	# test_manifold(*args,**args)
 	# test_basis(*args,**args)

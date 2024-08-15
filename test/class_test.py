@@ -882,11 +882,11 @@ if __name__ == '__main__':
 	# test_data(path,tol)
 	# test_initialization(path,tol)
 	# test_hessian(path,tol)
-	# test_model(path,tol)
+	test_model(path,tol)
 
 	# test_fisher(path,tol)
 	# test_object(path,tol)
-	test_data(path,tol)
+	# test_data(path,tol)
 
 	# func = check_machine_precision
 	# func = check_fisher

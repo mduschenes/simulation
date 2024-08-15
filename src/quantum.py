@@ -174,6 +174,66 @@ class Basis(Dict):
 		data[index] = 1
 		return data
 
+	@classmethod
+	@System.decorator	
+	def sample(cls,*args,**kwargs):
+		data = array([*[1]*(cls.D)],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def pauli(cls,*args,**kwargs):
+		data = (1/(cls.D**2-1))*array([
+			array([[1, 0],[0, 0]]),
+			(1/cls.D)*array([[1,1],[1,1]]),
+			(1/cls.D)*array([[1,-1j],[1j,1]]),
+			(1/cls.D)*(
+				2*array([[0,0],[0,1]]) + 
+				array([[1,-1],[-1,1]]) + 
+				array([[1,1j],[-1j,1]]))
+			],dtype=cls.dtype)
+		return data
+
+
+	@classmethod
+	@System.decorator
+	def tetrad(cls,*args,**kwargs):
+		data = (1/(cls.D**2))*array([
+
+				1*array([[1,0],[0,1]]) + 
+				0*array([[0,1],[1,0]])+
+				0*array([[0,-1j],[1j,0]])+
+				1*array([[1,0],[0,-1]]),
+
+				1*array([[1,0],[0,1]]) + 
+				cls.D*sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
+				0*array([[0,-1j],[1j,0]])+
+				-1/(cls.D**2-1)*array([[1,0],[0,-1]]),
+
+				1*array([[1,0],[0,1]]) + 
+				-sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
+				sqrt(cls.D/(cls.D**2-1))*array([[0,-1j],[1j,0]])+
+				-1/(cls.D**2-1)*array([[1,0],[0,-1]]),
+
+				1*array([[1,0],[0,1]]) + 
+				-sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
+				-sqrt(cls.D/(cls.D**2-1))*array([[0,-1j],[1j,0]])+
+				-1/(cls.D**2-1)*array([[1,0],[0,-1]])
+				],dtype=cls.dtype)
+
+		return data
+
+	@classmethod
+	@System.decorator
+	def trine(cls,*args,**kwargs):
+		data = (1/(cls.D**2-1))*array([(
+			array([[1,0],[0,1]]) + 
+			cos(i*2*pi/(cls.D**2-1))*array([[1,0],[0,-1]]) + 
+			sin(i*2*pi/(cls.D**2-1))*array([[0,1],[1,0]]))
+			for i in range(cls.D**2-1)
+			],dtype=cls.dtype)
+		return data
+
 
 class Manifold(System):
 
@@ -231,17 +291,13 @@ class Manifold(System):
 		conj = self.conj if conj is None else conj
 		parameters = self.parameters if parameters is None else parameters
 
-		if self.state is None or not callable(state):
+		if state is None or not callable(state):
 			def state(parameters=None,state=state):
 				return state
-		else:
-			state = self.state
 
-		if self.parameters is None or not callable(parameters):
+		if parameters is None or not callable(parameters):
 			def parameters(parameters=parameters,state=None):
 				return parameters
-		else:
-			parameters = self.parameters			
 
 		self.state = state
 		self.conj = conj
@@ -267,15 +323,13 @@ class Manifold(System):
 		site = self.site if site is None else site
 		string = self.string if string is None else string
 
-		basis = self.basis
-
 		operator = data if isinstance(data,str) else operator if data is None else operator
 
-		basis = getattr(self,operator)(D=self.D,dtype=self.dtype) if operator is not None else None
+		basis = getattr(Basis,operator)(D=self.D,dtype=self.dtype) if operator is not None and hasattr(Basis,operator) else None
 
-		data = self.inner(basis,basis) if basis is not None else None
+		data = self.dot(basis,basis) if basis is not None else None
 		inverse = self.inv(data) if data is not None else None
-		identity = array([1/len(basis)]*len(basis),dtype=self.dtype) if basis is not None else self.identity if self.identity is not None else None
+		identity = Basis.sample(D=len(basis),dtype=self.dtype) if basis is not None else self.identity if self.identity is not None else None
 
 		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))] if basis is not None else self.shape
 		size = prod(shape) if shape is not None else None
@@ -289,16 +343,23 @@ class Manifold(System):
 
 		self.basis = basis
 		self.inverse = inverse
-		self.identity
+		self.identity = identity
 
 		self.shape = shape
 		self.size = size
 		self.ndim =  ndim
 		self.dtype = dtype
 
+		parameters = self.parameters()
+		state = self.state() if self.state is not None and self.state() is not None else self.identity
+		wrapper = jit
+	
 		if self.basis is not None:
+			subscripts = '...i,iu,ujk->...jk'
+			shapes = (state.shape,self.inverse.shape,self.basis.shape)
+			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
-				return einsum('...i,iu,ujk->...jk',state,self.inverse,self.basis)
+				return einsummation(state,self.inverse,self.basis)
 
 			def gradient(parameters,state):
 				return 0
@@ -313,32 +374,6 @@ class Manifold(System):
 		self.func = func
 		self.gradient = gradient
 
-
-		if self.architecture is None:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit
-		
-		elif self.architecture in ['array']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit
-
-		elif self.architecture in ['tensor']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit
-
-		elif self.architecture in ['mps']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = partial
-		
-		else:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit
-
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 
@@ -347,7 +382,7 @@ class Manifold(System):
 	def __call__(self,parameters=None,state=None):
 		parameters = self.parameters() if parameters is None else parameters
 		state = self.state() if state is None else state
-		return self.func(parameters,state)
+		return self.func(parameters=parameters,state=state)
 
 	def __len__(self):
 		return len(self.basis)
@@ -370,24 +405,12 @@ class Manifold(System):
 		return
 
 	@classmethod
-	def dot(cls,data):
-		return einsum('uij,vij->uv',conjugate(data),data)
+	def dot(cls,a,b):
+		return einsum('u...,v...->uv',a,conjugate(b))
 	
 	@classmethod
-	def inv(cls,data):
-		return inv(data)
-
-	@classmethod
-	def pauli(cls,*args,**kwargs):
-		D = cls.D
-		data = (1/(D**2-1))*array([
-			[[1,0],[0,0]],
-			[[0,0],[0,1]],
-			[[1/D,1/D],[1/D,1/D]],
-
-			],dtype=cls.dtype)
-		data = identity(cls.D**cls.N,dtype=cls.dtype)
-		return data
+	def inv(cls,a):
+		return inv(a)
 
 
 def trotter(iterable=None,p=None,verbose=False):
@@ -743,7 +766,7 @@ class Object(System):
 		
 		operator = self.operator if self.operator is not None else None
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
-		locality = self.locality if self.locality is not None else self.N
+		locality = self.locality if self.locality is not None else self.N if self.N is not None else 1
 		string = self.string
 		
 		N = self.N	
@@ -806,7 +829,7 @@ class Object(System):
 		if not isinstance(string,str):
 			string = str(string)
 
-		N = max(self.N,max(site)+1 if site is not None else self.N) if N is not None else max(site)+1 if site is not None else 0
+		N = max(N,max(site)+1 if site is not None else N) if N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		site = site[:N] if site is not None else site
@@ -864,8 +887,6 @@ class Object(System):
 			state = self.state
 		elif state is False:
 			state = None
-		elif not isinstance(state,(Object,*arrays,*objects)):
-			state = None
 
 		if conj is None:
 			conj = False
@@ -917,11 +938,9 @@ class Object(System):
 
 		self.data = data
 
-		if self.state is None or not callable(state):
+		if state is None or not callable(state):
 			def state(parameters=None,state=state):
 				return state
-		else:
-			state = self.state
 		
 		self.state = state
 
@@ -1624,7 +1643,8 @@ class Pauli(Object):
 				elif operator is not None:
 					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
 						for i in range(N)]) if all(i in basis for i in operator) else None			
-			
+				data = array(data,dtype=self.dtype)
+
 			elif architecture in ['array']:
 				if isinstance(operator,str):
 					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
@@ -1632,6 +1652,7 @@ class Pauli(Object):
 				elif operator is not None:
 					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
 						for i in range(N)]) if all(i in basis for i in operator) else None			
+				data = array(data,dtype=self.dtype)
 			
 			elif architecture in ['tensor']:
 				if isinstance(operator,str):
@@ -1644,6 +1665,7 @@ class Pauli(Object):
 					data = tensorprod([basis.get(operator)(D=D,system=system) for i in site]) if operator in basis else None
 				elif operator is not None:
 					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) for i in site]) if all(i in basis for i in operator) else None			
+				data = array(data,dtype=self.dtype)
 
 			else:
 				if isinstance(operator,str):
@@ -1652,10 +1674,12 @@ class Pauli(Object):
 				elif operator is not None:
 					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
 						for i in range(N)]) if all(i in basis for i in operator) else None			
+				data = array(data,dtype=self.dtype)
 
 		else:
 
 			data = self.data
+
 
 		if self.parameters() is not None:
 
