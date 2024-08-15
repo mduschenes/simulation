@@ -151,8 +151,6 @@ def test_channel(*args,**kwargs):
 
 def test_composite(*args,**kwargs):
 
-	return
-
 	data = {}
 
 	kwargs = {"model.system.architecture":["array"],"state.system.architecture":["array"]}

@@ -319,9 +319,8 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 		iterable (dict): dictionary to be set in-place with value
 		keys (dict,tuple): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	'''
 
 	types = (dict,)
@@ -338,6 +337,8 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 		func = lambda key_iterable,key_keys,iterable,keys: iterable.get(key_iterable,keys.get(key_keys))
 	elif default in ['none','None']:
 		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys) if iterable.get(key_iterable,keys.get(key_keys)) is None else iterable.get(key_iterable,keys.get(key_keys))
+	elif default in ['replace']:
+		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys)	
 	elif not callable(default):
 		instances = tuple(default)
 		def func(key_iterable,key_keys,iterable,keys,instances=instances): 
@@ -368,7 +369,7 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 			if not isinstance(other,nulls):
 				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
 			else:
-				if isinstance(keys[key],types) and isinstance(iterable[index],types):
+				if isinstance(keys[key],types) and isinstance(iterable[index],types) and default not in ['replace']:
 					setter(iterable[index],keys[key],delimiter=delimiter,default=default,copy=copy)
 				else:
 					iterable[index] = copier(func(index,key,iterable,keys),copy=copy)
@@ -392,9 +393,8 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		iterable (dict): dictionary to get with keys
 		keys (str,dict,tuple,list): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	'''
 
 	types = (dict,)

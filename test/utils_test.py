@@ -349,23 +349,22 @@ def test_getter(path=None,tol=None):
 def test_setter(path=None,tol=None):
 	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
-	elements = {
-		'hi.world.di':-99,
-		'hi.world':89,
-	}
-	
-	tests = [
-		(lambda value,element,iterable: value==-99),
-		(lambda value,element,iterable: value==89),
+	elements = [
+		{'hi.world.di':-99},
+		{'hi.world':89},
+		{'hi.world':{'check':'new'}},
 	]
 	
-	for element,test in zip(elements,tests):
-#         iterable = deepcopy(iterables)
-		iterable = iterables
-		value = elements[element]
-		setter(iterable,{element:value},delimiter=delim,default=True)
-		value = getter(iterable,element,delimiter=delim)
-		assert test(value,element,iterable), "Incorrect setter %r %r"%(element,value)
+	test = lambda value,element,iterable,elements: value==elements[element]
+	
+	for element in elements:
+		iterable = copy.deepcopy(iterables)
+		setter(iterable,element,delimiter=delim,default='replace')
+		print(element)
+		print(iterables)
+		print(iterable)
+		print()
+		assert all(test(getter(iterable,elem,delimiter=delim),elem,iterable,element) for elem in element), "Incorrect setter %r , %r -> %r"%(iterables,element,iterable)
 	
 	print('Passed')
 
@@ -523,9 +522,9 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_getter(path,tol)
-	# test_setter(path,tol)
+	test_setter(path,tol)
 	# test_scinotation(path,tol)
-	test_gradient(path,tol)
+	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
 	# test_expmi()	
