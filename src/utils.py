@@ -2587,7 +2587,6 @@ if backend in ['jax']:
 		if seed is not None:
 			key = seed
 		
-		_key = key
 		key = spawn(key,reset=reset)
 
 		generator = jax.random
@@ -2801,7 +2800,7 @@ if backend in ['jax']:
 		elif scale in ['1']:
 			out = out/out.sum()
 		elif scale in ['2']:
-			out = out/sqrt(sqr(out).sum())
+			out = out/sqrt(addition(conjugate(out)*out))
 		elif scale is not None:
 			out = out*scale
 
@@ -3087,7 +3086,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		elif scale in ['1']:
 			out = out/out.sum()
 		elif scale in ['2']:
-			out = out/sqrt(sqr(out).sum())
+			out = out/sqrt(addition(conjugate(out)*out))
 		elif scale is not None:
 			out = out*scale
 

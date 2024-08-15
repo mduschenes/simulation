@@ -15,7 +15,7 @@ from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,spaw
 from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -51,9 +51,6 @@ class Basis(Dict):
 	basis = None
 	
 	dtype = None
-	random = None
-	scale = None
-	key = None
 
 	@classmethod
 	@property
@@ -123,14 +120,24 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator	
-	def U(cls,*args,**kwargs):
-		data = rand(shape=cls.shape,random=cls.random,scale=cls.scale,key=cls.key,dtype=cls.dtype)
+	def unitary(cls,*args,**kwargs):
+		data = rand(
+			shape=cls.shape,
+			random=getattr(cls,'random',None),
+			scale=getattr(cls,'scale',None),
+			key=getattr(cls,'key',getattr(cls,'seed',None)),
+			dtype=cls.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
-	def psi(cls,*args,**kwargs):
-		data = rand(shape=cls.shape,random=cls.random,scale=cls.scale,key=cls.key,dtype=cls.dtype)
+	def state(cls,*args,**kwargs):
+		data = rand(
+			shape=cls.shape,
+			random=getattr(cls,'random',None),
+			scale=getattr(cls,'scale',None),
+			key=getattr(cls,'key',getattr(cls,'seed',None)),
+			dtype=cls.dtype)
 		return data
 
 	@classmethod
@@ -175,9 +182,6 @@ class Manifold(System):
 	basis = None
 
 	dtype = None
-	random = None
-	scale = None
-	key = None
 
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
@@ -324,11 +328,6 @@ class Manifold(System):
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = jit
-
-		elif self.architecture in ['probability']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit							
 
 		elif self.architecture in ['mps']:
 			parameters = self.parameters()
@@ -571,8 +570,6 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 		wrapper = jit
 	elif architecture in ['tensor']:		
 		wrapper = jit
-	elif architecture in ['probability']:		
-		wrapper = jit				
 	elif architecture in ['mps']:
 		wrapper = partial
 	else:
@@ -639,8 +636,6 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,archit
 		wrapper = jit
 	elif architecture in ['tensor']:
 		wrapper = jit
-	elif architecture in ['probability']:
-		wrapper = jit				
 	elif architecture in ['mps']:
 		wrapper = partial
 	else:
@@ -823,7 +818,7 @@ class Object(System):
 		ndim = self.ndim if self.ndim is not None else getattr(data,'ndim',self.ndim) if data is not None else None
 		dtype = self.dtype if self.dtype is not None else getattr(data,'dtype',self.dtype) if data is not None else None
 
-		self.data = data if data is not None else operator if operator is not None else None
+		self.data = data if data is not None else None
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
 		self.string = string if string is not None else None
@@ -901,9 +896,9 @@ class Object(System):
 
 
 		if (self.parameters() is not None) and (((self.data is not None) or (self.operator is not None))):
+			
 			self.setup(self.data,self.operator,self.site,self.string)
 		
-
 		if (self.parameters() is None) and (not isinstance(self.data,objects)) and (not callable(self.data)):
 			data = None
 		elif isinstance(self.data,objects) or callable(self.data):
@@ -940,9 +935,6 @@ class Object(System):
 		elif self.architecture in ['tensor']:
 			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity
 
-		elif self.architecture in ['probability']:
-			identity = array([self.basis.get(self.default)(D=self.D,system=self.system)]*self.N) if self.identity is None else self.identity
-	
 		elif self.architecture in ['mps']:
 			identity = self.basis.get(self.default)(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity
 
@@ -1002,11 +994,6 @@ class Object(System):
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = jit
-
-		elif self.architecture in ['probability']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit							
 
 		elif self.architecture in ['mps']:
 			parameters = self.parameters()
@@ -1457,9 +1444,9 @@ class Object(System):
 		'''
 		Normalize class
 		Args:
-			data (array): Data to normalize			
+			data (array): data to normalize			
 		Returns:
-			norm (array): Data to normalize
+			norm (array): data to normalize
 		'''
 
 		if data is None:
@@ -1519,17 +1506,6 @@ class Object(System):
 					norm = einsum('i,i->',conjugate(data),data)
 					eps = ones(shape=(),dtype=dtype)
 		
-		elif self.architecture in ['probability']:
-			
-			shape = self.shape
-			ndim = self.ndim
-			dtype = self.dtype
-			hermitian = self.hermitian		
-			unitary = self.unitary	
-
-			norm = einsum('...->',data) if data is not None else None
-			eps = ones(shape=(),dtype=dtype) if data is not None else None
-
 		if norm is None or eps is None:
 			return
 
@@ -1663,14 +1639,6 @@ class Pauli(Object):
 				elif operator is not None:
 					data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=variable)			
 
-			elif architecture in ['probability']:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if all(i in basis for i in operator) else None			
-			
 			elif architecture in ['mps']:
 				if isinstance(operator,str):
 					data = tensorprod([basis.get(operator)(D=D,system=system) for i in site]) if operator in basis else None
@@ -1721,16 +1689,6 @@ class Pauli(Object):
 					parameters = self.parameters(parameters)
 					return grad*self.data(params=parameters+pi/2)
 
-			elif self.architecture in ['probability']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
 					parameters = self.parameters(parameters)	
@@ -1773,13 +1731,6 @@ class Pauli(Object):
 
 				def gradient(parameters=None,state=None):
 					return grad*self.data(params=parameters+pi/2)
-
-			elif self.architecture in ['probability']:
-				def func(parameters=None,state=None):
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
@@ -1934,7 +1885,7 @@ class Haar(Object):
 
 	basis = {
 		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.U for attr in ['U','random','haar']},
+		**{attr: Basis.unitary for attr in ['U','unitary','random','haar']},
 		}
 	default = 'I'
 
@@ -2250,7 +2201,7 @@ class Amplitude(Object):
 
 	basis = {
 		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
+		**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
 		**{attr: Basis.one for attr in ['one','ones','1']},
 		**{attr: Basis.plus for attr in ['plus','+']},
@@ -2305,7 +2256,7 @@ class Amplitude(Object):
 			locality = len(operator)
 
 			local = any(( 
-				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
+				all((operator[i] not in ['psi','state','random','haar','string']) for i in range(N)),
 				))
 
 			objs = []
@@ -2338,12 +2289,14 @@ class Amplitude(Object):
 					value = (-1)**arange(size)/sqrt(size)
 					obj = inplace(obj,index,value)
 				
-				elif operator[i] in ['random','psi','haar','product']:
+				elif operator[i] in ['psi','state','random','haar','product']:
 					random = 'haar'
 					scale = '2'					
 					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-				
+
 				elif operator[i] in ['string']:
+
+					assert isinstance(data,str), "data <%r> must be <str>"%(data)
 				
 					if self.architecture is None:
 						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
@@ -2360,12 +2313,6 @@ class Amplitude(Object):
 						value = 1
 						obj = inplace(obj,index,value)						
 					
-					elif self.architecture in ['probability']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-						obj = sqrt(obj)
-
 					elif self.architecture in ['mps']:
 						local = False
 						obj = data
@@ -2375,22 +2322,8 @@ class Amplitude(Object):
 						value = 1
 						obj = inplace(obj,index,value)						
 				
-				elif operator[i] in ['probability']:
-				
-					if isinstance(data,str) or random is not None:
-						random = data if isinstance(data,str) else random
-						scale = '2'
-						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-					elif isinstance(data,(*arrays,iterables)):
-						index = slice(None)
-						value = data
-						obj = inplace(obj,index,value)
-					else:
-						index = slice(None)
-						value = 1/sqrt(size)
-						obj = inplace(obj,index,value)
-
 				elif isinstance(data,arrays):
+					
 					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
 				
 				else:
@@ -2410,50 +2343,39 @@ class Amplitude(Object):
 
 			if self.architecture is None:
 
-				if data is not None:
+				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
 
-					data = tensorprod(data) if not isinstance(data,objects) else data
+				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
 
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)
+				data = array(data,dtype=dtype)
 
 			elif self.architecture in ['array']:
-				
-				if data is not None:
+		
+				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
 
-					data = tensorprod(data) if not isinstance(data,objects) else data
+				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
 
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)								
-
-			elif self.architecture in ['probability']:
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)
+				data = array(data,dtype=dtype)
 
 			elif self.architecture in ['tensor']:
-				data = mps(data)
+				
+				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
+
+				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
+
+				data = array(data,dtype=dtype)			
 
 			elif self.architecture in ['mps']:
+			
 				data = mps(data)
 			
 			else:
 
-				data = objs
+				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
 
-				if data is not None:
+				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
 
-					data = tensorprod(data) if not isinstance(data,objects) else data
-
-					if data.ndim < self.ndim:
-						data = einsum('...i,...j->...ij',data,conjugate(data))
-
-					data = array(data,dtype=dtype)		
+				data = array(data,dtype=dtype)
 
 			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
 				if isinstance(samples,integers) and (samples > 0):
@@ -2490,19 +2412,6 @@ class Amplitude(Object):
 			hermitian = True
 			unitary = False
 
-		if self.architecture is None or self.architecture in ['array','tensor','mps']:
-			data = data
-			hermitian = hermitian
-			unitary = unitary
-		elif self.architecture in ['probability']:
-			data = abs2(data)
-			hermitian = None
-			unitary = None
-		else:
-			data = data
-			hermitian = hermitian
-			unitary = unitary
-		
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
@@ -2552,9 +2461,9 @@ class Amplitude(Object):
 		'''
 		Normalize class
 		Args:
-			data (array): Data to normalize			
+			data (array): data to normalize			
 		Returns:
-			norm (array): Data to normalize
+			norm (array): data to normalize
 		'''
 
 		if data is None:
@@ -2571,7 +2480,7 @@ class Amplitude(Object):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array','tensor','mps']:
+		if self.architecture is None or self.architecture in ['array']:
 		
 			shape = self.shape
 			ndim = self.ndim
@@ -2614,16 +2523,9 @@ class Amplitude(Object):
 					norm = einsum('i,i->',conjugate(data),data)
 					eps = ones(shape=(),dtype=dtype)
 		
-		elif self.architecture in ['probability']:
-			
-			shape = self.shape
-			ndim = self.ndim
-			dtype = self.dtype
-			hermitian = self.hermitian		
-			unitary = self.unitary	
+		elif self.architecture in ['tensor','mps']:
 
-			norm = einsum('...->',data) if data is not None else None
-			eps = ones(shape=(),dtype=dtype) if data is not None else None
+			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
 
 		if norm is None or eps is None:
 			return
@@ -2655,11 +2557,7 @@ class Probability(Object):
 
 	basis = {
 		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
-		**{attr: Basis.zero for attr in ['zero','zeros','0']},
-		**{attr: Basis.one for attr in ['one','ones','1']},
-		**{attr: Basis.plus for attr in ['plus','+']},
-		**{attr: Basis.minus for attr in ['minus','-']},
+		**{attr: Basis.state for attr in ['probability']},
 		}
 	default = 'I'
 	
@@ -2710,7 +2608,7 @@ class Probability(Object):
 			locality = len(operator)
 
 			local = any(( 
-				all((operator[i] not in ['random','psi','haar','string']) for i in range(N)),
+				all((operator[i] not in []) for i in range(N)),
 				))
 
 			objs = []
@@ -2723,79 +2621,13 @@ class Probability(Object):
 
 				obj = zeros(shape=shape,dtype=dtype)
 
-				if operator[i] in ['zero','zeros','0']:
-					index = 0
-					value = 1
-					obj = inplace(obj,index,value)
-					obj = abs2(obj)
 				
-				elif operator[i] in ['one','ones','1']:
-					index = -1
-					value = 1
-					obj = inplace(obj,index,value)
-					obj = abs2(obj)
-				
-				elif operator[i] in ['plus','+']:
-					index = slice(None)
-					value = 1/sqrt(size)
-					obj = inplace(obj,index,value)
-					obj = abs2(obj)
-				
-				elif operator[i] in ['minus','-']:
-					index = slice(None)
-					value = (-1)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)
-					obj = abs2(obj)
-				
-				elif operator[i] in ['random','psi','haar','product']:
-					random = 'haar'
-					scale = '2'
-					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-					obj = abs2(obj)
-			
-				elif operator[i] in ['string']:
-					if self.architecture is None:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-						obj = abs2(obj)
-					
-					elif self.architecture in ['array']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-						obj = abs2(obj)
-					
-					elif self.architecture in ['tensor']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)						
-						obj = abs2(obj)
-					
-					elif self.architecture in ['probability']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-						obj = abs2(obj)
-
-					elif self.architecture in ['mps']:
-						local = False
-						obj = data
-
-					else:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)						
-						obj = abs2(obj)
-				
-				elif operator[i] in ['probability']:
+				if operator[i] in ['probability']:
 				
 					if isinstance(data,str) or random is not None:
 						random = data if isinstance(data,str) else random
-						scale = '2'
-						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-						obj = abs2(obj)
-					
+						scale = '1'
+						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=datatype(dtype))
 					elif isinstance(data,(*arrays,iterables)):
 						index = slice(None)
 						value = data
@@ -2803,11 +2635,11 @@ class Probability(Object):
 				
 					else:
 						index = slice(None)
-						value = 1/sqrt(size)
+						value = 1/size
 						obj = inplace(obj,index,value)
-						obj = abs2(obj)
 				
 				elif isinstance(data,arrays):
+					
 					obj = data.reshape(N,*shape)[i] if data.size == N*size else data if data is not None else None
 				
 				else:
@@ -2827,47 +2659,23 @@ class Probability(Object):
 
 			if self.architecture is None:
 
-				data = objs
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)
+				data = array(data,dtype=dtype) if data is not None else None
 
 			elif self.architecture in ['array']:
 				
-				data = objs
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)							
-
-			elif self.architecture in ['probability']:
-
-				data = objs
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)
+				data = array(data,dtype=dtype) if data is not None else None
 
 			elif self.architecture in ['tensor']:
-				
-				data = objs
 
-				if data is not None:
-
-					data = array(data,dtype=dtype)
+				data = array(data,dtype=dtype) if data is not None else None
 
 			elif self.architecture in ['mps']:
+
 				data = mps(data)
 			
 			else:
 
-				data = objs
-
-				if data is not None:
-
-					data = array(data,dtype=dtype)
-
+				data = array(data,dtype=dtype) if data is not None else None
 
 			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
 				if isinstance(samples,integers) and (samples > 0):
@@ -2893,19 +2701,6 @@ class Probability(Object):
 
 		hermitian = None
 		unitary = None
-
-		if self.architecture is None or self.architecture in ['array','tensor','mps']:
-			data = abs(data)
-			hermitian = hermitian
-			unitary = unitary
-		elif self.architecture in ['probability']:
-			data = abs(data)
-			hermitian = None
-			unitary = None
-		else:
-			data = abs(data)
-			hermitian = hermitian
-			unitary = unitary
 
 		self.data = data
 
@@ -2956,9 +2751,9 @@ class Probability(Object):
 		'''
 		Normalize class
 		Args:
-			data (array): Data to normalize			
+			data (array): data to normalize			
 		Returns:
-			norm (array): Data to normalize
+			norm (array): data to normalize
 		'''
 
 		if data is None:
@@ -2975,14 +2770,14 @@ class Probability(Object):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array','probability']:
+		if self.architecture is None or self.architecture in ['array']:
 			shape = self.shape
 			ndim = self.ndim
 			dtype = self.dtype
 			hermitian = self.hermitian		
 			unitary = self.unitary	
 
-			norm = einsum('...->',data) if data is not None else None
+			norm = product(einsum('...i->...',data)) if data is not None else None
 			eps = ones(shape=(),dtype=dtype) if data is not None else None
 
 		elif self.architecture in ['tensor','mps']:
@@ -2998,7 +2793,7 @@ class Probability(Object):
 		return norm
 
 
-class Data(Object):
+class State(Object):
 	'''
 	State class for Quantum Objects
 	Args:
@@ -3016,14 +2811,10 @@ class Data(Object):
 	space = None
 	time = None	
 	
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		}
+	basis = {**Object.basis,**Probability.basis,**Amplitude.basis,}
 	default = 'I'
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
-
-		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
@@ -3033,24 +2824,25 @@ class Data(Object):
 
 		for subclass in classes:
 			
-			if any(isinstance(obj,subclass) for obj in [data,operator]):
+			if any(isinstance(obj,subclass) for obj in [data if data is not None else operator if operator is not None else None]):
 
 				self = subclass(**kwargs)
 
 				break
 
 			if not all(
-				j in subclass.basis for obj in [data,operator] 
-				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
-				for k in (obj if not isinstance(obj,str) else [obj]) 
-				for j in ([k] if k in subclass.basis else k.split(delim))):
+				j in subclass.basis for obj in [operator if operator is not None else data if data is not None else None] 
+				if isinstance(obj,(str,*iterables))
+				for k in (obj if isinstance(obj,iterables) else [obj]) 
+				for j in ([k] if k in subclass.basis else k.split(delim) if all(j in subclass.basis for j in k.split(delim)) else [None])):
 				continue
 
-			if cls is Operator:
+			if cls in [State]:
 
 				self = subclass(**kwargs)
-			
+
 			else:
+
 				for attr in subclass.__dict__:
 					setattr(cls,attr,getattr(subclass,attr))
 
@@ -3061,41 +2853,6 @@ class Data(Object):
 			break
 
 		assert (self is not None),'TODO: All operators not in same class'
-
-		return self
-
-
-class State(Data):
-	'''
-	State class for Quantum Objects
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-	
-	space = None
-	time = None	
-	
-	basis = {
-		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.psi for attr in ['random','psi','haar','product','string','probability']},
-		**{attr: Basis.zero for attr in ['zero','zeros','0']},
-		**{attr: Basis.one for attr in ['one','ones','1']},
-		**{attr: Basis.plus for attr in ['plus','+']},
-		**{attr: Basis.minus for attr in ['minus','-']},
-		}
-	default = 'I'
-
-	def __new__(cls,*args,**kwargs):
-
-		self = super().__new__(cls,*args,**kwargs)
 
 		return self
 
@@ -3138,24 +2895,25 @@ class Operator(Object):
 
 		for subclass in classes:
 			
-			if any(isinstance(obj,subclass) for obj in [data,operator]):
+			if any(isinstance(obj,subclass) for obj in [data if data is not None else operator if operator is not None else None]):
 
 				self = subclass(**kwargs)
 
 				break
 
 			if not all(
-				j in subclass.basis for obj in [data,operator] 
-				if (obj is not None and not isinstance(obj,objects) and not callable(obj))
-				for k in (obj if not isinstance(obj,str) else [obj]) 
-				for j in ([k] if k in subclass.basis else k.split(delim))):
+				j in subclass.basis for obj in [operator if operator is not None else data if data is not None else None] 
+				if isinstance(obj,(str,*iterables))
+				for k in (obj if isinstance(obj,iterables) else [obj]) 
+				for j in ([k] if k in subclass.basis else k.split(delim) if all(j in subclass.basis for j in k.split(delim)) else [None])):
 				continue
 
-			if cls is Operator:
+			if cls in [Operator]:
 
 				self = subclass(**kwargs)
 			
 			else:
+				
 				for attr in subclass.__dict__:
 					setattr(cls,attr,getattr(subclass,attr))
 
@@ -3355,11 +3113,6 @@ class Operators(Object):
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else self.identity
 			wrapper = jit
-
-		elif self.architecture in ['probability']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else self.identity
-			wrapper = jit							
 
 		elif self.architecture in ['mps']:
 			parameters = self.parameters(self.parameters())
@@ -4466,8 +4219,6 @@ class Callback(System):
 						wrapper = jit
 					elif model.architecture in ['tensor']:
 						wrapper = jit											
-					elif model.architecture in ['probability']:
-						wrapper = jit
 					elif model.architecture in ['mps']:
 						wrapper = partial
 					else:
