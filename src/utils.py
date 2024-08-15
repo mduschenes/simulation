@@ -2136,6 +2136,58 @@ class dataframe(pd.DataFrame):
 		# return super().__init__(self,*args,**kwargs)
 
 
+class entity(object):
+	'''
+	dataframe class
+	Args:
+		args (iterable): Dataframe arguments
+		kwargs (dict): Dataframe keyword arguments
+	Returns:
+		out (array): dataframe
+	'''
+	def __init__(self,shape=None,dtype=None,**kwargs):
+		self._shape = () if shape is None else (shape,) if not isinstance(shape,iterables) else (*shape,)
+		self._dtype = float if dtype is None else dtype
+		self._data = asscalar(asarray(0,dtype=self.dtype))
+		return 
+
+	@property
+	def shape(self):
+		return self._shape
+	
+	@property
+	def size(self):
+		return prod(self.shape)
+	
+	@property
+	def ndim(self):
+		return len(self.shape)
+
+	@property
+	def dtype(self):
+		return self._dtype
+
+	@property
+	def data(self):
+		return self._data
+
+	def __len__(self):
+		return self.shape[0]
+
+	def __iter__(self):
+		for i in range(len(self)):
+			yield self.data
+
+	def __getitem__(self,item):
+		return self.data
+
+	def __setitem__(self,item,value):
+		self.data = self.dtype(value)
+		return
+
+
+
+
 class identity(array):
 	'''
 	array class of identity

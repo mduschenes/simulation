@@ -879,10 +879,10 @@ if __name__ == '__main__':
 
 	# test_object(path,tol)
 	# test_logger(path,tol)
-	# test_data(path,tol)
+	test_data(path,tol)
 	# test_initialization(path,tol)
 	# test_hessian(path,tol)
-	test_model(path,tol)
+	# test_model(path,tol)
 
 	# test_fisher(path,tol)
 	# test_object(path,tol)

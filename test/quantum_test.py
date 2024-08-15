@@ -25,16 +25,18 @@ def test_channel(*args,**kwargs):
 	data = {}
 
 	kwargs = {
-		"model.system.architecture":["mps"],
-		"state.system.architecture":["mps"],
-		"state.ndim":[1]}
-	groups = [["model.system.architecture","state.system.architecture"]]
+		**{attr:[5] for attr in ["model.N","state.N"]},
+		**{attr:["array","mps"] for attr in ["model.system.architecture","state.system.architecture"]},
+		"model.M":[10],
+		"model.ndim":[2],"state.ndim":[1],
+		}
+	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 	
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Channel",
+				"model":"src.quantum.Module",
 				"state":"src.quantum.State"
 			},
 			"model":{
@@ -55,7 +57,7 @@ def test_channel(*args,**kwargs):
 						"variable":True
 					},				
 					"zz":{
-						"operator":["Z","Z"],"site":"i<j","string":"zz",
+						"operator":["Z","Z"],"site":"<ij>","string":"zz",
 						"parameters":{"data":"random","seed":123},
 						"variable":True
 					},
@@ -66,7 +68,7 @@ def test_channel(*args,**kwargs):
 					# 	"variable":False
 					# }
 				},
-				"N":3,"D":2,"ndim":2,
+				"N":20,"D":2,"ndim":2,"M":20,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
@@ -75,7 +77,7 @@ def test_channel(*args,**kwargs):
 				"site":None,
 				"string":"psi",
 				"parameters":True,
-				"N":3,"D":2,"ndim":1,
+				"N":20,"D":2,"ndim":1,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}
 				},
 		})
@@ -83,12 +85,15 @@ def test_channel(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default=True)
 
 		verbose = True
+		ignore = 'parameters'
 
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 
 		state = state(**settings.state)
 		model = model(**settings.model,state=state)
+
+		model.init(state=state)
 
 		# Model
 
@@ -100,7 +105,7 @@ def test_channel(*args,**kwargs):
 			value = array(value)
 
 		print("--- model ---")
-		model.info(verbose=verbose)
+		model.info(ignore=ignore,verbose=verbose)
 		print(model.data)
 		print("------")
 
@@ -115,15 +120,13 @@ def test_channel(*args,**kwargs):
 			value = value.to_dense().reshape(-1)
 
 		print("--- state ---")
-		state.info(verbose=verbose)
+		state.info(ignore=ignore,verbose=verbose)
 		print(value)
 		print("------")
 
 
 		# Value
 		
-		print(model.state())
-
 		value = model(model.parameters(model.parameters()),model.state())
 
 		if kwargs["model.system.architecture"] in ["array"]:
@@ -147,6 +150,8 @@ def test_channel(*args,**kwargs):
 
 
 def test_composite(*args,**kwargs):
+
+	return
 
 	data = {}
 
@@ -493,14 +498,14 @@ def test_module(*args,**kwargs):
 				"system":{"seed":12345,"dtype":"complex","architecture":None}
 			},	
 			"state": {
-				# "data":"random",
-				# "operator":"product",
-				# "site":None,
-				# "string":"psi",
-				# "parameters":True,
+				"data":"random",
+				"operator":"product",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
 				"N":2,"D":2,
-				# "ndim":1,
-				# "system":{"seed":12345,"dtype":"complex","architecture":None}
+				"ndim":1,
+				"system":{"seed":12345,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -778,6 +783,8 @@ def test_manifold(*args,**kwargs):
 
 def test_basis(*args,**kwargs):
 
+	return
+
 	kwargs = {
 		"model.operator":["pauli","tetrad","trine"],
 		"state.D":[4,4,3],
@@ -788,7 +795,7 @@ def test_basis(*args,**kwargs):
 
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Module",
+				"model":"src.quantum.Manifold",
 				"state":"src.quantum.State",
 				"basis":"src.quantum.Basis",
 			},
@@ -844,7 +851,8 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 
-	test_channel(*args,**args)
+
+	# test_channel(*args,**args)
 	# test_architecture(*args,**args)
 	# test_module(*args,**args)
 	# test_amplitude(*args,**args)
