@@ -82,6 +82,46 @@ def test_search(path=None,tol=None):
 	return
 
 
+def test_permuter(path=None,tol=None):
+
+	iterable = {'hi':[1,2],'world':[-1,-2],'test':[True,False]}
+
+	groupings = [
+		None,
+		[['hi','world']],
+		[['hi','world']],
+	]
+	filterings = [
+		None,
+		None,
+		lambda dictionaries: (dictionary for dictionary in dictionaries if dictionary['test'] is True)
+	]
+	results = [
+		[
+		{'hi':1,'world':-1,'test':True},{'hi':1,'world':-1,'test':False},
+		{'hi':1,'world':-2,'test':True},{'hi':1,'world':-2,'test':False},
+		{'hi':2,'world':-1,'test':True},{'hi':2,'world':-1,'test':False},
+		{'hi':2,'world':-2,'test':True},{'hi':2,'world':-2,'test':False},
+		],
+		[
+		{'hi':1,'world':-1,'test':True},{'hi':1,'world':-1,'test':False},
+		{'hi':2,'world':-2,'test':True},{'hi':2,'world':-2,'test':False},
+		],
+		[
+		{'hi':1,'world':-1,'test':True},{'hi':2,'world':-2,'test':True},
+		]
+	]
+
+	for groups,filters,values in zip(groupings,filterings,results):
+		
+		iterables = permuter(iterable,groups=groups,filters=filters)
+
+		assert all(i==j for i,j in zip(iterables,values)), "Incorrect permute for groups %r"%(groups)
+
+	print('Passed')
+
+	return
+
 
 
 
@@ -89,5 +129,6 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	test_search(path=path,tol=tol)
-	test_equalizer(path=path,tol=tol)
+	# test_search(path=path,tol=tol)
+	# test_equalizer(path=path,tol=tol)
+	test_permuter(path=path,tol=tol)

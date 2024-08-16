@@ -442,7 +442,7 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
-def permuter(dictionary,copy=False,groups=None,ordered=True):
+def permuter(dictionary,copy=False,groups=None,filters=None,ordered=True):
 	'''
 	Get all combinations of values of dictionary of lists
 
@@ -456,25 +456,22 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 			dictionary[key1] = [value_10,value_11,value_12], 
 			then the permuted dictionary will have key0 and key1 keys with only pairwise values of 
 			[{key0:value_00,key1:value_10},{key0:value_01,key1:value_11},{key0:value_02,key1:value_12}].
+		filters (callable): Function with signature filters(dictionaries) -> dictionaries to parse allowed dictionaries
 		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
 
 	Returns:
-		List of dictionaries with all combinations of lists of values in dictionary
+		dictionaries (iterable[dict]) : Iterable of dictionaries with all combinations of lists of values in dictionary
 	'''		
 	def indexer(keys,values,groups):
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = deepcopy(groups)
-		if groups is not None:
-			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
-		else:
-			inds = []
-			groups = []
+		groups = deepcopy(groups) if groups is not None else []
+		inds = [[keys.index(k) for k in g if k in keys] for g in groups]
 		N = len(groups)
 		groups.extend([[k] for k in keys if all([k not in g for g in groups])])
 		inds.extend([[keys.index(k) for k in g if k in keys] for g in groups[N:]])
-		values = [[values[j] for j in i ] for i in inds]
+		values = [[values[j] for j in i] for i in inds]
 		return groups,values
 
 	def zipper(keys,values,copy): 
@@ -494,7 +491,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get all list of dictionaries of all permutations of sub-dictionaries
 		'''
-		return [{k:d[k] for d in dicts for k in d} for dicts in permutations(*dictionaries)]
+		return ({k:d[k] for d in dicts for k in d} for dicts in permutations(*dictionaries))
 
 	def retriever(keys,values,groups):
 		'''
@@ -531,12 +528,14 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 	# Zip keys with lists of lists in values into list of dictionaries
 	dictionaries = [zipper(k,v,copy) for k,v in zip(keys,values)]
 
-
 	# Get all permutations of list of dictionaries into one list of dictionaries with all keys
 	dictionaries = permute(dictionaries)
 
+	# Filter allowed dictionaries
+	dictionaries = filters(dictionaries) if filters is not None else dictionaries
 
 	# Retain original ordering of keys if ordered is True
+	dictionaries = list(dictionaries)
 	if ordered:
 		for i,d in enumerate(dictionaries):
 			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
