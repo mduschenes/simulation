@@ -12,9 +12,10 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import np,onp,backend
+from src.utils import jit,partial
 from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
-from src.utils import einsum,norm,norm2,trace,mse
+from src.utils import einsum,dot,add,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -517,12 +518,201 @@ def test_rand(path,tol):
 
 	return
 
+def test_pytree(path=None,tol=None):
+
+	def tree_map(func,*trees,is_leaf=None,**kwargs):
+		'''
+		Perform function on trees
+		Args:
+			func (callable): Callable function with signature func(*trees,**kwargs)
+			trees (iterable[pytree]): Pytrees of identical structure for function
+			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves
+			kwargs (dict): Additional keyword arguments for function
+		Returns:
+			tree (pytree): Tree with mapped function
+		'''
+		if not callable(is_leaf):
+			types = (dict,tuple,list,) if is_leaf is None else (*is_leaf,) if isinstance(is_leaf,iterables) else (is_leaf,)
+			is_leaf = lambda tree,types=types: isinstance(tree,types)	
+
+		if not callable(func):
+			return
+
+		def mapper(*trees,func=None,is_leaf=None,**kwargs):
+			if not trees:
+				return
+			tree = trees[0]
+			if is_leaf(tree):
+				for key in tree:
+					node = tree[key] if isinstance(tree,dict) else key
+					nodes = (tree[key] if isinstance(tree,dict) else tree for tree in trees)
+					if is_leaf(node):
+						mapper(*nodes,func=func,is_leaf=is_leaf,**kwargs)
+					else:
+						leaf = func(*nodes,**kwargs)
+						if isinstance(tree,dict):
+							tree[key] = leaf
+						else:
+							tree[tree.index(key)] = leaf
+			return
+
+		trees = (*copy.deepcopy(trees[:1]),*trees[1:])
+		mapper(*trees,func=func,is_leaf=is_leaf,**kwargs)
+		tree = trees[0]
+
+		return tree
+
+	def tree_ravel(tree,is_leaf=None):
+		'''
+		Flatten tree
+		Args:
+			tree (pytree): Tree to flatten
+			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves
+		Yields:
+			node (object): Nodes of tree
+		'''
+		
+		if not callable(is_leaf):
+			types = (dict,tuple,list,) if is_leaf is None else (*is_leaf,) if isinstance(is_leaf,iterables) else (is_leaf,)
+			is_leaf = lambda tree,types=types: isinstance(tree,types)			
+
+		if is_leaf(tree):
+			for key in tree:
+				node = tree[key] if isinstance(tree,dict) else key
+				yield from tree_ravel(node,is_leaf=is_leaf)
+		else:
+			try:
+				yield from tree.ravel()
+			except:
+				yield tree
+
+	def tree_flatten(tree,is_leaf=None):
+		'''
+		Flatten tree
+		Args:
+			tree (pytree): Tree to flatten
+			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves
+		Returns:
+			flat (array): Flattened tree
+		'''
+		return array([tree for tree in tree_ravel(tree,is_leaf=is_leaf)])
+
+	def tree_func(func):
+		'''
+		Perform function on trees
+		Args:
+			func (callable): Callable function with signature func(*trees,**kwargs)
+		Returns:
+			tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*trees,**kwargs)
+		'''
+		def tree_func(*trees,is_leaf=None,**kwargs):
+			return tree_map(partial(func,**kwargs),*trees,is_leaf=is_leaf)
+		return tree_func
+
+	@tree_func
+	def tree_dot(a,b):
+		'''
+		Perform dot product function on trees a and b
+		Args:
+			a (pytree): Pytree object to perform function
+			b (pytree): Pytree object to perform function
+		Returns:
+			tree_map (pytree): Return pytree of function call
+		'''	
+		return dot(a.ravel(),b.ravel())
+
+	@tree_func
+	def tree_add(a,b):
+		'''
+		Perform add function on trees a and b
+		Args:
+			a (pytree): Pytree object to perform function
+			b (pytree): Pytree object to perform function
+		Returns:
+			tree_map (pytree): Return pytree of function call
+		'''
+		return add(a,b)
+
+	@tree_func
+	def tree_index(a,index=None):
+		'''
+		Perform index function on tree a
+		Args:
+			a (pytree): Pytree object to perform function
+			index (object): Index for pytree
+		Returns:
+			tree_map (pytree): Return pytree of function call
+		'''
+		return a[index]
+
+
+	def equals(*trees,**kwargs):
+		@tree_func
+		def func(*trees):
+			assert all(allclose(i,j) for i in trees for j in trees)
+			return
+		func(*trees,**kwargs)
+		return
+
+	def test(*trees,func=None,**kwargs):
+
+		trees = copy.deepcopy(trees)
+
+		default = None
+		test = load('src.utils.tree_%s'%(func),default=default)
+		check = tree_func(load('src.utils.%s'%(func),default=default))
+
+		assert callable(test) and callable(check), "Incorrect pytree function %r"%(func)
+
+		test = test(*trees,**kwargs)
+
+		check = check(*trees,**kwargs)
+
+		print(test)
+		print(check)
+		trees = (test,check)
+		equals(*trees)
+
+		return
+
+
+	tree = {'channel':{'x':array([1,2,3]),'y':array([1,2,3])},'noise':array([1,2,3])}
+	kwargs = dict(index=1)
+
+	print(tree)
+	print(tree_dot(tree,tree))
+	print(tree_add(tree,tree))
+	print(tree_index(tree,**kwargs))
+
+	print(*tree_ravel(tree))
+	print(tree_flatten(tree))
+	print()
+
+	func = 'dot'
+	trees = (tree,tree)
+	kwargs = {}
+	test(*trees,func=func,**kwargs)
+
+	func = 'add'
+	trees = (tree,tree)
+	kwargs = {}
+	test(*trees,func=func,**kwargs)
+
+	func = 'index'
+	trees = (tree,)
+	kwargs = {'index':1}
+	test(*trees,func=func,**kwargs)
+	
+	print('Passed')
+
+	return
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_getter(path,tol)
-	test_setter(path,tol)
+	# test_setter(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
@@ -530,3 +720,5 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
+
+	test_pytree(path,tol)

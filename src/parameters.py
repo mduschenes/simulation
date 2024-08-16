@@ -360,6 +360,7 @@ class Parameters(System):
 			data[parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
 			data[parameter].local = True
 			data[parameter].indices = i
+			data[parameter].variable = self.parameters.variable
 			data[parameter].axis = list(sorted(list(set(self.parameters[parameter].axis)),key=lambda i: self.parameters[parameter].axis.index(i)))
 
 			data[parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
@@ -378,6 +379,7 @@ class Parameters(System):
 		data = {parameter: data[parameter] for parameter in data}
 
 		indices = {parameter:data[parameter].indices for parameter in data}
+		variable = all(data[parameter].variable for parameter in data)
 		parameters = array([data[parameter].data for parameter in data])
 
 		parameters = parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()
@@ -388,6 +390,7 @@ class Parameters(System):
 		dtype = parameters.dtype
 
 		indices = {i: indices[i] for i in indices}
+		variable = variable
 		parameters = parameters.ravel()
 
 		for parameter in data:
@@ -403,6 +406,7 @@ class Parameters(System):
 
 		self.data = data
 		self.indices = indices
+		self.variable = variable
 		self.parameters = parameters
 		self.shape = shape
 		self.size = size

@@ -3187,7 +3187,7 @@ class Operators(Object):
 			identity = identity(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
 
 		self.identity = identity
-				
+
 
 		# Set data
 		for i in self.data:
@@ -3398,7 +3398,8 @@ class Operators(Object):
 		def func(i,attr,attrs,objs,kwargs):
 
 			if not isinstance(kwargs[attr][i],dict):
-				kwargs[attr][i] = dict(data=kwargs[attr][i])
+				data = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
+				kwargs[attr][i] = dict(data=data)
 
 			size = len(kwargs.get(attr,[]))
 			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
@@ -3425,7 +3426,8 @@ class Operators(Object):
 		def func(i,attr,attrs,objs,kwargs):
 			
 			if not isinstance(kwargs[attr][i],dict):
-				kwargs[attr][i] = dict(data=kwargs[attr][i])
+				data = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
+				kwargs[attr][i] = dict(data=data)
 
 			size = len(kwargs.get(attr,[]))
 			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
@@ -3446,12 +3448,15 @@ class Operators(Object):
 		for attribute in attributes:
 			attr,attrs = attribute.split(delim)[0] if attribute.count(delim)>=0 else None,delim.join(attribute.split(delim)[1:]) if attribute.count(delim)>0 else None
 			size = len(kwargs.get(attr,[]))
+
 			for i in range(size):
+				if isinstance(kwargs[attr][i],nulls):
+					continue
 				attributes[attribute](i,attr,attrs,objs,kwargs)
 
 
 		# Set class attributes
-		self.extend(data=data,**objs,**kwargs)
+		self.extend(data=data,**objs,kwargs=kwargs)
 
 		return
 
@@ -3546,7 +3551,7 @@ class Operators(Object):
 		return string
 
 
-	def extend(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def extend(self,data=None,operator=None,site=None,string=None,kwargs=None):
 		'''
 		Extend to class
 		Args:
@@ -3559,8 +3564,8 @@ class Operators(Object):
 
 		size = min([len(i) for i in (data,operator,site,string) if i is not None],default=0)
 
-		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size)
-		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)]
+		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size) if kwargs is not None else None
+		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)] if kwargs is not None else None
 		
 		if not size:
 			return
@@ -3574,15 +3579,15 @@ class Operators(Object):
 		if string is None:
 			string = [None]*size						
 		if kwargs is None:
-			kwargs = [{}]*size	
+			kwargs = [None]*size	
 
 		for _data,_operator,_site,_string,_kwargs in zip(data,operator,site,string,kwargs):
-			self.append(_data,_operator,_site,_string,**_kwargs)
+			self.append(_data,_operator,_site,_string,_kwargs)
 
 		return
 
 
-	def append(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def append(self,data=None,operator=None,site=None,string=None,kwargs=None):
 		'''
 		Append to class
 		Args:
@@ -3593,11 +3598,11 @@ class Operators(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 		index = -1
-		self.insert(index,data,operator,site,string,**kwargs)
+		self.insert(index,data,operator,site,string,kwargs)
 		return
 
 
-	def insert(self,index,data,operator,site,string,**kwargs):
+	def insert(self,index,data,operator,site,string,kwargs=None):
 		'''
 		Insert to class
 		Args:
@@ -3649,7 +3654,7 @@ class Operators(Object):
 
 		cls = Operator
 		defaults = {}
-		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
+		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 		
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,verbose=False,system=self.system),delimiter=delim,default=True)
@@ -3661,7 +3666,7 @@ class Operators(Object):
 		if index == -1:
 			index = len(self)
 
-		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
+		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
 		
 		operator = None
 		site = None

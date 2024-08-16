@@ -151,10 +151,81 @@ def test_channel(*args,**kwargs):
 
 def test_composite(*args,**kwargs):
 
+	return
+
 	data = {}
 
-	kwargs = {"model.system.architecture":["array"],"state.system.architecture":["array"]}
-	groups = [["model.system.architecture","state.system.architecture"]]
+	kwargs = {
+		**{attr:[5] for attr in ["model.N","state.N"]},
+		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
+		"model.M":[10],
+		"model.ndim":[2],"state.ndim":[1],
+		"model.data":[{
+			"channel":{
+				"data":{
+					"x":{
+						"operator":["X"],"site":"i","string":"x",
+						"parameters":{"data":0.123,"seed":123},
+						"variable":True
+					},
+					"y":{
+						"operator":["Y"],"site":"i","string":"y",
+						"parameters":{"data":0.123,"seed":123},
+						"variable":True
+					},
+					"z":{
+						"operator":["Z"],"site":"i","string":"z",
+						"parameters":{"data":0.123,"seed":123},
+						"variable":True
+					},				
+					"zz":{
+						"operator":["Z","Z"],"site":"i<j","string":"zz",
+						"parameters":{"data":0.123,"seed":123},
+						"variable":True
+					},
+				},
+				"operator":"channel","site":None,"string":"channel",
+				"N":3,"D":2,"ndim":2,
+				"variable":True
+			},
+			"noise":{
+				"operator":"depolarize","site":None,"string":"noise",
+				"parameters":1e-12,
+				"ndim":3,
+				"variable":False
+			},
+		},
+		{
+			"x":{
+				"operator":["X"],"site":"i","string":"x",
+				"parameters":{"data":0.123,"seed":123},
+				"variable":True
+			},
+			"y":{
+				"operator":["Y"],"site":"i","string":"y",
+				"parameters":{"data":0.123,"seed":123},
+				"variable":True
+			},
+			"z":{
+				"operator":["Z"],"site":"i","string":"z",
+				"parameters":{"data":0.123,"seed":123},
+				"variable":True
+			},				
+			"zz":{
+				"operator":["Z","Z"],"site":"i<j","string":"zz",
+				"parameters":{"data":0.123,"seed":123},
+				"variable":True
+			},
+			"noise":{
+				"operator":"depolarize","site":None,"string":"noise",
+				"parameters":1e-12,
+				"ndim":3,
+				"variable":False
+			},
+		}
+		]
+		}
+	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 	
@@ -214,7 +285,7 @@ def test_composite(*args,**kwargs):
 				},
 		})
 
-		setter(settings,kwargs,delimiter=delim,default=True)
+		setter(settings,kwargs,delimiter=delim,default='replace')
 
 		verbose = True
 
@@ -779,69 +850,6 @@ def test_manifold(*args,**kwargs):
 
 	return
 
-def test_basis(*args,**kwargs):
-
-	return
-
-	kwargs = {
-		"model.operator":["pauli","tetrad","trine"],
-		"state.D":[4,4,3],
-		}
-	groups = [["model.operator","state.D",]]
-
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-
-		settings = Dict({
-			"cls":{
-				"model":"src.quantum.Manifold",
-				"state":"src.quantum.State",
-				"basis":"src.quantum.Basis",
-			},
-			"model":{
-				"data":None,
-				"operator":"pauli",
-				"string":"povm",
-				"D":2,
-				"dtype":"complex"
-			},
-			"state": {
-				"data":"random"	,
-				"operator":"probability",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":3,"D":4,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array","base":"pauli"}
-				}
-			})
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-		basis = load(settings.cls.basis)
-
-		model = model(**settings.model)
-		state = state(**settings.state)
-
-		model.init(state=state)
-
-
-		print(settings['model']['operator'])
-		print(model,len(model))
-		print(model.identity)
-		print(model.data)
-		print(model.inverse)
-		print(model.dot(model.data,model.inverse))
-		print(model())
-		print()
-
-		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
-		assert allclose(model.dot(model.data,model.inverse),basis.I(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
-
-	return
-
-
 if __name__ == "__main__":
 
 	arguments = "path"
@@ -857,4 +865,5 @@ if __name__ == "__main__":
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
 	# test_manifold(*args,**args)
+	test_composite(*args,**args)
 	# test_basis(*args,**args)
