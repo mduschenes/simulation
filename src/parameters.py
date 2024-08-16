@@ -360,7 +360,7 @@ class Parameters(System):
 			data[parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
 			data[parameter].local = True
 			data[parameter].indices = i
-			data[parameter].variable = self.parameters.variable
+			data[parameter].variable = self.parameters[parameter].variable
 			data[parameter].axis = list(sorted(list(set(self.parameters[parameter].axis)),key=lambda i: self.parameters[parameter].axis.index(i)))
 
 			data[parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data

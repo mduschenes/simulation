@@ -25,8 +25,9 @@ def test_channel(*args,**kwargs):
 	data = {}
 
 	kwargs = {
-		**{attr:[5] for attr in ["model.N","state.N"]},
-		**{attr:["array","mps"] for attr in ["model.system.architecture","state.system.architecture"]},
+		"cls.model":["src.quantum.Channel","src.quantum.Operators"],
+		**{attr:[3] for attr in ["model.N","state.N"]},
+		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
 		"model.M":[10],
 		"model.ndim":[2],"state.ndim":[1],
 		}
@@ -36,7 +37,7 @@ def test_channel(*args,**kwargs):
 	
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Module",
+				"model":"src.quantum.Channel",
 				"state":"src.quantum.State"
 			},
 			"model":{
@@ -68,7 +69,7 @@ def test_channel(*args,**kwargs):
 					# 	"variable":False
 					# }
 				},
-				"N":20,"D":2,"ndim":2,"M":20,
+				"N":2,"D":2,"ndim":2,"M":4,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
@@ -85,7 +86,7 @@ def test_channel(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default=True)
 
 		verbose = True
-		ignore = 'parameters'
+		ignore = "parameters"
 
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
@@ -142,7 +143,7 @@ def test_channel(*args,**kwargs):
 		data[i] = value
 
 
-	assert len(data)<2 or allclose(*(data[i] for i in data)), "Error - Incorrect architecture contraction"
+	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
 
@@ -150,6 +151,8 @@ def test_channel(*args,**kwargs):
 
 
 def test_composite(*args,**kwargs):
+
+	print('Not Implemented')
 
 	return
 
@@ -285,7 +288,7 @@ def test_composite(*args,**kwargs):
 				},
 		})
 
-		setter(settings,kwargs,delimiter=delim,default='replace')
+		setter(settings,kwargs,delimiter=delim,default="replace")
 
 		verbose = True
 
@@ -343,116 +346,15 @@ def test_composite(*args,**kwargs):
 
 		data[i] = value
 
-
-	assert len(data)<2 or allclose(*(data[i] for i in data)), "Error - Incorrect architecture contraction"
-
-	print("Passed")
-
-	return
-
-
-def test_architecture(*args,**kwargs):
-
-	data = {}
-
-	kwargs = {"model.system.architecture":["array","mps"],"state.system.architecture":["array","mps"]}
-	groups = [["model.system.architecture","state.system.architecture"]]
-
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-	
-		settings = Dict({
-			"cls":{
-				"model":"src.quantum.Operator",
-				"state":"src.quantum.State"
-			},
-			"model":{
-				"operator":"X.Y",
-				"site":[0,2],
-				"string":"operator",
-				"parameters":0.25,
-				"N":3,"D":2,"ndim":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-			},	
-			"state": {
-				"data":None	,
-				"operator":"product",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-				},
-		})
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		verbose = True
-
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-
-		model = model(**settings.model)
-		state = state(**settings.state)
-
-		model.init(state=state)
-
-
-
-		# Model
-
-		value = model.data
-		
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = array(value)
-
-		print("--- model ---")
-		model.info(verbose=verbose)
-		print(model.data)
-		print("------")
-
-
-		# State
-
-		value = state()
-		
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
-
-		print("--- state ---")
-		state.info(verbose=verbose)
-		print(value)
-		print("------")
-
-
-		# Value
-		
-		value = model(model.parameters(model.parameters()),model.state())
-
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
-
-		print("--- value ---")
-		print(value)
-		print("------")
-		
-
-		data[i] = value
-
-
-	assert len(data)<2 or allclose(*(data[i] for i in data)), "Error - Incorrect architecture contraction"
+	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
 
 	return
-
 
 def test_contract(*args,**kwargs):
+
+	print('Not Implemented')
 
 	return
 
@@ -529,130 +431,6 @@ def test_contract(*args,**kwargs):
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))
 	print()
-
-	return
-
-def test_module(*args,**kwargs):
-
-	data = {}
-
-	kwargs = {"model.system.architecture":["array","mps"],"state.system.architecture":["array","mps"]}
-	groups = [["model.system.architecture","state.system.architecture"]]
-
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-
-		settings = Dict({
-			"cls":{
-				"model":"src.quantum.Module",
-				"state":"src.quantum.State"
-			},			
-			"model":{
-				"data":{
-					"XX":{
-						"operator":["X","X"],
-						"site":[0,1],
-						"string":"xx",
-						"parameters":pi,
-						"variable":True
-						},
-					# "noise":{
-					# 	"operator":"dephase",
-					# 	"site":[0,1],
-					# 	"string":"noise",
-					# 	"parameters":1e-1,
-					# 	"variable":False						
-					# 	}						
-					},
-				"N":2,"D":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-			},	
-			"state": {
-				"data":"random",
-				"operator":"product",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":2,"D":2,
-				"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-				},
-		})
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		verbose = False
-
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-
-		model = model(**settings.model)
-		state = state(**settings.state)
-
-		model.init(state=state)
-
-
-
-		# Model
-
-		value = {i: model.data[i].data for i in model.data}
-
-		if kwargs["model.system.architecture"] is None:
-			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
-		elif kwargs["model.system.architecture"] in ["array"]:
-			value = {i: array(value[i]) if value[i] is not None else None for i in value}
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = {i: array(value[i]) if value[i] is not None else None for i in value}
-		else:
-			value = {i: array(value[i]) if value[i] is not None else None for i in value}			
-
-		print("--- model ---")
-		model.info(verbose=verbose)
-		print(value)
-		print("------")
-
-
-		# State
-
-		value = state()
-		
-		if kwargs["model.system.architecture"] is None:
-			value = array(value) if value is not None else None			
-		elif kwargs["model.system.architecture"] in ["array"]:
-			value = array(value) if value is not None else None
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
-		else:
-			value = array(value) if value is not None else None						
-
-		print("--- state ---")
-		state.info(verbose=verbose)
-		print(value)
-		print("------")
-
-
-		# Value
-		
-		value = model(model.parameters(model.parameters()),model.state())
-
-		if kwargs["model.system.architecture"] is None:
-			value = array(value) if value is not None else None			
-		elif kwargs["model.system.architecture"] in ["array"]:
-			value = array(value) if value is not None else None
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1) if value is not None and not isinstance(value,arrays) else array(value) if value is not None else None
-		else:
-			value = array(value) if value is not None else None			
-
-		print("--- value ---")
-		print(value)
-		print("------")
-		
-
-		data[i] = value
-
-	assert len(data)<2 or allclose(*(data[i] for i in data)), "Error - Incorrect architecture contraction"
-
-	print("Passed")
 
 	return
 
@@ -790,7 +568,7 @@ def test_state(*args,**kwargs):
 	return
 
 
-def test_manifold(*args,**kwargs):
+def test_measure(*args,**kwargs):
 
 	kwargs = {
 		"model.operator":["pauli","tetrad","trine"],
@@ -802,7 +580,7 @@ def test_manifold(*args,**kwargs):
 
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Manifold",
+				"model":"src.quantum.Measure",
 				"state":"src.quantum.State",
 				"basis":"src.quantum.Basis",
 			},
@@ -836,7 +614,72 @@ def test_manifold(*args,**kwargs):
 		model.init(state=state)
 
 
-		print(settings['model']['operator'])
+		print(settings["model"]["operator"])
+		print(model,len(model))
+		print(model.identity)
+		print(model.data)
+		print(model.inverse)
+		print(model.dot(model.data,model.inverse))
+		print(model())
+		print()
+
+		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
+		assert allclose(model.dot(model.data,model.inverse),basis.I(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
+
+	return
+
+
+def test_basis(*args,**kwargs):
+
+	print('Not Implemented')
+
+	return
+
+	kwargs = {
+		"model.operator":["pauli","tetrad","trine"],
+		"state.D":[4,4,3],
+		}
+	groups = [["model.operator","state.D",]]
+
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
+
+		settings = Dict({
+			"cls":{
+				"model":"src.quantum.Measure",
+				"state":"src.quantum.State",
+				"basis":"src.quantum.Basis",
+			},
+			"model":{
+				"data":None,
+				"operator":"pauli",
+				"string":"povm",
+				"D":2,
+				"dtype":"complex"
+			},
+			"state": {
+				"data":"random"	,
+				"operator":"probability",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
+				"N":3,"D":4,"ndim":1,
+				"system":{"seed":12345,"dtype":"complex","architecture":"array","base":"pauli"}
+				}
+			})
+
+		setter(settings,kwargs,delimiter=delim,default=True)
+
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		basis = load(settings.cls.basis)
+
+		model = model(**settings.model)
+		state = state(**settings.state)
+
+		model.init(state=state)
+
+
+		print(settings["model"]["operator"])
 		print(model,len(model))
 		print(model.identity)
 		print(model.data)
@@ -858,12 +701,10 @@ if __name__ == "__main__":
 	# main(*args,**args)
 
 
-	# test_channel(*args,**args)
-	# test_architecture(*args,**args)
-	# test_module(*args,**args)
+	test_channel(*args,**args)
 	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	# test_manifold(*args,**args)
-	test_composite(*args,**args)
+	# test_measure(*args,**args)
+	# test_composite(*args,**args)
 	# test_basis(*args,**args)

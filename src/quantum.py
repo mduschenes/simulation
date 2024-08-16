@@ -194,7 +194,7 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator	
-	def projector(cls,*args,**kwargs):
+	def element(cls,*args,**kwargs):
 		data = zeros(cls.shape,dtype=cls.dtype)
 		index = tuple(map(int,cls.basis))
 		data[index] = 1
@@ -204,6 +204,17 @@ class Basis(Dict):
 	@System.decorator	
 	def sample(cls,*args,**kwargs):
 		data = array([*[1]*(cls.D)],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def projector(cls,*args,**kwargs):
+		data = []
+		size = cls.D**self.N
+		for i in range(size):
+			for j in range(size):
+				obj = inplace(zeros((size,size),dtype=cls.dtype),(i,j),1)
+				data.append(obj)
 		return data
 
 	@classmethod
@@ -261,7 +272,7 @@ class Basis(Dict):
 		return data
 
 
-class Manifold(System):
+class Measure(System):
 
 	D = None
 	
@@ -270,28 +281,27 @@ class Manifold(System):
 	dtype = None
 
 	defaults = dict(			
-		data=None,operator=None,site=None,string=None,system=None,
+		data=None,base=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		state=None,conj=None,
 		basis=None,inverse=None,identity=None,parameters=None,variable=False,
 		func=None,gradient=None
 		)
 
-	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):
+	def __init__(self,data=None,base=None,string=None,system=None,**kwargs):
 		'''
-		Manifold Class of basis
-		Generate positive operator valued measure basis and their overlap and inverse
+		Measure Class
+		Generate positive base valued measure basis and their overlap and inverse
 		Args:
-			data (str,array,tensor,Manifold): type of basis
-			operator (str): name of basis
-			site (iterable[int]): site of local basis
-			string (str): string label of basis
+			data (str,array,tensor,Measure): data of measure
+			base (str): name of measure
+			string (str): string label of measure
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 			args (iterable): Additional class positional arguments
 			kwargs (dict): Additional class keyword arguments
 		'''
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,base=base,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
@@ -303,9 +313,9 @@ class Manifold(System):
 
 	def init(self,data=None,state=None,conj=None,parameters=None,**kwargs):
 		'''
-		Initialize manifold
+		Initialize measure
 		Args:
-			data (str,array,tensor,Manifold): type of basis
+			data (str,array,tensor,Measure): data of measure
 			state (bool,dict,array,Probability): state of class of shape self.shape
 			conj (bool): conjugate
 			parameters (array,dict): parameters of class
@@ -333,25 +343,23 @@ class Manifold(System):
 
 		return
 
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,base=None,string=None,**kwargs):
 		'''
-		Setup manifold
+		Setup measure
 		Args:
-			data (str,array,tensor,Manifold): type of basis
-			operator (str): string names of basis
-			site (iterable[int]): site of local basis
-			string (str): string label of basis
+			data (str,array,tensor,Measure): data of measure
+			base (str): name of measure
+			string (str): string label of measure
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
 		data = self.data if data is None else data
-		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		base = self.base if base is None else base
 		string = self.string if string is None else string
 
-		operator = data if isinstance(data,str) else operator if data is None else operator
+		base = data if isinstance(data,str) else base if data is None else base
 
-		basis = getattr(Basis,operator)(D=self.D,dtype=self.dtype) if operator is not None and hasattr(Basis,operator) else None
+		basis = getattr(Basis,base)(D=self.D,dtype=self.dtype) if base is not None and hasattr(Basis,base) else None
 
 		data = self.dot(basis,basis) if basis is not None else None
 		inverse = self.inv(data) if data is not None else None
@@ -363,8 +371,7 @@ class Manifold(System):
 		dtype = data.dtype if data is not None else None
 
 		self.data = data
-		self.operator = operator
-		self.site = site
+		self.base = base
 		self.string = string
 
 		self.basis = basis
@@ -739,7 +746,7 @@ class Object(System):
 	Base class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -751,7 +758,7 @@ class Object(System):
 	space = None
 	
 	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}}
+	basis = {**{attr: Basis.identity for attr in [default]}}
 
 	hermitian = None
 	unitary = None
@@ -761,7 +768,7 @@ class Object(System):
 		state=None,conj=False,parameters=None,variable=False,
 		locality=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		samples=None,identity=None,manifold=None,
+		samples=None,identity=None,base=None,
 		func=None,gradient=None,
 		contract=None,gradient_contract=None,
 		)
@@ -1076,7 +1083,7 @@ class Object(System):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
@@ -1400,7 +1407,7 @@ class Object(System):
 			string = '%s: %s'%(attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
 			msg.append(string)
 
-		if isinstance(self,Operators):
+		if isinstance(self,Objects):
 
 			for attr in (self.data if self.data is not None else []):
 
@@ -1448,6 +1455,10 @@ class Object(System):
 				msg.append(string)
 
 			for attr in ['parameters']:
+		
+				obj = attr
+				if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+					continue
 				string = []
 				for subattr in [None,'shape']:
 					if subattr is None:
@@ -1642,7 +1653,7 @@ class Pauli(Object):
 	Pauli class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -1657,7 +1668,7 @@ class Pauli(Object):
 	
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.X for attr in ['X']},
 		**{attr: Basis.Y for attr in ['Y']},
@@ -1672,7 +1683,7 @@ class Pauli(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
@@ -1864,7 +1875,7 @@ class Gate(Object):
 	Gate class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -1879,7 +1890,7 @@ class Gate(Object):
 
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['i']},
 		**{attr: Basis.X for attr in ['x']},
 		**{attr: Basis.Y for attr in ['y']},
@@ -1897,7 +1908,7 @@ class Gate(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
@@ -1960,7 +1971,7 @@ class Haar(Object):
 	Haar class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -1975,7 +1986,7 @@ class Haar(Object):
 	
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.unitary for attr in ['U','random','haar']},
 		}
@@ -1988,7 +1999,7 @@ class Haar(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
@@ -2060,7 +2071,7 @@ class Noise(Object):
 	Noise class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2075,12 +2086,12 @@ class Noise(Object):
 
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['I','i']},
 		**{attr: Basis.I for attr in ['eps','noise','rand']},
 		**{attr: Basis.I for attr in ['depolarize']},
 		**{attr: Basis.I for attr in ['amplitude']},
-		**{attr: Basis.projector for attr in ['projector']},
+		**{attr: Basis.element for attr in ['element']},
 		**{attr: Basis.X for attr in ['flip','bitflip']},
 		**{attr: Basis.Y for attr in ['flipphase']},
 		**{attr: Basis.Z for attr in ['phase','dephase']},
@@ -2105,7 +2116,7 @@ class Noise(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
@@ -2186,13 +2197,13 @@ class Noise(Object):
 							 sqrt(parameters[i])*Basis.Y(D=D,system=system)]
 				
 				elif operator[i] in ['amplitude']:
-					obj = [Basis.projector(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.projector(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.projector(D=D,basis='01',system=system)]
+					obj = [Basis.element(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.element(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.element(D=D,basis='01',system=system)]
 				
 				elif operator[i] in ['dephase-amplitude']:
 					obj = [dots(*i) for i in permutations(
-						[Basis.projector(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.projector(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.projector(D=D,basis='01',system=system)],
+						[Basis.element(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.element(D=D,basis='11',system=system),
+							sqrt(parameters[i])*Basis.element(D=D,basis='01',system=system)],
 						[sqrt(1-parameters[i])*Basis.I(D=D,system=system),
 							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
 						)
@@ -2278,7 +2289,7 @@ class Amplitude(Object):
 	State class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2293,7 +2304,7 @@ class Amplitude(Object):
 
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
@@ -2312,7 +2323,7 @@ class Amplitude(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments				
@@ -2647,7 +2658,7 @@ class Probability(Object):
 	State class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2662,7 +2673,7 @@ class Probability(Object):
 
 	default = 'I'
 	basis = {
-		**{attr: Basis.I for attr in [default]},
+		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.state for attr in ['probability']},
 		}
 	
@@ -2674,7 +2685,7 @@ class Probability(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments				
@@ -2903,7 +2914,7 @@ class State(Object):
 	State class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2917,7 +2928,7 @@ class State(Object):
 	time = None	
 
 	default = 'I'	
-	basis = {**{attr: Basis.I for attr in [default]},**Object.basis,**Probability.basis,**Amplitude.basis,}
+	basis = {**{attr: Basis.identity for attr in [default]},**Object.basis,**Probability.basis,**Amplitude.basis,}
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
@@ -2970,7 +2981,7 @@ class Operator(Object):
 	Class for Operator
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2984,7 +2995,7 @@ class Operator(Object):
 	time = None	
 
 	default = 'I'	
-	basis = {**{attr: Basis.I for attr in [default]}}
+	basis = {**{attr: Basis.identity for attr in [default]}}
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
@@ -3030,16 +3041,16 @@ class Operator(Object):
 
 		return self
 
-class Operators(Object):
+class Objects(Object):
 	'''
 	Class for Operators
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (iterable[str]): string labels of operators
 		N (int): Number of qudits
@@ -3058,7 +3069,7 @@ class Operators(Object):
 	'''
 	
 	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['operators']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['operators']}}
 
 	def __init__(self,data=None,operator=None,site=None,string=None,
 		N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
@@ -3088,7 +3099,6 @@ class Operators(Object):
 		'''
 
 		# Set attributes
-		
 		self.spaces()
 		self.times()
 		self.lattices()
@@ -3099,6 +3109,7 @@ class Operators(Object):
 		self.dtype = self.dtype if self.dtype is not None else None
 
 		self.setup(data)
+
 
 		# Set data
 		if data is None:
@@ -3119,6 +3130,7 @@ class Operators(Object):
 			else:
 				self.data[i].init(data=data[i])
 
+
 		# Set state
 		if state is None:
 			state = self.state
@@ -3133,6 +3145,7 @@ class Operators(Object):
 		
 		self.state = state
 
+
 		# Set conjugate
 		if conj is None:
 			conj = False
@@ -3142,6 +3155,7 @@ class Operators(Object):
 			conj = False
 
 		self.conj = conj
+
 
 		# Set parameters
 		if parameters is None:
@@ -3164,7 +3178,6 @@ class Operators(Object):
 		parameters = cls(**kwargs)
 
 		self.parameters = parameters
-
 
 		# Set identity
 		if self.state is None or self.state() is None:
@@ -3219,15 +3232,34 @@ class Operators(Object):
 
 
 		# Set functions
-		verbose = self.verbose and (self.func is not None)
-		compilation = dict(trotter=self.P,**self)
-		architecture = self.architecture
+		def func(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			out = state
+			for i in indices:
+				out = self.data[i%shape[1]](parameters[i//shape[1]],out)
+			return out
 
-		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=compilation,architecture=architecture,verbose=verbose)
+		def grad(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
+			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			for i in indexes:
+				out = state
+				for j in (j for j in indices if j<i):
+					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
+				out = self.data[i%shape[1]].grad(parameters[i//shape[1]],out)
+				for j in (j for j in indices if j>i):
+					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
+				grad = inplace(grad,indexes.index(i),out,'add')
+			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=compilation,architecture=architecture,verbose=verbose)
+		grad_analytical = grad
 
 		grad = grad_automatic
 
@@ -3236,7 +3268,7 @@ class Operators(Object):
 		self.gradient_automatic = grad_automatic
 		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
-		
+
 
 		# Set wrapper
 		if self.architecture is None:
@@ -3277,11 +3309,11 @@ class Operators(Object):
 		Setup class
 		Args:
 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-				operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+				operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 				string (iterable[str]): string labels of operators
 				kwargs (dict): Additional operator keyword arguments			
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional class keyword arguments		
@@ -3556,7 +3588,7 @@ class Operators(Object):
 		Extend to class
 		Args:
 			data (iterable[str,Operator]): data of operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
@@ -3762,59 +3794,9 @@ class Operators(Object):
 
 		return
 
-
-
-class Hamiltonian(Operators):
-	'''
-	Hamiltonian class of Operators
-	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
-			operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments			
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (iterable[str]): string labels of operators
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-		d (int): Spatial dimension
-		M (int): Number of time steps
-		T (int): Simulation time
-		tau (float): Simulation time scale
-		P (int): Trotter order		
-		space (str,dict,Space): Type of local space
-		time (str,dict,Time): Type of time evolution						
-		lattice (str,dict,Lattice): Type of lattice		
-		parameters (iterable[str],dict,Parameters): Type of parameters of operators		
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
+class Channel(Objects):
 	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['hamiltonian']}}
-
-	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
-
-		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
-		
-		return
-
-class Unitary(Hamiltonian):
-	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['unitary']}}
-
-class Channel(Hamiltonian):
-	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['channel']}}
-
-class Module(Hamiltonian):
-	default = 'I'
-	basis = {**{attr: Basis.I for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['channel']}}
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
@@ -3826,113 +3808,76 @@ class Module(Hamiltonian):
 			parameters (dict,array,Parameters): parameters of class
 		'''
 
-		# Set attributes
-		
-		self.spaces()
-		self.times()
-		self.lattices()
-
-		self.shape = () if self.n is None else (self.n,self.n)
-		self.size = prod(self.shape)
-		self.ndim = len(self.shape)
-		self.dtype = self.dtype if self.dtype is not None else None
-
-		self.setup(data)
-
-		# Set data
-		if data is None:
-			data = {}
-		elif data is True:
-			data = {}
-		elif data is False:
-			data = {i: None for i in self.data}
-		elif isinstance(data,dict):
-			data = {i: data[i] for i in data if i in self.data}
-		for i in data:
-			if data[i] is None:
-				self.data[i] = data[i]
-			elif isinstance(data[i],dict):
-				self.data[i].init(**data[i])
-			elif isinstance(data[i],type(self.data[i])):
-				self.data[i] = data[i]
-			else:
-				self.data[i].init(data=data[i])
-
-
-		# Set state
-		if state is None:
-			state = self.state
-		elif state is True:
-			state = self.state
-		elif state is False:
-			state = None
-
-		self.state = state
-
-
-		# Set conjugate
-		if conj is None:
-			conj = False
-		elif conj is True:
-			conj = True
-		elif conj is False:
-			conj = False
-
-		self.conj = conj
-
-		# Set parameters
-		if parameters is None:
-			parameters = None
-		elif parameters is True:
-			parameters = None
-		elif parameters is False:
-			parameters = None		
-
-		cls = Parameters
-		kwargs = dict(
-			parameters={i:self.data[i].parameters 
-				for i in self.data 
-				if ((self.data[i] is not None) and 
-					(self.data[i].data is not None))
-				} if parameters is None else parameters,
-			system=self.system
-		)
-
-		parameters = cls(**kwargs)
-
-		self.parameters = parameters
-
-		# Set data
-		for i in self.data:
-			
-			if self.data[i] is None:
-				continue
-
-			kwargs = dict(
-				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
-				state=self.state
-				)
-			self.data[i].init(**kwargs)
-
-
-		# Set attributes
-		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
-		if self.state is None or self.state() is None:
-			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
-			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state.ndim == 1:
-			hermitian = False
-			unitary = True
-		elif self.state.ndim == 2:
-			hermitian = True
-			unitary = False
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
+		super().init(data=data,state=state,conj=conj,parameters=parameters)
 
 		# Set functions
+		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
+		grad = gradient_scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
 
+		grad_automatic = gradient(self,mode='fwd',move=True)
+		grad_finite = gradient(self,mode='finite',move=True)
+		grad_analytical = grad
+
+		grad = grad_automatic
+
+		self.func = func
+		self.gradient = grad
+		self.gradient_automatic = grad_automatic
+		self.gradient_finite = grad_finite
+		self.gradient_analytical = grad_analytical		
+
+
+		# Set wrapper
+		if self.architecture is None:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+		
+		elif self.architecture in ['array']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['tensor']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = jit
+
+		elif self.architecture in ['mps']:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity
+			wrapper = partial
+	
+		else:
+			parameters = self.parameters(self.parameters())
+			state = self.state() if self.state is not None and self.state() is not None else self.identity			
+			wrapper = jit
+
+		self.func = wrapper(self.func,parameters=parameters,state=state)
+		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
+		self.gradient_automatic = wrapper(self.gradient_automatic,parameters=parameters,state=state)
+		self.gradient_finite = wrapper(self.gradient_finite,parameters=parameters,state=state)
+		self.gradient_analytical = wrapper(self.gradient_analytical,parameters=parameters,state=state)
+
+		return
+
+class Operators(Objects):
+	default = 'I'
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
+
+	def init(self,data=None,state=None,conj=False,parameters=None):
+		''' 
+		Setup class functions
+		Args:
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
+			state (bool,array,Object): state of class
+			conj (bool): conjugate
+			parameters (dict,array,Parameters): parameters of class
+		'''
+
+		super().init(data=data,state=state,conj=conj,parameters=parameters)
+
+		# Set functions
 		def func(parameters,state):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
@@ -3969,9 +3914,8 @@ class Module(Hamiltonian):
 		self.gradient_automatic = grad_automatic
 		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
-		
 
-		# Set functions
+		# Set wrapper
 		parameters = self.parameters(self.parameters())
 		state = self.state() if self.state is not None and self.state() is not None else self.identity
 		wrapper = partial
@@ -3982,29 +3926,74 @@ class Module(Hamiltonian):
 		self.gradient_finite = wrapper(self.gradient_finite,parameters=parameters,state=state)
 		self.gradient_analytical = wrapper(self.gradient_analytical,parameters=parameters,state=state)
 
-
-		# # Convert amplitude to probability formalism
-		# cls = Manifold
-		# operator = self.base
-		# parameters = self.parameters(self.parameters())
-		# states = cls(operator=self.base)
-
-		# data = self.func(parameters,state)
-
 		return
 
+class Hamiltonian(Channel):
+	default = 'I'
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['hamiltonian']}}
 
-class Measure(Object):
-	'''
-	Measure class for Quantum Objects
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): string names of operators, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
+class Unitary(Channel):
+	default = 'I'
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['unitary']}}
+
+
+class Modules(Objects):
+	default = 'I'
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
+
+	def init(self,data=None,state=None,conj=False,parameters=None):
+		''' 
+		Setup class functions
+		Args:
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
+			state (bool,array,Object): state of class
+			conj (bool): conjugate
+			parameters (dict,array,Parameters): parameters of class
+		'''
+
+		super().init(data=data,state=state,conj=conj,parameters=parameters)
+
+
+class Module(Object):
+	default = 'I'
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['']}}
+
+	def init(self,data=None,state=None,conj=False,parameters=None):
+		''' 
+		Setup class functions
+		Args:
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
+			state (bool,array,Object): state of class
+			conj (bool): conjugate
+			parameters (dict,array,Parameters): parameters of class
+		'''
+
+		# Setup object
+		super().init(data=data,state=state,conj=conj,parameters=parameters)
+
+		# # Convert amplitude to probability formalism
+		# base = self.base
+		# cls = Dict(data=Measure,state=Probability)
+
+		# if base is None or 
+		# cls = Measure
+		# base = self.base
+		# parameters = self.parameters(self.parameters())
+		# states = cls.data(base=base)
+
+		# cls = Probability
+		# data = self.state() if self.state is not None and self.state() is not None else None
+		# state = self.state
+		# if data is None:
+		# 	state = None
+		# elif		if not isinstance(state,cls):
+		# 	state = cls(state=state)
+
+		# # data = self.func(parameters,state)
+
+
+
+
 
 class Label(Operator):
 

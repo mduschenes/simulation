@@ -259,13 +259,21 @@ Under `test`, to run unit tests (with pytest API), please run
 ## Classes
 The hierarchy of inheritance of classes is as follows
 
-`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
+`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Objects` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
+`Operators` &larr; `Objects` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Objects` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
 `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
+`State` &larr; `Amplitude,Probability` &larr; `System` &larr; `Dictionary`
+
 `State,Noise,Pauli,Gate` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Modules` &larr; `Objects` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Module` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
 `Label` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 

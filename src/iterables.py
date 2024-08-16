@@ -496,7 +496,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		return [{k:d[k] for d in dicts for k in d} for dicts in permutations(*dictionaries)]
 
-	def retriever(keys,values):
+	def retriever(keys,values,groups):
 		'''
 		Get values of permuted nested dictionaries in values.
 		Recurse permute until values are lists and not dictionaries.
@@ -520,7 +520,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 
 
 	# Get values of permuted nested dictionaries in values
-	keys,values = retriever(keys,values)
+	keys,values = retriever(keys,values,groups)
 
 	# Retain ordering of keys in dictionary
 	keys_ordered = keys
