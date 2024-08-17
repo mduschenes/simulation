@@ -163,44 +163,25 @@ def test_channel(*args,**kwargs):
 
 def test_composite(*args,**kwargs):
 
-	print('Not Implemented')
-
-	return
-
 	data = {}
 
 	kwargs = {
-		**{attr:[5] for attr in ["model.N","state.N"]},
+		**{attr:[2] for attr in ["model.N","state.N"]},
 		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
-		"model.M":[10],
+		"model.M":[1],
 		"model.ndim":[2],"state.ndim":[1],
 		"model.data":[{
-			"channel":{
+			"operators":{
 				"data":{
-					"x":{
-						"operator":["X"],"site":"i","string":"x",
-						"parameters":{"data":0.123,"seed":123},
-						"variable":True
-					},
-					"y":{
-						"operator":["Y"],"site":"i","string":"y",
-						"parameters":{"data":0.123,"seed":123},
-						"variable":True
-					},
-					"z":{
-						"operator":["Z"],"site":"i","string":"z",
-						"parameters":{"data":0.123,"seed":123},
-						"variable":True
-					},				
-					"zz":{
-						"operator":["Z","Z"],"site":"i<j","string":"zz",
-						"parameters":{"data":0.123,"seed":123},
-						"variable":True
+					"xx":{
+						"operator":["X","X"],"site":"<ij>","string":"xx",
+						"parameters":0.5,
+						"variable":False
 					},
 				},
-				"operator":"channel","site":None,"string":"channel",
+				"operator":"operators","site":None,"string":"operators",
 				"N":3,"D":2,"ndim":2,
-				"variable":True
+				"variable":False
 			},
 			"noise":{
 				"operator":"depolarize","site":None,"string":"noise",
@@ -210,25 +191,10 @@ def test_composite(*args,**kwargs):
 			},
 		},
 		{
-			"x":{
-				"operator":["X"],"site":"i","string":"x",
-				"parameters":{"data":0.123,"seed":123},
-				"variable":True
-			},
-			"y":{
-				"operator":["Y"],"site":"i","string":"y",
-				"parameters":{"data":0.123,"seed":123},
-				"variable":True
-			},
-			"z":{
-				"operator":["Z"],"site":"i","string":"z",
-				"parameters":{"data":0.123,"seed":123},
-				"variable":True
-			},				
-			"zz":{
-				"operator":["Z","Z"],"site":"i<j","string":"zz",
-				"parameters":{"data":0.123,"seed":123},
-				"variable":True
+			"xx":{
+				"operator":["X","X"],"site":"<ij>","string":"xx",
+				"parameters":0.5,
+				"variable":False
 			},
 			"noise":{
 				"operator":"depolarize","site":None,"string":"noise",
@@ -245,7 +211,7 @@ def test_composite(*args,**kwargs):
 	
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Channel",
+				"model":"src.quantum.Operators",
 				"state":"src.quantum.State"
 			},
 			"model":{
@@ -274,7 +240,6 @@ def test_composite(*args,**kwargs):
 							},
 						},
 						"operator":"channel","site":None,"string":"channel",
-						"parameters":True,
 						"N":3,"D":2,"ndim":2,
 						"variable":True
 					},
@@ -307,6 +272,7 @@ def test_composite(*args,**kwargs):
 		state = load(settings.cls.state)
 
 		model = model(**settings.model)
+
 		state = state(**settings.state)
 
 		model.init(state=state)
@@ -717,6 +683,6 @@ if __name__ == "__main__":
 	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	test_measure(*args,**args)
-	# test_composite(*args,**args)
+	# test_measure(*args,**args)
+	test_composite(*args,**args)
 	# test_basis(*args,**args)

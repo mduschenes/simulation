@@ -340,13 +340,17 @@ class Parameters(System):
 		'''
 		Setup class
 		'''
-		if not isinstance(self.parameters,dict):
-			self.parameters = {str(self.parameters):self.parameters}
+		# if not isinstance(self.parameters,dict):
+			# self.parameters = {str(self.parameters):self.parameters}
 
 		# cls = Parameter
 		# for parameter in self.parameters:
 		# 	if not isinstance(self.parameters[parameter],cls):
 		# 		self.parameters[parameter] = cls(**self.parameters[parameter])
+
+
+		if self.parameters is None:
+			return
 
 		data = {parameter: {} 
 			for parameter in self.parameters 
@@ -376,28 +380,29 @@ class Parameters(System):
 
 			data[parameter].data = initialize(**kwargs)
 
-		data = {parameter: data[parameter] for parameter in data}
+		data = {parameter: data[parameter] for parameter in data} if len(data) else None
 
-		indices = {parameter:data[parameter].indices for parameter in data}
-		variable = all(data[parameter].variable for parameter in data)
-		parameters = array([data[parameter].data for parameter in data])
+		indices = {parameter:data[parameter].indices for parameter in data} if data is not None else None
+		variable = all(data[parameter].variable for parameter in data) if data is not None else None
+		parameters = array([data[parameter].data for parameter in data]) if data is not None else None
 
-		parameters = parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()
+		parameters = (parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()) if parameters is not None else None
 
-		shape = parameters.shape
-		size = parameters.size
-		ndim = parameters.ndim
-		dtype = parameters.dtype
+		shape = parameters.shape if parameters is not None else None
+		size = parameters.size if parameters is not None else None
+		ndim = parameters.ndim if parameters is not None else None
+		dtype = parameters.dtype if parameters is not None else None
 
-		indices = {i: indices[i] for i in indices}
-		variable = variable
-		parameters = parameters.ravel()
+		indices = {i: indices[i] for i in indices} if parameters is not None else None
+		variable = variable if parameters is not None else None
+		parameters = parameters.ravel() if parameters is not None else None
 
-		for parameter in data:
-			kwargs = dict(
-				indices=data[parameter].indices,
-				)
-			self.parameters[parameter].init(**kwargs)
+		if data is not None:
+			for parameter in data:
+				kwargs = dict(
+					indices=data[parameter].indices,
+					)
+				self.parameters[parameter].init(**kwargs)
 
 		data = {str(self.parameters[parameter]):self.parameters[parameter] for parameter in self.parameters}
 

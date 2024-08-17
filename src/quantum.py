@@ -1029,7 +1029,7 @@ class Object(System):
 			raise exception
 
 		try:
-			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contraction
+			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contract
 		except NotImplementedError as exception:
 			def grad_contract(grad,data,state):
 				return 0
@@ -1386,7 +1386,7 @@ class Object(System):
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 				continue
 
-			if not hasattr(self,attr):
+			if getattr(self,attr,None) is None:
 				continue
 
 			substring = getattr(self,attr,None)
@@ -3009,7 +3009,7 @@ class Operator(Object):
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
 
-		classes = [Gate,Pauli,Haar,Noise,State,Channel,Module,Unitary,Hamiltonian,Object]
+		classes = [Gate,Pauli,Haar,Noise,State,Channel,Operators,Modules,Module,Unitary,Hamiltonian,Object]
 
 		for subclass in classes:
 			
@@ -3175,13 +3175,14 @@ class Objects(Object):
 				for i in self.data 
 				if ((self.data[i] is not None) and 
 					(self.data[i].data is not None))
-				} if parameters is None else parameters,
+				} if parameters is None else parameters if not isinstance(parameters,dict) else None,
 			system=self.system
 		)
 
 		parameters = cls(**kwargs)
 
 		self.parameters = parameters
+
 
 		# Set identity
 		if self.state is None or self.state() is None:
@@ -3234,15 +3235,17 @@ class Objects(Object):
 		self.hermitian = hermitian
 		self.unitary = unitary
 
-
-		# Set functions
 		def func(parameters,state):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			out = state
-			for i in indices:
-				out = self.data[i%shape[1]](parameters[i//shape[1]],out)
+			if parameters is not None:
+				for i in indices:
+					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
+			else:
+				for i in indices:
+					out = self.data[i%shape[1]](state=out)
 			return out
 
 		def grad(parameters,state):
@@ -3251,14 +3254,63 @@ class Objects(Object):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			for i in indexes:
-				out = state
-				for j in (j for j in indices if j<i):
-					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
-				out = self.data[i%shape[1]].grad(parameters[i//shape[1]],out)
-				for j in (j for j in indices if j>i):
-					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
-				grad = inplace(grad,indexes.index(i),out,'add')
+			if parameters is not None:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
+			else:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](state=out)
+					out = self.data[i%shape[1]].grad(state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
+			return grad
+		# Set functions
+		def func(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			out = state
+			if parameters is not None:
+				for i in indices:
+					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
+			else:
+				for i in indices:
+					out = self.data[i%shape[1]](state=out)
+			return out
+
+		def grad(parameters,state):
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity
+			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
+			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
+			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			if parameters is not None:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
+			else:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](state=out)
+					out = self.data[i%shape[1]].grad(state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -3678,9 +3730,13 @@ class Objects(Object):
 			return obj
 
 		def strings(obj,data):
-			obj = delim.join([self.data[i].string 
-				for i in self.data 
-				if self.data[i] is not None and self.data[i].string is not None])
+			obj = delim.join([data[i].string 
+				for i in data 
+				if data[i] is not None and data[i].string is not None])
+			return obj
+
+		def variables(obj,data):
+			obj = any(data[i].variable for i in data) if data is not None else False
 			return obj
 
 		def localities(obj,data):
@@ -3707,12 +3763,14 @@ class Objects(Object):
 		operator = None
 		site = None
 		string = None
+		variable = None
 		locality = None
 
 		data = datas({index:data},self.data)
 		operator = operators(operator,data)
 		site = sites(site,data)
 		string = strings(string,data)
+		variable = variables(variable,data)
 		locality = localities(locality,data)
 
 		shape = () if self.n is None else (self.n,self.n)
@@ -3724,6 +3782,7 @@ class Objects(Object):
 		self.operator = operator
 		self.site = site
 		self.string = string
+		self.variable = variable
 		self.locality = locality
 
 		self.shape = shape
@@ -3867,7 +3926,7 @@ class Channel(Objects):
 
 class Operators(Objects):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['operators']}}
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
@@ -3887,8 +3946,12 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			out = state
-			for i in indices:
-				out = self.data[i%shape[1]](parameters[i//shape[1]],out)
+			if parameters is not None:
+				for i in indices:
+					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
+			else:
+				for i in indices:
+					out = self.data[i%shape[1]](state=out)
 			return out
 
 		def grad(parameters,state):
@@ -3897,14 +3960,24 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			for i in indexes:
-				out = state
-				for j in (j for j in indices if j<i):
-					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
-				out = self.data[i%shape[1]].grad(parameters[i//shape[1]],out)
-				for j in (j for j in indices if j>i):
-					out = self.data[j%shape[1]](parameters[j//shape[1]],out)
-				grad = inplace(grad,indexes.index(i),out,'add')
+			if parameters is not None:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
+			else:
+				for i in indexes:
+					out = state
+					for j in (j for j in indices if j<i):
+						out = self.data[j%shape[1]](state=out)
+					out = self.data[i%shape[1]].grad(state=out)
+					for j in (j for j in indices if j>i):
+						out = self.data[j%shape[1]](state=out)
+					grad = inplace(grad,indexes.index(i),out,'add')
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -3943,7 +4016,7 @@ class Unitary(Channel):
 
 class Modules(Objects):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['modules']}}
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
@@ -3960,7 +4033,7 @@ class Modules(Objects):
 
 class Module(Object):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['module']}}
 
 	def init(self,data=None,state=None,conj=False,parameters=None):
 		''' 
