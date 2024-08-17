@@ -27,13 +27,18 @@ def test_channel(*args,**kwargs):
 	kwargs = {
 		"cls.model":["src.quantum.Channel","src.quantum.Operators"],
 		**{attr:[3] for attr in ["model.N","state.N"]},
-		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
+		**{attr:["array","mps"] for attr in ["model.system.architecture","state.system.architecture"]},
 		"model.M":[10],
 		"model.ndim":[2],"state.ndim":[1],
 		}
 	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
+	filters = lambda iterables: (iterable for iterable in iterables 
+		if not (iterable['cls.model'] in ['src.quantum.Channel'] and 
+			    iterable['model.system.architecture'] in ['mps'] and
+			    iterable['state.system.architecture'] in ['mps'])
+		)
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
 	
 		settings = Dict({
 			"cls":{
@@ -96,6 +101,9 @@ def test_channel(*args,**kwargs):
 
 		model.init(state=state)
 
+
+		print('Settings: ',settings.cls.model,settings.cls.state)
+
 		# Model
 
 		value = product([model.data[i].data for i in model.data])
@@ -138,7 +146,10 @@ def test_channel(*args,**kwargs):
 		print("--- value ---")
 		print(value)
 		print("------")
-		
+
+		print()
+		print()
+		print()
 
 		data[i] = value
 
@@ -571,10 +582,10 @@ def test_state(*args,**kwargs):
 def test_measure(*args,**kwargs):
 
 	kwargs = {
-		"model.operator":["pauli","tetrad","trine"],
+		"model.base":["pauli","tetrad","trine"],
 		"state.D":[4,4,3],
 		}
-	groups = [["model.operator","state.D",]]
+	groups = [["model.base","state.D",]]
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
@@ -586,7 +597,7 @@ def test_measure(*args,**kwargs):
 			},
 			"model":{
 				"data":None,
-				"operator":"pauli",
+				"base":"pauli",
 				"string":"povm",
 				"D":2,
 				"dtype":"complex"
@@ -613,9 +624,8 @@ def test_measure(*args,**kwargs):
 
 		model.init(state=state)
 
-
-		print(settings["model"]["operator"])
-		print(model,len(model))
+		print(settings["model"]["base"])
+		print(model,len(model),model.D,state.D)
 		print(model.identity)
 		print(model.data)
 		print(model.inverse)
@@ -625,6 +635,8 @@ def test_measure(*args,**kwargs):
 
 		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
 		assert allclose(model.dot(model.data,model.inverse),basis.I(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
+
+	print('Passed')
 
 	return
 
@@ -701,10 +713,10 @@ if __name__ == "__main__":
 	# main(*args,**args)
 
 
-	test_channel(*args,**args)
+	# test_channel(*args,**args)
 	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	# test_measure(*args,**args)
+	test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_basis(*args,**args)

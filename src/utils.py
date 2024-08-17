@@ -1927,7 +1927,6 @@ if backend in ['jax']:
 		return tree_func
 
 	@tree_func
-	@jit
 	def tree_dot(a,b):
 		'''
 		Perform dot product function on trees a and b
@@ -1940,7 +1939,6 @@ if backend in ['jax']:
 		return dot(a.ravel(),b.ravel())
 
 	@tree_func
-	@jit
 	def tree_add(a,b):
 		'''
 		Perform add function on trees a and b
@@ -1953,7 +1951,6 @@ if backend in ['jax']:
 		return add(a,b)
 
 	@tree_func
-	@jit
 	def tree_index(a,index=None):
 		'''
 		Perform index function on tree a
@@ -2017,7 +2014,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return tree_func
 
 	@tree_func
-	@jit
 	def tree_dot(a,b):
 		'''
 		Perform dot product function on trees a and b
@@ -2030,7 +2026,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return dot(a.ravel(),b.ravel())
 
 	@tree_func
-	@jit
 	def tree_add(a,b):
 		'''
 		Perform add function on trees a and b
@@ -2043,7 +2038,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return add(a,b)
 
 	@tree_func
-	@jit
 	def tree_index(a,index=None):
 		'''
 		Perform index function on tree a

@@ -1418,6 +1418,10 @@ class Object(System):
 				string = []
 				for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
 				
+					obj = subattr
+					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+						continue
+
 					if subattr is None:
 						subattr = 'data.mean'
 						if self.parameters is None or self.parameters() is None:

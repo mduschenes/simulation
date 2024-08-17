@@ -479,9 +479,11 @@ def test_norm(path=None,tol=None):
 	return
 
 
-def test_rand(path,tol):
+def test_rand(path=None,tol=None):
 	from importlib import reload
 	import src.utils
+
+	backend = os.environ['NUMPY_BACKEND']
 
 	kwargs = [
 		{'shape':(4,3),'random':'haar'},
@@ -513,6 +515,10 @@ def test_rand(path,tol):
 		a[i].append(rand(**kwargs[i]))
 
 	assert all(allclose(*a[i]) for i in range(size)), "Incorrect Random Initialization"
+
+
+	os.environ['NUMPY_BACKEND'] = 'JAX'
+	reload(src.utils)
 
 	print('Passed')
 
@@ -676,7 +682,7 @@ def test_pytree(path=None,tol=None):
 		return
 
 
-	tree = {'channel':{'x':array([1,2,3]),'y':array([1,2,3])},'noise':array([1,2,3])}
+	tree = {'channel':{'x':array([1,2,3],dtype=float),'y':array([1,2,3],dtype=float)},'noise':array([1,2,3],dtype=float)}
 	kwargs = dict(index=1)
 
 	print(tree)
