@@ -12,17 +12,15 @@
 "model":{
 	"data":{
 		"xx":{
-			"operator":["X","X"],"site":">ij<","string":"XX",
-			"parameters":0.5,	
-			"variable":true,"seed":123
+			"operator":["X","X"],"site":"<ij>","string":"XX",
+			"parameters":0,"variable":true
 		},
 		"noise":{
-			"operator":"dephase","string":"dephase",
-			"parameters":1e-12,
-			"variable":false,"seed":123
+			"operator":"dephase","site":null,"string":"dephase",
+			"parameters":0,"variable":false
 		}		
 	},
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"M":5,
@@ -38,7 +36,13 @@
 	"site":null,
 	"string":"psi",
 	"parameters":true,
-	"ndim":1,
+	"N":2,
+	"D":2,
+	"d":1,
+	"M":5,
+	"P":1,
+	"S":4,	
+	"ndim":2,
 	"seed":123
 	},
 "callback":{},	

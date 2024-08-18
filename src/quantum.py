@@ -47,8 +47,8 @@ class Basis(Dict):
 
 	N = 1
 	D = 2
-	
-	basis = None
+
+	data = None
 	parameters = None
 	dtype = None
 
@@ -78,6 +78,22 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator
+	def string(cls,*args,**kwargs):
+		if cls.data is None:
+			data = []
+		elif isinstance(cls.data,str):
+			data = cls.data.split(delim)
+		else:
+			data = [*cls.data]
+		N = len(data)
+		data = array(tensorprod([getattr(cls,i)(D=cls.D,dtype=cls.dtype) for i in data]),dtype=cls.dtype)
+		if cls.parameters is not None:
+			parameters = cls.parameters*pi/2
+			data = cos(parameters)*cls.identity(D=cls.D,N=N,dtype=cls.dtype) + -1j*sin(parameters)*data		
+		return data
+
+	@classmethod
+	@System.decorator
 	def identity(cls,*args,**kwargs):
 		data = identity(cls.D**cls.N,dtype=cls.dtype)
 		return data
@@ -93,7 +109,7 @@ class Basis(Dict):
 	def I(cls,*args,**kwargs):
 		data = identity(cls.D**cls.N,dtype=cls.dtype)
 		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
@@ -101,7 +117,7 @@ class Basis(Dict):
 	def X(cls,*args,**kwargs):
 		data = array([[0,1],[1,0]],dtype=cls.dtype)
 		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data
+			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data
 		return data
 
 	@classmethod
@@ -109,7 +125,7 @@ class Basis(Dict):
 	def Y(cls,*args,**kwargs):
 		data = array([[0,-1j],[1j,0]],dtype=cls.dtype)
 		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
@@ -117,7 +133,7 @@ class Basis(Dict):
 	def Z(cls,*args,**kwargs):
 		data = array([[1,0],[0,-1]],dtype=cls.dtype)
 		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
@@ -158,24 +174,38 @@ class Basis(Dict):
 			scale=getattr(cls,'scale',None),
 			key=getattr(cls,'key',getattr(cls,'seed',None)),
 			dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def zero(cls,*args,**kwargs):
 		data = array([1,*[0]*(cls.D-1)],dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)	
 		return data
 
 	@classmethod
 	@System.decorator	
 	def one(cls,*args,**kwargs):
 		data = array([*[0]*(cls.D-1),1],dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def plus(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
 
 	@classmethod
@@ -184,12 +214,18 @@ class Basis(Dict):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		index = slice(1,None,cls.D)
 		data[index] *= -1
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def plusi(cls,*args,**kwargs):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
 
 	@classmethod
@@ -198,20 +234,32 @@ class Basis(Dict):
 		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
 		index = slice(1,None,cls.D)
 		data[index] *= -1
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data		
 
 	@classmethod
 	@System.decorator	
 	def element(cls,*args,**kwargs):
 		data = zeros(cls.shape,dtype=cls.dtype)
-		index = tuple(map(int,cls.basis))
+		index = tuple(map(int,cls.data))
 		data[index] = 1
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def sample(cls,*args,**kwargs):
 		data = array([*[1]*(cls.D)],dtype=cls.dtype)
+		if cls.ndim is not None and data.ndim < cls.ndim:
+			data = einsum('...i,...j->...ij',data,conjugate(data))
+		if cls.N is not None and cls.N > 1:
+			data = tensorprod([data]*cls.N)
 		return data
 
 	@classmethod
@@ -277,9 +325,9 @@ class Basis(Dict):
 		if cls.parameters is None:
 			cls.parameters = 0		
 		data = array([
-			cls.element(D=cls.D,basis='00',dtype=cls.dtype) + 
-				sqrt(1-cls.parameters)*cls.element(D=cls.D,basis='11',dtype=cls.dtype),
-			sqrt(cls.parameters)*cls.element(D=cls.D,basis='01',dtype=cls.dtype)
+			cls.element(D=cls.D,data='00',dtype=cls.dtype) + 
+				sqrt(1-cls.parameters)*cls.element(D=cls.D,data='11',dtype=cls.dtype),
+			sqrt(cls.parameters)*cls.element(D=cls.D,data='01',dtype=cls.dtype)
 			],dtype=cls.dtype)
 		return data
 

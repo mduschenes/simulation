@@ -28,6 +28,7 @@ def setup(settings,*args,**kwargs):
 	'''
 
 	default = {}
+	wrapper = Dict
 	defaults = Dict(
 		boolean=dict(call=None,train=None,load=None,dump=None),
 		cls=dict(model=None,state=None,label=None,callback=None),
@@ -38,7 +39,7 @@ def setup(settings,*args,**kwargs):
 	if settings is None:
 		settings = default
 	elif isinstance(settings,str):
-		settings = load(settings,default=default,wrapper=Dict)
+		settings = load(settings,default=default,wrapper=wrapper)
 
 	setter(settings,kwargs,delimiter=delim,default=True)
 	setter(settings,defaults,delimiter=delim,default=False)
