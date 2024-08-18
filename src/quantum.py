@@ -49,7 +49,7 @@ class Basis(Dict):
 	D = 2
 	
 	basis = None
-	
+	parameters = None
 	dtype = None
 
 	@classmethod
@@ -92,24 +92,32 @@ class Basis(Dict):
 	@System.decorator
 	def I(cls,*args,**kwargs):
 		data = identity(cls.D**cls.N,dtype=cls.dtype)
+		if cls.parameters is not None:
+			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
 	@System.decorator
 	def X(cls,*args,**kwargs):
 		data = array([[0,1],[1,0]],dtype=cls.dtype)
+		if cls.parameters is not None:
+			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data
 		return data
 
 	@classmethod
 	@System.decorator
 	def Y(cls,*args,**kwargs):
 		data = array([[0,-1j],[1j,0]],dtype=cls.dtype)
+		if cls.parameters is not None:
+			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
 	@System.decorator	
 	def Z(cls,*args,**kwargs):
 		data = array([[1,0],[0,-1]],dtype=cls.dtype)
+		if cls.parameters is not None:
+			data = cos(cls.parameters)*cls.identity(cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
 		return data
 
 	@classmethod
@@ -215,6 +223,64 @@ class Basis(Dict):
 			for j in range(size):
 				obj = inplace(zeros((size,size),dtype=cls.dtype),(i,j),1)
 				data.append(obj)
+		return data
+
+	@classmethod
+	@System.decorator
+	def dephase(cls,*args,**kwargs):
+		if cls.parameters is None:
+			cls.parameters = 0
+		data = array([
+			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
+			sqrt(cls.parameters)*cls.Z(D=cls.D,dtype=cls.dtype)
+			],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def bitflip(cls,*args,**kwargs):
+		if cls.parameters is None:
+			cls.parameters = 0
+		data = array([
+			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
+			sqrt(cls.parameters)*cls.X(D=cls.D,dtype=cls.dtype)
+			],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def phaseflip(cls,*args,**kwargs):
+		if cls.parameters is None:
+			cls.parameters = 0
+		data = array([
+			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
+			sqrt(cls.parameters)*cls.Y(D=cls.D,dtype=cls.dtype)
+			],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def depolarize(cls,*args,**kwargs):
+		if cls.parameters is None:
+			cls.parameters = 0		
+		data = array([
+				sqrt(1-(cls.D**2-1)*cls.parameters/(cls.D**2))*cls.I(D=cls.D,dtype=cls.dtype),
+				sqrt(cls.parameters/(cls.D**2))*cls.X(D=cls.D,dtype=cls.dtype),
+				sqrt(cls.parameters/(cls.D**2))*cls.Y(D=cls.D,dtype=cls.dtype),
+				sqrt(cls.parameters/(cls.D**2))*cls.Z(D=cls.D,dtype=cls.dtype)
+				],dtype=cls.dtype)
+		return data
+
+	@classmethod
+	@System.decorator
+	def amplitude(cls,*args,**kwargs):
+		if cls.parameters is None:
+			cls.parameters = 0		
+		data = array([
+			cls.element(D=cls.D,basis='00',dtype=cls.dtype) + 
+				sqrt(1-cls.parameters)*cls.element(D=cls.D,basis='11',dtype=cls.dtype),
+			sqrt(cls.parameters)*cls.element(D=cls.D,basis='01',dtype=cls.dtype)
+			],dtype=cls.dtype)
 		return data
 
 	@classmethod
@@ -357,7 +423,7 @@ class Measure(System):
 		base = self.base if base is None else base
 		string = self.string if string is None else string
 
-		base = data if isinstance(data,str) else base if data is None else base
+		base = data if base is None and isinstance(data,str) else base if data is None else base
 
 		basis = getattr(Basis,base)(D=self.D,dtype=self.dtype) if base is not None and hasattr(Basis,base) else None
 
@@ -2091,14 +2157,13 @@ class Noise(Object):
 	default = 'I'
 	basis = {
 		**{attr: Basis.identity for attr in [default]},
-		**{attr: Basis.I for attr in ['I','i']},
 		**{attr: Basis.I for attr in ['eps','noise','rand']},
-		**{attr: Basis.I for attr in ['depolarize']},
-		**{attr: Basis.I for attr in ['amplitude']},
+		**{attr: Basis.depolarize for attr in ['depolarize']},
+		**{attr: Basis.amplitude for attr in ['amplitude']},
 		**{attr: Basis.element for attr in ['element']},
-		**{attr: Basis.X for attr in ['flip','bitflip']},
-		**{attr: Basis.Y for attr in ['flipphase']},
-		**{attr: Basis.Z for attr in ['phase','dephase']},
+		**{attr: Basis.bitflip for attr in ['flip','bitflip']},
+		**{attr: Basis.phaseflip for attr in ['phaseflip','flipphase']},
+		**{attr: Basis.dephase for attr in ['phase','dephase']},
 		**{attr: Basis.I for attr in ['dephase-amplitude']},
 		}
 	
@@ -2188,37 +2253,21 @@ class Noise(Object):
 				if operator[i] is None:
 					obj = [basis.get(default)(D=D,system=system)]
 				
-				elif operator[i] in ['Z','z','phase','dephase']:
-					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
-							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
+				elif operator[i] in ['phase','dephase']:
+					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
+
+				elif operator[i] in ['flip','bitflip']:
+					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
 				
-				elif operator[i] in ['X','x','flip','bitflip']:
-					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
-							 sqrt(parameters[i])*Basis.X(D=D,system=system)]
-				
-				elif operator[i] in ['Y','y','flipphase']:
-					obj = [sqrt(1-parameters[i])*Basis.I(D=D,system=system),
-							 sqrt(parameters[i])*Basis.Y(D=D,system=system)]
-				
+				elif operator[i] in ['phaseflip','flipphase']:
+					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
+
 				elif operator[i] in ['amplitude']:
-					obj = [Basis.element(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.element(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.element(D=D,basis='01',system=system)]
-				
-				elif operator[i] in ['dephase-amplitude']:
-					obj = [dots(*i) for i in permutations(
-						[Basis.element(D=D,basis='00',system=system) + sqrt(1-parameters[i])*Basis.element(D=D,basis='11',system=system),
-							sqrt(parameters[i])*Basis.element(D=D,basis='01',system=system)],
-						[sqrt(1-parameters[i])*Basis.I(D=D,system=system),
-							sqrt(parameters[i])*Basis.Z(D=D,system=system)]
-						)
-						]
+					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
 				
 				elif operator[i] in ['depolarize']:
-					obj = [sqrt(1-(D**2-1)*parameters[i]/(D**2))*Basis.I(D=D,system=system),
-							sqrt(parameters[i]/(D**2))*Basis.X(D=D,system=system),
-							sqrt(parameters[i]/(D**2))*Basis.Y(D=D,system=system),
-							sqrt(parameters[i]/(D**2))*Basis.Z(D=D,system=system)]
-					
+					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
+
 					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
 					# obj = [Basis.I(D=D,system=system)]
 					# def func(parameters=None,state=None):

@@ -9,7 +9,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,seeder,loader,partial,gradient
+from src.utils import argparser,seeder,nester,partial,gradient
 from src.io import load,dump
 from src.system import Dict
 
@@ -19,7 +19,7 @@ def main(settings,*args,**kwargs):
 
 	# Settings
 	default = {}
-	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
+	settings = load(settings,default=default,wrapper=lambda data: Dict(nester(data,keys='cls',func=load)))
 
 
 	# System

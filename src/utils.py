@@ -8724,27 +8724,29 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	return data
 
 
-def loader(iterable,keys,func=None):
+def nester(iterable,keys,func=None):
 	'''
-	Load values of iterable
+	Apply function to values of nested iterable
 	Args:
-		iterable (dict): iterable to load
-		keys (iterable[str]): keys to load
+		iterable (dict): iterable
+		keys (iterable[str]): keys to apply function to
 		func (callable): function to load
 	Returns:
 		iterable (dict): loaded iterable
 	'''
-	if not isinstance(keys,iterables):
+	if keys is None:
+		keys = None
+	elif not isinstance(keys,iterables):
 		keys = [keys]
 
 	if func is None:
-		func = load
+		return
 	
 	for key in iterable:
-		if key in keys:
+		if keys is None or key in keys:
 			iterable[key] = func(iterable[key])
 		elif isinstance(iterable[key],type(iterable)):
-			iterable[key] = loader(iterable[key],keys,func=func)
+			iterable[key] = nester(iterable[key],keys,func=func)
 	
 	return iterable
 

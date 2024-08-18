@@ -9,7 +9,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,seeder,loader,partial,gradient
+from src.utils import argparser,seeder,nester,partial,gradient
 from src.io import load,dump
 from src.system import Dict
 
@@ -21,7 +21,7 @@ def main(settings,*args,**kwargs):
 
 	# Settings
 	default = {}
-	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
+	settings = load(settings,default=default,wrapper=lambda data: Dict(nester(data,keys='cls',func=load)))
 
 
 	# System
@@ -46,7 +46,7 @@ def main(settings,*args,**kwargs):
 
 	# Settings
 	default = {}
-	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
+	settings = load(settings,default=default,wrapper=lambda data: Dict(nester(data,keys='cls',func=load)))
 
 	# System
 	system = settings['system']
@@ -68,7 +68,7 @@ def main(settings,*args,**kwargs):
 
 	# Settings
 	default = {}
-	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
+	settings = load(settings,default=default,wrapper=lambda data: Dict(nester(data,keys='cls',func=load)))
 
 	# System
 	system = settings['system']
@@ -94,6 +94,63 @@ def main(settings,*args,**kwargs):
 	
 	train(settings,*args,**kwargs)
 	
+	return
+
+
+
+def main(settings,*args,**kwargs):
+
+	def init(**data):
+		data = [data[i] for i in data]
+		operators = [Dict(operator=(*operator,) if not isinstance(operator,str) else (operator,)) if not isinstance(operator,dict) else operator for operator in data]
+
+		N = max(len(operator.operator) for operator in data)
+		indices = {1:'i',2:'<ij>'}
+		basis = Basis
+		lattice = Lattice(N)
+
+		data = {}
+		for operator in operators:
+			attr = operator.operator
+			objs = []
+			for i in lattice(indices[len(operator.operator)]):
+				obj.append(getattr(basis,ope))
+			data[attr] = array([tensorprod(i) for i in permutations(*objs)],dtype=dtype)
+
+
+
+	# Modules
+	from src.quantum import Basis,Measure
+	from src.system import Lattice
+	
+	# Settings
+	default = {}
+	settings = load(settings,default=default,wrapper=Dict)
+
+	# System
+	data = settings.model.data
+	base = settings.model.base
+
+	func = init(**data)
+	measure = Measure(base)
+
+
+
+
+
+
+	system = settings['system']
+	seed = system['seed']
+	shape = len(system['attrs'])
+	wrapper = lambda keys: dict(zip(system['attrs'],keys))
+	key = seeder(seed=seed)(shape,wrapper=wrapper)
+
+	# Model
+	model = settings['model']['cls'](*settings['model']['args'],**settings['model']['kwargs'])
+	params = model.init(key['model'])
+
+	print(params)
+
 	return
 
 
