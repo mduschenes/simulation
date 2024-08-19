@@ -2120,9 +2120,9 @@ class array(np.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.array(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 class nparray(onp.ndarray):
 	'''
@@ -2133,9 +2133,9 @@ class nparray(onp.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return onp.array(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 class asndarray(onp.ndarray):
 	'''
@@ -2146,7 +2146,7 @@ class asndarray(onp.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return onp.asarray(*args,**kwargs)
 
 class asarray(np.ndarray):
@@ -2158,7 +2158,7 @@ class asarray(np.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.asarray(*args,**kwargs)
 
 class asscalar(np.ndarray):
@@ -2170,7 +2170,7 @@ class asscalar(np.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,a,*args,**kwargs):
+	def __new__(cls,a,*args,**kwargs):
 		try:
 			return a.item()
 		except (AttributeError,ValueError,TypeError):
@@ -2189,7 +2189,7 @@ class objs(onp.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return onp.array(*args,**kwargs)
 
 
@@ -2202,7 +2202,7 @@ class asobjs(onp.ndarray):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return asndarray(*args,**kwargs)
 
 class ones(array):
@@ -2214,7 +2214,7 @@ class ones(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.ones(*args,**kwargs)
 
 
@@ -2227,7 +2227,7 @@ class zeros(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.zeros(*args,**kwargs)
 
 class empty(array):
@@ -2239,7 +2239,7 @@ class empty(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.empty(*args,**kwargs)
 
 class full(array):
@@ -2251,7 +2251,7 @@ class full(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.full(*args,**kwargs)
 
 class eye(array):
@@ -2263,7 +2263,7 @@ class eye(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.eye(*args,**kwargs)
 
 class arange(array):
@@ -2275,7 +2275,7 @@ class arange(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.arange(*args,**kwargs)
 
 class linspace(array):
@@ -2287,7 +2287,7 @@ class linspace(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.linspace(*args,**kwargs)
 
 class logspace(array):
@@ -2299,7 +2299,7 @@ class logspace(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return np.logspace(*args,**kwargs)
 
 
@@ -2312,9 +2312,9 @@ class dataframe(pd.DataFrame):
 	Returns:
 		out (array): dataframe
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return pd.DataFrame(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 
 class entity(object):
@@ -2378,7 +2378,7 @@ class identity(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,n,*args,**kwargs):
+	def __new__(cls,n,*args,**kwargs):
 		return np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs)
 
 
@@ -2391,7 +2391,7 @@ class hadamard(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,n,*args,**kwargs):
+	def __new__(cls,n,*args,**kwargs):
 		if n == 1:
 			out = array(1,*args,**kwargs)
 			return out
@@ -2409,7 +2409,7 @@ class phasehadamard(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,n,*args,**kwargs):
+	def __new__(cls,n,*args,**kwargs):
 		assert n == 2, "phasehadamard only defined for n = 2"
 		if n == 1:
 			out = array(1,*args,**kwargs)
@@ -2431,7 +2431,7 @@ class cnot(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,n,*args,**kwargs):
+	def __new__(cls,n,*args,**kwargs):
 		assert n == 4, "cnot only defined for n = 4"
 		if n == 1:
 			out = array(1,*args,**kwargs)
@@ -2453,7 +2453,7 @@ class toffoli(array):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,n,*args,**kwargs):
+	def __new__(cls,n,*args,**kwargs):
 		assert n == 8, "toffoli only defined for n = 8"
 		if n == 1:
 			out = array(1,*args,**kwargs)
@@ -2486,9 +2486,9 @@ class tensor(qtn.Tensor):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return qtn.Tensor(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 
 class tensornetwork(qtn.TensorNetwork):
@@ -2500,9 +2500,9 @@ class tensornetwork(qtn.TensorNetwork):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return qtn.TensorNetwork(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 
 class mps(qtn.MatrixProductState):
@@ -2515,7 +2515,7 @@ class mps(qtn.MatrixProductState):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,data,*args,**kwargs):
+	def __new__(cls,data,*args,**kwargs):
 		if isinstance(data,iterables):
 			return qtn.MPS_product_state(data,*args,**kwargs)
 		elif isinstance(data,str):
@@ -2524,7 +2524,7 @@ class mps(qtn.MatrixProductState):
 			return qtn.MPS_rand_state(data,*args,**kwargs)
 		else:
 			return qtn.MatrixProductState(data,*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 
 class gate(qtn.Gate):
@@ -2536,9 +2536,9 @@ class gate(qtn.Gate):
 	Returns:
 		out (array): array
 	'''
-	def __new__(self,*args,**kwargs):
+	def __new__(cls,*args,**kwargs):
 		return qtn.Gate(*args,**kwargs)
-		# return super().__init__(self,*args,**kwargs)
+		# return super().__init__(cls,*args,**kwargs)
 
 
 
@@ -3740,7 +3740,7 @@ def contraction(data=None,state=None,site=None,string=None):
 	Args:
 		data (array,tensor): Array of data of shape (n,n)
 		state (array,tensor): state of shape (n,) or (n,n)
-		site (iterable[int,str]): Where data contracts with state
+		site (int,str,iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -3939,7 +3939,7 @@ def gradient_contraction(data=None,state=None,site=None):
 	Args:
 		data (array,tensor): Array of data of shape (n,n)
 		state (array,tensor): state of shape (n,) or (n,n)
-		site (iterable[int,str]): Where data contracts with state		
+		site (int,str,iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''

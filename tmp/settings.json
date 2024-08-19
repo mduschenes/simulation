@@ -20,7 +20,7 @@
 			"parameters":1e-3,"variable":false
 		}		
 	},
-	"N":2,
+	"N":6,
 	"D":2,
 	"d":1,
 	"M":1,
@@ -29,7 +29,8 @@
 	"base":"pauli",
 	"space":"spin",
 	"time":"linear",
-	"lattice":"square"
+	"lattice":"square",
+	"boundaries":"periodic"
 	},
 "state": {
 	"operator":"zero",
@@ -41,7 +42,7 @@
 	"d":1,
 	"M":1,
 	"P":1,
-	"S":4,	
+	"S":1,	
 	"ndim":2,
 	"seed":123
 	},

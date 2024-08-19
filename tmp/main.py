@@ -158,7 +158,7 @@ def main(settings,*args,**kwargs):
 
 
 	# Modules
-	from src.quantum import Operators,State	
+	from src.quantum import Operators,State,MPS
 	from src.quantum import Basis,Measure
 	from src.system import Lattice
 	
@@ -168,69 +168,48 @@ def main(settings,*args,**kwargs):
 	settings = load(settings,default=default,wrapper=wrapper)
 
 	# System
-	N = settings.state.N
-	D = settings.state.D
-	d = settings.state.d
-	ndim = settings.state.ndim
+	N = settings.model.N
+	D = settings.model.D
+	S = settings.model.S
+	d = settings.model.d
 	data = settings.model.data
-	state = settings.state
 	base = settings.model.base
 	lattice = settings.model.lattice
+	boundaries = settings.model.boundaries
 	dtype = settings.system.dtype
 
 	# Initialize
 	basis = Basis
-	lattice = Lattice(N,d,lattice=lattice)
 	measure = Measure(base,D=D)
-	structure = '<ij>'
 
 	# Model
 	parameters = None
-	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
+	state = basis.zero(N=2,D=D,ndim=2,dtype=dtype)
 	model = init(data,parameters,state)
-
 	check = model(parameters,state)
-
-	print(check.round(8))
 
 	# Basis
 	parameters = measure.parameters()
 	state = measure.probability(parameters,state)
 	operator = measure.operator(parameters,state,model=model)
 
-	print(measure.basis)
-	print(measure.data)
-	print(measure.inverse)
-
+	K = len(measure)
 	state = dot(operator,state)
 	test = measure(parameters,state)
 
-	print(test.round(8))
+	# Tensor
+	state = MPS(N=N,D=K,S=S,boundaries=boundaries,dtype=dtype)
+	lattice = Lattice(N,d,lattice=lattice)
+	structure = '<ij>'
 
 
-	assert allclose(test,check), "Incorrect model() - measure() conversion"
+	print(type(state))
+	print(state)
 
+	for site in lattice(structure):
+		state = state(operator,site=site)
 
-	# Test
-	# Function
-	parameters = None
-	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
-
-	value = model(parameters,state)
-
-	# Model
-	model = Operators(**settings.model)
-	state = State(**settings.state)
-	model.init(state=state)
-
-	parameters = model.parameters()
-	state = model.state()
-
-	test = model(parameters,state)
-
-	assert allclose(value,test), "Incorrect func and model"
-
-	print('Passed')
+	print(state)
 
 	return
 

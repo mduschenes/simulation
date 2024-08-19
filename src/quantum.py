@@ -702,6 +702,64 @@ class Measure(System):
 		return data
 
 
+class MPS(mps): 
+	'''
+	Matrix Product State class
+	Args:
+		N (int): Tensor system size
+		D (int): Tensor physical bon dimension
+		S (int): Tensor virtual bond dimension
+		data (iterable,int,str,object): Tensor data
+		kwargs (dict): Tensor keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(cls,N,D,S=1,data=None,**kwargs):
+		data = N if data is None else data
+		updates = {
+			'periodic':(
+				(lambda attr,value,kwargs:'cyclic'),
+				(lambda attr,value,kwargs: value and kwargs.get('data') is not None and kwargs.get('data')>2)
+				),
+			'boundaries':(
+				(lambda attr,value,kwargs:'cyclic'),
+				(lambda attr,value,kwargs: value in ['periodic'] and kwargs.get('data') is not None and kwargs.get('data')>2)
+				)			
+			}
+
+		kwargs.update(dict(data=data,phys_dim=D,bond_dim=S))
+		for attr in updates:
+			if attr not in kwargs:
+				continue
+			attrs,values = updates[attr]
+			attr,value = attr,kwargs.pop(attr)
+			kwargs[attrs(attr,value,kwargs)] = values(attr,value,kwargs)
+
+		self = super().__new__(cls,**kwargs)
+
+		return self
+
+	def __init__(self,*args,**kwargs):
+		super().__init__(*args,**kwargs)
+		return
+
+	def __call__(self,parameters,state=None,data=None,site=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			data (obj): data for operator
+			site (int,str,iterable[int,str]): Where data contracts with state
+		Returns:
+			data (array): data
+		'''
+		state = self if state is None else state
+		if data is None:
+			return state
+		else:
+			return self.gate(data,where=site)
+
 def trotter(iterable=None,p=None,verbose=False):
 	'''
 	Trotterized iterable for order p or parameters for order p
