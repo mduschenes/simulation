@@ -52,6 +52,7 @@ class Basis(Dict):
 	parameters = None
 	dtype = None
 
+
 	@classmethod
 	@property
 	def shape(cls):
@@ -79,277 +80,307 @@ class Basis(Dict):
 	@classmethod
 	@System.decorator
 	def string(cls,*args,**kwargs):
-		if cls.data is None:
+		kwargs = Dictionary(**kwargs)
+		if kwargs.data is None:
 			data = []
-		elif isinstance(cls.data,str):
-			data = cls.data.split(delim)
+		elif isinstance(kwargs.data,str):
+			data = kwargs.data.split(delim)
 		else:
-			data = [*cls.data]
-		N = len(data)
-		data = array(tensorprod([getattr(cls,i)(D=cls.D,dtype=cls.dtype) for i in data]),dtype=cls.dtype)
-		if cls.parameters is not None:
-			parameters = cls.parameters*pi/2
-			data = cos(parameters)*cls.identity(D=cls.D,N=N,dtype=cls.dtype) + -1j*sin(parameters)*data		
+			data = [*kwargs.data]
+		kwargs.N = len(data)
+		data = array(tensorprod([getattr(cls,i)(D=kwargs.D,dtype=kwargs.dtype) for i in data]),dtype=kwargs.dtype)
+		if kwargs.parameters is not None:
+			if kwargs.D == 2:
+				parameters = kwargs.parameters*pi/2
+				data = cos(parameters)*kwargs.identity(D=kwargs.D,N=kwargs.N,dtype=kwargs.dtype) + -1j*sin(parameters)*data		
+		state = array([[1,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
 		return data
 
 	@classmethod
 	@System.decorator
 	def identity(cls,*args,**kwargs):
-		data = identity(cls.D**cls.N,dtype=cls.dtype)
+		kwargs = Dictionary(**kwargs)
+		data = identity(kwargs.D**kwargs.N,dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def entity(cls,*args,**kwargs):
-		data = entity(cls.D**cls.N,dtype=cls.dtype)
+		kwargs = Dictionary(**kwargs)
+		data = entity(kwargs.D**kwargs.N,dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def I(cls,*args,**kwargs):
-		data = identity(cls.D**cls.N,dtype=cls.dtype)
-		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+		kwargs = Dictionary(**kwargs)
+		data = identity(kwargs.D**kwargs.N,dtype=kwargs.dtype)
+		if kwargs.parameters is not None:
+			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
 		return data
 
 	@classmethod
 	@System.decorator
 	def X(cls,*args,**kwargs):
-		data = array([[0,1],[1,0]],dtype=cls.dtype)
-		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data
+		kwargs = Dictionary(**kwargs)
+		data = array([[0,1],[1,0]],dtype=kwargs.dtype)
+		if kwargs.parameters is not None:
+			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data
 		return data
 
 	@classmethod
 	@System.decorator
 	def Y(cls,*args,**kwargs):
-		data = array([[0,-1j],[1j,0]],dtype=cls.dtype)
-		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+		kwargs = Dictionary(**kwargs)
+		data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)
+		if kwargs.parameters is not None:
+			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
 		return data
 
 	@classmethod
 	@System.decorator	
 	def Z(cls,*args,**kwargs):
-		data = array([[1,0],[0,-1]],dtype=cls.dtype)
-		if cls.parameters is not None:
-			data = cos(cls.parameters)*cls.identity(D=cls.D,dtype=cls.dtype) + -1j*sin(cls.parameters)*data		
+		kwargs = Dictionary(**kwargs)
+		data = array([[1,0],[0,-1]],dtype=kwargs.dtype)
+		if kwargs.parameters is not None:
+			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
 		return data
 
 	@classmethod
 	@System.decorator
 	def H(cls,*args,**kwargs):
-		data = array([[1,1],[1,-1]],dtype=cls.dtype)
+		kwargs = Dictionary(**kwargs)
+		data = array([[1,1],[1,-1]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def S(cls,*args,**kwargs):
-		data = array([[1,0,],[0,1j]],dtype=cls.dtype)
+		kwargs = Dictionary(**kwargs)
+		data = array([[1,0,],[0,1j]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def CNOT(cls,*args,**kwargs):
-		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=cls.dtype)
+		kwargs = Dictionary(**kwargs)
+		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def unitary(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
 		data = rand(
-			shape=cls.shape,
+			shape=kwargs.shape,
 			random=getattr(cls,'random',None),
 			scale=getattr(cls,'scale',None),
 			key=getattr(cls,'key',getattr(cls,'seed',None)),
-			dtype=cls.dtype)
+			dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def state(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
 		data = rand(
-			shape=cls.shape,
+			shape=kwargs.shape,
 			random=getattr(cls,'random',None),
 			scale=getattr(cls,'scale',None),
 			key=getattr(cls,'key',getattr(cls,'seed',None)),
-			dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+			dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def zero(cls,*args,**kwargs):
-		data = array([1,*[0]*(cls.D-1)],dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		kwargs = Dictionary(**kwargs)
+		data = array([1,*[0]*(kwargs.D-1)],dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)	
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)	
 		return data
 
 	@classmethod
 	@System.decorator	
 	def one(cls,*args,**kwargs):
-		data = array([*[0]*(cls.D-1),1],dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		kwargs = Dictionary(**kwargs)
+		data = array([*[0]*(kwargs.D-1),1],dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def plus(cls,*args,**kwargs):
-		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		kwargs = Dictionary(**kwargs)
+		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
 
 	@classmethod
 	@System.decorator	
 	def minus(cls,*args,**kwargs):
-		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
-		index = slice(1,None,cls.D)
+		kwargs = Dictionary(**kwargs)
+		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		index = slice(1,None,kwargs.D)
 		data[index] *= -1
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def plusi(cls,*args,**kwargs):
-		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		kwargs = Dictionary(**kwargs)
+		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
 
 	@classmethod
 	@System.decorator	
 	def minusi(cls,*args,**kwargs):
-		data = array([*[1/sqrt(cls.D)]*(cls.D)],dtype=cls.dtype)
-		index = slice(1,None,cls.D)
+		kwargs = Dictionary(**kwargs)
+		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		index = slice(1,None,kwargs.D)
 		data[index] *= -1
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data		
 
 	@classmethod
 	@System.decorator	
 	def element(cls,*args,**kwargs):
-		data = zeros(cls.shape,dtype=cls.dtype)
-		index = tuple(map(int,cls.data))
+		kwargs = Dictionary(**kwargs)
+		data = zeros(kwargs.shape,dtype=kwargs.dtype)
+		index = tuple(map(int,kwargs.data))
 		data[index] = 1
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def sample(cls,*args,**kwargs):
-		data = array([*[1]*(cls.D)],dtype=cls.dtype)
-		if cls.ndim is not None and data.ndim < cls.ndim:
+		kwargs = Dictionary(**kwargs)
+		data = array([*[1]*(kwargs.D)],dtype=kwargs.dtype)
+		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))
-		if cls.N is not None and cls.N > 1:
-			data = tensorprod([data]*cls.N)
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator
 	def projector(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
 		data = []
-		size = cls.D**self.N
+		size = kwargs.D**self.N
 		for i in range(size):
 			for j in range(size):
-				obj = inplace(zeros((size,size),dtype=cls.dtype),(i,j),1)
+				obj = inplace(zeros((size,size),dtype=kwargs.dtype),(i,j),1)
 				data.append(obj)
 		return data
 
 	@classmethod
 	@System.decorator
 	def dephase(cls,*args,**kwargs):
-		if cls.parameters is None:
-			cls.parameters = 0
+		kwargs = Dictionary(**kwargs)
+		if kwargs.parameters is None:
+			kwargs.parameters = 0
 		data = array([
-			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
-			sqrt(cls.parameters)*cls.Z(D=cls.D,dtype=cls.dtype)
-			],dtype=cls.dtype)
+			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*kwargs.Z(D=kwargs.D,dtype=kwargs.dtype)
+			],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def bitflip(cls,*args,**kwargs):
-		if cls.parameters is None:
-			cls.parameters = 0
+		kwargs = Dictionary(**kwargs)
+		if kwargs.parameters is None:
+			kwargs.parameters = 0
 		data = array([
-			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
-			sqrt(cls.parameters)*cls.X(D=cls.D,dtype=cls.dtype)
-			],dtype=cls.dtype)
+			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*kwargs.X(D=kwargs.D,dtype=kwargs.dtype)
+			],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def phaseflip(cls,*args,**kwargs):
-		if cls.parameters is None:
-			cls.parameters = 0
+		kwargs = Dictionary(**kwargs)
+		if kwargs.parameters is None:
+			kwargs.parameters = 0
 		data = array([
-			sqrt(1-cls.parameters)*cls.I(D=cls.D,dtype=cls.dtype),
-			sqrt(cls.parameters)*cls.Y(D=cls.D,dtype=cls.dtype)
-			],dtype=cls.dtype)
+			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*kwargs.Y(D=kwargs.D,dtype=kwargs.dtype)
+			],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def depolarize(cls,*args,**kwargs):
-		if cls.parameters is None:
-			cls.parameters = 0		
+		kwargs = Dictionary(**kwargs)
+		if kwargs.parameters is None:
+			kwargs.parameters = 0		
 		data = array([
-				sqrt(1-(cls.D**2-1)*cls.parameters/(cls.D**2))*cls.I(D=cls.D,dtype=cls.dtype),
-				sqrt(cls.parameters/(cls.D**2))*cls.X(D=cls.D,dtype=cls.dtype),
-				sqrt(cls.parameters/(cls.D**2))*cls.Y(D=cls.D,dtype=cls.dtype),
-				sqrt(cls.parameters/(cls.D**2))*cls.Z(D=cls.D,dtype=cls.dtype)
-				],dtype=cls.dtype)
+				sqrt(1-(kwargs.D**2-1)*kwargs.parameters/(kwargs.D**2))*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.X(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.Y(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.Z(D=kwargs.D,dtype=kwargs.dtype)
+				],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def amplitude(cls,*args,**kwargs):
-		if cls.parameters is None:
-			cls.parameters = 0		
+		kwargs = Dictionary(**kwargs)
+		if kwargs.parameters is None:
+			kwargs.parameters = 0		
 		data = array([
-			cls.element(D=cls.D,data='00',dtype=cls.dtype) + 
-				sqrt(1-cls.parameters)*cls.element(D=cls.D,data='11',dtype=cls.dtype),
-			sqrt(cls.parameters)*cls.element(D=cls.D,data='01',dtype=cls.dtype)
-			],dtype=cls.dtype)
+			kwargs.element(D=kwargs.D,data='00',dtype=kwargs.dtype) + 
+				sqrt(1-kwargs.parameters)*kwargs.element(D=kwargs.D,data='11',dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*kwargs.element(D=kwargs.D,data='01',dtype=kwargs.dtype)
+			],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
 	@System.decorator
 	def pauli(cls,*args,**kwargs):
-		data = (1/(cls.D**2-1))*array([
+		kwargs = Dictionary(**kwargs)
+		data = (1/(kwargs.D**2-1))*array([
 			array([[1, 0],[0, 0]]),
-			(1/cls.D)*array([[1,1],[1,1]]),
-			(1/cls.D)*array([[1,-1j],[1j,1]]),
-			(1/cls.D)*(
+			(1/kwargs.D)*array([[1,1],[1,1]]),
+			(1/kwargs.D)*array([[1,-1j],[1j,1]]),
+			(1/kwargs.D)*(
 				2*array([[0,0],[0,1]]) + 
 				array([[1,-1],[-1,1]]) + 
 				array([[1,1j],[-1j,1]]))
-			],dtype=cls.dtype)
+			],dtype=kwargs.dtype)
 		return data
 
 
 	@classmethod
 	@System.decorator
 	def tetrad(cls,*args,**kwargs):
-		data = (1/(cls.D**2))*array([
+		kwargs = Dictionary(**kwargs)
+		data = (1/(kwargs.D**2))*array([
 
 				1*array([[1,0],[0,1]]) + 
 				0*array([[0,1],[1,0]])+
@@ -357,32 +388,33 @@ class Basis(Dict):
 				1*array([[1,0],[0,-1]]),
 
 				1*array([[1,0],[0,1]]) + 
-				cls.D*sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
+				kwargs.D*sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
 				0*array([[0,-1j],[1j,0]])+
-				-1/(cls.D**2-1)*array([[1,0],[0,-1]]),
+				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
 
 				1*array([[1,0],[0,1]]) + 
-				-sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
-				sqrt(cls.D/(cls.D**2-1))*array([[0,-1j],[1j,0]])+
-				-1/(cls.D**2-1)*array([[1,0],[0,-1]]),
+				-sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
+				sqrt(kwargs.D/(kwargs.D**2-1))*array([[0,-1j],[1j,0]])+
+				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
 
 				1*array([[1,0],[0,1]]) + 
-				-sqrt(cls.D)/(cls.D**2-1)*array([[0,1],[1,0]])+
-				-sqrt(cls.D/(cls.D**2-1))*array([[0,-1j],[1j,0]])+
-				-1/(cls.D**2-1)*array([[1,0],[0,-1]])
-				],dtype=cls.dtype)
+				-sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
+				-sqrt(kwargs.D/(kwargs.D**2-1))*array([[0,-1j],[1j,0]])+
+				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]])
+				],dtype=kwargs.dtype)
 
 		return data
 
 	@classmethod
 	@System.decorator
 	def trine(cls,*args,**kwargs):
-		data = (1/(cls.D**2-1))*array([(
+		kwargs = Dictionary(**kwargs)
+		data = (1/(kwargs.D**2-1))*array([(
 			array([[1,0],[0,1]]) + 
-			cos(i*2*pi/(cls.D**2-1))*array([[1,0],[0,-1]]) + 
-			sin(i*2*pi/(cls.D**2-1))*array([[0,1],[1,0]]))
-			for i in range(cls.D**2-1)
-			],dtype=cls.dtype)
+			cos(i*2*pi/(kwargs.D**2-1))*array([[1,0],[0,-1]]) + 
+			sin(i*2*pi/(kwargs.D**2-1))*array([[0,1],[1,0]]))
+			for i in range(kwargs.D**2-1)
+			],dtype=kwargs.dtype)
 		return data
 
 
@@ -701,11 +733,12 @@ def variables(data,state=None,conj=False,size=None,compilation=None,verbose=Fals
 
 
 
-def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
+def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
 	'''
 	Contract data and state
 	Args:
 		data (iterable[Object],dict[int,Object]): data of shape (length,)
+		parameters (array,Parameters): parameters of data
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
@@ -719,6 +752,7 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 	'''
 
 	state = state() if callable(state) else state
+	parameters = parameters() if callable(parameters) else parameters
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
@@ -727,8 +761,12 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
 
-	def function(parameters,state=state,indices=indices):	
-		return switch(indices%length,data,parameters[indices//length],state)
+	if parameters is not None:
+		def function(parameters,state=state,indices=indices):	
+			return switch(indices%length,data,parameters[indices//length],state)
+	else:
+		def function(parameters,state=state,indices=indices):	
+			return switch(indices%length,data,parameters,state)
 
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)	
 
@@ -764,11 +802,12 @@ def scheme(data,state=None,conj=False,size=None,compilation=None,architecture=No
 
 
 
-def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
+def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
 	'''
 	Contract gradient of data and state
 	Args:
 		data (iterable[Object],dict[int,Object]): data of shape (length,)
+		parameters (array,Parameters): parameters of data
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
@@ -782,6 +821,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,archit
 	'''
 
 	state = state() if callable(state) else state
+	parameters = parameters() if callable(parameters) else parameters
 	conj = conj if conj is None else False
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
@@ -790,9 +830,14 @@ def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,archit
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
 
-	function = scheme(data,state=state,conj=conj,size=size,compilation=compilation,architecture=architecture)	
-	def gradient(parameters,state=state,indices=indices):	
-		return switch(indices%length,grad,parameters[indices//length],state)
+	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation,architecture=architecture)	
+
+	if parameters is not None:
+		def gradient(parameters,state=state,indices=indices):	
+			return switch(indices%length,grad,parameters[indices//length],state)
+	else:
+		def gradient(parameters,state=state,indices=indices):	
+			return switch(indices%length,grad,parameters,state)
 
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)	
 
@@ -1817,7 +1862,7 @@ class Pauli(Object):
 		contract = None
 		gradient_contract = None
 
-		self.parameters.init(parameters=dict(obj=pi/2))
+		self.parameters.init(parameters=dict(scale=pi/2))
 
 		if not isinstance(data,objects) and not callable(data):
 
@@ -1874,77 +1919,81 @@ class Pauli(Object):
 
 			data = self.data
 
-
 		if self.parameters() is not None:
 
 			if self.architecture is None:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['array']:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())	
 					return self.data(params=parameters)
 
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return grad*self.data(params=parameters+pi/2)
 
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)	
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())	
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			else:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 				
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
 		
 			if self.architecture is None:
 				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['array']:
 				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return self.data(params=parameters)
 
 				def gradient(parameters=None,state=None):
@@ -1952,6 +2001,7 @@ class Pauli(Object):
 
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
@@ -1959,9 +2009,11 @@ class Pauli(Object):
 
 			else:
 				def func(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 
@@ -3311,7 +3363,6 @@ class Objects(Object):
 				continue
 
 			kwargs = dict(
-				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
 				state=self.state
 				)
 			self.data[i].init(**kwargs)
@@ -3970,9 +4021,38 @@ class Channel(Objects):
 
 		super().init(data=data,state=state,conj=conj,parameters=parameters)
 
+		# Set data
+		for i in self.data:
+			
+			if self.data[i] is None:
+				continue
+
+			kwargs = dict(
+				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
+				state=self.state
+				)
+			self.data[i].init(**kwargs)
+
+
+		# Set attributes
+		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
+		if self.state is None or self.state() is None:
+			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
+			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
+		elif self.state.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state.ndim == 2:
+			hermitian = True
+			unitary = False
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+
 		# Set functions
-		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
-		grad = gradient_scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
+		func = scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
+		grad = gradient_scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
@@ -4036,6 +4116,35 @@ class Operators(Objects):
 		'''
 
 		super().init(data=data,state=state,conj=conj,parameters=parameters)
+
+
+		# Set data
+		for i in self.data:
+			
+			if self.data[i] is None:
+				continue
+
+			kwargs = dict(
+				state=self.state
+				)
+			self.data[i].init(**kwargs)
+
+
+		# Set attributes
+		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
+		if self.state is None or self.state() is None:
+			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
+			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
+		elif self.state.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state.ndim == 2:
+			hermitian = True
+			unitary = False
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
 
 		# Set functions
 		def func(parameters,state):

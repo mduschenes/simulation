@@ -594,8 +594,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		# return wraps(func)(partial(func,**kwargs))
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 

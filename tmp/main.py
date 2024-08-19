@@ -9,7 +9,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,seeder,nester,partial,gradient,einsum,tensorprod,conjugate
+from src.utils import argparser,seeder,nester,partial,gradient,einsum,tensorprod,conjugate,allclose
 from src.utils import array,zeros,ones,empty
 from src.iterables import permutations
 from src.io import load,dump
@@ -177,13 +177,24 @@ def main(settings,*args,**kwargs):
 	measure = Measure(base)
 	structure = '<ij>'
 
-	# Model
+	# Function
 	parameters = None
 	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
 
-	state = func(parameters,state)
+	value = func(parameters,state)
 
-	print(state)
+	# Model
+	from src.quantum import Operators,State
+	model = Operators(**settings.model)
+	state = State(**settings.state)
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	test = model(parameters,state)
+
+	assert allclose(value,test), "Incorrect func and model"
 
 	return
 

@@ -13,17 +13,17 @@
 	"data":{
 		"xx":{
 			"operator":["X","X"],"site":"<ij>","string":"XX",
-			"parameters":0,"variable":true
+			"parameters":0.25,"variable":false
 		},
 		"noise":{
 			"operator":"dephase","site":null,"string":"dephase",
-			"parameters":0,"variable":false
+			"parameters":1e-3,"variable":false
 		}		
 	},
 	"N":2,
 	"D":2,
 	"d":1,
-	"M":5,
+	"M":1,
 	"P":1,
 	"S":4,
 	"base":"pauli",
@@ -39,7 +39,7 @@
 	"N":2,
 	"D":2,
 	"d":1,
-	"M":5,
+	"M":1,
 	"P":1,
 	"S":4,	
 	"ndim":2,

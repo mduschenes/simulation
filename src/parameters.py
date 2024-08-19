@@ -235,7 +235,6 @@ class Parameter(System):
 					return 0
 
 			elif self.indices is None and self.parameters is not None:
-				
 				def func(parameters,*args,**kwargs):
 					return self.kwargs.parameters*self.data
 				
