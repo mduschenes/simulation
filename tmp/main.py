@@ -9,7 +9,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,seeder,nester,partial,gradient,einsum,tensorprod,conjugate,allclose
+from src.utils import argparser,jit,vmap,seeder,nester,partial,gradient,dot,einsum,tensorprod,conjugate,allclose
 from src.utils import array,zeros,ones,empty
 from src.iterables import permutations
 from src.io import load,dump
@@ -187,28 +187,30 @@ def main(settings,*args,**kwargs):
 	# Model
 	parameters = None
 	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
-	# state = None
 	model = init(data,parameters,state)
 
 	check = model(parameters,state)
 
-	print(check)
+	print(check.round(8))
 
 	# Basis
-	parameters=measure.parameters()
+	parameters = measure.parameters()
 	state = measure.probability(parameters,state)
 	operator = measure.operator(parameters,state,model=model)
 
-	state = operator@state
+	print(measure.basis)
+	print(measure.data)
+	print(measure.inverse)
+
+	state = dot(operator,state)
 	test = measure(parameters,state)
 
-	print(test)
+	print(test.round(8))
 
 
 	assert allclose(test,check), "Incorrect model() - measure() conversion"
 
 
-	return
 	# Test
 	# Function
 	parameters = None
@@ -227,6 +229,8 @@ def main(settings,*args,**kwargs):
 	test = model(parameters,state)
 
 	assert allclose(value,test), "Incorrect func and model"
+
+	print('Passed')
 
 	return
 

@@ -77,6 +77,7 @@ class Basis(Dict):
 		setattr(cls,attr,value)
 		return
 
+	# General
 	@classmethod
 	@System.decorator
 	def string(cls,*args,**kwargs):
@@ -93,7 +94,6 @@ class Basis(Dict):
 			if kwargs.D == 2:
 				parameters = kwargs.parameters*pi/2
 				data = cos(parameters)*kwargs.identity(D=kwargs.D,N=kwargs.N,dtype=kwargs.dtype) + -1j*sin(parameters)*data		
-		state = array([[1,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]])
 		return data
 
 	@classmethod
@@ -110,6 +110,7 @@ class Basis(Dict):
 		data = entity(kwargs.D**kwargs.N,dtype=kwargs.dtype)
 		return data
 
+	# Unitary
 	@classmethod
 	@System.decorator
 	def I(cls,*args,**kwargs):
@@ -179,6 +180,7 @@ class Basis(Dict):
 			dtype=kwargs.dtype)
 		return data
 
+	# State
 	@classmethod
 	@System.decorator	
 	def state(cls,*args,**kwargs):
@@ -274,6 +276,7 @@ class Basis(Dict):
 			data = tensorprod([data]*kwargs.N)
 		return data
 
+	# Probability
 	@classmethod
 	@System.decorator	
 	def sample(cls,*args,**kwargs):
@@ -285,6 +288,7 @@ class Basis(Dict):
 			data = array([data]*kwargs.N,dtype=kwargs.dtype)
 		return data
 
+	# Operator
 	@classmethod
 	@System.decorator
 	def projector(cls,*args,**kwargs):
@@ -297,6 +301,7 @@ class Basis(Dict):
 				data.append(obj)
 		return data
 
+	# Noise
 	@classmethod
 	@System.decorator
 	def dephase(cls,*args,**kwargs):
@@ -360,6 +365,7 @@ class Basis(Dict):
 			],dtype=kwargs.dtype)
 		return data
 
+	# POVM
 	@classmethod
 	@System.decorator
 	def pauli(cls,*args,**kwargs):
@@ -409,12 +415,23 @@ class Basis(Dict):
 	@System.decorator
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = (1/(kwargs.D**2-1))*array([(
-			array([[1,0],[0,1]]) + 
-			cos(i*2*pi/(kwargs.D**2-1))*array([[1,0],[0,-1]]) + 
-			sin(i*2*pi/(kwargs.D**2-1))*array([[0,1],[1,0]]))
+		data = (1/(kwargs.D**2-1))*array([
+									    cls.I(D=kwargs.D,dtype=kwargs.dtype) + 
+			cos(i*2*pi/(kwargs.D**2-1))*cls.Z(D=kwargs.D,dtype=kwargs.dtype) + 
+			sin(i*2*pi/(kwargs.D**2-1))*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			for i in range(kwargs.D**2-1)
 			],dtype=kwargs.dtype)
+		raise ValueError("Not Informationally Complete POVM <%s>"%(sys._getframe().f_code.co_name))
+		return data
+
+	@classmethod
+	@System.decorator
+	def standard(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+		data = zeros((kwargs.D**2,kwargs.D**2),dtype=kwargs.dtype)
+		for i in range(kwargs.D**2):
+			data = inplace(data,(i,i),1)
+		data = data.reshape((kwargs.D**2,kwargs.D,kwargs.D))
 		return data
 
 

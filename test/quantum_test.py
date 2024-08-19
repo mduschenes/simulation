@@ -10,8 +10,9 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,allclose,product,spawn,einsum,conjugate
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
+from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
 from src.system import Dict
@@ -548,7 +549,7 @@ def test_state(*args,**kwargs):
 def test_measure(*args,**kwargs):
 
 	kwargs = {
-		"model.base":["pauli","tetrad","trine"],
+		"model.base":["pauli","tetrad","standard"],
 		"state.D":[4,4,3],
 		}
 	groups = [["model.base","state.D",]]
@@ -607,6 +608,196 @@ def test_measure(*args,**kwargs):
 	return
 
 
+def test_init(*args,**kwargs):
+	def init(data,parameters=None,state=None):
+
+		locality = max(len(data[operator].operator) if not isinstance(data[operator].operator,str) else 1 for operator in data if data[operator].operator is not None)
+		basis = Basis
+		lattice = Lattice(locality)
+
+		funcs = []
+		for operator in data:
+
+			obj = None
+
+			if isinstance(data[operator].operator,str):
+				objs = []
+				for i in range(locality):
+					objs.append(getattr(basis,data[operator].operator)(parameters=data[operator].parameters))
+				obj = array([tensorprod(i) for i in permutations(*objs)])
+			else:
+				obj = basis.string(data=data[operator].operator,parameters=data[operator].parameters)
+
+			if obj is None:
+				continue
+
+			if state is None:
+				einsummation = None
+				def contract(parameters,state,data=obj,einsummation=einsummation):
+					return data
+				contract = lambda parameters,state,data=obj,einsummation=einsummation: data
+			elif obj.ndim == 3 and state.ndim == 2:
+				subscripts = 'uij,jk,ulk->il'
+				shapes = (obj.shape,state.shape,obj.shape)
+				einsummation = einsum(subscripts,*shapes)
+				def contract(parameters,state,data=obj,einsummation=einsummation):
+					return einsummation(data,state,conjugate(data))				
+			elif obj.ndim == 2 and state.ndim == 2:
+				subscripts = 'ij,jk,lk->il'
+				shapes = (obj.shape,state.shape,obj.shape)
+				einsummation = einsum(subscripts,*shapes)
+				def contract(parameters,state,data=obj,einsummation=einsummation):
+					return einsummation(data,state,conjugate(data))	
+			
+			def func(parameters,state,contract=contract):
+				return contract(parameters,state)
+
+			funcs.append(func)
+
+
+		def func(parameters=None,state=None):
+			for func in funcs:
+				state = func(parameters,state)
+			return state 
+
+
+		return func
+
+
+	# Modules
+	from src.quantum import Operators,State	
+	from src.quantum import Basis,Measure
+	from src.system import Lattice
+	
+	# Settings
+	default = {}
+	wrapper = Dict
+	# settings = load(settings,default=default,wrapper=wrapper)
+	settings = {
+		"model":{
+			"data":{
+				"xx":{
+					"operator":["X","X"],"site":"<ij>","string":"XX",
+					"parameters":0.25,"variable":False
+				},
+				"noise":{
+					"operator":"dephase","site":None,"string":"dephase",
+					"parameters":1e-3,"variable":False
+				}		
+			},
+			"N":2,
+			"D":2,
+			"d":1,
+			"M":1,
+			"P":1,
+			"S":4,
+			"base":"pauli",
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square"
+			},
+		"state": {
+			"operator":"zero",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":2,
+			"D":2,
+			"d":1,
+			"M":1,
+			"P":1,
+			"S":4,	
+			"ndim":2,
+			"seed":123
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":"array",
+			"seed":123,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":None,
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":"info"
+			}
+		}
+	settings = wrapper(settings)
+
+
+	# System
+	N = settings.state.N
+	D = settings.state.D
+	d = settings.state.d
+	ndim = settings.state.ndim
+	data = settings.model.data
+	state = settings.state
+	base = settings.model.base
+	lattice = settings.model.lattice
+	dtype = settings.system.dtype
+
+	# Initialize
+	basis = Basis
+	lattice = Lattice(N,d,lattice=lattice)
+	measure = Measure(base,D=D)
+	structure = '<ij>'
+
+	# Model
+	parameters = None
+	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
+	model = init(data,parameters,state)
+
+	check = model(parameters,state)
+
+	print(check.round(8))
+
+	# Basis
+	parameters = measure.parameters()
+	state = measure.probability(parameters,state)
+	operator = measure.operator(parameters,state,model=model)
+
+	print(measure.basis)
+	print(measure.data)
+	print(measure.inverse)
+
+	state = dot(operator,state)
+	test = measure(parameters,state)
+
+	print(test.round(8))
+
+
+	assert allclose(test,check), "Incorrect model() - measure() conversion"
+
+
+	# Test
+	# Function
+	parameters = None
+	state = basis.zero(N=N,D=D,ndim=ndim,dtype=dtype)
+
+	value = model(parameters,state)
+
+	# Model
+	model = Operators(**settings.model)
+	state = State(**settings.state)
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	test = model(parameters,state)
+
+	assert allclose(value,test), "Incorrect func and model"
+
+	print('Passed')
+
+	return	
+
 def test_basis(*args,**kwargs):
 
 	print('Not Implemented')
@@ -614,7 +805,7 @@ def test_basis(*args,**kwargs):
 	return
 
 	kwargs = {
-		"model.operator":["pauli","tetrad","trine"],
+		"model.operator":["pauli","tetrad","standard"],
 		"state.D":[4,4,3],
 		}
 	groups = [["model.operator","state.D",]]
@@ -684,5 +875,6 @@ if __name__ == "__main__":
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
 	# test_measure(*args,**args)
-	test_composite(*args,**args)
+	# test_composite(*args,**args)
 	# test_basis(*args,**args)
+	test_init(*args,**args)
