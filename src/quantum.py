@@ -15,7 +15,7 @@ from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,ra
 from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product,log
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -56,7 +56,7 @@ class Basis(Dict):
 	@classmethod
 	@property
 	def shape(cls):
-		return (cls.D**cls.N,)*2
+		return (cls.D**cls.N,)
 
 	@classmethod
 	@property
@@ -282,7 +282,7 @@ class Basis(Dict):
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))
 		if kwargs.N is not None and kwargs.N > 1:
-			data = tensorprod([data]*kwargs.N)
+			data = array([data]*kwargs.N,dtype=kwargs.dtype)
 		return data
 
 	@classmethod
@@ -462,7 +462,7 @@ class Measure(System):
 		Initialize measure
 		Args:
 			data (str,array,tensor,Measure): data of measure
-			state (bool,dict,array,Probability): state of class of shape self.shape
+			state (bool,dict,array,Probability): state of class
 			conj (bool): conjugate
 			parameters (array,dict): parameters of class
 			kwargs (dict): Additional class keyword arguments			
@@ -558,10 +558,35 @@ class Measure(System):
 
 		return
 
-	def __call__(self,parameters=None,state=None):
-		parameters = self.parameters() if parameters is None else parameters
-		state = self.state() if state is None else state
-		return self.func(parameters=parameters,state=state)
+	def __call__(self,parameters=None,state=None,model=None,**kwargs):
+		'''
+		Call class for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability): state of class of Probability state
+			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
+			kwargs (dict): Additional class keyword arguments					
+		'''
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		state = self.state() if state is None else state() if callable(state) else state
+		locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
+
+		if locality is None:
+			basis = self.basis
+			inverse = self.inverse
+		else:
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*locality)],dtype=self.dtype)
+
+		subscripts = '...i,iu,ujk->...jk'
+		shapes = (state.shape,inverse.shape,basis.shape)
+		einsummation = einsum(subscripts,*shapes)
+		def func(parameters,state):
+			return einsummation(state,inverse,basis)
+
+		return func(parameters=parameters,state=state)
 
 	def __len__(self):
 		return len(self.basis)
@@ -590,6 +615,74 @@ class Measure(System):
 	@classmethod
 	def inv(cls,a):
 		return inv(a)
+
+	def probability(self,parameters=None,state=None,**kwargs):
+		'''
+		Probability for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,State): state of class of State state of shape (self.D**locality,self.D**locality)
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			state (array,Probability): state of class of Probability state of shape (len(self.basis),)
+		'''
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		
+		locality = int(round(log(state.size)/log(self.D))//state.ndim) if state is not None else None
+
+		if locality is None:
+			basis = self.basis
+		else:
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
+
+		
+		if state is None:
+			state = self.state()
+		else:
+			subscripts = 'uij,ij->u'
+			shapes = (basis.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			state = einsummation(basis,state)
+
+		return state
+
+
+	def operator(self,parameters=None,state=None,model=None,**kwargs):
+		'''
+		Operator for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability): state of class of Probability state of shape (locality,self.D,self.D)
+			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): POVM operator of shape (len(self.basis**locality),len(self.basis**locality))
+		'''
+
+		state = self.state() if state is None else state() if callable(state) else state
+		locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
+
+		if locality is None:
+			basis = self.basis
+			inverse = self.inverse
+		else:
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*locality)],dtype=self.dtype)
+
+		if model is None:
+			data = None
+		else:
+			subscripts = 'uij,kij,kv->uv'
+			shapes = (basis.shape,basis.shape,inverse.shape)
+			einsummation = einsum(subscripts,*shapes)
+			model = vmap(model,in_axes=(None,0),out_axes=0)
+			contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				conjugate(basis),
+				model(parameters,state),
+				inverse)
+			data = contract(parameters=parameters,state=basis)
+		
+		return data
 
 
 def trotter(iterable=None,p=None,verbose=False):
@@ -1059,7 +1152,7 @@ class Object(System):
 		Initialize operator
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
-			state (bool,dict,array,Object): state of class of shape self.shape
+			state (bool,dict,array,Object): state of class
 			conj (bool): conjugate
 			parameters (array,dict): parameters of class
 			kwargs (dict): Additional class keyword arguments			
