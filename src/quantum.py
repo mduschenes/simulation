@@ -761,7 +761,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
 
-	if parameters is not None:
+	if parameters is not None and len(parameters):
 		def function(parameters,state=state,indices=indices):	
 			return switch(indices%length,data,parameters[indices//length],state)
 	else:
@@ -832,7 +832,7 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 
 	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation,architecture=architecture)	
 
-	if parameters is not None:
+	if parameters is not None and len(parameters):
 		def gradient(parameters,state=state,indices=indices):	
 			return switch(indices%length,grad,parameters[indices//length],state)
 	else:
@@ -3707,7 +3707,7 @@ class Objects(Object):
 			out (array): Return of function
 		'''
 
-		parameters = self.parameters(parameters)
+		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 
 		return self.func(parameters=parameters,state=state)
 
@@ -3758,7 +3758,7 @@ class Objects(Object):
 			out (array): Return of function
 		'''		
 
-		parameters = self.parameters(parameters)
+		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 
 		return self.gradient_analytical(parameters=parameters,state=state)
 
@@ -4152,12 +4152,12 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			out = state
-			if parameters is not None:
+			if parameters is not None and len(parameters):
 				for i in indices:
 					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
 			else:
 				for i in indices:
-					out = self.data[i%shape[1]](state=out)
+					out = self.data[i%shape[1]](parameters=parameters,state=out)
 			return out
 
 		def grad(parameters,state):
@@ -4166,7 +4166,7 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			if parameters is not None:
+			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
@@ -4179,10 +4179,10 @@ class Operators(Objects):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](state=out)
-					out = self.data[i%shape[1]].grad(state=out)
+						out = self.data[j%shape[1]](parameters=parameters,state=out)
+					out = self.data[i%shape[1]].grad(parameters=parameters,state=out)
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](state=out)
+						out = self.data[j%shape[1]](parameters=parameters,state=out)
 					grad = inplace(grad,indexes.index(i),out,'add')
 			return grad
 

@@ -196,6 +196,7 @@ def main(settings,*args,**kwargs):
 
 	assert allclose(value,test), "Incorrect func and model"
 
+	print('Passed')
 	return
 
 

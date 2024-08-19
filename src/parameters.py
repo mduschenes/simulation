@@ -379,10 +379,10 @@ class Parameters(System):
 
 			data[parameter].data = initialize(**kwargs)
 
-		data = {parameter: data[parameter] for parameter in data} if len(data) else None
+		data = {parameter: data[parameter] for parameter in data}
 
 		indices = {parameter:data[parameter].indices for parameter in data} if data is not None else None
-		variable = all(data[parameter].variable for parameter in data) if data is not None else None
+		variable = all(data[parameter].variable for parameter in data) if data is not None and len(data) else None
 		parameters = array([data[parameter].data for parameter in data]) if data is not None else None
 
 		parameters = (parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()) if parameters is not None else None
