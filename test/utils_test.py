@@ -11,11 +11,14 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+
+os.environ['NUMPY_BACKEND'] = 'NUMPY'
+
 from src.utils import np,onp,backend
 from src.utils import jit,partial
-from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
-from src.utils import gradient,rand,eye,diag,sin,cos
-from src.utils import einsum,dot,add,norm,norm2,trace,mse
+from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2
+from src.utils import gradient,rand,eye,diag,sin,cos,prod
+from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -23,7 +26,7 @@ from src.utils import arrays,scalars
 
 from src.optimize import Metric
 
-from src.iterables import getter,setter
+from src.iterables import getter,setter,permutations
 from src.io import load,dump,join,split,edit
 
 
@@ -713,6 +716,45 @@ def test_pytree(path=None,tol=None):
 
 	return
 
+def test_reshape(path=None,tol=None):
+
+	N = 2
+	D = 2
+	K = 2
+
+	def to_string(number,D=D,N=N,K=K):
+		string = [int((number/(D)**(N*K-1-i))%(D)) for i in range(N*K)]
+		return ''.join(map(str,string))
+
+
+	shape = (D**N,)*K
+	size = prod(shape)
+	ndim = len(shape)
+	a = zeros(size,dtype=object)
+	for i in range(size):
+		a = inplace(a,i,to_string(i))
+	a = a.reshape(shape)
+	print(a)
+
+
+	shape = (D,)*K
+	size = prod(shape)
+	ndim = len(shape)
+	a = zeros(size,dtype=object)
+	for i in range(size):
+		a = inplace(a,i,to_string(i,N=1))
+	a = a.reshape(shape)
+	print(a)
+
+	a = tensorprod((a,)*N)
+	print(a)
+
+
+	# a = a.reshape((D,)*(K*N))
+	# print(a[:1])
+
+	return
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -726,5 +768,4 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-
-	test_pytree(path,tol)
+	test_reshape(path,tol)

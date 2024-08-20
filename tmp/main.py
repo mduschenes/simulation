@@ -124,20 +124,15 @@ def main(settings,*args,**kwargs):
 			if obj is None:
 				continue
 
-			if state is None:
-				einsummation = None
-				def contract(parameters,state,data=obj,einsummation=einsummation):
-					return data
-				contract = lambda parameters,state,data=obj,einsummation=einsummation: data
-			elif obj.ndim == 3 and state.ndim == 2:
-				subscripts = 'uij,jk,ulk->il'
-				shapes = (obj.shape,state.shape,obj.shape)
+			if obj.ndim == 3:
+				subscripts = 'uij,jk...,ulk->il...'
+				shapes = (obj.shape,obj.shape[-2:],obj.shape)
 				einsummation = einsum(subscripts,*shapes)
 				def contract(parameters,state,data=obj,einsummation=einsummation):
 					return einsummation(data,state,conjugate(data))				
-			elif obj.ndim == 2 and state.ndim == 2:
-				subscripts = 'ij,jk,lk->il'
-				shapes = (obj.shape,state.shape,obj.shape)
+			elif obj.ndim == 2:
+				subscripts = 'ij,jk...,lk->il...'
+				shapes = (obj.shape,obj.shape[-2:],obj.shape)
 				einsummation = einsum(subscripts,*shapes)
 				def contract(parameters,state,data=obj,einsummation=einsummation):
 					return einsummation(data,state,conjugate(data))	
@@ -148,13 +143,23 @@ def main(settings,*args,**kwargs):
 			funcs.append(func)
 
 
-		def func(parameters=None,state=None):
-			for func in funcs:
-				state = func(parameters,state)
-			return state 
+		class model(object):
+			def __init__(self,locality,funcs):
+				self.locality = locality
+				self.funcs = funcs
+				return
+			def __call__(self,parameters=None,state=None):
+				
+				locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
+
+				locality = max(len(data[operator].operator) if not isinstance(data[operator].operator,str) else 1 for operator in data if data[operator].operator is not None)
+
+				for func in self.funcs:
+					state = func(parameters,state)
+				return state 
 
 
-		return func
+		return model(locality,funcs)
 
 
 	# Modules
@@ -176,6 +181,8 @@ def main(settings,*args,**kwargs):
 	base = settings.model.base
 	lattice = settings.model.lattice
 	boundaries = settings.model.boundaries
+	scheme = settings.model.scheme
+	seed = settings.system.seed
 	dtype = settings.system.dtype
 
 	# Initialize
@@ -184,32 +191,41 @@ def main(settings,*args,**kwargs):
 
 	# Model
 	parameters = None
-	state = basis.zero(N=2,D=D,ndim=2,dtype=dtype)
+	state = None
 	model = init(data,parameters,state)
-	check = model(parameters,state)
 
 	# Basis
 	parameters = measure.parameters()
+	state = basis.zero(N=N,D=D,ndim=2,dtype=dtype)
+
 	state = measure.probability(parameters,state)
 	operator = measure.operator(parameters,state,model=model)
 
-	K = len(measure)
-	state = dot(operator,state)
-	test = measure(parameters,state)
-
 	# Tensor
-	state = MPS(N=N,D=K,S=S,boundaries=boundaries,dtype=dtype)
+	D = len(measure)
+	S = 1
+	random = 'rand'
+	seed = seed
+	bounds = [0,1]
+	scale = None
+	dtype = dtype
+	state = MPS(N=N,D=D,S=S,boundaries=boundaries,random=random,seed=seed,bounds=bounds,scale=scale,dtype=dtype)
 	lattice = Lattice(N,d,lattice=lattice)
 	structure = '<ij>'
 
 
-	print(type(state))
-	print(state)
+	_parameters = parameters
+	_state = state.to_dense().ravel()
+	_state = measure(parameters=_parameters,state=_state)
 
 	for site in lattice(structure):
-		state = state(operator,site=site)
+		state = state.gate(operator,where=site,contract=scheme)
+		_state = model(parameters,_state)
 
-	print(state)
+	state = state.to_dense().ravel()
+	state = measure(parameters=parameters,state=state)
+
+	assert allclose(state,_state),"Incorrect state.gate(), model(state)"
 
 	return
 

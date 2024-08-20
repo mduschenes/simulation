@@ -709,13 +709,13 @@ class MPS(mps):
 		N (int): Tensor system size
 		D (int): Tensor physical bon dimension
 		S (int): Tensor virtual bond dimension
-		data (iterable,int,str,object): Tensor data
+		data (iterable,int,str,callable,array,object): Tensor data
 		kwargs (dict): Tensor keyword arguments
 	Returns:
 		out (array): array
 	'''
 	def __new__(cls,N,D,S=1,data=None,**kwargs):
-		data = N if data is None else data
+
 		updates = {
 			'periodic':(
 				(lambda attr,value,kwargs:'cyclic'),
@@ -727,21 +727,35 @@ class MPS(mps):
 				)			
 			}
 
-		kwargs.update(dict(data=data,phys_dim=D,bond_dim=S))
+		kwargs.update(dict(data=data,L=N,phys_dim=D,bond_dim=S))
 		for attr in updates:
 			if attr not in kwargs:
 				continue
 			attrs,values = updates[attr]
 			attr,value = attr,kwargs.pop(attr)
-			kwargs[attrs(attr,value,kwargs)] = values(attr,value,kwargs)
+			attr,value = attrs(attr,value,kwargs),values(attr,value,kwargs)
+			if value is None:
+				continue
+			kwargs[attr] = value
+
+		if data is None:
+			shapes = (S,S,D)
+			kwds = {attr:kwargs.pop(attr,None) for attr in ['random','seed','bounds','scale','dtype']}
+			if kwargs.get('cyclic'):
+				def data(*args,**kwargs):
+					return rand(shape=shapes,**kwds)
+			else:
+				def data(shape,*args,**kwargs):
+					return rand(shape=shape,**kwds)
+
+		kwargs.update(dict(data=data))
 
 		self = super().__new__(cls,**kwargs)
 
+		self.normalize()
+
 		return self
 
-	def __init__(self,*args,**kwargs):
-		super().__init__(*args,**kwargs)
-		return
 
 	def __call__(self,parameters,state=None,data=None,site=None):
 		'''

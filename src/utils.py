@@ -250,9 +250,12 @@ elif backend in ['numpy']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
+	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
+	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,)
 	tensors = (qtn.Tensor,qtn.TensorNetwork)
+
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -2484,7 +2487,7 @@ class tensor(qtn.Tensor):
 		args (iterable): Tensor arguments
 		kwargs (dict): Tensor keyword arguments
 	Returns:
-		out (array): array
+		self (object): class instance
 	'''
 	def __new__(cls,*args,**kwargs):
 		return qtn.Tensor(*args,**kwargs)
@@ -2498,7 +2501,7 @@ class tensornetwork(qtn.TensorNetwork):
 		args (iterable): Tensor arguments
 		kwargs (dict): Tensor keyword arguments
 	Returns:
-		out (array): array
+		self (object): class instance
 	'''
 	def __new__(cls,*args,**kwargs):
 		return qtn.TensorNetwork(*args,**kwargs)
@@ -2509,21 +2512,28 @@ class mps(qtn.MatrixProductState):
 	'''
 	matrix product state class
 	Args:
-		data (iterable,int,str,object): Tensor data
+		data (iterable,int,str,callable,array,object): Tensor data
 		args (iterable): Tensor arguments
 		kwargs (dict): Tensor keyword arguments
 	Returns:
-		out (array): array
+		self (object): class instance
 	'''
 	def __new__(cls,data,*args,**kwargs):
-		if isinstance(data,iterables):
-			return qtn.MPS_product_state(data,*args,**kwargs)
+		if isinstance(data,(*iterables,*arrays)):
+			kwargs.update(dict(arrays=data))
+			self = qtn.MPS_product_state(*args,**kwargs)
 		elif isinstance(data,str):
-			return qtn.MPS_computational_state(data,*args,**kwargs)
+			kwargs.update(dict(binary=data))
+			self = qtn.MPS_computational_state(*args,**kwargs)
 		elif isinstance(data,integers):
-			return qtn.MPS_rand_state(data,*args,**kwargs)
+			kwargs.update(dict(L=data))
+			self = qtn.MPS_rand_state(*args,**kwargs)
+		elif callable(data):
+			kwargs.update(dict(fill_fn=data))
+			self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
 		else:
-			return qtn.MatrixProductState(data,*args,**kwargs)
+			self = qtn.MatrixProductState(data,*args,**kwargs)
+		return self
 		# return super().__init__(cls,*args,**kwargs)
 
 

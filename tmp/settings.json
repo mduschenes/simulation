@@ -20,7 +20,7 @@
 			"parameters":1e-3,"variable":false
 		}		
 	},
-	"N":6,
+	"N":2,
 	"D":2,
 	"d":1,
 	"M":1,
@@ -30,7 +30,8 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"boundaries":"periodic"
+	"boundaries":"open",
+	"scheme":"swap+split"
 	},
 "state": {
 	"operator":"zero",
