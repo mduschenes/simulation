@@ -174,9 +174,9 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
 			shape=kwargs.shape,
-			random=getattr(cls,'random',None),
-			scale=getattr(cls,'scale',None),
-			key=getattr(cls,'key',getattr(cls,'seed',None)),
+			random=getattr(kwargs,'random',None),
+			scale=getattr(kwargs,'scale',None),
+			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
 		return data
 
@@ -187,9 +187,9 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
 			shape=kwargs.shape,
-			random=getattr(cls,'random',None),
-			scale=getattr(cls,'scale',None),
-			key=getattr(cls,'key',getattr(cls,'seed',None)),
+			random=getattr(kwargs,'random',None),
+			scale=getattr(kwargs,'scale',None),
+			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))
@@ -585,8 +585,8 @@ class Measure(System):
 			kwargs (dict): Additional class keyword arguments					
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		
+		state = self.state() if state is None else state() if callable(state) else state if isinstance(state,arrays) else state.to_dense().ravel() if isinstance(state,tensors) else state if state is not None else None
+
 		state = self.state() if state is None else state() if callable(state) else state
 		locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
 
@@ -637,14 +637,15 @@ class Measure(System):
 		'''
 		Probability for POVM probability measure
 		Args:
-			parameters (array): parameters of class
+			parameters (array,Probability,MPS): parameters of class
 			state (array,State): state of class of State state of shape (self.D**locality,self.D**locality)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability): state of class of Probability state of shape (len(self.basis),)
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		
+		state = state if isinstance(state,arrays) else state.to_dense().ravel() if isinstance(state,tensors) else state if state is not None else None
+
 		locality = int(round(log(state.size)/log(self.D))//state.ndim) if state is not None else None
 
 		if locality is None:
