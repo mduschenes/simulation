@@ -2512,15 +2512,21 @@ class mps(qtn.MatrixProductState):
 	'''
 	matrix product state class
 	Args:
-		data (iterable,int,str,callable,array,object): Tensor data
+		data (iterable,int,str,callable,array,tensor,object): Tensor data
 		args (iterable): Tensor arguments
 		kwargs (dict): Tensor keyword arguments
 	Returns:
 		self (object): class instance
 	'''
 	def __new__(cls,data,*args,**kwargs):
-		if isinstance(data,(*iterables,*arrays)):
+
+		if isinstance(data,tensors):
+			self = data
+		elif isinstance(data,arrays):
 			kwargs.update(dict(arrays=data))
+			self = qtn.MPS_product_state(*args,**kwargs)
+		elif isinstance(data,iterables):
+			kwargs.update(dict(arrays=asarray(data)))
 			self = qtn.MPS_product_state(*args,**kwargs)
 		elif isinstance(data,str):
 			kwargs.update(dict(binary=data))
@@ -2810,7 +2816,7 @@ if backend in ['jax']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2843,12 +2849,12 @@ if backend in ['jax']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
-		
+
 		if random in ['random','rand','uniform']:
 			assert not any(i in [float(j) for j in ["-inf","inf"]] for i in bounds), "'%s' random type must have finite bounds != [-inf,inf]"%(random)
 
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		samplerandoms = ['choice']
+		samplerandoms = ['choice','constant']
 		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
@@ -2871,6 +2877,10 @@ if backend in ['jax']:
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
 				return out
+		elif random in ['constant']:
+			def func(key,shape,bounds,dtype):
+				out = (1/prod(shape))*ones(shape,dtype=datatype(dtype))
+				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
 				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
@@ -3096,7 +3106,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -3130,11 +3140,13 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			if isinstance(bounds[i],str):
 				if random in ['gaussian','randn','normal']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
+				elif random in ['constant']:
+					bounds[i] = [0,1][i]
 				else:
 					bounds[i] = float(bounds)
-
+		
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		samplerandoms = ['choice']		
+		samplerandoms = ['choice','constant']		
 		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
@@ -3157,6 +3169,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
 				return out
+		elif random in ['constant']:
+			def func(key,shape,bounds,dtype):
+				out = (1/prod(shape))*ones(shape,dtype=datatype(dtype))
+				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
 				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
@@ -7094,7 +7110,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		shape (int,iterable[int]): Size or shape of array
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
-		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 		dtype (datatype): Datatype of array	
 		kwargs (dict): Additional keyword arguments for padding	
 	Returns:

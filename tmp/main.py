@@ -102,10 +102,21 @@ def main(settings,*args,**kwargs):
 
 def main(settings,*args,**kwargs):
 
-	def init(data,parameters=None,state=None):
+	def init(data,parameters=None,state=None,**kwargs):
+		'''
+		Initialize model
+		Args:
+			data (dict): data for model
+			parameters (array,callable): parameters for model
+			state (array,callable): state for model
+			kwargs (dict): Additional keyword arguments for model
+		'''
+
+		data = Dict(**data)
+		kwargs = Dict(**kwargs)
 
 		N = max(len(data[key].operator) if not isinstance(data[key].operator,str) else 1 for key in data if data[key].operator is not None)
-		D = min(data[key].get('D',2) for key in data)
+		D = kwargs.D
 
 		basis = Basis
 		lattice = Lattice(N)
@@ -121,10 +132,10 @@ def main(settings,*args,**kwargs):
 			if isinstance(operator,str):
 				objs = []
 				for i in lattice():
-					objs.append(getattr(basis,operator)(parameters=parameters))
+					objs.append(getattr(basis,operator)(D=D,parameters=parameters))
 				obj = array([tensorprod(i) for i in permutations(*objs)])
 			else:
-				obj = basis.string(data=operator,parameters=parameters)
+				obj = basis.string(D=D,data=operator,parameters=parameters)
 
 			if obj is None:
 				continue
@@ -133,9 +144,6 @@ def main(settings,*args,**kwargs):
 			size = obj.size
 			ndim = obj.ndim
 			dtype = obj.dtype
-
-			D = int(prod(shape)**(1/(len(shape)*N)))
-
 
 			if obj.ndim == 3:
 				subscripts = 'uij,jk,ulk->il'
@@ -180,7 +188,9 @@ def main(settings,*args,**kwargs):
 
 		N = N
 		D = D
-		shape = (D**N,D**N)
+		ndim = 2
+
+		shape = (D**N,)*ndim
 		size = prod(shape)
 		ndim = len(shape)
 		dtype = 'complex'
@@ -201,6 +211,7 @@ def main(settings,*args,**kwargs):
 	N = settings.model.N
 	D = settings.model.D
 	S = settings.model.S
+	M = settings.model.M
 	d = settings.model.d
 	data = settings.model.data
 	base = settings.model.base
@@ -211,44 +222,46 @@ def main(settings,*args,**kwargs):
 	dtype = settings.system.dtype
 
 	# Initialize
+	Model = Operators
 	basis = Basis
 	measure = Measure(base,D=D)
 
 	# Model
 	parameters = None
 	state = None
-	model = init(data,parameters,state)
-
-	# Basis
-	parameters = measure.parameters()
-	state = basis.zero(N=model.N,D=model.D,ndim=model.ndim,dtype=model.dtype)
-
-	state = measure.probability(parameters,state)
-	operator = measure.operator(parameters,state,model=model)
+	model = init(data,parameters,state,D=D)
 
 	# Tensor
-	N = N
-	D = len(measure)
-	S = 1
-	random = 'rand'
-	seed = seed
-	bounds = [0,1]
-	scale = None
-	dtype = dtype
+
+	parameters = measure.parameters()
+	state = [settings.state.operator]*settings.model.N
+	kwargs = dict(
+		D=model.D, S=settings.model.S, ndim=model.ndim,
+		random='rand', seed=seed, bounds=[0,1], scale=None,
+		dtype = dtype
+		)
+
+	state = measure.probability(parameters,state,**kwargs)
+	operator = measure.operator(parameters,state,model=model)
+
+	_parameters = parameters
+	_state = measure.amplitude(parameters=_parameters,state=state)
+	# _model = Model(**settings.model,**settings.system,state=_state)
+
+	# Calculate
 	lattice = Lattice(N,d,lattice=lattice)
 	structure = '>ij<'
 
-	parameters = parameters
-	state = MPS(N=N,D=D,S=S,boundaries=boundaries,random=random,seed=seed,bounds=bounds,scale=scale,dtype=dtype)
+	for i in range(M):
+		for site in lattice(structure):
+			data = operator
+			state = state.gate(data,where=site)
 
-	_parameters = parameters
-	_state = measure(parameters=_parameters,state=state)
+	for i in range(M):
+		for site in lattice(structure):
+			_state = model(_parameters,_state,site=site)
 
-	for site in lattice(structure):
-		state = state.gate(operator,where=site)
-
-	for site in lattice(structure):
-		_state = model(_parameters,_state,site=site)
+	print(measure(parameters=parameters,state=state))
 
 	state = measure(parameters=parameters,state=state)
 

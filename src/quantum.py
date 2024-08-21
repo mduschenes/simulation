@@ -52,22 +52,6 @@ class Basis(Dict):
 	parameters = None
 	dtype = None
 
-
-	@classmethod
-	@property
-	def shape(cls):
-		return (cls.D**cls.N,)
-
-	@classmethod
-	@property
-	def size(cls):
-		return prod(cls.shape)
-
-	@classmethod
-	@property
-	def ndim(cls):
-		return len(cls.shape)
-
 	@classmethod
 	def get(cls,attr):
 		return getattr(cls,attr)
@@ -173,20 +157,33 @@ class Basis(Dict):
 	def unitary(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
-			shape=kwargs.shape,
+			shape=getattr(kwargs,'random',kwargs.D**kwargs.N),
 			random=getattr(kwargs,'random',None),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
 		return data
 
+	# Random
+	@classmethod
+	@System.decorator	
+	def rand(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+		data = rand(
+			shape=kwargs.shape,
+			random=getattr(kwargs,'random',None),
+			scale=getattr(kwargs,'scale',None),
+			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
+			dtype=kwargs.dtype)
+		return data	
+
 	# State
 	@classmethod
 	@System.decorator	
 	def state(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
+		kwargs = Dictionary(**kwargs)		
 		data = rand(
-			shape=kwargs.shape,
+			shape=getattr(kwargs,'random',kwargs.D**kwargs.N),
 			random=getattr(kwargs,'random',None),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
@@ -438,6 +435,7 @@ class Basis(Dict):
 class Measure(System):
 
 	D = None
+	K = None
 	
 	basis = None
 
@@ -447,7 +445,9 @@ class Measure(System):
 		data=None,base=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		state=None,conj=None,
-		basis=None,inverse=None,identity=None,parameters=None,variable=False,
+		basis=None,inverse=None,identity=None,
+		parameters=None,variable=False,
+		architecture=None,
 		func=None,gradient=None
 		)
 
@@ -479,7 +479,7 @@ class Measure(System):
 		Initialize measure
 		Args:
 			data (str,array,tensor,Measure): data of measure
-			state (bool,dict,array,Probability): state of class
+			state (bool,dict,array): state of class of shape (self.D**N,self.D**N)
 			conj (bool): conjugate
 			parameters (array,dict): parameters of class
 			kwargs (dict): Additional class keyword arguments			
@@ -495,7 +495,7 @@ class Measure(System):
 				return state
 
 		if parameters is None or not callable(parameters):
-			def parameters(parameters=parameters,state=None):
+			def parameters(parameters=parameters,state=state):
 				return parameters
 
 		self.state = state
@@ -546,13 +546,9 @@ class Measure(System):
 		self.ndim =  ndim
 		self.dtype = dtype
 
-		parameters = self.parameters()
-		state = self.state() if self.state is not None and self.state() is not None else self.identity
-		wrapper = jit
-	
 		if self.basis is not None:
-			subscripts = '...i,iu,ujk->...jk'
-			shapes = (state.shape,self.inverse.shape,self.basis.shape)
+			subscripts = '...u,uv,vjk->...jk'
+			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
 				return einsummation(state,self.inverse,self.basis)
@@ -570,6 +566,10 @@ class Measure(System):
 		self.func = func
 		self.gradient = gradient
 
+		parameters = self.parameters()
+		state = self.state()
+		wrapper = jit
+
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 
@@ -580,30 +580,15 @@ class Measure(System):
 		Call class for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability): state of class of Probability state
+			state (array,Probability,MPS): state of class of Probability state of shape (self.K,)*N
 			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
 			kwargs (dict): Additional class keyword arguments					
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state if isinstance(state,arrays) else state.to_dense().ravel() if isinstance(state,tensors) else state if state is not None else None
-
+		
 		state = self.state() if state is None else state() if callable(state) else state
-		locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
 
-		if locality is None:
-			basis = self.basis
-			inverse = self.inverse
-		else:
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*locality)],dtype=self.dtype)
-
-		subscripts = '...i,iu,ujk->...jk'
-		shapes = (state.shape,inverse.shape,basis.shape)
-		einsummation = einsum(subscripts,*shapes)
-		def func(parameters,state):
-			return einsummation(state,inverse,basis)
-
-		return func(parameters=parameters,state=state)
+		return self.func(parameters,state)
 
 	def __len__(self):
 		return len(self.basis)
@@ -625,6 +610,11 @@ class Measure(System):
 		setattr(self,attr,value)
 		return
 
+	@property
+	def K(self):
+		return len(self)
+	
+
 	@classmethod
 	def dot(cls,a,b):
 		return einsum('u...,v...->uv',a,conjugate(b))
@@ -637,60 +627,97 @@ class Measure(System):
 		'''
 		Probability for POVM probability measure
 		Args:
-			parameters (array,Probability,MPS): parameters of class
-			state (array,State): state of class of State state of shape (self.D**locality,self.D**locality)
+			parameters (array): parameters of class
+			state (str,iterable[str],array): state of class of shape (N,self.D,self.D)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability): state of class of Probability state of shape (len(self.basis),)
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K)
 		'''
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = state if isinstance(state,arrays) else state.to_dense().ravel() if isinstance(state,tensors) else state if state is not None else None
-
-		locality = int(round(log(state.size)/log(self.D))//state.ndim) if state is not None else None
-
-		if locality is None:
-			basis = self.basis
-		else:
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
-
 		
-		if state is None:
-			state = self.state()
-		else:
-			subscripts = 'uij,ij->u'
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+
+		if not isinstance(state,objects):
+			state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
+
+		if isinstance(state,arrays):
+
+			basis = self.basis
+			inverse = self.inverse
+
+			subscripts = 'uij,...ij->...u'
 			shapes = (basis.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
+			
 			state = einsummation(basis,state)
+
+			state = MPS(state)
 
 		return state
 
+	def amplitude(self,parameters=None,state=None,**kwargs):
+		'''
+		Amplitude for POVM probability measure
+		Args:
+			parameters (array,Probability,MPS): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			state (array,Probability): state of class of Probability state of shape (self.D**N,self.D**N)
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		basis = self.basis
+		inverse = self.inverse
+
+		state = einsum('...u,uv,vij->...ij',state,inverse,basis)
+
+		state = tensorprod(state)
+
+		return state
+
+
+		if N is not None and N > 1:
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			subscripts = '...u,uv,vjk->...jk'
+			shapes = (state.shape,inverse.shape,basis.shape)
+			einsummation = einsum(subscripts,*shapes)
+			def func(parameters,state):
+				return einsummation(state,inverse,basis)
+		else:
+			basis = self.basis
+			inverse = self.inverse
+			func = self.func
+
+		return func(parameters=parameters,state=state)
 
 	def operator(self,parameters=None,state=None,model=None,**kwargs):
 		'''
 		Operator for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability): state of class of Probability state of shape (locality,self.D,self.D)
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
 			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): POVM operator of shape (len(self.basis**locality),len(self.basis**locality))
+			data (array): POVM operator of shape (len(self.basis**N),len(self.basis**N))
 		'''
 
-		state = self.state() if state is None else state() if callable(state) else state
-		locality = int(round(log(len(state))/log(len(self.basis)))) if state is not None else None
+		N = model.N if model is not None else None
 
-		if locality is None:
+		if N is not None and N > 1:
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+		else:
 			basis = self.basis
 			inverse = self.inverse
-		else:
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*locality)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*locality)],dtype=self.dtype)
 
 		if model is None:
 			data = None
 		else:
-			subscripts = 'uij,kij,kv->uv'
+			subscripts = 'uij,wij,wv->uv'
 			shapes = (basis.shape,basis.shape,inverse.shape)
 			einsummation = einsum(subscripts,*shapes)
 			model = vmap(model,in_axes=(None,0),out_axes=0)
@@ -707,28 +734,28 @@ class MPS(mps):
 	'''
 	Matrix Product State class
 	Args:
+		data (iterable,int,str,callable,array,object): Tensor data
 		N (int): Tensor system size
 		D (int): Tensor physical bon dimension
 		S (int): Tensor virtual bond dimension
-		data (iterable,int,str,callable,array,object): Tensor data
 		kwargs (dict): Tensor keyword arguments
 	Returns:
 		out (array): array
 	'''
-	def __new__(cls,N,D,S=1,data=None,**kwargs):
+	def __new__(cls,data,N=None,D=None,S=None,**kwargs):
 
 		updates = {
 			'periodic':(
 				(lambda attr,value,kwargs:'cyclic'),
-				(lambda attr,value,kwargs: value and kwargs.get('data') is not None and kwargs.get('data')>2)
+				(lambda attr,value,kwargs: (value is True) and N is not None and N>2)
 				),
 			'boundaries':(
 				(lambda attr,value,kwargs:'cyclic'),
-				(lambda attr,value,kwargs: value in ['periodic'] and kwargs.get('data') is not None and kwargs.get('data')>2)
+				(lambda attr,value,kwargs: ((value in ['periodic']) or (value is True)) and N is not None and N>2)
 				)			
 			}
 
-		kwargs.update(dict(data=data,L=N,phys_dim=D,bond_dim=S))
+		kwargs.update(dict(data=data,L=N))
 		for attr in updates:
 			if attr not in kwargs:
 				continue
@@ -740,23 +767,41 @@ class MPS(mps):
 			kwargs[attr] = value
 
 		if data is None:
-			shapes = (S,S,D)
-			kwds = {attr:kwargs.pop(attr,None) for attr in ['random','seed','bounds','scale','dtype']}
-			if kwargs.get('cyclic'):
-				def data(*args,**kwargs):
-					return rand(shape=shapes,**kwds)
-			else:
-				def data(shape,*args,**kwargs):
-					return rand(shape=shape,**kwds)
+			kwds = {attr: kwargs.get(attr) for attr in ['random','seed','bounds','scale','dtype']}
+			def data(shape,*args,**kwargs):
+				return rand(shape=shape,**kwds) 
+			kwargs.update(dict(phys_dim=D,bond_dim=S))
+			kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
+		elif isinstance(data,(str,*iterables)):
+			basis = {
+				**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
+				**{attr: Basis.zero for attr in ['zero','zeros','0']},
+				**{attr: Basis.one for attr in ['one','ones','1']},
+				**{attr: Basis.plus for attr in ['plus','+']},
+				**{attr: Basis.minus for attr in ['minus','-']},
+				**{attr: Basis.plus for attr in ['plusi','+i']},
+				**{attr: Basis.minus for attr in ['minusi','-i']},	
+			}
+			data = [data]*N if isinstance(data,str) else [i for i in data]
+			data = [basis[i](D=D,**kwargs) if isinstance(i,str) else i for i in data]
+			kwargs.update(dict())
+			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
+		elif isinstance(data,integers):
+			kwargs.update(dict(phys_dim=D,bond_dim=S))			
+			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
+		else:
+			kwargs.update(dict(phys_dim=D,bond_dim=S))			
+			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
 
 		kwargs.update(dict(data=data))
 
 		self = super().__new__(cls,**kwargs)
 
-		self.normalize()
-
 		return self
 
+
+	def __len__(self):
+		return self.L
 
 	def __call__(self,parameters,state=None,data=None,site=None):
 		'''
@@ -1088,7 +1133,7 @@ class Object(System):
 	Base class for Quantum Objects
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)

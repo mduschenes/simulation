@@ -13,20 +13,20 @@
 	"data":{
 		"xx":{
 			"operator":["X","X"],"site":"<ij>","string":"XX",
-			"parameters":0.25,"variable":false
+			"parameters":0.5,"variable":false
 		},
 		"noise":{
 			"operator":"dephase","site":null,"string":"dephase",
-			"parameters":1e-3,"variable":false
+			"parameters":0,"variable":false
 		}		
 	},
 	"N":5,
 	"D":2,
 	"d":1,
-	"M":1,
+	"M":20,
 	"P":1,
 	"S":4,
-	"base":"pauli",
+	"base":"tetrad",
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
@@ -38,12 +38,6 @@
 	"site":null,
 	"string":"psi",
 	"parameters":true,
-	"N":2,
-	"D":2,
-	"d":1,
-	"M":1,
-	"P":1,
-	"S":1,	
 	"ndim":2,
 	"seed":123
 	},
