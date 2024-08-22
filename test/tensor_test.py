@@ -64,20 +64,29 @@ def test_tensor(*args,**kwargs):
 	# Operator
 	indices = ['k{}']
 	shapes = {'i{}':D,'j{}':D}
-	data = lambda shape: rand(shape=shape,random='ones',dtype=None)
+	tag = 'I{}'
+	data = lambda shape,i=1: i*rand(shape=shape,random='ones',dtype=None)
 	kwargs = dict()
+
+	state = state
 
 	for i in range(N):
 		shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
 		inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
-		operator = tensor(data(shape),inds=inds,**kwargs)
+		tags = (tag.format(i),)
+		operator = tensor(data(shape,i+1),inds=inds,tags=tags,**kwargs)
 	
 		state &= operator
 
-		for index in indices:
-			state.contract_ind(index.format(i))
 
 	print(state)
+
+	state = state.contract() 
+	inds = (*((i,) for i in state.inds),)
+	state = state.to_dense(*inds)
+
+	print(state)
+	print(state.shape)
 
 	return
 
