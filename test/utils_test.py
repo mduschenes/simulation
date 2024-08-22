@@ -757,6 +757,10 @@ def test_reshape(path=None,tol=None):
 
 	assert allclose(a,swap(swap(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
 
+
+	assert allclose(swap(a,axes=axes,shape=shape,transform=True,execute=True),swap(a,axes=axes,shape=shape,transform=True,execute=False)(a)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
+
+
 	print('Passed')
 
 	return

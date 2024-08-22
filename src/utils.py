@@ -7073,7 +7073,7 @@ def moveaxis(a,source,destination):
 	return np.moveaxis(a,source,destination)
 
 
-def swap(a,axes=None,shape=None,transform=None,permute=None):
+def swap(a,axes=None,shape=None,transform=None,permute=False,execute=True):
 	'''
 	Split and swap, and group axis of array of shape (d**n,)*k to (d*k,)*n to (shape*n,)*k, with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 	(axis_0,axis_1,...,axis_k-1) with axis_i with size d**n for i in {0,...,k-1}
@@ -7086,33 +7086,67 @@ def swap(a,axes=None,shape=None,transform=None,permute=None):
 		axes (iterable[int],iterable[iterable[int]]): order of n subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)		
 		transform (bool): transformation of array options
-			True|None: split and swap and group axes
+			True,None: split and swap and group axes
 			False: reverse split, and swap, and group
 		permute (bool): permutation of axes options
 			True: Invert axes permutations to swap initial indices [[0_i,1_j,...],[q_l,q+1_m,...]] to axes indices [...[i,j,...],...,[l,m]]
+		execute (bool): Execute transformations or return function with precomputed axes and shapes
 	Returns:
 		a (array): reordered array
 	'''
 
-	def split(a,axes,shape):
-		shape = (*shape*k,)*n
-		axes = [i+n*j for i in range(n) for j in range(k)]
-		return transpose(reshape(ravel(a),shape),axes)
+	if execute:
+		
+		def split(a,axes,shape):
+			shape = (*shape*k,)*n
+			axes = [i+n*j for i in range(n) for j in range(k)]
+			func = ravel			
+			return transpose(reshape(func(a),shape),axes)
 
-	def group(a,axes,shape):
-		shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
-		axes = [i+k*j for axis in axes for i in range(k) for j in axis]
-		return reshape(transpose(a,axes),shape)
+		def group(a,axes,shape):
+			shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
+			axes = [i+k*j for axis in axes for i in range(k) for j in axis]
+			func = lambda a: a
+			return reshape(transpose(func(a),axes),shape)
 
-	def _split(a,axes,shape):
-		shape = (prod(shape)**n,)*k
-		axes = [i+k*j for i in range(k) for j in range(n)]
-		return reshape(transpose(a,axes),shape)
+		def _split(a,axes,shape):
+			shape = (prod(shape)**n,)*k
+			axes = [i+k*j for i in range(k) for j in range(n)]
+			func = lambda a: a
+			return reshape(transpose(func(a),axes),shape)
 
-	def _group(a,axes,shape):
-		shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
-		axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
-		return transpose(reshape(a,shape),axes)
+		def _group(a,axes,shape):
+			shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
+			axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
+			func = lambda a: a
+			return transpose(reshape(func(a),shape),axes)
+	
+	else:
+	
+		def split(a,axes,shape):
+			shape = (*shape*k,)*n
+			axes = [i+n*j for i in range(n) for j in range(k)]
+			func = ravel
+			return (lambda a, axes=axes,shape=shape,func=func: transpose(reshape(func(a),shape),axes),axes,shape)
+
+		def group(a,axes,shape):
+			func,axis,shapes = a
+			shape = [prod(shapes[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
+			axes = [i+k*j for axis in axes for i in range(k) for j in axis]
+			return lambda a,axes=axes,shape=shape: reshape(transpose(func(a),axes),shape)
+
+		def _split(a,axes,shape):
+			func,axis,shapes = a			
+			shape = (prod(shape)**n,)*k
+			axes = [i+k*j for i in range(k) for j in range(n)]
+			return lambda a,axes=axes,shape=shape: reshape(transpose(func(a),axes),shape)
+
+		def _group(a,axes,shape):
+			shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
+			axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
+			func = lambda a: a
+			return (lambda a, axes=axes,shape=shape: transpose(reshape(func(a),shape),axes),axes,shape)
+
 
 	def permutation(axes):
 		# TODO: Allow inverse permutations of axes for grouped axes
