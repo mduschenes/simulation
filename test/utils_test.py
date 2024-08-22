@@ -19,7 +19,7 @@ from src.utils import jit,partial
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
-from src.utils import splitaxes,swapaxes,swap
+from src.utils import swap
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -719,7 +719,7 @@ def test_pytree(path=None,tol=None):
 
 def test_reshape(path=None,tol=None):
 
-	d = 4
+	d = 2
 	n = 3
 	k = 2
 	dtype = object
@@ -735,28 +735,26 @@ def test_reshape(path=None,tol=None):
 		a = arange(size).reshape(shape)
 
 	shape = (d,n,k)
-	axes = [[0,2],[1,3]]
+	axes = [[1,n-1]]
 
-	b = splitaxes(splitaxes(a,shape=shape,reverse=False),shape=shape,reverse=True)
+	b = swap(a,axes=None,shape=shape,reverse=False)
 	print(a)
 	print(b)
 	print(a.shape,b.shape)
 	print()
 
-	b = splitaxes(a,shape=shape,reverse=False)
+	b = swap(a,axes=axes,shape=shape,reverse=False)
+	print(a)
+	print(b)
+	print(a.shape,b.shape)
+	print()	
+
+	b = swap(swap(a,axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True)
 	print(a)
 	print(b)
 	print(a.shape,b.shape)
 	print()
 
-	b = swapaxes(splitaxes(a,shape=shape,reverse=False),axes=axes,shape=shape,reverse=False)
-	print(a)
-	print(b)
-	print(a.shape,b.shape)
-	print()
-
-	assert allclose(a,splitaxes(splitaxes(a,shape=shape,reverse=False),shape=shape,reverse=True)), "Incorrect split and unsplit axis %d,%d,%d"%(n,d,k)
-	assert allclose(a,splitaxes(swapaxes(swapaxes(splitaxes(a,shape=shape,reverse=False),axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True),shape=shape,reverse=True)), "Incorrect swap and unswap axis %d,%d,%d"%(n,d,k)
 	assert allclose(a,swap(swap(a,axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
 
 	print('Passed')
@@ -764,29 +762,23 @@ def test_reshape(path=None,tol=None):
 	return
 
 
-
 def test_action(path=None,tol=None):
 
 	d = 2
 	n = 3
 	k = 2
+	l = 2
 	dtype = int
 
 	shape = (d**n,)*k
 	size = (d**n)**k
 	a = arange(size).reshape(shape)
 
-	shape = (d**n,)*k
-	size = (d**n)**k
+	shape = (d**l,)*k
+	size = (d**l)**k
 	o = -arange(size).reshape(shape)
 
-	w = (d)**(k-1)
-	z = zeros((d,w,),dtype=dtype)
-	print(z)
-	for i in range(d):
-		z = inplace(z,(i,i),1)
-	shape = (d,w,)
-	z = z.reshape(shape)
+	z = eye(d,dtype=dtype)
 
 	print(a)	
 	print(o)
@@ -795,23 +787,47 @@ def test_action(path=None,tol=None):
 
 
 	shape = (d,n,k)
-	axes = [[0,n-1]]
-	l = len(axes)
-	
+	axes = [1,n-1]
+
+	b = a
+	print(a)
+	print(a.shape)
+
 	b = tensorprod((o,*(z,)*(n-l)))
-	b = swap(b,axes=axes,shape=shape)
+	print(b)
+	print(b.shape)
 
-	test = einsum('ij,jk->ik',b,a)
-
+	b = swap(b,axes=axes,shape=shape,reverse=None)
+	print(b)
+	print(b.shape)
 	
-	func = lambda a: einsum('ij,j...->i...',o,a)
-	check = partition(func(partition(a,shape=shape,axes=axes,n=n,k=k,reverse=False)),shape=shape,axes=axes,n=n,k=k,reverse=True)
+
+
+	print(a)
+	print(swap(a,shape=shape,axes=[],reverse=False))
+	print(swap(a,shape=shape,axes=axes,reverse=False))
+
+
+
+	shape = (*shape,)
+	axes = [*axes]
+
+	b = swap(tensorprod((o,*(z,)*(n-l))),axes=axes,shape=shape,reverse=None)
+	func = lambda a,b=b: einsum('ij,jk->ik',b,a)
+	test = func(a)
+	
+	shape = (*shape,)
+	axes = [axes]
+
+	b = o
+	func = lambda a,b=b: swap(einsum('ij,j...->i...',b,swap(a,shape=shape,axes=axes,reverse=False)),shape=shape,axes=axes,reverse=True)
+	check = func(a)
+
 
 	print(test)
 	print(check)
 
 	assert allclose(test,check), "Incorrect dot(o,a)"
-
 
 	print('Passed')
 
@@ -829,5 +845,5 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	test_reshape(path,tol)
-	# test_action(path,tol)
+	# test_reshape(path,tol)
+	test_action(path,tol)
