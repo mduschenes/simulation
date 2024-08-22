@@ -7072,68 +7072,10 @@ def moveaxis(a,source,destination):
 
 	return np.moveaxis(a,source,destination)
 
-def splitaxes(a,shape=None,reverse=False):
+
+def swap(a,axes=None,shape=None,transform=None,permute=None):
 	'''
-	Split axis of array of shape (d**n,)*k to (d*k,)*n, with transposed axes
-	(axis_0,axis_1,...,axis_k-1) with axis_i with size d**n for i in {0,...,k-1}
-	to
-	(axis_00,axis_01,...,axis_0k-1,axis_10,axis_11,...,axis_1k-1,...,axis_n-10,axis_n-11,...,axis_n-1k-1) with axis_ij with size prod(shape) for i in {0,...,n-1}, j in {0,...,k-1}
-	Args:
-		a (array): array to reshape into subspaces
-		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)
-		reverse (bool): reverse split to merge axes
-	Returns:
-		a (array): reshaped array
-	'''
-
-	shape,n,k = ((size(a),),1,1) if shape is None else ((*((size(a)//prod(shape),) if len(shape) < 3 else shape[:-2]),),shape[-2],shape[-1])
-
-	if not reverse:
-		shape = (*shape*k,)*n
-		axes = [i+n*j for i in range(n) for j in range(k)]
-		return transpose(reshape(a,shape),axes)
-	else:
-		shape = (prod(shape)**n,)*k
-		axes = [i+k*j for i in range(k) for j in range(n)]
-		return reshape(transpose(a,axes),shape)
-
-def swapaxes(a,axes=None,shape=None,reverse=False):
-	'''
-	Swap and group axis of array of shape (shape*k,)*n, with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-	(axis_i0,axis_j0,...,axis_i1,axis_j1,...,...)
-	to
-	(axis_i0*axis_j0*...,...,axis_i1*axis_j1*...,axis_ik-1*axis_jk-1*...,...)
-	Args:
-		a (array): array to reshape into subspaces
-		axes (iterable[int],iterable[iterable[int]]): order of n subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)		
-		reverse (bool): reverse group to ungroup axes
-	Returns:
-		a (array): reordered array
-	'''
-
-	shape,n,k = ((size(a),),1,1) if shape is None else ((*((size(a)//prod(shape),) if len(shape) < 3 else shape[:-2]),),shape[-2],shape[-1])
-
-	axes = [[i] for i in range(n)] if axes is None else [[i] if isinstance(i,int) else [*i] for i in axes]
-	
-	axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
-
-	axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
-
-	if not reverse:
-		shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
-		axes = [i+k*j for axis in axes for i in range(k) for j in axis]
-		return reshape(transpose(a,axes),shape)
-
-	else:
-		shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
-		axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
-		return transpose(reshape(a,shape),axes)
-
-
-def swap(a,axes=None,shape=None,reverse=False):
-	'''
-	Split, swap, and group axis of array of shape (d**n,)*k to (d*k,)*n to (shape*n,)*k, with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+	Split and swap, and group axis of array of shape (d**n,)*k to (d*k,)*n to (shape*n,)*k, with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 	(axis_0,axis_1,...,axis_k-1) with axis_i with size d**n for i in {0,...,k-1}
 	to
 	(axis_00,axis_01,...,axis_0k-1,axis_10,axis_11,...,axis_1k-1,...,axis_n-10,axis_n-11,...,axis_n-1k-1) with axis_ij with size d for i in {0,...,n-1}, j in {0,...,k-1}
@@ -7143,50 +7085,68 @@ def swap(a,axes=None,shape=None,reverse=False):
 		a (array): array to reshape into subspaces
 		axes (iterable[int],iterable[iterable[int]]): order of n subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)		
-		reverse (bool): reverse group to ungroup axes
+		transform (bool): transformation of array options
+			True|None: split and swap and group axes
+			False: reverse split, and swap, and group
+		permute (bool): permutation of axes options
+			True: Invert axes permutations to swap initial indices [[0_i,1_j,...],[q_l,q+1_m,...]] to axes indices [...[i,j,...],...,[l,m]]
 	Returns:
 		a (array): reordered array
 	'''
 
-	if reverse is None:
-	
-		return swap(swap(a,axes=axes,shape=shape,reverse=False),axes=None,shape=shape,reverse=True)
-	
+	def split(a,axes,shape):
+		shape = (*shape*k,)*n
+		axes = [i+n*j for i in range(n) for j in range(k)]
+		return transpose(reshape(ravel(a),shape),axes)
+
+	def group(a,axes,shape):
+		shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
+		axes = [i+k*j for axis in axes for i in range(k) for j in axis]
+		return reshape(transpose(a,axes),shape)
+
+	def _split(a,axes,shape):
+		shape = (prod(shape)**n,)*k
+		axes = [i+k*j for i in range(k) for j in range(n)]
+		return reshape(transpose(a,axes),shape)
+
+	def _group(a,axes,shape):
+		shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
+		axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
+		return transpose(reshape(a,shape),axes)
+
+	def permutation(axes):
+		# TODO: Allow inverse permutations of axes for grouped axes
+		assert all(len(axis) == 1 for axis in axes), "Inverse permutations not implemented for grouped axes"
+		axes = [i for axis in axes for i in axis]
+		axes = [[axes.index(i)] if i in axes else [len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)]
+		return axes
+
+	if shape is None:
+		shape,n,k = ((size(a),),1,1)
 	else:
+		shape,n,k = ((int(size(a)**(1/prod(shape))),) if len(shape) < 3 else shape[:-2]),shape[-2],shape[-1]
 
-		shape,n,k = ((size(a),),1,1) if shape is None else (((int(size(a)**(1/prod(shape))),) if len(shape) < 3 else shape[:-2]),shape[-2],shape[-1])
+	if axes is None:
+		axes = [[i] for i in range(n)]
+	else:
+		axes = [[i] if isinstance(i,int) else [*i] for i in axes]
 
-		axes = [[i] for i in range(n)] if axes is None else [[i] if isinstance(i,int) else [*i] for i in axes]
+
+	if permute:
+
+		axes = permutation(axes)
+
+	axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
+
+	axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
+
+	if transform is None or transform is True:
 		
-		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
-
-		axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
-
-		if reverse is False:
-			shape = (*shape*k,)*n
-			axis = [i+n*j for i in range(n) for j in range(k)]
-			a = transpose(reshape(ravel(a),shape),axis)
-			
-			shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
-			axes = [i+k*j for axis in axes for i in range(k) for j in axis]
-			
-			allclose = lambda a,b: all(i==j for i,j in zip(a.ravel(),b.ravel()))
-
-			return reshape(transpose(a,axes),shape)
-
-		elif reverse is True:
-			shapes = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
-			axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
-
-			print(axes,shapes,a.shape)
-
-			a = transpose(reshape(a,shapes),axes)
-
-			shape = (prod(shape)**n,)*k
-			axes = [i+k*j for i in range(k) for j in range(n)]
-
-			print(axes,shape,a.shape)
-			return reshape(transpose(a,axes),shape)
+		return group(split(a,axes,shape),axes,shape)
+		
+	elif transform is False:
+		
+		return _split(_group(a,axes,shape),axes,shape)
 
 def broadcast_to(a,shape):
 	'''

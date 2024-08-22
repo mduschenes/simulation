@@ -23,7 +23,7 @@ from src.utils import swap
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
-from src.utils import arrays,scalars
+from src.utils import arrays,scalars,integers,floats,pi
 
 from src.optimize import Metric
 
@@ -737,25 +737,25 @@ def test_reshape(path=None,tol=None):
 	shape = (d,n,k)
 	axes = [[1,n-1]]
 
-	b = swap(a,axes=None,shape=shape,reverse=False)
+	b = swap(a,axes=None,shape=shape,transform=True)
 	print(a)
 	print(b)
 	print(a.shape,b.shape)
 	print()
 
-	b = swap(a,axes=axes,shape=shape,reverse=False)
+	b = swap(a,axes=axes,shape=shape,transform=True)
 	print(a)
 	print(b)
 	print(a.shape,b.shape)
 	print()	
 
-	b = swap(swap(a,axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True)
+	b = swap(swap(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)
 	print(a)
 	print(b)
 	print(a.shape,b.shape)
 	print()
 
-	assert allclose(a,swap(swap(a,axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
+	assert allclose(a,swap(swap(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
 
 	print('Passed')
 
@@ -765,69 +765,66 @@ def test_reshape(path=None,tol=None):
 def test_action(path=None,tol=None):
 
 	d = 2
-	n = 3
+	n = 6
 	k = 2
-	l = 2
+	q = 2
+	axis = [i for i in [5,0,4,1,3,2] if i<n]
+	l = len(axis)
 	dtype = int
 
+	I = eye(d,dtype=dtype)
+	U = array([[0,1],[1,0]],dtype=dtype)
+
 	shape = (d**n,)*k
-	size = (d**n)**k
-	a = arange(size).reshape(shape)
+	state = rand(shape,seed=123)
 
-	shape = (d**l,)*k
-	size = (d**l)**k
-	o = -arange(size).reshape(shape)
-
-	z = eye(d,dtype=dtype)
-
-	print(a)	
-	print(o)
-	print(z)
-	print()
+	shape = (d**l,)*q
+	operator = tensorprod((U,)*l)
 
 
-	shape = (d,n,k)
-	axes = [1,n-1]
+	data = {'dense':1,'local':1}
 
-	b = a
-	print(a)
-	print(a.shape)
+	for attr in data:
 
-	b = tensorprod((o,*(z,)*(n-l)))
-	print(b)
-	print(b.shape)
+		if not data.get(attr):
+			continue
 
-	b = swap(b,axes=axes,shape=shape,reverse=None)
-	print(b)
-	print(b.shape)
-	
+		if attr in ['dense']:
+			
+			shape = (d,n,q)
+			axes = [*axis]
+		
+			tmp = swap(swap(tensorprod((operator,*(I,)*(n-l))),axes=axes,shape=shape,transform=True,permute=True),axes=None,shape=shape,transform=False,permute=True)
+			
+			if k == 2:
+				func = lambda state,data=tmp: einsum('ij,jk,kl->il',data,state,dagger(data))
+				function = lambda state: func(state)
+			elif k == 1:
+				func = lambda state,data=tmp: einsum('ij,j->i',data,state)
+				function = lambda state: func(state)
+		
+		elif attr in ['local']:
 
+			shape = (d,n,k)
+			axes = [axis]
 
-	print(a)
-	print(swap(a,shape=shape,axes=[],reverse=False))
-	print(swap(a,shape=shape,axes=axes,reverse=False))
+			tmp = operator
 
-
-
-	shape = (*shape,)
-	axes = [*axes]
-
-	b = swap(tensorprod((o,*(z,)*(n-l))),axes=axes,shape=shape,reverse=None)
-	func = lambda a,b=b: einsum('ij,jk->ik',b,a)
-	test = func(a)
-	
-	shape = (*shape,)
-	axes = [axes]
-
-	b = o
-	func = lambda a,b=b: swap(einsum('ij,j...->i...',b,swap(a,shape=shape,axes=axes,reverse=False)),shape=shape,axes=axes,reverse=True)
-	check = func(a)
+			if k == 2:
+				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
+				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+			elif k == 1:
+				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
+				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
 
 
-	print(test)
-	print(check)
+		print('---',attr,'---')
+		data[attr] = function(state)
+		print(data[attr])
+		print('-------------------------')
 
-	assert allclose(test,check), "Incorrect dot(o,a)"
+
+	assert any(not isinstance(data[attr],arrays) for attr in data) or all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Incorrect dot(operator,state)"
 
 	print('Passed')
 
@@ -845,5 +842,5 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_reshape(path,tol)
+	test_reshape(path,tol)
 	test_action(path,tol)
