@@ -5520,29 +5520,6 @@ def distance(a,b):
 	'''	
 	return norm(a-b,ord=2)
 
-@jit
-def swap(i,j,N,D):
-	'''
-	Swap array elements acting on partition i <-> j on N partition array, each of D dimensions
-	Args:
-		i (int): partition to swap
-		j (int): partition to swap
-		N (int): Number of partitions
-		D (int): Dimension of each partition
-	Returns:
-		S (array): Swap array
-	'''
-	s = eye(D,dtype=int)
-	I = [s.copy() for n in range(N)]
-	S = 0
-	for a in range(D):
-		for b in range(D):
-			I[i][:],I[j][:] = 0,0
-			I[i][a][b],I[j][b][a] = 1,1
-			S += tensorprod(I)
-			I[i][:],I[j][:] = s,s
-	return S
-
 
 if backend in ['jax','jax.autograd']:
 
@@ -5992,15 +5969,16 @@ def imag(a):
 
 
 @jit
-def transpose(a):
+def transpose(a,axes=None):
 	'''
 	Calculate transpose of array a
 	Args:
 		a (array): Array to calculate transpose
+		axes (iterable[int]): Order of axis to permute
 	Returns:
 		out (array): Transpose
 	'''	
-	return a.T
+	return np.transpose(a,axes=axes)
 
 
 @jit
@@ -6887,17 +6865,6 @@ def uniqueobjs(a,axis=None):
 	'''
 	return onp.unique(a,axis=axis)
 
-def reshape(a,shape,order='C'):
-	'''
-	Reshape array to shape, with ordering order
-	Args:
-		a (array): Array to reshape
-		shape (iterable[int]): Shape
-		order (str): Ordering of elements during reshaping, allowed strings in ['C','F','A']
-	Returns:
-		out (array): Reshaped array
-	'''
-	return np.reshape(a,shape,order=order)
 
 def repeat(a,repeats,axis):
 	'''
@@ -6932,8 +6899,6 @@ def repeats(a,repeats,axis):
 	for rep,ax in zip(repeats,axis):
 		a = repeat(a,rep,ax)
 	return a
-
-
 
 
 def take(a,indices,axis):
@@ -7012,17 +6977,77 @@ def put(a,values,indices,axis):
 
 
 
-def broadcast_to(a,shape):
+def permutations(*iterables,repeat=None):
 	'''
-	Broadcast array to shape
+	Get product of permutations of iterables
 	Args:
-		a (array): Array to broadcast
-		shape (iterable): Shape to broadcast to
+		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
 	Returns:
-		out (array): Broadcasted array
+		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
 	'''
-	return np.broadcast_to(a,shape)
+	
+	if all(isinstance(i,int) for i in iterables):
+		iterables = (range(i) for i in iterables)
+	
+	if repeat is None:
+		repeat = 1
 
+	return itertools.product(*iterables,repeat=repeat)
+
+def shape(a):
+	'''
+	Shape of array
+	Args:
+		a (array): Array to shape
+	Returns:
+		shape (iterable[int]): Shape of array
+	'''
+	return np.shape(a)
+
+def size(a):
+	'''
+	Size of array
+	Args:
+		a (array): Array to size
+	Returns:
+		size (int): Size of array
+	'''
+	return np.size(a)
+
+def reshape(a,shape,order='C'):
+	'''
+	Reshape array to shape, with ordering order
+	Args:
+		a (array): Array to reshape
+		shape (iterable[int]): Shape
+		order (str): Ordering of elements during reshaping, allowed strings in ['C','F','A']
+	Returns:
+		out (array): Reshaped array
+	'''
+	return np.reshape(a,shape,order=order)
+
+def ravel(a,order='C'):
+	'''
+	Flatten array, with ordering order
+	Args:
+		a (array): Array to reshape
+		order (str): Ordering of elements during reshaping, allowed strings in ['C','F','A']
+	Returns:
+		out (array): Reshaped array
+	'''
+	return a.ravel()
+
+def swapaxis(a,axis1,axis2):
+	'''
+	Swap axis of array
+	Args:
+		a (array): Array to be swaped
+		axis1 (int): Axis to swap
+		axis2 (int): Axis to swap
+	Returns:
+		out (array): Array with swaped axis
+	'''
+	return np.swapaxis(a,axis1,axis2)
 
 def moveaxis(a,source,destination):
 	'''
@@ -7036,6 +7061,95 @@ def moveaxis(a,source,destination):
 	'''
 
 	return np.moveaxis(a,source,destination)
+
+def splitaxes(a,shape=None,reverse=False):
+	'''
+	Split axis of array of shape (d**n,)*k to (d*k,)*n, with transposed axes
+	(axis_0,axis_1,...,axis_k-1) with axis_i with size d**n for i in {0,...,k-1}
+	to
+	(axis_00,axis_01,...,axis_0k-1,axis_10,axis_11,...,axis_1k-1,...,axis_n-10,axis_n-11,...,axis_n-1k-1) with axis_ij with size prod(shape) for i in {0,...,n-1}, j in {0,...,k-1}
+	Args:
+		a (array): array to reshape into subspaces
+		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)
+		reverse (bool): reverse split to merge axes
+	Returns:
+		a (array): reshaped array
+	'''
+
+	shape,n,k = ((size(a),),1,1) if shape is None else ((*((size(a)//prod(shape),) if len(shape) < 3 else shape[:-2]),),shape[-2],shape[-1])
+
+	if not reverse:
+		shape = (*shape*k,)*n
+		axes = [i+n*j for i in range(n) for j in range(k)]
+		return transpose(reshape(a,shape),axes)
+	else:
+		shape = (prod(shape)**n,)*k
+		axes = [i+k*j for i in range(k) for j in range(n)]
+		return reshape(transpose(a,axes),shape)
+
+def swapaxes(a,axes=None,shape=None,reverse=False):
+	'''
+	Swap and group axis of array of shape (shape*k,)*n, with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+	(axis_i0,axis_j0,...,axis_i1,axis_j1,...,...)
+	to
+	(axis_i0*axis_j0*...,...,axis_i1*axis_j1*...,axis_ik-1*axis_jk-1*...,...)
+	Args:
+		a (array): array to reshape into subspaces
+		axes (iterable[int],iterable[iterable[int]]): order of n subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)		
+		reverse (bool): reverse group to ungroup axes
+	Returns:
+		a (array): reordered array
+	'''
+
+	shape,n,k = ((size(a),),1,1) if shape is None else ((*((size(a)//prod(shape),) if len(shape) < 3 else shape[:-2]),),shape[-2],shape[-1])
+
+	axes = [[i] for i in range(n)] if axes is None else [[i] if isinstance(i,int) else [*i] for i in axes]
+	
+	axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
+
+	axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
+
+	if not reverse:
+		shape = [prod(a.shape[j] for j in axis) for l,axis in enumerate(axes) for i in range(k)]
+		axes = [i+k*j for axis in axes for i in range(k) for j in axis]
+		return reshape(transpose(a,axes),shape)
+
+	else:
+		shape = [int(a.shape[l*k]**(1/len(axis))) for l,axis in enumerate(axes) for i in range(k) for j in axis]
+		axes = [[i+k*j for axis in axes for i in range(k) for j in axis].index(i) for i in range(n*k)]
+		return transpose(reshape(a,shape),axes)
+
+def swap(a,axes=None,shape=None,reverse=False):
+	'''
+	Split, swap, and group axis of array of shape (d**n,)*k to (d*k,)*n , with axes and grouping ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+	(axis_00,axis_01,...,axis_0k-1,axis_10,axis_11,...,axis_1k-1,...,axis_n-10,axis_n-11,...,axis_n-1k-1) with axis_ij with size d for i in {0,...,n-1}, j in {0,...,k-1}
+	to
+	(axis_i0,axis_j0,...,axis_i1,axis_j1,...,...)
+	Args:
+		a (array): array to reshape into subspaces
+		axes (iterable[int],iterable[iterable[int]]): order of n subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+		shape (iterable[int]): dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)					
+		reverse (bool,callable): Reverse order of split,swap,group
+	Returns:
+		a (array): reordered array
+	'''
+
+	if not reverse:
+		return swapaxes(splitaxes(a,shape=shape,reverse=reverse),axes,shape=shape,reverse=reverse)
+	else:
+		return splitaxes(swapaxes(a,axes,shape=shape,reverse=reverse),shape=shape,reverse=reverse)
+
+def broadcast_to(a,shape):
+	'''
+	Broadcast array to shape
+	Args:
+		a (array): Array to broadcast
+		shape (iterable): Shape to broadcast to
+	Returns:
+		out (array): Broadcasted array
+	'''
+	return np.broadcast_to(a,shape)
 
 
 def expand_dims(a,axis):

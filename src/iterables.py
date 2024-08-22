@@ -30,6 +30,24 @@ scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = (Null,)
 delim='.'
 
+
+def permutations(*iterables,repeat=None):
+	'''
+	Get product of permutations of iterables
+	Args:
+		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
+	Returns:
+		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
+	'''
+	
+	if all(isinstance(i,int) for i in iterables):
+		iterables = (range(i) for i in iterables)
+	
+	if repeat is None:
+		repeat = 1
+
+	return itertools.product(*iterables,repeat=repeat)
+
 class Dictionary(dict):
 	'''
 	Dictionary subclass with dictionary elements explicitly accessible as class attributes
@@ -418,22 +436,6 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		return copier(default,copy=copy)
 
 
-def permutations(*iterables,repeat=None):
-	'''
-	Get product of permutations of iterables
-	Args:
-		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
-	Returns:
-		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
-	'''
-	
-	if all(isinstance(i,int) for i in iterables):
-		iterables = (range(i) for i in iterables)
-	
-	if repeat is None:
-		repeat = 1
-
-	return itertools.product(*iterables,repeat=repeat)
 
 def permuter(dictionary,copy=False,groups=None,filters=None,ordered=True):
 	'''

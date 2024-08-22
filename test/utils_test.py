@@ -16,9 +16,10 @@ os.environ['NUMPY_BACKEND'] = 'NUMPY'
 
 from src.utils import np,onp,backend
 from src.utils import jit,partial
-from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2
+from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
+from src.utils import splitaxes,swapaxes,swap
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -718,43 +719,103 @@ def test_pytree(path=None,tol=None):
 
 def test_reshape(path=None,tol=None):
 
-	N = 2
-	D = 2
-	K = 2
+	d = 4
+	n = 3
+	k = 2
+	dtype = object
 
-	def to_string(number,D=D,N=N,K=K):
-		string = [int((number/(D)**(N*K-1-i))%(D)) for i in range(N*K)]
-		return ''.join(map(str,string))
+	string = lambda number,d,n,k: ''.join(map(str,[int((number/(d)**(n*k-1-i))%(d)) for i in range(n*k)]))
+	allclose = lambda a,b: all(i==j for i,j in zip(a.ravel(),b.ravel()))
 
+	shape = (d**n,)*k
+	size = (d**n)**k
+	if size < 1e5:	
+		a = array([string(i,d,n,k) for i in range(size)],dtype=dtype).reshape(shape)
+	else:
+		a = arange(size).reshape(shape)
 
-	shape = (D**N,)*K
-	size = prod(shape)
-	ndim = len(shape)
-	a = zeros(size,dtype=object)
-	for i in range(size):
-		a = inplace(a,i,to_string(i))
-	a = a.reshape(shape)
+	shape = (d,n,k)
+	axes = [[0,2],[1,3]]
+
+	b = splitaxes(splitaxes(a,shape=shape,reverse=False),shape=shape,reverse=True)
 	print(a)
+	print(b)
+	print(a.shape,b.shape)
+	print()
 
-
-	shape = (D,)*K
-	size = prod(shape)
-	ndim = len(shape)
-	a = zeros(size,dtype=object)
-	for i in range(size):
-		a = inplace(a,i,to_string(i,N=1))
-	a = a.reshape(shape)
+	b = splitaxes(a,shape=shape,reverse=False)
 	print(a)
+	print(b)
+	print(a.shape,b.shape)
+	print()
 
-	a = tensorprod((a,)*N)
+	b = swapaxes(splitaxes(a,shape=shape,reverse=False),axes=axes,shape=shape,reverse=False)
 	print(a)
+	print(b)
+	print(a.shape,b.shape)
+	print()
 
+	assert allclose(a,splitaxes(splitaxes(a,shape=shape,reverse=False),shape=shape,reverse=True)), "Incorrect split and unsplit axis %d,%d,%d"%(n,d,k)
+	assert allclose(a,splitaxes(swapaxes(swapaxes(splitaxes(a,shape=shape,reverse=False),axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True),shape=shape,reverse=True)), "Incorrect swap and unswap axis %d,%d,%d"%(n,d,k)
+	assert allclose(a,swap(swap(a,axes=axes,shape=shape,reverse=False),axes=axes,shape=shape,reverse=True)), "Incorrect split and merge axis %d,%d,%d"%(n,d,k)
 
-	# a = a.reshape((D,)*(K*N))
-	# print(a[:1])
+	print('Passed')
 
 	return
 
+
+
+def test_action(path=None,tol=None):
+
+	d = 2
+	n = 3
+	k = 2
+	dtype = int
+
+	shape = (d**n,)*k
+	size = (d**n)**k
+	a = arange(size).reshape(shape)
+
+	shape = (d**n,)*k
+	size = (d**n)**k
+	o = -arange(size).reshape(shape)
+
+	w = (d)**(k-1)
+	z = zeros((d,w,),dtype=dtype)
+	print(z)
+	for i in range(d):
+		z = inplace(z,(i,i),1)
+	shape = (d,w,)
+	z = z.reshape(shape)
+
+	print(a)	
+	print(o)
+	print(z)
+	print()
+
+
+	shape = (d,n,k)
+	axes = [[0,n-1]]
+	l = len(axes)
+	
+	b = tensorprod((o,*(z,)*(n-l)))
+	b = swap(b,axes=axes,shape=shape)
+
+	test = einsum('ij,jk->ik',b,a)
+
+	
+	func = lambda a: einsum('ij,j...->i...',o,a)
+	check = partition(func(partition(a,shape=shape,axes=axes,n=n,k=k,reverse=False)),shape=shape,axes=axes,n=n,k=k,reverse=True)
+
+	print(test)
+	print(check)
+
+	assert allclose(test,check), "Incorrect dot(o,a)"
+
+
+	print('Passed')
+
+	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -769,3 +830,4 @@ if __name__ == '__main__':
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
 	test_reshape(path,tol)
+	# test_action(path,tol)
