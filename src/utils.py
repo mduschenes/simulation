@@ -5968,7 +5968,6 @@ def imag(a):
 	return np.imag(a)
 
 
-@jit
 def transpose(a,axes=None):
 	'''
 	Calculate transpose of array a

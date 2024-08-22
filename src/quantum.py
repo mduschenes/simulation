@@ -15,7 +15,7 @@ from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,ra
 from src.utils import tensor,tensornetwork,gate,mps
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product,log
+from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product,log
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -47,6 +47,7 @@ class Basis(Dict):
 
 	N = 1
 	D = 2
+	ndim = 1
 
 	data = None
 	parameters = None
@@ -650,6 +651,12 @@ class Measure(System):
 			
 			state = einsummation(basis,state)
 
+			print(state)
+
+			state = MPS(state)
+
+		elif isinstance(state,tensors):
+
 			state = MPS(state)
 
 		return state
@@ -662,36 +669,64 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability): state of class of Probability state of shape (self.D**N,self.D**N)
+			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = self.state() if state is None else state() if callable(state) else state
 		
-		basis = self.basis
-		inverse = self.inverse
+		if isinstance(state,arrays):
+		
+			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
 
-		state = einsum('...u,uv,vij->...ij',state,inverse,basis)
+		elif isinstance(state,tensors):
 
-		state = tensorprod(state)
+			N = state.L
 
+			indices = {'k{}':self.K}
+			shapes = {'i{}':self.D,'j{}':self.D}
+			tag = 'I{}'
+			data = lambda shape: self.basis
+			kwargs = dict()
+
+			for i in range(N):
+				shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
+				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
+				tags = (tag.format(i),)
+				operator = tensor(data(shape),inds=inds,tags=tags,**kwargs)
+			
+				state &= operator
+
+
+			state = state.contract() 
+			inds = (*((i,) for i in state.inds),)
+			state = state.to_dense(*inds)
+
+			# state = state.reshape((self.D**N,)*self.ndim)
+
+			state = swap(state,shape=(self.D,N,self.ndim),transform=False)
+
+		else:
+
+			N = None
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+				subscripts = '...u,uv,vjk->...jk'
+				shapes = (state.shape,inverse.shape,basis.shape)
+				einsummation = einsum(subscripts,*shapes)
+				def func(parameters,state):
+					return einsummation(state,inverse,basis)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+				func = self.func
+
+			state = func(parameters=parameters,state=state)
+		
 		return state
 
-
-		if N is not None and N > 1:
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			subscripts = '...u,uv,vjk->...jk'
-			shapes = (state.shape,inverse.shape,basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			def func(parameters,state):
-				return einsummation(state,inverse,basis)
-		else:
-			basis = self.basis
-			inverse = self.inverse
-			func = self.func
-
-		return func(parameters=parameters,state=state)
 
 	def operator(self,parameters=None,state=None,model=None,**kwargs):
 		'''
@@ -796,6 +831,11 @@ class MPS(mps):
 		kwargs.update(dict(data=data))
 
 		self = super().__new__(cls,**kwargs)
+
+		print('set')
+		print(data)
+		print(self.to_dense())
+		exit()
 
 		return self
 

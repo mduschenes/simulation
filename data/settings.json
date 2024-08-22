@@ -1,0 +1,62 @@
+{
+"boolean":{
+	"call":1,
+	"train":0,
+	"load":0,
+	"dump":0
+	},
+"cls":{
+	"model":"src.quantum.Channel",
+	"state":"src.quantum.State"
+	},
+"model":{
+	"data":{
+		"xx":{
+			"operator":["X","X"],"site":"<ij>","string":"XX",
+			"parameters":0.5,"variable":false
+		},
+		"noise":{
+			"operator":"dephase","site":null,"string":"dephase",
+			"parameters":0,"variable":false
+		}		
+	},
+	"N":2,
+	"D":2,
+	"d":1,
+	"M":2,
+	"P":1,
+	"S":1,
+	"base":"pauli",
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square",
+	"boundaries":"open",
+	"scheme":"swap+split"
+	},
+"state": {
+	"operator":"zero",
+	"site":null,
+	"string":"psi",
+	"parameters":true,
+	"ndim":2,
+	"seed":123
+	},
+"callback":{},	
+"system":{
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":null,
+	"architecture":"array",
+	"seed":123,
+	"key":null,
+	"instance":null,
+	"cwd":"data",
+	"path":null,
+	"path":"data.hdf5",
+	"conf":"logging.conf",
+	"logger":null,
+	"cleanup":false,
+	"verbose":"info"
+	}
+}
