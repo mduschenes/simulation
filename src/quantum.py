@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,rand,spawn,arange,diag,inv
-from src.utils import tensor,tensornetwork,gate,mps
+from src.utils import tensor,tensornetwork,gate,mps,datastructure
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product,log
@@ -158,8 +158,8 @@ class Basis(Dict):
 	def unitary(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
-			shape=getattr(kwargs,'random',kwargs.D**kwargs.N),
-			random=getattr(kwargs,'random',None),
+			shape=getattr(kwargs,'shape',kwargs.D**kwargs.N),
+			random=getattr(kwargs,'haar',None),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
@@ -184,8 +184,8 @@ class Basis(Dict):
 	def state(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)		
 		data = rand(
-			shape=getattr(kwargs,'random',kwargs.D**kwargs.N),
-			random=getattr(kwargs,'random',None),
+			shape=getattr(kwargs,'shape',kwargs.D**kwargs.N),
+			random=getattr(kwargs,'random',"haar"),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
@@ -221,7 +221,7 @@ class Basis(Dict):
 	@System.decorator	
 	def plus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		data = (1/sqrt(kwargs.D))*array([1,1],dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
@@ -230,9 +230,7 @@ class Basis(Dict):
 	@System.decorator	
 	def minus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
-		index = slice(1,None,kwargs.D)
-		data[index] *= -1
+		data = (1/sqrt(kwargs.D))*array([1,-1],dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		if kwargs.N is not None and kwargs.N > 1:
@@ -243,18 +241,18 @@ class Basis(Dict):
 	@System.decorator	
 	def plusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
+		data = (1/sqrt(kwargs.D))*array([1,1j],dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
+		if kwargs.N is not None and kwargs.N > 1:
+			data = tensorprod([data]*kwargs.N)
 		return data
 
 	@classmethod
 	@System.decorator	
 	def minusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([*[1/sqrt(kwargs.D)]*(kwargs.D)],dtype=kwargs.dtype)
-		index = slice(1,None,kwargs.D)
-		data[index] *= -1
+		data = (1/sqrt(kwargs.D))*array([1,-1j],dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		if kwargs.N is not None and kwargs.N > 1:
@@ -651,8 +649,6 @@ class Measure(System):
 			
 			state = einsummation(basis,state)
 
-			print(state)
-
 			state = MPS(state)
 
 		elif isinstance(state,tensors):
@@ -681,30 +677,26 @@ class Measure(System):
 
 		elif isinstance(state,tensors):
 
+			state = state.copy()
+
 			N = state.L
 
 			indices = {'k{}':self.K}
 			shapes = {'i{}':self.D,'j{}':self.D}
 			tag = 'I{}'
-			data = lambda shape: self.basis
+			data = einsum('uv,vij->uij',self.inverse,self.basis)
 			kwargs = dict()
 
 			for i in range(N):
 				shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
 				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
 				tags = (tag.format(i),)
-				operator = tensor(data(shape),inds=inds,tags=tags,**kwargs)
+				operator = tensor(data,inds=inds,tags=tags,**kwargs)
 			
 				state &= operator
 
-
-			state = state.contract() 
-			inds = (*((i,) for i in state.inds),)
-			state = state.to_dense(*inds)
-
-			# state = state.reshape((self.D**N,)*self.ndim)
-
-			state = swap(state,shape=(self.D,N,self.ndim),transform=False)
+			inds = (*((*(index.format(i) for i in range(N)),) for index in list(shapes)[::-1]),)
+			state = state.contract().to_dense(*inds)
 
 		else:
 
@@ -740,7 +732,7 @@ class Measure(System):
 			data (array): POVM operator of shape (len(self.basis**N),len(self.basis**N))
 		'''
 
-		N = model.N if model is not None else None
+		N = kwargs.get('N')
 
 		if N is not None and N > 1:
 			basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
@@ -814,8 +806,8 @@ class MPS(mps):
 				**{attr: Basis.one for attr in ['one','ones','1']},
 				**{attr: Basis.plus for attr in ['plus','+']},
 				**{attr: Basis.minus for attr in ['minus','-']},
-				**{attr: Basis.plus for attr in ['plusi','+i']},
-				**{attr: Basis.minus for attr in ['minusi','-i']},	
+				**{attr: Basis.plusi for attr in ['plusi','+i']},
+				**{attr: Basis.minusi for attr in ['minusi','-i']},	
 			}
 			data = [data]*N if isinstance(data,str) else [i for i in data]
 			data = [basis[i](D=D,**kwargs) if isinstance(i,str) else i for i in data]
@@ -832,10 +824,7 @@ class MPS(mps):
 
 		self = super().__new__(cls,**kwargs)
 
-		print('set')
-		print(data)
-		print(self.to_dense())
-		exit()
+
 
 		return self
 
@@ -2040,45 +2029,6 @@ class Object(System):
 
 		return norm
 
-	def swap(self,i,j):
-		'''	
-		Swap indices of object
-		Args:
-			i (int): Index to swap
-			j (int): Index to swap
-		'''
-
-		raise NotImplementedError('TODO: Implement swap for local operators')
-
-		if (self.data is None) or (self.N is None) or (self.D is None) or (i == j) or (abs(i) >= self.N) or (abs(j) >= self.N):
-			return
-
-		data = self.data
-		N = self.N
-		D = self.D
-		shape = self.shape
-		ndim = self.shape
-
-		i = i if i >= 0 else N + i
-		j = j if j >= 0 else N + j
-
-		i,j = min(i,j),max(i,j)
-
-		ndims = 1
-		dims = shape[:-ndims]
-		dim = ndim - ndims
-
-		data = data.reshape((*dims,*[D]*(ndims*N)))
-		data = data.transpose(*range(dim),*range(dim,dim+i),j,*range(dim+i+1,dim+j),i,*range(dim+j+1,dim+N))
-		data = data.reshape(shape)
-
-		self.data = data
-		self.shape = data.shape
-		self.size = data.size
-		self.ndim = data.ndim
-
-		return
-
 class Pauli(Object):
 	'''
 	Pauli class for Quantum Objects
@@ -2732,8 +2682,8 @@ class Amplitude(Object):
 		**{attr: Basis.one for attr in ['one','ones','1']},
 		**{attr: Basis.plus for attr in ['plus','+']},
 		**{attr: Basis.minus for attr in ['minus','-']},
-		**{attr: Basis.plus for attr in ['plusi','+i']},
-		**{attr: Basis.minus for attr in ['minusi','-i']},		
+		**{attr: Basis.plusi for attr in ['plusi','+i']},
+		**{attr: Basis.minusi for attr in ['minusi','-i']},		
 		}
 	
 	hermitian = None
@@ -3635,16 +3585,15 @@ class Objects(Object):
 				)
 			self.data[i].init(**kwargs)
 
-
 		# Set attributes
 		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
 		if self.state is None or self.state() is None:
 			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
 			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state.ndim == 1:
+		elif self.state().ndim == 1:
 			hermitian = False
 			unitary = True
-		elif self.state.ndim == 2:
+		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
 
@@ -4307,10 +4256,10 @@ class Channel(Objects):
 		if self.state is None or self.state() is None:
 			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
 			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state.ndim == 1:
+		elif self.state().ndim == 1:
 			hermitian = False
 			unitary = True
-		elif self.state.ndim == 2:
+		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
 
@@ -4403,10 +4352,10 @@ class Operators(Objects):
 		if self.state is None or self.state() is None:
 			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
 			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state.ndim == 1:
+		elif self.state().ndim == 1:
 			hermitian = False
 			unitary = True
-		elif self.state.ndim == 2:
+		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
 

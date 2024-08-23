@@ -166,8 +166,6 @@ def main(settings,*args,**kwargs):
 	_state = measure.amplitude(parameters=_parameters,state=_state)
 	# _model = Model(**settings.model,**settings.system,state=_state)
 
-	print(_state)
-	exit()
 
 	# Calculate
 	lattice = Lattice(N,d,lattice=lattice)
