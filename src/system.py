@@ -437,7 +437,7 @@ class Lattice(object):
 			def boundary(edge):
 				i,j = edge
 				boundary = any(map(lambda i,j: abs(i-j)>1,self.position(i),self.position(j)))
-				return boundary	
+				return boundary				
 		elif lattice in ['square']:
 			L = [int(N**(1/d)) for i in range(d)]
 			z = 2*d
@@ -508,7 +508,7 @@ class Lattice(object):
 			elif vertex in ['i<j']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if i<j)
 			elif vertex in ['<ij>']:
-				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j)
+				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (not self.boundaries((i,j)) and i<j) or (self.boundaries((i,j)) and i>j))
 			elif vertex in ['>ij<']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j and not self.boundaries((i,j)))
 			elif vertex in ['i...j']:

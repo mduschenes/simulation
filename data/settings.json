@@ -6,13 +6,16 @@
 	"dump":0
 	},
 "cls":{
-	"model":"src.quantum.Channel",
-	"state":"src.quantum.State"
+	"model":"src.quantum.Operators",
+	"state":"src.quantum.State",
+	"measure":"src.quantum.Measure",
+	"basis":"src.quantum.Basis",
+	"lattice":"src.system.Lattice"
 	},
 "model":{
 	"data":{
 		"xx":{
-			"operator":["X","X"],"site":"<ij>","string":"XX",
+			"operator":["X","X"],"site":null,"string":"XX",
 			"parameters":0.5,"variable":false
 		},
 		"noise":{
@@ -26,12 +29,10 @@
 	"M":2,
 	"P":1,
 	"S":1,
-	"base":"pauli",
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"boundaries":"open",
-	"scheme":"swap+split"
+	"scheme":{"contract":"swap+split","max_bond":100,"cutoff":1e-20}
 	},
 "state": {
 	"operator":"zero",
@@ -41,13 +42,18 @@
 	"ndim":2,
 	"seed":123
 	},
+"measure": {
+	"base":"pauli"
+},
+"basis": {},
+"lattice": {},
 "callback":{},	
 "system":{
 	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":null,
-	"architecture":"array",
+	"architecture":"tensor",
 	"seed":123,
 	"key":null,
 	"instance":null,

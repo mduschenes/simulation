@@ -2560,14 +2560,25 @@ class gate(qtn.Gate):
 
 def datastructure(obj):
 	'''
-	Get data structure of object
+	Get data of object
 	Args:
 		obj (tensor): object
 	Returns:
 		data (array): data
 	'''
 	data,structure = qtn.pack(obj)
-	return data,structure
+	return data
+
+def structuredata(obj):
+	'''
+	Get data structure of object
+	Args:
+		obj (tensor): object
+	Returns:
+		structure (array): structure
+	'''
+	data,structure = qtn.pack(obj)
+	return structure
 
 
 if backend in ['jax']:

@@ -12,10 +12,10 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,rand,spawn,arange,diag,inv
-from src.utils import tensor,tensornetwork,gate,mps,datastructure
+from src.utils import tensor,tensornetwork,gate,mps,datastructure,structuredata
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod,product,log
+from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,norm,eig,trace,sort,relsort,prod,product,log
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -412,7 +412,7 @@ class Basis(Dict):
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/(kwargs.D**2-1))*array([
-									    cls.I(D=kwargs.D,dtype=kwargs.dtype) + 
+										cls.I(D=kwargs.D,dtype=kwargs.dtype) + 
 			cos(i*2*pi/(kwargs.D**2-1))*cls.Z(D=kwargs.D,dtype=kwargs.dtype) + 
 			sin(i*2*pi/(kwargs.D**2-1))*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			for i in range(kwargs.D**2-1)
@@ -439,6 +439,55 @@ class Measure(System):
 	basis = None
 
 	dtype = None
+
+
+	inds = ('k{}',)
+	indices = ('i{}','j{}',)
+	tags = ('I{}',)
+
+	class attributes(object):
+		'''
+		Update object attributes within context with key
+		Args:
+			key (object): Key to update attributes
+			objs (iterable[object]): Objects with attributes to update
+			attrs (iterable[str]): Attributes to update
+		'''
+		def __init__(self,key,*objs,attrs=['inds','tags']):
+			self.key = key
+			self.objs = objs
+			self.attrs = [{attr: self.attributes(obj,attr) for attr in attrs} for obj in objs]
+			self.funcs = [{attr: (lambda key,obj,attrs,*args,attr=attr,**kwargs: self.attributes(obj,attr,attrs={index:index.format(key) for index in attrs[attr]},*args,**kwargs)) 
+				for attr in attrs} for obj in objs]
+			self._funcs = [{attr: (lambda key,obj,attrs,*args,attr=attr,**kwargs: self.attributes(obj,attr,attrs={index.format(key):index for index in attrs[attr]},*args,**kwargs))
+				for attr in attrs} for obj in objs]
+			self.args = tuple()
+			self.kwargs = dict(inplace=True)
+			return
+
+		def __enter__(self):
+			for i in range(len(self)):
+				for func in self.funcs[i]:
+					self.funcs[i][func](self.key,self.objs[i],self.attrs[i],*self.args,**self.kwargs)
+			return
+
+		def __exit__(self, type, value, traceback):
+			for i in range(len(self)):
+				for func in self._funcs[i]:
+					self._funcs[i][func](self.key,self.objs[i],self.attrs[i],*self.args,**self.kwargs)				
+			return
+		
+		def __len__(self):
+			return len(self.objs)
+
+		@classmethod
+		def attributes(cls,obj,attr,attrs=None,**kwargs):
+			funcs = dict(inds='reindex',tags='retag')
+			if attrs is None:
+				return getattr(obj,attr)
+			else:
+				obj = getattr(obj,funcs[attr])(attrs,**kwargs)
+				return obj
 
 	defaults = dict(			
 		data=None,base=None,string=None,system=None,
@@ -519,23 +568,73 @@ class Measure(System):
 		base = self.base if base is None else base
 		string = self.string if string is None else string
 
+		D = self.D
 		base = data if base is None and isinstance(data,str) else base if data is None else base
+		dtype = self.dtype
 
-		basis = getattr(Basis,base)(D=self.D,dtype=self.dtype) if base is not None and hasattr(Basis,base) else None
+		basis = getattr(Basis,base)(D=D,dtype=dtype)
 
-		data = self.dot(basis,basis) if basis is not None else None
-		inverse = self.inv(data) if data is not None else None
-		identity = Basis.sample(D=len(basis),dtype=self.dtype) if basis is not None else self.identity if self.identity is not None else None
+		data = einsum('u...,v...->uv',basis,conjugate(basis))
+		inverse = inv(data)
+		identity = Basis.sample(D=len(basis),dtype=dtype)
 
-		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))] if basis is not None else self.shape
-		size = prod(shape) if shape is not None else None
-		ndim = len(shape) if shape is not None else None
-		dtype = data.dtype if data is not None else None
+		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))]
+		size = prod(shape)
+		ndim = len(shape)
+		dtype = data.dtype
 
-		self.data = data
+		if self.architecture is None:
+			kwargs = dict(dtype=dtype)
+
+			basis = array(basis,**kwargs)
+			
+			data = array(data,**kwargs)
+			inverse = array(inverse,**kwargs)
+			identity = array(identity,**kwargs)
+
+		elif self.architecture in ['array']: 
+			kwargs = dict(dtype=dtype)
+
+			basis = array(basis,**kwargs)
+
+			data = array(data,**kwargs)
+			inverse = array(inverse,**kwargs)
+			identity = array(identity,**kwargs)
+
+		elif self.architecture in ['tensor']:
+			kwargs = dict(inds=('k{}','i{}','j{}',),tags=('I{}',))
+			basis = tensor(basis,**kwargs)
+
+			kwargs = dict(inds=('i{}','j{}',),tags=('I{}',))
+			data = tensor(data,**kwargs)
+
+			kwargs = dict(inds=('i{}','j{}',),tags=('I{}',))
+			inverse = tensor(inverse,**kwargs)
+
+			kwargs = dict(inds=('k{}',),tags=('I{}',))
+			identity = tensor(identity,**kwargs)
+
+
+		N = 4
+		objs = [basis,data,inverse,identity]
+		print(datastructure(basis))
+		for obj in objs:
+				print(obj)
+		print('----')
+		for i in range(N):
+			with self.attributes(i,*objs,attrs=['inds','tags']):
+				print(i)
+				for obj in objs:
+					print(obj)
+			print('----')
+		for obj in objs:
+				print(obj)
+		print('----')
+
 		self.base = base
 		self.string = string
 
+		self.data = data
 		self.basis = basis
 		self.inverse = inverse
 		self.identity = identity
@@ -545,7 +644,7 @@ class Measure(System):
 		self.ndim =  ndim
 		self.dtype = dtype
 
-		if self.basis is not None:
+		if self.architecture is None:
 			subscripts = '...u,uv,vjk->...jk'
 			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
@@ -555,12 +654,37 @@ class Measure(System):
 			def gradient(parameters,state):
 				return 0
 
-		else:
+		elif self.architecture in ['array']:
+			subscripts = '...u,uv,vjk->...jk'
+			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
+			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
-				return None
+				return einsummation(state,self.inverse,self.basis)
 
 			def gradient(parameters,state):
-				return None
+				return 0
+
+		elif self.architecture in ['tensor']:
+			def func(parameters,state):
+				N = state.L
+				for i in range(N):
+					with self.attributes(i,self.inverse,self.basis):
+						state &= self.inverse & self.basis
+				return state
+
+			def gradient(parameters,state):
+				return 0				
+
+		else:
+			subscripts = '...u,uv,vjk->...jk'
+			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
+			einsummation = einsum(subscripts,*shapes)
+			def func(parameters,state):
+				return einsummation(state,self.inverse,self.basis)
+
+			def gradient(parameters,state):
+				return 0			
+
 
 		self.func = func
 		self.gradient = gradient
@@ -590,7 +714,7 @@ class Measure(System):
 		return self.func(parameters,state)
 
 	def __len__(self):
-		return len(self.basis)
+		return self.basis.shape[0]
 
 	def __str__(self):
 		if isinstance(self.string,str):
@@ -613,15 +737,6 @@ class Measure(System):
 	def K(self):
 		return len(self)
 	
-
-	@classmethod
-	def dot(cls,a,b):
-		return einsum('u...,v...->uv',a,conjugate(b))
-	
-	@classmethod
-	def inv(cls,a):
-		return inv(a)
-
 	def probability(self,parameters=None,state=None,**kwargs):
 		'''
 		Probability for POVM probability measure
@@ -635,10 +750,10 @@ class Measure(System):
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
-		if not isinstance(state,objects):
-			state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
-
-		if isinstance(state,arrays):
+		if self.architecture is None:
+			
+			if not isinstance(state,objects):
+				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
 
 			basis = self.basis
 			inverse = self.inverse
@@ -649,11 +764,62 @@ class Measure(System):
 			
 			state = einsummation(basis,state)
 
-			state = MPS(state)
+		elif self.architecture in ['array']:
+			
+			if not isinstance(state,objects):
+				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
 
-		elif isinstance(state,tensors):
+			basis = self.basis
+			inverse = self.inverse
 
-			state = MPS(state)
+			subscripts = 'uij,...ij->...u'
+			shapes = (basis.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			state = einsummation(basis,state)
+
+		elif self.architecture in ['tensor']:
+			
+			if not isinstance(state,tensors):
+				
+				state = [state] if isinstance(state,str) else [i() if callable(i) else i for i in state]
+				
+				for i in range(len(state)):
+
+					if isinstance(state[i],str):
+						data = getattr(Basis,state[i])(**kwargs) if isinstance(state[i],str) else state[i]
+					else:
+						data = array(state[i])
+
+					inds = (*(index.format(i) for index in self.indices),)
+					tags = (*(index.format(i) for index in self.tags),)
+
+					state[i] = tensor(data=data,inds=inds,tags=tags)
+
+					basis = datastructure(self.basis)
+					data = einsum('uij,ij->u',basis,data)
+
+					state[i] = data
+
+			else:
+
+				state = datastructure(state)
+
+			state = mps(state)
+
+		else:
+
+			if not isinstance(state,objects):
+				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
+
+			basis = self.basis
+			inverse = self.inverse
+
+			subscripts = 'uij,...ij->...u'
+			shapes = (basis.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			state = einsummation(basis,state)
 
 		return state
 
@@ -661,7 +827,7 @@ class Measure(System):
 		'''
 		Amplitude for POVM probability measure
 		Args:
-			parameters (array,Probability,MPS): parameters of class
+			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -684,7 +850,11 @@ class Measure(System):
 			indices = {'k{}':self.K}
 			shapes = {'i{}':self.D,'j{}':self.D}
 			tag = 'I{}'
-			data = einsum('uv,vij->uij',self.inverse,self.basis)
+
+			basis = datastructure(self.basis)
+			inverse = datastructure(self.inverse)
+
+			data = einsum('uv,vij->uij',inverse,basis)
 			kwargs = dict()
 
 			for i in range(N):
@@ -719,6 +889,69 @@ class Measure(System):
 		
 		return state
 
+	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
+		'''
+		Fidelity for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		if isinstance(state,arrays):
+		
+			state = einsum('...u,uv,...v->...',state,self.inverse,other)
+
+		elif isinstance(state,tensors):
+
+			state = state.copy()
+
+			N = state.L
+
+			indices = {'k{}':self.K}
+			shapes = {'i{}':self.K}
+			tag = 'I{}'
+			data = self.inverse
+			kwargs = dict()
+
+			for i in range(N):
+				shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
+				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
+				tags = (tag.format(i),)
+				operator = tensor(data,inds=inds,tags=tags,**kwargs)
+			
+				state &= operator
+
+			inds = (*((*(index.format(i) for i in range(N)),) for index in list(shapes)[::-1]),)
+			state = state.contract().to_dense(*inds).T
+
+		else:
+
+			N = None
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+				subscripts = '...u,uv,vjk->...jk'
+				shapes = (state.shape,inverse.shape,basis.shape)
+				einsummation = einsum(subscripts,*shapes)
+				def func(parameters,state):
+					return einsummation(state,inverse,basis)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+				func = self.func
+
+			state = func(parameters=parameters,state=state)
+		
+		return state		
+
 
 	def operator(self,parameters=None,state=None,model=None,**kwargs):
 		'''
@@ -729,17 +962,17 @@ class Measure(System):
 			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): POVM operator of shape (len(self.basis**N),len(self.basis**N))
+			data (array): POVM operator of shape (self.K**N,self.K**N)
 		'''
 
 		N = kwargs.get('N')
 
 		if N is not None and N > 1:
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
 		else:
-			basis = self.basis
-			inverse = self.inverse
+			basis = datastructure(self.basis)
+			inverse = datastructure(self.inverse)
 
 		if model is None:
 			data = None
@@ -823,8 +1056,6 @@ class MPS(mps):
 		kwargs.update(dict(data=data))
 
 		self = super().__new__(cls,**kwargs)
-
-
 
 		return self
 
@@ -2113,9 +2344,12 @@ class Pauli(Object):
 			
 			elif architecture in ['tensor']:
 				if isinstance(operator,str):
-					data = partial(gate,label='R%s'%(operator),qubits=site,parametrize=variable)
+					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if operator in basis else None
 				elif operator is not None:
-					data = partial(gate,label='R%s'%(''.join(operator)),qubits=site,parametrize=variable)			
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in range(N)]) if all(i in basis for i in operator) else None			
+				data = array(data,dtype=self.dtype)
 
 			elif architecture in ['mps']:
 				if isinstance(operator,str):
@@ -2161,13 +2395,13 @@ class Pauli(Object):
 
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())	
-					return self.data(params=parameters)
-
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				
 				def gradient(parameters=None,state=None):
 					grad = self.parameters.grad(parameters)
 					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*self.data(params=parameters+pi/2)
+					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
@@ -2212,10 +2446,11 @@ class Pauli(Object):
 			elif self.architecture in ['tensor']:
 				def func(parameters=None,state=None):
 					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return self.data(params=parameters)
+					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 				def gradient(parameters=None,state=None):
-					return grad*self.data(params=parameters+pi/2)
+					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 			elif self.architecture in ['mps']:
 				def func(parameters=None,state=None):
@@ -2798,7 +3033,7 @@ class Amplitude(Object):
 					elif self.architecture in ['tensor']:
 						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
 						value = 1
-						obj = inplace(obj,index,value)						
+						obj = inplace(obj,index,value)					
 					
 					elif self.architecture in ['mps']:
 						local = False
@@ -2967,7 +3202,7 @@ class Amplitude(Object):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array']:
+		if self.architecture is None or self.architecture in ['array','tensor']:
 		
 			shape = self.shape
 			ndim = self.ndim
@@ -3010,7 +3245,7 @@ class Amplitude(Object):
 					norm = einsum('i,i->',conjugate(data),data)
 					eps = ones(shape=(),dtype=dtype)
 		
-		elif self.architecture in ['tensor','mps']:
+		elif self.architecture in ['mps']:
 
 			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
 
@@ -3257,7 +3492,7 @@ class Probability(Object):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array']:
+		if self.architecture is None or self.architecture in ['array','tensor']:
 			shape = self.shape
 			ndim = self.ndim
 			dtype = self.dtype
@@ -3267,7 +3502,7 @@ class Probability(Object):
 			norm = product(einsum('...i->...',data)) if data is not None else None
 			eps = ones(shape=(),dtype=dtype) if data is not None else None
 
-		elif self.architecture in ['tensor','mps']:
+		elif self.architecture in ['mps']:
 			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
 
 		if norm is None or eps is None:
@@ -3563,7 +3798,7 @@ class Objects(Object):
 			identity = identity(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
 
 		elif self.architecture in ['tensor']:
-			identity = identity(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity
+			identity = identity(N=self.N,D=self.D,system=self.system) if self.identity is None else self.identity
 
 		elif self.architecture in ['mps']:
 			identity = identity(N=self.locality,D=self.D,system=self.system) if self.identity is None else self.identity

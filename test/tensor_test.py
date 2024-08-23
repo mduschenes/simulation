@@ -205,14 +205,15 @@ def test_init(*args,**kwargs):
 	M = 10
 	d = 1
 	ndim = 2
+	structure = ">ij<"
 	data = 	Dict({
 		"xx":{
-			"operator":["X","X"],"site":">ij<","string":"XX",
+			"operator":["X","X"],"site":structure,"string":"XX",
 			"parameters":0.5,"variable":False
 		},
 		"noise":{
 			"operator":"dephase","site":None,"string":"dephase",
-			"parameters":0,"variable":False
+			"parameters":1e-4,"variable":False
 		}		
 	})
 	state = Dict({
@@ -225,6 +226,7 @@ def test_init(*args,**kwargs):
 	})
 	base = "pauli"
 	lattice = "square"
+	architecture = 'tensor'
 	boundaries = "open"
 	scheme = "swap+split"
 	seed = 123
@@ -233,7 +235,8 @@ def test_init(*args,**kwargs):
 	# Initialize
 	Model = Operators
 	basis = Basis
-	measure = Measure(base,D=D)
+	lattice = Lattice(N,d,lattice=lattice)	
+	measure = Measure(base,D=D,architecture=architecture,dtype=dtype)
 
 	# Model
 	model = init(data,D=D,N=N)
@@ -252,28 +255,48 @@ def test_init(*args,**kwargs):
 	_state = state
 	_state = measure.amplitude(parameters=_parameters,state=_state)
 	
+	_parameters_ = measure.parameters()
+	_state_ = state.copy()
 
-	_state_ = _state
-	_model_ = Model(data=data,state=_state_,N=N,D=D,d=d,M=M,dtype=dtype)
-	_parameters_ = _model_.parameters()
-	_state_ = _model_.state()
-
+	# _state_ = _state
+	# _model_ = Model(data=data,state=_state_,N=N,D=D,d=d,M=M,dtype=dtype)
+	# _parameters_ = _model_.parameters()
+	# _state_ = _model_.state()
 
 	# Calculate
-	lattice = Lattice(N,d,lattice=lattice)
-	structure = '>ij<'
-
+	sites = list(lattice(structure))
+	number = 1
+	bound = M*len(sites)
+	options = dict(
+		contract="swap+split",
+		max_bond=D**(2*2*N),
+		cutoff=1e-20
+		)
+	# scheme = False
 	for i in range(M):
-		for site in lattice(structure):
-			state = state.gate(operator,where=site)
+		for site in sites:
+			state = state.gate(operator,where=site,**options)
 			_state = model(_parameters,_state,site=site)
-	_state_ = _model_(_parameters_,_state_)
+			_state_ = _state_.gate(operator,where=site)
+			
+			print(i,site)
+			print(state)
+			print()
+
+			number += 1
+
+			if number > bound:
+				break
+		if number > bound:
+			break				
+	# _state_ = _model_(_parameters_,_state_)
 
 	state = measure.amplitude(parameters=parameters,state=state)
+	_state_ = measure.amplitude(parameters=_parameters_,state=_state_)
 
 	print(abs(state-_state).sum(),maximum(abs(state-_state)))
 	print(abs(_state-_state_).sum(),maximum(abs(_state-_state_)))
-	print(abs(_state_-state).sum(),maximum(abs(_state_-state)))
+	# print(abs(_state_-state).sum(),maximum(abs(_state_-state)))
 
 	assert allclose(state,_state),"Incorrect state.gate(), model(state)"
 
