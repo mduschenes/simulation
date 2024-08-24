@@ -814,7 +814,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	wrappers = []
 	for wrapper in kwargs['wrapper']:
-
+		
 		if wrapper is None:
 			def wrapper(data):
 				return data
@@ -910,7 +910,6 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	for wrapper in wrappers:
 		data = wrapper(data)
-
 	if isinstance(args['path'],str) and (any(((i in [None,'pd']) or (isinstances(i,dict,reverse=True))) for i in args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]

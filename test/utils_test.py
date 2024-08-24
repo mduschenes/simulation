@@ -12,7 +12,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-os.environ['NUMPY_BACKEND'] = 'NUMPY'
+# os.environ['NUMPY_BACKEND'] = 'NUMPY'
+
 
 from src.utils import np,onp,backend
 from src.utils import jit,partial
@@ -487,7 +488,7 @@ def test_rand(path=None,tol=None):
 	from importlib import reload
 	import src.utils
 
-	backend = os.environ['NUMPY_BACKEND']
+	backend = os.environ.get('NUMPY_BACKEND',None)
 
 	kwargs = [
 		{'shape':(4,3),'random':'haar'},
@@ -722,7 +723,8 @@ def test_reshape(path=None,tol=None):
 	d = 2
 	n = 3
 	k = 2
-	dtype = object
+	# dtype = object
+	dtype = None
 
 	string = lambda number,d,n,k: ''.join(map(str,[int((number/(d)**(n*k-1-i))%(d)) for i in range(n*k)]))
 	allclose = lambda a,b: all(i==j for i,j in zip(a.ravel(),b.ravel()))
@@ -730,7 +732,8 @@ def test_reshape(path=None,tol=None):
 	shape = (d**n,)*k
 	size = (d**n)**k
 	if size < 1e5:	
-		a = array([string(i,d,n,k) for i in range(size)],dtype=dtype).reshape(shape)
+		# a = array([string(i,d,n,k) for i in range(size)],dtype=dtype).reshape(shape)
+		a = array([i for i in range(size)],dtype=dtype).reshape(shape)
 	else:
 		a = arange(size).reshape(shape)
 

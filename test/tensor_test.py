@@ -106,7 +106,7 @@ def test_init(*args,**kwargs):
 		data = Dict(**data)
 		kwargs = Dict(**kwargs)
 
-		N = max(len(data[key].operator) if not isinstance(data[key].operator,str) else 1 for key in data if data[key].operator is not None)
+		N = kwargs.N
 		D = kwargs.D
 
 		basis = Basis

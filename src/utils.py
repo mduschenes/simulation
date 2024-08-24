@@ -3782,19 +3782,19 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,site=None,string=None):
+def contraction(data=None,state=None,where=None):
 	'''
 	Contract data and state
 	Args:
 		data (array,tensor): Array of data of shape (n,n)
 		state (array,tensor): state of shape (n,) or (n,n)
-		site (int,str,iterable[int,str]): Where data contracts with state
+		where (int,str,iterable[int,str]): Where data contracts with state
 	Returns:
-		func (callable): contracted data and state with signature func(data,state)
+		func (callable): contracted data and state with signature func(data,state,where=None)
 	'''
 	tag = None
 
-	def func(data,state):
+	def func(data,state,where=None):
 		return data
 
 	if state is None:
@@ -3810,29 +3810,29 @@ def contraction(data=None,state=None,site=None,string=None):
 
 		if state is None:
 		
-			def func(data,state):
+			def func(data,state,where=None):
 				return data
 
 		elif isinstance(state,arrays):
 			
 			if state.ndim == 1:
 
-				def func(data,state):
+				def func(data,state,where=None):
 					return data
 	
 			elif state.ndim == 2:
 				
-				def func(data,state):
+				def func(data,state,where=None):
 					return data
 	
 		elif isinstance(state,tensors):
 
-			def func(data,state):
+			def func(data,state,where=None):
 				return data
 
 	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
 	
-		def func(data,state):
+		def func(data,state,where=None):
 			return data(state)
 
 	elif isinstance(data,arrays):
@@ -3841,43 +3841,43 @@ def contraction(data=None,state=None,site=None,string=None):
 
 			if state is None:
 			
-				def func(data,state):
+				def func(data,state,where=None):
 					return data
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state):
+					def func(data,state,where=None):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state):
+					def func(data,state,where=None):
 						return data
 
 			elif isinstance(state,tensors):
 
-				def func(data,state):
+				def func(data,state,where=None):
 					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 1:
 			
 			if state is None:
 			
-				def func(data,state):
+				def func(data,state,where=None):
 					return data
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state):
+					def func(data,state,where=None):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state):
+					def func(data,state,where=None):
 						return data
 
 			elif isinstance(state,tensors):
@@ -3894,7 +3894,7 @@ def contraction(data=None,state=None,site=None,string=None):
 				shapes = (data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 				
-				def func(data,state):
+				def func(data,state,where=None):
 					return einsummation(data,state)
 
 			elif isinstance(state,arrays):
@@ -3905,7 +3905,7 @@ def contraction(data=None,state=None,site=None,string=None):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(data,state):
+					def func(data,state,where=None):
 						return einsummation(data,state)
 
 				elif state.ndim == 2:
@@ -3913,12 +3913,12 @@ def contraction(data=None,state=None,site=None,string=None):
 					subscripts = 'ij,jk,lk->il'
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
-					def func(data,state):
+					def func(data,state,where=None):
 						return einsummation(data,state,conjugate(data))
 
 			elif isinstance(state,tensors):
-				def func(data,state):
-					return state.gate(data,where=site)
+				def func(data,state,where=None):
+					return state.gate(data,where=where)
 				tag = id(func)
 
 		elif data.ndim == 3:
@@ -3931,7 +3931,7 @@ def contraction(data=None,state=None,site=None,string=None):
 				shapes = (data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 				
-				def func(data,state):
+				def func(data,state,where=None):
 					return einsummation(data,state)
 
 			elif isinstance(state,arrays):
@@ -3942,7 +3942,7 @@ def contraction(data=None,state=None,site=None,string=None):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 				
-					def func(data,state):
+					def func(data,state,where=None):
 						return einsummation(data,state)
 
 				elif state.ndim == 2:
@@ -3951,7 +3951,7 @@ def contraction(data=None,state=None,site=None,string=None):
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
 
-					def func(data,state):
+					def func(data,state,where=None):
 						return einsummation(data,state,conjugate(data))
 
 			elif isinstance(state,tensors):
@@ -3961,7 +3961,7 @@ def contraction(data=None,state=None,site=None,string=None):
 	elif isinstance(data,tensors):
 
 		if state is None:
-			def func(data,state):
+			def func(data,state,where=None):
 				return data
 		
 		elif isinstance(state,arrays):
@@ -3973,26 +3973,26 @@ def contraction(data=None,state=None,site=None,string=None):
 
 		elif isinstance(state,tensors):
 
-			def func(data,state):
-				return state.gate(data,where=site)
+			def func(data,state,where=None):
+				return state.gate(data,where=where)
 
 	func = wrapper(func) if wrapper is not None else func
 
 	return func
 
 
-def gradient_contraction(data=None,state=None,site=None):
+def gradient_contraction(data=None,state=None,where=None):
 	'''
 	Contract grad, data and state
 	Args:
 		data (array,tensor): Array of data of shape (n,n)
 		state (array,tensor): state of shape (n,) or (n,n)
-		site (int,str,iterable[int,str]): Where data contracts with state
+		where (int,str,iterable[int,str]): Where data contracts with state
 	Returns:
-		func (callable): contracted data and state with signature func(data,state)
+		func (callable): contracted data and state with signature func(grad,data,state,where=None)
 	'''
 
-	def func(grad,data,state):
+	def func(grad,data,state,where=None):
 		return 0
 
 	if state is None:
@@ -4008,19 +4008,19 @@ def gradient_contraction(data=None,state=None,site=None):
 		
 		if state is None:
 		
-			def func(grad,data,state):
+			def func(grad,data,state,where=None):
 				return grad
 
 		elif isinstance(state,arrays):
 
 			if state.ndim == 1:
 
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return grad
 
 			elif state.ndim == 2:
 				
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return grad
 	
 		elif isinstance(state,tensors):
@@ -4037,19 +4037,19 @@ def gradient_contraction(data=None,state=None,site=None):
 
 			if state is None:
 			
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return grad
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4060,19 +4060,19 @@ def gradient_contraction(data=None,state=None,site=None):
 			
 			if state is None:
 			
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return grad
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4089,7 +4089,7 @@ def gradient_contraction(data=None,state=None,site=None):
 				shapes = (data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 				
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return einsummation(grad,state)
 
 			elif isinstance(state,arrays):
@@ -4100,7 +4100,7 @@ def gradient_contraction(data=None,state=None,site=None):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return einsummation(grad,state)
 
 				elif state.ndim == 2:
@@ -4109,7 +4109,7 @@ def gradient_contraction(data=None,state=None,site=None):
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						out = einsummation(grad,state,conjugate(data))
 						return out + dagger(out)
 
@@ -4127,7 +4127,7 @@ def gradient_contraction(data=None,state=None,site=None):
 				shapes = (data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 				
-				def func(grad,data,state):
+				def func(grad,data,state,where=None):
 					return einsummation(grad,state)
 
 			elif isinstance(state,arrays):
@@ -4138,7 +4138,7 @@ def gradient_contraction(data=None,state=None,site=None):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						return einsummation(grad,state)
 
 				elif state.ndim == 2:
@@ -4147,7 +4147,7 @@ def gradient_contraction(data=None,state=None,site=None):
 					shapes = (data.shape,state.shape,data.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state):
+					def func(grad,data,state,where=None):
 						out = einsummation(grad,state,conjugate(data))
 						return out + dagger(out)
 
@@ -7357,8 +7357,9 @@ def isinstances(obj,instances,reverse=False,args=(),kwargs={}):
 	if boolean:
 		try:
 			boolean = isinstance(obj(*args,**kwargs),instances)
-			boolean = not boolean if reverse else boolean
+			boolean = not reverse and boolean
 		except:
+			boolean = reverse
 			pass
 	return boolean
 

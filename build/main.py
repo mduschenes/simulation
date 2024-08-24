@@ -17,7 +17,8 @@ def main(settings,*args,**kwargs):
 
 	# Settings
 	default = {}
-	settings = load(settings,default=default,wrapper=lambda data: Dict(nester(data,keys='cls',func=load)))
+	wrapper = lambda data: Dict(nester(data,keys='cls',func=load))
+	settings = load(settings,default=default,wrapper=wrapper)
 
 
 	# System

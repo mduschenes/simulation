@@ -6,12 +6,17 @@
 	"dump":0
 	},
 "cls":{
+	"module":"src.quantum.Module",
 	"model":"src.quantum.Operators",
-	"state":"src.quantum.State",
-	"measure":"src.quantum.Measure",
-	"basis":"src.quantum.Basis",
-	"lattice":"src.system.Lattice"
+	"state":"src.quantum.State"
 	},
+"module":{
+	"N":2,
+	"M":2,
+	"d":1,
+	"structure":"<ij>",
+	"options":{"contract":"swap+split","max_bond":null,"cutoff":1e-20}	
+},
 "model":{
 	"data":{
 		"xx":{
@@ -19,41 +24,32 @@
 			"parameters":0.5,"variable":false
 		},
 		"noise":{
-			"operator":"dephase","site":null,"string":"dephase",
-			"parameters":0,"variable":false
+			"operator":["dephase","dephase"],"site":null,"string":"dephase",
+			"parameters":1e-6,"variable":false
 		}		
 	},
-	"N":2,
 	"D":2,
-	"d":1,
-	"M":2,
-	"P":1,
-	"S":1,
 	"space":"spin",
 	"time":"linear",
-	"lattice":"square",
-	"scheme":{"contract":"swap+split","max_bond":100,"cutoff":1e-20}
+	"lattice":"square"
 	},
 "state": {
 	"operator":"zero",
 	"site":null,
 	"string":"psi",
 	"parameters":true,
+	"N":null,
+	"D":2,
 	"ndim":2,
 	"seed":123
 	},
-"measure": {
-	"base":"pauli"
-},
-"basis": {},
-"lattice": {},
-"callback":{},	
 "system":{
 	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":null,
 	"architecture":"tensor",
+	"base":"pauli",
 	"seed":123,
 	"key":null,
 	"instance":null,
@@ -63,6 +59,6 @@
 	"conf":"logging.conf",
 	"logger":null,
 	"cleanup":false,
-	"verbose":"info"
+	"verbose":false
 	}
 }

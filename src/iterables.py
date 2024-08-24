@@ -138,7 +138,7 @@ def namespace(cls,signature=None,init=False,**kwargs):
 	Get namespace of attributes of class instance
 	Args:
 		cls (class): Class to get attributes
-		signature (dict): Dictionary to get only attributes in cls
+		signature (dict,object): Dictionary to get only attributes in cls
 		init (bool): Initialize class for all attributes
 		kwargs (dict): Additional keyword arguments for cls
 	Returns:
@@ -156,6 +156,7 @@ def namespace(cls,signature=None,init=False,**kwargs):
 	if signature is None:
 		return attrs
 	elif attrs is not None:
+		signature = {attr: getattr(signature,attr) for attr in dir(signature) if not (attr.startswith('__') and attr.endswith('__'))} if not isinstance(signature,dict) else signature
 		return {attr: signature[attr] for attr in signature if attr in attrs}
 	else:
 		return attrs

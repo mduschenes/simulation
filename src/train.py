@@ -65,7 +65,7 @@ def call(settings,*args,**kwargs):
 	system = settings.system
 
 	model = model(**{**settings.model,**dict(system=system)})
-	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
 	model.init(state=state)
 
@@ -108,7 +108,7 @@ def train(settings,*args,**kwargs):
 		system = settings.system
 
 		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
 		model.init(state=state)
 
@@ -118,7 +118,7 @@ def train(settings,*args,**kwargs):
 		label = load(settings.cls.label)
 		callback = load(settings.cls.callback)
 
-		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
 		callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
 		label.init(state=state)
