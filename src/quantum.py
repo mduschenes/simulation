@@ -1101,7 +1101,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	compilation = Dict({**dict(trotter=None,simplify=False),**(compilation if isinstance(compilation,dict) else {})})
+	compilation = Dict({**dict(trotter=None,simplify=True),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
@@ -1373,9 +1373,6 @@ class Object(System):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}}
 
-	hermitian = None
-	unitary = None
-
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
 		state=None,conj=False,parameters=None,variable=False,
@@ -1413,14 +1410,30 @@ class Object(System):
 		
 		operator = self.operator if self.operator is not None else None
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
-		locality = self.locality if self.locality is not None else len(self.operator) if isinstance(self.operator,iterables) else len(self.site) if isinstance(self.site,iterables) else self.N if self.N is not None else 1
+		locality = self.locality
 		string = self.string
-
 
 		N = self.N	
 		D = self.D	
 
-		# Set site,locality,operator
+
+		# Set locality
+		if locality is not None:
+			locality = locality
+		elif isinstance(operator,iterables):
+			locality = len(operator)
+		elif isinstance(site,iterables):
+			locality = len(site)
+		elif isinstance(operator,str) and operator.count(delim):
+			locality = operator.count(delim) + 1
+		elif N is not None:
+			locality = N
+		else:
+			locality = 1
+		locality = min(locality,N if N is not None else 1)
+
+
+		# Set site,locality, operator
 		if site is None:
 			if operator is None:
 				site = site
@@ -2254,9 +2267,6 @@ class Pauli(Object):
 		**{attr: Basis.Z for attr in ['Z']},
 			}
 	
-	hermitian = None
-	unitary = None
-
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
@@ -2337,6 +2347,18 @@ class Pauli(Object):
 		else:
 
 			data = self.data
+
+
+		if self.state is None or self.state() is None:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 2:
+			hermitian = True
+			unitary = False
+
 
 		if self.parameters() is not None:
 
@@ -2436,12 +2458,8 @@ class Pauli(Object):
 					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
-
 		contract = None
 		gradient_contract = None
-
-		hermitian = False
-		unitary = True
 
 		self.data = data
 
@@ -2487,8 +2505,6 @@ class Gate(Object):
 		**{attr: Basis.S for attr in ['PHASE','S']}
 		}
 
-	hermitian = None
-	unitary = None
 	
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
@@ -2533,8 +2549,17 @@ class Gate(Object):
 
 			data = self.data
 
-		hermitian = False
-		unitary = True
+
+		if self.state is None or self.state() is None:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 2:
+			hermitian = True
+			unitary = False
+
 
 		self.data = data
 
@@ -2574,9 +2599,6 @@ class Haar(Object):
 		**{attr: Basis.I for attr in ['I']},
 		**{attr: Basis.unitary for attr in ['U','random','haar']},
 		}
-
-	hermitian = None
-	unitary = None
 
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
@@ -2640,8 +2662,17 @@ class Haar(Object):
 
 			data = self.data
 
-		hermitian = False
-		unitary = True
+
+		if self.state is None or self.state() is None:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 2:
+			hermitian = True
+			unitary = False
+
 
 		self.data = data
 
@@ -2689,9 +2720,6 @@ class Noise(Object):
 		**{attr: Basis.I for attr in ['dephase-amplitude']},
 		}
 	
-	hermitian = None
-	unitary = None
-
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
@@ -2838,8 +2866,17 @@ class Noise(Object):
 
 			data = self.data
 
-		hermitian = False
-		unitary = False
+
+		if self.state is None or self.state() is None:
+			hermitian = False
+			unitary = False
+		elif self.state().ndim == 1:
+			hermitian = False
+			unitary = False
+		elif self.state().ndim == 2:
+			hermitian = True
+			unitary = False
+
 
 		self.data = data
 
@@ -2887,9 +2924,6 @@ class State(Object):
 		**{attr: Basis.minusi for attr in ['minusi','-i']},		
 		}
 	
-	hermitian = None
-	unitary = None
-
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
@@ -2979,7 +3013,7 @@ class State(Object):
 				
 				elif operator[i] in ['psi','state','random','haar','product']:
 					random = 'haar'
-					scale = '2'					
+					scale = None			
 					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
 
 				elif operator[i] in ['string']:
@@ -3246,9 +3280,6 @@ class Probability(Object):
 		**{attr: Basis.state for attr in ['probability']},
 		}
 	
-	hermitian = None
-	unitary = None
-
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
 		'''
 		Setup operator
@@ -3378,14 +3409,24 @@ class Probability(Object):
 
 			data = self.data
 
+
+		if self.state is None or self.state() is None:
+			hermitian = None
+			unitary = None
+		elif self.state().ndim == 1:
+			hermitian = None
+			unitary = None
+		elif self.state().ndim == 2:
+			hermitian = None
+			unitary = None
+
+
 		def func(parameters=None,state=None):
 			return self.data
 
 		def gradient(parameters=None,state=None):
 			return 0*self.data
 
-		hermitian = None
-		unitary = None
 
 		self.data = data
 
@@ -4900,12 +4941,24 @@ class Label(Operator):
 
 	default = 'I'
 
-	hermitian = None
-	unitary = None
-
 	def __new__(cls,*args,**kwargs):
 
 		self = super().__new__(cls,*args,**kwargs)
+
+		# Set attributes
+		if self.state is None or self.state() is None:
+			hermitian = self.hermitian
+			unitary = self.unitary
+		elif self.state().ndim == 1:
+			hermitian = False
+			unitary = True
+		elif self.state().ndim == 2:
+			hermitian = True
+			unitary = False
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
 
 		return self
 

@@ -609,6 +609,120 @@ def test_measure(*args,**kwargs):
 	return
 
 
+def test_namespace(*args,**kwargs):
+
+	data = {}
+
+	kwargs = {
+		**{attr:[3,None] for attr in ["model.N"]},
+		**{attr:[2] for attr in ["model.D"]},
+		}
+	groups = [["model.N"]]
+	filters = None
+
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
+	
+		settings = Dict({
+			"cls":{
+				"model":"src.quantum.Operators",
+				"state":"src.quantum.State",
+				"label":"src.quantum.Label"
+			},
+			"model":{
+				"data":{
+					"xx":{
+						"operator":["X","X"],"site":[0,1],"string":"XX",
+						"parameters":0.5,"variable":False
+					},
+					# "noise":{
+					# 	"operator":["dephase","dephase"],"site":None,"string":"dephase",
+					# 	"parameters":1e-6,"variable":False
+					# }		
+				},
+				"space":"spin",
+				"time":"linear",
+				"lattice":"square"
+				},
+			"state": {
+				"operator":"zero",
+				"site":None,
+				"string":"psi",
+				"parameters":True,
+				"ndim":2,
+				"seed":123
+				},
+			"label": {
+				"operator":"X.X",
+				"site":None,
+				"string":"U",
+				"parameters":0.5,
+				"ndim":2,
+				"seed":123
+				},		
+			"system":{
+				"dtype":"complex",
+				"format":"array",
+				"device":"cpu",
+				"backend":None,
+				"architecture":"tensor",
+				"base":"pauli",
+				"seed":123,
+				"key":None,
+				"instance":None,
+				"cwd":"data",
+				"path":None,
+				"path":"data.hdf5",
+				"conf":"logging.conf",
+				"logger":None,
+				"cleanup":False,
+				"verbose":False
+				}
+		})
+
+		setter(settings,kwargs,delimiter=delim,default=True)
+
+		verbose = True
+		ignore = "parameters"
+
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		label = load(settings.cls.label)
+		system = settings.system
+
+
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
+
+
+		print('Attributes',{attr: getattr(settings.model,attr,None) for attr in ['N']})
+
+		attributes = {'model':model,'state':state,'label':label}
+		for attribute in attributes:
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary']},'>>>>',namespace(attributes[attribute].__class__,model))
+		print()
+
+		model.init(state=state)
+		label.init(state=state)
+
+		attributes = {'model':model,'label':label}
+		for attribute in attributes:
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary']},'>>>>',namespace(attributes[attribute].__class__,model))
+		print()
+
+		print('Call')
+		print(state())
+		print(model(state=state()))
+		print(label(state=state()))
+
+		print()
+		print()
+		print()
+
+	print("Passed")
+
+	return
+
 
 if __name__ == "__main__":
 
@@ -624,3 +738,4 @@ if __name__ == "__main__":
 	# test_state(*args,**args)
 	# test_measure(*args,**args)
 	# test_composite(*args,**args)
+	test_namespace(*args,**args)
