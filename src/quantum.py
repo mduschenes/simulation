@@ -866,24 +866,20 @@ class Measure(System):
 
 			N = state.L
 
-			indices = {'k{}':self.K}
-			shapes = {'i{}':self.D,'j{}':self.D}
-			tag = 'I{}'
+			indices = {index: self.K for index in self.ind}
+			shapes = {index: self.D for index in self.inds}
+			tag = (*(index for index in self.tags),)
 
 			basis = datastructure(self.basis)
 			inverse = datastructure(self.inverse)
-
-			print(basis)
-			print(inverse)
-			exit()
 
 			data = einsum('uv,vij->uij',inverse,basis)
 			kwargs = dict()
 
 			for i in range(N):
-				shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
+				shape = (*(indices[index] for index in indices),*(shapes[index] for index in shapes))
 				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
-				tags = (tag.format(i),)
+				tags = (*(index.format(i) for index in tag),)
 				operator = tensor(data,inds=inds,tags=tags,**kwargs)
 			
 				state &= operator

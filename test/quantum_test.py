@@ -21,6 +21,17 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
 
+
+def equalizer(a,b):
+	if isinstance(a,arrays) and isinstance(b,arrays):
+		return all(allclose(i,j) for i,j in zip(a.ravel(),b.ravel()))
+	elif isinstance(a,dict) and isinstance(b,dict):
+		return all(allclose(a[i],b[j]) for i,j in zip(a,b))
+	elif isinstance(a,iterables) and isinstance(b,iterables):
+		return all(allclose(i,j) for i,j in zip(a,b))
+	else:
+		return a==b
+
 def test_channel(*args,**kwargs):
 
 	data = {}
@@ -780,6 +791,7 @@ def test_module(*args,**kwargs):
 
 		# Test
 		
+		data[i] = {}
 
 		# Probability
 		parameters = measure.parameters()
@@ -788,10 +800,11 @@ def test_module(*args,**kwargs):
 		probability = measure.probability(parameters=parameters,state=state,cyclic=True)
 
 		if settings.measure.architecture in ['array']:
-			probability = array(probability)
+			obj = array(probability)
 		elif settings.measure.architecture in ['tensor']:
-			probability = datastructure(probability,to='array')
+			obj = datastructure(probability,to='array')
 		
+		data[i]['probability'] = obj
 
 		# Amplitude
 		parameters = measure.parameters()
@@ -799,33 +812,20 @@ def test_module(*args,**kwargs):
 
 		amplitude = measure.amplitude(parameters=parameters,state=state)
 
+		if settings.measure.architecture in ['array']:
+			obj = tensorprod(amplitude)
+		elif settings.measure.architecture in ['tensor']:
+			obj = array(amplitude)
+		
+		data[i]['amplitude'] = obj
 
-		print(amplitude)
-		exit()
+		continue	
 
-
-		obj = [probability,amplitude]
-
-		data[i] = obj
-
-		print(data[i])
-
-		continue
 
 		# Module
 		module = module(**{**namespace(module,model),**namespace(module,state),**settings.module,**dict(model=model,state=state,system=system)})
 
-	def allclose(a,b):
-		if isinstance(a,arrays) and isinstance(b,arrays):
-			return all(i==j for i,j in zip(a.ravel(),b.ravel()))
-		elif isinstance(a,dict) and isinstance(b,dict):
-			return all(allclose(a[i],b[j]) for i,j in zip(a,b))
-		elif isinstance(a,iterables) and isinstance(b,iterables):
-			return all(allclose(i,j) for i,j in zip(a,b))
-		else:
-			return a==b
-
-	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print('Passed')
 
