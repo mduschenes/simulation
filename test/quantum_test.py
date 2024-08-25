@@ -692,14 +692,24 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[3],"module.M":[1],
+		"module.N":[4],"module.M":[1],'state.D':[2],'state.ndim':[2],
+		"model.local":[False],"state.local":[True],"model.options.shape":[2,2,2],
 		"measure.architecture":["array","tensor"]
 		}
 	groups = None
 	filters = None
+	def func(dictionaries):
+		for dictionary in dictionaries:
+			setter(dictionary,{
+				'model.options.shape':[
+					getter(dictionary,'state.D',delimiter=delim),
+					getter(dictionary,'module.N',delimiter=delim),
+					getter(dictionary,'state.ndim',delimiter=delim)]},
+				delimiter=delim,default=None)
+		return
 
 	data = {}
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=None)):
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 
 		settings = Dict({
 		"cls":{
@@ -747,8 +757,7 @@ def test_module(*args,**kwargs):
 			"string":"psi",
 			"parameters":None,
 			"D":2,
-			"ndim":2,
-			"local":True
+			"ndim":2
 			},
 		"system":{
 			"dtype":"complex",
@@ -790,12 +799,14 @@ def test_module(*args,**kwargs):
 		# measure.info(verbose=True)
 
 		# Test
+
+		tmp = state()
 		
 		data[i] = {}
 
 		# Probability
 		parameters = measure.parameters()
-		state = [state]*settings.module.N
+		state = [tmp]*settings.module.N
 
 		probability = measure.probability(parameters=parameters,state=state,cyclic=True)
 
@@ -818,6 +829,47 @@ def test_module(*args,**kwargs):
 			obj = array(amplitude)
 		
 		data[i]['amplitude'] = obj
+
+
+		# Operator
+		parameters = model.parameters()
+		state = [tmp]*model.locality
+
+		model.init(state=tensorprod(state))
+		state = measure.probability(parameters=parameters,state=state,cyclic=True)
+
+		operator = measure.operator(parameters=parameters,state=state,model=model)
+
+		if settings.measure.architecture in ['array']:
+			obj = array(operator)
+		elif settings.measure.architecture in ['tensor']:
+			obj = array(operator)
+
+		data[i]['operator'] = obj
+
+
+		# Model
+
+		# Class
+		module = load(settings.cls.module)
+		measure = load(settings.cls.measure)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		system = settings.system
+
+		# Model
+		N = settings.module.N
+		model = model(**{**settings.model,**dict(N=N,local=True,system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(N=N,local=False,system=system)})
+
+		model.init(state=state)
+
+		parameters = model.parameters()
+		state = model.state()
+
+		obj = model(parameters,state)
+
+		data[i]['model'] = obj
 
 		continue	
 

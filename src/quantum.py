@@ -763,7 +763,7 @@ class Measure(System):
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
 		if not isinstance(state,objects):
-			state = [getattr(Basis,i)(**kwargs) if not callable(i) else i() for i in (state if not isinstance(state,str) else [state])]
+			state = [getattr(Basis,i)(**kwargs) if isinstance(i,str) else i() if callable(i) else i for i in (state if not isinstance(state,str) else [state])]
 
 		if self.architecture is None:
 			
@@ -899,34 +899,61 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
-			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
+			model (callable): model of operator with signature model(parameters,state) -> data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		N = len(state)
+		if self.architecture in ['array']:
 
-		if N is not None and N > 1:
-			basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
-		else:
-			basis = datastructure(self.basis)
-			inverse = datastructure(self.inverse)
+			N = len(state) if state is not None else None
 
-		if model is None:
-			data = None
-		else:
-			subscripts = 'uij,wij,wv->uv'
-			shapes = (basis.shape,basis.shape,inverse.shape)
-			einsummation = einsum(subscripts,*shapes)
-			model = vmap(model,in_axes=(None,0),out_axes=0)
-			contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-				conjugate(basis),
-				model(parameters,state),
-				inverse)
-			data = contract(parameters=parameters,state=basis)
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+
+			if model is None:
+				data = None
+			else:
+				subscripts = 'uij,wij,wv->uv'
+				shapes = (basis.shape,basis.shape,inverse.shape)
+				einsummation = einsum(subscripts,*shapes)
+				model = vmap(model,in_axes=(None,0),out_axes=0)
+				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+					conjugate(basis),
+					model(parameters,state),
+					inverse)
+				data = contract(parameters=parameters,state=basis)
 		
+		elif self.architecture in ['tensor']:
+
+			N = state.L
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
+			else:
+				basis = datastructure(self.basis)
+				inverse = datastructure(self.inverse)
+
+
+			if model is None:
+				data = None
+			else:
+				subscripts = 'uij,wij,wv->uv'
+				shapes = (basis.shape,basis.shape,inverse.shape)
+				einsummation = einsum(subscripts,*shapes)
+				model = vmap(model,in_axes=(None,0),out_axes=0)
+				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+					conjugate(basis),
+					model(parameters,state),
+					inverse)
+				data = contract(parameters=parameters,state=basis)
+
 		return data
 
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
@@ -3960,7 +3987,7 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 		
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(state=self.state,verbose=False,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
 		if not all(isinstance(self.data[i],Object) for i in self.data):
