@@ -873,6 +873,10 @@ class Measure(System):
 			basis = datastructure(self.basis)
 			inverse = datastructure(self.inverse)
 
+			print(basis)
+			print(inverse)
+			exit()
+
 			data = einsum('uv,vij->uij',inverse,basis)
 			kwargs = dict()
 

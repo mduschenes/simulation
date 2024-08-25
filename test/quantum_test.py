@@ -779,9 +779,13 @@ def test_module(*args,**kwargs):
 		# measure.info(verbose=True)
 
 		# Test
-		N = settings.module.N
+		
+
+		# Probability
 		parameters = measure.parameters()
-		probability = measure.probability(parameters=parameters,state=[state]*N,cyclic=True)
+		state = [state]*settings.module.N
+
+		probability = measure.probability(parameters=parameters,state=state,cyclic=True)
 
 		if settings.measure.architecture in ['array']:
 			probability = array(probability)
@@ -789,7 +793,18 @@ def test_module(*args,**kwargs):
 			probability = datastructure(probability,to='array')
 		
 
-		obj = [probability]
+		# Amplitude
+		parameters = measure.parameters()
+		state = probability
+
+		amplitude = measure.amplitude(parameters=parameters,state=state)
+
+
+		print(amplitude)
+		exit()
+
+
+		obj = [probability,amplitude]
 
 		data[i] = obj
 

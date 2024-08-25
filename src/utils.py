@@ -2581,7 +2581,7 @@ class gate(qtn.Gate):
 
 
 
-def datastructure(obj,data=True,structure=False,contract=False,to=False):
+def datastructure(obj,data=True,structure=False,contract=False,to=True):
 	'''
 	Get data of object
 	Args:
@@ -2589,7 +2589,7 @@ def datastructure(obj,data=True,structure=False,contract=False,to=False):
 		data (bool): Return data of object
 		structure (bool): Return structure of object
 		contract (bool): Contract object
-		to (str): Return data as type, allowed strings in ['array']
+		to (str): Return data as type, defaults as array, allowed strings in ['array']
 	Returns:
 		data (object): data of object
 		structure (object): structure of object
