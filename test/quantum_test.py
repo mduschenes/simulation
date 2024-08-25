@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,datastructure
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -412,51 +412,6 @@ def test_contract(*args,**kwargs):
 
 	return
 
-
-def test_probability(*args,**kwargs):
-
-	print('Not Implemented')
-
-	return
-
-	kwargs = {"state.ndim":[1]}
-	groups = None
-
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-
-		settings = Dict({
-			"cls":{
-				"state":"src.quantum.Probability"
-			},
-			"state": {
-				"data":[1/2]*2,
-				"operator":"probability",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array"}
-				}
-			})
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		state = load(settings.cls.state)
-
-		state = state(**settings.state)
-
-		print(settings["state"]["operator"],type(state))
-		print(state.data)
-		print(state(state.parameters(),state.state()))
-		print(state.norm())
-		print()
-
-		assert allclose(state(),state.data), "Incorrect data for %r"%(settings.cls.state)
-		assert allclose(state(state.parameters(),state.state()),state.data), "Incorrect state() for %r"%(settings.cls.state)
-		assert allclose(state.norm(),1), "Incorrect normalization for %r"%(settings.cls.state)
-
-	return
-
 def test_state(*args,**kwargs):
 
 	kwargs = {
@@ -722,6 +677,146 @@ def test_namespace(*args,**kwargs):
 	return
 
 
+
+def test_module(*args,**kwargs):
+
+	kwargs = {
+		"module.N":[3],"module.M":[1],
+		"measure.architecture":["array","tensor"]
+		}
+	groups = None
+	filters = None
+
+	data = {}
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=None)):
+
+		settings = Dict({
+		"cls":{
+			"module":"src.quantum.Module",
+			"measure":"src.quantum.Measure",
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State"
+			},
+		"module":{
+			"N":2,
+			"M":2,
+			"d":1,
+			"lattice":"square",
+			"structure":"<ij>",
+			"architecture":None,
+			"base":"pauli",
+			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}	
+		},
+		"measure":{
+			"base":"pauli",
+			"architecture":"tensor",
+			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}	
+		},		
+		"model":{
+			"data":{
+				"xx":{
+					"operator":["X","X"],"site":None,"string":"XX",
+					"parameters":0.5,"variable":False
+				},
+				"noise":{
+					"operator":["dephase","dephase"],"site":None,"string":"dephase",
+					"parameters":1e-6,"variable":False
+				}
+			},
+			"D":2,
+			"local":True,
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square",
+			"architecture":"array"
+			},
+		"state": {
+			"operator":["zero"],
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":True
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":None,
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":False
+			}
+		})
+
+		# Settings
+		setter(settings,kwargs,delimiter=delim,default=True)
+
+		# Class
+		module = load(settings.cls.module)
+		measure = load(settings.cls.measure)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		system = settings.system
+
+		# Model
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		measure = measure(**{**settings.measure,**dict(system=system)})
+
+		# model.info(verbose=True)
+		# state.info(verbose=True)
+		# measure.info(verbose=True)
+
+		# Test
+		N = settings.module.N
+		parameters = measure.parameters()
+		probability = measure.probability(parameters=parameters,state=[state]*N,cyclic=True)
+
+		if settings.measure.architecture in ['array']:
+			probability = array(probability)
+		elif settings.measure.architecture in ['tensor']:
+			probability = datastructure(probability,to='array')
+		
+
+		obj = [probability]
+
+		data[i] = obj
+
+		print(data[i])
+
+		continue
+
+		# Module
+		module = module(**{**namespace(module,model),**namespace(module,state),**settings.module,**dict(model=model,state=state,system=system)})
+
+	def allclose(a,b):
+		if isinstance(a,arrays) and isinstance(b,arrays):
+			return all(i==j for i,j in zip(a.ravel(),b.ravel()))
+		elif isinstance(a,dict) and isinstance(b,dict):
+			return all(allclose(a[i],b[j]) for i,j in zip(a,b))
+		elif isinstance(a,iterables) and isinstance(b,iterables):
+			return all(allclose(i,j) for i,j in zip(a,b))
+		else:
+			return a==b
+
+	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+
+	print('Passed')
+
+	return
+
+
 if __name__ == "__main__":
 
 	arguments = "path"
@@ -731,8 +826,8 @@ if __name__ == "__main__":
 
 
 	# test_channel(*args,**args)
-	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	test_measure(*args,**args)
+	# test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
+	test_module(*args,**args)

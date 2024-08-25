@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,rand,spawn,arange,diag,inv
-from src.utils import tensor,tensornetwork,gate,mps,datastructure,structuredata
+from src.utils import tensor,tensornetwork,gate,mps,datastructure
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,norm,eig,trace,sort,relsort,prod,product,log
@@ -551,7 +551,6 @@ class Measure(System):
 		dtype = self.dtype
 
 		basis = getattr(Basis,base)(D=D,dtype=dtype)
-
 		data = einsum('u...,v...->uv',basis,conjugate(basis))
 		inverse = inv(data)
 
@@ -561,15 +560,10 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = data.dtype
 
-		ind = dict(zip(self.ind,(K,))) if self.ind is not None else {}
-		inds = dict(zip(self.inds,shape)) if self.inds is not None else {}
-		tags = (*self.tags,) if self.tags is not None else ()
-
 		if self.architecture is None:
 			kwargs = dict(dtype=dtype)
 
 			basis = array(basis,**kwargs)
-			
 			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
 
@@ -577,7 +571,6 @@ class Measure(System):
 			kwargs = dict(dtype=dtype)
 
 			basis = array(basis,**kwargs)
-
 			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
 
@@ -587,10 +580,23 @@ class Measure(System):
 
 			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
 			data = tensor(data,**kwargs)
-
+			
 			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
 			inverse = tensor(inverse,**kwargs)
 
+		elif self.architecture in ['mps']:
+			kwargs = dict(dtype=dtype)
+
+			basis = array(basis,**kwargs)
+			data = array(data,**kwargs)
+			inverse = array(inverse,**kwargs)
+
+		else:
+			kwargs = dict(dtype=dtype)
+
+			basis = array(basis,**kwargs)
+			data = array(data,**kwargs)
+			inverse = array(inverse,**kwargs)			
 
 		self.base = base
 		self.string = string
@@ -603,10 +609,6 @@ class Measure(System):
 		self.size = size
 		self.ndim =  ndim
 		self.dtype = dtype
-
-		self.ind = ind
-		self.inds = inds
-		self.tags = tags
 
 		if self.architecture is None:
 			subscripts = '...u,uv,vjk->...jk'
@@ -638,6 +640,16 @@ class Measure(System):
 			def gradient(parameters,state):
 				return 0				
 
+		elif self.architecture in ['mps']:
+			subscripts = '...u,uv,vjk->...jk'
+			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
+			einsummation = einsum(subscripts,*shapes)
+			def func(parameters,state):
+				return einsummation(state,self.inverse,self.basis)
+
+			def gradient(parameters,state):
+				return 0
+
 		else:
 			subscripts = '...u,uv,vjk->...jk'
 			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
@@ -652,27 +664,23 @@ class Measure(System):
 		self.gradient = gradient
 
 		parameters = self.parameters()
-		state = None
 		wrapper = partial
 
-		self.func = wrapper(self.func,parameters=parameters,state=state)
-		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
+		self.func = wrapper(self.func,parameters=parameters)
+		self.gradient = wrapper(self.gradient,parameters=parameters)
 
 		return
 
-	def __call__(self,parameters=None,state=None,model=None,**kwargs):
+	def __call__(self,parameters=None,state=None,**kwargs):
 		'''
 		Call class for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability state of shape (self.K,)*N
-			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
 			kwargs (dict): Additional class keyword arguments					
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		
-		state = self.state() if state is None else state() if callable(state) else state
-
 		return self.func(parameters=parameters,state=state)
 
 	def __len__(self):
@@ -699,6 +707,48 @@ class Measure(System):
 	def K(self):
 		return len(self)
 	
+	def info(self,display=None,ignore=None,verbose=None):
+		'''
+		Log class information
+		Args:
+			display (str,iterable[str]): Show attributes
+			ignore (str,iterable[str]): Do not show attributes
+			verbose (bool,int,str): Verbosity of message			
+		'''		
+
+		msg = []
+		options = dict(align='<',space=1,width=2)
+
+		display = None if display is None else [display] if isinstance(display,str) else display
+		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
+
+		for attr in [None,'string','base','K','ind','inds','tags','basis','data','inverse']:
+
+			obj = attr
+			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+				continue
+
+			if attr is None:
+				attr = 'cls'
+				substring = str(self)
+			else:
+				substring = getattr(self,attr,None)
+
+			if isinstance(substring,objects):
+				string = '%s:\n%s'%(attr,str(substring))
+			else:
+				string = '%s: %s'%(attr,str(substring))
+
+			msg.append(string)
+
+		msg = [i if isinstance(i,str) else str(i) for i in msg]
+
+		msg = '\n'.join(msg)
+
+		self.log(msg,verbose=verbose)
+
+		return
+
 	def probability(self,parameters=None,state=None,**kwargs):
 		'''
 		Probability for POVM probability measure
@@ -713,10 +763,11 @@ class Measure(System):
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
 		if not isinstance(state,objects):
-			state = array([getattr(Basis,i)(**kwargs) if not callable(i) else i() for i in (state if not isinstance(state,str) else [state])])
+			state = [getattr(Basis,i)(**kwargs) if not callable(i) else i() for i in (state if not isinstance(state,str) else [state])]
 
 		if self.architecture is None:
 			
+			state = array(state,dtype=self.dtype)
 			basis = self.basis
 			inverse = self.inverse
 
@@ -728,6 +779,7 @@ class Measure(System):
 
 		elif self.architecture in ['array']:
 
+			state = array(state,dtype=self.dtype)
 			basis = self.basis
 			inverse = self.inverse
 
@@ -745,24 +797,37 @@ class Measure(System):
 
 					data = array(state[i])
 
-					inds = (*(index.format(i) for index in self.indices),)
+					inds = (*(index.format(i) for index in self.inds),)
 					tags = (*(index.format(i) for index in self.tags),)
 
 					state[i] = tensor(data=data,inds=inds,tags=tags)
 
-					basis = datastructure(self.basis)
-					data = einsum('uij,ij->u',basis,data)
+					with self.context(i,self.basis):
+						state[i] &= self.basis
 
-					state[i] = data
+					state[i] = datastructure(state[i],contract=True)
 
 			else:
 
-				state = datastructure(state)
+				state = state
 
-			state = mps(state)
+			state = mps(state,**kwargs)
+
+		elif self.architecture in ['mps']:
+
+			state = array(state,dtype=self.dtype)
+			basis = self.basis
+			inverse = self.inverse
+
+			subscripts = 'uij,...ij->...u'
+			shapes = (basis.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			state = einsummation(basis,state)
 
 		else:
 
+			state = array(state,dtype=self.dtype)
 			basis = self.basis
 			inverse = self.inverse
 
@@ -828,6 +893,42 @@ class Measure(System):
 
 		return state
 
+	def operator(self,parameters=None,state=None,model=None,**kwargs):
+		'''
+		Operator for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
+			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): POVM operator of shape (self.K**N,self.K**N)
+		'''
+
+		N = len(state)
+
+		if N is not None and N > 1:
+			basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
+		else:
+			basis = datastructure(self.basis)
+			inverse = datastructure(self.inverse)
+
+		if model is None:
+			data = None
+		else:
+			subscripts = 'uij,wij,wv->uv'
+			shapes = (basis.shape,basis.shape,inverse.shape)
+			einsummation = einsum(subscripts,*shapes)
+			model = vmap(model,in_axes=(None,0),out_axes=0)
+			contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				conjugate(basis),
+				model(parameters,state),
+				inverse)
+			data = contract(parameters=parameters,state=basis)
+		
+		return data
+
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
 		'''
 		Fidelity for POVM probability measure with respect to other POVM
@@ -889,44 +990,7 @@ class Measure(System):
 
 			state = func(parameters=parameters,state=state)
 		
-		return state		
-
-
-	def operator(self,parameters=None,state=None,model=None,**kwargs):
-		'''
-		Operator for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
-			model (callable): model of operator with signature model(parameters,state) -> data, where state (array) is an Operator state
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (array): POVM operator of shape (self.K**N,self.K**N)
-		'''
-
-		N = len(state)
-
-		if N is not None and N > 1:
-			basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
-		else:
-			basis = datastructure(self.basis)
-			inverse = datastructure(self.inverse)
-
-		if model is None:
-			data = None
-		else:
-			subscripts = 'uij,wij,wv->uv'
-			shapes = (basis.shape,basis.shape,inverse.shape)
-			einsummation = einsum(subscripts,*shapes)
-			model = vmap(model,in_axes=(None,0),out_axes=0)
-			contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-				conjugate(basis),
-				model(parameters,state),
-				inverse)
-			data = contract(parameters=parameters,state=basis)
-		
-		return data
+		return state
 
 
 class MPS(mps): 
@@ -2021,13 +2085,17 @@ class Object(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in ['string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
+		for attr in [None,'string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 				continue
 
-			substring = getattr(self,attr,None)
+			if attr is None:
+				attr = 'cls'
+				substring = str(self)
+			else:
+				substring = getattr(self,attr,None)
 
 			if getattr(self,attr,None) is not None:
 				if attr in ['data']:

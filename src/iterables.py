@@ -438,7 +438,7 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 
 
 
-def permuter(dictionary,copy=False,groups=None,filters=None,ordered=True):
+def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=True):
 	'''
 	Get all combinations of values of dictionary of lists
 
@@ -453,6 +453,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,ordered=True):
 			then the permuted dictionary will have key0 and key1 keys with only pairwise values of 
 			[{key0:value_00,key1:value_10},{key0:value_01,key1:value_11},{key0:value_02,key1:value_12}].
 		filters (callable): Function with signature filters(dictionaries) -> dictionaries to parse allowed dictionaries
+		func (callable): Function with signature func(dictionaries) to modify dictionaries in place
 		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
 
 	Returns:
@@ -535,6 +536,11 @@ def permuter(dictionary,copy=False,groups=None,filters=None,ordered=True):
 	if ordered:
 		for i,d in enumerate(dictionaries):
 			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
+
+	# Modify allowed dictionaries
+	if func is not None:
+		func(dictionaries)
+
 	return dictionaries
 
 

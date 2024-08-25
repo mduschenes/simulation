@@ -2581,28 +2581,43 @@ class gate(qtn.Gate):
 
 
 
-def datastructure(obj):
+def datastructure(obj,data=True,structure=False,contract=False,to=False):
 	'''
 	Get data of object
 	Args:
 		obj (tensor): object
+		data (bool): Return data of object
+		structure (bool): Return structure of object
+		contract (bool): Contract object
+		to (str): Return data as type, allowed strings in ['array']
 	Returns:
-		data (array): data
+		data (object): data of object
+		structure (object): structure of object
 	'''
-	data,structure = qtn.pack(obj)
-	return data
+	
+	if contract:
+		obj = obj.contract()
+	
+	obj = qtn.pack(obj)
+	
+	if not data and not structure:
+		obj = None
+	elif data and not structure:
+		obj = obj[0]
+		if to in ['array']:
+			obj = array([obj[i].ravel() for i in obj])
+		elif to:
+			obj = array([obj[i].ravel() for i in obj])			
+	elif not data and structure:
+		obj = obj[1]
+	else:
+		obj = (obj[0],obj[1])
+		if to in ['array']:
+			obj = (array([obj[0][i].ravel() for i in obj[0]]) if to else obj[0],obj[1])
+		elif to:
+			obj = (array([obj[0][i].ravel() for i in obj[0]]) if to else obj[0],obj[1])
 
-def structuredata(obj):
-	'''
-	Get data structure of object
-	Args:
-		obj (tensor): object
-	Returns:
-		structure (array): structure
-	'''
-	data,structure = qtn.pack(obj)
-	return structure
-
+	return obj
 
 if backend in ['jax']:
 
