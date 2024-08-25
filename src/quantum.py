@@ -45,13 +45,14 @@ class Basis(Dict):
 	'''
 
 	D = 2
+
 	shape = None
 	size = None
 	ndim = None
+	dtype = None
 
 	data = None
 	parameters = None
-	dtype = None
 
 	@classmethod
 	def get(cls,attr):
@@ -76,10 +77,9 @@ class Basis(Dict):
 		N = len(data)
 		data = array(tensorprod([getattr(cls,i)(D=kwargs.D,dtype=kwargs.dtype) for i in data]),dtype=kwargs.dtype)
 		if kwargs.parameters is not None:
-			if kwargs.D == 2:
-				parameters = kwargs.parameters*pi/2
-				identity = tensorprod([cls.identity(D=kwargs.D,dtype=kwargs.dtype)]*N)
-				data = cos(parameters)*identity + -1j*sin(parameters)*data
+			parameters = kwargs.parameters*pi/2
+			identity = tensorprod([cls.identity(D=kwargs.D,dtype=kwargs.dtype)]*N)
+			data = cos(parameters)*identity + -1j*sin(parameters)*data
 		return data
 
 	@classmethod
@@ -101,9 +101,11 @@ class Basis(Dict):
 	@System.decorator
 	def I(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = identity(kwargs.D,dtype=kwargs.dtype)
+		data = array([[1,0],[0,1]],dtype=kwargs.dtype)
 		if kwargs.parameters is not None:
-			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
+			parameters = kwargs.parameters*pi/2
+			identity = cls.identity(D=kwargs.D,dtype=kwargs.dtype)
+			data = cos(parameters)*identity + -1j*sin(parameters)*data
 		return data
 
 	@classmethod
@@ -112,7 +114,9 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = array([[0,1],[1,0]],dtype=kwargs.dtype)
 		if kwargs.parameters is not None:
-			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data
+			parameters = kwargs.parameters*pi/2
+			identity = cls.identity(D=kwargs.D,dtype=kwargs.dtype)
+			data = cos(parameters)*identity + -1j*sin(parameters)*data
 		return data
 
 	@classmethod
@@ -121,7 +125,9 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)
 		if kwargs.parameters is not None:
-			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
+			parameters = kwargs.parameters*pi/2
+			identity = cls.identity(D=kwargs.D,dtype=kwargs.dtype)
+			data = cos(parameters)*identity + -1j*sin(parameters)*data
 		return data
 
 	@classmethod
@@ -130,7 +136,9 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0],[0,-1]],dtype=kwargs.dtype)
 		if kwargs.parameters is not None:
-			data = cos(kwargs.parameters)*kwargs.identity(D=kwargs.D,dtype=kwargs.dtype) + -1j*sin(kwargs.parameters)*data		
+			parameters = kwargs.parameters*pi/2
+			identity = cls.identity(D=kwargs.D,dtype=kwargs.dtype)
+			data = cos(parameters)*identity + -1j*sin(parameters)*data
 		return data
 
 	@classmethod
@@ -159,8 +167,8 @@ class Basis(Dict):
 	def unitary(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
-			shape=kwargs.shape,
-			random=getattr(kwargs,'haar',None),
+			shape=getattr(kwargs,'shape',kwargs.D) if getattr(kwargs,'shape',None) is not None else kwargs.D,
+			random=getattr(kwargs,'random','haar'),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
@@ -185,8 +193,8 @@ class Basis(Dict):
 	def state(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)		
 		data = rand(
-			shape=getattr(kwargs,'shape',kwargs.D),
-			random=getattr(kwargs,'random',"haar"),
+			shape=getattr(kwargs,'shape',kwargs.D) if getattr(kwargs,'shape',None) is not None else kwargs.D,
+			random=getattr(kwargs,'random','haar'),
 			scale=getattr(kwargs,'scale',None),
 			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
 			dtype=kwargs.dtype)
@@ -290,8 +298,8 @@ class Basis(Dict):
 		if kwargs.parameters is None:
 			kwargs.parameters = 0
 		data = array([
-			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
-			sqrt(kwargs.parameters)*kwargs.Z(D=kwargs.D,dtype=kwargs.dtype)
+			sqrt(1-kwargs.parameters)*cls.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*cls.Z(D=kwargs.D,dtype=kwargs.dtype)
 			],dtype=kwargs.dtype)
 		return data
 
@@ -302,8 +310,8 @@ class Basis(Dict):
 		if kwargs.parameters is None:
 			kwargs.parameters = 0
 		data = array([
-			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
-			sqrt(kwargs.parameters)*kwargs.X(D=kwargs.D,dtype=kwargs.dtype)
+			sqrt(1-kwargs.parameters)*cls.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			],dtype=kwargs.dtype)
 		return data
 
@@ -314,8 +322,8 @@ class Basis(Dict):
 		if kwargs.parameters is None:
 			kwargs.parameters = 0
 		data = array([
-			sqrt(1-kwargs.parameters)*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
-			sqrt(kwargs.parameters)*kwargs.Y(D=kwargs.D,dtype=kwargs.dtype)
+			sqrt(1-kwargs.parameters)*cls.I(D=kwargs.D,dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*cls.Y(D=kwargs.D,dtype=kwargs.dtype)
 			],dtype=kwargs.dtype)
 		return data
 
@@ -326,10 +334,10 @@ class Basis(Dict):
 		if kwargs.parameters is None:
 			kwargs.parameters = 0		
 		data = array([
-				sqrt(1-(kwargs.D**2-1)*kwargs.parameters/(kwargs.D**2))*kwargs.I(D=kwargs.D,dtype=kwargs.dtype),
-				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.X(D=kwargs.D,dtype=kwargs.dtype),
-				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.Y(D=kwargs.D,dtype=kwargs.dtype),
-				sqrt(kwargs.parameters/(kwargs.D**2))*kwargs.Z(D=kwargs.D,dtype=kwargs.dtype)
+				sqrt(1-(kwargs.D**2-1)*kwargs.parameters/(kwargs.D**2))*cls.I(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*cls.X(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*cls.Y(D=kwargs.D,dtype=kwargs.dtype),
+				sqrt(kwargs.parameters/(kwargs.D**2))*cls.Z(D=kwargs.D,dtype=kwargs.dtype)
 				],dtype=kwargs.dtype)
 		return data
 
@@ -341,8 +349,8 @@ class Basis(Dict):
 			kwargs.parameters = 0		
 		data = array([
 			kwargs.element(D=kwargs.D,data='00',dtype=kwargs.dtype) + 
-				sqrt(1-kwargs.parameters)*kwargs.element(D=kwargs.D,data='11',dtype=kwargs.dtype),
-			sqrt(kwargs.parameters)*kwargs.element(D=kwargs.D,data='01',dtype=kwargs.dtype)
+				sqrt(1-kwargs.parameters)*cls.element(D=kwargs.D,data='11',dtype=kwargs.dtype),
+			sqrt(kwargs.parameters)*cls.element(D=kwargs.D,data='01',dtype=kwargs.dtype)
 			],dtype=kwargs.dtype)
 		return data
 
@@ -402,7 +410,7 @@ class Basis(Dict):
 			sin(i*2*pi/(kwargs.D**2-1))*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			for i in range(kwargs.D**2-1)
 			],dtype=kwargs.dtype)
-		raise ValueError("Not Informationally Complete POVM <%s>"%(sys._getframe().f_code.co_name))
+		raise ValueError('Not Informationally Complete POVM <%s>'%(sys._getframe().f_code.co_name))
 		return data
 
 	@classmethod
@@ -413,6 +421,7 @@ class Basis(Dict):
 		for i in range(kwargs.D**2):
 			data = inplace(data,(i,i),1)
 		data = data.reshape((kwargs.D**2,kwargs.D,kwargs.D))
+		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
 		return data
 
 
@@ -422,13 +431,11 @@ class Measure(System):
 	
 	basis = None
 
-	dtype = None
-
-	inds = ('k{}',)
-	indices = ('i{}','j{}',)
+	ind = ('k{}',)
+	inds = ('i{}','j{}',)
 	tags = ('I{}',)
 
-	class attributes(object):
+	class context(object):
 		'''
 		Update object attributes within context with key
 		Args:
@@ -475,7 +482,6 @@ class Measure(System):
 	defaults = dict(			
 		data=None,base=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		state=None,conj=None,
 		basis=None,inverse=None,identity=None,
 		parameters=None,variable=False,
 		func=None,gradient=None,
@@ -505,32 +511,22 @@ class Measure(System):
 
 		return
 
-	def init(self,data=None,state=None,conj=None,parameters=None,**kwargs):
+	def init(self,data=None,parameters=None,**kwargs):
 		'''
 		Initialize measure
 		Args:
 			data (str,array,tensor,Measure): data of measure
-			state (bool,dict,array): state of class of shape (self.D**N,self.D**N)
-			conj (bool): conjugate
 			parameters (array,dict): parameters of class
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
 		data = self.data if data is None else data
-		state = self.state if state is None else state
-		conj = self.conj if conj is None else conj
 		parameters = self.parameters if parameters is None else parameters
 
-		if state is None or not callable(state):
-			def state(parameters=None,state=state):
-				return state
-
 		if parameters is None or not callable(parameters):
-			def parameters(parameters=parameters,state=state):
+			def parameters(parameters=parameters):
 				return parameters
 
-		self.state = state
-		self.conj = conj
 		self.parameters = parameters
 
 		self.setup(data)
@@ -559,14 +555,18 @@ class Measure(System):
 
 		data = einsum('u...,v...->uv',basis,conjugate(basis))
 		inverse = inv(data)
-		identity = Basis.sample(D=len(basis),dtype=dtype)
 
 		options = Dict() if self.options is None else Dict(self.options)
 
+		K = len(basis)
 		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))]
 		size = prod(shape)
 		ndim = len(shape)
 		dtype = data.dtype
+
+		ind = dict(zip(self.ind,(K,))) if self.ind is not None else {}
+		inds = dict(zip(self.inds,shape)) if self.inds is not None else {}
+		tags = (*self.tags,) if self.tags is not None else ()
 
 		if self.architecture is None:
 			kwargs = dict(dtype=dtype)
@@ -575,7 +575,6 @@ class Measure(System):
 			
 			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
-			identity = array(identity,**kwargs)
 
 		elif self.architecture in ['array']: 
 			kwargs = dict(dtype=dtype)
@@ -584,20 +583,16 @@ class Measure(System):
 
 			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
-			identity = array(identity,**kwargs)
 
 		elif self.architecture in ['tensor']:
-			kwargs = dict(inds=('k{}','i{}','j{}',),tags=('I{}',))
+			kwargs = dict(inds=(*self.ind,*self.inds,),tags=(*self.tags,))
 			basis = tensor(basis,**kwargs)
 
-			kwargs = dict(inds=('i{}','j{}',),tags=('I{}',))
+			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
 			data = tensor(data,**kwargs)
 
-			kwargs = dict(inds=('i{}','j{}',),tags=('I{}',))
+			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
 			inverse = tensor(inverse,**kwargs)
-
-			kwargs = dict(inds=('k{}',),tags=('I{}',))
-			identity = tensor(identity,**kwargs)
 
 
 		self.base = base
@@ -607,16 +602,19 @@ class Measure(System):
 		self.data = data
 		self.basis = basis
 		self.inverse = inverse
-		self.identity = identity
 
 		self.shape = shape
 		self.size = size
 		self.ndim =  ndim
 		self.dtype = dtype
 
+		self.ind = ind
+		self.inds = inds
+		self.tags = tags
+
 		if self.architecture is None:
 			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
+			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
 				return einsummation(state,self.inverse,self.basis)
@@ -626,7 +624,7 @@ class Measure(System):
 
 		elif self.architecture in ['array']:
 			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
+			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
 				return einsummation(state,self.inverse,self.basis)
@@ -636,9 +634,8 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 			def func(parameters,state):
-				N = state.L
-				for i in range(N):
-					with self.attributes(i,self.inverse,self.basis):
+				for i in range(state.L):
+					with self.context(i,self.inverse,self.basis):
 						state &= self.inverse & self.basis
 				return state
 
@@ -647,7 +644,7 @@ class Measure(System):
 
 		else:
 			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((len(self),),self.inverse.shape,self.basis.shape)
+			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			def func(parameters,state):
 				return einsummation(state,self.inverse,self.basis)
@@ -655,13 +652,12 @@ class Measure(System):
 			def gradient(parameters,state):
 				return 0			
 
-
 		self.func = func
 		self.gradient = gradient
 
 		parameters = self.parameters()
-		state = self.state()
-		wrapper = jit
+		state = None
+		wrapper = partial
 
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
@@ -720,11 +716,11 @@ class Measure(System):
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
+		if not isinstance(state,objects):
+			state = array([getattr(Basis,i)(**kwargs) if not callable(i) else i() for i in (state if not isinstance(state,str) else [state])])
+
 		if self.architecture is None:
 			
-			if not isinstance(state,objects):
-				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
-
 			basis = self.basis
 			inverse = self.inverse
 
@@ -735,9 +731,6 @@ class Measure(System):
 			state = einsummation(basis,state)
 
 		elif self.architecture in ['array']:
-			
-			if not isinstance(state,objects):
-				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
 
 			basis = self.basis
 			inverse = self.inverse
@@ -752,14 +745,9 @@ class Measure(System):
 			
 			if not isinstance(state,tensors):
 				
-				state = [state] if isinstance(state,str) else [i() if callable(i) else i for i in state]
-				
 				for i in range(len(state)):
 
-					if isinstance(state[i],str):
-						data = getattr(Basis,state[i])(**kwargs) if isinstance(state[i],str) else state[i]
-					else:
-						data = array(state[i])
+					data = array(state[i])
 
 					inds = (*(index.format(i) for index in self.indices),)
 					tags = (*(index.format(i) for index in self.tags),)
@@ -778,9 +766,6 @@ class Measure(System):
 			state = mps(state)
 
 		else:
-
-			if not isinstance(state,objects):
-				state = array([getattr(Basis,i)(**kwargs) for i in (state if not isinstance(state,str) else [state])])
 
 			basis = self.basis
 			inverse = self.inverse
@@ -805,13 +790,16 @@ class Measure(System):
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
 		
-		if isinstance(state,arrays):
+		if self.architecture is None:
 		
 			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
 
-		elif isinstance(state,tensors):
+		elif self.architecture in ['array']:
+
+			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
+			
+		elif self.architecture in ['tensor']:
 
 			state = state.copy()
 
@@ -839,24 +827,9 @@ class Measure(System):
 			state = state.contract().to_dense(*inds)
 
 		else:
+			
+			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
 
-			N = None
-
-			if N is not None and N > 1:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-				subscripts = '...u,uv,vjk->...jk'
-				shapes = (state.shape,inverse.shape,basis.shape)
-				einsummation = einsum(subscripts,*shapes)
-				def func(parameters,state):
-					return einsummation(state,inverse,basis)
-			else:
-				basis = self.basis
-				inverse = self.inverse
-				func = self.func
-
-			state = func(parameters=parameters,state=state)
-		
 		return state
 
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
@@ -1004,7 +977,7 @@ class MPS(mps):
 			kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
 		elif isinstance(data,(str,*iterables)):
 			basis = {
-				**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
+				**{attr: Basis.state for attr in ['psi','state','random','haar','product']},
 				**{attr: Basis.zero for attr in ['zero','zeros','0']},
 				**{attr: Basis.one for attr in ['one','ones','1']},
 				**{attr: Basis.plus for attr in ['plus','+']},
@@ -1101,7 +1074,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	compilation = Dict({**dict(trotter=None,simplify=True),**(compilation if isinstance(compilation,dict) else {})})
+	compilation = Dict({**dict(trotter=None,simplify=False),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
@@ -1226,7 +1199,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		def function(parameters,state=state,indices=indices):	
 			return switch(indices%length,data,parameters,state)
 
-	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)	
+	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)
 
 	length = len(data)
 	indices = (0,size*length)
@@ -1315,9 +1288,6 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	else:
 		wrapper = jit
 
-	if verbose and data:
-		data[0].log(msg='Compiled:\n%r'%(data),verbose=verbose)
-	
 	data,grad,indexes = (
 		[wrapper(data[i]) for i in range(length)],
 		[wrapper(data[i].grad) for i in range(length)],
@@ -1370,13 +1340,16 @@ class Object(System):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
+	N = None
+	D = None
+
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}}
 
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
-		state=None,conj=False,parameters=None,variable=False,
-		locality=None,
+		state=None,conj=False,parameters=None,variable=None,
+		locality=None,local=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		samples=None,identity=None,base=None,
 		space=None,time=None,lattice=None,
@@ -1412,25 +1385,30 @@ class Object(System):
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
 		locality = self.locality
 		string = self.string
+		local = self.local if self.local is not None else None
+
 
 		N = self.N	
 		D = self.D	
 
 
-		# Set locality
+		# Set local, locality, N
+		local = local
+		
 		if locality is not None:
 			locality = locality
 		elif isinstance(operator,iterables):
 			locality = len(operator)
 		elif isinstance(site,iterables):
 			locality = len(site)
-		elif isinstance(operator,str) and operator.count(delim):
+		elif isinstance(operator,str) and operator.count(delim) > 0:
 			locality = operator.count(delim) + 1
-		elif N is not None:
+		elif N is not None and not local:
 			locality = N
 		else:
 			locality = 1
-		locality = min(locality,N if N is not None else 1)
+
+		N = locality if local else N
 
 
 		# Set site,locality, operator
@@ -1493,9 +1471,10 @@ class Object(System):
 		N = max(N,max(site)+1 if site is not None else N) if N is not None else max(site)+1 if site is not None else locality if locality is not None else 0
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
-		site = site[:N] if site is not None else site
-		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if site is not None else 0,N) if locality is not None or site is not None else None
-		operator = operator[:N] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		site = site[:locality] if site is not None else site
+		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if site is not None else 0,locality if local else N) if locality is not None or site is not None else None
+		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		local = local
 
 		options = Dict() if self.options is None else Dict(self.options)
 
@@ -1511,6 +1490,7 @@ class Object(System):
 		self.system = system if system is not None else None
 
 		self.locality = max(locality,len(self.site) if self.site is not None else 0) if locality is not None else None
+		self.local = local
 
 		self.N = N
 		self.D = D
@@ -1595,12 +1575,15 @@ class Object(System):
 		self.state = state
 
 
-		identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.N) if self.identity is None else self.identity
+		if self.local:
+			identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.locality)
+		else:
+			identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.N)
 
 		self.identity = identity
 
 
-		if (self.parameters() is not None) and (((self.data is not None) or (self.operator is not None))):
+		if (((self.data is not None) or (self.operator is not None))):
 			
 			self.setup(self.data,self.operator,self.site,self.string)
 		
@@ -1614,13 +1597,37 @@ class Object(System):
 		elif self.operator is None:
 			data = None
 		elif isinstance(self.operator,str):
-			data = tensorprod([self.basis.get(self.operator)(D=self.D,system=self.system) if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) for i in range(self.N)]) if self.operator in self.basis else None
-		elif self.operator is not None:
-			data = tensorprod([self.basis.get(i)(D=self.D,system=self.system) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
+			if self.local:
+				data = tensorprod([
+					self.basis.get(self.operator if i in self.site else self.default)(D=self.D,system=self.system)
+				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+				 for i in self.site]) if self.operator in self.basis else None
+			else:
+				data = tensorprod([
+					self.basis.get(self.operator if i in self.site else self.default)(D=self.D,system=self.system)
+				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+				 for i in range(self.N)]) if self.operator in self.basis else None
+		elif isinstance(self.operator,iterables):
+			if self.local:
+				data = tensorprod([
+					self.basis.get(self.operator[self.site.index(i)] if i in self.site else self.default)(D=self.D,system=self.system)
+				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+				 for i in self.site]) if all(i in self.basis for i in self.operator) else None
+			else:
+				data = tensorprod([
+					self.basis.get(self.operator[self.site.index(i)] if i in self.site else self.default)(D=self.D,system=self.system)
+				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+				 for i in range(self.N)]) if all(i in self.basis for i in self.operator) else None
 		else:
 			data = self.data
 
 		self.data = data
+
+
+		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
+		self.size = getattr(data,'size',self.size) if data is not None else self.size if self.size is not None else None
+		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
+		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
 
 
 		if self.func is None:
@@ -1637,32 +1644,44 @@ class Object(System):
 
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
-		site = self.site
+		where = self.site if self.local else None
+
+		if self.state is not None and self.state() is not None:
+			try: 
+				kwargs = dict(shape=(self.state.D,self.state.N,self.state.ndim),axes=(self.site,))
+			except:
+				kwargs = dict(shape=(self.D,int(round(log(state.size)/self.D/state.ndim)),state.ndim),axes=(self.site,))
+		else:
+			kwargs = dict(shape=(self.D,self.N,self.ndim),axes=(self.site,))
+
+		if self.architecture is None:
+			kwargs = dict(**kwargs)
+		elif self.architecture in ['array']:
+			kwargs = dict(**kwargs)
+		elif self.architecture in ['tensor']:
+			kwargs = dict(**kwargs)
+		elif self.architecture in ['mps']:
+			kwargs = dict(**self.options)
+		else:
+			kwargs = dict(**kwargs)
 
 		try:
-			contract = contraction(data,state,site) if self.contract is None else self.contract
+			contract = contraction(data,state,where=where,**kwargs) if self.contract is None else self.contract
 		except NotImplementedError as exception:
-			def contract(data,state,where):
+			def contract(data,state,where=where,**kwargs):
 				return state
 			raise exception
 
 		try:
-			grad_contract = gradient_contraction(data,state,site) if self.gradient_contract is None else self.gradient_contract
+			grad_contract = gradient_contraction(data,state,where=where,**kwargs) if self.gradient_contract is None else self.gradient_contract
 		except NotImplementedError as exception:
-			def grad_contract(grad,data,state,where):
+			def grad_contract(grad,data,state,where=where,**kwargs):
 				return 0
 
 		self.func = func
 		self.gradient = gradient
 		self.contract = contract
 		self.gradient_contract = grad_contract
-
-		
-		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
-		self.size = getattr(data,'size',self.size) if data is not None else self.size if self.size is not None else None
-		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
-		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
-
 
 		if self.architecture is None:
 			parameters = self.parameters()
@@ -2023,7 +2042,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','locality','site']:
+		for attr in ['operator','locality','site','local']:
 		
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -2042,6 +2061,9 @@ class Object(System):
 
 				obj = 'parameters'
 				if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+					continue
+
+				if self.data.get(attr) is None:
 					continue
 
 				string = []
@@ -2083,7 +2105,7 @@ class Object(System):
 					
 					string.append(substring)
 
-				string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join(string))
+				string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join([i for i in string if i is not None]))
 
 				msg.append(string)
 
@@ -2097,19 +2119,26 @@ class Object(System):
 					if subattr is None:
 						subattr = attr
 						substring = ' '.join([str(i) for i in getattr(self,attr,[]) if getattr(self,attr)[i].variable])
+						substring = None if not len(substring) else substring
 					else:
 						substring = getattr(self.parameters,subattr)
+						substring = None if (0 in substring) else substring
+
 					if isinstance(substring,(str,int,list,tuple,*arrays)):
 						substring = '%s'%(substring,)
 					elif substring is not None:
 						substring = '%0.4e'%(substring)
 					else:
 						substring = str(substring)
-					substring = '%s : %s'%(subattr,substring)
+					
+					if len(substring):
+						substring = '%s : %s'%(subattr,substring)
+					else:
+						substring = None
 
 					string.append(substring)
 
-				string = ', '.join(string)
+				string = ', '.join([i for i in string if i is not None])
 
 				msg.append(string)			
 
@@ -2294,55 +2323,28 @@ class Pauli(Object):
 
 			N = self.N
 			D = self.D
+			locality = self.locality
+			local = self.local
+			ndim = self.ndim
 
 			basis = self.basis
 			default = self.default
-			variable = self.variable
-			architecture = self.architecture
+			dtype = self.dtype
 			system = self.system
 
-			if architecture is None:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if all(i in basis for i in operator) else None			
-				data = array(data,dtype=self.dtype)
-
-			elif architecture in ['array']:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if all(i in basis for i in operator) else None			
-				data = array(data,dtype=self.dtype)
+			if local:
+				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
+				
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in site]) if operator is not None else None
 			
-			elif architecture in ['tensor']:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if all(i in basis for i in operator) else None			
-				data = array(data,dtype=self.dtype)
-
-			elif architecture in ['mps']:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) for i in site]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) for i in site]) if all(i in basis for i in operator) else None			
-				data = array(data,dtype=self.dtype)
-
 			else:
-				if isinstance(operator,str):
-					data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if operator in basis else None
-				elif operator is not None:
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-						for i in range(N)]) if all(i in basis for i in operator) else None			
-				data = array(data,dtype=self.dtype)
+				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
+				
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					for i in range(N)]) if operator is not None else None
+
+			data = array(data,dtype=dtype) if data is not None else None
 
 		else:
 
@@ -2358,105 +2360,32 @@ class Pauli(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
+		
+		hermitian = False
+		unitary = True
 
 
 		if self.parameters() is not None:
 
-			if self.architecture is None:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['tensor']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['mps']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())	
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			else:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-				
-				def gradient(parameters=None,state=None):
-					grad = self.parameters.grad(parameters)
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+			def func(parameters=None,state=None):
+				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+			
+			def gradient(parameters=None,state=None):
+				grad = self.parameters.grad(parameters)
+				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
 		
-			if self.architecture is None:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+			def func(parameters=None,state=None):
+				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
-				def gradient(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+			def gradient(parameters=None,state=None):
+				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
-			elif self.architecture in ['array']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['tensor']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			elif self.architecture in ['mps']:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-			else:
-				def func(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-				def gradient(parameters=None,state=None):
-					parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
-					return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		contract = None
 		gradient_contract = None
@@ -2531,19 +2460,29 @@ class Gate(Object):
 
 			N = self.N
 			D = self.D
+			locality = self.locality
+			local = self.local
+			ndim = self.ndim
 
 			basis = self.basis
 			default = self.default
-			variable = self.variable
-			architecture = self.architecture
+			dtype = self.dtype
 			system = self.system
 
-			if isinstance(operator,str):
-				data = tensorprod([basis.get(operator)(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-					for i in range(N)]) if operator in basis else None
-			elif operator is not None:
+
+			if local:
+				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
+				
 				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
-					for i in range(N)]) if all(i in basis for i in operator) else None
+						for i in site]) if operator is not None else None
+			
+			else:
+				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
+			
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					for i in range(N)]) if operator is not None else None
+
+			data = array(data,dtype=dtype) if data is not None else None
 
 		else:
 
@@ -2559,7 +2498,8 @@ class Gate(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
-
+		hermitian = False
+		unitary = True
 
 		self.data = data
 
@@ -2625,39 +2565,65 @@ class Haar(Object):
 		
 			N = self.N
 			D = self.D
+			locality = self.locality
+			local = self.local
+			ndim = self.ndim
 
 			basis = self.basis
 			default = self.default
-			variable = self.variable
-			architecture = self.architecture
+			dtype = self.dtype
 			system = self.system
 
 			random = getattr(self,'random',None)
 			seed = getattr(self,'seed',None)
 			reset = getattr(self,'reset',None)
-			dtype = self.dtype
 
-			if isinstance(operator,str):
+			if local:
+				if isinstance(operator,str):
+					ndim = 2 if ndim is None else ndim
+					shape = (D**locality,)*ndim
+					random = 'haar' if random is None else random
 				
-				shape = (self.n,)*self.ndim
-				size = prod(shape)
-				ndim = len(shape)
-
-				if operator in ['U','random','haar']:
-					random = 'haar'
 					data = basis.get(operator)(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				
+				elif isinstance(operator,iterables):
+					ndim = 2 if ndim is None else ndim					
+					shape = (D,)*ndim
+				
+					data = tensorprod([basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+							for i in site]) if operator is not None else None
+				elif operator is not None:
+				
+					data = operator
+				
 				else:
-					data = self.data		
-			elif isinstance(operator,iterables):
+				
+					data = None
+			else:
+				if isinstance(operator,str):
+					ndim = 2 if ndim is None else ndim				
+					shape = (D**N,)*ndim
+					random = 'haar' if random is None else random
+				
+					data = basis.get(operator)(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				
+				elif isinstance(operator,iterables):
+					ndim = 2 if ndim is None else ndim					
+					shape = (D,)*ndim
+					
+					data = tensorprod([basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+							for i in range(N)]) if operator is not None else None
+				
+				elif operator is not None:
+				
+					data = operator
 
-				shape = (self.D,)*self.ndim
-				size = prod(shape)
-				ndim = len(shape)
-
-				if all(i in ['U','random','haar'] for i in operator):
-					data = tensorprod([basis.get(i)(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype) for i in operator])
 				else:
-					data = self.data
+
+					data = None
+
+			data = array(data,dtype=dtype) if data is not None else None
+
 		else:
 
 			data = self.data
@@ -2672,7 +2638,8 @@ class Haar(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
-
+		hermitian = False
+		unitary = True
 
 		self.data = data
 
@@ -2765,102 +2732,135 @@ class Noise(Object):
 
 			N = self.N
 			D = self.D
-
-			shape = (D**N,)
-			size = prod(shape)
-			ndim = len(shape)
+			locality = self.locality
+			local = self.local
+			ndim = self.ndim
 
 			basis = self.basis
 			default = self.default
 			system = self.system
 			dtype = self.dtype
+
+			parameters = self.parameters() if callable(self.parameters) else self.parameters
 			
-			data = data
-			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
-			operator = None if operator is None else [operator[i%len(operator)] for i in range(N)] if not isinstance(operator,str) else [operator]*N
-			locality = len(operator) if operator is not None else None
-			parameters = self.parameters(self.parameters())
 
 			if parameters is None:
-				parameters = [None for i in range(N)]
-			elif isinstance(parameters,scalars) or parameters.size <= 1:
-				parameters = [parameters for i in range(N)]
-			elif parameters.size == N:
-				parameters = [parameters[i] for i in range(N)]
-			elif parameters.size >= 1:
-				parameters = [norm(parameters)/sqrt(parameters.size) for i in range(N)]
-			else:
-				parameters = [None for i in range(N)]
-
-			local = any(True for i in range(N)) # TODO: Non-local noise and constant time-dependent noise
-
-			objs = []
-
-			assert ((isinstance(parameters,scalars) and (operator is not None) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), 'Noise scale %r not in [0,1]'%(parameters)
-
-			for i in range(N):
-
-				if operator[i] is None:
-					obj = [basis.get(default)(D=D,system=system)]
-				
-				elif operator[i] in ['phase','dephase']:
-					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
-
-				elif operator[i] in ['flip','bitflip']:
-					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
-				
-				elif operator[i] in ['phaseflip','flipphase']:
-					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
-
-				elif operator[i] in ['amplitude']:
-					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
-				
-				elif operator[i] in ['depolarize']:
-					obj = [i for i in basis.get(operator[i])(D=D,parameters=parameters[i],system=system)]
-
-					# TODO: Determine efficient contraction of O(D**N) operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
-					# obj = [Basis.I(D=D,system=system)]
-					# def func(parameters=None,state=None):
-					# 	return (1-parameters)*state + (parameters)*data[0]
-					# def gradient(parameters=None,state=None):
-					# 	return 0*state
-					# def contract(data=None,state=None):
-					# 	return data
-					# def gradient_contract(grad=None,data=None,state=None):
-					# 	return grad
-
-				elif operator[i] in ['eps']:
-					obj = array([identity(size,system=system),diag((1+parameters[i])**(arange(size)+2) - 1)])
-				
-				elif operator[i] in ['noise','rand']:
-					obj = array(parameters[i],dtype=datatype(dtype))
-					spawn(reset=seed)
-			
-					def func(parameters=None,state=None):
-						return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
-					def gradient(parameters=None,state=None):
-						return 0*state
-					def contract(data=None,state=None):
-						return data
-					def gradient_contract(grad=None,data=None,state=None):
-						return grad
-
+				if local:
+					parameters = [None for i in range(locality)]
 				else:
-					obj = [basis.get(default)(D=D,system=system)]
+					parameters = [None for i in range(N)]
+			elif isinstance(parameters,scalars) or parameters.size <= 1:
+				if local:
+					parameters = [parameters for i in range(locality)]
+				else:
+					parameters = [parameters for i in range(N)]
+			elif isinstance(parameters,iterables):
+				if local:
+					parameters = [parameters[i] for i in range(locality)]
+				else:
+					parameters = [parameters[i] for i in range(N)]
+			elif isinstance(parameters,arrays):
+				if local:
+					parameters = [parameters[i] for i in range(locality)]
+				else:
+					parameters = [parameters[i] for i in range(N)]				
+			else:
+				if local:
+					parameters = [None for i in range(locality)]
+				else:
+					parameters = [None for i in range(N)]
 
-				if isinstance(obj,objects):
-					objs = obj
-					break
 
-				objs.append(obj)
+			if local:
+				if isinstance(operator,str):
+			
+					if operator in ['phase','dephase','flip','bitflip','phaseflip','flipphase','amplitude','depolarize']:
+						operator = [operator]*locality
+					
+						data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+												for i in site]) if operator is not None else None
 
-				if not local:
-					break
+					elif operator in ['eps']:
+						operator = [operator]*locality
 
-			data = objs
+						data = tensorprod([
+								array([identity(D,dtype=dtype),diag((1+parameters[site.index(i)])**(arange(D)+2) - 1)]) if i in site else basis.get(default)(D=D,system=system) 
+								for i in site]) if operator is not None else None
+					
+					elif operator in ['noise','rand']:
+						seed = getattr(self,'seed',getattr(self,'key',None))
+						operator = [operator]*locality
 
-			if not isinstance(data,objects) and not callable(data):
-				data = array([tensorprod(i)	for i in permutations(*data)],dtype=dtype)
+						spawn(reset=seed)
+				
+						def func(parameters=None,state=None):
+							return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
+						def gradient(parameters=None,state=None):
+							return 0*state
+						def contract(data=None,state=None):
+							return data
+						def gradient_contract(grad=None,data=None,state=None):
+							return grad
+
+				elif isinstance(operator,iterables):
+					operator = [i for i in operator]
+					
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+							for i in site]) if operator is not None else None
+				
+				elif operator is not None:
+				
+					data = operator
+				
+				else:
+				
+					data = None
+			
+			else:
+			
+				if isinstance(operator,str):
+			
+					if operator in ['phase','dephase','flip','bitflip','phaseflip','flipphase','amplitude','depolarize']:
+						operator = [operator]*N
+					
+						data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+												for i in range(N)]) if operator is not None else None
+
+					elif operator in ['eps']:
+						operator = [operator]*N
+
+						data = tensorprod([
+								array([identity(D,dtype=dtype),diag((1+parameters[site.index(i)])**(arange(D)+2) - 1)]) if i in site else basis.get(default)(D=D,system=system) 
+								for i in range(N)]) if operator is not None else None
+					
+					elif operator in ['noise','rand']:
+						seed = getattr(self,'seed',getattr(self,'key',None))
+						operator = [operator]*N
+
+						spawn(reset=seed)
+				
+						def func(parameters=None,state=None):
+							return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
+						def gradient(parameters=None,state=None):
+							return 0*state
+						def contract(data=None,state=None):
+							return data
+						def gradient_contract(grad=None,data=None,state=None):
+							return grad
+
+				elif isinstance(operator,iterables):
+					operator = [i for i in operator]
+					
+					data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+							for i in range(N)]) if operator is not None else None
+				
+				elif operator is not None:
+				
+					data = operator
+				
+				else:
+				
+					data = None
 
 		else:
 
@@ -2876,7 +2876,8 @@ class Noise(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
-
+		hermitian = False
+		unitary = False
 
 		self.data = data
 
@@ -2915,7 +2916,7 @@ class State(Object):
 	basis = {
 		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.I for attr in ['I']},
-		**{attr: Basis.state for attr in ['psi','state','random','haar','product','string']},
+		**{attr: Basis.state for attr in ['psi','state','random','haar','product']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
 		**{attr: Basis.one for attr in ['one','ones','1']},
 		**{attr: Basis.plus for attr in ['plus','+']},
@@ -2949,155 +2950,35 @@ class State(Object):
 
 			N = self.N
 			D = self.D
+			locality = self.locality
+			local = self.local
 			ndim = self.ndim
 
 			basis = self.basis
 			default = self.default
-			architecture = self.architecture
-			system = self.system
 			dtype = self.dtype
+			system = self.system
 
-			random = getattr(self,'random',None)
+			random = getattr(self,'random','haar')
 			seed = getattr(self,'seed',None)
+			scale = getattr(self,'scale',None)
 			reset = getattr(self,'reset',None)
 			samples = getattr(self,'samples',None)
 
-			data = data
-			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
-			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
-			locality = len(operator)
+			if local:
+				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
 
-			local = any(( 
-				all((operator[i] not in ['psi','state','random','haar','string']) for i in range(N)),
-				))
-
-			objs = []
-			
-			for i in range(N):
-				
-				shape = (D**N,) if not local else (D,)
-				size = prod(shape)
-				ndim = len(shape)
-
-				obj = zeros(shape=shape,dtype=dtype)
-
-				if operator[i] in ['zero','zeros','0']:
-					index = 0
-					value = 1
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['one','ones','1']:
-					index = -1
-					value = 1
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['plus','+']:
-					index = slice(None)
-					value = 1/sqrt(size)
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['minus','-']:
-					index = slice(None)
-					value = (-1)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)
-
-				elif operator[i] in ['plusi','+i']:
-					index = slice(None)
-					value = (1j)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)
-				
-				elif operator[i] in ['minusi','-i']:
-					index = slice(None)
-					value = (-1j)**arange(size)/sqrt(size)
-					obj = inplace(obj,index,value)					
-				
-				elif operator[i] in ['psi','state','random','haar','product']:
-					random = 'haar'
-					scale = None			
-					obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=dtype)
-
-				elif operator[i] in ['string']:
-
-					assert isinstance(data,str), "data <%r> must be <str>"%(data)
-				
-					if self.architecture is None:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-					
-					elif self.architecture in ['array']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)
-					
-					elif self.architecture in ['tensor']:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)					
-					
-					elif self.architecture in ['mps']:
-						local = False
-						obj = data
-
-					else:
-						index = sum((int(string)*(D**(N-1-i))) for i,string in enumerate(data))
-						value = 1
-						obj = inplace(obj,index,value)						
-				
-				elif isinstance(data,arrays):
-					
-					obj = data.reshape(N,*shape)[i] if data.size == N*size else data
-				
-				else:
-					obj = None
-
-				if obj is None:
-					objs = obj
-					break
-
-				objs.append(obj)
-
-				if not local:
-					objs = objs[-1]
-					break
-
-			data = objs
-
-			if self.architecture is None:
-
-				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
-
-				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
-
-				data = array(data,dtype=dtype)
-
-			elif self.architecture in ['array']:
-		
-				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
-
-				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
-
-				data = array(data,dtype=dtype)
-
-			elif self.architecture in ['tensor']:
-				
-				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
-
-				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
-
-				data = array(data,dtype=dtype)			
-
-			elif self.architecture in ['mps']:
-			
-				data = mps(data)
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+						for i in site]) if operator is not None else None
 			
 			else:
+				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
+			
+				data = tensorprod([basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					for i in range(N)]) if operator is not None else None
 
-				data = tensorprod(data) if data is not None and not isinstance(data,objects) else data
+			data = array(data,dtype=dtype) if data is not None else None
 
-				data = einsum('...i,...j->...ij',data,conjugate(data)) if data is not None and isinstance(data,objects) and data.ndim < self.ndim else data
-
-				data = array(data,dtype=dtype)
 
 			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
 				if isinstance(samples,integers) and (samples > 0):
@@ -3247,7 +3128,7 @@ class State(Object):
 		
 		elif self.architecture in ['mps']:
 
-			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
+			raise NotImplementedError('%r class norm not implemented for architecture %r'%(self.__class__,self.architecture))
 
 		if norm is None or eps is None:
 			return
@@ -3259,328 +3140,6 @@ class State(Object):
 		return norm
 
 
-class Probability(Object):
-	'''
-	State class for Quantum Objects
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-
-	default = 'I'
-	basis = {
-		**{attr: Basis.identity for attr in [default]},
-		**{attr: Basis.state for attr in ['probability']},
-		}
-	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
-		'''
-		Setup operator
-		Args:
-			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments				
-		'''
-
-		data = self.data if data is None else data
-		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
-		string = self.string if string is None else string
-
-		func = self.func
-		gradient = self.gradient
-		contract = None
-		gradient_contract = None
-
-		if not isinstance(data,objects) and not callable(data):
-
-			N = self.N
-			D = self.D
-			ndim = self.ndim
-
-			basis = self.basis
-			default = self.default
-			architecture = self.architecture
-			system = self.system
-			dtype = self.dtype
-
-			random = getattr(self,'random',None)
-			seed = getattr(self,'seed',None)
-			reset = getattr(self,'reset',None)
-			samples = getattr(self,'samples',None)
-
-			data = data
-			site = list(range(N)) if site is None else site if not isinstance(site,integers) else [site]
-			operator = None if operator is None else [operator[site.index(i)%len(operator)] if i in site else default for i in range(N)] if not isinstance(operator,str) else [operator]*N
-			locality = len(operator)
-
-			local = any(( 
-				all((operator[i] not in []) for i in range(N)),
-				))
-
-			objs = []
-			
-			for i in range(N):
-				
-				shape = (D**N,) if not local else (D,)
-				size = prod(shape)
-				ndim = len(shape)
-
-				obj = zeros(shape=shape,dtype=dtype)
-
-				
-				if operator[i] in ['probability']:
-				
-					if isinstance(data,str) or random is not None:
-						random = data if isinstance(data,str) else random
-						scale = '1'
-						obj = basis.get(operator[i])(shape=shape,random=random,scale=scale,seed=seed,reset=reset,dtype=datatype(dtype))
-					elif isinstance(data,(*arrays,iterables)):
-						index = slice(None)
-						value = data
-						obj = inplace(obj,index,value)
-				
-					else:
-						index = slice(None)
-						value = 1/size
-						obj = inplace(obj,index,value)
-				
-				elif isinstance(data,arrays):
-					
-					obj = data.reshape(N,*shape)[i] if data.size == N*size else data if data is not None else None
-				
-				else:
-					obj = None
-
-				if obj is None:
-					objs = obj
-					break
-
-				objs.append(obj)
-
-				if not local:
-					objs = objs[-1]
-					break
-
-			data = objs
-
-			if self.architecture is None:
-
-				data = array(data,dtype=dtype) if data is not None else None
-
-			elif self.architecture in ['array']:
-				
-				data = array(data,dtype=dtype) if data is not None else None
-
-			elif self.architecture in ['tensor']:
-
-				data = array(data,dtype=dtype) if data is not None else None
-
-			elif self.architecture in ['mps']:
-
-				data = mps(data)
-			
-			else:
-
-				data = array(data,dtype=dtype) if data is not None else None
-
-			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
-				if isinstance(samples,integers) and (samples > 0):
-					shape,bounds,scale,seed,dtype = data.shape[:data.ndim-ndim], [0,1], 'normalize', seed, datatype(dtype)
-					samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-				elif not isinstance(samples,arrays):
-					samples = None
-
-				if (samples is not None):
-					data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:data.ndim-ndim]),)*2),samples,data)
-			else:
-				samples = None
-
-		else:
-
-			data = self.data
-
-
-		if self.state is None or self.state() is None:
-			hermitian = None
-			unitary = None
-		elif self.state().ndim == 1:
-			hermitian = None
-			unitary = None
-		elif self.state().ndim == 2:
-			hermitian = None
-			unitary = None
-
-
-		def func(parameters=None,state=None):
-			return self.data
-
-		def gradient(parameters=None,state=None):
-			return 0*self.data
-
-
-		self.data = data
-
-		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
-		self.string = string if string is not None else self.string
-		self.locality = len(self.site) if self.site is not None else self.locality
-
-		self.func = func
-		self.gradient = gradient
-		self.contract = contract
-		self.gradient_contract = gradient_contract
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
-		return
-
-	def __call__(self,parameters=None,state=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.func(parameters=parameters,state=state)
-		else:
-			return self.contract(self.func(parameters=parameters,state=state),state=state)
-
-	def grad(self,parameters=None,state=None):
-		'''
-		Call operator gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-		Returns:
-			data (array): data
-		'''
-		if state is None:
-			return self.gradient(parameters=parameters,state=state)
-		else:
-			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
-
-	def norm(self,data=None):
-		'''
-		Normalize class
-		Args:
-			data (array): data to normalize			
-		Returns:
-			norm (array): data to normalize
-		'''
-
-		if data is None:
-			try:
-				data = self(self.parameters(),self.state())
-			except:
-				data = self.data
-
-		if data is None:
-			return
-		elif not isinstance(data,objects) and not callable(data):
-			return
-
-		norm = None
-		eps = None
-
-		if self.architecture is None or self.architecture in ['array','tensor']:
-			shape = self.shape
-			ndim = self.ndim
-			dtype = self.dtype
-			hermitian = self.hermitian		
-			unitary = self.unitary	
-
-			norm = product(einsum('...i->...',data)) if data is not None else None
-			eps = ones(shape=(),dtype=dtype) if data is not None else None
-
-		elif self.architecture in ['mps']:
-			raise NotImplementedError("%r class norm not implemented for architecture %r"%(self.__class__,self.architecture))
-
-		if norm is None or eps is None:
-			return
-
-		if dtype not in ['complex256','float128']:
-			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
-			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
-
-		return norm
-
-
-class Function(Object):
-	'''
-	State class for Quantum Objects
-	Args:
-		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
-		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	N = None
-	D = None
-
-	default = 'I'	
-	basis = {**{attr: Basis.identity for attr in [default]},**Object.basis,**Probability.basis,**State.basis,}
-
-	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
-
-		self = None
-
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
-
-		classes = [State,Probability,Object]
-
-		for subclass in classes:
-			
-			if any(isinstance(obj,subclass) for obj in [data if data is not None else operator if operator is not None else None]):
-
-				self = subclass(**kwargs)
-
-				break
-
-			if not all(
-				j in subclass.basis for obj in [operator if operator is not None else data if data is not None else None] 
-				if isinstance(obj,(str,*iterables))
-				for k in (obj if isinstance(obj,iterables) else [obj]) 
-				for j in ([k] if k in subclass.basis else k.split(delim) if all(j in subclass.basis for j in k.split(delim)) else [None])):
-				continue
-
-			if cls in [State]:
-
-				self = subclass(**kwargs)
-
-			else:
-
-				for attr in subclass.__dict__:
-					setattr(cls,attr,getattr(subclass,attr))
-
-				self = subclass.__new__(cls,**kwargs)
-
-				subclass.__init__(self,**kwargs)
-
-			break
-
-		assert (self is not None),'TODO: All operators not in same class'
-
-		return self
-
-	def __init__(self,*args,**kwargs):
-		return
 
 
 class Operator(Object):
@@ -3724,13 +3283,14 @@ class Objects(Object):
 		elif isinstance(data,dict):
 			data = {i: data[i] for i in data if i in self.data}
 		for i in data:
-			if data[i] is None:
-				self.data[i] = data[i]
+			if data[i] is None or data[i] is False:
+				self.data.pop(i)
+				self.data[i] = None
 			elif isinstance(data[i],dict):
 				self.data[i].init(**data[i])
 			elif isinstance(data[i],type(self.data[i])):
 				self.data[i] = data[i]
-			else:
+			elif self.data[i] is not None:
 				self.data[i].init(data=data[i])
 
 
@@ -4683,23 +4243,19 @@ class Module(System):
 	'''
 
 	defaults = dict(
-		model=None,data=None,
+		model=None,
 		state=None,parameters=None,variable=False,
-		lattice=None,
+		data=None,lattice=None,
 		func=None,gradient=None,
 		options=None,system=None,
 		)
 
-	def __init__(self,model=None,
-		N=None,M=None,d=None,
-		lattice=None,parameters=None,
-		system=None,**kwargs):
+	def __init__(self,model=None,state=None,N=None,M=None,d=None,
+		lattice=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,state=state,
-			N=N,M=M,d=d,
-			lattice=lattice,parameters=parameters,
-			system=system),
+			model=model,state=state,N=N,M=M,d=d,
+			lattice=lattice,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
@@ -4755,11 +4311,11 @@ class Module(System):
 
 		# Set functions
 		def func(parameters,state):
-			state = self.data.probability(state=state)
+			state = self.data.probability(parameters=parameters,state=state)
 			for i in range(self.M):
-				for site in self.lattice(self.structure):
-					state = self.data(state,site=site,**self.options)
-			state = self.data.amplitude(state=state)
+				for where in self.lattice(self.structure):
+					state = self.data(parameters=parameters,state=state,where=where,**self.options)
+			state = self.data.amplitude(parameters=parameters,state=state)
 
 		def grad(parameters,state):
 			return None
@@ -4810,7 +4366,7 @@ class Module(System):
 
 		data.init(model=model,parameters=parameters,state=state)
 
-		assert allclose(tensorprod([*state]),data.amplitude(parameters,data.probability(parameters,state,**kwargs))), "Incorrect probability,amplitude state()"
+		assert allclose(tensorprod([*state]),data.amplitude(parameters,data.probability(parameters,state,**kwargs))), 'Incorrect probability,amplitude state()'
 
 		self.model = model
 		self.state = state

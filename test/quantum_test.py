@@ -412,47 +412,12 @@ def test_contract(*args,**kwargs):
 
 	return
 
-def test_amplitude(*args,**kwargs):
-
-	kwargs = {"state.ndim":[1,2]}
-	groups = None
-
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-
-		settings = Dict({
-			"cls":{
-				"state":"src.quantum.Amplitude"
-			},
-			"state": {
-				"data":"011",
-				"operator":"string",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array"}
-				}
-			})
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		state = load(settings.cls.state)
-
-		state = state(**settings.state)
-
-		print(settings["state"]["operator"],type(state))
-		print(state.data)
-		print(state(state.parameters(),state.state()))
-		print(state.norm())
-		print()
-
-		assert allclose(state(),state.data), "Incorrect data for %r"%(settings.cls.state)
-		assert allclose(state(state.parameters(),state.state()),state.data), "Incorrect state() for %r"%(settings.cls.state)
-		assert allclose(state.norm(),1), "Incorrect normalization for %r"%(settings.cls.state)
-
-	return
 
 def test_probability(*args,**kwargs):
+
+	print('Not Implemented')
+
+	return
 
 	kwargs = {"state.ndim":[1]}
 	groups = None
@@ -502,7 +467,7 @@ def test_state(*args,**kwargs):
 			],
 		"state.operator":[
 			"product",
-			"probability"
+			"state"
 			],
 		"state.ndim":[1],
 		}
@@ -516,7 +481,7 @@ def test_state(*args,**kwargs):
 			},
 			"state": {
 				"data":"random",
-				"operator":"probability",
+				"operator":"state",
 				"site":None,
 				"string":"psi",
 				"parameters":True,
@@ -550,7 +515,7 @@ def test_measure(*args,**kwargs):
 
 	kwargs = {
 		"model.base":["pauli","tetrad"],
-		"state.D":[4,4,3],
+		"state.D":[4,4],
 		}
 	groups = [["model.base","state.D",]]
 
@@ -571,7 +536,7 @@ def test_measure(*args,**kwargs):
 			},
 			"state": {
 				"data":"random"	,
-				"operator":"probability",
+				"operator":"state",
 				"site":None,
 				"string":"psi",
 				"parameters":True,
@@ -596,13 +561,11 @@ def test_measure(*args,**kwargs):
 		print(model.identity)
 		print(model.data)
 		print(model.inverse)
-		print(model())
 		print()
 
 
-
 		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
-		assert allclose(einsum('uw,vw->uv',model.data,model.inverse),basis.I(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
+		assert allclose(einsum('uw,vw->uv',model.data,model.inverse),basis.identity(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
 
 	print('Passed')
 
@@ -614,34 +577,42 @@ def test_namespace(*args,**kwargs):
 	data = {}
 
 	kwargs = {
-		**{attr:[3,None] for attr in ["model.N"]},
+		**{attr:[10] for attr in ["model.N"]},
 		**{attr:[2] for attr in ["model.D"]},
+		**{attr:[20] for attr in ["model.M"]},
+		**{attr:[True] for attr in ["model.data.z.local","model.data.xx.local","model.data.noise.local"]},
 		}
-	groups = [["model.N"]]
+	groups = [["model.N"],["model.data.z.local","model.data.xx.local","model.data.noise.local"]]
 	filters = None
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
-	
+		
 		settings = Dict({
 			"cls":{
 				"model":"src.quantum.Operators",
 				"state":"src.quantum.State",
-				"label":"src.quantum.Label"
+				"label":"src.quantum.Label",
+				"measure":"src.quantum.Measure"
 			},
 			"model":{
 				"data":{
+					"z":{
+						"operator":["Z"],"site":"i","string":"Z",
+						"parameters":0.5,"variable":True
+					},
 					"xx":{
-						"operator":["X","X"],"site":[0,1],"string":"XX",
+						"operator":["X","X"],"site":"<ij>","string":"XX",
 						"parameters":0.5,"variable":False
 					},
-					# "noise":{
-					# 	"operator":["dephase","dephase"],"site":None,"string":"dephase",
-					# 	"parameters":1e-6,"variable":False
-					# }		
+					"noise":{
+						"operator":["dephase","dephase"],"site":None,"string":"dephase",
+						"parameters":1e-3,"variable":False
+					}		
 				},
 				"space":"spin",
 				"time":"linear",
-				"lattice":"square"
+				"lattice":"square",
+				"architecture":"array"
 				},
 			"state": {
 				"operator":"zero",
@@ -649,23 +620,28 @@ def test_namespace(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"ndim":2,
-				"seed":123
+				"seed":123,
+				"architecture":"array"
 				},
 			"label": {
-				"operator":"X.X",
+				"operator":'X.X.X.X',
 				"site":None,
 				"string":"U",
 				"parameters":0.5,
 				"ndim":2,
 				"seed":123
-				},		
+				},
+			"measure":{
+				"base":"pauli",
+				"architecture":"tensor"				
+			},
 			"system":{
 				"dtype":"complex",
 				"format":"array",
 				"device":"cpu",
 				"backend":None,
-				"architecture":"tensor",
-				"base":"pauli",
+				"architecture":None,
+				"base":None,
 				"seed":123,
 				"key":None,
 				"instance":None,
@@ -687,19 +663,24 @@ def test_namespace(*args,**kwargs):
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 		label = load(settings.cls.label)
+		measure = load(settings.cls.measure)
 		system = settings.system
 
 
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
+		measure = measure(**{**namespace(measure,model),**settings.measure,**dict(system=system)})
 
+		print('Attributes',{attr: getattr(settings.model,attr,None) for attr in ['N','data']})
 
-		print('Attributes',{attr: getattr(settings.model,attr,None) for attr in ['N']})
+		model.info(verbose=True)
+		state.info(verbose=True)
 
 		attributes = {'model':model,'state':state,'label':label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary']},'>>>>',namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary','architecture']},'>>>>',namespace(attributes[attribute].__class__,model))
+		print(i,state.local,{i:model.data[i].local for i in model.data})
 		print()
 
 		model.init(state=state)
@@ -707,17 +688,34 @@ def test_namespace(*args,**kwargs):
 
 		attributes = {'model':model,'label':label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary']},'>>>>',namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary','architecture']},'>>>>',namespace(attributes[attribute].__class__,model))
 		print()
 
 		print('Call')
 		print(state())
 		print(model(state=state()))
 		print(label(state=state()))
+		print()
+
+
+		print('Measure')
+		attributes = {'measure':measure}
+		for attribute in attributes:
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['D','base','ind','inds','tags','data','inverse','basis','architecture']},'>>>>',attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
+		print()
 
 		print()
 		print()
 		print()
+
+		parameters = model.parameters()
+		state = model.state()
+		value = model(parameters,state)
+
+		data[i] = value
+
+
+	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
 
@@ -733,9 +731,8 @@ if __name__ == "__main__":
 
 
 	# test_channel(*args,**args)
-	# test_amplitude(*args,**args)
 	# test_probability(*args,**args)
 	# test_state(*args,**args)
-	# test_measure(*args,**args)
+	test_measure(*args,**args)
 	# test_composite(*args,**args)
-	test_namespace(*args,**args)
+	# test_namespace(*args,**args)

@@ -36,7 +36,6 @@ def main(settings,*args,**kwargs):
 
 	model.info(verbose=True)
 	state.info(verbose=True)
-	exit()
 
 	# Module
 	module = module(**{**namespace(module,model),**namespace(module,state),**settings.module,**dict(model=model,state=state,system=system)})

@@ -157,7 +157,7 @@ def namespace(cls,signature=None,init=False,**kwargs):
 		return attrs
 	elif attrs is not None:
 		signature = {attr: getattr(signature,attr) for attr in dir(signature) if not (attr.startswith('__') and attr.endswith('__'))} if not isinstance(signature,dict) else signature
-		return {attr: signature[attr] for attr in signature if attr in attrs}
+		return {attr: signature[attr] for attr in signature if attr in attrs and not callable(attrs.get(attr))}
 	else:
 		return attrs
 

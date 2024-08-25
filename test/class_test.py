@@ -276,6 +276,11 @@ def test_initialization(path,tol):
 	label.init(state=state)	
 	model.init(state=state)
 
+	print('First')
+	print(model.state)
+	print(label.state)
+	print()
+
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
@@ -298,12 +303,15 @@ def test_initialization(path,tol):
 	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)},label=metric.label)
 
 
-	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else False for i in model.data},label=False)
+	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else None for i in model.data},label=False)
 
-	
 	label.init(state=tmp.state)	
 
 	model.init(state=tmp.state,data=tmp.data)
+
+	print('second')
+	print(model.state)
+	print(label.state)
 
 	metric.init(model=model,label=label)
 
@@ -877,10 +885,10 @@ if __name__ == '__main__':
 
 	tol = 5e-8 
 
-	test_object(path,tol)
+	# test_object(path,tol)
 	# test_logger(path,tol)
 	# test_data(path,tol)
-	# test_initialization(path,tol)
+	test_initialization(path,tol)
 	# test_hessian(path,tol)
 	# test_model(path,tol)
 

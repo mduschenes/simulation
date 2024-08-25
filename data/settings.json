@@ -14,7 +14,10 @@
 	"N":2,
 	"M":2,
 	"d":1,
+	"lattice":"square",
 	"structure":"<ij>",
+	"architecture":null,
+	"base":"pauli",
 	"options":{"contract":"swap+split","max_bond":null,"cutoff":1e-20}	
 },
 "model":{
@@ -26,30 +29,31 @@
 		"noise":{
 			"operator":["dephase","dephase"],"site":null,"string":"dephase",
 			"parameters":1e-6,"variable":false
-		}		
+		}
 	},
 	"D":2,
+	"local":true,
 	"space":"spin",
 	"time":"linear",
-	"lattice":"square"
+	"lattice":"square",
+	"architecture":"array"
 	},
 "state": {
-	"operator":"zero",
+	"operator":["zero"],
 	"site":null,
 	"string":"psi",
-	"parameters":true,
-	"N":null,
+	"parameters":null,
 	"D":2,
 	"ndim":2,
-	"seed":123
+	"local":true
 	},
 "system":{
 	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":null,
-	"architecture":"tensor",
-	"base":"pauli",
+	"architecture":null,
+	"base":null,
 	"seed":123,
 	"key":null,
 	"instance":null,

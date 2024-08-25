@@ -467,6 +467,29 @@ def insertion(obj,index,value):
 	return obj
 
 
+def removal(obj,index):
+	'''
+	Remove value of obj at index
+	Args:
+		obj (iterable[object],dict): Object to insert into
+		index (int): Index to insert into
+	Returns:
+		obj (iterable[object],dict): Object with inserted value at index
+	'''
+
+	if isinstance(obj,dict):
+		if index < 0:
+			return obj
+		obj = type(obj)({
+			**{key: obj[key] for i,key in enumerate(obj) if i < index},
+			**{key: obj[key] for i,key in enumerate(obj) if i > index}
+			})
+	else:
+		obj.remove(index,None)
+
+	return obj
+
+
 def finfo(dtype=float):
 	'''	
 	Get machine precision information for dtype
@@ -3782,19 +3805,21 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None):
+def contraction(data=None,state=None,where=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
-		data (array,tensor): Array of data of shape (n,n)
-		state (array,tensor): state of shape (n,) or (n,n)
-		where (int,str,iterable[int,str]): Where data contracts with state
+		data (array,tensor): data
+		state (array,tensor): state
+		where (int,str,iterable[int,str]): indices of contraction
+		kwargs (dict): Additional keyword arguments for contraction
 	Returns:
-		func (callable): contracted data and state with signature func(data,state,where=None)
+		func (callable): contracted data and state with signature func(data,state,where=where)
 	'''
-	tag = None
 
-	def func(data,state,where=None):
+	# TODO: Implement data = swap(data,permute=True) with data and shape with shape (D,D,...D,D) to reduce swaps throughout contractions
+
+	def func(data,state,where=where):
 		return data
 
 	if state is None:
@@ -3810,29 +3835,29 @@ def contraction(data=None,state=None,where=None):
 
 		if state is None:
 		
-			def func(data,state,where=None):
+			def func(data,state,where=where):
 				return data
 
 		elif isinstance(state,arrays):
 			
 			if state.ndim == 1:
 
-				def func(data,state,where=None):
+				def func(data,state,where=where):
 					return data
 	
 			elif state.ndim == 2:
 				
-				def func(data,state,where=None):
+				def func(data,state,where=where):
 					return data
 	
 		elif isinstance(state,tensors):
 
-			def func(data,state,where=None):
+			def func(data,state,where=where):
 				return data
 
 	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
 	
-		def func(data,state,where=None):
+		def func(data,state,where=where):
 			return data(state)
 
 	elif isinstance(data,arrays):
@@ -3841,43 +3866,43 @@ def contraction(data=None,state=None,where=None):
 
 			if state is None:
 			
-				def func(data,state,where=None):
+				def func(data,state,where=where):
 					return data
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state,where=None):
+					def func(data,state,where=where):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state,where=None):
+					def func(data,state,where=where):
 						return data
 
 			elif isinstance(state,tensors):
 
-				def func(data,state,where=None):
+				def func(data,state,where=where):
 					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 1:
 			
 			if state is None:
 			
-				def func(data,state,where=None):
+				def func(data,state,where=where):
 					return data
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state,where=None):
+					def func(data,state,where=where):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state,where=None):
+					def func(data,state,where=where):
 						return data
 
 			elif isinstance(state,tensors):
@@ -3890,69 +3915,137 @@ def contraction(data=None,state=None,where=None):
 
 				state = data
 
-				subscripts = 'ij,kj->ik'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-				
-				def func(data,state,where=None):
-					return einsummation(data,state)
+				if where is None:
+					subscripts = 'ij,jk->ik'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state,where=where):
+						return einsummation(data,state)
+
+				else:
+					subscripts = 'ij,jk->ik'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state,where=where):
+						return einsummation(data,state)
+
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 					
-					subscripts = 'ij,j->i'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(data,state,where=None):
-						return einsummation(data,state)
+					if where is None:
+						subscripts = 'ij,j->i'
+						shapes = (data.shape,state.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						def func(data,state,where=where):
+							return einsummation(data,state)
+					else:
+						subscripts = 'ij,j...->i...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						einsummation = einsum(subscripts,*shapes)
+						
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(data,swapper(state)))
+
 
 				elif state.ndim == 2:
-					
-					subscripts = 'ij,jk,lk->il'
-					shapes = (data.shape,state.shape,data.shape)
-					einsummation = einsum(subscripts,*shapes)
-					def func(data,state,where=None):
-						return einsummation(data,state,conjugate(data))
+				
+					if where is None:
+						subscripts = 'ij,jk,lk->il'
+						shapes = (data.shape,state.shape,data.shape)
+						einsummation = einsum(subscripts,*shapes)
+						def func(data,state,where=where):
+							return einsummation(data,state,conjugate(data))
+					else:
+						subscripts = 'ij,jk...,lk->il...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(data,swapper(state),conjugate(data)))							
 
 			elif isinstance(state,tensors):
-				def func(data,state,where=None):
+				
+				def func(data,state,where=where):
 					return state.gate(data,where=where)
-				tag = id(func)
 
 		elif data.ndim == 3:
 
 			if state is None:
-				
-				state = data
 
-				subscripts = 'uij,...j->i...'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
+				state = data
 				
-				def func(data,state,where=None):
-					return einsummation(data,state)
+				if where is None:
+					subscripts = 'uij,...j->i...'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state,where=where):
+						return einsummation(data,state)
+
+				else:
+					subscripts = 'uij,...j->i...'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(data,state,where=where):
+						return einsummation(data,state)
+
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 					
-					subscripts = 'uij,j->i'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
-				
-					def func(data,state,where=None):
-						return einsummation(data,state)
+					if where is None:
+						subscripts = 'uij,j->i'
+						shapes = (data.shape,state.shape)
+						einsummation = einsum(subscripts,*shapes)
+					
+						def func(data,state,where=where):
+							return einsummation(data,state)
+					else:
+						subscripts = 'uij,j...->i...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						einsummation = einsum(subscripts,*shapes)
+						
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(data,swapper(state)))
+
 
 				elif state.ndim == 2:
-					
-					subscripts = 'uij,jk,ulk->il'
-					shapes = (data.shape,state.shape,data.shape)
-					einsummation = einsum(subscripts,*shapes)
 
-					def func(data,state,where=None):
-						return einsummation(data,state,conjugate(data))
+					if where is None:					
+						subscripts = 'uij,jk,ulk->il'
+						shapes = (data.shape,state.shape,data.shape)
+						einsummation = einsum(subscripts,*shapes)
+
+						def func(data,state,where=where):
+							return einsummation(data,state,conjugate(data))
+
+					else:
+						subscripts = 'uij,jk...,ulk->il...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						einsummation = einsum(subscripts,*shapes)
+
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(data,swapper(state),conjugate(data)))
+
 
 			elif isinstance(state,tensors):
 
@@ -3961,7 +4054,7 @@ def contraction(data=None,state=None,where=None):
 	elif isinstance(data,tensors):
 
 		if state is None:
-			def func(data,state,where=None):
+			def func(data,state,where=where):
 				return data
 		
 		elif isinstance(state,arrays):
@@ -3973,7 +4066,7 @@ def contraction(data=None,state=None,where=None):
 
 		elif isinstance(state,tensors):
 
-			def func(data,state,where=None):
+			def func(data,state,where=where):
 				return state.gate(data,where=where)
 
 	func = wrapper(func) if wrapper is not None else func
@@ -3981,18 +4074,21 @@ def contraction(data=None,state=None,where=None):
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None):
+def gradient_contraction(data=None,state=None,where=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
-		data (array,tensor): Array of data of shape (n,n)
-		state (array,tensor): state of shape (n,) or (n,n)
-		where (int,str,iterable[int,str]): Where data contracts with state
+		data (array,tensor): data
+		state (array,tensor): state
+		where (int,str,iterable[int,str]): indices of contraction
+		kwargs (dict): Additional keyword arguments for contraction		
 	Returns:
-		func (callable): contracted data and state with signature func(grad,data,state,where=None)
+		func (callable): contracted data and state with signature func(grad,data,state,where=where)
 	'''
 
-	def func(grad,data,state,where=None):
+	# TODO: Implement data = swap(data,permute=True) with data and shape with shape (D,D,...D,D) to reduce swaps throughout contractions
+
+	def func(grad,data,state,where=where):
 		return 0
 
 	if state is None:
@@ -4008,19 +4104,19 @@ def gradient_contraction(data=None,state=None,where=None):
 		
 		if state is None:
 		
-			def func(grad,data,state,where=None):
+			def func(grad,data,state,where=where):
 				return grad
 
 		elif isinstance(state,arrays):
 
 			if state.ndim == 1:
 
-				def func(grad,data,state,where=None):
+				def func(grad,data,state,where=where):
 					return grad
 
 			elif state.ndim == 2:
 				
-				def func(grad,data,state,where=None):
+				def func(grad,data,state,where=where):
 					return grad
 	
 		elif isinstance(state,tensors):
@@ -4037,19 +4133,19 @@ def gradient_contraction(data=None,state=None,where=None):
 
 			if state is None:
 			
-				def func(grad,data,state,where=None):
+				def func(grad,data,state,where=where):
 					return grad
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state,where=None):
+					def func(grad,data,state,where=where):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state,where=None):
+					def func(grad,data,state,where=where):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4060,19 +4156,19 @@ def gradient_contraction(data=None,state=None,where=None):
 			
 			if state is None:
 			
-				def func(grad,data,state,where=None):
+				def func(grad,data,state,where=where):
 					return grad
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state,where=None):
+					def func(grad,data,state,where=where):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state,where=None):
+					def func(grad,data,state,where=where):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4085,33 +4181,68 @@ def gradient_contraction(data=None,state=None,where=None):
 
 				state = data
 
-				subscripts = 'ij,kj->ik'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-				
-				def func(grad,data,state,where=None):
-					return einsummation(grad,state)
+				if where is None:
+					subscripts = 'ij,kj->ik'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state,where=where):
+						return einsummation(grad,state)
+
+				else:
+					subscripts = 'ij,kj->ik'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state,where=where):
+						return einsummation(grad,state)					
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					subscripts = 'ij,j->i'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(grad,data,state,where=None):
-						return einsummation(grad,state)
+					if where is None:
+						subscripts = 'ij,j->i'
+						shapes = (data.shape,state.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						def func(grad,data,state,where=where):
+							return einsummation(grad,state)
+
+					else:
+						subscripts = 'ij,j...->i...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						einsummation = einsum(subscripts,*shapes)
+
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(grad,swapper(state)))
+
 
 				elif state.ndim == 2:
 					
-					subscripts = 'ij,jk,lk->il'
-					shapes = (data.shape,state.shape,data.shape)
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(grad,data,state,where=None):
-						out = einsummation(grad,state,conjugate(data))
-						return out + dagger(out)
+					if where is None:
+						subscripts = 'ij,jk,lk->il'
+						shapes = (data.shape,state.shape,data.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						def func(grad,data,state,where=where):
+							out = einsummation(grad,state,conjugate(data))
+							return out + dagger(out)
+
+					else:
+						subscripts = 'ij,jk...,lk->il...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						einsummation = einsum(subscripts,*shapes)
+
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							out = _swapper(einsummation(grad,swapper(state),conjugate(data)))
+							return out + dagger(out)				
 
 			elif isinstance(state,tensors):
 
@@ -4123,33 +4254,68 @@ def gradient_contraction(data=None,state=None,where=None):
 
 				state = data
 
-				subscripts = 'uij,...j->i...'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-				
-				def func(grad,data,state,where=None):
-					return einsummation(grad,state)
+				if where is None:
+					subscripts = 'uij,...j->i...'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state,where=where):
+						return einsummation(grad,state)
+
+				else:
+					subscripts = 'uij,...j->i...'
+					shapes = (data.shape,state.shape)
+					einsummation = einsum(subscripts,*shapes)
+					
+					def func(grad,data,state,where=where):
+						return einsummation(grad,state)
+
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 					
-					subscripts = 'uij,j->i'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(grad,data,state,where=None):
-						return einsummation(grad,state)
+					if where is None:
+						subscripts = 'uij,j->i'
+						shapes = (data.shape,state.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						def func(grad,data,state,where=where):
+							return einsummation(grad,state)
+
+					else:
+						subscripts = 'uij,j...->i...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						einsummation = einsum(subscripts,*shapes)
+
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							return _swapper(einsummation(grad,swapper(state)))
 
 				elif state.ndim == 2:
 					
-					subscripts = 'uij,jk,ulk->il'
-					shapes = (data.shape,state.shape,data.shape)
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(grad,data,state,where=None):
-						out = einsummation(grad,state,conjugate(data))
-						return out + dagger(out)
+					if where is None:
+						subscripts = 'uij,jk,ulk->il'
+						shapes = (data.shape,state.shape,data.shape)
+						einsummation = einsum(subscripts,*shapes)
+						
+						def func(grad,data,state,where=where):
+							out = einsummation(grad,state,conjugate(data))
+							return out + dagger(out)
+
+					else:
+						subscripts = 'uij,jk...,ulk->il...'
+						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						einsummation = einsum(subscripts,*shapes)
+
+						swapper = swap(state,**kwargs,transform=True,execute=False)
+						_swapper = swap(swap(state,**kwargs,transform=True,execute=True),**kwargs,transform=False,execute=False)
+						
+						def func(data,state,where=where):
+							out = _swapper(einsummation(grad,swapper(state),conjugate(data)))
+							return out + dagger(out)						
 
 			elif isinstance(state,tensors):
 

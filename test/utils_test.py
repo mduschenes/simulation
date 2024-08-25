@@ -28,7 +28,7 @@ from src.utils import arrays,scalars,integers,floats,pi
 
 from src.optimize import Metric
 
-from src.iterables import getter,setter,permutations
+from src.iterables import getter,setter,permutations,namespace
 from src.io import load,dump,join,split,edit
 
 
@@ -837,6 +837,47 @@ def test_action(path=None,tol=None):
 
 	return
 
+def test_inheritance(*args,**kwargs):
+
+	class Parent(object):
+		attr = 1
+		other = 2
+		def __init__(self,*args,**kwargs):
+			super().__init__(*args,**kwargs)
+			return
+
+	class Child(Parent):
+		attr = -1
+		def __init__(self,*args,**kwargs):
+			super().__init__(*args,**kwargs)
+			return
+
+	class New(Child):
+		pass
+
+	class Factory(Parent):
+		def __new__(cls,name,*args,**kwargs):
+			if name in ['parent']:
+				self = Parent(*args,**kwargs)
+			elif name in ['child']:
+				self = Child(*args,**kwargs)
+			elif name in ['new']:
+				self = New(*args,**kwargs)				
+			else:
+				self = None
+			return self
+
+	parent = Parent()
+	child = Child()
+	test = Factory(name='new')
+
+	print(Parent,parent.__class__,namespace(Parent,parent))
+	print(Child,parent.__class__,namespace(Child,parent))
+	print(Factory,test.__class__,namespace(New,parent))
+
+	return
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -849,5 +890,6 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	test_reshape(path,tol)
-	test_action(path,tol)
+	# test_reshape(path,tol)
+	# test_action(path,tol)
+	test_inheritance(path,tol)
