@@ -223,22 +223,42 @@ def test_data(path,tol):
 
 	N = model.N
 	P = model.P
+	locality = model.locality
+	local = model.local
 
-	string = [
-		*[[O if k in [i] else default for k in range(N)]
-			for O in ['X','Y','Z']
-			for i in range(N)
-			],
-		*[[O if k in [i,j] else default for k in range(N)]
-			for O in ['Z']
-			for i in range(N)
-			for j in range(N)
-			if i<j
-			],
-		]
+	if local:
+		string = [
+			*[[O for k in range(N) if k in [i]]
+				for O in ['X','Y','Z']
+				for i in range(N)
+				],
+			*[[O for k in range(N) if k in [i,j] ]
+				for O in ['Z']
+				for i in range(N)
+				for j in range(N)
+				if i<j
+				],
+			]
+	else:
+		string = [
+			*[[O if k in [i] else default for k in range(N)]
+				for O in ['X','Y','Z']
+				for i in range(N)
+				],
+			*[[O if k in [i,j] else default for k in range(N)]
+				for O in ['Z']
+				for i in range(N)
+				for j in range(N)
+				if i<j
+				],
+			]
 
-	data = [tensorprod(array([basis[i] for i in s])) for s in string]
-	identity = tensorprod(array([basis[default]]*N))
+	if local:
+		data = [tensorprod(array([basis[i] for i in s])) for s in string]
+		identity = tensorprod(array([basis[default]]*N))
+	else:
+		data = [tensorprod(array([basis[i] for i in s])) for s in string]
+		identity = tensorprod(array([basis[default]]*N))		
 
 	assert allclose(model.identity,identity), "Incorrect model identity"
 
@@ -289,7 +309,7 @@ def test_initialization(path,tol):
 	def copier(model,metric,state,label):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(model.parameters()),state=state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			model=Dictionary(func=model.__call__,data=model(model.parameters(),model.state()),state=state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
 			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
 			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
 			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
@@ -310,8 +330,8 @@ def test_initialization(path,tol):
 	model.init(state=tmp.state,data=tmp.data)
 
 	print('second')
-	print(model.state)
-	print(label.state)
+	print(model.state())
+	print(label.state())
 
 	metric.init(model=model,label=label)
 
@@ -445,9 +465,10 @@ def test_hessian(path,tol):
 def test_fisher(path,tol):
 
 	out = []
-	permutations = {'state.operator':['zero'],'state.ndim':[1,2]}
+	permutations = {'state.operator':['zero'],'state.ndim':[2,1],'system.options.shape':[[2,3,2],[2,3,1]]}
+	groups = [['state.ndim','system.options.shape']]
 
-	for kwargs in permuter(permutations):
+	for kwargs in permuter(permutations,groups=groups):
 
 		print(kwargs)
 
@@ -888,11 +909,11 @@ if __name__ == '__main__':
 	# test_object(path,tol)
 	# test_logger(path,tol)
 	# test_data(path,tol)
-	test_initialization(path,tol)
+	# test_initialization(path,tol)
 	# test_hessian(path,tol)
 	# test_model(path,tol)
 
-	# test_fisher(path,tol)
+	test_fisher(path,tol)
 	# test_object(path,tol)
 	# test_data(path,tol)
 

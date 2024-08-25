@@ -189,6 +189,6 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 
 	tol = 5e-8 
-	test_metric(path,tol)
+	# test_metric(path,tol)
 	# test_objective(path,tol)
-	# test_grad(path,tol)
+	test_grad(path,tol)

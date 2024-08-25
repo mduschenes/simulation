@@ -44,6 +44,7 @@ class System(Dictionary):
 		architecture (str): architecture for class
 		base (str): base for class
 		unit (int,float): units of values
+		options (dict): options for system
 		verbose (bool,str): Verbosity of class	
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
@@ -58,7 +59,8 @@ class System(Dictionary):
 			'backend':None,
 			'architecture':None,
 			'base':None,
-			'unit':None,			
+			'unit':None,
+			'options':{},			
 			'seed':None,
 			'key':None,
 			'instance':None,
@@ -79,6 +81,10 @@ class System(Dictionary):
 
 			attr = 'backend'
 			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
+
+			attr = 'options'
+			kwargs[attr] = defaults.get(attr) if not isinstance(kwargs.get(attr,defaults.get(attr)),dict) else kwargs.get(attr)
+
 			
 			attr = 'instances'
 			if kwargs.get(attr) is not None:
