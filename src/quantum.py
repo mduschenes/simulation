@@ -428,7 +428,7 @@ class Basis(Dict):
 class Measure(System):
 
 	D = None
-	
+
 	basis = None
 
 	ind = ('k{}',)
@@ -811,7 +811,8 @@ class Measure(System):
 
 				state = state
 
-			state = mps(state,**kwargs)
+			options = self.options if self.options is not None else {}
+			state = mps(state,**options)
 
 		elif self.architecture in ['mps']:
 
@@ -905,7 +906,31 @@ class Measure(System):
 			data (array): POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		if self.architecture in ['array']:
+		if self.architecture is None:
+
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+
+			if model is None:
+				data = None
+			else:
+				subscripts = 'uij,wij,wv->uv'
+				shapes = (basis.shape,basis.shape,inverse.shape)
+				einsummation = einsum(subscripts,*shapes)
+				model = vmap(model,in_axes=(None,0),out_axes=0)
+				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+					conjugate(basis),
+					model(parameters,state),
+					inverse)
+				data = contract(parameters=parameters,state=basis)			
+
+		elif self.architecture in ['array']:
 
 			N = len(state) if state is not None else None
 
@@ -953,6 +978,30 @@ class Measure(System):
 					model(parameters,state),
 					inverse)
 				data = contract(parameters=parameters,state=basis)
+
+		else:
+
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+
+			if model is None:
+				data = None
+			else:
+				subscripts = 'uij,wij,wv->uv'
+				shapes = (basis.shape,basis.shape,inverse.shape)
+				einsummation = einsum(subscripts,*shapes)
+				model = vmap(model,in_axes=(None,0),out_axes=0)
+				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+					conjugate(basis),
+					model(parameters,state),
+					inverse)
+				data = contract(parameters=parameters,state=basis)			
 
 		return data
 
@@ -3375,6 +3424,7 @@ class Objects(Object):
 			data = {i: None for i in self.data}
 		elif isinstance(data,dict):
 			data = {i: data[i] for i in data if i in self.data}
+
 		for i in data:
 			if data[i] is None or data[i] is False:
 				self.data.pop(i)
@@ -3632,6 +3682,7 @@ class Objects(Object):
 
 		# Lattice sites
 		sites = self.lattice # sites types on lattice
+		locality = self.N
 		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
 		# Get number of operators
@@ -3662,15 +3713,27 @@ class Objects(Object):
 			if tmp[attr] is None:
 				key = None
 			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
-				key = tmp[attr]
-				tmp[attr] = indices[tmp[attr]]
+				if len(indices[tmp[attr]]) > locality:
+					key = None
+					tmp[attr] = None
+				else:
+					key = tmp[attr]
+					tmp[attr] = indices[tmp[attr]]
 			elif isinstance(tmp[attr],scalars):
-				tmp[attr] = [tmp[attr]]
+				if tmp[attr] > locality:
+					key = None
+					tmp[attr] = None
+				else:
+					tmp[attr] = [tmp[attr]]
 			elif not isinstance(tmp[attr],scalars):
-				for i in tmp[attr]:
-					if i in indices:
-						key = i
-						tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
+				if any((i in indices and len(indices[tmp[attr]]) > locality) or (i > locality) for i in tmp[attr]):
+					key = None
+					tmp[attr] = None
+				else:
+					for i in tmp[attr]:
+						if i in indices:
+							key = i
+							tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
 			if key is not None:
 				for i,index in enumerate(sites(key)):
 					value = {}
@@ -3777,6 +3840,9 @@ class Objects(Object):
 
 
 		# Set class attributes
+		if not all(isinstance(self.data[i],Object) for i in self.data):
+			self.data = Dictionary()
+		
 		self.extend(data=data,**objs,kwargs=kwargs)
 
 		return
@@ -3989,9 +4055,6 @@ class Objects(Object):
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
-
-		if not all(isinstance(self.data[i],Object) for i in self.data):
-			self.data = Dictionary()
 
 		if index == -1:
 			index = len(self)
@@ -4327,11 +4390,12 @@ class Module(System):
 	'''
 	Class for Module
 	Args:
-		model (Object,iterable[Object]): model for module
+		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
 		N (int): Size of system
 		M (int): Duration of system
 		d (int): Spatial dimension of system		
 		lattice (str,dict,Lattice): Type of lattice	
+		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -4339,18 +4403,19 @@ class Module(System):
 
 	defaults = dict(
 		model=None,
+		N=None,M=None,d=None,
 		state=None,parameters=None,variable=False,
-		data=None,lattice=None,
+		data=None,measure=None,lattice=None,
 		func=None,gradient=None,
 		system=None,
 		)
 
-	def __init__(self,model=None,state=None,N=None,M=None,d=None,
-		lattice=None,parameters=None,system=None,**kwargs):
+	def __init__(self,model=None,N=None,M=None,d=None,lattice=None,
+		state=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,state=state,N=N,M=M,d=d,
-			lattice=lattice,parameters=parameters,system=system),
+			model=model,N=N,M=M,d=d,lattice=lattice,
+			state=state,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
@@ -4365,46 +4430,54 @@ class Module(System):
 		''' 
 		Setup class functions
 		Args:
-			model (Object,iterable[Object]): model for module
+			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
 			state (State): state for module
 			parameters (dict,array,Parameters): parameters of class
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
+
 		# Set attributes
 		self.lattices()
-
-		self.setup(model,state,parameters)
-
 
 		# Set model
 		model = self.model if model is None else model
 
 		self.model = model
 
+
+		# Set parameters
+		parameters = self.parameters if parameters is None else parameters
+		if parameters is None or not callable(parameters):
+			def parameters(parameters=parameters):
+				return parameters
+		
+		self.parameters = parameters
+
+
 		# Set state
 		state = self.state if state is None else state
 
 		if state is None or not callable(state):
-			def state(parameters=None,state=state):
+			parameters = self.parameters()
+			def state(parameters=parameters,state=state):
 				return state
 		
 		self.state = state
 
-
-		# Set parameters
-		parameters = self.parameters if parameters is None else parameters
-
-		self.parameters = parameters
+		# Setup
+		self.setup()
 
 
 		# Set functions
 		def func(parameters,state):
-			state = self.data.probability(parameters=parameters,state=state)
+			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+			state = self.measure.probability(parameters=parameters,state=state)
 			for i in range(self.M):
-				for where in self.lattice(self.structure):
-					state = self.data(parameters=parameters,state=state,where=where,**self.options)
-			state = self.data.amplitude(parameters=parameters,state=state)
+				for data in self.data:
+					state = data(parameters=parameters,state=state)
+			state = self.measure.amplitude(parameters=parameters,state=state)
+			return state
 
 		def grad(parameters,state):
 			return None
@@ -4427,39 +4500,65 @@ class Module(System):
 		'''
 		Setup class
 		Args:
-			model (Object,iterable[Object]): model for module
+			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
 			state (State): state for module			
 			parameters (dict,array,Parameters): parameters of class			
 			kwargs (dict): Additional class keyword arguments		
 		'''
 
+		# Settings
 		model = self.model if model is None else model
 		state = self.state if state is None else state
 		parameters = self.parameters if parameters is None else parameters
 
-		N = self.N
-		state = state() if callable(state) else state
-		system = self.system
+
+		# Attributes
+		self.lattices()
 
 
-		state = tensorprod([state]*N) if state is not None else state
-		model.init(state=state)
-
-
+		# Measure
 		cls = Measure
+		measure = self.measure if isinstance(self.measure,dict) else {}
+		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in self.system if hasattr(self,attr)},**measure,**dict(system=self.system)}
+		measure = cls(**measure)
 
-		data = cls(**namespace(cls,model),**dict(system=system))
 
-		parameters = data.parameters()	
-		state = [state()]*self.N
+		# Data
+		models = {model.site: model} if not isinstance(model,iterables) and not isinstance(model,dict) else {i.site: model for i in model} if isinstance(model,iterables) else {i: model[i] for i in model} if isinstance(model,dict) else model if model is not None else {}
+		options = self.options if self.options is not None else {}
+		obj = state() if callable(state) else state
 
-		data.init(model=model,parameters=parameters,state=state)
+		data = []
 
-		assert allclose(tensorprod([*state]),data.amplitude(parameters,data.probability(parameters,state,**kwargs))), 'Incorrect probability,amplitude state()'
+		for index in models:
+			
+			model = models[index]
 
-		self.model = model
-		self.state = state
+			parameters = model.parameters()
+			state = tensorprod([obj]*model.locality)
+			model.init(state=state)
 
+			parameters = measure.parameters()
+			state = [obj]*model.locality
+			state = measure.probability(parameters=parameters,state=state)
+
+			operator = measure.operator(parameters=parameters,state=state,model=model)
+
+			if isinstance(index,str):
+				indices = self.lattice(index)
+			else:
+				indices = [where]
+
+			for where in indices:
+
+				def obj(parameters,state,where=where,operator=operator,options=options):
+					return state.gate(operator,where=where,**options)
+
+				data.append(obj)
+
+
+		# Attributes
+		self.measure = measure
 		self.data = data
 
 		return
@@ -4478,6 +4577,48 @@ class Module(System):
 		state = state if state is not None else state
 
 		return self.func(parameters=parameters,state=state)
+
+	def info(self,display=None,ignore=None,verbose=None):
+		'''
+		Log class information
+		Args:
+			display (str,iterable[str]): Show attributes
+			ignore (str,iterable[str]): Do not show attributes
+			verbose (bool,int,str): Verbosity of message			
+		'''		
+
+		msg = []
+		options = dict(align='<',space=1,width=2)
+
+		display = None if display is None else [display] if isinstance(display,str) else display
+		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
+
+		for attr in [None,'string','N','M','d','base','model','measure','data']:
+
+			obj = attr
+			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+				continue
+
+			if attr is None:
+				attr = 'cls'
+				substring = str(self)
+			else:
+				substring = getattr(self,attr,None)
+
+			if isinstance(substring,objects):
+				string = '%s:\n%s'%(attr,str(substring))
+			else:
+				string = '%s: %s'%(attr,str(substring))
+
+			msg.append(string)
+
+		msg = [i if isinstance(i,str) else str(i) for i in msg]
+
+		msg = '\n'.join(msg)
+
+		self.log(msg,verbose=verbose)
+
+		return
 
 	def dump(self,path=None):
 		'''

@@ -692,8 +692,9 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[1],'state.D':[2],'state.ndim':[2],
-		"model.local":[False],"state.local":[True],"model.options.shape":[2,2,2],
+		"module.N":[2],"module.M":[5],'state.D':[2],'state.ndim':[2],
+		"model.local":[False],"state.local":[True],"model.options.shape":[[2,2,2]],
+		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
 		}
 	groups = None
@@ -720,28 +721,27 @@ def test_module(*args,**kwargs):
 			},
 		"module":{
 			"N":2,
-			"M":2,
+			"M":1,
 			"d":1,
+			"string":"module",
 			"lattice":"square",
-			"structure":"<ij>",
-			"architecture":None,
-			"base":"pauli",
-			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}	
+			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":True}},
+			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}		
 		},
 		"measure":{
 			"base":"pauli",
 			"architecture":"tensor",
-			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}	
+			"options":{"cyclic":True}	
 		},		
 		"model":{
 			"data":{
 				"xx":{
-					"operator":["X","X"],"site":None,"string":"XX",
-					"parameters":0.5,"variable":False
+					"operator":["X","X"],"site":"<ij>","string":"XX",
+					"parameters":0.25,"variable":False
 				},
 				"noise":{
-					"operator":["dephase","dephase"],"site":None,"string":"dephase",
-					"parameters":1e-6,"variable":False
+					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+					"parameters":0,"variable":False
 				}
 			},
 			"D":2,
@@ -792,30 +792,35 @@ def test_module(*args,**kwargs):
 		# Model
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-		measure = measure(**{**settings.measure,**dict(system=system)})
 
-		# model.info(verbose=True)
-		# state.info(verbose=True)
-		# measure.info(verbose=True)
+
+
 
 		# Test
 
-		tmp = state()
+		obj = state
 		
 		data[i] = {}
 
+
+		# Measure
+		measure = measure(**{**settings.measure,**dict(system=system)})
+
+
 		# Probability
 		parameters = measure.parameters()
-		state = [tmp]*settings.module.N
+		state = [obj()]*settings.module.N
 
-		probability = measure.probability(parameters=parameters,state=state,cyclic=True)
+		probability = measure.probability(parameters=parameters,state=state)
 
+		key = 'probability'
 		if settings.measure.architecture in ['array']:
-			obj = array(probability)
+			value = array(probability)
 		elif settings.measure.architecture in ['tensor']:
-			obj = datastructure(probability,to='array')
+			value = datastructure(probability,to='array')
 		
-		data[i]['probability'] = obj
+		data[i][key] = value
+
 
 		# Amplitude
 		parameters = measure.parameters()
@@ -823,41 +828,76 @@ def test_module(*args,**kwargs):
 
 		amplitude = measure.amplitude(parameters=parameters,state=state)
 
+		key = 'amplitude'
 		if settings.measure.architecture in ['array']:
-			obj = tensorprod(amplitude)
+			value = tensorprod(amplitude)
 		elif settings.measure.architecture in ['tensor']:
-			obj = array(amplitude)
+			value = array(amplitude)
 		
-		data[i]['amplitude'] = obj
+		data[i][key] = value
 
 
 		# Operator
 		parameters = model.parameters()
-		state = [tmp]*model.locality
+		state = [obj()]*model.locality
 
 		model.init(state=tensorprod(state))
 		state = measure.probability(parameters=parameters,state=state,cyclic=True)
 
 		operator = measure.operator(parameters=parameters,state=state,model=model)
 
+		key = 'operator'
 		if settings.measure.architecture in ['array']:
-			obj = array(operator)
+			value = array(operator)
 		elif settings.measure.architecture in ['tensor']:
-			obj = array(operator)
+			value = array(operator)
 
-		data[i]['operator'] = obj
+		data[i][key] = value
 
+		# Module
+
+		model = {max((settings.model.data[i].site for i in settings.model.data),
+			key=lambda i: ['i','i<j','>ij<','<ij>','ij','i...j'].index(i) if isinstance(i,str) else -1):model}
+		state = obj()
+
+		module = module(**{**settings.module,**dict(model=model,state=state,system=system)})
+
+		module.info(verbose=True)
+
+		parameters = module.parameters()
+		state = module.state()
+
+		key = 'module'
+		value = module(parameters,state)
+
+		data[i][key] = value
+
+		print(value.round(8))
+
+		continue
+
+
+		parameters = model.parameters()
+		state = tensorprod([obj()]*module.N)
+
+		model.init(state=tensorprod(state))
+
+		state = measure.probability(parameters=parameters,state=state)
+
+		operator = measure.operator(parameters=parameters,state=state,model=model)	
+
+
+
+
+		continue
 
 		# Model
-
-		# Class
 		module = load(settings.cls.module)
 		measure = load(settings.cls.measure)
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 		system = settings.system
 
-		# Model
 		N = settings.module.N
 		model = model(**{**settings.model,**dict(N=N,local=True,system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(N=N,local=False,system=system)})
@@ -867,9 +907,10 @@ def test_module(*args,**kwargs):
 		parameters = model.parameters()
 		state = model.state()
 
-		obj = model(parameters,state)
+		key = 'model'
+		value = model(parameters,state)
 
-		data[i]['model'] = obj
+		data[i][key] = value
 
 		continue	
 
