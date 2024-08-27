@@ -694,11 +694,17 @@ def test_module(*args,**kwargs):
 	kwargs = {
 		"module.N":[2],"module.M":[5],'state.D':[2],'state.ndim':[2],
 		"model.local":[False],"state.local":[True],"model.options.shape":[[2,2,2]],
+		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
+		"model.data.noise.site":["<ij>",None],
+		"model.layout":[["_locality",{"site":["XX","Z","dephase"]},],["XX","dephase","Z"]],
 		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
 		}
-	groups = None
+
+	groups = [["model.data.noise.operator","model.data.noise.site","model.layout"]]
+
 	filters = None
+
 	def func(dictionaries):
 		for dictionary in dictionaries:
 			setter(dictionary,{
@@ -735,21 +741,27 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
+				"noise":{
+					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+					"parameters":1e-3,"variable":False
+				},
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
 					"parameters":0.25,"variable":False
 				},
-				"noise":{
-					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-					"parameters":0,"variable":False
-				}
+				"z":{
+					"operator":["Z"],"site":"i","string":"Z",
+					"parameters":0.25,"variable":False
+				},				
 			},
+			"N":3,
 			"D":2,
 			"local":True,
 			"space":"spin",
 			"time":"linear",
 			"lattice":"square",
-			"architecture":"array"
+			"architecture":"array",
+			"layout":None,
 			},
 		"state": {
 			"operator":["zero"],
@@ -793,6 +805,14 @@ def test_module(*args,**kwargs):
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
+		model.init(state=state)
+
+		parameters = model.parameters()
+		state = model.state()
+
+		print(model(parameters,state))
+
+		exit()
 
 
 

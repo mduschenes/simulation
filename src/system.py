@@ -42,6 +42,7 @@ class System(Dictionary):
 		timestamp (str): timestamp for class
 		backend (str): backend for class
 		architecture (str): architecture for class
+		layout (object): layout for class
 		base (str): base for class
 		unit (int,float): units of values
 		options (dict): options for system
@@ -58,6 +59,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
+			'layout':None,
 			'base':None,
 			'unit':None,
 			'options':{},			

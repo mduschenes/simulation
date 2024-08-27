@@ -5673,12 +5673,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 
-
-	if wrapper is None:
-		@jit
-		def wrapper(out,*operands):
-			return out
-	else:
+	if wrapper is not None:
 		wrapper = jit(wrapper)
 
 	if isarray:
@@ -5688,9 +5683,14 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
 
-	@jit
-	def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
+	if wrapper is not None:
+		@jit
+		def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
+			return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
+	else:
+		@jit
+		def einsummation(*operands,subscripts=subscripts,optimize=optimize):
+			return np.einsum(subscripts,*operands,optimize=optimize)
 
 	if isarray:
 		return einsummation(*operands)

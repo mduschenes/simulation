@@ -495,7 +495,7 @@ class Measure(System):
 			data (str,array,tensor,Measure): data of measure
 			base (str): name of measure
 			string (str): string label of measure
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 			args (iterable): Additional class positional arguments
 			kwargs (dict): Additional class keyword arguments
 		'''
@@ -1479,7 +1479,7 @@ class Object(System):
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1922,7 +1922,7 @@ class Object(System):
 			N (int): Size of system
 			D (int): Local dimension of system
 			space (str,dict,Space): Type of local space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		space = self.space if space is None else space
@@ -1961,7 +1961,7 @@ class Object(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,dict,Time): Type of time evolution						
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		time = self.time if time is None else time
@@ -2001,7 +2001,7 @@ class Object(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
@@ -2422,7 +2422,7 @@ class Pauli(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2557,7 +2557,7 @@ class Gate(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2668,7 +2668,7 @@ class Haar(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2809,7 +2809,7 @@ class Noise(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -3047,7 +3047,7 @@ class State(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -3292,7 +3292,7 @@ class Operator(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -3369,7 +3369,7 @@ class Objects(Object):
 		time (str,dict,Time): Type of time evolution						
 		lattice (str,dict,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -3840,10 +3840,11 @@ class Objects(Object):
 
 
 		# Set class attributes
-		if not all(isinstance(self.data[i],Object) for i in self.data):
-			self.data = Dictionary()
-		
+		self.set()
+
 		self.extend(data=data,**objs,kwargs=kwargs)
+
+		self.sort()
 
 		return
 
@@ -3938,6 +3939,183 @@ class Objects(Object):
 		return string
 
 
+	def set(self,data=None,index=None):
+		'''
+		Set data of class
+		Args:
+			data (dict): data for class
+			index (object): index of data for class
+		'''
+
+		if self.data is None or not all(isinstance(self.data[i],Object) for i in self.data):
+			self.clear()
+
+		if index is not None and data is not None:
+			
+			self.data = insertion(self.data,index,{index:data})
+
+		elif data is not None:
+			
+			self.data = type(self.data)(data)
+
+		return
+
+	def get(self,index=None):
+		'''
+		Get data of class
+		Args:
+			index (object): index of data of class
+		Returns:
+			data (object): data of class
+		'''
+
+		if index is not None:
+			data = self.data.get(index)
+		else:
+			data = self.data
+
+		return data
+
+	def clear(self):
+		'''
+		Clear data of class
+		'''
+
+		self.data = Dictionary()
+
+		return
+
+	def sort(self,layout=None):
+		'''
+		Sort data of class
+		Args:
+			layout (str,dict,iterable): layout of data
+				str: data attribute to sort on, or data string to prioritize
+				dict: data attributes to sort on as keys and order of data attributes or data strings as values
+				iterable: objects to sort on, either strings, dictionaries or iterables of strings or dictionaries
+		'''
+
+
+		def decorator(func):
+			def typer(obj):
+				if obj is not None and not isinstance(obj,iterables):
+					yield obj
+				elif obj is not None and isinstance(obj,iterables):
+					for i in obj:
+						yield from typer(i)
+			def wrapper(*args,**kwargs):
+				obj = func(*args,**kwargs)
+				# obj = {i: tuple(typer(obj[i])) for i in obj}
+				return obj
+			return wrapper
+
+		@decorator
+		def string(obj,data):
+			if obj.startswith('_') and all(hasattr(data[i],'_'.join(obj.split('_')[1:])) for i in data):
+				reverse = True
+				obj = '_'.join(obj.split('_')[1:])
+			else:
+				reverse = False
+				obj = obj
+
+			if all(hasattr(data[i],obj) for i in data):
+				index = {i: getattr(data[i],obj) if isinstance(getattr(data[i],obj),str) else tuple(getattr(data[i],obj)) if isinstance(getattr(data[i],obj),iterables) else getattr(data[i],obj) for i in data}
+			elif obj in [data[i].string for i in data]:
+				index = {i: int(data[i].string != obj) for i in data}
+
+
+			if reverse:
+				index = {i: -index[i] if isinstance(index[i],int) else index[i] for i in index}
+
+			return index
+
+		@decorator
+		def dictionary(obj,data):
+			obj = {attr: obj[attr] for attr in obj if all(hasattr(data[i],attr) for i in data)}
+
+			index = {i: {attr: getattr(data[i],attr) for attr in obj} for i in data}
+
+			index = {i: (
+			None if (
+				not all(j in [data[i].string for i in data] for j in obj[attr]) and 
+				not all(j in [index[i][attr] for i in index for attr in index[i]] for j in obj[attr])
+				) else
+			((index[i][attr],obj[attr].index(data[i].string),) 
+				if data[i].string in obj[attr] else 
+			  None) 
+			if all(j in [data[i].string for i in data] for j in obj[attr]) else
+			((index[i][attr],obj[attr].index(index[i][attr]),) 
+				if index[i][attr] in obj[attr] else 
+			  None) 
+			if all(j in [index[i][attr] for i in index for attr in index[i]] for j in obj[attr])
+			else None
+			)
+			for i in index for attr in index[i]}
+
+			return index
+
+		@decorator
+		def iterable(obj,data):
+			index = {i: [] for i in data}
+			for attr in obj:
+				for types in func:
+					if isinstance(attr,types):
+						indices = func[types](attr,data)
+						index = {i: [*index[i],indices[i]] for i in index}
+						break
+			return index
+
+		func = {(str,):string,(dict,):dictionary,(*iterables,):iterable}
+
+
+		self.set()
+
+		data = self.get()
+
+		layout = self.layout if layout is None else layout
+
+
+		layout = [layout] if callable(layout) or isinstance(layout,(str,dict)) else [obj for obj in layout]
+
+		indices = []
+		for obj in layout:
+			
+			index = None
+
+			if callable(obj):
+				
+				data = obj(data)
+			
+			else:
+				
+				for types in func:
+					if isinstance(obj,types):
+						index = func[types](obj,data)
+						break
+
+			if index is not None:
+
+				indices.append(index)
+
+
+		if indices:
+			
+			print(indices)
+
+			indices = sorted(data,key=lambda i: tuple((index[i] for index in indices if i in index)))
+			
+			data = {index: data[i] for index,i in enumerate(indices)}			
+
+
+		print(layout)
+		for i in data:
+			print(i,(data[i].string,data[i].operator,data[i].site))
+		exit()
+
+		self.set(data)
+
+		return
+
 	def extend(self,data=None,operator=None,site=None,string=None,kwargs=None):
 		'''
 		Extend to class
@@ -4000,9 +4178,6 @@ class Objects(Object):
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments						
 		'''
-		def datas(obj,data):
-			obj = insertion(data,index,obj)
-			return obj
 
 		def sites(obj,data):
 			obj = list(set(j 
@@ -4062,7 +4237,10 @@ class Objects(Object):
 
 		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
 
-		
+		self.set(data,index=index)
+
+		data = self.data
+
 		operator = None
 		site = None
 		string = None
@@ -4070,7 +4248,6 @@ class Objects(Object):
 		locality = None
 		N,D,local = None,None,None
 
-		data = datas({index:data},self.data)
 		operator = operators(operator,data)
 		site = sites(site,data)
 		string = strings(string,data)
@@ -4397,7 +4574,7 @@ class Module(System):
 		lattice (str,dict,Lattice): Type of lattice	
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -4692,7 +4869,7 @@ class Module(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
