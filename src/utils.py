@@ -7312,7 +7312,7 @@ def swap(a,axes=None,shape=None,transform=None,permute=False,execute=True):
 		elif len(shape) < 3:
 			d,n,k = int(size(a)**(1/prod(shape))),shape[-2],shape[-1]
 		else:
-			d,n,k = shape[-3],shape[-2],shape[-1]
+			d,n,k = prod(shape[:-2]),shape[-2],shape[-1]
 
 		a = empty((d**n,)*k)
 

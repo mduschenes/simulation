@@ -463,11 +463,11 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = deepcopy(groups) if groups is not None else []
-		inds = [[keys.index(k) for k in g if k in keys] for g in groups]
+		groups = deepcopy([group for group in groups if any(key in keys for key in group)]) if groups is not None else []
+		inds = [[keys.index(key) for key in group if key in keys] for group in groups]		
 		N = len(groups)
-		groups.extend([[k] for k in keys if all([k not in g for g in groups])])
-		inds.extend([[keys.index(k) for k in g if k in keys] for g in groups[N:]])
+		groups.extend([[key] for key in keys if all([key not in group for group in groups])])
+		inds.extend([[keys.index(key) for key in group if key in keys] for group in groups[N:]])
 		values = [[values[j] for j in i] for i in inds]
 		return groups,values
 
@@ -475,7 +475,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		'''
 		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
 		'''
-		return [{k:copier(u,copy=copy) for k,u in zip(keys,v)} for v in zip(*values)]
+		return [{key:copier(iterable,copy=copy) for key,iterable in zip(keys,value)} for value in zip(*values)]
 
 	def unzipper(dictionary):
 		'''
@@ -488,7 +488,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		'''
 		Get all list of dictionaries of all permutations of sub-dictionaries
 		'''
-		return ({k:d[k] for d in dicts for k in d} for dicts in permutations(*dictionaries))
+		return ({key:dictionary[key] for dictionary in dicts for key in dictionary} for dicts in permutations(*dictionaries))
 
 	def retriever(keys,values,groups):
 		'''
@@ -523,7 +523,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 	keys,values = indexer(keys,values,groups)
 
 	# Zip keys with lists of lists in values into list of dictionaries
-	dictionaries = [zipper(k,v,copy) for k,v in zip(keys,values)]
+	dictionaries = [zipper(key,value,copy) for key,value in zip(keys,values)]
 
 	# Get all permutations of list of dictionaries into one list of dictionaries with all keys
 	dictionaries = permute(dictionaries)
@@ -534,8 +534,8 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 	# Retain original ordering of keys if ordered is True
 	dictionaries = list(dictionaries)
 	if ordered:
-		for i,d in enumerate(dictionaries):
-			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
+		for i in range(len(dictionaries)):
+			dictionaries[i] = {key: dictionaries[i][key] for key in keys_ordered}
 
 	# Modify allowed dictionaries
 	if func is not None:

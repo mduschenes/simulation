@@ -1550,7 +1550,7 @@ class Object(System):
 		else:
 			locality = 1
 
-		N = locality if local else N
+		N = locality if local and N is None else N
 
 
 		# Set site,locality, operator
@@ -1610,7 +1610,7 @@ class Object(System):
 		if not isinstance(string,str):
 			string = str(string)
 
-		N = max(N,max(site)+1 if site is not None else N) if N is not None else max(site)+1 if site is not None else locality if locality is not None else 0
+		N = max(N if N is not None else 0,locality if locality is not None else 0) if N is not None or locality is not None else None
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		site = site[:locality] if site is not None else site
@@ -1788,20 +1788,20 @@ class Object(System):
 			try: 
 				kwargs = dict(shape=(self.state.D,self.state.N,self.state.ndim),axes=(self.site,))
 			except:
-				kwargs = dict(shape=(self.D,int(round(log(state.size)/self.D/state.ndim)),state.ndim),axes=(self.site,))
+				kwargs = dict(shape=(self.D,int(round(log(state.size)/log(self.D)/state.ndim)),state.ndim),axes=(self.site,))
 		else:
-			kwargs = dict(shape=(self.D,self.N,self.ndim),axes=(self.site,))
+			kwargs = dict(**{**dict(shape=(self.D,self.N,self.ndim),axes=(self.site,)),**(self.options if self.options is not None else {})})
 
 		if self.architecture is None:
-			kwargs = dict(**{**kwargs,**self.options}) if self.options else kwargs
+			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 		elif self.architecture in ['array']:
-			kwargs = dict(**{**kwargs,**self.options}) if self.options else kwargs
+			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 		elif self.architecture in ['tensor']:
-			kwargs = dict(**{**kwargs,**self.options}) if self.options else kwargs
+			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 		elif self.architecture in ['mps']:
-			kwargs = dict(**{**self.options}) if self.options else kwargs
+			kwargs = dict(**{**self.options}) if self.options is not None else kwargs
 		else:
-			kwargs = dict(**{**kwargs,**self.options}) if self.options else kwargs
+			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 
 		try:
 			contract = contraction(data,state,where=where,**kwargs) if self.contract is None else self.contract
@@ -2145,6 +2145,7 @@ class Object(System):
 			}
 
 		return self.__class__(**kwargs)
+
 
 	def info(self,display=None,ignore=None,verbose=None):
 		'''
@@ -3840,11 +3841,8 @@ class Objects(Object):
 
 
 		# Set class attributes
-		self.set()
 
 		self.extend(data=data,**objs,kwargs=kwargs)
-
-		self.sort()
 
 		return
 
@@ -3951,7 +3949,9 @@ class Objects(Object):
 			self.clear()
 
 		if index is not None and data is not None:
-			
+
+			index = len(self)+1+index if index < 0 else index
+
 			self.data = insertion(self.data,index,{index:data})
 
 		elif data is not None:
@@ -3970,6 +3970,9 @@ class Objects(Object):
 		'''
 
 		if index is not None:
+			
+			index = len(self) + index if index < 0 else index
+
 			data = self.data.get(index)
 		else:
 			data = self.data
@@ -4070,7 +4073,7 @@ class Objects(Object):
 		layout = self.layout if layout is None else layout
 
 
-		layout = [layout] if callable(layout) or isinstance(layout,(str,dict)) else [obj for obj in layout]
+		layout = [layout] if layout is None or callable(layout) or isinstance(layout,(str,dict)) else [obj for obj in layout]
 
 		indices = []
 		for obj in layout:
@@ -4098,7 +4101,8 @@ class Objects(Object):
 			
 			data = {i: data[i] for index in indices for i in index}
 
-			data = {index: data[i] for index,i in enumerate(data)}
+		
+		data = {index: data[i] for index,i in enumerate(data)}
 
 		self.set(data)
 
@@ -4216,16 +4220,15 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 		
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,dict(N=self.N if not self.local else None,D=self.D,state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
-
-		if index == -1:
-			index = len(self)
 
 
 		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
 
 		self.set(data,index=index)
+
+		self.sort()
 
 		data = self.data
 

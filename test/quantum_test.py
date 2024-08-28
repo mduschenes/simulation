@@ -692,14 +692,26 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[3],"module.M":[5],'state.D':[2],'state.ndim':[2],
+		"module.N":[2],"module.M":[1],
+		'model.N':[None],'model.D':[2],'model.ndim':[2],
+		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.local":[True],"state.local":[True],"model.options.shape":[[2,2,2]],
 		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
 		"model.data.noise.site":["<ij>",None],
-		"model.layout":[[{"site":None,"string":["XX","dephase"]},{"string":["Z"]}],["XX","dephase","Z"]],
+		"model.layout":[{"site":None},{"site":None}],
 		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
 		}
+
+	kwargs = {
+		"module.N":[2],"module.M":[1],
+		'model.N':[None],'model.D':[2],'model.ndim':[2],
+		'state.N':[None],'state.D':[2],'state.ndim':[2],
+		"model.local":[True],"state.local":[True],
+		"model.options.shape":[[2,2,2]],
+		"module.measure.base":["pauli","tetrad"],
+		"measure.architecture":["array","tensor"]
+		}		
 
 	groups = [["model.data.noise.operator","model.data.noise.site","model.layout"]]
 
@@ -707,7 +719,9 @@ def test_module(*args,**kwargs):
 
 	def func(dictionaries):
 		for dictionary in dictionaries:
-			setter(dictionary,{
+			setter(dictionary,{					
+				# 'model.N':getter(dictionary,'module.N',delimiter=delim),
+				# 'state.N':getter(dictionary,'module.N',delimiter=delim),
 				'model.options.shape':[
 					getter(dictionary,'state.D',delimiter=delim),
 					getter(dictionary,'module.N',delimiter=delim),
@@ -717,7 +731,7 @@ def test_module(*args,**kwargs):
 
 	data = {}
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
-
+		print(kwargs)
 		settings = Dict({
 		"cls":{
 			"module":"src.quantum.Module",
@@ -732,7 +746,7 @@ def test_module(*args,**kwargs):
 			"string":"module",
 			"lattice":"square",
 			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":True}},
-			"options":{"contract":"swap+split","max_bond":None,"cutoff":1e-20}		
+			"options":{"contract":"swap+split","max_bond":None,"cutoff":0}		
 		},
 		"measure":{
 			"base":"pauli",
@@ -741,20 +755,15 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				"noise":{
-					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-					"parameters":1e-3,"variable":False
-				},
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
-					"parameters":0.25,"variable":False
-				},
-				"z":{
-					"operator":["Z"],"site":"i","string":"Z",
-					"parameters":0.25,"variable":False
+					"parameters":0.5,"variable":False
 				},				
+				"noise":{
+					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+					"parameters":0,"variable":False
+				}
 			},
-			"N":3,
 			"D":2,
 			"local":True,
 			"space":"spin",
@@ -768,9 +777,9 @@ def test_module(*args,**kwargs):
 			"site":None,
 			"string":"psi",
 			"parameters":None,
-			"N":3,
 			"D":2,
-			"ndim":2
+			"ndim":2,
+			"local":True
 			},
 		"system":{
 			"dtype":"complex",
@@ -805,19 +814,6 @@ def test_module(*args,**kwargs):
 		# Model
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-
-		print(model.N,state.N)
-
-		model.init(state=state)
-
-		parameters = model.parameters()
-		state = model.state()
-
-		print(model(parameters,state))
-
-		exit()
-
-
 
 		# Test
 
@@ -865,6 +861,7 @@ def test_module(*args,**kwargs):
 		state = [obj()]*model.locality
 
 		model.init(state=tensorprod(state))
+
 		state = measure.probability(parameters=parameters,state=state,cyclic=True)
 
 		operator = measure.operator(parameters=parameters,state=state,model=model)
