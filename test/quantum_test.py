@@ -693,7 +693,7 @@ def test_module(*args,**kwargs):
 
 	kwargs = {
 		"module.N":[3],"module.M":[5],'state.D':[2],'state.ndim':[2],
-		"model.local":[False],"state.local":[True],"model.options.shape":[[2,2,2]],
+		"model.local":[True],"state.local":[True],"model.options.shape":[[2,2,2]],
 		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
 		"model.data.noise.site":["<ij>",None],
 		"model.layout":[[{"site":None,"string":["XX","dephase"]},{"string":["Z"]}],["XX","dephase","Z"]],
@@ -805,6 +805,8 @@ def test_module(*args,**kwargs):
 		# Model
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+
+		print(model.N,state.N)
 
 		model.init(state=state)
 
