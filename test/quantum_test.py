@@ -692,11 +692,11 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[5],'state.D':[2],'state.ndim':[2],
+		"module.N":[3],"module.M":[5],'state.D':[2],'state.ndim':[2],
 		"model.local":[False],"state.local":[True],"model.options.shape":[[2,2,2]],
 		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
 		"model.data.noise.site":["<ij>",None],
-		"model.layout":[["_locality",{"site":["XX","Z","dephase"]},],["XX","dephase","Z"]],
+		"model.layout":[[{"site":None,"string":["XX","dephase"]},{"string":["Z"]}],["XX","dephase","Z"]],
 		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
 		}
@@ -768,6 +768,7 @@ def test_module(*args,**kwargs):
 			"site":None,
 			"string":"psi",
 			"parameters":None,
+			"N":3,
 			"D":2,
 			"ndim":2
 			},

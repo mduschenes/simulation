@@ -3989,83 +3989,78 @@ class Objects(Object):
 		'''
 		Sort data of class
 		Args:
-			layout (str,dict,iterable): layout of data
-				str: data attribute to sort on, or data string to prioritize
-				dict: data attributes to sort on as keys and order of data attributes or data strings as values
-				iterable: objects to sort on, either strings, dictionaries or iterables of strings or dictionaries
+			layout (dict[str,str,object,iterable],iterable[str,dict],callable): layout of data
+				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
+					{attr:[value]} or data {attr:None} to sort by all data attr values
+				iterable[str,dict]: objects to sort on, either strings or dictionaries:
+					[attr], [data.string], [{attr:[value]}], 
+					'_attr' may also be used for reversed sorting of attributes 
+				callable: function to yield data layout, with signature layout(data) = data					
 		'''
 
-
-		def decorator(func):
-			def typer(obj):
-				if obj is not None and not isinstance(obj,iterables):
-					yield obj
-				elif obj is not None and isinstance(obj,iterables):
-					for i in obj:
-						yield from typer(i)
-			def wrapper(*args,**kwargs):
-				obj = func(*args,**kwargs)
-				# obj = {i: tuple(typer(obj[i])) for i in obj}
-				return obj
-			return wrapper
-
-		@decorator
 		def string(obj,data):
-			if obj.startswith('_') and all(hasattr(data[i],'_'.join(obj.split('_')[1:])) for i in data):
-				reverse = True
-				obj = '_'.join(obj.split('_')[1:])
-			else:
-				reverse = False
-				obj = obj
-
+	
 			if all(hasattr(data[i],obj) for i in data):
-				index = {i: getattr(data[i],obj) if isinstance(getattr(data[i],obj),str) else tuple(getattr(data[i],obj)) if isinstance(getattr(data[i],obj),iterables) else getattr(data[i],obj) for i in data}
+				index = {i: getattr(data[i],obj) for i in data}
+				index = sorted(index,key=lambda i: index[i])
+			elif obj.startswith('_') and all(hasattr(data[i],'_'.join(obj.split('_')[1:])) for i in data):
+				index = {i: getattr(data[i],'_'.join(obj.split('_')[1:])) for i in data}
+				index = sorted(index,key=lambda i: index[i])
 			elif obj in [data[i].string for i in data]:
-				index = {i: int(data[i].string != obj) for i in data}
-
-
-			if reverse:
-				index = {i: -index[i] if isinstance(index[i],int) else index[i] for i in index}
+				index = [i for i in data[i] if data[i].string == obj]
+			elif obj.startswith('_') and '_'.join(obj.split('_')[1:]) in [data[i].string for i in data]:
+				index = [i for i in data[i] if data[i].string == '_'.join(obj.split('_')[1:])][::-1]
+			else:
+				index = []
 
 			return index
 
-		@decorator
 		def dictionary(obj,data):
-			obj = {attr: obj[attr] for attr in obj if all(hasattr(data[i],attr) for i in data)}
-
-			index = {i: {attr: getattr(data[i],attr) for attr in obj} for i in data}
-
-			index = {i: (
-			None if (
-				not all(j in [data[i].string for i in data] for j in obj[attr]) and 
-				not all(j in [index[i][attr] for i in index for attr in index[i]] for j in obj[attr])
-				) else
-			((index[i][attr],obj[attr].index(data[i].string),) 
-				if data[i].string in obj[attr] else 
-			  None) 
-			if all(j in [data[i].string for i in data] for j in obj[attr]) else
-			((index[i][attr],obj[attr].index(index[i][attr]),) 
-				if index[i][attr] in obj[attr] else 
-			  None) 
-			if all(j in [index[i][attr] for i in index for attr in index[i]] for j in obj[attr])
-			else None
-			)
-			for i in index for attr in index[i]}
-
-			return index
-
-		@decorator
-		def iterable(obj,data):
-			index = {i: [] for i in data}
+			index = {}
 			for attr in obj:
-				for types in func:
-					if isinstance(attr,types):
-						indices = func[types](attr,data)
-						index = {i: [*index[i],indices[i]] for i in index}
-						break
-			return index
 
-		func = {(str,):string,(dict,):dictionary,(*iterables,):iterable}
+				if all(hasattr(data[i],attr) for i in data):
+					
+					if obj[attr] is None:
+						value = {i: getattr(data[i],attr) for i in data}
+						value = {i: tuple(value[i]) if isinstance(value[i],iterables) else value[i] for i in value}
+						values = list(sorted(set((value[i] for i in value))))
+					else:
+						value = {i: getattr(data[i],attr) for i in data if getattr(data[i],attr) in obj[attr]}
+						values = [i for i in obj[attr]]
+					
+					for i in data:
+						if i not in value:
+							continue
+						if i not in index:
+							index[i] = {}
+						
+						index[i][attr] =  values.index(value[i])
+
+				elif attr.startswith('_') and all(hasattr(data[i],'_'.join(attr.split('_')[1:])) for i in data):
+			
+					if obj[attr] is None:
+						value = {i: getattr(data[i],'_'.join(attr.split('_')[1:])) for i in data}
+						value = {i: tuple(value[i]) if isinstance(value[i],iterables) else value[i] for i in value}
+						values = list(sorted(set((value[i] for i in value))))
+					else:
+						value = {i: getattr(data[i],'_'.join(attr.split('_')[1:])) for i in data if getattr(data[i],'_'.join(attr.split('_')[1:])) in obj[attr]}
+						values = [i for i in obj[attr]]
+					
+					for i in data:
+						if i not in value:
+							continue
+						if i not in index:
+							index[i] = {}
+						
+						index[i][attr] =  -values.index(value[i])
+
+
+			index = {i: tuple((index[i][attr] for attr in index[i])) for i in index if all(attr in index[i] for attr in obj)}
+
+			index = sorted(index,key=lambda i: index[i])
+
+			return index
 
 
 		self.set()
@@ -4086,12 +4081,13 @@ class Objects(Object):
 				
 				data = obj(data)
 			
-			else:
+			elif isinstance(obj,dict):
 				
-				for types in func:
-					if isinstance(obj,types):
-						index = func[types](obj,data)
-						break
+				index = dictionary(obj,data)
+
+			elif isinstance(obj,str):
+
+				index = string(obj,data)
 
 			if index is not None:
 
@@ -4100,17 +4096,9 @@ class Objects(Object):
 
 		if indices:
 			
-			print(indices)
+			data = {i: data[i] for index in indices for i in index}
 
-			indices = sorted(data,key=lambda i: tuple((index[i] for index in indices if i in index)))
-			
-			data = {index: data[i] for index,i in enumerate(indices)}			
-
-
-		print(layout)
-		for i in data:
-			print(i,(data[i].string,data[i].operator,data[i].site))
-		exit()
+			data = {index: data[i] for index,i in enumerate(data)}
 
 		self.set(data)
 
