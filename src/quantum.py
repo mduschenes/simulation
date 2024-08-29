@@ -1748,19 +1748,31 @@ class Object(System):
 		elif isinstance(self.operator,iterables):
 			if self.local:
 				data = tensorprod([
-					self.basis.get(self.operator[self.site.index(i)] if i in self.site else self.default)(D=self.D,system=self.system)
-				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+					self.basis.get((
+					self.operator[self.site.index(i)]
+					if isinstance(self.operator[self.site.index(i)],str) else 
+					self.operator[self.site.index(i)]() 
+					if callable(self.operator[self.site.index(i)]) else
+					self.operator[self.site.index(i)])
+					if i in self.site else self.default)(D=self.D,system=self.system)
 				 for i in self.site]) if all(i in self.basis for i in self.operator) else None
 			else:
 				data = tensorprod([
-					self.basis.get(self.operator[self.site.index(i)] if i in self.site else self.default)(D=self.D,system=self.system)
-				 if i in self.site else self.basis.get(self.default)(D=self.D,system=self.system) 
+					self.basis.get((
+					self.operator[self.site.index(i)]
+					if isinstance(self.operator[self.site.index(i)],str) else 
+					self.operator[self.site.index(i)]() 
+					if callable(self.operator[self.site.index(i)]) else
+					self.operator[self.site.index(i)])
+					if i in self.site else self.default)(D=self.D,system=self.system)
 				 for i in range(self.N)]) if all(i in self.basis for i in self.operator) else None
 		else:
 			data = self.data
 
 		self.data = data
 
+		self.N = min(self.N if self.N is not None else 0,self.locality if self.locality is not None else 0) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
+		self.D = self.D if self.D is not None else None
 
 		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
 		self.size = getattr(data,'size',self.size) if data is not None else self.size if self.size is not None else None
@@ -2478,13 +2490,25 @@ class Pauli(Object):
 			if local:
 				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
 				
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,system=system)
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system) 
 						for i in site]) if operator is not None else None
 			
 			else:
 				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
 				
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,system=system)
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system) 
 					for i in range(N)]) if operator is not None else None
 
 			data = array(data,dtype=dtype) if data is not None else None
@@ -2616,13 +2640,25 @@ class Gate(Object):
 			if local:
 				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
 				
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,system=system)
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system) 
 						for i in site]) if operator is not None else None
 			
 			else:
 				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
 			
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,system=system)
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system) 
 					for i in range(N)]) if operator is not None else None
 
 			data = array(data,dtype=dtype) if data is not None else None
@@ -2733,7 +2769,13 @@ class Haar(Object):
 					ndim = 2 if ndim is None else ndim					
 					shape = (D,)*ndim
 				
-					data = tensorprod([basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					data = tensorprod([(
+						basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system)
+						if isinstance(operator[site.index(i)],str) else 
+						operator[site.index(i)]() 
+						if callable(operator[site.index(i)]) else
+						operator[site.index(i)])
+						if i in site else basis.get(default)(D=D,system=system) 
 							for i in site]) if operator is not None else None
 				elif operator is not None:
 				
@@ -2754,7 +2796,13 @@ class Haar(Object):
 					ndim = 2 if ndim is None else ndim					
 					shape = (D,)*ndim
 					
-					data = tensorprod([basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+					data = tensorprod([(
+						basis.get(operator[site.index(i)])(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype,system=system)
+						if isinstance(operator[site.index(i)],str) else 
+						operator[site.index(i)]() 
+						if callable(operator[site.index(i)]) else
+						operator[site.index(i)])
+						if i in site else basis.get(default)(D=D,system=system) 
 							for i in range(N)]) if operator is not None else None
 				
 				elif operator is not None:
@@ -2887,6 +2935,10 @@ class Noise(Object):
 			parameters = self.parameters() if callable(self.parameters) else self.parameters
 			
 
+			if isinstance(operator,str):
+				locality = N
+				site = [i for i in range(N)]
+
 			if parameters is None:
 				if local:
 					parameters = [None for i in range(locality)]
@@ -2916,14 +2968,21 @@ class Noise(Object):
 
 			if local:
 				if isinstance(operator,str):
-			
+
 					if operator in ['phase','dephase','flip','bitflip','phaseflip','flipphase','amplitude','depolarize']:
+
 						operator = [operator]*locality
 					
-						data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+						data = tensorprod([(
+							basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system)
+							if isinstance(operator[site.index(i)],str) else 
+							operator[site.index(i)]() 
+							if callable(operator[site.index(i)]) else
+							operator[site.index(i)])
+							if i in site else basis.get(default)(D=D,system=system) 
 												for i in site]) if operator is not None else None
-
 					elif operator in ['eps']:
+
 						operator = [operator]*locality
 
 						data = tensorprod([
@@ -2948,7 +3007,13 @@ class Noise(Object):
 				elif isinstance(operator,iterables):
 					operator = [i for i in operator]
 					
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+					data = tensorprod([(
+						basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system)
+						if isinstance(operator[site.index(i)],str) else 
+						operator[site.index(i)]() 
+						if callable(operator[site.index(i)]) else
+						operator[site.index(i)])
+						if i in site else basis.get(default)(D=D,system=system) 
 							for i in site]) if operator is not None else None
 				
 				elif operator is not None:
@@ -2966,7 +3031,13 @@ class Noise(Object):
 					if operator in ['phase','dephase','flip','bitflip','phaseflip','flipphase','amplitude','depolarize']:
 						operator = [operator]*N
 					
-						data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+						data = tensorprod([(
+							basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system)
+							if isinstance(operator[site.index(i)],str) else 
+							operator[site.index(i)]() 
+							if callable(operator[site.index(i)]) else
+							operator[site.index(i)])
+							if i in site else basis.get(default)(D=D,system=system) 
 												for i in range(N)]) if operator is not None else None
 
 					elif operator in ['eps']:
@@ -2994,7 +3065,13 @@ class Noise(Object):
 				elif isinstance(operator,iterables):
 					operator = [i for i in operator]
 					
-					data = tensorprod([basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) if i in site else basis.get(default)(D=D,system=system) 
+					data = tensorprod([(
+						basis.get(operator[site.index(i)])(D=D,parameters=parameters[site.index(i)],system=system) 
+						if isinstance(operator[site.index(i)],str) else 
+						operator[site.index(i)]() 
+						if callable(operator[site.index(i)]) else
+						operator[site.index(i)])
+						if i in site else basis.get(default)(D=D,system=system) 
 							for i in range(N)]) if operator is not None else None
 				
 				elif operator is not None:
@@ -3109,19 +3186,32 @@ class State(Object):
 			samples = getattr(self,'samples',None)
 
 			if local:
-				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) else None
+				operator = [operator]*locality if isinstance(operator,str) else [i for i in operator][:locality] if isinstance(operator,iterables) and len(operator) >= locality else (operator*locality)[:locality] if operator is not None else None
+				site = [i for i in range(locality)]
 
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system) 
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system) 
 						for i in site]) if operator is not None else None
-			
+
 			else:
-				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N]
-			
-				data = tensorprod([basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system) if i in site else basis.get(default)(D=D,system=system) 
+				operator = [operator]*N if isinstance(operator,str) else [i for i in operator][:N] if isinstance(operator,iterables) and len(operator) >= N else (operator*N)[:N] if operator is not None else None
+				site = [i for i in range(N)]
+
+				data = tensorprod([(
+					basis.get(operator[site.index(i)])(D=D,ndim=ndim,random=random,seed=seed,reset=reset,dtype=dtype,system=system)
+					if isinstance(operator[site.index(i)],str) else 
+					operator[site.index(i)]() 
+					if callable(operator[site.index(i)]) else
+					operator[site.index(i)])
+					if i in site else basis.get(default)(D=D,system=system)/D 
 					for i in range(N)]) if operator is not None else None
 
 			data = array(data,dtype=dtype) if data is not None else None
-
 
 			if (samples is not None) and (isinstance(samples,scalars) and samples > 1) and isinstance(data,arrays) and (ndim is not None) and (data.ndim>ndim):
 				if isinstance(samples,integers) and (samples > 0):
@@ -3671,12 +3761,12 @@ class Objects(Object):
 		elif all(isinstance(obj,Object) for obj in data):
 			for obj in objs:
 				objs[obj] = None
-		elif isinstance(data,dict) and all(isinstance(data[name],dict) for name in data for obj in objs) and all(any(obj in data[name] for obj in objs) for name in data):
+		elif isinstance(data,dict) and all(isinstance(data[name],dict) or data[name] is None for name in data for obj in objs) and all(any(obj in data[name] for obj in objs) for name in data if data[name] is not None):
 			for obj in objs:
-				objs[obj].extend([data[name].get(obj) for name in data])
+				objs[obj].extend([data[name].get(obj) for name in data if data[name] is not None])
 			
-			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data] 
-				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
+			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data if data[name] is not None] 
+				for kwarg in set(kwarg for name in data if data[name] is not None for kwarg in data[name] if kwarg not in objs)
 				})
 
 			data = None
@@ -4220,7 +4310,7 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 		
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(N=self.N if not self.local else None,D=self.D,state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
 
@@ -4231,6 +4321,7 @@ class Objects(Object):
 		self.sort()
 
 		data = self.data
+
 
 		operator = None
 		site = None

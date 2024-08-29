@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,datastructure
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,trace,datastructure
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -46,8 +46,8 @@ def test_channel(*args,**kwargs):
 	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
 	filters = lambda iterables: (iterable for iterable in iterables 
 		if not (iterable['cls.model'] in ['src.quantum.Channel'] and 
-			    iterable['model.system.architecture'] in ['mps'] and
-			    iterable['state.system.architecture'] in ['mps'])
+				iterable['model.system.architecture'] in ['mps'] and
+				iterable['state.system.architecture'] in ['mps'])
 		)
 
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
@@ -543,9 +543,9 @@ def test_namespace(*args,**kwargs):
 	data = {}
 
 	kwargs = {
-		**{attr:[10] for attr in ["model.N"]},
+		**{attr:[5] for attr in ["model.N"]},
 		**{attr:[2] for attr in ["model.D"]},
-		**{attr:[20] for attr in ["model.M"]},
+		**{attr:[4] for attr in ["model.M"]},
 		**{attr:[True] for attr in ["model.data.z.local","model.data.xx.local","model.data.noise.local"]},
 		}
 	groups = [["model.N"],["model.data.z.local","model.data.xx.local","model.data.noise.local"]]
@@ -707,13 +707,17 @@ def test_module(*args,**kwargs):
 		"module.N":[2],"module.M":[1],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
+		"model.data.xx.parameters":[1/2],
+		"model.data.noise.parameters":[0],
 		"model.local":[True],"state.local":[True],
+		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
 		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
-		}		
+		}	
 
-	groups = [["model.data.noise.operator","model.data.noise.site","model.layout"]]
+
+	groups = [["model.data.noise.operator","model.data.noise.site","model.data.xx"]]
 
 	filters = None
 
@@ -731,7 +735,7 @@ def test_module(*args,**kwargs):
 
 	data = {}
 	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
-		print(kwargs)
+
 		settings = Dict({
 		"cls":{
 			"module":"src.quantum.Module",
@@ -761,8 +765,9 @@ def test_module(*args,**kwargs):
 				},				
 				"noise":{
 					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-					"parameters":0,"variable":False
-				}
+					"parameters":1e-3,"variable":False
+				},
+				
 			},
 			"D":2,
 			"local":True,
@@ -820,6 +825,7 @@ def test_module(*args,**kwargs):
 		obj = state
 		
 		data[i] = {}
+
 
 
 		# Measure
@@ -892,7 +898,29 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-		print(value.round(8))
+
+
+		# Init
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		system = settings.system
+
+		model = model(**{**settings.model,**dict(N=module.N,local=True,options=dict(shape=(settings.state.D,settings.module.N,settings.state.ndim))),**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(N=module.N,local=False),**dict(system=system)})
+
+		model.init(state=state)
+
+		parameters = model.parameters()
+		state = model.state()
+
+		key = 'init'
+		value = model(parameters,state)
+
+		data[i][key] = value
+
+		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
+
+		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model()\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8))
 
 		continue
 
