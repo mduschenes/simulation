@@ -1,44 +1,48 @@
-{
+{	
 "cls":{
-	"model":"src.quantum.Channel",
-	"parameters":"src.parameters.Parameters",
-	"label":"src.quantum.Label",
-	"noise":"src.quantum.Noise",
-	"state":"src.quantum.State",
-	"callback":"src.quantum.Callback"
-	},
-"hyperparameters":null,
-"boolean":{
-	"train":1,
-	"load":0,
-	"dump":0
-	},
-"seed":{
-	"seed":39123,
-	"size":1,
-	"reset":39123,
-	"group":null,
-	"index":null
-	},
-"permutations":{
-	"permutations":{},
-	"groups":null,
-	"index":null
-	},
+	"module":"src.quantum.Module",
+	"measure":"src.quantum.Measure",
+	"model":"src.quantum.Operators",
+	"state":"src.quantum.State"
+		},
+"module":{
+	"N":5,
+	"M":1,
+	"d":1,
+	"string":"module",
+	"lattice":"square",
+	"measure":{"string":"povm","base":"pauli","architecture":"tensor","options":{"cyclic":false}},
+	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
+},
 "model":{
-	"data":{},
-	"N":2,
+	"data":{
+		"xx":{
+			"operator":["X","X"],"site":"<ij>","string":"XX",
+			"parameters":0.5,"variable":false
+		},				
+		"noise":{
+			"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+			"parameters":1e-3,"variable":false
+		}
+	},
+	"N":null,
+	"M":null,
 	"D":2,
 	"d":1,
-	"L":1,
-	"delta":null,
-	"M":20,
-	"T":null,
-	"tau":1,
-	"P":1,
+	"local":true,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
+	},
+"state": {
+	"operator":["zero"],
+	"site":null,
+	"string":"psi",
+	"parameters":null,
+	"N":null,
+	"D":2,
+	"ndim":2,
+	"local":null
 	},
 "system":{
 	"dtype":"complex",
@@ -46,14 +50,14 @@
 	"device":"cpu",
 	"backend":null,
 	"architecture":null,
-	"seed":12345,
+	"base":null,
+	"seed":null,
 	"key":null,
 	"instance":null,
-	"cwd":".",
-	"path":null,
+	"cwd":"data",
 	"path":"data.hdf5",
 	"conf":"logging.conf",
-	"logger":"log.log",
+	"logger":null,
 	"cleanup":false,
 	"verbose":"info"
 	},
@@ -92,32 +96,36 @@
 	"site":null,
 	"string":"U",
 	"parameters":1,
-	"ndim":2,
-	"seed":null
+	"ndim":2
+	},	
+"boolean":{
+	"call":1,
+	"optimize":0,
+	"load":0,
+	"dump":0
 	},
-"state": {
-	"operator":"haar",
-	"site":null,
-	"string":"U",
-	"parameters":false,
-	"ndim":2,
-	"samples":1,
-	"seed":null
+"seed":{
+	"seed":null,
+	"size":1,
+	"reset":null,
+	"group":null,
+	"index":null
 	},
+"permutations":{},
 "jobs":{
 	"preprocess":null,
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_CWD":".",					
+			"JOB_CWD":".",	
 			"JOB_ENV":"env",
-			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
+			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json"		
+			"settings":"settings.json"
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -145,7 +153,7 @@
 		"args":{
 			"JOB_CWD":".",
 			"JOB_ENV":"env",
-			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
+			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
 			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=.","--verbose"]

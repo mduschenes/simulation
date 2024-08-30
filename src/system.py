@@ -415,9 +415,10 @@ class Lattice(object):
 		N (int): Lattice length along axis
 		d (int): Dimension of lattice
 		lattice (str,dict,Lattice): Type of lattice, allowed strings in ['square']
+		structure (str,dict): Structure of lattice
 		kwargs (dict): Additional keyword Arguments
 	'''	
-	def __init__(self,N,d=None,lattice=None,**kwargs):
+	def __init__(self,N,d=None,lattice=None,structure=None,**kwargs):
 
 		# Def variables
 		N = N if N is not None else 1
@@ -426,10 +427,13 @@ class Lattice(object):
 
 		# Define lattice
 		if isinstance(lattice,Lattice):
+			structure = lattice.structure
 			lattice = lattice.lattice
 		elif isinstance(lattice,dict):
+			structure = lattice.get('structure')
 			lattice = lattice.get('lattice')
 		else:
+			structure = structure
 			lattice = lattice
 
 		# Define attributes
@@ -478,9 +482,11 @@ class Lattice(object):
 		self.N = N
 		self.d = d
 		self.lattice = lattice
+		self.structure = structure
 
 		self.L = L
 		self.z = z
+		self.structure = structure
 		self.vertices = range(self.N)
 		self.edge = edge
 		self.boundary = boundary
@@ -491,37 +497,46 @@ class Lattice(object):
 
 		return
 
-	def __call__(self,vertex=None):
+	def __call__(self,structure=None):
 		'''
-		Get neighbours to vertex
+		Get neighbours with respect to structure
 		Args:
-			vertex (int,iterable[int],str): Vertices of neighbours, either single vertex, iterable of vertices, or allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			structure (int,str,iterable[int],iterable[iterable[int]],str): Vertices of neighbours, either single vertex, iterable of vertices, iterable of edges, or allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		Returns:
-			vertices (generator[int],iterable[int]): Vertices with edges to vertex
+			vertices (generator[int],iterable[int]): Vertices with edges with respect to structure
 		'''
 
-		vertices = ()
+		structure = self.structure if structure is None else structure
 
-		if vertex is None:
+		if structure is None:
 			vertices = ((i,) for i in self.vertices)
 
-		elif isinstance(vertex,integers):
-			vertices = ((i,j) for i in [vertex] for j in self.edges(i))
+		elif isinstance(structure,integers):
+			vertices = ((i,j) for i in [structure] for j in self.edges(i))
 		
-		elif isinstance(vertex,str):
-			if vertex in ['i']:
+		elif isinstance(structure,str):
+			if structure in ['i']:
 				vertices = ((i,) for i in self.vertices)
-			elif vertex in ['ij']:
+			elif structure in ['ij']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if i!=j)
-			elif vertex in ['i<j']:
+			elif structure in ['i<j']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if i<j)
-			elif vertex in ['<ij>']:
+			elif structure in ['<ij>']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (not self.boundaries((i,j)) and i<j) or (self.boundaries((i,j)) and i>j))
-			elif vertex in ['>ij<']:
+			elif structure in ['>ij<']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j and not self.boundaries((i,j)))
-			elif vertex in ['i...j']:
+			elif structure in ['i...j']:
 				vertices = ((*self.vertices,) for i in self.vertices)
 		
+		elif isinstance(structure,iterables):
+			if all(isinstance(i,integers) for i in structure):
+				vertices = ((i,j) for i in structure for j in self.edges(i) if i!=j)
+			else:
+				vertices = ((i,j) for i,j in structure)
+
+		else:
+			vertices = ()
+
 		return vertices
 
 

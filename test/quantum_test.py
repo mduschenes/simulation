@@ -704,18 +704,20 @@ def test_module(*args,**kwargs):
 		}
 
 	kwargs = {
-		"module.N":[4],"module.M":[5],
+		"module.N":[2],"module.M":[1],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.data.xx.parameters":[1/2],
-		"model.data.noise.parameters":[1e-3],
-		"model.data.xx.site":["<ij>"],"model.data.noise.site":["<ij>"],
+		"model.data.xx.parameters":[0.25],
+		"model.data.noise.parameters":[0],
+		"model.data.xx.site":[">ij<"],"model.data.noise.site":[">ij<"],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
 		"module.measure.architecture":["tensor"],
+		"module.measure.options":[{"cyclic":False}],
+		"module.lattice":[{"lattice":"square","structure":">ij<"}],
 		"module.options":[{"contract":"swap+split","max_bond":None,"cutoff":1e-20}]
 		}	
 
@@ -762,10 +764,10 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				"z":{
-					"operator":["Z"],"site":"i","string":"Z",
-					"parameters":0.5,"variable":False
-				},
+				# "z":{
+				# 	"operator":["Z"],"site":"i","string":"Z",
+				# 	"parameters":0.5,"variable":False
+				# },
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
 					"parameters":0.5,"variable":False
@@ -785,7 +787,7 @@ def test_module(*args,**kwargs):
 			"layout":None,
 			},
 		"state": {
-			"operator":["zero"],
+			"operator":["haar"],
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -888,12 +890,12 @@ def test_module(*args,**kwargs):
 		data[i][key] = value
 
 		# Module
-		model = {max((settings.model.data[i].site for i in settings.model.data),
-			key=lambda i: ['i','i<j','>ij<','<ij>','ij','i...j'].index(i) if isinstance(i,str) else -1):model}
-		
+		model = model		
 		state = obj()
 
-		module = module(**{**settings.module,**dict(model=model,state=state,system=system)})
+		module = module(**{**settings.module,**dict(system=system)})
+
+		module.init(model=model,state=state)
 
 		module.info(verbose=True)
 
@@ -924,13 +926,14 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-		# print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
+		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
-		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model()\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8))
+		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8),(data[i]['module'] - data[i]['init']).round(8))
 
 		continue
 
 
+		# Model
 		parameters = model.parameters()
 		state = tensorprod([obj()]*module.N)
 
@@ -940,10 +943,8 @@ def test_module(*args,**kwargs):
 
 		operator = measure.operator(parameters=parameters,state=state,model=model)	
 
-
-
-
 		continue
+
 
 		# Model
 		module = load(settings.cls.module)

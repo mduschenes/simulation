@@ -2624,13 +2624,14 @@ def datastructure(obj,data=True,structure=False,contract=False,to=True):
 
 if backend in ['jax']:
 
-	def spawn(seed=None,size=False,reset=None,**kwargs):
+	def spawn(seed=None,size=False,reset=None,type=False,**kwargs):
 		'''
 		Generate prng key
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
 			reset (bool,int): Reset seed
+			type (bool): Return key data
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
@@ -2664,6 +2665,12 @@ if backend in ['jax']:
 			key = generator.split(seed,num=size)
 		else:
 			key = seed
+
+		if type:
+			try:
+				key = generator.key_data(key).tolist()
+			except:
+				pass
 
 		return key
 
@@ -2753,13 +2760,14 @@ if backend in ['jax']:
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
-	def spawn(seed=None,size=False,reset=None,**kwargs):
+	def spawn(seed=None,size=False,reset=None,type=None,**kwargs):
 		'''
 		Generate prng key
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
 			reset (bool,int): Reset seed
+			type (bool): Return key data
 			kwargs (dict): Additional keyword arguments for seeding			
 		Returns:
 			key (key,list[key]): Random key
@@ -2781,6 +2789,12 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key = generator.randint(*bounds,size=size)
 		else:
 			key = seed
+
+		if type:
+			try:
+				key = key.tolist()
+			except:
+				pass
 
 		return key
 
@@ -7204,6 +7218,36 @@ def permutations(*iterables,repeat=None):
 		repeat = 1
 
 	return itertools.product(*iterables,repeat=repeat)
+
+def convert(iterable,type=list,types=(list,),default=None):
+	'''
+	Convert iterable to type
+	Args:
+		iterable (iterable): Nested iterable to flatten
+		type (type): Type of iterable to return
+		types (type,iterable[type]): Types to flatten
+		default (type): Default type of elements of nested iterable
+	Returns:
+		iterable (type): Flattened iterable
+	'''
+
+	if not isinstance(iterable,types):
+		if default is not None:
+			try:
+				return default(iterable)
+			except Exception as exception:
+				return iterable
+	else:
+		try:
+			return type([convert(i,type=type,types=types,default=default) for i in iterable])
+		except TypeError:
+			if default is not None:
+				try:
+					return default(iterable)
+				except Exception as exception:
+					return iterable
+			else:
+				return iterable
 
 def shape(a):
 	'''

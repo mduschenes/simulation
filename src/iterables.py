@@ -67,7 +67,7 @@ class Dictionary(dict):
 			# super().__init__(*args,system=system,**kwargs)
 
 			setter(kwargs,dict(system=system),delimiter=delim,default=False)
-			setter(kwargs,system,delimiter=delim,default=False)			
+			setter(kwargs,system,delimiter=delim,default=None)			
 			setter(kwargs,cls.properties,delimiter=delim,default='none')
 
 			out = func(cls,*args,**kwargs)

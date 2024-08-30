@@ -170,7 +170,7 @@ class Basis(Dict):
 			shape=getattr(kwargs,'shape',kwargs.D) if getattr(kwargs,'shape',None) is not None else kwargs.D,
 			random=getattr(kwargs,'random','haar'),
 			scale=getattr(kwargs,'scale',None),
-			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
+			key=getattr(kwargs,'key',None) if getattr(kwargs,'key',None) is not None else  getattr(kwargs,'seed',None),
 			dtype=kwargs.dtype)
 		return data
 
@@ -183,7 +183,7 @@ class Basis(Dict):
 			shape=kwargs.shape,
 			random=getattr(kwargs,'random',None),
 			scale=getattr(kwargs,'scale',None),
-			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
+			key=getattr(kwargs,'key',None) if getattr(kwargs,'key',None) is not None else  getattr(kwargs,'seed',None),
 			dtype=kwargs.dtype)
 		return data	
 
@@ -196,7 +196,7 @@ class Basis(Dict):
 			shape=getattr(kwargs,'shape',kwargs.D) if getattr(kwargs,'shape',None) is not None else kwargs.D,
 			random=getattr(kwargs,'random','haar'),
 			scale=getattr(kwargs,'scale',None),
-			key=getattr(kwargs,'key',getattr(kwargs,'seed',None)),
+			key=getattr(kwargs,'key',None) if getattr(kwargs,'key',None) is not None else  getattr(kwargs,'seed',None),
 			dtype=kwargs.dtype)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))
@@ -3195,7 +3195,7 @@ class State(Object):
 					operator[site.index(i)]() 
 					if callable(operator[site.index(i)]) else
 					operator[site.index(i)])
-					if i in site else basis.get(default)(D=D,system=system) 
+					if i in site else basis.get(default)(D=D,system=system)/D 
 						for i in site]) if operator is not None else None
 
 			else:
@@ -4724,34 +4724,9 @@ class Module(System):
 		
 		self.state = state
 
+	
 		# Setup
 		self.setup()
-
-
-		# Set functions
-		def func(parameters,state):
-			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.probability(parameters=parameters,state=state)
-			for i in range(self.M):
-				for data in self.data:
-					state = data(parameters=parameters,state=state)
-			state = self.measure.amplitude(parameters=parameters,state=state)
-			return state
-
-		def grad(parameters,state):
-			return None
-
-		self.func = func
-		self.gradient = grad
-
-
-		# Set wrapper
-		parameters = self.parameters()
-		state = self.state()
-		wrapper = partial
-
-		self.func = wrapper(self.func,parameters=parameters,state=state)
-		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 
 		return
 
@@ -4783,7 +4758,7 @@ class Module(System):
 
 
 		# Data
-		models = {model.site: model} if not isinstance(model,iterables) and not isinstance(model,dict) else {i.site: model for i in model} if isinstance(model,iterables) else {i: model[i] for i in model} if isinstance(model,dict) else model if model is not None else {}
+		models = {None:model} if model is None or callable(model) or not isinstance(model,dict) else {index: model[index] for index in model}
 		options = self.options if self.options is not None else {}
 		obj = state() if callable(state) else state
 
@@ -4793,12 +4768,15 @@ class Module(System):
 			
 			model = models[index]
 
+			if model is None:
+				continue
+
 			locality = model.locality
 
-			if isinstance(index,str):
+			if index is None or isinstance(index,str):
 				indices = self.lattice(index)
 			else:
-				indices = [where]
+				indices = [index]
 
 			parameters = model.parameters()
 			state = tensorprod([obj]*locality)
@@ -4812,8 +4790,25 @@ class Module(System):
 
 			for where in indices:
 
-				def obj(parameters,state,where=where,model=model,options=options):
-					return state.gate(model,where=where,**options)
+				if measure.architecture is None:
+
+					def obj(parameters,state,where=where,model=model,options=options):
+						return model(state,where=where,**options)
+				
+				elif measure.architecture in ['array']:
+
+					def obj(parameters,state,where=where,model=model,options=options):
+						return model(state,where=where,**options)
+
+				elif measure.architecture in ['tensor']:
+
+					def obj(parameters,state,where=where,model=model,options=options):
+						return state.gate(model,where=where,**options)
+
+				else:
+
+					def obj(parameters,state,where=where,model=model,options=options):
+						return model(state,where=where,**options)					
 
 				data.append(obj)
 
@@ -4821,6 +4816,32 @@ class Module(System):
 		# Attributes
 		self.measure = measure
 		self.data = data
+
+
+		# Functions
+		def func(parameters,state):
+			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+			state = self.measure.probability(parameters=parameters,state=state)
+			for i in range(self.M):
+				for data in self.data:
+					state = data(parameters=parameters,state=state)
+			state = self.measure.amplitude(parameters=parameters,state=state)
+			return state
+
+		def grad(parameters,state):
+			return None
+
+		self.func = func
+		self.gradient = grad
+
+
+		# Wrapper
+		parameters = self.parameters()
+		state = self.state()
+		wrapper = partial
+
+		self.func = wrapper(self.func,parameters=parameters,state=state)
+		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 
 		return
 

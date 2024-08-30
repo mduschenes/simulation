@@ -84,7 +84,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 		exe = [*['./%s'%(e) for e in exe[:1]],*exe[1:]]
 		flags = [*flags]
 		cmd = [*cmd]
-		options = [*[' '.join([subarg for subarg in args[arg]]) for arg in args],*options]		
+		options = [*options]		
 		env = {
 			**{
 				'SLURM_JOB_NAME':kwargs.get('key'),
@@ -97,6 +97,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+				**{arg: ' '.join([subarg for subarg in args[arg]]) for arg in args},
 			},
 			**env			
 		}

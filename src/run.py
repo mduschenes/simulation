@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,spawn,delim,union,is_equal
+from src.utils import copy,spawn,delim,union,convert,arrays,asscalar,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -109,7 +109,6 @@ def setup(settings):
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
-
 	count = max(1,len(seedlings))
 
 	if isinstance(size,int):
@@ -135,8 +134,8 @@ def setup(settings):
 	size = sum(size)
 
 	if size:
-		seeds = spawn(seed=seed,size=size,reset=reset)
-		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])].tolist() for i,seedling in enumerate(seedlings)}
+		seeds = spawn(seed=seed,size=size,reset=reset,type=True)
+		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
 		seeds = permuter(seedlings,groups=groups)
 	else:
 		seeds = [{}]
@@ -186,6 +185,7 @@ def setup(settings):
 					keys[key][attr] = int(key.split(delim)[-1]) if key is not None else None					
 				elif attr in ['system.instances']:
 					keys[key][attr] = {seedling: seedlings[seedling].index(keys[key][seedling]) for seedling in seedlings}
+
 
 	# Set settings with key and seed instances
 	settings = {key: copy(settings) for key in keys}

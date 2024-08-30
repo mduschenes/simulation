@@ -17,14 +17,14 @@ for PATH in PATHS:
 
 from src.utils import np,onp,backend
 from src.utils import jit,partial
-from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate
+from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
 from src.utils import swap
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
-from src.utils import arrays,scalars,integers,floats,pi
+from src.utils import arrays,scalars,iterables,integers,floats,pi,asarray,asscalar
 
 from src.optimize import Metric
 
@@ -878,6 +878,30 @@ def test_inheritance(*args,**kwargs):
 	return
 
 
+def test_convert(*args,**kwargs):
+
+	def check(iterable,type):
+		if isinstance(iterable,iterables):
+			assert isinstance(iterable,type), "Incorrect type %r != <%r>"%(iterable,type)
+			for i in iterable:
+				check(i,type=type)
+		return
+
+	iterable = array([[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]])
+	type = list
+	types = (*arrays,)
+	default = asscalar
+
+	print(iterable)
+	iterable = convert(iterable,type=type,types=types,default=default)
+	print(iterable)
+
+	check(iterable,type=type)
+
+	return
+
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -892,4 +916,5 @@ if __name__ == '__main__':
 	# test_gradient_expm(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
-	test_inheritance(path,tol)
+	# test_inheritance(path,tol)
+	test_convert(path,tol)

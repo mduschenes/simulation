@@ -30,9 +30,9 @@ def setup(settings,*args,**kwargs):
 	default = {}
 	wrapper = Dict
 	defaults = Dict(
-		boolean=dict(call=None,train=None,load=None,dump=None),
-		cls=dict(model=None,state=None,label=None,callback=None),
-		model=dict(),state=dict(),label=dict(),callback=dict(),
+		boolean=dict(call=None,optimize=None,load=None,dump=None),
+		cls=dict(module=None,model=None,state=None,label=None,callback=None),
+		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
 		optimize=dict(),seed=dict(),system=dict(),
 		)
 
@@ -46,6 +46,7 @@ def setup(settings,*args,**kwargs):
 
 	return settings
 
+
 def call(settings,*args,**kwargs):
 	'''
 	Call model
@@ -55,24 +56,89 @@ def call(settings,*args,**kwargs):
 		kwargs (dict): settings keyword arguments		
 	Returns:
 		model (object): Model instance
-		state (object): Model state		
 	'''
 
 	settings = setup(settings,*args,**kwargs)
 
+	module = load(settings.cls.module)
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
 	system = settings.system
 
-	model = model(**{**settings.model,**dict(system=system)})
-	state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+	if module is not None and model is not None and state is not None:
+	
+		module = module(**{**settings.module,**dict(system=system)})
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
-	model.init(state=state)
+		module.init(model=model,state=state)
+
+		model = module
+
+	elif model is not None and state is not None:
+
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+
+		model.init(state=state)
+
+	elif model is not None:
+
+		model = model(**{**settings.model,**dict(system=system)})
+
+	else:
+
+		model = None
+
+	return model
+
+
+def optimize(settings,*args,**kwargs):
+	'''
+	Optimize model
+	Args:
+		settings (dict,str,iterable[str,dict]): settings
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments		
+	Returns:
+		model (object): Model instance
+		parameters (object): Model parameters
+		state (object): Model state
+		optimizer (object): Model optimizer
+	'''	
+
+	settings = setup(settings,*args,**kwargs)
+
+	model = call(settings,*args,**kwargs)
+
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	state = model.state
+	label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
+
+	label.init(state=state)
+
+	func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
+	seed = spawn(**settings.seed)
+	hyperparameters = settings.optimize
+	arguments = ()
+	keywords = {}
+	
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
+	callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparameters,system=system)
+
+	optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparameters,system=system)
 
 	parameters = model.parameters()
 	state = model.state()
 
-	return model,state
+	parameters = optimizer(parameters,state=state)
+
+	return model,parameters,state,optimizer
+
 
 def train(settings,*args,**kwargs):
 	'''
@@ -89,61 +155,27 @@ def train(settings,*args,**kwargs):
 	'''
 
 	settings = setup(settings,*args,**kwargs)
-	
 
 	model = None
 	parameters = None
 	state = None
 	optimizer = None
 
-
 	if settings.boolean.load:
+
 		model.load()
 
-
 	if settings.boolean.call:
-		
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-		system = settings.system
 
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		model = call(settings)
+	
+	if settings.boolean.optimize:
 
-		model.init(state=state)
-
-
-	if settings.boolean.train:
-
-		label = load(settings.cls.label)
-		callback = load(settings.cls.callback)
-
-		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
-		callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
-
-		label.init(state=state)
-
-		func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
-		seed = spawn(**settings.seed)
-		hyperparameters = settings.optimize
-		arguments = ()
-		keywords = {}
-		
-		metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
-		func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
-		callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparameters,system=system)
-
-		optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparameters,system=system)
-
-		parameters = model.parameters()
-		state = model.state()
-
-		parameters = optimizer(parameters,state=state)
-
+		model,parameters,state,optimizer = optimize(settings)
 
 	if settings.boolean.dump:	
+	
 		model.dump()
-
 
 	return model,parameters,state,optimizer
 
@@ -168,7 +200,7 @@ def run(settings,*args,**kwargs):
 	models = {name: Dict(settings=settings,model=None,parameters=None,state=None,optimizer=None)
 		for name,settings in enumerate(models)}
 
-	for model in models:
+	for name in models:
 		
 		settings = models[name].settings
 
@@ -179,10 +211,9 @@ def run(settings,*args,**kwargs):
 		models[name].state = state
 		models[name].optimizer = optimizer
 
-	if len(models) == 1:
-		models = models[name]
+	model = models[name] if len(models) == 1 else models
 
-	return models
+	return model
 
 
 def main(*args,**kwargs):
