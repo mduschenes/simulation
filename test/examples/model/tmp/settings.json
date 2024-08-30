@@ -1,0 +1,31 @@
+{
+"system":{
+	"seed":0,
+	"attrs":["model","label","data"]
+	},
+"model":{
+	"cls":"src.tensor.Model",
+	"args":[],
+	"kwargs":{"shape":[2,3]}
+	},
+"label":{
+	"cls":"src.model.Label",
+	"args":[],
+	"kwargs":{"model":"src.tensor.Model","label":null,"variables":false,"args":[],"kwargs":{"shape":[2,3]}}
+	},
+"data":{
+	"cls":"src.model.Data",
+	"args":[],
+	"kwargs":{"random":"random","shape":[10]}
+	},
+"objective":{
+	"cls":"src.model.Objective",
+	"args":[],
+	"kwargs":{"metric":"mse"}
+	},
+"optimizer":{
+	"cls":"src.model.Optimizer",
+	"args":[],
+	"kwargs":{"optimizer":"adam","iterations":1e5,"progress":"progressbar","learning_rate":1e-2}
+	}
+}	

@@ -708,7 +708,7 @@ def test_module(*args,**kwargs):
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.data.xx.parameters":[0.25],
-		"model.data.noise.parameters":[0],
+		"model.data.noise.parameters":[1e-3],
 		"model.data.xx.site":[">ij<"],"model.data.noise.site":[">ij<"],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],

@@ -903,7 +903,7 @@ class Measure(System):
 			model (callable): model of operator with signature model(parameters,state) -> data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): POVM operator of shape (self.K**N,self.K**N)
+			func (callable): operator with signature func(parameters,state) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
 		if self.architecture is None:
@@ -928,7 +928,6 @@ class Measure(System):
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = func(parameters=parameters,state=basis)			
 
 		elif self.architecture in ['array']:
 
@@ -952,8 +951,7 @@ class Measure(System):
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = func(parameters=parameters,state=basis)
-		
+
 		elif self.architecture in ['tensor']:
 
 			N = state.L
@@ -977,8 +975,6 @@ class Measure(System):
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = func(parameters=parameters,state=basis)
-
 		else:
 
 			N = len(state) if state is not None else None
@@ -1001,9 +997,7 @@ class Measure(System):
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = func(parameters=parameters,state=basis)			
-
-		return data
+		return func
 
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
 		'''
@@ -4793,12 +4787,12 @@ class Module(System):
 				if measure.architecture is None:
 
 					def obj(parameters,state,where=where,model=model,options=options):
-						return model(state,where=where,**options)
+						return model(parameters,state,where=where,**options)
 				
 				elif measure.architecture in ['array']:
 
 					def obj(parameters,state,where=where,model=model,options=options):
-						return model(state,where=where,**options)
+						return model(parameters,state,where=where,**options)
 
 				elif measure.architecture in ['tensor']:
 
@@ -4808,7 +4802,7 @@ class Module(System):
 				else:
 
 					def obj(parameters,state,where=where,model=model,options=options):
-						return model(state,where=where,**options)					
+						return model(parameters,state,where=where,**options)					
 
 				data.append(obj)
 
