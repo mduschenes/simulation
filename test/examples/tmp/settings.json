@@ -1,7 +1,7 @@
 {
 "boolean":{
 	"call":1,
-	"train":0,
+	"optimize":0,
 	"load":0,
 	"dump":0
 	},

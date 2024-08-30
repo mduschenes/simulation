@@ -110,6 +110,7 @@ def optimize(settings,*args,**kwargs):
 	settings = setup(settings,*args,**kwargs)
 
 	model = call(settings,*args,**kwargs)
+	system = settings.system
 
 	label = load(settings.cls.label)
 	callback = load(settings.cls.callback)

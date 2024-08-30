@@ -10,7 +10,7 @@
 	},
 "hyperparameters":null,
 "boolean":{
-	"train":1,
+	"optimize":1,
 	"load":0,
 	"dump":0
 	},
