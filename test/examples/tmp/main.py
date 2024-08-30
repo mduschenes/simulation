@@ -254,8 +254,7 @@ def main(settings,*args,**kwargs):
 
 	for i in range(M):
 		for site in lattice(structure):
-			data = operator
-			state = state.gate(data,where=site)
+			state = operator(parameters,state,where=site)
 
 	for i in range(M):
 		for site in lattice(structure):

@@ -885,8 +885,7 @@ class Measure(System):
 			
 				state &= operator
 
-			inds = (*((*(index.format(i) for i in range(N)),) for index in list(shapes)[::-1]),)
-			state = state.contract().to_dense(*inds)
+			state = datastructure(state,to=self.architecture)
 
 		else:
 			
@@ -894,16 +893,17 @@ class Measure(System):
 
 		return state
 
-	def operator(self,parameters=None,state=None,model=None,**kwargs):
+	def operator(self,parameters=None,state=None,model=None,where=None,**kwargs):
 		'''
 		Operator for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
 			model (callable): model of operator with signature model(parameters,state) -> data
+			where (int,str,iterable[int,str]): indices of contraction
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			func (callable): operator with signature func(parameters,state) -> data (array) POVM operator of shape (self.K**N,self.K**N)
+			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
 		if self.architecture is None:
@@ -920,15 +920,18 @@ class Measure(System):
 			if model is None:
 				data = None
 			else:
-				subscripts = 'uij,wij,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
+				subscripts = 'uij,wij,wv,v...->u...'
+				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-					conjugate(basis),
-					model(parameters,state),
-					inverse)
-
+				
+				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
+				swapper = swap(state,**options,transform=True)
+				_swapper = swap(state,**options,transform=False)
+					
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
+					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
+	
 		elif self.architecture in ['array']:
 
 			N = len(state) if state is not None else None
@@ -943,14 +946,17 @@ class Measure(System):
 			if model is None:
 				data = None
 			else:
-				subscripts = 'uij,wij,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
+				subscripts = 'uij,wij,wv,v...->u...'
+				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-					conjugate(basis),
-					model(parameters,state),
-					inverse)
+				
+				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
+				swapper = swap(state,**options,transform=True)
+				_swapper = swap(state,**options,transform=False)
+					
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
+					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
 
 		elif self.architecture in ['tensor']:
 
@@ -968,13 +974,12 @@ class Measure(System):
 				data = None
 			else:
 				subscripts = 'uij,wij,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
+				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-					conjugate(basis),
-					model(parameters,state),
-					inverse)
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
+					return state.gate(einsummation(conjugate(basis),model(parameters,basis),inverse),where=where,**kwargs)
+		
 		else:
 
 			N = len(state) if state is not None else None
@@ -989,14 +994,18 @@ class Measure(System):
 			if model is None:
 				data = None
 			else:
-				subscripts = 'uij,wij,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
+				subscripts = 'uij,wij,wv,v...->u...'
+				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
-					conjugate(basis),
-					model(parameters,state),
-					inverse)
+				
+				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
+				swapper = swap(state,**options,transform=True)
+				_swapper = swap(state,**options,transform=False)
+					
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
+					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
+		
 		return func
 
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
@@ -1039,7 +1048,7 @@ class Measure(System):
 				state &= operator
 
 			inds = (*((*(index.format(i) for i in range(N)),) for index in list(shapes)[::-1]),)
-			state = state.contract().to_dense(*inds).T
+			state = state.contract().to_dense(*inds)
 
 		else:
 
@@ -4784,26 +4793,9 @@ class Module(System):
 
 			for where in indices:
 
-				if measure.architecture is None:
-
-					def obj(parameters,state,where=where,model=model,options=options):
-						return model(parameters,state,where=where,**options)
+				def obj(parameters,state,where=where,model=model,options=options):
+					return model(parameters,state,where=where,**options)
 				
-				elif measure.architecture in ['array']:
-
-					def obj(parameters,state,where=where,model=model,options=options):
-						return model(parameters,state,where=where,**options)
-
-				elif measure.architecture in ['tensor']:
-
-					def obj(parameters,state,where=where,model=model,options=options):
-						return state.gate(model,where=where,**options)
-
-				else:
-
-					def obj(parameters,state,where=where,model=model,options=options):
-						return model(parameters,state,where=where,**options)					
-
 				data.append(obj)
 
 

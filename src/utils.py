@@ -2588,24 +2588,33 @@ def datastructure(obj,data=True,structure=False,contract=False,to=True):
 		obj (tensor): object
 		data (bool): Return data of object
 		structure (bool): Return structure of object
-		contract (bool): Contract object
-		to (str): Return data as type, defaults as array, allowed strings in ['array']
+		contract (bool,dict): Contract object or contraction options
+		to (str): Return data as type, defaults as array, allowed strings in ['array','tensor']
 	Returns:
 		data (object): data of object
 		structure (object): structure of object
 	'''
 	
 	if contract:
-		obj = obj.contract()
-	
-	obj = qtn.pack(obj)
+		contract = contract if isinstance(contract,dict) else {}
+		obj = obj.contract(**contract)
 
 	if to in ['array']:
+
+		obj = qtn.pack(obj)
+
 		obj = (
 			array([obj[0][i].ravel() for i in obj[0]]) if not isinstance(obj[0],arrays) else obj[0],
 			*obj[1:]
 			)
+	elif to in ['tensor']:
+
+		obj = obj.to_dense(obj.outer_inds())
+
 	elif to:
+		
+		obj = qtn.pack(obj)
+
 		obj = (
 			array([obj[0][i].ravel() for i in obj[0]]) if not isinstance(obj[0],arrays) else obj[0],
 			*obj[1:]

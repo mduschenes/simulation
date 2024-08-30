@@ -874,18 +874,19 @@ def test_module(*args,**kwargs):
 		# Operator
 		parameters = model.parameters()
 		state = [obj()]*model.locality
+		where = list(range(model.locality))
 
 		model.init(state=tensorprod(state))
 
 		state = measure.probability(parameters=parameters,state=state)
 
-		operator = measure.operator(parameters=parameters,state=state,model=model)
+		operator = measure.operator(parameters=parameters,state=state,model=model,where=where)
 
 		key = 'operator'
 		if settings.measure.architecture in ['array']:
-			value = array(operator)
+			value = array(operator(parameters,state))
 		elif settings.measure.architecture in ['tensor']:
-			value = array(operator)
+			value = datastructure(operator(parameters,state),to='tensor')
 
 		data[i][key] = value
 
@@ -907,7 +908,7 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-
+		continue
 		# Init
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
@@ -941,7 +942,9 @@ def test_module(*args,**kwargs):
 
 		state = measure.probability(parameters=parameters,state=state)
 
-		operator = measure.operator(parameters=parameters,state=state,model=model)	
+		operator = measure.operator(parameters=parameters,state=state,model=model)
+
+		operator = operator(parameters,state)
 
 		continue
 
