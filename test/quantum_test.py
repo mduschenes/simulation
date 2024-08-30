@@ -704,20 +704,23 @@ def test_module(*args,**kwargs):
 		}
 
 	kwargs = {
-		"module.N":[2],"module.M":[1],
+		"module.N":[4],"module.M":[5],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.data.xx.parameters":[1/2],
-		"model.data.noise.parameters":[0],
-		"model.local":[True],"state.local":[True],
+		"model.data.noise.parameters":[1e-3],
+		"model.data.xx.site":["<ij>"],"model.data.noise.site":["<ij>"],
+		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
+		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
-		"measure.architecture":["array","tensor"]
+		"module.measure.architecture":["tensor"],
+		"module.options":[{"contract":"swap+split","max_bond":None,"cutoff":1e-20}]
 		}	
 
 
-	groups = [["model.data.noise.operator","model.data.noise.site","model.data.xx"]]
+	groups = [["module.measure.string","module.measure.base"]]
 
 	filters = None
 
@@ -749,16 +752,20 @@ def test_module(*args,**kwargs):
 			"d":1,
 			"string":"module",
 			"lattice":"square",
-			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":True}},
+			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0}		
 		},
 		"measure":{
 			"base":"pauli",
 			"architecture":"tensor",
-			"options":{"cyclic":True}	
+			"options":{"cyclic":False}	
 		},		
 		"model":{
 			"data":{
+				"z":{
+					"operator":["Z"],"site":"i","string":"Z",
+					"parameters":0.5,"variable":False
+				},
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
 					"parameters":0.5,"variable":False
@@ -767,7 +774,7 @@ def test_module(*args,**kwargs):
 					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
 					"parameters":1e-3,"variable":False
 				},
-				
+
 			},
 			"D":2,
 			"local":True,
@@ -807,7 +814,7 @@ def test_module(*args,**kwargs):
 		})
 
 		# Settings
-		setter(settings,kwargs,delimiter=delim,default=True)
+		setter(settings,kwargs,delimiter=delim,default='replace')
 
 		# Class
 		module = load(settings.cls.module)
@@ -820,12 +827,12 @@ def test_module(*args,**kwargs):
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
+
 		# Test
 
 		obj = state
 		
 		data[i] = {}
-
 
 
 		# Measure
@@ -868,7 +875,7 @@ def test_module(*args,**kwargs):
 
 		model.init(state=tensorprod(state))
 
-		state = measure.probability(parameters=parameters,state=state,cyclic=True)
+		state = measure.probability(parameters=parameters,state=state)
 
 		operator = measure.operator(parameters=parameters,state=state,model=model)
 
@@ -881,9 +888,9 @@ def test_module(*args,**kwargs):
 		data[i][key] = value
 
 		# Module
-
 		model = {max((settings.model.data[i].site for i in settings.model.data),
 			key=lambda i: ['i','i<j','>ij<','<ij>','ij','i...j'].index(i) if isinstance(i,str) else -1):model}
+		
 		state = obj()
 
 		module = module(**{**settings.module,**dict(model=model,state=state,system=system)})
@@ -899,14 +906,13 @@ def test_module(*args,**kwargs):
 		data[i][key] = value
 
 
-
 		# Init
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 		system = settings.system
 
-		model = model(**{**settings.model,**dict(N=module.N,local=True,options=dict(shape=(settings.state.D,settings.module.N,settings.state.ndim))),**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(N=module.N,local=False),**dict(system=system)})
+		model = model(**{**settings.model,**dict(N=module.N,M=module.M,options=dict(shape=(settings.state.D,settings.module.N,settings.state.ndim))),**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(N=module.N),**dict(system=system)})
 
 		model.init(state=state)
 
@@ -918,7 +924,7 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
+		# print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
 		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model()\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8))
 

@@ -439,7 +439,7 @@ class Lattice(object):
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
-				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1]
+				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1] if self.N > 2 else [1]
 				vertices = (site([(coordinates[j]+edge*(j==i))%(L[j]) for j in range(d)]) for i in range(d) for edge in edges)
 				return vertices
 			def boundary(edge):
@@ -452,7 +452,7 @@ class Lattice(object):
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
-				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1]
+				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1] if self.N > 2 else [1]
 				vertices = (site([(coordinates[j]+edge*(j==i))%(L[j]) for j in range(d)]) for i in range(d) for edge in edges)
 				return vertices
 			def boundary(edge):
@@ -465,7 +465,7 @@ class Lattice(object):
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
-				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1]
+				edges = [edges] if isinstance(edges,integers) else edges if edges is not None else [1,-1] if self.N > 2 else [1]
 				vertices = (site([(coordinates[j]+edge*(j==i))%(L[j]) for j in range(d)]) for i in range(d) for edge in edges)
 				return vertices
 			def boundary(edge):

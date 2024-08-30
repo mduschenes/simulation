@@ -732,7 +732,7 @@ class Measure(System):
 				attr = 'cls'
 				substring = str(self)
 			else:
-				substring = getattr(self,attr,None)
+				substring = getattrs(self,attr,delimiter=delim,default=None)
 
 			if isinstance(substring,objects):
 				string = '%s:\n%s'%(attr,str(substring))
@@ -924,11 +924,11 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = contract(parameters=parameters,state=basis)			
+				data = func(parameters=parameters,state=basis)			
 
 		elif self.architecture in ['array']:
 
@@ -948,11 +948,11 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = contract(parameters=parameters,state=basis)
+				data = func(parameters=parameters,state=basis)
 		
 		elif self.architecture in ['tensor']:
 
@@ -973,11 +973,11 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = contract(parameters=parameters,state=basis)
+				data = func(parameters=parameters,state=basis)
 
 		else:
 
@@ -997,11 +997,11 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsum(subscripts,*shapes)
 				model = vmap(model,in_axes=(None,0),out_axes=0)
-				contract = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
+				func = lambda parameters,state,basis=basis,inverse=inverse,einsummation=einsummation,model=model: einsummation(
 					conjugate(basis),
 					model(parameters,state),
 					inverse)
-				data = contract(parameters=parameters,state=basis)			
+				data = func(parameters=parameters,state=basis)			
 
 		return data
 
@@ -4793,25 +4793,27 @@ class Module(System):
 			
 			model = models[index]
 
-			parameters = model.parameters()
-			state = tensorprod([obj]*model.locality)
-			model.init(state=state)
-
-			parameters = measure.parameters()
-			state = [obj]*model.locality
-			state = measure.probability(parameters=parameters,state=state)
-
-			operator = measure.operator(parameters=parameters,state=state,model=model)
+			locality = model.locality
 
 			if isinstance(index,str):
 				indices = self.lattice(index)
 			else:
 				indices = [where]
 
+			parameters = model.parameters()
+			state = tensorprod([obj]*locality)
+			model.init(state=state)
+
+			parameters = measure.parameters()
+			state = [obj]*locality
+			
+			state = measure.probability(parameters=parameters,state=state)
+			model = measure.operator(parameters=parameters,state=state,model=model)
+
 			for where in indices:
 
-				def obj(parameters,state,where=where,operator=operator,options=options):
-					return state.gate(operator,where=where,**options)
+				def obj(parameters,state,where=where,model=model,options=options):
+					return state.gate(model,where=where,**options)
 
 				data.append(obj)
 
@@ -4852,7 +4854,7 @@ class Module(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','N','M','d','base','model','measure','data']:
+		for attr in [None,'string','N','M','d','measure','architecture','model','data']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -4862,7 +4864,7 @@ class Module(System):
 				attr = 'cls'
 				substring = str(self)
 			else:
-				substring = getattr(self,attr,None)
+				substring = getattrs(self,attr,delimiter=delim,default=None)
 
 			if isinstance(substring,objects):
 				string = '%s:\n%s'%(attr,str(substring))
