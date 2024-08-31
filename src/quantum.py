@@ -749,6 +749,40 @@ class Measure(System):
 
 		return
 
+
+	def transform(self,parameters=None,state=None,model=None,to=True,**kwargs):
+		'''
+		Probability for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
+			kwargs (dict): Additional class keyword arguments
+			model (callable): model of operator with signature model(parameters,state) -> data
+			to (bool): Direction of amplitude -> probability or probability -> amplitude					
+		Returns:
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K,)*N or (self.D**N,self.D**N)
+			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
+		'''
+
+		if model is not None:
+		
+			state = self.transform(parameters=parameters,state=state,to=to)
+		
+			return self.operator(parameters=parameters,state=state,model=model,**kwargs)
+		
+		elif to is True:
+		
+			return self.probability(parameters=parameters,state=state,**kwargs)
+		
+		elif to is False:
+			
+			return self.amplitude(parameters=parameters,state=state,**kwargs)
+		
+		else:
+			
+			return state
+
+
 	def probability(self,parameters=None,state=None,**kwargs):
 		'''
 		Probability for POVM probability measure
@@ -839,6 +873,7 @@ class Measure(System):
 			state = einsummation(basis,state)
 
 		return state
+
 
 	def amplitude(self,parameters=None,state=None,**kwargs):
 		'''
@@ -944,7 +979,10 @@ class Measure(System):
 				inverse = self.inverse
 
 			if model is None:
-				data = None
+			
+				def func(parameters,state,where=where,**kwargs):
+					return None
+			
 			else:
 				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
@@ -971,7 +1009,9 @@ class Measure(System):
 
 
 			if model is None:
-				data = None
+			
+				def func(parameters,state,where=where,**kwargs):
+					return None
 			else:
 				subscripts = 'uij,wij,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
@@ -992,7 +1032,10 @@ class Measure(System):
 				inverse = self.inverse
 
 			if model is None:
-				data = None
+
+				def func(parameters,state,where=where,**kwargs):
+					return None
+
 			else:
 				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
@@ -1006,6 +1049,12 @@ class Measure(System):
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
 					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
 		
+
+		parameters = self.parameters() if parameters is None else parameters
+		wrapper = partial
+
+		func = wrapper(func,parameters=parameters)
+
 		return func
 
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
@@ -4788,13 +4837,12 @@ class Module(System):
 			parameters = measure.parameters()
 			state = [obj]*locality
 			
-			state = measure.probability(parameters=parameters,state=state)
-			model = measure.operator(parameters=parameters,state=state,model=model)
+			model = measure.transform(parameters=parameters,state=state,model=model)
 
 			for where in indices:
 
 				def obj(parameters,state,where=where,model=model,options=options):
-					return model(parameters,state,where=where,**options)
+					return model(parameters=parameters,state=state,where=where,**options)
 				
 				data.append(obj)
 
@@ -4807,11 +4855,11 @@ class Module(System):
 		# Functions
 		def func(parameters,state):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.probability(parameters=parameters,state=state)
+			state = self.measure.transform(parameters=parameters,state=state,to=True)
 			for i in range(self.M):
 				for data in self.data:
 					state = data(parameters=parameters,state=state)
-			state = self.measure.amplitude(parameters=parameters,state=state)
+			state = self.measure.transform(parameters=parameters,state=state,to=False)
 			return state
 
 		def grad(parameters,state):

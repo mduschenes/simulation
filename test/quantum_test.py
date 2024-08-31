@@ -707,9 +707,9 @@ def test_module(*args,**kwargs):
 		"module.N":[2],"module.M":[1],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.data.xx.parameters":[0.25],
-		"model.data.noise.parameters":[1e-3],
-		"model.data.xx.site":[">ij<"],"model.data.noise.site":[">ij<"],
+		"model.data.xx.parameters":[0.5],
+		"model.data.noise.parameters":[0],
+		"model.data.xx.site":[None],"model.data.noise.site":[None],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
@@ -787,7 +787,7 @@ def test_module(*args,**kwargs):
 			"layout":None,
 			},
 		"state": {
-			"operator":["haar"],
+			"operator":["zero"],
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -886,7 +886,7 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ['array']:
 			value = array(operator(parameters,state))
 		elif settings.measure.architecture in ['tensor']:
-			value = datastructure(operator(parameters,state),to='tensor')
+			value = datastructure(operator(parameters=parameters,state=state),to='tensor')
 
 		data[i][key] = value
 
@@ -908,7 +908,6 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-		continue
 		# Init
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
