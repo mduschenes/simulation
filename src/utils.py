@@ -2581,53 +2581,40 @@ class gate(qtn.Gate):
 
 
 
-def datastructure(obj,data=True,structure=False,contract=False,to=True):
+def datastructure(obj,to=True,contract=None,**kwargs):
 	'''
 	Get data of object
 	Args:
 		obj (tensor): object
-		data (bool): Return data of object
-		structure (bool): Return structure of object
-		contract (bool,dict): Contract object or contraction options
-		to (str): Return data as type, defaults as array, allowed strings in ['array','tensor']
+		to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
+		contract (bool): Contract data
+		kwargs (dict): Additional keyword arguments for data
 	Returns:
 		data (object): data of object
 		structure (object): structure of object
 	'''
 	
 	if contract:
-		contract = contract if isinstance(contract,dict) else {}
-		obj = obj.contract(**contract)
+		obj = obj.contract(**kwargs)
 
 	if to in ['array']:
+		obj,structure = qtn.pack(obj)
+		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
 
-		obj = qtn.pack(obj)
-
-		obj = (
-			array([obj[0][i].ravel() for i in obj[0]]) if not isinstance(obj[0],arrays) else obj[0],
-			*obj[1:]
-			)
 	elif to in ['tensor']:
+		args = tuple(sorted(set((tuple(sorted(i for i in obj.inds if i.startswith(string))) for string in tuple(sorted(set(i[0] for i in obj.inds)))))))
+		kwargs = dict()
+		obj = obj.to_dense(*args,**kwargs)
 
-		obj = obj.to_dense(obj.outer_inds())
+	elif to in ['data']:
+		obj,structure = qtn.pack(obj)
+
+	elif to in ['structure']:
+		data,obj = qtn.pack(obj)
 
 	elif to:
-		
-		obj = qtn.pack(obj)
-
-		obj = (
-			array([obj[0][i].ravel() for i in obj[0]]) if not isinstance(obj[0],arrays) else obj[0],
-			*obj[1:]
-			)
-
-	if not data and not structure:
-		obj = None
-	elif data and not structure:
-		obj = obj[0]
-	elif not data and structure:
-		obj = obj[1]
-	else:
-		obj = obj[0],obj[1]
+		obj,structure = qtn.pack(obj)
+		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
 
 	return obj
 

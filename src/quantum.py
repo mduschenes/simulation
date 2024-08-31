@@ -750,7 +750,7 @@ class Measure(System):
 		return
 
 
-	def transform(self,parameters=None,state=None,model=None,to=True,**kwargs):
+	def transform(self,parameters=None,state=None,model=None,transformation=None,**kwargs):
 		'''
 		Probability for POVM probability measure
 		Args:
@@ -758,29 +758,29 @@ class Measure(System):
 			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
 			kwargs (dict): Additional class keyword arguments
 			model (callable): model of operator with signature model(parameters,state) -> data
-			to (bool): Direction of amplitude -> probability or probability -> amplitude					
+			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K,)*N or (self.D**N,self.D**N)
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		if model is not None:
-		
-			state = self.transform(parameters=parameters,state=state,to=to)
-		
-			return self.operator(parameters=parameters,state=state,model=model,**kwargs)
-		
-		elif to is True:
+		if transformation in [None,True,'probability','state'] and model is None:
 		
 			return self.probability(parameters=parameters,state=state,**kwargs)
-		
-		elif to is False:
-			
+
+		elif transformation in [False,'amplitude','function']:
+
 			return self.amplitude(parameters=parameters,state=state,**kwargs)
+
+		elif transformation in [None,True,'operator','model'] and model is not None:
 		
+			state = self.transform(parameters=parameters,state=state,transformation=transformation)
+		
+			return self.operator(parameters=parameters,state=state,model=model,**kwargs)
+
 		else:
-			
-			return state
+		
+			return state		
 
 
 	def probability(self,parameters=None,state=None,**kwargs):
@@ -839,7 +839,7 @@ class Measure(System):
 					with self.context(i,self.basis):
 						state[i] &= self.basis
 
-					state[i] = datastructure(state[i],contract=True)
+					state[i] = datastructure(state[i],to=True,contract=True)
 
 			else:
 
@@ -920,7 +920,7 @@ class Measure(System):
 			
 				state &= operator
 
-			state = datastructure(state,to=self.architecture)
+			state = datastructure(state,to=self.architecture,contract=True)
 
 		else:
 			
@@ -4855,11 +4855,11 @@ class Module(System):
 		# Functions
 		def func(parameters,state):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.transform(parameters=parameters,state=state,to=True)
+			state = self.measure.transform(parameters=parameters,state=state,transformation=True)
 			for i in range(self.M):
 				for data in self.data:
 					state = data(parameters=parameters,state=state)
-			state = self.measure.transform(parameters=parameters,state=state,to=False)
+			state = self.measure.transform(parameters=parameters,state=state,transformation=False)
 			return state
 
 		def grad(parameters,state):

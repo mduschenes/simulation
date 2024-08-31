@@ -704,12 +704,12 @@ def test_module(*args,**kwargs):
 		}
 
 	kwargs = {
-		"module.N":[2],"module.M":[1],
+		"module.N":[5],"module.M":[7],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.data.xx.parameters":[0.5],
-		"model.data.noise.parameters":[0],
-		"model.data.xx.site":[None],"model.data.noise.site":[None],
+		"model.data.xx.parameters":[0.125],
+		"model.data.noise.parameters":[1e-3],
+		"model.data.xx.site":[">ij<"],"model.data.noise.site":[">ij<"],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
@@ -718,7 +718,7 @@ def test_module(*args,**kwargs):
 		"module.measure.architecture":["tensor"],
 		"module.measure.options":[{"cyclic":False}],
 		"module.lattice":[{"lattice":"square","structure":">ij<"}],
-		"module.options":[{"contract":"swap+split","max_bond":None,"cutoff":1e-20}]
+		"module.options":[{"contract":"swap+split","max_bond":None,"cutoff":0}]
 		}	
 
 
@@ -851,7 +851,7 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ['array']:
 			value = array(probability)
 		elif settings.measure.architecture in ['tensor']:
-			value = datastructure(probability,to='array')
+			value = datastructure(probability,to='array',contract=False)
 		
 		data[i][key] = value
 
@@ -886,7 +886,7 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ['array']:
 			value = array(operator(parameters,state))
 		elif settings.measure.architecture in ['tensor']:
-			value = datastructure(operator(parameters=parameters,state=state),to='tensor')
+			value = datastructure(operator(parameters=parameters,state=state),to='tensor',contract=True)
 
 		data[i][key] = value
 
