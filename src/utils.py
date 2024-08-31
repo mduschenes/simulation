@@ -2581,17 +2581,17 @@ class gate(qtn.Gate):
 
 
 
-def datastructure(obj,to=True,contract=None,**kwargs):
+def representation(obj,to=True,contract=None,func=None,**kwargs):
 	'''
 	Get data of object
 	Args:
 		obj (tensor): object
 		to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
 		contract (bool): Contract data
+		func (callable): Wrapper function for data with signature func(obj)
 		kwargs (dict): Additional keyword arguments for data
 	Returns:
-		data (object): data of object
-		structure (object): structure of object
+		obj (object): data of object
 	'''
 	
 	if contract:
@@ -2615,6 +2615,9 @@ def datastructure(obj,to=True,contract=None,**kwargs):
 	elif to:
 		obj,structure = qtn.pack(obj)
 		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+
+	if func is not None:
+		obj = func(obj)
 
 	return obj
 

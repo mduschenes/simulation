@@ -92,7 +92,9 @@ def setup(settings):
 	# Get permutations of hyperparameters
 	permutations = settings['permutations'].get('permutations')
 	groups = settings['permutations'].get('groups')
-	permutations = permuter(permutations,groups=groups)
+	filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
+	func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
+	permutations = permuter(permutations,groups=groups,filters=filters,func=func)
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
 	seed = settings['seed'].get('seed')

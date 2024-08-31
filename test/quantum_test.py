@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,trace,datastructure
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,trace,representation
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -49,8 +49,9 @@ def test_channel(*args,**kwargs):
 				iterable['model.system.architecture'] in ['mps'] and
 				iterable['state.system.architecture'] in ['mps'])
 		)
+	func = None
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 	
 		settings = Dict({
 			"cls":{
@@ -550,8 +551,9 @@ def test_namespace(*args,**kwargs):
 		}
 	groups = [["model.N"],["model.data.z.local","model.data.xx.local","model.data.noise.local"]]
 	filters = None
+	func = None
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters)):
+	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 		
 		settings = Dict({
 			"cls":{
@@ -704,12 +706,12 @@ def test_module(*args,**kwargs):
 		}
 
 	kwargs = {
-		"module.N":[5],"module.M":[7],
+		"module.N":[4],"module.M":[3],
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.data.xx.parameters":[0.125],
-		"model.data.noise.parameters":[1e-3],
-		"model.data.xx.site":[">ij<"],"model.data.noise.site":[">ij<"],
+		"model.data.noise.parameters":[0*1e-3],
+		"model.data.xx.site":[None],"model.data.noise.site":[None],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
@@ -734,7 +736,10 @@ def test_module(*args,**kwargs):
 				'model.options.shape':[
 					getter(dictionary,'state.D',delimiter=delim),
 					getter(dictionary,'module.N',delimiter=delim),
-					getter(dictionary,'state.ndim',delimiter=delim)]},
+					getter(dictionary,'state.ndim',delimiter=delim)],
+				'model.data.xx.site':getter(dictionary,'module.lattice',delimiter=delim)['structure'],
+				'model.data.noise.site':getter(dictionary,'module.lattice',delimiter=delim)['structure'],
+					},
 				delimiter=delim,default=None)
 		return
 
@@ -851,7 +856,7 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ['array']:
 			value = array(probability)
 		elif settings.measure.architecture in ['tensor']:
-			value = datastructure(probability,to='array',contract=False)
+			value = representation(probability,to='array',contract=False)
 		
 		data[i][key] = value
 
@@ -886,7 +891,7 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ['array']:
 			value = array(operator(parameters,state))
 		elif settings.measure.architecture in ['tensor']:
-			value = datastructure(operator(parameters=parameters,state=state),to='tensor',contract=True)
+			value = representation(operator(parameters=parameters,state=state),to='tensor',contract=True)
 
 		data[i][key] = value
 
@@ -903,9 +908,10 @@ def test_module(*args,**kwargs):
 		parameters = module.parameters()
 		state = module.state()
 
-		key = 'module'
-		value = module(parameters,state)
+		state = module(parameters,state)
 
+		key = 'module'
+		value = module.measure.transform(parameters=parameters,state=state,transformation=False)
 		data[i][key] = value
 
 		# Init
@@ -929,6 +935,24 @@ def test_module(*args,**kwargs):
 		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
 		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8),(data[i]['module'] - data[i]['init']).round(8))
+
+
+		parameters = module.parameters()
+		state = module.state()
+		options = {"contract":"swap+split","max_bond":8,"cutoff":1e-8}
+
+		state,other = module(parameters,state,**options),module(parameters,state)
+
+		key = 'fidelity'
+		value = abs(
+			(module.measure.fidelity(parameters,state,other) -
+			 module.measure.fidelity(parameters,state,state)) / 
+			(module.measure.fidelity(parameters,state,state))
+			)
+
+		data[i][key] = value
+
+		print(value,module.measure.fidelity(parameters,state,other))
 
 		continue
 

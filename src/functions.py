@@ -375,6 +375,15 @@ def error(data,*args,**kwargs):
 
 
 
+def permutations(dictionaries,*args,**kwargs):
+	for dictionary in dictionaries:
+		delim = '.'
+		settings = {key: getter(dictionary,attr,delimiter=delim) for key,attr in []}
+		setter(dictionary,settings,delimiter=delim,default=None)
+	return 
+
+
+
 # def func(data,*args,**kwargs):
 # 	if data is None:
 # 		data = {}

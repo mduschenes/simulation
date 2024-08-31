@@ -12,10 +12,10 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,rand,spawn,arange,diag,inv
-from src.utils import tensor,tensornetwork,gate,mps,datastructure
+from src.utils import tensor,tensornetwork,gate,mps,representation
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,norm,eig,trace,sort,relsort,prod,product,log
+from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,norm,real,imag,eig,trace,sort,relsort,prod,product,log
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -425,59 +425,94 @@ class Basis(Dict):
 		return data
 
 
+class context(object):
+	'''
+	Update object attributes within context with key
+	Args:
+		key (object): Key to update attributes
+		objs (iterable[object]): Objects with attributes to update
+		formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+	'''
+	def __init__(self,*objs,key=None,formats=None):
+
+		if formats is None:
+			formats = ['inds','tags']
+		elif isinstance(formats,str):
+			formats = [formats]
+		if not isinstance(formats,dict):
+			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+				for attr in formats}
+		else:
+			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+				if not isinstance(formats[attr],iterables) else 
+				[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+				for attr in formats}
+		
+		attributes = [attr for attr in formats]
+		formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+		
+		def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+			obj = objs[i]
+			attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) if key is not None else formats[i][attr][index] for index in attrs[i][attr]}
+			data = self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			return data
+		
+		def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+			obj = objs[i]
+			attrs = {formats[i][attr][index].format(key) if key is not None else formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+			data = self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			return data
+
+		self.key = key
+		self.objs = objs
+		self.formats = formats
+		self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+		self.funcs = [{attr: func for attr in attributes} for obj in objs]
+		self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+		self.args = tuple()
+		self.kwargs = dict(inplace=True)
+
+		return
+
+	def __enter__(self):
+		for i in range(len(self)):
+			for attr in self.funcs[i]:
+				self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+		return
+
+	def __exit__(self, type, value, traceback):
+		for i in range(len(self)):
+			for attr in self._funcs[i]:
+				self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+		return
+	
+	def __len__(self):
+		return len(self.objs)
+
+	@classmethod
+	def attributes(cls,obj,attr,attrs=None,**kwargs):
+		if attrs is None:
+			attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+			return wrappers[attr](getattr(obj,attributes[attr]))
+		else:
+			attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+			return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+
 class Measure(System):
 
 	D = None
 
 	basis = None
 
-	ind = ('k{}',)
-	inds = ('i{}','j{}',)
-	tags = ('I{}',)
-
-	class context(object):
-		'''
-		Update object attributes within context with key
-		Args:
-			key (object): Key to update attributes
-			objs (iterable[object]): Objects with attributes to update
-			attrs (iterable[str]): Attributes to update
-		'''
-		def __init__(self,key,*objs,attrs=['inds','tags']):
-			self.key = key
-			self.objs = objs
-			self.attrs = [{attr: self.attributes(obj,attr) for attr in attrs} for obj in objs]
-			self.funcs = [{attr: (lambda key,obj,attrs,*args,attr=attr,**kwargs: self.attributes(obj,attr,attrs={index:index.format(key) for index in attrs[attr]},*args,**kwargs)) 
-				for attr in attrs} for obj in objs]
-			self._funcs = [{attr: (lambda key,obj,attrs,*args,attr=attr,**kwargs: self.attributes(obj,attr,attrs={index.format(key):index for index in attrs[attr]},*args,**kwargs))
-				for attr in attrs} for obj in objs]
-			self.args = tuple()
-			self.kwargs = dict(inplace=True)
-			return
-
-		def __enter__(self):
-			for i in range(len(self)):
-				for func in self.funcs[i]:
-					self.funcs[i][func](self.key,self.objs[i],self.attrs[i],*self.args,**self.kwargs)
-			return
-
-		def __exit__(self, type, value, traceback):
-			for i in range(len(self)):
-				for func in self._funcs[i]:
-					self._funcs[i][func](self.key,self.objs[i],self.attrs[i],*self.args,**self.kwargs)				
-			return
-		
-		def __len__(self):
-			return len(self.objs)
-
-		@classmethod
-		def attributes(cls,obj,attr,attrs=None,**kwargs):
-			funcs = dict(inds='reindex',tags='retag')
-			if attrs is None:
-				return getattr(obj,attr)
-			else:
-				obj = getattr(obj,funcs[attr])(attrs,**kwargs)
-				return obj
+	ind = 'u{}'
+	inds = ('u{}','v{}',)
+	indices = ('i{}','j{}',)
+	tag = 'I{}'
+	tags = ()
 
 	defaults = dict(			
 		data=None,base=None,string=None,system=None,
@@ -575,13 +610,13 @@ class Measure(System):
 			inverse = array(inverse,**kwargs)
 
 		elif self.architecture in ['tensor']:
-			kwargs = dict(inds=(*self.ind,*self.inds,),tags=(*self.tags,))
+			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
 			basis = tensor(basis,**kwargs)
 
-			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
+			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			data = tensor(data,**kwargs)
 			
-			kwargs = dict(inds=(*self.inds,),tags=(*self.tags,))
+			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = tensor(inverse,**kwargs)
 
 		elif self.architecture in ['mps']:
@@ -633,7 +668,7 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 			def func(parameters,state):
 				for i in range(state.L):
-					with self.context(i,self.inverse,self.basis):
+					with context(self.inverse,self.basis,key=i,formats=dict(inds=[{index:index for index in self.inds},{self.ind:self.inds[-1]}])):
 						state &= self.inverse & self.basis
 				return state
 
@@ -829,23 +864,22 @@ class Measure(System):
 				
 				for i in range(len(state)):
 
-					data = array(state[i])
+					data = state[i]
+					inds = (*self.indices,)
+					tags = (self.tag,*self.tags,)
 
-					inds = (*(index.format(i) for index in self.inds),)
-					tags = (*(index.format(i) for index in self.tags),)
+					data = tensor(data=data,inds=inds,tags=tags)
 
-					state[i] = tensor(data=data,inds=inds,tags=tags)
+					with context(data,self.basis,key=i):
+						data &= self.basis
 
-					with self.context(i,self.basis):
-						state[i] &= self.basis
-
-					state[i] = datastructure(state[i],to=True,contract=True)
+					state[i] = representation(data,contract=True)
 
 			else:
 
 				state = state
 
-			options = self.options if self.options is not None else {}
+			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**(self.options if self.options is not None else dict())}
 			state = mps(state,**options)
 
 		elif self.architecture in ['mps']:
@@ -902,25 +936,11 @@ class Measure(System):
 
 			N = state.L
 
-			indices = {index: self.K for index in self.ind}
-			shapes = {index: self.D for index in self.inds}
-			tag = (*(index for index in self.tags),)
-
-			basis = datastructure(self.basis)
-			inverse = datastructure(self.inverse)
-
-			data = einsum('uv,vij->uij',inverse,basis)
-			kwargs = dict()
-
 			for i in range(N):
-				shape = (*(indices[index] for index in indices),*(shapes[index] for index in shapes))
-				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
-				tags = (*(index.format(i) for index in tag),)
-				operator = tensor(data,inds=inds,tags=tags,**kwargs)
-			
-				state &= operator
+				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{index:index for index in self.inds},{self.ind:self.inds[-1]}],tags=None)):
+					state &= self.inverse & self.basis
 
-			state = datastructure(state,to=self.architecture,contract=True)
+			state = representation(state,to=self.architecture,contract=True)
 
 		else:
 			
@@ -958,6 +978,7 @@ class Measure(System):
 				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
+				
 				model = vmap(model,in_axes=(None,0),out_axes=0)
 				
 				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
@@ -987,6 +1008,7 @@ class Measure(System):
 				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
+				
 				model = vmap(model,in_axes=(None,0),out_axes=0)
 				
 				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
@@ -1001,11 +1023,11 @@ class Measure(System):
 			N = state.L
 
 			if N is not None and N > 1:
-				basis = array([tensorprod(i) for i in permutations(*[datastructure(self.basis)]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[datastructure(self.inverse)]*N)],dtype=self.dtype)
+				basis = array([tensorprod(i) for i in permutations(*[representation(self.basis)]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[representation(self.inverse)]*N)],dtype=self.dtype)
 			else:
-				basis = datastructure(self.basis)
-				inverse = datastructure(self.inverse)
+				basis = representation(self.basis)
+				inverse = representation(self.inverse)
 
 
 			if model is None:
@@ -1016,7 +1038,9 @@ class Measure(System):
 				subscripts = 'uij,wij,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
+				
 				model = vmap(model,in_axes=(None,0),out_axes=0)
+				
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
 					return state.gate(einsummation(conjugate(basis),model(parameters,basis),inverse),where=where,**kwargs)
 		
@@ -1040,6 +1064,7 @@ class Measure(System):
 				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
+				
 				model = vmap(model,in_axes=(None,0),out_axes=0)
 				
 				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
@@ -1057,6 +1082,25 @@ class Measure(System):
 
 		return func
 
+	def observable(self,observable=None,parameters=None,state=None,**kwargs):
+		'''
+		Observable for POVM probability measure
+		Args:
+			observable (str): observable, allowed strings in ['fidelity']
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data of observable
+		'''
+
+		if observable in ['fidelity']:
+			data = self.fidelity(parameters=parameters,state=state,**kwargs)
+		else:
+			data = state
+
+		return data
+
 	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
 		'''
 		Fidelity for POVM probability measure with respect to other POVM
@@ -1066,59 +1110,92 @@ class Measure(System):
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
+			data (array): data of observable
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = self.state() if state is None else state() if callable(state) else state
+		other = self.state() if other is None else other() if callable(other) else other
 		
-		if isinstance(state,arrays):
-		
-			state = einsum('...u,uv,...v->...',state,self.inverse,other)
+		if self.architecture is None:
+			
+			N = len(state) if state is not None else None
 
-		elif isinstance(state,tensors):
+			if N is not None and N > 1:
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				inverse = self.inverse
 
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(basis,inverse,other)
+
+
+		elif self.architecture in ['array']:
+
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				inverse = self.inverse
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(basis,inverse,other)
+
+		elif self.architecture in ['tensor']:
+	
 			state = state.copy()
+			other = other.copy()
 
 			N = state.L
 
-			indices = {'k{}':self.K}
-			shapes = {'i{}':self.K}
-			tag = 'I{}'
-			data = self.inverse
-			kwargs = dict()
-
 			for i in range(N):
-				shape = (*(state.ind_size(index.format(i)) for index in indices),*(shapes[index] for index in shapes))
-				inds = (*(index.format(i) for index in indices),*(index.format(i) for index in shapes))
-				tags = (tag.format(i),)
-				operator = tensor(data,inds=inds,tags=tags,**kwargs)
-			
-				state &= operator
+				with context(self.inverse,key=i):
+					state &= self.inverse
 
-			inds = (*((*(index.format(i) for i in range(N)),) for index in list(shapes)[::-1]),)
-			state = state.contract().to_dense(*inds)
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
+
+				state &= other
+
+				data = representation(state,contract=True,func=real)
+
+		elif self.architecture in ['mps']:
+
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				inverse = self.inverse
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(basis,inverse,other)
 
 		else:
 
-			N = None
+			N = len(state) if state is not None else None
 
 			if N is not None and N > 1:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
 				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-				subscripts = '...u,uv,vjk->...jk'
-				shapes = (state.shape,inverse.shape,basis.shape)
-				einsummation = einsum(subscripts,*shapes)
-				def func(parameters,state):
-					return einsummation(state,inverse,basis)
 			else:
-				basis = self.basis
 				inverse = self.inverse
-				func = self.func
 
-			state = func(parameters=parameters,state=state)
-		
-		return state
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(basis,inverse,other)
+
+		return data
 
 
 class MPS(mps): 
@@ -4841,8 +4918,8 @@ class Module(System):
 
 			for where in indices:
 
-				def obj(parameters,state,where=where,model=model,options=options):
-					return model(parameters=parameters,state=state,where=where,**options)
+				def obj(parameters,state,where=where,model=model,options=options,**kwargs):
+					return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 				
 				data.append(obj)
 
@@ -4853,13 +4930,12 @@ class Module(System):
 
 
 		# Functions
-		def func(parameters,state):
+		def func(parameters,state,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state,transformation=True)
 			for i in range(self.M):
 				for data in self.data:
-					state = data(parameters=parameters,state=state)
-			state = self.measure.transform(parameters=parameters,state=state,transformation=False)
+					state = data(parameters=parameters,state=state,**kwargs)
 			return state
 
 		def grad(parameters,state):
@@ -4879,12 +4955,13 @@ class Module(System):
 
 		return
 
-	def __call__(self,parameters=None,state=None):
+	def __call__(self,parameters=None,state=None,**kwargs):
 		'''
 		Class function
 		Args:
 			parameters (array): parameters		
 			state (obj): state
+			kwargs (dict): class keyword arguments			
 		Returns
 			out (array): Return of function
 		'''
@@ -4892,7 +4969,7 @@ class Module(System):
 		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 		state = state if state is not None else state
 
-		return self.func(parameters=parameters,state=state)
+		return self.func(parameters=parameters,state=state,**kwargs)
 
 	def info(self,display=None,ignore=None,verbose=None):
 		'''

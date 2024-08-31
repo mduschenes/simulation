@@ -455,7 +455,6 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		filters (callable): Function with signature filters(dictionaries) -> dictionaries to parse allowed dictionaries
 		func (callable): Function with signature func(dictionaries) to modify dictionaries in place
 		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
-
 	Returns:
 		dictionaries (iterable[dict]) : Iterable of dictionaries with all combinations of lists of values in dictionary
 	'''		

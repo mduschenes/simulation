@@ -7,7 +7,7 @@
 		},
 "module":{
 	"N":5,
-	"M":1,
+	"M":4,
 	"d":1,
 	"string":"module",
 	"lattice":{"lattice":"square","structure":"<ij>"},
@@ -140,6 +140,8 @@
 		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
+	"filters":null,
+	"func":"src.functions.permutations",
 	"index":null
 	},
 "jobs":{
