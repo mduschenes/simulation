@@ -381,6 +381,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'path':{},
 		'load':None,
 		'dump':None,
+		'clear':None,
 		'convert':None,
 		'plot':None,
 		'process':None,
@@ -1083,7 +1084,7 @@ def loader(data,plots,processes,verbose=None):
 			out = elements.get(key_elements)
 		return out	
 
-	if processes['load']:
+	if processes['load'] and not processes['clear']:
 
 
 		# Load plots
@@ -1105,7 +1106,7 @@ def loader(data,plots,processes,verbose=None):
 		path = data
 		tmp = processes['path']['data']
 		try:
-			assert exists(tmp)
+			assert exists(tmp) and not processes['clear']
 			path = tmp
 			wrapper = 'pd'
 			default = None

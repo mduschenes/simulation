@@ -46,8 +46,8 @@
 		"jobs.job.cwd":["data"],
 		"jobs.postprocess.cwd":["data"],
 
-		"module.N":[4,8,12],		
-		"module.M":[5,10,20,50,100],
+		"module.N":[4,6,8],		
+		"module.M":[5,10,20,50],
 		"model.data.noise.parameters":[1e-12,1e-8,1e-4,1e-2],
 
 		"jobs.job.device":["pc"],
@@ -56,7 +56,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -66,7 +66,7 @@
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
@@ -216,7 +216,7 @@
 	},
 "callback":{
 	"attributes":{
-		"N":"N","M":"N","d":"d","D":"state.D",
+		"N":"N","M":"M","d":"d","D":"state.D",
 		"noise.parameters":"noise.parameters",
 		"base":"measure.base",
 		"objective":"objective"

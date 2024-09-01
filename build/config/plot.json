@@ -24,6 +24,9 @@
 							"N": null,
 							"noise.parameters": null
 						},
+						"wrapper": {
+							"objective": "src.functions.objective"
+						},
 						"labels": null,
 						"legend": {
 							"include": [

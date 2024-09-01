@@ -51,7 +51,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 		options (str,iterable[str]): Options for args
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command
+		processes (int): Number of processes per system call
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -178,7 +178,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		stderr (file): Stderr to command
 		shell (bool) : Use shell subprocess
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command
+		processes (int): Number of processes per system call
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -350,7 +350,7 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 		default (str): Default path of source object
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -383,7 +383,7 @@ def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,ver
 		paths (str): Path to remove
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -410,7 +410,7 @@ def ls(path,*args,env=None,process=None,processes=None,device=None,execute=False
 		args (iterable[str]): Args for list
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -442,7 +442,7 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -472,7 +472,7 @@ def run(file,path,*args,env=None,process=None,processes=None,device=None,execute
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -500,7 +500,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 		mod (str,bool): Chmod file, or boolean to make executable
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -527,7 +527,7 @@ def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,ve
 		paths (str): Path of file
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -553,7 +553,7 @@ def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,v
 		paths (str): Path of file
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -579,7 +579,7 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 		mod (str,bool): Chmod file, or boolean to make executable
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -611,7 +611,7 @@ def sleep(pause=None,env=None,process=None,processes=None,device=None,execute=Fa
 		pause (int): Time to sleep
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -641,7 +641,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 		pattern (str): Pattern of path to return if not empty
 		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -692,7 +692,7 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 		default (str): Default pattern value to sed
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -749,7 +749,7 @@ def contains(path,pattern,env=None,process=None,processes=None,device=None,execu
 		pattern (str): Pattern to search
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -813,7 +813,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		kwargs (dict): Additional keyword arguments to update
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
@@ -969,7 +969,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -1015,13 +1015,13 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+		pool (int): Number of subtasks in a pool per task
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -1136,12 +1136,12 @@ def init(key,
 			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			pool (int): Number of subtasks in a pool per task
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-			processes (int): Number of processes per command		
+			processes (int): Number of processes per system call		
 			device (str): Name of device to submit to
 			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 			verbose (int,str,bool): Verbosity
@@ -1308,13 +1308,13 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+		pool (int): Number of subtasks in a pool per task
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-		processes (int): Number of processes per command		
+		processes (int): Number of processes per system call		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
@@ -1447,13 +1447,13 @@ def launch(jobs={},wrapper=None):
 			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			pool (int): Number of subtasks in a pool per task
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
 			env (dict[str,str]): Environmental variables for args		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-			processes (int): Number of processes per command			
+			processes (int): Number of processes per system call			
 			device (str): Name of device to submit to
 			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 			verbose (int,str,bool): Verbosity
