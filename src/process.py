@@ -346,13 +346,14 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	default = None if isinstance(processes,str) else processes
 	wrapper = None
 	processes = load(path,default=default,wrapper=wrapper,verbose=verbose)
+	
 	obj = 'ax'
 
 	if (plots is None) or (processes is None):
 		return data,plots,processes
 
 	for instance in list(plots):
-		
+
 		if (plots.get(instance) is None):
 			plots.pop(instance,None);
 			continue
@@ -374,7 +375,6 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 					index = [*index,*[0]*(INDEXDIM-len(shape))]
 					inserter(index,item,tmp)
 				plots[instance][subinstance][obj][prop] = tmp
-
 
 	# Set process processes
 	defaults = {
@@ -1122,6 +1122,7 @@ def loader(data,plots,processes,verbose=None):
 			path = tmp
 			wrapper = processes['convert'] if isinstance(processes['convert'],str) else 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
+
 
 		# Get functions of data
 		apply(keys,data,plots,processes,verbose=verbose)
@@ -2293,7 +2294,6 @@ def plotter(plots,processes,verbose=None):
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
 						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
-
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
 							size = data[attr%(axes)][kwarg]
@@ -2315,7 +2315,6 @@ def plotter(plots,processes,verbose=None):
 
 						if isinstance(value,arrays):
 							value = value.tolist()
-
 
 						if value is not None:
 							data[attr%(axes)][kwarg] = value
@@ -2357,7 +2356,6 @@ def plotter(plots,processes,verbose=None):
 									value = [i for i in value]
 						else:
 							value = data[attr%(axes)][kwarg]
-
 
 					if value is not None:
 						data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]

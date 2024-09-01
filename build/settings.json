@@ -1,9 +1,93 @@
 {	
+"boolean":{
+	"call":1,
+	"optimize":0,
+	"load":0,
+	"dump":1
+	},
+"seed":{
+	"seed":null,
+	"size":1,
+	"reset":null,
+	"group":null,
+	"index":null
+	},
+"permutations":{
+	"permutations":{	
+
+		"module.N":[4,5,6],		
+		"module.M":[1,2,5,10,20,50],
+
+		"module.lattice.structure":[">ij<"],
+		"module.measure.options":[{"cyclic":true}],
+		"module.options.max_bond":[null],
+		"module.options.cutoff":[0],
+		
+		"model.D":[2],
+		"model.local":[true],
+		"model.layout":[{"site":null}],
+		"model.options.shape":[[2,2,2]],
+
+		"model.data.xx.operator":[["X","X"]],
+		"model.data.xx.parameters":[0.5],
+		"model.data.xx.site":[null],
+
+		"model.data.noise.operator":["phase"],
+		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
+		"model.data.noise.site":[null],
+
+		"state.string":["psi"],
+		"state.operator":[["zero"]],
+		"state.local":[true],
+		"state.D":[2],
+		"state.ndim":[2],
+		"state.parameters":[null],
+
+		"jobs.job.cwd":["data"],
+		"jobs.postprocess.cwd":["data"],
+
+		"module.N":[4,8,12],		
+		"module.M":[5,10,20,50,100],
+		"model.data.noise.parameters":[1e-12,1e-8,1e-4,1e-2],
+
+		"jobs.job.device":["pc"],
+		"jobs.postprocess.device":["pc"],
+		"jobs.job.process":["series"],
+		"jobs.postprocess.process":[null],
+		"jobs.job.processes":[1],
+		"jobs.postprocess.processes":[1],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.verbose":[1],
+		"jobs.job.resume":[null],
+		"jobs.postprocess.resume":[null],
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
+		"jobs.job.args.NUMPY_BACKEND":["jax"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],
+		"jobs.job.patterns.time":["12:00:00"],		
+		"jobs.postprocess.patterns.time":["6:00:00"],
+		"jobs.job.patterns.mem":["64GB"],
+		"jobs.postprocess.patterns.mem":["64GB"],
+		"jobs.job.patterns.cpus-per-task":[1],
+		"jobs.postprocess.patterns.cpus-per-task":[1],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
+		},
+	"groups":null,
+	"filters":null,
+	"func":"src.functions.permutations",
+	"index":null
+	},
 "cls":{
 	"module":"src.quantum.Module",
 	"measure":"src.quantum.Measure",
 	"model":"src.quantum.Operators",
-	"state":"src.quantum.State"
+	"state":"src.quantum.State",
+	"callback":"src.quantum.Callback"	
 	},
 "module":{
 	"N":5,
@@ -54,95 +138,12 @@
 	"seed":null,
 	"key":null,
 	"instance":null,
-	"cwd":"data",
+	"cwd":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
-	"logger":null,
+	"logger":"log.log",
 	"cleanup":false,
 	"verbose":"info"
-	},
-"boolean":{
-	"call":1,
-	"optimize":0,
-	"load":0,
-	"dump":0
-	},
-"seed":{
-	"seed":null,
-	"size":1,
-	"reset":null,
-	"group":null,
-	"index":null
-	},
-"permutations":{
-	"permutations":{	
-
-		"module.N":[4,5,6],		
-		"module.M":[1,2,5,10,20,50],
-
-		"module.lattice.structure":[">ij<"],
-		"module.measure.options":[{"cyclic":true}],
-		"module.options.max_bond":[null],
-		"module.options.cutoff":[0],
-		
-		"model.D":[2],
-		"model.local":[true],
-		"model.layout":[{"site":null}],
-		"model.options.shape":[[2,2,2]],
-
-		"model.data.zz.operator":[["X","X"]],
-		"model.data.zz.parameters":[0.5],
-		"model.data.zz.site":[null],
-
-		"model.data.noise.operator":["phase"],
-		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.site":[null],
-
-		"state.string":["psi"],
-		"state.operator":[["zero"]],
-		"state.local":[true],
-		"state.D":[2],
-		"state.ndim":[2],
-		"state.parameters":[null],
-
-		"jobs.job.cwd":["data"],
-		"jobs.postprocess.cwd":["data"],
-
-		"module.N":[4,5],		
-		"module.M":[2,3],
-		"model.data.noise.parameters":[1e-6,1e-3],
-
-		"jobs.job.device":["pc"],
-		"jobs.postprocess.device":["pc"],
-		"jobs.job.process":["series"],
-		"jobs.postprocess.process":[null],
-		"jobs.job.processes":[1],
-		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
-		"jobs.postprocess.pool":[1],
-		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
-		"jobs.job.verbose":[1],
-		"jobs.job.resume":[null],
-		"jobs.postprocess.resume":[null],
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
-		"jobs.job.args.NUMPY_BACKEND":["jax"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],		
-		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["64GB"],
-		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[1],
-		"jobs.postprocess.patterns.cpus-per-task":[1],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]
-		},
-	"groups":null,
-	"filters":null,
-	"func":"src.functions.permutations",
-	"index":null
 	},
 "jobs":{
 	"preprocess":null,
@@ -188,7 +189,7 @@
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=.","--verbose"]
+			"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{
 			"plot":"plot.json",

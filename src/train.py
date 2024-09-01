@@ -63,13 +63,16 @@ def call(settings,*args,**kwargs):
 	module = load(settings.cls.module)
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
+	callback = load(settings.cls.callback)
 	system = settings.system
 
 	if module is not None and model is not None and state is not None:
 	
-		module = module(**{**settings.module,**dict(system=system)})
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		callback = callback(**{**settings.callback,**dict(system=system)})
+
+		module = module(**{**settings.module,**dict(callback=callback,system=system)})
 
 		module.init(model=model,state=state)
 

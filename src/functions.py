@@ -27,7 +27,7 @@ from src.utils import to_tuple,asscalar
 from src.utils import maximum,minimum,abs,sort,log
 from src.utils import arrays,scalars,nonzero,delim
 
-from src.iterables import permuter,getattrs,setattrs,hasattrs
+from src.iterables import permuter,setter,getter
 from src.parallel import Parallel
 from src.workflow import workflow
 

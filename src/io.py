@@ -837,11 +837,15 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 		elif wrapper in ['df']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
+				def iterable(data):
+					return not isinstance(data,scalars) and data.size > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
+				def scalar(data):
+					return isinstance(data,scalars) or data.size <= 1				
 				def func(path,data):
 					for attr in data:
-						if any(isinstance(i,arrays) for i in data[attr]):
+						if iterable(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
-					size = max([len(data[attr]) for attr in data],default=0)
+					size = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
 					data['__path__'] = [path]*size
 					return data
 				try:
