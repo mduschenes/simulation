@@ -716,7 +716,7 @@ class Function(System):
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
+			callback (callable): Callback of function with signature callback(*args,**kwargs)
 			metric (str,callable): Function metric with signature metric(*operands)
 			arguments (iterable[object]): Position arguments for function
 			keywords (dict[str,object]): Keyword arguments for function
@@ -769,7 +769,7 @@ class Function(System):
 		keywords = {} if keywords is None else keywords
 
 		if callback is None:
-			def callback(parameters,track,optimizer,model,metric,func,grad):
+			def callback(*args,**kwargs):
 				status = True
 				return status
 
@@ -849,10 +849,15 @@ class Function(System):
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.callback(parameters,track,optimizer,
+		status = self.callback(
+			parameters=parameters,
+			track=track,
+			optimizer=optimizer,
 			model=self.model,
 			metric=self.metric,
-			func=self.func,grad=self.grad)
+			func=self.func,
+			grad=self.grad
+			)
 		return status
 
 
@@ -866,7 +871,7 @@ class Objective(Function):
 			metric (str,callable): Objective metric with signature metric(*operands)
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)			
+			callback (callable): Callback of function with signature callback(*args,**kwargs)			
 			arguments (iterable[object]): Position arguments for function
 			keywords (dict[str,object]): Keyword arguments for function
 			hyperparameters (dict): Objective hyperparameters
@@ -973,7 +978,7 @@ class Callback(Function):
 		Class for function
 		Args:
 			model (object): Model instance
-			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
+			callback (callable): Callback of function with signature callback(*args,**kwargs)
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			metric (str,callable): Callback metric with signature metric(*operands)
@@ -1239,7 +1244,7 @@ class Optimization(System):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		model (object): model instance
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function
@@ -1295,7 +1300,7 @@ class Optimization(System):
 			system=self.system)
 
 		if callback is None:
-			def callback(parameters,track,optimizer):
+			def callback(*args,**kwargs):
 				status = True
 				return status
 
@@ -1431,7 +1436,7 @@ class Optimization(System):
 		parameters = self.get_params(opt)
 		track = self.track		
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 
@@ -1715,7 +1720,7 @@ class Optimization(System):
 		parameters = self.get_params(opt)
 		track = self.track
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		self.dump(iteration,opt)
 
@@ -1764,7 +1769,7 @@ class Optimizer(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function
 		hyperparameters (dict): optimizer hyperparameters
@@ -1791,7 +1796,7 @@ class GradientDescent(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function		
 		hyperparameters (dict): optimizer hyperparameters
@@ -1834,7 +1839,7 @@ class GradientDescent(Optimization):
 		parameters = self.get_params(opt)
 		track = self.track		
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 
@@ -1845,7 +1850,7 @@ class LineSearchDescent(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function		
 		hyperparameters (dict): optimizer hyperparameters
@@ -1888,7 +1893,7 @@ class LineSearchDescent(Optimization):
 		parameters = self.get_params(opt)
 		track = self.track		
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 
@@ -1898,7 +1903,7 @@ class HessianDescent(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function
 		hyperparameters (dict): optimizer hyperparameters
@@ -1964,7 +1969,7 @@ class HessianDescent(Optimization):
 		parameters = self.get_params(opt)
 		track = self.track		
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 
@@ -1974,7 +1979,7 @@ class ConjugateGradient(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function		
 		hyperparameters (dict): optimizer hyperparameters
@@ -2073,7 +2078,7 @@ class ConjugateGradient(Optimization):
 			parameters = self.get_params(opt)
 			track = self.track
 			optimizer = self
-			self.status = self.callback(parameters,track,optimizer)
+			self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		parameters = self.get_params(opt)
 
@@ -2091,7 +2096,7 @@ class ConjugateGradient(Optimization):
 		parameters = self.get_params(opt)
 		track = self.track
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 
@@ -2102,7 +2107,7 @@ class Adam(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		callback (callable): callback function with signature callback(*args,**kwargs) and returns status of optimization
 		arguments (iterable[object]): Position arguments for function
 		keywords (dict[str,object]): Keyword arguments for function		
 		hyperparameters (dict): optimizer hyperparameters
@@ -2188,7 +2193,7 @@ class Adam(Optimization):
 		parameters = self.get_params(opt)
 		track = self.track		
 		optimizer = self
-		self.status = self.callback(parameters,track,optimizer)
+		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
 
 		return opt
 

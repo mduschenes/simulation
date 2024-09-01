@@ -4793,7 +4793,7 @@ class Module(System):
 		model=None,
 		N=None,M=None,d=None,
 		state=None,parameters=None,variable=False,
-		data=None,measure=None,lattice=None,
+		data=None,measure=None,lattice=None,callback=None,
 		func=None,gradient=None,
 		system=None,
 		)
@@ -5020,26 +5020,25 @@ class Module(System):
 			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
 		'''
 
+		# Set path
+		path = join(self.path,root=self.cwd) if path is None else path
+
 		# Set data
 		data = {}
 
-		# Set path
-		paths = {}
-		if path is None:
-			paths.update({attr: True for attr in data})			
-		elif not isinstance(path,dict):
-			paths.update({attr: path for attr in data if path})
-		else:
-			paths.update({attr: path[attr] for attr in path if path[attr]})
+		# Set callback
+		callback = self.callback if self.callback is not None else None
 
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
+		if callback is not None:
+			parameters = self.parameters()
+			state = self.state()
+			model = self
+			data = data
+			kwargs = dict()
 
-		# Dump data
-		for attr in paths:
-			root,file = split(paths[attr],directory=True,file_ext=True)
-			file = file if file is not None else self.path
-			path = join(file,root=root)
-			dump(data[attr],path)
+			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
+
+			dump(data,path)
 		
 		return
 
@@ -5050,31 +5049,11 @@ class Module(System):
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
 		'''
 
-		# TODO: Determine dump/load model (.pkl?)
+		# Set path
+		path = join(self.path,root=self.cwd) if path is None else path
 
 		# Set data
-		data = {}
-
-		# Set path
-		paths = {}
-		if path is None:
-			paths.update({attr: True for attr in data})			
-		elif not isinstance(path,dict):
-			paths.update({attr: path for attr in data if path})
-		else:
-			paths.update({attr: path[attr] for attr in path if path[attr]})
-
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
-
-		# Load data
-		for attr in paths:
-			root,file = split(paths[attr],directory=True,file_ext=True)
-			file = file if file is not None else self.path
-			path = join(file,root=root)
-			func = (list,)
-			default = data[attr]
-			data[attr] = load(path,default=default)
-			setter(default,data[attr],default=func)
+		data = load(path)
 
 		return
 
@@ -5646,6 +5625,81 @@ class Callback(System):
 		return status
 
 
+
+class Callback(System):
+	def __init__(self,*args,attributes={},**kwargs):
+		'''	
+		Class for callback
+		Args:
+			attributes (dict): Attributes for callback
+			args (tuple): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+
+		if attributes is None:
+			attributes = dict()
+		elif not isinstance(attributes,dict):
+			attributes = {attr:attr for attr in attributes}
+		else:
+			attributes = {attr:attributes[attr] for attr in attributes}
+
+		setter(kwargs,dict(attributes=attributes),delimiter=delim,default=False)
+
+		super().__init__(*args,**kwargs)
+
+		return
+
+	def __call__(self,parameters,state,model,data,**kwargs):
+		''' 
+		Callback
+		Args:
+			parameters (array): parameters
+			state (array): state
+			model (object): Model instance
+			data (dict): data
+			kwargs (dict): additional keyword arguments for callback
+		Returns:
+			status (int): status of callback
+		'''
+
+		attributes = self.attributes
+
+		for attr in attributes:
+
+			if attr in ['objective']:
+				options = {
+					**{attr: model.options[attr] for attr in model.options}
+					}
+				other = {
+					**options,
+					**{attr: getattr(self,attr) for attr in options if hasattr(self,attr)},
+					**{attr: self.options.get(attr) for attr in options if attr in self.options},
+					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
+					}
+				value = model.measure.fidelity(
+					parameters=parameters,
+					state=model(parameters,state,**options),
+					other=model(parameters,state,**other)
+					)
+
+			elif attr in ['noise.parameters']:
+
+				value = [model.model.data[i].parameters() for i in model.model.data if not model.model.data[i].unitary and not model.model.data[i].hermitian]
+
+			elif hasattrs(model,attributes[attr],delimiter=delim):
+
+				value = getattrs(model,attributes[attr],delimiter=delim)
+
+				if callable(value):
+					value = value(parameters=parameters,state=state)
+
+			else:
+
+				value = None
+
+			data[attr] = value
+
+		return
 
 
 def main(settings,*args,**kwargs):

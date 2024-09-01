@@ -4,7 +4,7 @@
 	"measure":"src.quantum.Measure",
 	"model":"src.quantum.Operators",
 	"state":"src.quantum.State"
-		},
+	},
 "module":{
 	"N":5,
 	"M":4,
@@ -213,7 +213,15 @@
 		"verbose":true
 		}
 	},
-"callback":{},
+"callback":{
+	"attributes":{
+		"N":"N","M":"N","d":"d","D":"state.D",
+		"noise.parameters":"noise.parameters",
+		"base":"measure.base",
+		"objective":"objective"
+	},
+	"options":{"contract":true,"max_bond":null,"cutoff":0}
+},
 "process": {},
 "plot": {}
 }

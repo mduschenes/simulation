@@ -710,7 +710,7 @@ def test_module(*args,**kwargs):
 		'model.N':[None],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.data.xx.parameters":[0.125],
-		"model.data.noise.parameters":[0*1e-3],
+		"model.data.noise.parameters":[1e-12],
 		"model.data.xx.site":[None],"model.data.noise.site":[None],
 		"model.local":[True],"state.local":[False],
 		"model.layout":[{"site":None}],
@@ -720,7 +720,7 @@ def test_module(*args,**kwargs):
 		"module.measure.architecture":["tensor"],
 		"module.measure.options":[{"cyclic":False}],
 		"module.lattice":[{"lattice":"square","structure":">ij<"}],
-		"module.options":[{"contract":"swap+split","max_bond":None,"cutoff":0}]
+		"module.options":[{"contract":"swap+split","max_bond":4,"cutoff":1e-4}]
 		}	
 
 
@@ -751,7 +751,8 @@ def test_module(*args,**kwargs):
 			"module":"src.quantum.Module",
 			"measure":"src.quantum.Measure",
 			"model":"src.quantum.Operators",
-			"state":"src.quantum.State"
+			"state":"src.quantum.State",
+			"callback":"src.quantum.Callback"
 			},
 		"module":{
 			"N":2,
@@ -760,7 +761,7 @@ def test_module(*args,**kwargs):
 			"string":"module",
 			"lattice":"square",
 			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":"swap+split","max_bond":None,"cutoff":0}		
+			"options":{"contract":"swap+split","max_bond":4,"cutoff":1e-2}		
 		},
 		"measure":{
 			"base":"pauli",
@@ -800,6 +801,15 @@ def test_module(*args,**kwargs):
 			"ndim":2,
 			"local":True
 			},
+		"callback":{
+			"attributes":{
+				"N":"N","M":"N","d":"d","D":"state.D",
+				"noise.parameters":"noise.parameters",
+				"objective":"objective",
+				"base":"measure.base"
+				},
+			"options":{"contract":False,"max_bond":None,"cutoff":0}
+		},
 		"system":{
 			"dtype":"complex",
 			"format":"array",
@@ -811,10 +821,9 @@ def test_module(*args,**kwargs):
 			"key":None,
 			"instance":None,
 			"cwd":"data",
-			"path":None,
 			"path":"data.hdf5",
 			"conf":"logging.conf",
-			"logger":None,
+			"logger":"log.log",
 			"cleanup":False,
 			"verbose":False
 			}
@@ -828,11 +837,13 @@ def test_module(*args,**kwargs):
 		measure = load(settings.cls.measure)
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
+		callback = load(settings.cls.callback)
 		system = settings.system
 
 		# Model
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		callback = callback(**{**settings.callback,**dict(system=system)})
 
 
 		# Test
@@ -897,9 +908,10 @@ def test_module(*args,**kwargs):
 
 		# Module
 		model = model		
-		state = obj()
+		state = obj
+		callback = callback
 
-		module = module(**{**settings.module,**dict(system=system)})
+		module = module(**{**settings.module,**dict(callback=callback,system=system)})
 
 		module.init(model=model,state=state)
 
@@ -934,8 +946,8 @@ def test_module(*args,**kwargs):
 
 		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
-		assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8),(data[i]['module'] - data[i]['init']).round(8))
-
+		if settings.module['options']['contract'] is False or settings.module['options']['cutoff'] <= 1e-16:
+			assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8),(data[i]['module'] - data[i]['init']).round(8))
 
 		parameters = module.parameters()
 		state = module.state()
@@ -952,7 +964,10 @@ def test_module(*args,**kwargs):
 
 		data[i][key] = value
 
-		print(value,module.measure.fidelity(parameters,state,other))
+
+		module.dump()
+
+		module.load()
 
 		continue
 

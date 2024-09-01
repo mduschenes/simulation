@@ -25,9 +25,9 @@ from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
 from src.utils import to_tuple,asscalar
 from src.utils import maximum,minimum,abs,sort,log
-from src.utils import arrays,scalars,nonzero
+from src.utils import arrays,scalars,nonzero,delim
 
-from src.iterables import permuter
+from src.iterables import permuter,getattrs,setattrs,hasattrs
 from src.parallel import Parallel
 from src.workflow import workflow
 
