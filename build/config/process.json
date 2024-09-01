@@ -4,7 +4,7 @@
     "plot": 1,
     "process": 1,
     "postprocess": 0,
-    "clear":1,
+    "reset":0,
     "usetex": true,
     "useval": true,
     "instance": {

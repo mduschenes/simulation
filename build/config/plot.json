@@ -25,7 +25,7 @@
 							"noise.parameters": null
 						},
 						"wrapper": {
-							"objective": "src.functions.objective"
+							"objective": "src.functions.func_objective"
 						},
 						"labels": null,
 						"legend": {
@@ -101,26 +101,25 @@
 				"size": "3%",
 				"pad": 0.1,
 				"set_label": {
-					"label": "noise.parameters",
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
 					"size": 30
 				},
-				"set_ylim":{"ymin":1e-14,"ymax":1.0},
+				"set_ylim":{"ymin":1e-12,"ymax":1e-2},
 				"set_ticks": {
-					"ticks": 5
+					"ticks": 4
 				},
 				"set_ticklabels": {
 					"ticklabels": [
-						1e-14,
-						1e-10,
+						1e-12,
 						1e-08,
-						0.0001,
-						1.0
+						1e-04,
+						1e-2
 					],
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
-					"pad": 4
+					"pad": 5
 				},
 				"ax.tick_params": {
 					"labelsize": 30,
@@ -131,10 +130,10 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Infidelity}$"
+				"ylabel": "$\\textrm{Impurity} ~~ 1-\\textrm{tr}(\\rho_{\\chi}\\rho)$"
 			},
 			"set_xlabel": {
-				"xlabel": "$M$"
+				"xlabel": "$\\textrm{Depth} ~~ M$"
 			},
 			"yaxis.offsetText.set_fontsize": {
 				"fontsize": 20
@@ -235,10 +234,10 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					0.735,
+					0.7525,
 					0.0125
 				],
-				"ncol": 1,
+				"ncol": 3,
 				"keep": "middle",
 				"set_zorder": {
 					"level": 100

@@ -1151,7 +1151,6 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 	
 			state = state.copy()
-			other = other.copy()
 
 			N = state.L
 
@@ -4811,6 +4810,8 @@ class Module(System):
 		super().__init__(**kwargs)
 
 		self.init()
+
+		self.info()
 
 		return	
 
