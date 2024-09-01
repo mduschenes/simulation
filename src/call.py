@@ -97,7 +97,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
-				**{arg: '"%s"'%(' '.join([subarg for subarg in args[arg]])) for arg in args},
+				**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
 			},
 			**env			
 		}
