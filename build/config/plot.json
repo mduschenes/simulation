@@ -219,21 +219,21 @@
 				"axis": "both"
 			},
 			"legend": {
-				"title_fontsize": 40,
-				"fontsize": 40,
+				"title_fontsize": 30,
+				"fontsize": 30,
 				"get_title": {
 					"ha": "center"
 				},
 				"prop": {
-					"size": 40
+					"size": 30
 				},
                 "set_color": "grey",
-				"markerscale": 1.2,
+				"markerscale": 1.15,
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					0.70,
-					0.02
+					0.735,
+					0.0125
 				],
 				"ncol": 1,
 				"keep": "middle",
