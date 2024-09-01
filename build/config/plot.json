@@ -221,20 +221,23 @@
 				"axis": "both"
 			},
 			"legend": {
-				"title_fontsize": 30,
-				"fontsize": 30,
+				"title_fontsize": 25,
+				"fontsize": 25,
 				"get_title": {
 					"ha": "center"
 				},
 				"prop": {
-					"size": 30
+					"size": 25
+				},
+				"texify":{
+        			"N": "$\\textrm{System Size} ~~ N$"
 				},
                 "set_color": "grey",
-				"markerscale": 1.15,
+				"markerscale": 1.2,
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					0.7525,
+					0.3075,
 					0.0125
 				],
 				"ncol": 3,

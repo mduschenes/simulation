@@ -2371,24 +2371,25 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				separator = ',~'
+				texifies = data.get('texify')
 
 				value = [
 					{
-						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>1))))))},
-						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>1))))))},
-						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify'])) 
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})})) 
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 					
@@ -2399,7 +2400,7 @@ def plotter(plots,processes,verbose=None):
 					{
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}) 
 									for value in list(realsorted(set(values[prop][label]['value'])))]))
 							for prop in values 
 							for label in natsorted(set((
@@ -2409,7 +2410,7 @@ def plotter(plots,processes,verbose=None):
 								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))==1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}) 
 									for value in list(realsorted(set(values[prop][label]['value'])))]))
 							for prop in values 
 							for label in natsorted(set((
@@ -2419,7 +2420,7 @@ def plotter(plots,processes,verbose=None):
 								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))==1))))))},
 					},
 					{
-						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify=values[prop][label]['attr']['texify']))
+						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
 							for prop,attr in natsorted(set((
 							(prop,attr)
 							for prop in values 
@@ -2429,6 +2430,8 @@ def plotter(plots,processes,verbose=None):
 							)))},
 					},					
 					]
+
+				print(value)
 				
 				def func(value,key=None):
 					index = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
