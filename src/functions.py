@@ -33,8 +33,6 @@ from src.workflow import workflow
 
 from src.io import load,dump
 
-import sympy as sp
-
 # Processing
 
 def func_stat(data,func="min",stat='mean',**kwargs):

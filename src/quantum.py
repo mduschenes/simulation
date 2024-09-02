@@ -5536,7 +5536,7 @@ class Callback(System):
 					**{attr: self.options.get(attr) for attr in options if attr in self.options},
 					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
 					}
-				value = getattrd(model,attributes[attr])(
+				value = getattrs(model,attributes[attr],delimiter=delim)(
 					parameters=parameters,
 					state=model(parameters,state,**options),
 					other=model(parameters,state,**other)
