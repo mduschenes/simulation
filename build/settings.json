@@ -46,9 +46,10 @@
 		"jobs.job.cwd":["data"],
 		"jobs.postprocess.cwd":["data"],
 
-		"module.N":[4,6,8],		
-		"module.M":[5,10,20,50,100],
+		"module.N":[6],
+		"module.M":[4,8,16,32,64,128],
 		"model.data.noise.parameters":[1e-12,1e-8,1e-4,1e-2],
+		"module.options.max_bond":[2,4,8,16,32,64],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
