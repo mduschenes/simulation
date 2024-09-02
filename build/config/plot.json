@@ -31,7 +31,7 @@
 						"labels": null,
 						"legend": {
 							"include": [
-								"max_bond","N"
+								"max_bond"
 							]
 						}
 					},
