@@ -28,10 +28,9 @@
 						"wrapper": {
 							"objective": "src.functions.func_objective"
 						},
-						"labels": null,
 						"legend": {
 							"include": [
-								"max_bond"
+								"max_bond","N"
 							]
 						}
 					},
