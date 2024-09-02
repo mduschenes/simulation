@@ -1501,8 +1501,9 @@ def apply(keys,data,plots,processes,verbose=None):
 
 				source = [attr for attr in data if attr not in variables]
 				destination = other
+
 				value[destination] = {
-					**{attr: grouping[attr].to_list()[0] for attr in source},
+					**{attr: grouping[attr].to_list()[0] for attr in source if len(grouping[attr])},
 					**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
 						{
 						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
