@@ -717,8 +717,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			position = (1,1)
 		return position
 
-	def _positions(layout):
-		if all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
+	def _positions(layout=None):
+		if layout is None:
+			return {
+				'top':(1,None),'bottom':(1,None),
+				'left':(None,1),'right':(None,1),
+				'top_left':(1,1),'bottom_right':(1,1),
+				'top_right':(1,1),'bottom_left':(1,1),
+				}
+		elif all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			positions = {
 				'top':(1,None),'bottom':(layout['nrows'],None),
 				'left':(None,1),'right':(None,layout['ncols']),
@@ -894,7 +901,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						return []
 					else:
 						return None     
-			else:
+			elif isinstance(share,str) and share in _positions():
 				_position_ = _positions(kwargs['layout']).get(share,share)
 				position = _position(kwargs['layout'])
 				if all([((_position_[i] is None) or (position[i]==_position_[i])) for i in range(LAYOUTDIM)]):
@@ -904,7 +911,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						return []
 					else:
 						return None     						
-
+			else:
+				if value == share:
+					return value
+				else:
+					if isinstance(value,list):
+						return []
+					else:
+						return None
 		else:
 			return value
 		return
