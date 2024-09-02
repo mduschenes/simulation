@@ -9,7 +9,7 @@
     "useval": true,
     "instance": {
         "M.objective.noise.parameters": 1,
-        "M.noise.parameters.objective": 1
+        "M.noise.parameters.objective": 0
     },
     "texify": {
         "iteration": "\\textrm{Iteration}",

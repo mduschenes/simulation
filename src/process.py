@@ -1925,12 +1925,27 @@ def plotter(plots,processes,verbose=None):
 							for data in search(plots[instance][subinstance][obj][i])
 							if (data) 
 							)
-					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort')))
+					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort') if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
+								data[OTHER][OTHER]['legend'].get('include')
+								if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
+								[]))
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
-							if (data) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
-							for k in data[OTHER][OTHER]['legend'].get('sort')]),key=lambda i: i[-1].index(i[0]))]
+							if (data) and (
+								(data[OTHER][OTHER]['legend'].get('sort') is not None) or 
+								((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))))
+							for k in (
+								data[OTHER][OTHER]['legend'].get('sort') 
+								if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
+								data[OTHER][OTHER]['legend'].get('include')
+								if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
+								[]
+								)
+								]),key=lambda i: i[-1].index(i[0]))]
 					value['axes'] = False				
 					value['label'] = any((
 							(label in data[OTHER][OTHER][OTHER]) and 
@@ -1946,11 +1961,18 @@ def plotter(plots,processes,verbose=None):
 							for data in search(plots[instance][subinstance][obj][prop])
 							if (data)
 							)
+					value['title'] = any((
+							(label in data[OTHER][OTHER][OTHER]))
+							for data in search(plots[instance][subinstance][obj][prop])
+							if (data)
+							)
 					value['legend'] = any((
-							(label in data[OTHER][OTHER][OTHER]) and 
-							(label not in data[OTHER]) and 
-							((data[OTHER][OTHER][OTHER].get(label) is not None) and
-							(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
+							(label in data[OTHER][OTHER][OTHER]) #and 
+							# (label not in data[OTHER]) and 
+							# (
+								# (data[OTHER][OTHER][OTHER].get(label) is not None) and
+							# (data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER]))
+							)
 							for data in search(plots[instance][subinstance][obj][prop])
 							if (data)
 							)
@@ -1995,7 +2017,6 @@ def plotter(plots,processes,verbose=None):
 
 					values[prop][label] = value
 
-				
 				labels = list(natsorted(set(label
 					for data in search(plots[instance][subinstance][obj][prop])
 					if (data)
@@ -2405,7 +2426,7 @@ def plotter(plots,processes,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (
 								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))==1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
@@ -2444,9 +2465,13 @@ def plotter(plots,processes,verbose=None):
 					separator = '~,~'
 				delimiter = ',~'
 
-				value = [[i[k] for k in func(i)] for i in value if i]
-				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
 
+				indexes = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
+				index = [[k for k in func(i)] for i in value if i]
+				index = sorted(range(len(index)),key=lambda i,indexes=indexes: sum(indexes.index(j[-1]) if j[-1] in indexes else len(indexes) for j in index[i]))
+				value = [[i[k] for k in func(i)] for i in value if i]
+				value = [value[i] for i in index]
+				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					value = data[attr]%(value)
 				elif isinstance(data.get(attr),str):
