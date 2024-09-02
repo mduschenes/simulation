@@ -626,7 +626,6 @@ def parse(key,value,data,verbose=None):
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [i for value in values for i in [parser(value),value]]           
 						values = [value for value in values if (value is not null)]
-
 						if values and (values is not null):
 							try:
 								out = data[key].isin(values)
@@ -759,6 +758,7 @@ def parse(key,value,data,verbose=None):
 		try:
 			out = data[key].isin(value)
 		except Exception as exception:
+			print(exception)
 			try:
 				out = data[key] in value
 			except:
@@ -1862,6 +1862,7 @@ def plotter(plots,processes,verbose=None):
 				})
 
 
+			print(instance,subinstance,sublayout)
 			plots[instance][subinstance]['style']['layout'] = sublayout
 
 			grid[instance][subinstance] = [sublayout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
@@ -2431,8 +2432,6 @@ def plotter(plots,processes,verbose=None):
 					},					
 					]
 
-				print(value)
-				
 				def func(value,key=None):
 					index = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
 					if index:

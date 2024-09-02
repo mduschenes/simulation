@@ -11,7 +11,7 @@ import pandas as pd
 from natsort import natsorted
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -43,7 +43,7 @@ OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
 CAXES = ['colorbar']
-PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf']
+PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf','imshow','matshow']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
 PATHS = {
@@ -742,7 +742,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		add_subplot = True and (_layout_ != {})
 		other = {'%s_%s'%(key,k):settings[key]['style'].get(k) for k in CAXES if isinstance(settings[key]['style'].get(k),dict)}
 		for k in ax:
-			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',ax[k].get_geometry()))
+			try:
+				geometry = ax[k].get_geometry()
+			except Exception as exception:
+				geometry = ax[k].get_subplotspec().get_geometry()
+				geometry = [*geometry[:LAYOUTDIM],to_index(geometry[LAYOUTDIM:],geometry[:LAYOUTDIM][::-1])]
+			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',geometry))
 			if all([_layout_[kwarg]==__layout__[kwarg] for kwarg in _layout_]):
 				ax[key] = ax[k]
 				add_subplot = False
@@ -845,7 +850,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 	def attr_share(value,attr,kwarg,share,**kwargs):
-		
 		attrs = {
 			**{'set_%s'%(key):['%s'%(label)]
 				for axes in AXES 
@@ -857,7 +861,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
-				'set_colorbar':['value'],
+				'set_colorbar':['value','values'],
+				"tick_params":["axis","which","length","width"],
 				'legend':['handles','labels','title','set_title']
 				},
 			}
@@ -1223,7 +1228,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
-				
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -1296,16 +1300,84 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				call = True
 
 
-			elif attr in ['imshow']:
+			elif attr in ['imshow','matshow']:
 				dim = 2
 
-				props = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
-				for prop in props:
-					if prop in kwargs[attr]:
-						args.append(kwargs[attr].get(prop))
-						break
+				if any(prop in kwargs[attr] for prop in ['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]]):
+					args.append(kwargs[attr].get(prop))
+				elif all(prop in kwargs[attr] for prop in AXES[:dim+1][::-1]):
+					for prop in [AXES[dim]]:
+						shape = (*(len(set(kwargs[attr].get(prop))) for prop in AXES[:dim]),)
+						args.append(kwargs[attr].get(prop).reshape(shape))
 
-				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+					props = {
+						# 'extent':[value for prop in AXES[:dim] 
+						# 	for value in [
+						# 		min(kwargs[attr].get(prop),default=0),
+						# 		max(kwargs[attr].get(prop),default=0)]
+						# 	],
+						'origin':'lower',
+						'interpolation':'nearest',
+						'aspect':1
+						}
+					for prop in props:
+						if prop not in kwargs[attr]:
+							kwargs[attr][prop] = props[prop]
+
+
+					props = ['color']
+					for prop in props:
+						if prop not in kwargs[attr]:
+							continue
+						if isinstance(kwargs[attr][prop],dict):
+
+							kwds = ['value','values','color','norm','scale','alpha']
+						
+							kwds = {kwd: kwargs[attr][prop].get(kwd,None) for kwd in kwds}
+
+							if isinstance(kwds.get('value'),dict):
+								kwds.update(kwds.pop('value',{}))
+							
+							value = 'values'
+							values = 'value'
+							if kwds.get(value) is None and kwds.get(values) is None:
+								kwds[value] = [i/max(1,prod(shape[fields[prop]])-1) for i in range(prod(shape[fields[prop]]))]
+								kwds[values] = [i/max(1,prod(shape[fields[prop]])-1) for i in range(prod(shape[fields[prop]]))]
+							elif kwds.get(value) is None and kwds.get(values) is not None:
+								kwds[value] = kwds[values]
+							elif kwds.get(value) is not None and kwds.get(values) is None:
+								kwds[values] = kwds[value]
+							elif kwds.get(value) is not None and kwds.get(values) is not None:
+								pass
+
+
+							# value = 'norm'
+							# values = 'values'
+							# if kwds.get(value) is not None:
+							# 	kwds[values] = None
+
+							value = 'norm'
+							values = 'value'
+							if kwds.get(value) is not None:
+								kwds[values] = None	
+
+							value,color,values,colors,norm = set_color(**kwds)
+
+							if colors is not None and len(args):
+								args[0] = np.array([[*j] for i,j in zip(args[0].ravel(),colors)]).reshape((*args[0].shape,-1))
+								kwargs[attr]['cmap'] = kwds['color']
+								kwargs[attr]['norm'] = norm
+								# kwargs[attr]['vmin'] = norm.vmin
+								# kwargs[attr]['vmax'] = norm.vmax
+							else:
+								kwargs[attr]['cmap'] = kwds['color']
+								kwargs[attr]['norm'] = norm
+								kwargs[attr]['vmin'] = norm.vmin
+								kwargs[attr]['vmax'] = norm.vmax
+
+
+				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend(['value','color','ecolor','label','alpha','marker','markersize','linestyle','linewidth','elinewidth','capsize'])
 
 				call = True
 
@@ -1380,81 +1452,86 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				call = False
 
 				kwds = ['value','values','color','norm','scale','alpha']
-			
-				kwds = {prop: kwargs[attr].get(prop,None) for prop in kwds}
+	
+				subcall = not all(prop not in kwargs[attr] or kwargs[attr][prop] is None or kwargs[attr][prop] == [] for prop in ['value'])
 
-				if isinstance(kwds.get('value'),dict):
-					kwds.update(kwds.pop('value',{}))
+				if subcall:
+					kwds = {prop: kwargs[attr].get(prop,None) for prop in kwds}
 
-				value = 'values'
-				values = 'value'
-				if kwds.get(value) is None and kwds.get(values) is None:
-					kwds[value] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
-					kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
-				elif kwds.get(value) is None and kwds.get(values) is not None:
-					kwds[value] = kwds[values]
-				elif kwds.get(value) is not None and kwds.get(values) is None:
-					kwds[values] = kwds[value]
-				elif kwds.get(value) is not None and kwds.get(values) is not None:
-					pass
+					if isinstance(kwds.get('value'),dict):
+						kwds.update(kwds.pop('value',{}))
 
-				value,color,values,colors,norm = set_color(**kwds)
-				
-				name = 'colorbar'				
-				colors = list([list(i) for i in zip([i for i in values],[tuple(i) for i in colors])])
-				N = len(colors)
-
-				segments = kwargs[attr].get('segments',1)
-				sizing = kwargs[attr].get('size','5%')
-				padding = kwargs[attr].get('pad',0.05)
-				orientation = kwargs[attr].get('orientation','vertical')
-				position = kwargs[attr].get('position','right')
-				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
-
-				for axes in ['',*AXES]:
-					prop = 'set_%slabel'%(axes)
-					subprop = '%slabel'%(axes)
-					if prop in kwargs[attr]:
-						kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop)
-
-				if N > 1:
-
-					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
-
-					pos = obj.get_position()
-					divider = make_axes_locatable(obj)
-					cax = divider.append_axes(position,size=sizing,pad=padding)
+					value = 'values'
+					values = 'value'
 					
-					# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
-					# cax = plt.add_axes()
-					# cax.set_position(pos)
+					if kwds.get(value) is None and kwds.get(values) is None:
+						kwds[value] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+						kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+					elif kwds.get(value) is None and kwds.get(values) is not None:
+						kwds[value] = kwds[values]
+					elif kwds.get(value) is not None and kwds.get(values) is None:
+						kwds[values] = kwds[value]
+					elif kwds.get(value) is not None and kwds.get(values) is not None:
+						pass
 
-					colorbar = matplotlib.colorbar.ColorbarBase(cax,cmap=cmap,norm=norm,orientation=orientation)
-					obj = colorbar	
+					value,color,values,colors,norm = set_color(**kwds)
+					
 
-					for kwarg in kwargs[attr]:
+					name = 'colorbar'				
+					colors = list([list(i) for i in zip([i for i in values],[tuple(i) for i in colors])])
+					N = len(colors)
+
+					segments = kwargs[attr].get('segments',1)
+					sizing = kwargs[attr].get('size','5%')
+					padding = kwargs[attr].get('pad',0.05)
+					orientation = kwargs[attr].get('orientation','vertical')
+					position = kwargs[attr].get('position','right')
+					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+
+					for axes in ['',*AXES]:
+						prop = 'set_%slabel'%(axes)
+						subprop = '%slabel'%(axes)
+						if prop in kwargs[attr]:
+							kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop)
+
+					if N > 1:
+
+						cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
+
+						pos = obj.get_position()
+						divider = make_axes_locatable(obj)
+						cax = divider.append_axes(position,size=sizing,pad=padding)
 						
-						if kwarg in nullkwargs:
-							continue
+						# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
+						# cax = plt.add_axes()
+						# cax.set_position(pos)
 
-						_obj = obj
-						
-						for _kwarg in kwarg.split('.'):
-							try:
-								_obj = getattr(_obj,_kwarg)
-							except Exception as exception:
-								break
-						if isinstance(kwargs[attr][kwarg],dict):
-							try:
-								if _kwarg.startswith('get_'):
-									for i in _obj():
-										getattr(i,_kwarg)(kwargs[attr][kwarg])
-								else:
-									_obj(**kwargs[attr][kwarg])
-							except Exception as exception:
+						colorbar = matplotlib.colorbar.ColorbarBase(cax,cmap=cmap,norm=norm,orientation=orientation)
+						obj = colorbar	
+
+						for kwarg in kwargs[attr]:
+							
+							if kwarg in nullkwargs:
 								continue
-						else:
-							continue
+
+							_obj = obj
+							
+							for _kwarg in kwarg.split('.'):
+								try:
+									_obj = getattr(_obj,_kwarg)
+								except Exception as exception:
+									break
+							if isinstance(kwargs[attr][kwarg],dict):
+								try:
+									if _kwarg.startswith('get_'):
+										for i in _obj():
+											getattr(i,_kwarg)(kwargs[attr][kwarg])
+									else:
+										_obj(**kwargs[attr][kwarg])
+								except Exception as exception:
+									continue
+							else:
+								continue
 				
 
 			elif attr in ['savefig']:
@@ -1663,7 +1740,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		def attr_kwargs(kwarg,attr,kwargs,settings,index):
 			updates = {}
 			if attr in kwargs.get('share',{}):
-				updates.update({'legend': {'handles':True,'labels':True}}.get(attr,{}))
+				updates.update({
+						'legend': {'handles':True,'labels':True}
+						}.get(attr,{}))
 			kwarg[attr].update(updates)
 			kwargs = {
 				**kwarg,
@@ -1861,19 +1940,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			break
 	for _mplstyle in _mplstyles:
 		if _mplstyle is not None and os.path.isfile(_mplstyle):
-			break			
+			break	
 
-	settingss = [settings,PATHS['plot'],{}]
-	for settings in settingss:
+	attr = 'style'
+	prop = 'use'
+	default = 'pdf'
+	uses = [*[settings[key].get(attr,{}).get(prop) for key in settings],
+				settings.get(attr,{}).get(prop),
+				default]
+	uses = [use for use in uses if use is not None]
+	use = uses[0] if uses else default
+
+	options = [settings,PATHS['plot'],{}]
+	for settings in options:
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
 
 	try:
+		matplotlib.use(use)		
 		fig,ax = context(x,y,z,settings,fig,ax,mplstyle,texify)
 	except:
 		rc_params = {'text.usetex': False}
 		matplotlib.rcParams.update(rc_params)
-		matplotlib.use('pdf') 
+		matplotlib.use(use) 
 		fig,ax = context(x,y,z,settings,fig,ax,_mplstyle,texify)
 
 	return fig,ax

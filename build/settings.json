@@ -219,7 +219,7 @@
 		"N":"N","M":"M","d":"d","D":"state.D",
 		"noise.parameters":"noise.parameters",
 		"base":"measure.base",
-		"objective":"objective"
+		"objective":"measure.infidelity"
 	},
 	"options":{"contract":true,"max_bond":null,"cutoff":0}
 },

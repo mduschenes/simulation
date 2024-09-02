@@ -595,14 +595,7 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = data.dtype
 
-		if self.architecture is None:
-			kwargs = dict(dtype=dtype)
-
-			basis = array(basis,**kwargs)
-			data = array(data,**kwargs)
-			inverse = array(inverse,**kwargs)
-
-		elif self.architecture in ['array']: 
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
 
 			basis = array(basis,**kwargs)
@@ -619,20 +612,6 @@ class Measure(System):
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = tensor(inverse,**kwargs)
 
-		elif self.architecture in ['mps']:
-			kwargs = dict(dtype=dtype)
-
-			basis = array(basis,**kwargs)
-			data = array(data,**kwargs)
-			inverse = array(inverse,**kwargs)
-
-		else:
-			kwargs = dict(dtype=dtype)
-
-			basis = array(basis,**kwargs)
-			data = array(data,**kwargs)
-			inverse = array(inverse,**kwargs)			
-
 		self.base = base
 		self.string = string
 
@@ -645,17 +624,7 @@ class Measure(System):
 		self.ndim =  ndim
 		self.dtype = dtype
 
-		if self.architecture is None:
-			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			def func(parameters,state):
-				return einsummation(state,self.inverse,self.basis)
-
-			def gradient(parameters,state):
-				return 0
-
-		elif self.architecture in ['array']:
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			subscripts = '...u,uv,vjk->...jk'
 			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
 			einsummation = einsum(subscripts,*shapes)
@@ -674,26 +643,6 @@ class Measure(System):
 
 			def gradient(parameters,state):
 				return 0				
-
-		elif self.architecture in ['mps']:
-			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			def func(parameters,state):
-				return einsummation(state,self.inverse,self.basis)
-
-			def gradient(parameters,state):
-				return 0
-
-		else:
-			subscripts = '...u,uv,vjk->...jk'
-			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			def func(parameters,state):
-				return einsummation(state,self.inverse,self.basis)
-
-			def gradient(parameters,state):
-				return 0			
 
 		self.func = func
 		self.gradient = gradient
@@ -834,20 +783,8 @@ class Measure(System):
 		if not isinstance(state,objects):
 			state = [getattr(Basis,i)(**kwargs) if isinstance(i,str) else i() if callable(i) else i for i in (state if not isinstance(state,str) else [state])]
 
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			state = array(state,dtype=self.dtype)
-			basis = self.basis
-			inverse = self.inverse
-
-			subscripts = 'uij,...ij->...u'
-			shapes = (basis.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			state = einsummation(basis,state)
-
-		elif self.architecture in ['array']:
-
 			state = array(state,dtype=self.dtype)
 			basis = self.basis
 			inverse = self.inverse
@@ -882,30 +819,6 @@ class Measure(System):
 			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**(self.options if self.options is not None else dict())}
 			state = mps(state,**options)
 
-		elif self.architecture in ['mps']:
-
-			state = array(state,dtype=self.dtype)
-			basis = self.basis
-			inverse = self.inverse
-
-			subscripts = 'uij,...ij->...u'
-			shapes = (basis.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			state = einsummation(basis,state)
-
-		else:
-
-			state = array(state,dtype=self.dtype)
-			basis = self.basis
-			inverse = self.inverse
-
-			subscripts = 'uij,...ij->...u'
-			shapes = (basis.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			state = einsummation(basis,state)
-
 		return state
 
 
@@ -922,14 +835,13 @@ class Measure(System):
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		
-		if self.architecture is None:
-		
-			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			subscripts = '...u,uv,vij->...ij'
+			shapes = (state.shape,self.inverse.shape,self.basis.shape)
+			einsummation = einsum(subscripts,*shapes)
 
-		elif self.architecture in ['array']:
+			state = einsummation(state,self.inverse,self.basis)
 
-			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
-			
 		elif self.architecture in ['tensor']:
 
 			state = state.copy()
@@ -941,10 +853,6 @@ class Measure(System):
 					state &= self.inverse & self.basis
 
 			state = representation(state,to=self.architecture,contract=True)
-
-		else:
-			
-			state = einsum('...u,uv,vij->...ij',state,self.inverse,self.basis)
 
 		return state
 
@@ -961,34 +869,7 @@ class Measure(System):
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		if self.architecture is None:
-
-			N = len(state) if state is not None else None
-
-			if N is not None and N > 1:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				basis = self.basis
-				inverse = self.inverse
-
-			if model is None:
-				data = None
-			else:
-				subscripts = 'uij,wij,wv,v...->u...'
-				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
-				einsummation = einsum(subscripts,*shapes)
-				
-				model = vmap(model,in_axes=(None,0),out_axes=0)
-				
-				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
-				swapper = swap(state,**options,transform=True)
-				_swapper = swap(state,**options,transform=False)
-					
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
-					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
-	
-		elif self.architecture in ['array']:
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = len(state) if state is not None else None
 
@@ -1044,37 +925,6 @@ class Measure(System):
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
 					return state.gate(einsummation(conjugate(basis),model(parameters,basis),inverse),where=where,**kwargs)
 		
-		else:
-
-			N = len(state) if state is not None else None
-
-			if N is not None and N > 1:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				basis = self.basis
-				inverse = self.inverse
-
-			if model is None:
-
-				def func(parameters,state,where=where,**kwargs):
-					return None
-
-			else:
-				subscripts = 'uij,wij,wv,v...->u...'
-				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
-				einsummation = einsum(subscripts,*shapes)
-				
-				model = vmap(model,in_axes=(None,0),out_axes=0)
-				
-				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
-				swapper = swap(state,**options,transform=True)
-				_swapper = swap(state,**options,transform=False)
-					
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
-					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
-		
-
 		parameters = self.parameters() if parameters is None else parameters
 		wrapper = partial
 
@@ -1082,42 +932,60 @@ class Measure(System):
 
 		return func
 
-	def observable(self,observable=None,parameters=None,state=None,**kwargs):
+	def calculate(self,attr=None,parameters=None,state=None,**kwargs):
 		'''
-		Observable for POVM probability measure
+		Calculate data for POVM probability measure
 		Args:
-			observable (str): observable, allowed strings in ['fidelity']
+			attr (str): attribute for calculation of data
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): data of observable
+			data (array): data
 		'''
 
-		if observable in ['fidelity']:
-			data = self.fidelity(parameters=parameters,state=state,**kwargs)
+		if hasattr(self,attr):
+			data = getattr(self,attr)(parameters=parameters,state=state,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def fidelity(self,parameters=None,state=None,other=None,**kwargs):
+	def infidelity(self,parameters=None,state=None,other=None,**kwargs):
 		'''
-		Fidelity for POVM probability measure with respect to other POVM
+		Infidelity for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): data of observable
+			data (array): data
+		'''
+
+		attr = 'infidelity_classical'
+		
+		data = getattr(self,attr)(parameters=parameters,state=state,other=other,**kwargs)
+
+		return data
+
+	def infidelity_quantum(self,parameters=None,state=None,other=None,**kwargs):
+		'''
+		Infidelity (Quantum) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = self.state() if state is None else state() if callable(state) else state
 		other = self.state() if other is None else other() if callable(other) else other
 		
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = len(state) if state is not None else None
 
@@ -1127,26 +995,10 @@ class Measure(System):
 				inverse = self.inverse
 
 			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,other.shape)
+			shapes = (state.shape,inverse.shape,other.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			data = einsummation(basis,inverse,other)
-
-
-		elif self.architecture in ['array']:
-
-			N = len(state) if state is not None else None
-
-			if N is not None and N > 1:
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				inverse = self.inverse
-
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(basis,inverse,other)
+			data = einsummation(state,inverse,other)
 
 		elif self.architecture in ['tensor']:
 	
@@ -1164,37 +1016,101 @@ class Measure(System):
 
 				data = representation(state,contract=True,func=real)
 
-		elif self.architecture in ['mps']:
+		data = 1 - data
 
-			N = len(state) if state is not None else None
+		return data		
 
-			if N is not None and N > 1:
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				inverse = self.inverse
-
-			subscripts = '...u,uv,...v->...'
+	def infidelity_classical(self,parameters=None,state=None,other=None,**kwargs):
+		'''
+		Infidelity (Classical) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		other = self.state() if other is None else other() if callable(other) else other
+		
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			subscripts = '...u,...u->...'
 			shapes = (state.shape,other.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			data = einsummation(basis,inverse,other)
+			state = sqrt(state)
+			other = sqrt(other)
 
-		else:
+			data = einsummation(state,other)
 
-			N = len(state) if state is not None else None
+		elif self.architecture in ['tensor']:
+	
+			state = state.contract()
+			state.modify(apply=sqrt)
 
-			if N is not None and N > 1:
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				inverse = self.inverse
+			other = other.contract()
+			other.modify(apply=sqrt)
 
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(basis,inverse,other)
+			data = representation(state & other,contract=True,func=real)
+
+		data = 1 - data
 
 		return data
+
+	def infidelity_pure(self,parameters=None,state=None,other=None,**kwargs):
+		'''
+		Infidelity (Pure State) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		other = self.state() if other is None else other() if callable(other) else other
+		
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				inverse = self.inverse
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,inverse.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state,inverse,other)
+
+		elif self.architecture in ['tensor']:
+	
+			state = state.copy()
+
+			N = state.L
+
+			for i in range(N):
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
+
+				state &= other
+
+				data = representation(state,contract=True,func=real)
+
+		return data
+
+
 
 
 class MPS(mps): 
@@ -1932,16 +1848,10 @@ class Object(System):
 		else:
 			kwargs = dict(**{**dict(shape=(self.D,self.N,self.ndim),axes=(self.site,)),**(self.options if self.options is not None else {})})
 
-		if self.architecture is None:
-			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
-		elif self.architecture in ['array']:
-			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
-		elif self.architecture in ['tensor']:
+		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 		elif self.architecture in ['mps']:
 			kwargs = dict(**{**self.options}) if self.options is not None else kwargs
-		else:
-			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 
 		try:
 			contract = contraction(data,state,where=where,**kwargs) if self.contract is None else self.contract
@@ -1961,36 +1871,18 @@ class Object(System):
 		self.contract = contract
 		self.gradient_contract = grad_contract
 
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			where = self.site
 			wrapper = jit
 		
-		elif self.architecture in ['array']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			where = self.site			
-			wrapper = jit
-
-		elif self.architecture in ['tensor']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			where = self.site			
-			wrapper = jit
-
 		elif self.architecture in ['mps']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			where = self.site			
 			wrapper = partial
 		
-		else:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			where = self.site	
-			wrapper = jit
-
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 		self.contract = wrapper(self.contract,state=state,where=where)
@@ -3487,9 +3379,6 @@ class State(Object):
 					norm = einsum('i,i->',conjugate(data),data)
 					eps = ones(shape=(),dtype=dtype)
 		
-		elif self.architecture in ['mps']:
-
-			raise NotImplementedError('%r class norm not implemented for architecture %r'%(self.__class__,self.architecture))
 
 		if norm is None or eps is None:
 			return
@@ -3829,31 +3718,16 @@ class Objects(Object):
 
 
 		# Set wrapper
-		if self.architecture is None:
+		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			wrapper = jit
 		
-		elif self.architecture in ['array']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			wrapper = jit
-
-		elif self.architecture in ['tensor']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			wrapper = jit
-
 		elif self.architecture in ['mps']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			wrapper = partial
 	
-		else:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)			
-			wrapper = jit
-
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
 		self.gradient_automatic = wrapper(self.gradient_automatic,parameters=parameters,state=state)
@@ -4621,17 +4495,7 @@ class Channel(Objects):
 
 
 		# Set wrapper
-		if self.architecture is None:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			wrapper = jit
-		
-		elif self.architecture in ['array']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
-			wrapper = jit
-
-		elif self.architecture in ['tensor']:
+		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			wrapper = jit
@@ -4640,11 +4504,6 @@ class Channel(Objects):
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			wrapper = partial
-	
-		else:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)			
-			wrapper = jit
 
 		self.func = wrapper(self.func,parameters=parameters,state=state)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state)
@@ -5677,7 +5536,7 @@ class Callback(System):
 					**{attr: self.options.get(attr) for attr in options if attr in self.options},
 					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
 					}
-				value = model.measure.fidelity(
+				value = getattrd(model,attributes[attr])(
 					parameters=parameters,
 					state=model(parameters,state,**options),
 					other=model(parameters,state,**other)

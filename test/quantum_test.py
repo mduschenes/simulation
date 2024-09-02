@@ -955,11 +955,15 @@ def test_module(*args,**kwargs):
 
 		state,other = module(parameters,state,**options),module(parameters,state)
 
-		key = 'fidelity'
+
+		print(module.measure.infidelity_classical(parameters,state,other))
+		exit()
+
+		key = 'infidelity'
 		value = abs(
-			(module.measure.fidelity(parameters,state,other) -
-			 module.measure.fidelity(parameters,state,state)) / 
-			(module.measure.fidelity(parameters,state,state))
+			(module.measure.infidelity(parameters,state,other) -
+			 module.measure.infidelity(parameters,state,state)) / 
+			(module.measure.infidelity(parameters,state,state))
 			)
 
 		data[i][key] = value

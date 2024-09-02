@@ -51,7 +51,7 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
 def func_objective(data):
-	return 1-data['objective']
+	return data['objective']
 
 def func_MN(data):
 	return data['M']/data['N']
