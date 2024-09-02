@@ -758,7 +758,6 @@ def parse(key,value,data,verbose=None):
 		try:
 			out = data[key].isin(value)
 		except Exception as exception:
-			print(exception)
 			try:
 				out = data[key] in value
 			except:
@@ -1860,7 +1859,6 @@ def plotter(plots,processes,verbose=None):
 					'left':(ncol)/sublayout['ncols'] if sublayout['left'] and sublayout['ncols']>1 else None,											
 					}
 				})
-
 
 			plots[instance][subinstance]['style']['layout'] = sublayout
 
