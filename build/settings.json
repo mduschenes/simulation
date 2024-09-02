@@ -47,9 +47,9 @@
 		"jobs.postprocess.cwd":["data"],
 
 		"module.N":[6],
-		"module.M":[4,8,16,32,64,128],
-		"model.data.noise.parameters":[1e-12,1e-8,1e-4,1e-2],
-		"module.options.max_bond":[2,4,8,16,32,64],
+		"module.M":[4,8,16,32,64,128,256],
+		"model.data.noise.parameters":[1e-8,1e-6,1e-4,1e-2,1e-1],
+		"module.options.max_bond":[2,3,4,6,8,16,32,64],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -57,7 +57,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[6],
+		"jobs.job.pool":[8],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -67,7 +67,7 @@
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[6],		
+		"jobs.job.args.JOB_PROCESSES":[8],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
@@ -220,6 +220,7 @@
 		"N":"N","M":"M","d":"d","D":"state.D",
 		"noise.parameters":"noise.parameters",
 		"base":"measure.base",
+		"max_bond":"options.max_bond",
 		"objective":"measure.infidelity"
 	},
 	"options":{"contract":true,"max_bond":null,"cutoff":0}

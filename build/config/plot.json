@@ -22,6 +22,7 @@
 					"label": {
 						"label": {
 							"N": null,
+							"max_bond":null,
 							"noise.parameters": null
 						},
 						"wrapper": {
@@ -30,24 +31,26 @@
 						"labels": null,
 						"legend": {
 							"include": [
-								"N"
+								"N","max_bond"
 							]
 						}
 					},
 					"alpha": {
 						"@N@": [
-							0.4,
 							0.6,
-							0.8
+							0.8,
+							1.0
 						]
 					},
 					"marker": {
-						"@N@": [
+						"@max_bond@": [
 							"o",
 							"^",
 							"s",
-							"P"
-						]
+							"P",
+							"h",
+							"H"
+						]						
 					},
 					"markeredgecolor": "k",
 					"markersize": 10,
@@ -129,7 +132,8 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Impurity} ~~ 1-\\textrm{tr}(\\rho_{\\chi}\\rho)$"
+				"ylabel": "$\\textrm{Impurity} ~~ 1-\\textrm{tr}(\\rho_{\\chi}\\rho)$",
+				"ylabel": "$\\textrm{Classical Infidelity} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -142,14 +146,14 @@
 			},
 			"set_xlim": {
 				"xmin": -10,
-				"xmax": 110
+				"xmax": 170
 			},
 			"set_xnbins": {
-				"nbins": 6
+				"nbins": 5
 			},
 			"set_xticks": {
 				"ticks": [
-					0,20,40,60,80,100
+					0,40,80,120,160
 				]
 			},
 			"set_yscale": {
@@ -157,14 +161,17 @@
 				"base": 10
 			},
 			"set_ylim": {
-				"ymin": 1e-13,
+				"ymin": 1e-19,
 				"ymax": 10.0
 			},
 			"set_ynbins": {
-				"nbins": 6
+				"nbins": 10
 			},
 			"set_yticks": {
 				"ticks": [
+					1e-18,
+					1e-16,
+					1e-14,
 					1e-12,
 					1e-10,
 					1e-08,
