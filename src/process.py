@@ -1862,7 +1862,6 @@ def plotter(plots,processes,verbose=None):
 				})
 
 
-			print(instance,subinstance,sublayout)
 			plots[instance][subinstance]['style']['layout'] = sublayout
 
 			grid[instance][subinstance] = [sublayout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
