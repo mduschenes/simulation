@@ -4,12 +4,14 @@
     "plot": 1,
     "process": 1,
     "postprocess": 0,
-    "reset":0,
+    "reset":1,
     "usetex": true,
     "useval": true,
     "instance": {
         "M.objective.noise.parameters": 0,
+        "M.infidelity.quantum.noise.parameters.N": 1,
         "M.infidelity.classical.noise.parameters.N": 1,
+        "M.infidelity.pure.noise.parameters.N": 1,
         "M.noise.parameters.objective": 0
     },
     "texify": {
