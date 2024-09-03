@@ -2201,7 +2201,7 @@
 				},
 				"set_title": {"label":"N"},				
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Impurity} ~~ 1-\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
+					"ylabel": "$\\textrm{Impurity} ~~ 1-\\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -2496,7 +2496,7 @@
 			},
 			"set_title": {"label":"N"},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Impurity} ~~ 1-\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
+				"ylabel": "$\\textrm{Impurity} ~~ 1-\\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -2791,7 +2791,7 @@
 				},
 				"set_title": {"label":"N"},				
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Impurity} ~~ 1-\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
+					"ylabel": "$\\textrm{Impurity} ~~ 1-\\sqrt{\\textrm{tr}(\\rho_{\\chi}\\rho)}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
