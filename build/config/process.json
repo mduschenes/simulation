@@ -12,6 +12,9 @@
         "M.infidelity.quantum.noise.parameters.N": 1,
         "M.infidelity.classical.noise.parameters.N": 1,
         "M.infidelity.pure.noise.parameters.N": 1,
+        "M.norm.quantum.noise.parameters.N": 1,
+        "M.norm.classical.noise.parameters.N": 1,
+        "M.norm.pure.noise.parameters.N": 1,        
         "M.noise.parameters.objective": 0
     },
     "texify": {

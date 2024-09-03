@@ -1138,13 +1138,13 @@ class Measure(System):
 
 			state = self.transform(parameters=parameters,state=state,transformation=False)
 
-			data = trace(sqrtm(dot(state,state),hermitian=True))
+			data = trace(state)
 
 		elif self.architecture in ['tensor']:
 		
 			state = self.transform(parameters=parameters,state=state,transformation=False)
 
-			data = trace(sqrtm(dot(state,state),hermitian=True))
+			data = trace(state)
 		
 		data = func(data)
 
@@ -1197,7 +1197,7 @@ class Measure(System):
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = self.state() if state is None else state() if callable(state) else state
 		
-		func = lambda data: 1 - sqrt(abs(real(data)))
+		func = lambda data: 1 - abs(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			

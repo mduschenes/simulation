@@ -2254,6 +2254,8 @@ def plotter(plots,processes,verbose=None):
 				if (data.get(attr) is None):
 				
 					data[attr] = []
+
+					items = []
 				
 				elif isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 
