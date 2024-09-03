@@ -1550,7 +1550,7 @@ def apply(keys,data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 
 		for attr in tmp:
-			if tmp[attr] is None:
+			if tmp[attr] is None and attr in data:
 				data.drop(columns=attr)
 			else:
 				data[attr] = tmp[attr]
@@ -2737,7 +2737,12 @@ def plotter(plots,processes,verbose=None):
 						data[attr%(axes)] = data[attr%(axes)][position[0]%len(data[attr%(axes)])][position[1]%len(data[attr%(axes)][position[0]%len(data[attr%(axes)])])]
 
 					if isinstance(data[attr%(axes)],str):
-						data[attr%(axes)] = data[attr%(axes)]%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(data[attr%(axes)].count('%s'))))
+						if axes in AXES:
+							data[attr%(axes)] = data[attr%(axes)]%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(data[attr%(axes)].count('%s'))))
+						else:
+							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if OTHER in data for i in data[OTHER]}
+							if data[attr%(axes)] in objs:
+								data[attr%(axes)] = "%s = %s"%(data[attr%(axes)],objs[data[attr%(axes)]])
 
 					data[attr%(axes)] = texify(data[attr%(axes)])
 

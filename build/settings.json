@@ -51,6 +51,11 @@
 		"model.data.noise.parameters":[1e-8,1e-6,1e-4,1e-2,1e-1],
 		"module.options.max_bond":[2,3,4,6,8,16,32,64],
 
+		"module.N":[4,6,8],
+		"module.M":[4,8,16,32,64,128,256],
+		"model.data.noise.parameters":[1e-8,1e-6,1e-4,1e-2,1e-1],
+		"module.options.max_bond":[2,3,4,6,8,16,32,64],		
+
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
 		"jobs.job.process":["series"],
@@ -107,7 +112,7 @@
 		},				
 		"noise":{
 			"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-			"parameters":1e-3,"variable":false
+			"parameters":1e-8,"variable":false
 		}
 	},
 	"N":null,
@@ -221,7 +226,12 @@
 		"noise.parameters":"noise.parameters",
 		"base":"measure.base",
 		"max_bond":"options.max_bond",
-		"objective":"measure.infidelity"
+		"infidelity.quantum":"measure.infidelity_quantum",
+		"infidelity.classical":"measure.infidelity_classical",
+		"infidelity.pure":"measure.infidelity_pure",
+		"norm.quantum":"measure.norm_quantum",
+		"norm.classical":"measure.norm_classical",
+		"norm.pure":"measure.norm_pure"
 	},
 	"options":{"contract":true,"max_bond":null,"cutoff":0}
 },

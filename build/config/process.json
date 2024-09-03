@@ -8,7 +8,8 @@
     "usetex": true,
     "useval": true,
     "instance": {
-        "M.objective.noise.parameters": 1,
+        "M.objective.noise.parameters": 0,
+        "M.infidelity.classical.noise.parameters.N": 1,
         "M.noise.parameters.objective": 0
     },
     "texify": {

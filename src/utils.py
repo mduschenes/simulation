@@ -6228,17 +6228,22 @@ def dagger(a):
 	'''	
 	return conjugate(transpose(a))
 
-@jit
-def sqrtm(a,dtype=None):
+@partial(jit,static_argnums=(1,))
+def sqrtm(a,hermitian=False):
 	'''
 	Calculate matrix square-root of array a
 	Args:
 		a (array): Array to compute square root
-		dtype (datatype): Datatype of array		
+		hermitian (bool): Whether array is Hermitian						
 	Returns:
 		out (array): Square root of array
 	'''
-	return np.sqrtm(a)
+
+	eigenvalues,eigenvectors = eig(a,hermitian=hermitian,compute_v=True)
+
+	eigenvalues = eigenvalues.astype(a.dtype) if hermitian else eigenvalues
+
+	return dot(eigenvectors*sqrt(eigenvalues),dagger(eigenvectors))
 
 
 @jit

@@ -10,7 +10,8 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,einsum,conjugate,dot,tensorprod,trace,representation
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,representation
+from src.utils import einsum,conjugate,dot,tensorprod,trace,sqrtm,sqrt
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -956,7 +957,9 @@ def test_module(*args,**kwargs):
 		state,other = module(parameters,state,**options),module(parameters,state)
 
 
-		print(module.measure.infidelity_classical(parameters,state,other))
+		attrs = ['norm_classical','norm_quantum','infidelity_classical','infidelity_quantum']
+		for attr in attrs:
+			print(attr,getattr(module.measure,attr)(parameters,state,other))
 		exit()
 
 		key = 'infidelity'
@@ -1025,6 +1028,86 @@ def test_module(*args,**kwargs):
 	return
 
 
+def test_algebra(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"measure":"src.quantum.Measure",
+			"state":"src.quantum.State"
+			},
+		"module":{
+			"N":8,
+			"M":1,
+			"d":1,
+			"string":"module",
+			"lattice":"square",
+			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
+			"options":{"contract":"swap+split","max_bond":4,"cutoff":1e-2}		
+		},
+		"measure":{
+			"base":"pauli",
+			"architecture":"tensor",
+			"options":{"cyclic":False}	
+		},		
+		"state": {
+			"operator":["haar"],
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":True
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":"log.log",
+			"cleanup":False,
+			"verbose":False
+			}
+		})
+
+	# Settings
+	settings = Dict(settings)
+
+	# Class
+	measure = load(settings.cls.measure)
+	state = load(settings.cls.state)
+	system = settings.system
+
+	# State
+	state = state(**{**settings.state,**dict(system=system)})
+	measure = measure(**{**settings.measure,**dict(system=system)})
+
+	parameters = measure.parameters()
+	state = [state()]*settings.module.N
+
+	state = measure.transform(parameters=parameters,state=state,transformation=True)
+
+	data = measure.infidelity_quantum(parameters=parameters,state=state,other=state)
+
+	# assert allclose(data,0), "Incorrect infidelity and sqrtm %s"%(data)
+
+	tol = 5e-7
+	assert abs(data) < tol, "Incorrect infidelity and sqrtm %s"%(data)
+
+	print(abs(data))
+
+	print('Passed')
+
+	return 
+
+
 if __name__ == "__main__":
 
 	arguments = "path"
@@ -1038,4 +1121,5 @@ if __name__ == "__main__":
 	# test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
+	test_algebra(*args,**args)

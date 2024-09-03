@@ -901,6 +901,50 @@ def test_convert(*args,**kwargs):
 	return
 
 
+def test_stability(*args,**kwargs):
+
+	def sqrtm(n,hermitian=False):
+		import jax
+		import jax.numpy as np
+		import jax.scipy as sp
+
+		ndim = 2
+		shape = (n,)*ndim
+		dtype = 'complex'
+		
+		random = 'uniform'
+		seed = 123
+		key = jax.random.key(seed)
+		rand = getattr(jax.random,random)
+
+		if dtype in ['complex']:
+			key_real,key_imag = jax.random.split(key)
+			array = rand(key_real,shape) + 1j*rand(key_imag,shape)
+			array = rand(key_real,(n,)) + 1j*rand(key_imag,(n,))
+			array = np.outer(array,array.conj())
+		else:
+			array = rand(key,shape)
+		array = (array + array.T.conj())/2 if hermitian else array
+		array = array/np.trace(array)
+
+		eig = np.linalg.eigh if hermitian else np.linalg.eig
+		eigenvalues,eigenvectors = eig(array)
+		eigenvalues,eigenvectors = eigenvalues.astype(dtype),eigenvectors.astype(dtype)
+
+		sqrteigm = dot(eigenvectors*sqrt(eigenvalues),eigenvectors.T.conj())
+
+		sqrtm = sp.linalg.sqrtm(array)
+
+		assert allclose(trace(dot(sqrteigm,sqrteigm)),trace(dot(sqrtm,sqrtm))), "Incorrect sqrtm %s"%(np.linalg.norm(sqrteigm-sqrtm)/np.sqrt(np.linalg.norm(sqrteigm)*np.linalg.norm(sqrtm)))
+
+		return sqrteigm
+
+	n = 2**10
+	hermitian = True
+	sqrtm(n,hermitian=hermitian)
+
+	return
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -917,4 +961,5 @@ if __name__ == '__main__':
 	# test_reshape(path,tol)
 	# test_action(path,tol)
 	# test_inheritance(path,tol)
-	test_convert(path,tol)
+	# test_convert(path,tol)
+	test_stability(path,tol)

@@ -15,7 +15,7 @@ from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,ra
 from src.utils import tensor,tensornetwork,gate,mps,representation
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,norm,real,imag,eig,trace,sort,relsort,prod,product,log
+from src.utils import tensorprod,swap,conjugate,dagger,einsum,dot,reshape,transpose,dots,sqrtm,addition,norm,real,imag,eig,trace,sort,relsort,prod,product,log
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
@@ -985,38 +985,23 @@ class Measure(System):
 		state = self.state() if state is None else state() if callable(state) else state
 		other = self.state() if other is None else other() if callable(other) else other
 		
+		func = lambda data: 1 - real(data) 
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = len(state) if state is not None else None
+			state = self.transform(parameters=parameters,state=state,transformation=False)
+			other = self.transform(parameters=parameters,state=other,transformation=False)
 
-			if N is not None and N > 1:
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-			else:
-				inverse = self.inverse
-
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state,inverse,other)
+			data = trace(sqrtm(dot(state,other),hermitian=True))
 
 		elif self.architecture in ['tensor']:
 	
-			state = state.copy()
+			state = self.transform(parameters=parameters,state=state,transformation=False)
+			other = self.transform(parameters=parameters,state=other,transformation=False)
 
-			N = state.L
-
-			for i in range(N):
-				with context(self.inverse,key=i):
-					state &= self.inverse
-
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
-
-				state &= other
-
-				data = representation(state,contract=True,func=real)
-
-		data = 1 - data
+			data = trace(sqrtm(dot(state,other),hermitian=True))
+		
+		data = func(data)
 
 		return data		
 
@@ -1036,6 +1021,8 @@ class Measure(System):
 		state = self.state() if state is None else state() if callable(state) else state
 		other = self.state() if other is None else other() if callable(other) else other
 		
+		func = lambda data: 1 - real(data) 
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			subscripts = '...u,...u->...'
@@ -1055,15 +1042,15 @@ class Measure(System):
 			other = other.contract()
 			other.modify(apply=sqrt)
 
-			data = representation(state & other,contract=True,func=real)
+			data = representation(state & other,contract=True)
 
-		data = 1 - data
+		data = func(data)
 
 		return data
 
 	def infidelity_pure(self,parameters=None,state=None,other=None,**kwargs):
 		'''
-		Infidelity (Pure State) for POVM probability measure with respect to other POVM
+		Infidelity (pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
@@ -1077,6 +1064,8 @@ class Measure(System):
 		state = self.state() if state is None else state() if callable(state) else state
 		other = self.state() if other is None else other() if callable(other) else other
 		
+		func = lambda data: 1 - sqrt(abs(real(data)))
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = len(state) if state is not None else None
@@ -1106,11 +1095,145 @@ class Measure(System):
 
 				state &= other
 
-				data = representation(state,contract=True,func=real)
+				data = representation(state,contract=True)
+
+		data = func(data)
 
 		return data
 
+	def norm(self,parameters=None,state=None,**kwargs):
+		'''
+		Norm for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+	
+		attr = 'norm_quantum'
+		
+		data = getattr(self,attr)(parameters=parameters,state=state,other=other,**kwargs)
 
+		return data
+
+	def norm_quantum(self,parameters=None,state=None,**kwargs):
+		'''
+		Norm (quantum) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		func = lambda data: 1 - real(data) 
+		
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			state = self.transform(parameters=parameters,state=state,transformation=False)
+
+			data = trace(sqrtm(dot(state,state),hermitian=True))
+
+		elif self.architecture in ['tensor']:
+		
+			state = self.transform(parameters=parameters,state=state,transformation=False)
+
+			data = trace(sqrtm(dot(state,state),hermitian=True))
+		
+		data = func(data)
+
+		return data
+
+	def norm_classical(self,parameters=None,state=None,other=None,**kwargs):
+		'''
+		Norm (Classical) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		func = lambda data: 1 - real(data) 
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			subscripts = '...u->...'
+			shapes = (state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state)
+	
+		elif self.architecture in ['tensor']:
+		
+			data = representation(state,contract=True,func=addition)
+
+		data = func(data)
+
+		return data
+
+	def norm_pure(self,parameters=None,state=None,**kwargs):
+		'''
+		Norm (pure) for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+		
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = self.state() if state is None else state() if callable(state) else state
+		
+		func = lambda data: 1 - sqrt(abs(real(data)))
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			N = len(state) if state is not None else None
+
+			if N is not None and N > 1:
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				inverse = self.inverse
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,inverse.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state,inverse,state)
+
+		elif self.architecture in ['tensor']:
+	
+			state = state.copy()
+			other = state.copy()
+
+			N = state.L
+
+			for i in range(N):
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
+
+				state &= other
+
+				data = representation(state,contract=True)
+
+		data = func(data)
+
+		return data
 
 
 class MPS(mps): 
@@ -5526,7 +5649,11 @@ class Callback(System):
 
 		for attr in attributes:
 
-			if attr in ['objective']:
+			if attr in [
+				'objective','infidelity','norm',
+				'infidelity.quantum','infidelity.classical','infidelity.pure',
+				'norm.quantum','norm.classical','norm.pure',
+				]:
 				options = {
 					**{attr: model.options[attr] for attr in model.options}
 					}
