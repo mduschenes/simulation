@@ -106,10 +106,15 @@ def setup(settings):
 	items = ['seed']
 	types = (list,dict,)
 	exclude = ['seed','seed.seed','system.seed',
-	*[attr for permutation in permutations for attr in permutation if attr.split(delim)[-1] == 'seed' and permutation[attr] is not None]]
+	*[delim.join(['permutations','permutations',*attr.split(delim)]) for permutation in permutations for attr in permutation 
+	if ((attr.split(delim)[-1] == 'seed' and permutation[attr] is not None) or 
+		True
+	    # (permutation[attr] is not None and isinstance(permutation[attr],dict) and 'seed' in permutation[attr])
+	    )]
+	]
 	seedlings = search(hyperparameters,items=items,returns=True,types=types)
 
-	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}
+	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 	count = max(1,len(seedlings))
 

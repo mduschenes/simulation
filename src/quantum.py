@@ -1863,6 +1863,7 @@ class Object(System):
 			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(parameters,defaults,delimiter=delim,default=False)
 			setter(parameters,self.parameters,delimiter=delim,default=False)
+			setter(parameters,{attr: getattr(self,attr) for attr in self.system if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
 			self.parameters = cls(**parameters)
 
 		elif isinstance(self.parameters,cls):
