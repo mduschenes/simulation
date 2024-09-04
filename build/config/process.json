@@ -38,7 +38,7 @@
         "backend": "\\textrm{Backend}",
         "jax": "\\textrm{Jax}",
         "autograd": "\\textrm{Autograd}",
-        "max_bond": "\\textrm{Bond Dimension} ~~ \\chi",
+        "max_bond": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
         "tau": "\\delta/T_{\\gamma}",
         "T": "T/T_{\\gamma}",
         "architecture": "\\textrm{Architecture}",
