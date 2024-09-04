@@ -51,6 +51,12 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 def func_objective(data):
 	return abs(data['objective'])
 
+def func_y(data):
+	return abs(np.array(data[data['y']['label']]))
+
+def func_yerr(data):
+	return abs(np.array(data[data['yerr']['label']]))
+
 def func_MN(data):
 	return data['M']/data['N']
 
