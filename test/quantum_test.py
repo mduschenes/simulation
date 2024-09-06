@@ -52,7 +52,7 @@ def test_channel(*args,**kwargs):
 		)
 	func = None
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 	
 		settings = Dict({
 			"cls":{
@@ -165,7 +165,7 @@ def test_channel(*args,**kwargs):
 		print()
 		print()
 
-		data[i] = value
+		data[index] = value
 
 
 	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
@@ -177,31 +177,30 @@ def test_channel(*args,**kwargs):
 
 def test_composite(*args,**kwargs):
 
-	data = {}
-
 	kwargs = {
-		**{attr:[2] for attr in ["model.N","state.N"]},
+		**{attr:[4] for attr in ["model.N","state.N"]},
 		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
 		"model.M":[1],
-		"model.ndim":[2],"state.ndim":[1],
+		"model.ndim":[2],"state.ndim":[2],
+		"model.local":[True],		
+		"model.layout":[{"site":None},{"site":None}],		
+		"model.site":["<ij>",None],		
 		"model.data":[{
 			"operators":{
 				"data":{
 					"xx":{
-						"operator":["X","X"],"site":"<ij>","string":"xx",
+						"operator":["X","X"],"site":None,"string":"xx",
 						"parameters":0.5,
 						"variable":False
 					},
+					"noise":{
+						"operator":["dephase","dephase"],"site":None,"string":"noise",
+						"parameters":1e-12,
+						"ndim":3,
+						"variable":False
+					}					
 				},
-				"operator":"operators","site":None,"string":"operators",
-				"D":2,"ndim":2,
-				"variable":False
-			},
-			"noise":{
-				"operator":"depolarize","site":None,"string":"noise",
-				"parameters":1e-12,
-				"ndim":3,
-				"variable":False
+				"operator":"operators","string":"operator"
 			},
 		},
 		{
@@ -211,18 +210,25 @@ def test_composite(*args,**kwargs):
 				"variable":False
 			},
 			"noise":{
-				"operator":"depolarize","site":None,"string":"noise",
+				"operator":["dephase","dephase"],"site":"<ij>","string":"noise",
 				"parameters":1e-12,
-				"ndim":3,
 				"variable":False
 			},
 		}
 		]
 		}
-	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
+	groups = [
+		["model.N","state.N"],
+		["model.system.architecture","state.system.architecture"],
+		["model.data","model.site","model.layout"]
+		]
+	filters = None
+	func = None
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
-	
+	data = {}
+
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+
 		settings = Dict({
 			"cls":{
 				"model":"src.quantum.Operators",
@@ -269,11 +275,11 @@ def test_composite(*args,**kwargs):
 			},	
 			"state": {
 				"data":None	,
-				"operator":"product",
+				"operator":"zero",
 				"site":None,
 				"string":"psi",
 				"parameters":True,
-				"D":2,"ndim":1,
+				"D":2,"ndim":2,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}
 				},
 		})
@@ -282,62 +288,41 @@ def test_composite(*args,**kwargs):
 
 		verbose = True
 
+		data[index] = {}
+
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 
 		model = model(**settings.model)
-
 		state = state(**settings.state)
 
 		model.init(state=state)
 
-		# Model
-
-		value = product([model.data[i].data for i in model.data])
-
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = array(value)
-
-		print("--- model ---")
 		model.info(verbose=verbose)
-		print(model.data)
-		print("------")
 
+		attrs = ['N','operator','site','locality','local']
+		for i in model.data:
+			print(i,{attr: getattr(model.data[i],attr) for attr in attrs})
+			for j in model.data[i].data:
+				print('---',j,{attr: getattr(model.data[i].data[j],attr) for attr in attrs})
+			print()
 
-		# State
-
-		value = state()
-		
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
-
-		print("--- state ---")
-		state.info(verbose=verbose)
-		print(value)
-		print("------")
+		print(state,{attr: getattr(state,attr) for attr in attrs})
 
 
 		# Value
-		
+		key = 'model'
 		value = model(model.parameters(model.parameters()),model.state())
-
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
 
 		print("--- value ---")
 		print(value)
 		print("------")
 		
 
-		data[i] = value
+		data[index][key] = value
 
-	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
 
@@ -441,7 +426,7 @@ def test_state(*args,**kwargs):
 		}
 	groups = [["state.data","state.operator"]]
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
@@ -487,7 +472,7 @@ def test_measure(*args,**kwargs):
 		}
 	groups = [["model.base","state.D",]]
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
@@ -554,7 +539,7 @@ def test_namespace(*args,**kwargs):
 	filters = None
 	func = None
 
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 		
 		settings = Dict({
 			"cls":{
@@ -681,7 +666,7 @@ def test_namespace(*args,**kwargs):
 		state = model.state()
 		value = model(parameters,state)
 
-		data[i] = value
+		data[index] = value
 
 
 	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
@@ -745,7 +730,7 @@ def test_module(*args,**kwargs):
 		return
 
 	data = {}
-	for i,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 
 		settings = Dict({
 		"cls":{
@@ -851,7 +836,7 @@ def test_module(*args,**kwargs):
 
 		obj = state
 		
-		data[i] = {}
+		data[index] = {}
 
 
 		# Measure
@@ -870,7 +855,7 @@ def test_module(*args,**kwargs):
 		elif settings.measure.architecture in ['tensor']:
 			value = representation(probability,to='array',contract=False)
 		
-		data[i][key] = value
+		data[index][key] = value
 
 
 		# Amplitude
@@ -885,7 +870,7 @@ def test_module(*args,**kwargs):
 		elif settings.measure.architecture in ['tensor']:
 			value = array(amplitude)
 		
-		data[i][key] = value
+		data[index][key] = value
 
 
 		# Operator
@@ -905,7 +890,7 @@ def test_module(*args,**kwargs):
 		elif settings.measure.architecture in ['tensor']:
 			value = representation(operator(parameters=parameters,state=state),to='tensor',contract=True)
 
-		data[i][key] = value
+		data[index][key] = value
 
 		# Module
 		model = model		
@@ -925,7 +910,7 @@ def test_module(*args,**kwargs):
 
 		key = 'module'
 		value = module.measure.transform(parameters=parameters,state=state,transformation=False)
-		data[i][key] = value
+		data[index][key] = value
 
 		# Init
 		model = load(settings.cls.model)
@@ -943,7 +928,7 @@ def test_module(*args,**kwargs):
 		key = 'init'
 		value = model(parameters,state)
 
-		data[i][key] = value
+		data[index][key] = value
 
 		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
@@ -969,7 +954,7 @@ def test_module(*args,**kwargs):
 			(module.measure.infidelity(parameters,state,state))
 			)
 
-		data[i][key] = value
+		data[index][key] = value
 
 
 		module.dump()
@@ -1013,7 +998,7 @@ def test_module(*args,**kwargs):
 		key = 'model'
 		value = model(parameters,state)
 
-		data[i][key] = value
+		data[index][key] = value
 
 		continue	
 
@@ -1119,7 +1104,7 @@ if __name__ == "__main__":
 	# test_channel(*args,**args)
 	# test_state(*args,**args)
 	# test_measure(*args,**args)
-	# test_composite(*args,**args)
+	test_composite(*args,**args)
 	# test_namespace(*args,**args)
 	# test_module(*args,**args)
-	test_algebra(*args,**args)
+	# test_algebra(*args,**args)

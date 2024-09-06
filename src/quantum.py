@@ -1749,39 +1749,37 @@ class Object(System):
 				operator = operator
 		else:
 			if operator is None:
-				site = [i for i in site]
+				site = [i for i in site] if isinstance(site,iterables) else site
 				locality = locality
 				operator = operator
 			elif isinstance(operator,str):
 				if operator in [default]:
-					site = [i for i in site]
+					site = [i for i in site] if isinstance(site,iterables) else site
 					locality = locality
 					operator = operator							
 				elif operator.count(delim):
-					site = [i for i in site]
+					site = [i for i in site] if isinstance(site,iterables) else site
 					locality = locality
 					operator = [i for i in operator.split(delim)]
 				else:
-					site = [i for i in site]
+					site = [i for i in site] if isinstance(site,iterables) else site
 					locality = locality
-					operator = [operator for i in site]
+					operator = [operator for i in site] if isinstance(site,iterables) else operator
 			elif not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator):
-				site = [i for i in site]
+				site = [i for i in site] if isinstance(site,iterables) else site
 				locality = locality
 				operator = [i for i in operator]
 			else:
-				site = [i for i in site]
+				site = [i for i in site] if isinstance(site,iterables) else site
 				locality = locality
 				operator = operator
 
-		if not isinstance(string,str):
-			string = str(string)
 
 		N = max(N if N is not None else 0,locality if locality is not None else 0) if N is not None or locality is not None else None
 		D = self.D if self.D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
-		site = site[:locality] if site is not None else site
-		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if site is not None else 0,locality if local else N) if locality is not None or site is not None else None
+		site = site[:locality] if isinstance(site,iterables) else site
+		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if isinstance(site,iterables) else 0,locality if local else N) if locality is not None or isinstance(site,iterables) else None
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 		local = local
 
@@ -1796,7 +1794,7 @@ class Object(System):
 		self.string = string if string is not None else None
 		self.system = system if system is not None else None
 
-		self.locality = max(locality,len(self.site) if self.site is not None else 0) if locality is not None else None
+		self.locality = max(locality,len(self.site) if isinstance(self.site,iterables) else 0) if locality is not None else None
 		self.local = local
 
 		self.N = N
@@ -2027,28 +2025,6 @@ class Object(System):
 
 		return
 
-	# @property
-	# def shape(self):
-	# 	return self.data.shape if isinstance(self.data,arrays) else (self.n,)*self.ndim if self.ndim is not None else ()
-
-	# @property
-	# def size(self):
-	# 	return self.data.size if isinstance(self.data,arrays) else prod(self.shape)
-
-	# @property
-	# def ndim(self):
-	# 	return self.data.ndim if isinstance(self.data,arrays) else len(self.shape)
-
-	# @property
-	# def dtype(self):
-	# 	return self.data.dtype if isinstance(self.data,arrays) else self._dtype if self._dtype is not None else None
-
-	# @dtype.setter
-	# def dtype(self,dtype):
-	# 	self._dtype = dtype
-	# 	return
-
-
 	def __call__(self,parameters=None,state=None):
 		'''
 		Call operator
@@ -2202,7 +2178,7 @@ class Object(System):
 		return self.__str__()
 	
 	def __len__(self):
-		return len(self.operator)
+		return len(self.data)
 
 	def __hash__(self):
 		return (
@@ -3645,7 +3621,7 @@ class Objects(Object):
 		self.ndim = len(self.shape)
 		self.dtype = self.dtype if self.dtype is not None else None
 
-		self.setup(data)
+		self.setup(data,site=self.site,operator=self.operator,string=self.string)
 
 		# Set data
 		if data is None:
@@ -3878,16 +3854,36 @@ class Objects(Object):
 		# Get operator,site,string from data
 		objs = Dictionary(operator=operator,site=site,string=string)
 
-		for obj in objs:
-			objs[obj] = [] if objs[obj] is None else objs[obj] if isinstance(objs[obj],list) else [objs[obj]]
+		# Get status of data
+		status = self.status
 
 		# Get data and kwargs
 		if data is None:
 			data = None
-		elif all(isinstance(obj,Object) for obj in data):
+		
+		elif status(data):
+			data = None
 			for obj in objs:
 				objs[obj] = None
-		elif isinstance(data,dict) and all(isinstance(data[name],dict) or data[name] is None for name in data for obj in objs) and all(any(obj in data[name] for obj in objs) for name in data if data[name] is not None):
+		
+		elif isinstance(data,dict) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs) :
+
+			for obj in objs:
+				for name in data:
+					if obj not in data[name] and objs[obj] is not None:
+						data[name][obj] = objs[obj]
+
+				objs[obj] = []
+
+		for obj in objs:
+			objs[obj] = [] if not isinstance(objs[obj],list) else objs[obj]
+
+		if isinstance(data,dict):
+			for name in data:
+				if isinstance(data[name],dict):
+					for obj in objs:
+						if obj not in data[name]:
+							data[name][obj] = None
 			for obj in objs:
 				objs[obj].extend([data[name].get(obj) for name in data if data[name] is not None])
 			
@@ -4057,7 +4053,6 @@ class Objects(Object):
 
 
 		# Set class attributes
-
 		self.extend(data=data,**objs,kwargs=kwargs)
 
 		return
@@ -4153,6 +4148,21 @@ class Objects(Object):
 		return string
 
 
+	def status(self,data=None):
+		'''
+		Check status of class data
+		Args:
+			data (dict[Object]): class data
+		Returns:
+			status (bool): Status of data
+		'''
+		data = self.data if data is None else data
+		
+		status = data is not None and all(isinstance(data[i],Object) for i in data)
+
+		return status
+
+
 	def set(self,data=None,index=None):
 		'''
 		Set data of class
@@ -4161,7 +4171,7 @@ class Objects(Object):
 			index (object): index of data for class
 		'''
 
-		if self.data is None or not all(isinstance(self.data[i],Object) for i in self.data):
+		if not self.status():
 			self.clear()
 
 		if index is not None and data is not None:
@@ -4387,58 +4397,15 @@ class Objects(Object):
 			kwargs (dict): Additional operator keyword arguments						
 		'''
 
-		def sites(obj,data):
-			obj = list(set(j 
-					for i in data
-					if data[i] is not None and data[i].site is not None
-					for j in (data[i].site 
-					if isinstance(data[i].site,iterables) else 
-					(data[i].site,)) if j is not None))
-			return obj
-
-		def operators(obj,data):
-			obj = [data[i].operator[data[i].site.index(j)] 
-				if isinstance(data[i].operator,iterables) and isinstance(data[i].site,iterables) and j in data[i].site 
-				else data[i].operator[j] if isinstance(data[i].operator,iterables) and len(data[i].operator)>j
-				else data[i].operator
-				for i in data 
-				for j in sites(obj,data)
-				if ((data[i] is not None and data[i].operator is not None and data[i].site is not None) and (
-					(isinstance(data[i].operator,iterables) and isinstance(data[i].site,iterables) and j in data[i].site) or
-					(isinstance(data[i].operator,iterables) and len(data[i].operator)>j) or
-					(not isinstance(data[i].operator,iterables) and data[i].operator is not None)))]
-			obj = list([separ.join(tuple(sorted(list(set(obj)),key = lambda i: obj.index(i))))
-				for j in sites(obj,data)])
-			return obj
-
-		def strings(obj,data):
-			obj = delim.join([data[i].string 
-				for i in data 
-				if data[i] is not None and data[i].string is not None])
-			return obj
-
-		def variables(obj,data):
-			obj = any(data[i].variable for i in data) if data is not None else False
-			return obj
-
-		def localities(obj,data):
-			obj = len(sites(obj,data))
-			return obj
-
-		def attributes(N,D,local,data):
-			N = max(N if N is not None else 0,max(sites(None,data),default=0)+1,max([data[i].N for i in data if data[i].N is not None],default=0))
-			D =	max(D if D is not None else 0,max([data[i].D for i in data if data[i].D is not None],default=0))
-			local = all(data[i].local for i in data)
-			return N,D,local
+		status = not self.status()
 
 		cls = Operator
 		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
-		
-		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
+
+		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
-
 
 		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
 
@@ -4446,43 +4413,70 @@ class Objects(Object):
 
 		self.sort()
 
-		data = self.data
+		self.update(status)
+
+		return
 
 
-		operator = None
-		site = None
-		string = None
-		variable = None
-		locality = None
-		N,D,local = None,None,None
+	def update(self,status=None,data=None):
+		'''
+		Update class attributes
+		Args:
+			status (bool): Class status
+			data (dict): Class data
+		'''
 
-		operator = operators(operator,data)
-		site = sites(site,data)
-		string = strings(string,data)
-		variable = variables(variable,data)
-		locality = localities(locality,data)
+		status = self.status() if status is None else status
+		data = self.data if data is None else data
 
-		N,D,local = attributes(N,D,local,data)
+		site = list(set((*(j
+				for i in data if data[i] is not None and isinstance(data[i].site,iterables)
+				for j in data[i].site),*(self.site if isinstance(self.site,iterables) else ()),))) if data is not None and isinstance(self.site,iterables) else None
+
+		print(self.string,site,self.site)
+
+		operator = [[data[i].operator[data[i].site.index(j)] for i in data if data[i] is not None and isinstance(data[i].site,iterables) and j in data[i].site] for j in site] if data is not None and site is not None else None
+
+		string = separ.join([data[i].string for i in data if data[i] is not None]) if data is not None else None
+
+		locality = len(site) if site is not None else None
+
+		local = all(data[i].local for i in data if data[i] is not None) if data is not None else None
+
+		variable = any(data[i].variable for i in data) if data is not None else False
+
+		N = max([
+			self.N if self.N is not None else 0,
+			max([data[i].N for i in data if data[i] is not None and data[i].N is not None],default=0),
+			],default=0) if data is not None else None
+
+		D = max([
+			max([data[i].D for i in data if data[i] is not None and data[i].D is not None],default=0),
+			],default=0) if data is not None else None		
+
+		self.data = data
+
+		self.operator = operator
+		self.site = site
+		self.string = string
+
+		self.locality = locality
+		self.local = local
+		self.variable = variable
 
 		self.N = N
 		self.D = D
-		self.local = local
+
 
 		self.spaces()
 		self.times()
 		self.lattices()
 
+
 		shape = () if self.n is None else (self.n,self.n)
 		size = prod(self.shape)
 		ndim = len(self.shape)
 		dtype = self.dtype if self.dtype is not None else None
-
-		self.data = data
-		self.operator = operator
-		self.site = site
-		self.string = string
-		self.variable = variable
-		self.locality = locality
 
 		self.shape = shape
 		self.size = size
@@ -4490,6 +4484,7 @@ class Objects(Object):
 		self.dtype = dtype
 
 		return
+
 
 	def dump(self,path=None):
 		'''
