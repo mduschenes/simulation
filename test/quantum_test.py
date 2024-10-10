@@ -183,7 +183,8 @@ def test_composite(*args,**kwargs):
 		"model.M":[1],
 		"model.ndim":[2],"state.ndim":[2],
 		"model.local":[True],		
-		"model.layout":[{"site":None},{"site":None}],		
+		"model.lattice":[{"lattice":None,"N":4,"label"}],
+		"model.configuration":[{"site":None},{"site":None}],		
 		"model.site":["<ij>",None],		
 		"model.data":[{
 			"operators":{
@@ -196,7 +197,6 @@ def test_composite(*args,**kwargs):
 					"noise":{
 						"operator":["dephase","dephase"],"site":None,"string":"noise",
 						"parameters":1e-12,
-						"ndim":3,
 						"variable":False
 					}					
 				},
@@ -220,7 +220,7 @@ def test_composite(*args,**kwargs):
 	groups = [
 		["model.N","state.N"],
 		["model.system.architecture","state.system.architecture"],
-		["model.data","model.site","model.layout"]
+		["model.data","model.site","model.configuration"]
 		]
 	filters = None
 	func = None
@@ -235,41 +235,7 @@ def test_composite(*args,**kwargs):
 				"state":"src.quantum.State"
 			},
 			"model":{
-				"data":{
-					"channel":{
-						"data":{
-							"x":{
-								"operator":["X"],"site":"i","string":"x",
-								"parameters":{"data":"random","seed":123},
-								"variable":True
-							},
-							"y":{
-								"operator":["Y"],"site":"i","string":"y",
-								"parameters":{"data":"random","seed":123},
-								"variable":True
-							},
-							"z":{
-								"operator":["Z"],"site":"i","string":"z",
-								"parameters":{"data":"random","seed":123},
-								"variable":True
-							},				
-							"zz":{
-								"operator":["Z","Z"],"site":"i<j","string":"zz",
-								"parameters":{"data":"random","seed":123},
-								"variable":True
-							},
-						},
-						"operator":"channel","site":None,"string":"channel",
-						"D":2,"ndim":2,
-						"variable":True
-					},
-					"noise":{
-						"operator":"depolarize","site":None,"string":"noise",
-						"parameters":1e-12,
-						"ndim":3,
-						"variable":False
-					}
-				},
+				"data":{},
 				"D":2,"ndim":2,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}
 			},	
@@ -686,7 +652,7 @@ def test_module(*args,**kwargs):
 		"model.local":[True],"state.local":[True],"model.options.shape":[[2,2,2]],
 		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
 		"model.data.noise.site":["<ij>",None],
-		"model.layout":[{"site":None},{"site":None}],
+		"model.configuration":[{"site":None},{"site":None}],
 		"module.measure.base":["pauli","tetrad"],
 		"measure.architecture":["array","tensor"]
 		}
@@ -699,7 +665,7 @@ def test_module(*args,**kwargs):
 		"model.data.noise.parameters":[1e-12],
 		"model.data.xx.site":[None],"model.data.noise.site":[None],
 		"model.local":[True],"state.local":[False],
-		"model.layout":[{"site":None}],
+		"model.configuration":[{"site":None}],
 		"model.options.shape":[[2,2,2]],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
@@ -776,7 +742,7 @@ def test_module(*args,**kwargs):
 			"time":"linear",
 			"lattice":"square",
 			"architecture":"array",
-			"layout":None,
+			"configuration":None,
 			},
 		"state": {
 			"operator":["zero"],

@@ -530,7 +530,7 @@ class Measure(System):
 			data (str,array,tensor,Measure): data of measure
 			base (str): name of measure
 			string (str): string label of measure
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 			args (iterable): Additional class positional arguments
 			kwargs (dict): Additional class keyword arguments
 		'''
@@ -1646,7 +1646,7 @@ class Object(System):
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1844,6 +1844,7 @@ class Object(System):
 		self.conj = conj
 
 		self.spaces()
+		self.lattices()
 
 		if parameters is None:
 			parameters = None
@@ -2047,6 +2048,7 @@ class Object(System):
 		'''
 		return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
 
+
 	def spaces(self,N=None,D=None,space=None,system=None):
 		'''
 		Set space attributes
@@ -2054,7 +2056,7 @@ class Object(System):
 			N (int): Size of system
 			D (int): Local dimension of system
 			space (str,dict,Space): Type of local space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		space = self.space if space is None else space
@@ -2093,7 +2095,7 @@ class Object(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,dict,Time): Type of time evolution						
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		time = self.time if time is None else time
@@ -2133,7 +2135,7 @@ class Object(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
@@ -2472,6 +2474,21 @@ class Object(System):
 
 		return
 
+	def layout(self,configuration=None):
+		'''
+		Layout data of class
+		Args:
+			configuration (dict[str,str,object,iterable],iterable[str,dict],callable): configuration of data
+				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
+					{attr:[value]} or data {attr:None} to sort by all data attr values
+				iterable[str,dict]: objects to sort on, either strings or dictionaries:
+					[attr], [data.string], [{attr:[value]}], 
+					'_attr' may also be used for reversed sorting of attributes 
+				callable: function to yield data configuration, with signature configuration(data) = data					
+		'''
+
+		return
+
 	def norm(self,data=None):
 		'''
 		Normalize class
@@ -2555,7 +2572,7 @@ class Pauli(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2702,7 +2719,7 @@ class Gate(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2825,7 +2842,7 @@ class Haar(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -2978,7 +2995,7 @@ class Noise(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -3245,7 +3262,7 @@ class State(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -3500,7 +3517,7 @@ class Operator(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -3577,7 +3594,7 @@ class Objects(Object):
 		time (str,dict,Time): Type of time evolution						
 		lattice (str,dict,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -3857,16 +3874,19 @@ class Objects(Object):
 		# Get status of data
 		status = self.status
 
+		if status(data):
+			return
+
+		print(objs)
+		exit()
+
+		# Set layout of data
+		objs = self.layout(data=objs)
+
+
 		# Get data and kwargs
-		if data is None:
-			data = None
 		
-		elif status(data):
-			data = None
-			for obj in objs:
-				objs[obj] = None
-		
-		elif isinstance(data,dict) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs) :
+		if isinstance(data,dict) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs) :
 
 			for obj in objs:
 				for name in data:
@@ -3893,88 +3913,7 @@ class Objects(Object):
 
 			data = None
 
-		# Lattice sites
-		sites = self.lattice # sites types on lattice
-		locality = self.N
-		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
-
-		# Get number of operators
-		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
-		
-		# Get attribute of symbolic indices
-		attr = 'site'
-		attrs = {
-			'site': lambda attr,value,values,indices: [dict(zip(indices,
-								value if not isinstance(value,integers) else (value,))
-							).get(i,int(i) if not isinstance(i,str) else i) 
-							for i in values[attr]],
-			'string': lambda attr,value,values,indices:	values[attr]
-							# delim.join([
-							# '%s%s'%(str(i),str(dict(zip(indices,
-							# 	value if not isinstance(value,integers) else (value,))
-							# ).get(i,int(i) if not isinstance(i,str) else i))) 
-							# for i,j in zip(values[attr],values['operator'])])
-			}
-		
-		# Get data
-		for index in range(size):
-
-			key = None
-			tmp = {obj: copy(objs[obj].pop(0)) for obj in objs}
-			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
-
-			if tmp[attr] is None:
-				key = None
-			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
-				if len(indices[tmp[attr]]) > locality:
-					key = None
-					tmp[attr] = None
-				else:
-					key = tmp[attr]
-					tmp[attr] = indices[tmp[attr]]
-			elif isinstance(tmp[attr],scalars):
-				if tmp[attr] > locality:
-					key = None
-					tmp[attr] = None
-				else:
-					tmp[attr] = [tmp[attr]]
-			elif not isinstance(tmp[attr],scalars):
-				if any((i in indices and len(indices[tmp[attr]]) > locality) or (i > locality) for i in tmp[attr]):
-					key = None
-					tmp[attr] = None
-				else:
-					for i in tmp[attr]:
-						if i in indices:
-							key = i
-							tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
-			if key is not None:
-				for i,index in enumerate(sites(key)):
-					value = {}
-					for obj in objs:
-						
-						if obj in attrs:
-							value[obj] = attrs[obj](obj,index,tmp,indices[key])
-						else:
-							value[obj] = tmp[obj]
-
-					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
-						for obj in objs]
-					
-					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
-						continue
-
-					for obj in objs:
-						objs[obj].append(value[obj])
-					
-					for kwarg in kwargs:
-						kwargs[kwarg].append(copy(tmps[kwarg]))
-
-			else:
-				for obj in objs:
-					objs[obj].append(tmp[obj])	
-
-				for kwarg in kwargs:
-					kwargs[kwarg].append(copy(tmps[kwarg]))
+		objs = self.layout(data=objs)
 
 		# Set class dependent attributes 
 		# i.e) set parameters data with site-dependent data 
@@ -4214,17 +4153,115 @@ class Objects(Object):
 
 		return
 
-	def sort(self,layout=None):
+	def layout(self,data=None,configuration=None):
 		'''
-		Sort data of class
+		Layout data of class
 		Args:
-			layout (dict[str,str,object,iterable],iterable[str,dict],callable): layout of data
+			data (dict): class data
+			configuration (dict[str,str,object,iterable],iterable[str,dict],callable): configuration of data
 				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
 					{attr:[value]} or data {attr:None} to sort by all data attr values
 				iterable[str,dict]: objects to sort on, either strings or dictionaries:
 					[attr], [data.string], [{attr:[value]}], 
 					'_attr' may also be used for reversed sorting of attributes 
-				callable: function to yield data layout, with signature layout(data) = data					
+				callable: function to yield data configuration, with signature configuration(data) = data					
+		'''
+
+		# Lattice sites
+		sites = self.lattice
+		locality = self.lattice.N
+		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}
+
+		# Get number of operators
+		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
+		
+		# Get attribute of symbolic indices
+		attr = 'site'
+		attrs = {
+			'site': lambda attr,value,values,indices: [dict(zip(indices,
+								value if not isinstance(value,integers) else (value,))
+							).get(i,int(i) if not isinstance(i,str) else i) 
+							for i in values[attr]],
+			'string': lambda attr,value,values,indices:	values[attr]
+							# delim.join([
+							# '%s%s'%(str(i),str(dict(zip(indices,
+							# 	value if not isinstance(value,integers) else (value,))
+							# ).get(i,int(i) if not isinstance(i,str) else i))) 
+							# for i,j in zip(values[attr],values['operator'])])
+			}
+		
+		# Get data
+		for index in range(size):
+
+			key = None
+			tmp = {obj: copy(objs[obj].pop(0)) for obj in objs}
+			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
+
+			if tmp[attr] is None:
+				key = None
+			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
+				if len(indices[tmp[attr]]) > locality:
+					key = None
+					tmp[attr] = None
+				else:
+					key = tmp[attr]
+					tmp[attr] = indices[tmp[attr]]
+			elif isinstance(tmp[attr],scalars):
+				if tmp[attr] > locality:
+					key = None
+					tmp[attr] = None
+				else:
+					tmp[attr] = [tmp[attr]]
+			elif not isinstance(tmp[attr],scalars):
+				if any((i in indices and len(indices[tmp[attr]]) > locality) or (i > locality) for i in tmp[attr]):
+					key = None
+					tmp[attr] = None
+				else:
+					for i in tmp[attr]:
+						if i in indices:
+							key = i
+							tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
+			if key is not None:
+				for i,index in enumerate(sites(key)):
+					value = {}
+					for obj in objs:
+						
+						if obj in attrs:
+							value[obj] = attrs[obj](obj,index,tmp,indices[key])
+						else:
+							value[obj] = tmp[obj]
+
+					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
+						for obj in objs]
+					
+					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
+						continue
+
+					for obj in objs:
+						objs[obj].append(value[obj])
+					
+					for kwarg in kwargs:
+						kwargs[kwarg].append(copy(tmps[kwarg]))
+
+			else:
+				for obj in objs:
+					objs[obj].append(tmp[obj])	
+
+				for kwarg in kwargs:
+					kwargs[kwarg].append(copy(tmps[kwarg]))
+
+
+	def sort(self,configuration=None):
+		'''
+		Sort data of class
+		Args:
+			configuration (dict[str,str,object,iterable],iterable[str,dict],callable): configuration of data
+				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
+					{attr:[value]} or data {attr:None} to sort by all data attr values
+				iterable[str,dict]: objects to sort on, either strings or dictionaries:
+					[attr], [data.string], [{attr:[value]}], 
+					'_attr' may also be used for reversed sorting of attributes 
+				callable: function to yield data configuration, with signature configuration(data) = data					
 		'''
 
 		def string(obj,data):
@@ -4296,13 +4333,13 @@ class Objects(Object):
 
 		data = self.get()
 
-		layout = self.layout if layout is None else layout
+		configuration = self.configuration if configuration is None else configuration
 
 
-		layout = [layout] if layout is None or callable(layout) or isinstance(layout,(str,dict)) else [obj for obj in layout]
+		configuration = [configuration] if configuration is None or callable(configuration) or isinstance(configuration,(str,dict)) else [obj for obj in configuration]
 
 		indices = []
-		for obj in layout:
+		for obj in configuration:
 			
 			index = None
 
@@ -4397,7 +4434,7 @@ class Objects(Object):
 			kwargs (dict): Additional operator keyword arguments						
 		'''
 
-		status = not self.status()
+		status = self.status()
 
 		cls = Operator
 		defaults = {}
@@ -4434,7 +4471,7 @@ class Objects(Object):
 				for j in data[i].site),*(self.site if isinstance(self.site,iterables) else ()),))) if data is not None and isinstance(self.site,iterables) else None
 
 		print(self.string,site,self.site)
-
+		exit()
 		operator = [[data[i].operator[data[i].site.index(j)] for i in data if data[i] is not None and isinstance(data[i].site,iterables) and j in data[i].site] for j in site] if data is not None and site is not None else None
 
 		string = separ.join([data[i].string for i in data if data[i] is not None]) if data is not None else None
@@ -4762,7 +4799,7 @@ class Module(System):
 		lattice (str,dict,Lattice): Type of lattice	
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5043,7 +5080,7 @@ class Module(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,layout,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
