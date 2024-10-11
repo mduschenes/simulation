@@ -413,63 +413,39 @@ class Lattice(object):
 	Args:
 		N (int): Size of lattice
 		d (int): Dimension of lattice
-		vertices (iterable[int]): Vertices of lattice
-		edges (iterable[iterable[int]]): Edges of lattice
 		lattice (str,dict,Lattice): Type of lattice, allowed strings in ['square']
 		structure (str,dict): Structure of lattice
 		label (dict): labels for vertices {i: label}, where label is object or callable with signature label(i)
 		kwargs (dict): Additional keyword Arguments
 	'''	
-	def __init__(self,N=None,d=None,vertices=None,edges=None,lattice=None,structure=None,label=None,**kwargs):
+	def __init__(self,N=None,d=None,lattice=None,structure=None,label=None,**kwargs):
 
 		# Def variables
 		N = N if N is not None else 1
 		d = d if d is not None else 1
-		vertices = vertices if vertices is not None range(N) if N is not None else None
-		edges = edges if edges is not None else None
 		lattice = lattice if lattice is not None else None
 		structure = structure if structure is not None else None
 		label = label if label is not None else None
 
 		# Define lattice
 		if isinstance(lattice,Lattice):
-			vertices = lattice.vertices
-			edges = lattice.edges
 			structure = lattice.structure
 			lattice = lattice.lattice
 		elif isinstance(lattice,dict):
-			vertices = lattice.get('vertices')
-			edges = lattice.get('edges')
 			structure = lattice.get('structure')
 			label = lattice.get('label')
 			lattice = lattice.get('lattice')
 		else:
-			vertices = vertices
-			edges = edges
 			structure = structure
 			label = label
 			lattice = lattice
 
-		N = max(N,len(vertices)) if N is not None and vertices is not None else N if N is not None else len(vertices) if vertices is not None else None
+		vertices = range(N)
 
 		# Define attributes
-		if edges is not None:
-			L = [int(N**(1/d)) for i in range(d)]
-			z = max(len([edge for edge in edges if i in edge]) for i in vertices)
-			vertices = lambda vertex,vertices=vertices,edges=edges: (i for i in edge if i != vertex for edge in edges if vertex in edges)
-			edges = lambda vertex,vertices=vertices,edges=edges: edges
-			def edge(vertex,edges=None):
-				vertices = vertices(vertex)
-				return vertices
-			def boundary(edge):
-				i,j = edge
-				boundary = any(map(lambda i,j: abs(i-j)>1,self.position(i),self.position(j)))
-				return boundary	
-		elif lattice is None:
+		if lattice is None:
 			L = [int(N**(1/d)) for i in range(d)]
 			z = 2*d
-			vertices = lambda vertex,vertices=vertices,edges=edges: vertices
-			edges = lambda vertex,vertices=vertices,edges=edges: edges
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
@@ -483,8 +459,6 @@ class Lattice(object):
 		elif lattice in ['square']:
 			L = [int(N**(1/d)) for i in range(d)]
 			z = 2*d
-			vertices = lambda vertex,vertices=vertices,edges=edges: vertices
-			edges = lambda vertex,vertices=vertices,edges=edges: edges		
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
@@ -498,8 +472,6 @@ class Lattice(object):
 		else:
 			L = [int(N**(1/d)) for i in range(d)]
 			z = 2*d
-			vertices = lambda vertex,vertices=vertices,edges=edges: vertices
-			edges = lambda vertex,vertices=vertices,edges=edges: edges			
 			def edge(vertex,edges=None):
 				site,position = self.site,self.position
 				coordinates = self.position(vertex)		
@@ -528,11 +500,9 @@ class Lattice(object):
 
 		self.N = N
 		self.d = d
-		self.lattice = lattice
-		self.structure = structure
-
 		self.L = L
 		self.z = z
+		self.lattice = lattice
 		self.structure = structure
 		self.label = label
 
@@ -586,7 +556,7 @@ class Lattice(object):
 		else:
 			vertices = ()
 
-		vertices = ((*(self.label(i) for i in obj),) for obj in vertices)
+		vertices = ((*(self.label[i](i) for i in obj),) for obj in vertices)
 
 		return vertices
 

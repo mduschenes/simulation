@@ -178,32 +178,15 @@ def test_channel(*args,**kwargs):
 def test_composite(*args,**kwargs):
 
 	kwargs = {
-		**{attr:[4] for attr in ["model.N","state.N"]},
+		**{attr:[4] for attr in ["model.N"]},
+		**{attr:[1] for attr in ["state.N"]},
 		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
 		"model.M":[1],
 		"model.ndim":[2],"state.ndim":[2],
-		"model.local":[True],		
-		"model.lattice":[{"lattice":None,"N":4,"label"}],
-		"model.configuration":[{"site":None},{"site":None}],		
-		"model.site":["<ij>",None],		
+		"model.local":[True],
+		"model.independent":[True],		
+		"model.configuration":[{"site":None}],		
 		"model.data":[{
-			"operators":{
-				"data":{
-					"xx":{
-						"operator":["X","X"],"site":None,"string":"xx",
-						"parameters":0.5,
-						"variable":False
-					},
-					"noise":{
-						"operator":["dephase","dephase"],"site":None,"string":"noise",
-						"parameters":1e-12,
-						"variable":False
-					}					
-				},
-				"operator":"operators","string":"operator"
-			},
-		},
-		{
 			"xx":{
 				"operator":["X","X"],"site":"<ij>","string":"xx",
 				"parameters":0.5,
@@ -214,14 +197,15 @@ def test_composite(*args,**kwargs):
 				"parameters":1e-12,
 				"variable":False
 			},
+			"amplitude":{
+				"operator":["amplitude"],"site":"i","string":"amplitude",
+				"parameters":1e-1,
+				"variable":False
+			}
 		}
 		]
 		}
-	groups = [
-		["model.N","state.N"],
-		["model.system.architecture","state.system.architecture"],
-		["model.data","model.site","model.configuration"]
-		]
+	groups = None
 	filters = None
 	func = None
 
@@ -241,7 +225,7 @@ def test_composite(*args,**kwargs):
 			},	
 			"state": {
 				"data":None	,
-				"operator":"zero",
+				"operator":"plus",
 				"site":None,
 				"string":"psi",
 				"parameters":True,
@@ -261,10 +245,20 @@ def test_composite(*args,**kwargs):
 
 		model = model(**settings.model)
 		state = state(**settings.state)
-
 		model.init(state=state)
 
 		model.info(verbose=verbose)
+		for i in model.data:
+			print(i,model.data[i])
+			for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
+				print(key,value)
+			parameters = model.data[i].parameters()
+			tmp = tensorprod([load(settings.cls.state)(**settings.state)()]*model.data[i].locality)
+			model.data[i].init(state=tmp)
+			print(model.data[i](parameters=parameters,state=tmp))
+			print()
+		exit()
+
 
 		attrs = ['N','operator','site','locality','local']
 		for i in model.data:
@@ -646,54 +640,22 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[1],
-		'model.N':[None],'model.D':[2],'model.ndim':[2],
+		"module.N":[4],"module.M":[1],
+		'model.N':[4],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.local":[True],"state.local":[True],"model.options.shape":[[2,2,2]],
-		"model.data.noise.operator":[["dephase","dephase"],"dephase"],
-		"model.data.noise.site":["<ij>",None],
-		"model.configuration":[{"site":None},{"site":None}],
-		"module.measure.base":["pauli","tetrad"],
-		"measure.architecture":["array","tensor"]
-		}
-
-	kwargs = {
-		"module.N":[4],"module.M":[3],
-		'model.N':[None],'model.D':[2],'model.ndim':[2],
-		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.data.xx.parameters":[0.125],
-		"model.data.noise.parameters":[1e-12],
-		"model.data.xx.site":[None],"model.data.noise.site":[None],
 		"model.local":[True],"state.local":[False],
 		"model.configuration":[{"site":None}],
-		"model.options.shape":[[2,2,2]],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
 		"module.measure.architecture":["tensor"],
 		"module.measure.options":[{"cyclic":False}],
-		"module.lattice":[{"lattice":"square","structure":">ij<"}],
-		"module.options":[{"contract":"swap+split","max_bond":4,"cutoff":1e-4}]
+		"module.options":[{"contract":"swap+split","max_bond":100,"cutoff":1e-10}]
 		}	
 
 
 	groups = [["module.measure.string","module.measure.base"]]
-
 	filters = None
-
-	def func(dictionaries):
-		for dictionary in dictionaries:
-			setter(dictionary,{					
-				# 'model.N':getter(dictionary,'module.N',delimiter=delim),
-				# 'state.N':getter(dictionary,'module.N',delimiter=delim),
-				'model.options.shape':[
-					getter(dictionary,'state.D',delimiter=delim),
-					getter(dictionary,'module.N',delimiter=delim),
-					getter(dictionary,'state.ndim',delimiter=delim)],
-				'model.data.xx.site':getter(dictionary,'module.lattice',delimiter=delim)['structure'],
-				'model.data.noise.site':getter(dictionary,'module.lattice',delimiter=delim)['structure'],
-					},
-				delimiter=delim,default=None)
-		return
+	func = None
 
 	data = {}
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
@@ -709,9 +671,7 @@ def test_module(*args,**kwargs):
 		"module":{
 			"N":2,
 			"M":1,
-			"d":1,
 			"string":"module",
-			"lattice":"square",
 			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
 			"options":{"contract":"swap+split","max_bond":4,"cutoff":1e-2}		
 		},
@@ -722,17 +682,13 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				# "z":{
-				# 	"operator":["Z"],"site":"i","string":"Z",
-				# 	"parameters":0.5,"variable":False
-				# },
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
-					"parameters":0.5,"variable":False
+					"parameters":0.125,"variable":False
 				},				
 				"noise":{
 					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-					"parameters":1e-3,"variable":False
+					"parameters":0,"variable":False
 				},
 
 			},
@@ -910,7 +866,7 @@ def test_module(*args,**kwargs):
 
 		attrs = ['norm_classical','norm_quantum','infidelity_classical','infidelity_quantum']
 		for attr in attrs:
-			print(attr,getattr(module.measure,attr)(parameters,state,other))
+			print(attr,getattr(module.measure,attr)(parameters,state,other=other))
 		exit()
 
 		key = 'infidelity'
@@ -1070,7 +1026,7 @@ if __name__ == "__main__":
 	# test_channel(*args,**args)
 	# test_state(*args,**args)
 	# test_measure(*args,**args)
-	test_composite(*args,**args)
+	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
 	# test_algebra(*args,**args)

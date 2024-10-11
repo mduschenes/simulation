@@ -260,9 +260,9 @@ class Basis(Dict):
 	@System.decorator	
 	def element(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = zeros(kwargs.shape,dtype=kwargs.dtype)
 		index = tuple(map(int,kwargs.data))
-		data[index] = 1
+		data = zeros((kwargs.D,)*len(index),dtype=kwargs.dtype)
+		data = inplace(data,index,1)
 		if kwargs.ndim is not None and data.ndim < kwargs.ndim:
 			data = einsum('...i,...j->...ij',data,conjugate(data))		
 		return data
@@ -1103,7 +1103,7 @@ class Measure(System):
 
 	def norm(self,parameters=None,state=None,**kwargs):
 		'''
-		Norm for POVM probability measure with respect to other POVM
+		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
@@ -1114,13 +1114,13 @@ class Measure(System):
 	
 		attr = 'norm_quantum'
 		
-		data = getattr(self,attr)(parameters=parameters,state=state,other=other,**kwargs)
+		data = getattr(self,attr)(parameters=parameters,state=state,**kwargs)
 
 		return data
 
 	def norm_quantum(self,parameters=None,state=None,**kwargs):
 		'''
-		Norm (quantum) for POVM probability measure with respect to other POVM
+		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
@@ -1150,13 +1150,12 @@ class Measure(System):
 
 		return data
 
-	def norm_classical(self,parameters=None,state=None,other=None,**kwargs):
+	def norm_classical(self,parameters=None,state=None,**kwargs):
 		'''
-		Norm (Classical) for POVM probability measure with respect to other POVM
+		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1185,7 +1184,7 @@ class Measure(System):
 
 	def norm_pure(self,parameters=None,state=None,**kwargs):
 		'''
-		Norm (pure) for POVM probability measure with respect to other POVM
+		Norm (pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
@@ -1692,10 +1691,10 @@ class Object(System):
 		
 		operator = self.operator if self.operator is not None else None
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
-		locality = self.locality
 		string = self.string
-		local = self.local if self.local is not None else None
 
+		locality = self.locality
+		local = self.local if self.local is not None else None
 
 		N = self.N	
 		D = self.D	
@@ -1844,7 +1843,6 @@ class Object(System):
 		self.conj = conj
 
 		self.spaces()
-		self.lattices()
 
 		if parameters is None:
 			parameters = None
@@ -1858,7 +1856,7 @@ class Object(System):
 			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
 			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+			setter(parameters,{attr: getattr(self,attr) for attr in self.__dict__ if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
 			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(parameters,defaults,delimiter=delim,default=False)
 			setter(parameters,self.parameters,delimiter=delim,default=False)
@@ -1964,12 +1962,39 @@ class Object(System):
 		where = self.site if self.local else None
 
 		if self.state is not None and self.state() is not None:
-			try: 
-				kwargs = dict(shape=(self.state.D,self.state.N,self.state.ndim),axes=(self.site,))
+			try:
+				D = self.state.D
+				N = self.state.N
+				ndim = self.state.ndim
 			except:
-				kwargs = dict(shape=(self.D,int(round(log(state.size)/log(self.D)/state.ndim)),state.ndim),axes=(self.site,))
+				D = self.D
+				N = int(round(log(state.size)/log(D)/state.ndim))
+				ndim = state.ndim
 		else:
-			kwargs = dict(**{**dict(shape=(self.D,self.N,self.ndim),axes=(self.site,)),**(self.options if self.options is not None else {})})
+			D = self.D
+			N = self.N
+			ndim = self.ndim
+			
+		if N < (self.locality if self.local else self.N):
+			D = D
+			N = self.locality if self.local else self.N
+			ndim = ndim
+			shape = (D,N,ndim)
+			axes = (list(range(N)),)
+		elif any(i>=N for i in self.site):
+			D = D
+			N = self.locality if self.local else self.N
+			ndim = ndim
+			shape = (D,N,ndim)
+			axes = (list(range(N)),)			
+		else:
+			D = D
+			N = N
+			ndim = ndim
+			shape = (D,N,ndim)
+			axes = (self.site,)
+		
+		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
 		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
@@ -3868,24 +3893,14 @@ class Objects(Object):
 			kwargs (dict): Additional class keyword arguments		
 		'''
 
+		# Get status of data
+		if self.status(data):
+			return
+
 		# Get operator,site,string from data
 		objs = Dictionary(operator=operator,site=site,string=string)
 
-		# Get status of data
-		status = self.status
-
-		if status(data):
-			return
-
-		print(objs)
-		exit()
-
-		# Set layout of data
-		objs = self.layout(data=objs)
-
-
 		# Get data and kwargs
-		
 		if isinstance(data,dict) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs) :
 
 			for obj in objs:
@@ -3911,34 +3926,110 @@ class Objects(Object):
 				for kwarg in set(kwarg for name in data if data[name] is not None for kwarg in data[name] if kwarg not in objs)
 				})
 
-			data = None
+		data = objs
 
-		objs = self.layout(data=objs)
+		# Lattice sites
+		sites = self.lattice
+		locality = self.N
+		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}
+
+		# Get number of operators
+		size = min([len(data[obj]) for obj in data if data[obj] is not None],default=0)
+		
+		# Get attribute of symbolic indices
+		attrs = dict(
+			site = lambda attr,value,values,indices: [dict(zip(indices,
+								value if not isinstance(value,integers) else (value,))
+							).get(i,int(i) if not isinstance(i,str) else i) 
+							for i in values[attr]]
+			)
+		
+		# Get data
+		for index in range(size):
+
+			key = None
+			tmp = {obj: copy(data[obj].pop(0)) for obj in data}
+			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
+
+			for attr in attrs:
+				if tmp[attr] is None:
+					key = None
+				elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
+					if len(indices[tmp[attr]]) > locality:
+						key = None
+						tmp[attr] = None
+					else:
+						key = tmp[attr]
+						tmp[attr] = indices[tmp[attr]]
+				elif isinstance(tmp[attr],scalars):
+					if tmp[attr] > locality:
+						key = None
+						tmp[attr] = None
+					else:
+						tmp[attr] = [tmp[attr]]
+				elif not isinstance(tmp[attr],scalars):
+					if any((i in indices and len(indices[tmp[attr]]) > locality) or (i > locality) for i in tmp[attr]):
+						key = None
+						tmp[attr] = None
+					else:
+						for i in tmp[attr]:
+							if i in indices:
+								key = i
+								tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
+			if key is not None:
+				for i,index in enumerate(sites(key)):
+					value = {}
+					for obj in data:
+						
+						if obj in attrs:
+							value[obj] = attrs[obj](obj,index,tmp,indices[key])
+						else:
+							value[obj] = tmp[obj]
+
+					exists = [[i if value[obj] == item else None for i,item in enumerate(data[obj])] 
+						for obj in data]
+					
+					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
+						continue
+
+					for obj in data:
+						data[obj].append(value[obj])
+					
+					for kwarg in kwargs:
+						kwargs[kwarg].append(copy(tmps[kwarg]))
+
+			else:
+				for obj in data:
+					data[obj].append(tmp[obj])	
+
+				for kwarg in kwargs:
+					kwargs[kwarg].append(copy(tmps[kwarg]))
+
 
 		# Set class dependent attributes 
 		# i.e) set parameters data with site-dependent data 
 		# i.e) set parameters shape with depth-M-dependent shape
 		attributes = {}
 		def decorator(func):
-			def wrapper(i,attr,attrs,objs,kwargs):
+			def wrapper(i,attr,attrs,data,kwargs):
 				if kwargs.get(attr) is None:
 					kwargs[attr] = [None for j in range(i)]
 				if len(kwargs[attr]) < i:
 					kwargs[attr] = [*kwargs[attr],*[None for j in range(1+i-len(kwargs[attr]))]]
-				func(i,attr,attrs,objs,kwargs)
+				func(i,attr,attrs,data,kwargs)
 				return
 			return wrapper
 
 		attribute = 'parameters.data'
 		@decorator
-		def func(i,attr,attrs,objs,kwargs):
+		def func(i,attr,attrs,data,kwargs):
 
 			if not isinstance(kwargs[attr][i],dict):
-				data = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
-				kwargs[attr][i] = dict(data=data)
+				tmp = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
+				kwargs[attr][i] = dict(data=tmp)
 
 			size = len(kwargs.get(attr,[]))
-			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
+			index = [j for j in range(size) if data.string[j] == data.string[i]].index(i)
 			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
 			default = None
 
@@ -3946,7 +4037,7 @@ class Objects(Object):
 				obj = obj
 			elif isinstance(obj,dict):
 				obj = obj.get(
-					tuple(objs.site[i]),obj.get(str(objs.string[i]),
+					tuple(data.site[i]),obj.get(str(data.string[i]),
 					obj.get(str(index),obj.get(int(index),default))))
 			elif isinstance(obj,iterables):
 				obj = obj[index%len(obj)] if len(obj) else default
@@ -3959,14 +4050,14 @@ class Objects(Object):
 
 		attribute = 'parameters.axis'
 		@decorator
-		def func(i,attr,attrs,objs,kwargs):
+		def func(i,attr,attrs,data,kwargs):
 			
 			if not isinstance(kwargs[attr][i],dict):
-				data = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
-				kwargs[attr][i] = dict(data=data)
+				tmp = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
+				kwargs[attr][i] = dict(data=tmp)
 
 			size = len(kwargs.get(attr,[]))
-			index = [j for j in range(size) if objs.string[j] == objs.string[i]].index(i)
+			index = [j for j in range(size) if data.string[j] == data.string[i]].index(i)
 			obj = getter(kwargs[attr][i],attrs,delimiter=delim)
 			default = ['M']
 
@@ -3988,11 +4079,11 @@ class Objects(Object):
 			for i in range(size):
 				if isinstance(kwargs[attr][i],nulls):
 					continue
-				attributes[attribute](i,attr,attrs,objs,kwargs)
+				attributes[attribute](i,attr,attrs,data,kwargs)
 
 
 		# Set class attributes
-		self.extend(data=data,**objs,kwargs=kwargs)
+		self.extend(**data,kwargs=kwargs)
 
 		return
 
@@ -4065,7 +4156,6 @@ class Objects(Object):
 
 	def __len__(self):
 		return len(self.data)
-
 
 	def __str__(self):
 		if self.data is not None:
@@ -4167,88 +4257,7 @@ class Objects(Object):
 				callable: function to yield data configuration, with signature configuration(data) = data					
 		'''
 
-		# Lattice sites
-		sites = self.lattice
-		locality = self.lattice.N
-		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}
-
-		# Get number of operators
-		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
-		
-		# Get attribute of symbolic indices
-		attr = 'site'
-		attrs = {
-			'site': lambda attr,value,values,indices: [dict(zip(indices,
-								value if not isinstance(value,integers) else (value,))
-							).get(i,int(i) if not isinstance(i,str) else i) 
-							for i in values[attr]],
-			'string': lambda attr,value,values,indices:	values[attr]
-							# delim.join([
-							# '%s%s'%(str(i),str(dict(zip(indices,
-							# 	value if not isinstance(value,integers) else (value,))
-							# ).get(i,int(i) if not isinstance(i,str) else i))) 
-							# for i,j in zip(values[attr],values['operator'])])
-			}
-		
-		# Get data
-		for index in range(size):
-
-			key = None
-			tmp = {obj: copy(objs[obj].pop(0)) for obj in objs}
-			tmps = {kwarg: copy(kwargs[kwarg].pop(0)) for kwarg in kwargs}
-
-			if tmp[attr] is None:
-				key = None
-			elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
-				if len(indices[tmp[attr]]) > locality:
-					key = None
-					tmp[attr] = None
-				else:
-					key = tmp[attr]
-					tmp[attr] = indices[tmp[attr]]
-			elif isinstance(tmp[attr],scalars):
-				if tmp[attr] > locality:
-					key = None
-					tmp[attr] = None
-				else:
-					tmp[attr] = [tmp[attr]]
-			elif not isinstance(tmp[attr],scalars):
-				if any((i in indices and len(indices[tmp[attr]]) > locality) or (i > locality) for i in tmp[attr]):
-					key = None
-					tmp[attr] = None
-				else:
-					for i in tmp[attr]:
-						if i in indices:
-							key = i
-							tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
-			if key is not None:
-				for i,index in enumerate(sites(key)):
-					value = {}
-					for obj in objs:
-						
-						if obj in attrs:
-							value[obj] = attrs[obj](obj,index,tmp,indices[key])
-						else:
-							value[obj] = tmp[obj]
-
-					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
-						for obj in objs]
-					
-					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
-						continue
-
-					for obj in objs:
-						objs[obj].append(value[obj])
-					
-					for kwarg in kwargs:
-						kwargs[kwarg].append(copy(tmps[kwarg]))
-
-			else:
-				for obj in objs:
-					objs[obj].append(tmp[obj])	
-
-				for kwarg in kwargs:
-					kwargs[kwarg].append(copy(tmps[kwarg]))
+		return
 
 
 	def sort(self,configuration=None):
@@ -4440,7 +4449,7 @@ class Objects(Object):
 		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
-		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
+		setter(kwargs,{attr: getattr(self,attr) for attr in self.__dict__ if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,local=self.local,verbose=False,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
@@ -4468,10 +4477,8 @@ class Objects(Object):
 
 		site = list(set((*(j
 				for i in data if data[i] is not None and isinstance(data[i].site,iterables)
-				for j in data[i].site),*(self.site if isinstance(self.site,iterables) else ()),))) if data is not None and isinstance(self.site,iterables) else None
+				for j in data[i].site),*(self.site if isinstance(self.site,iterables) else ()),))) if data is not None else None
 
-		print(self.string,site,self.site)
-		exit()
 		operator = [[data[i].operator[data[i].site.index(j)] for i in data if data[i] is not None and isinstance(data[i].site,iterables) and j in data[i].site] for j in site] if data is not None and site is not None else None
 
 		string = separ.join([data[i].string for i in data if data[i] is not None]) if data is not None else None
@@ -4795,8 +4802,6 @@ class Module(System):
 		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
 		N (int): Size of system
 		M (int): Duration of system
-		d (int): Spatial dimension of system		
-		lattice (str,dict,Lattice): Type of lattice	
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -4805,18 +4810,18 @@ class Module(System):
 
 	defaults = dict(
 		model=None,
-		N=None,M=None,d=None,
+		N=None,M=None,
 		state=None,parameters=None,variable=False,
-		data=None,measure=None,lattice=None,callback=None,
+		data=None,measure=None,callback=None,
 		func=None,gradient=None,
 		system=None,
 		)
 
-	def __init__(self,model=None,N=None,M=None,d=None,lattice=None,
+	def __init__(self,model=None,N=None,M=None,
 		state=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,N=N,M=M,d=d,lattice=lattice,
+			model=model,N=N,M=M,
 			state=state,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -4840,15 +4845,10 @@ class Module(System):
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
-
-		# Set attributes
-		self.lattices()
-
 		# Set model
 		model = self.model if model is None else model
 
 		self.model = model
-
 
 		# Set parameters
 		parameters = self.parameters if parameters is None else parameters
@@ -4890,11 +4890,6 @@ class Module(System):
 		state = self.state if state is None else state
 		parameters = self.parameters if parameters is None else parameters
 
-
-		# Attributes
-		self.lattices()
-
-
 		# Measure
 		cls = Measure
 		measure = self.measure if isinstance(self.measure,dict) else {}
@@ -4903,7 +4898,7 @@ class Module(System):
 
 
 		# Data
-		models = {None:model} if model is None or callable(model) or not isinstance(model,dict) else {index: model[index] for index in model}
+		models = {i: model.data[i] for i in model.data} if model is not None else {}
 		options = self.options if self.options is not None else {}
 		obj = state() if callable(state) else state
 
@@ -4917,11 +4912,7 @@ class Module(System):
 				continue
 
 			locality = model.locality
-
-			if index is None or isinstance(index,str):
-				indices = self.lattice(index)
-			else:
-				indices = [index]
+			where = model.site
 
 			parameters = model.parameters()
 			state = tensorprod([obj]*locality)
@@ -4932,12 +4923,10 @@ class Module(System):
 			
 			model = measure.transform(parameters=parameters,state=state,model=model)
 
-			for where in indices:
-
-				def obj(parameters,state,where=where,model=model,options=options,**kwargs):
-					return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-				
-				data.append(obj)
+			def func(parameters,state,where=where,model=model,options=options,**kwargs):
+				return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			
+			data.append(func)
 
 
 		# Attributes
