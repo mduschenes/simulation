@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,ones,zeros,bound,gradient_bound
 from src.utils import concatenate,addition,prod
-from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
+from src.utils import initialize,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
@@ -360,7 +360,7 @@ class Parameters(System):
 
 			data[parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
 
-			data[parameter].seed = self.parameters[parameter].seed #spawn(self.parameters[parameter].seed,size=len(parameters))[i]
+			data[parameter].seed = self.parameters[parameter].seed
 			data[parameter].local = True
 			data[parameter].indices = i
 			data[parameter].variable = self.parameters[parameter].variable

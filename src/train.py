@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,spawn
+from src.utils import argparser,delim
 from src.io import load,glob
 from src.iterables import Dict,namespace,setter
 from src.optimize import Optimizer,Objective,Metric,Callback
@@ -125,7 +125,6 @@ def optimize(settings,*args,**kwargs):
 	label.init(state=state)
 
 	func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
-	seed = spawn(**settings.seed)
 	hyperparameters = settings.optimize
 	arguments = ()
 	keywords = {}

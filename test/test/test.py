@@ -9,7 +9,7 @@ PATHS = ['','../../']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,spawn
+from src.utils import argparser,jit,allclose,delim
 from src.utils import similarity
 from src.io import load,glob
 from src.system import Dict

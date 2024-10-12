@@ -30,8 +30,8 @@ def main(settings,*args,**kwargs):
 	system = settings['system']
 	seed = system['seed']
 	shape = len(system['attrs'])
-	wrapper = lambda keys: dict(zip(system['attrs'],keys))
-	key = seeder(seed=seed)(shape,wrapper=wrapper)
+	attrs = system['attrs']
+	key = dict(zip(attrs,seeder(seed=seed,shape=shape)))
 
 
 	# Data
@@ -54,8 +54,8 @@ def main(settings,*args,**kwargs):
 	system = settings['system']
 	seed = system['seed']
 	shape = len(system['attrs'])
-	wrapper = lambda keys: dict(zip(system['attrs'],keys))
-	key = seeder(seed=seed)(shape,wrapper=wrapper)
+	attrs = system['attrs']
+	key = dict(zip(attrs,seeder(seed=seed,shape=shape)))
 
 	# Model
 	model = settings['model']['cls'](*settings['model']['args'],**settings['model']['kwargs'])
@@ -76,8 +76,8 @@ def main(settings,*args,**kwargs):
 	system = settings['system']
 	seed = system['seed']
 	shape = len(system['attrs'])
-	wrapper = lambda keys: dict(zip(system['attrs'],keys))
-	key = seeder(seed=seed)(shape,wrapper=wrapper)
+	attrs = system['attrs']
+	key = dict(zip(attrs,seeder(seed=seed,shape=shape)))
 
 	# Model
 	model = settings['model']['cls'](*settings['model']['args'],**settings['model']['kwargs'])

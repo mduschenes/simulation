@@ -26,8 +26,8 @@ def main(settings,*args,**kwargs):
 	system = settings['system']
 	seed = system['seed']
 	shape = len(system['attrs'])
-	wrapper = lambda keys: dict(zip(system['attrs'],keys))
-	key = seeder(seed=seed)(shape,wrapper=wrapper)
+	attrs = system['attrs']
+	key = dict(zip(attrs,seeder(seed=seed,shape=shape)))
 
 
 	# Data

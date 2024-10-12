@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,spawn,representation
+from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,representation
 from src.utils import einsum,conjugate,dot,tensorprod,trace,sqrtm,sqrt
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
@@ -684,12 +684,16 @@ def test_module(*args,**kwargs):
 			"data":{
 				"xx":{
 					"operator":["X","X"],"site":"<ij>","string":"XX",
-					"parameters":0.125,"variable":False
+					"parameters":0.5,"variable":False
 				},				
 				"noise":{
 					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
 					"parameters":0,"variable":False
 				},
+				"tmp":{
+					"operator":"depolarize","site":None,"string":"depolarize",
+					"parameters":0,"variable":False,"N":4
+				},				
 
 			},
 			"D":2,
@@ -701,7 +705,7 @@ def test_module(*args,**kwargs):
 			"configuration":None,
 			},
 		"state": {
-			"operator":["zero"],
+			"operator":"haar",
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -768,6 +772,14 @@ def test_module(*args,**kwargs):
 		# Probability
 		parameters = measure.parameters()
 		state = [obj()]*settings.module.N
+
+
+		model.info(verbose=True)
+		for i in model.data:
+			print(model.data[i],model.data[i](model.data[i].parameters(),model.data[i].identity))
+		print(model.parameters())
+		print(model.state())
+		exit()
 
 		probability = measure.probability(parameters=parameters,state=state)
 

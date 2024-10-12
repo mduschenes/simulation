@@ -99,8 +99,7 @@ class Tensor(object):
 		name = self.name
 		format = self.format
 
-		seed = seeder(key)
-		key = seed()
+		key = seeder(key)
 		shape = shape if isinstance(shape,dict) else {i:size for i,size in enumerate(shape)} if isinstance(shape,iterables) else {None:shape}
 		name = str(name)
 		format = (
@@ -193,10 +192,10 @@ class Network(object):
 
 		lattice = Lattice(N=N,d=d,lattice=lattice)
 
-		seed = seeder(key)
 		size = len(lattice)
 		types = lattice
-		keys = seed(size,wrapper=lambda keys: dict(zip(lattice,keys)))
+
+		keys = dict(zip(lattice,seeder(key,size=size)))
 
 		params = {}
 		for i in lattice:
@@ -366,10 +365,11 @@ class Operators(object):
 
 		lattice = Lattice(N=N,d=d,lattice=lattice)
 
-		seed = seeder(key)
+
 		size = 2
 		types = ['data','state']
-		keys = seed(size,wrapper=lambda keys: dict(zip(types,keys)))
+
+		keys = dict(zip(types,seeder(key,size=size)))
 
 		data = {'params':{},'state':{},'operator':{},'data':{},'settings':{}}
 
@@ -380,7 +380,7 @@ class Operators(object):
 		length = M
 		for attr in attrs:
 			for i in lattice(attr):
-				key,keys['data'] = seed.split(shape=2,seed=keys['data'])
+				key,keys['data'] = seeder(keys['data'],shape=2)
 				data['params'][i] = array([[pi/2]])#rand(shape=(length,1),bounds=[-pi,pi],key=key)
 				data['data'][i] = attrs[attr]
 
@@ -520,8 +520,7 @@ class Model(Operators):
 # 		return
 
 # 	def init(self,key,*args,**kwargs):
-		
-# 		keys = seeder(key)(len(self.lattice),wrapper=lambda keys: dict(zip(self.lattice,keys)))
+#		keys = dict(zip(self.lattice,seeder(key,size=len(self.lattice)))
 		
 # 		cls = self.__class__.__bases__[-1]
 
@@ -577,7 +576,6 @@ class Model(Operators):
 # 		'''
 
 # 		key = seeder(key)
-# 		key = key()
 
 # 		shape = shape if isinstance(shape,dict) else {i:size for i,size in enumerate(shape)} if isinstance(shape,iterables) else {None:shape}
 # 		name = str(name)
@@ -667,9 +665,7 @@ class Model(Operators):
 
 # 		lattice = Lattice(N=N,d=d,lattice=lattice)
 
-# 		key = seeder(key)
-# 		size = len(lattice)
-# 		keys = key(size,wrapper=lambda keys: dict(zip(lattice,keys)))
+# 		keys = dict(zip(lattice,seeder(key,size=len(lattice)))
 
 # 		params = {}
 # 		for i in lattice:

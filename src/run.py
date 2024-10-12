@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,spawn,delim,union,convert,arrays,asscalar,is_equal
+from src.utils import copy,seeder,delim,union,convert,arrays,asscalar,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -99,7 +99,6 @@ def setup(settings):
 	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
 	seed = settings['seed'].get('seed')
 	size = settings['seed'].get('size')
-	reset = settings['seed'].get('reset')
 	groups = settings['seed'].get('groups')
 
 	# Find keys of seeds in hyperparameters
@@ -141,7 +140,7 @@ def setup(settings):
 	size = sum(size)
 
 	if size:
-		seeds = spawn(seed=seed,size=size,reset=reset,type=True)
+		seeds = seeder(seed=seed,size=size,data=True)
 		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
 		seeds = permuter(seedlings,groups=groups)
 	else:

@@ -1751,6 +1751,16 @@ def zerofunc(obj,*args,**kwargs):
 	'''
 	return 0
 
+def astype(a,dtype):
+	'''
+	Convert array to dtype
+	Args:
+		a (object): array
+		dtype (str,datatype): Datatype
+	Returns:
+		out (object): array of type dtype
+	'''
+	return a.astype(dtype)
 
 def datatype(dtype):
 	'''
@@ -2623,14 +2633,14 @@ def representation(obj,to=True,contract=None,func=None,**kwargs):
 
 if backend in ['jax']:
 
-	def spawn(seed=None,size=False,reset=None,type=False,**kwargs):
+	def seeder(seed=None,size=None,split=False,data=False,**kwargs):
 		'''
 		Generate prng key
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
-			reset (bool,int): Reset seed
-			type (bool): Return key data
+			split(bool): Split key to generate new key
+			data (bool): Return key data
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
@@ -2638,38 +2648,25 @@ if backend in ['jax']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-
-		bounds = [0,2**32]
-
 		generator = jax.random
 
 		if is_key(seed):
 			return seed
 
-		if reset is not None:
-			seeded(reset)
-
-		if not isinstance(size,int):
-			size = len(size)
-
-		if seed is None:
-			seed = onp.random.randint(*bounds)
-
-		if isinstance(seed,integers):
-			seed = generator.key(seed)
+		if seed is None or isinstance(seed,integers):
+			seed = seeded(seed)
 		else:
 			seed = asndarray(seed,dtype=uint)
 
 		if size:
 			key = generator.split(seed,num=size)
+		elif split:
+			seed,key = generator.split(seed)
 		else:
 			key = seed
 
-		if type:
-			try:
-				key = generator.key_data(key).tolist()
-			except:
-				pass
+		if data:
+			key = generator.key_data(key).tolist()
 
 		return key
 
@@ -2678,45 +2675,24 @@ if backend in ['jax']:
 		Set random seed
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
-		'''
-
-		onp.random.seed(seed)
-
-		return
-
-	def hashes(hashes=None):
-		'''
-		Get hashes from data
-		Args:
-			hashes (iterable[str,int]): Hashing data
 		Returns:
-			hashes (int): Hashed integer
+			key (key): Random key
 		'''
-		if hashes is None:
-			return hashes
-		
-		if isinstance(hashes,int):
-			hashes = (hashes,)
 
-		keys = hashlib.sha1()
+		if seed is None:
+			bounds = [0,2**32]
+			seed = onp.random.randint(*bounds)
+		else:
+			onp.random.seed(seed)
 		
-		for key in hashes:
-			if isinstance(key, str):
-			  keys.update(key.encode('utf-8'))
-			elif isinstance(key, int):
-			  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
-			else:
-			  raise ValueError(f'Expected int or string, got: {key}')
-		
-		keys = keys.digest()
-		hashes = int.from_bytes(keys[:4], byteorder='big')
-		hashes = np.uint32(hashes)
+		key = jax.random.key(seed)
 
-		return hashes
+		return key
 
-	class seeder(object):
+
+	class spawn(object):
 		'''
-		Seeder class
+		Spawn seeds class
 		Args:
 			seed (int,Key): Seed or Key
 		'''
@@ -2747,8 +2723,38 @@ if backend in ['jax']:
 			self.init(seed)			
 			if folds is None:
 				return self.key
-			key = jax.random.fold_in(self.key,hashes(folds))
+			key = jax.random.fold_in(self.key,self.hashes(folds))
 			return key
+
+		def hashes(self,hashes=None):
+			'''
+			Get hashes from data
+			Args:
+				hashes (iterable[str,int]): Hashing data
+			Returns:
+				hashes (int): Hashed integer
+			'''
+			if hashes is None:
+				return hashes
+			
+			if isinstance(hashes,int):
+				hashes = (hashes,)
+
+			keys = hashlib.sha1()
+			
+			for key in hashes:
+				if isinstance(key, str):
+				  keys.update(key.encode('utf-8'))
+				elif isinstance(key, int):
+				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+				else:
+				  raise ValueError(f'Expected int or string, got: {key}')
+			
+			keys = keys.digest()
+			hashes = int.from_bytes(keys[:4], byteorder='big')
+			hashes = np.uint32(hashes)
+
+			return hashes
 
 		def __call__(self,shape=None,seed=None,wrapper=None):
 			keys = self.split(shape)
@@ -2759,41 +2765,32 @@ if backend in ['jax']:
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
-	def spawn(seed=None,size=False,reset=None,type=None,**kwargs):
+	def seeder(seed=None,size=None,data=None,**kwargs):
 		'''
 		Generate prng key
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
-			reset (bool,int): Reset seed
-			type (bool): Return key data
-			kwargs (dict): Additional keyword arguments for seeding			
+			data (bool): Return key data
+			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
 		'''	
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-		bounds = [0,2**32]
-
-		generator = onp.random
-
-		if reset is not None:
-			generator.seed(reset)
-
-		if seed is None:
-			seed = generator.randint(*bounds)
+		if seed is None or isinstance(seed,integers):
+			seed = seeded(seed)
+		else:
+			seed = asndarray(seed,dtype=uint)
 
 		if size:
 			key = generator.randint(*bounds,size=size)
 		else:
 			key = seed
 
-		if type:
-			try:
-				key = key.tolist()
-			except:
-				pass
+		if data:
+			key = key.tolist()
 
 		return key
 
@@ -2802,46 +2799,23 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Set random seed
 		Args:
 			seed (int,array,Key): Seed for random number generation or random key for future seeding
+		Returns:
+			key (key): Random key
 		'''
+
+		if seed is None:
+			bounds = [0,2**32]
+			seed = np.random.randint(*bounds)
 
 		np.random.seed(seed)
-
-		return
-
-	def hashes(hashes=None):
-		'''
-		Get hashes from data
-		Args:
-			hashes (iterable[str,int]): Hashing data
-		Returns:
-			hashes (int): Hashed integer
-		'''
-		if hashes is None:
-			return hashes
 		
-		if isinstance(hashes,int):
-			hashes = (hashes,)
+		key = seed
 
-		keys = hashlib.sha1()
-		
-		for key in hashes:
-			if isinstance(key, str):
-			  keys.update(key.encode('utf-8'))
-			elif isinstance(key, int):
-			  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
-			else:
-			  raise ValueError(f'Expected int or string, got: {key}')
-		
-		keys = keys.digest()
-		hashes = int.from_bytes(keys[:4], byteorder='big')
-		hashes = onp.uint32(hashes)
+		return key
 
-		return hashes
-
-
-	class seeder(object):
+	class spawn(object):
 		'''
-		Seeder class
+		Spawn seeds class
 		Args:
 			seed (int,Key): Seed or Key
 		'''
@@ -2876,6 +2850,36 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key = self.key
 			return key
 
+		def hashes(self,hashes=None):
+			'''
+			Get hashes from data
+			Args:
+				hashes (iterable[str,int]): Hashing data
+			Returns:
+				hashes (int): Hashed integer
+			'''
+			if hashes is None:
+				return hashes
+			
+			if isinstance(hashes,int):
+				hashes = (hashes,)
+
+			keys = hashlib.sha1()
+			
+			for key in hashes:
+				if isinstance(key, str):
+				  keys.update(key.encode('utf-8'))
+				elif isinstance(key, int):
+				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+				else:
+				  raise ValueError(f'Expected int or string, got: {key}')
+			
+			keys = keys.digest()
+			hashes = int.from_bytes(keys[:4], byteorder='big')
+			hashes = onp.uint32(hashes)
+
+			return hashes
+
 		def __call__(self,shape=None,seed=None,wrapper=None):
 			keys = self.split(shape)
 			if callable(wrapper):
@@ -2884,7 +2888,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 if backend in ['jax']:
 
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -2895,7 +2899,6 @@ if backend in ['jax']:
 			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
-			reset (bool,int): Reset seed		
 			dtype (datatype): Datatype of array		
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
@@ -2909,10 +2912,9 @@ if backend in ['jax']:
 		if isinstance(shape,int):
 			shape = (shape,)
 
-		if seed is not None:
-			key = seed
+		key = seed if seed is not None else key
 		
-		key = spawn(key,reset=reset)
+		key = seeder(key)
 
 		generator = jax.random
 
@@ -3143,38 +3145,80 @@ if backend in ['jax']:
 		return out
 
 
-	def random(shape=(),random='uniform',seed=None,dtype=None):
+	def random(shape=(),random='uniform',seed=None,key=None,dtype=None):
 		'''
 		Get random array
 		Args:
 			shape (int,iterable): Size or Shape of random array
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
 		Returns:
 			out (array): Random array
 		'''	
 
-		return getattr(jax.random,random)(seed,shape=shape)
+		key = seed if key is None else key
+		generator = getattr(jax.random,random)
 
-	def randint(shape=(),bounds=[0,1],seed=None,dtype=None):
+		return astype(generator(key,shape=shape),dtype=dtype)
+
+	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None):
 		'''
 		Get random integer array
 		Args:
 			shape (int,iterable): Size or Shape of random array
 			bounds (iterable): Bounds on array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
 		Returns:
 			out (array): Random array
 		'''	
 
-		return jax.random.randint(seed,shape=shape,minval=bounds[0],maxval=bounds[1])		
+		key = seed if key is None else key
+		generator = jax.random.randint
+
+		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
+
+	def haar(shape=(),seed=None,key=None,dtype=None):
+		'''
+		Get random haar array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+
+		kwargs = dict(
+			shape = (shape,)*2 if isinstance(shape,int) else shape,
+			seed = seed,
+			key = key,
+			random = 'normal',
+			dtype=dtype
+		)
+
+		out = astype(random(**kwargs),dtype=dtype)
+
+		out = out + 1j*out
+
+		Q,R = qr(out)
+		R = diag(R)
+		R = diag(R/abs(R))
+		
+		out = dot(Q,R)
+
+		return out
 
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -3185,7 +3229,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
-			reset (bool,int): Reset seed		
 			dtype (datatype): Datatype of array		
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
@@ -3199,10 +3242,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		if isinstance(shape,int):
 			shape = (shape,)
 
-		if seed is not None:
-			key = seed
+		key = seed if seed is not None else key
 		
-		key = spawn(key,reset=reset)
+		key = seeder(key)
 
 		generator = onp.random.RandomState(key)
 
@@ -3261,7 +3303,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			def func(key,shape,bounds,dtype):
 
 				bounds = [-1,1]
-				subrandom = 'gaussian'
+				subrandom = 'normal'
 				subdtype = 'complex'
 				ndim = len(shape)
 				shapes = shape
@@ -3307,7 +3349,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			def func(key,shape,bounds,dtype):
 			
 				bounds = [-1,1]
-				subrandom = 'gaussian'
+				subrandom = 'normal'
 				subdtype = 'complex'
 				ndim = len(shape)
 
@@ -3435,34 +3477,76 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return out
 
 
-	def random(shape=None,random='uniform',seed=None,dtype=None):
+	def random(shape=(),random='uniform',seed=None,key=None,dtype=None):
 		'''
 		Get random array
 		Args:
 			shape (int,iterable): Size or Shape of random array
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
 		Returns:
 			out (array): Random array
 		'''	
 
-		return getattr(np.random,random)(size=shape).astype(dtype)
+		key = seed if key is None else key
+		generator = getattr(np.random,random)
 
+		return astype(generator(size=shape),dtype=dtype)
 
-	def randint(shape=None,bounds=[0,1],seed=None,dtype=None):
+	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None):
 		'''
 		Get random integer array
 		Args:
 			shape (int,iterable): Size or Shape of random array
 			bounds (iterable): Bounds on array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
 		Returns:
 			out (array): Random array
 		'''	
 
-		return np.random.randint(*bounds,size=shape)		
+		key = seed if key is None else key
+		generator = np.random.randint
+
+		return astype(generator(*bounds,size=shape),dtype=dtype)
+
+	def haar(shape=(),seed=None,key=None,dtype=None):
+		'''
+		Get random haar array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+
+		kwargs = dict(
+			shape = (shape,)*2 if isinstance(shape,int) else shape,
+			seed = seed,
+			key = key,
+			random = 'normal',
+			dtype=dtype
+		)
+
+		out = astype(random(**kwargs),dtype=dtype)
+
+		out = out + 1j*out
+
+		Q,R = qr(out)
+		R = diag(R)
+		R = diag(R/abs(R))
+		
+		out = dot(Q,R)
+
+		return out
+
 
 def _svd(A,k=None):
 	'''
@@ -4768,7 +4852,7 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 
 
 
-def inner(*operands,optimize=True,wrapper=None):
+def inner_prod(*operands,optimize=True,wrapper=None):
 	'''
 	Calculate inner product of arrays
 	Args:
@@ -4847,7 +4931,7 @@ def inner(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_inner(*operands,optimize=True,wrapper=None):
+def gradient_inner_prod(*operands,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of inner product of arrays
 	Args:
@@ -5338,6 +5422,18 @@ def dots(*a):
 	
 
 @jit
+def inner(a,b):
+	'''
+	Calculate inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Inner product
+	'''	
+	return np.inner(dagger(a),b)
+
+@jit
 def outer(a,b):
 	'''
 	Calculate outer product of arrays a and b
@@ -5347,7 +5443,7 @@ def outer(a,b):
 	Returns:
 		out (array): Outer product
 	'''	
-	return np.outer(a,b)
+	return np.outer(a,dagger(b))
 
 
 @jit
@@ -7455,6 +7551,19 @@ def swap(a,axes=None,shape=None,transform=None,permute=False,execute=True):
 	elif transform is False:
 		
 		return _split(_group(a,axes,shape),axes,shape)
+
+def shuffle(a,axes=None,shape=None):
+	'''
+	Shuffle axes of array of shape (d**n,)*k	
+	Args:
+		a (array): array to reshape into subspaces
+		axes (iterable[int]): (i,j,k,...), order of to be shuffled axes of array, currently (i,j,k,...) to (0,1,2,...,n-1) , i,j,k in [n]		
+		shape (iterable[int]): (d,n,k), dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)
+	Returns:
+		a (array): shuffled array
+	'''
+	return swap(swap(a,axes=axes,shape=shape,transform=True,permute=True,execute=True),axes=None,shape=shape,transform=False,permute=True,execute=True)
+
 
 def broadcast_to(a,shape):
 	'''

@@ -20,7 +20,7 @@ from src.utils import jit,partial
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
-from src.utils import swap
+from src.utils import swap,shuffle
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -498,23 +498,22 @@ def test_rand(path=None,tol=None):
 		{'shape':(2,5,2),'random':'rand'},
 		]
 	seed = 1234
-	reset = 1234
 	size = len(kwargs)
 	a = [[] for i in range(size)]
 
 
 	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,spawn,backend
-	keys = spawn(seed,reset=reset,size=size)
+	from src.utils import array,rand,seeder,backend
+	keys = seeder(seed,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))
 
 	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,spawn,backend
-	keys = spawn(seed,reset=reset,size=size)
+	from src.utils import array,rand,seeder,backend
+	keys = seeder(seed,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))
@@ -717,6 +716,30 @@ def test_pytree(path=None,tol=None):
 	print('Passed')
 
 	return
+
+def test_concatenate(path=None,tol=None):
+	d = 2
+	n = 5
+	q = 2
+	l = 3
+	k = 2
+	shape = (d,n,k)
+	axes = [*axis,*(i for i in range(n) if i not in axis)]
+	dtype = None
+
+	print(axes)
+	
+	I = eye(d,dtype=dtype)
+	U = [rand(shape=(d,)*k,dtype=dtype) for i in range(l)]
+
+	V = shuffle(tensorprod((tensorprod(U),*(I,)*(n-q-1))),axes=axes,shape=shape)
+
+	W = tensorprod((*(U[axis.index(i)] if i in axis else I for i in range(n)),))
+
+	assert allclose(V,W)
+	
+	return
+
 
 def test_reshape(path=None,tol=None):
 
@@ -946,6 +969,27 @@ def test_stability(*args,**kwargs):
 	return
 
 
+def test_seed(path=None,tol=None):
+
+	from src.utils import jax,rand,seeder
+
+	seed = 213214
+	size = None
+	splits = True
+	data = True
+	shape = (3,4)
+
+	key = seeder(seed=seed,size=size,split=split,data=data)
+
+	for i in range(splits):
+		key = seeder(seed=seed,split=splits)
+
+	a = rand(shape=shape,key=key)
+
+	return
+
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -962,4 +1006,6 @@ if __name__ == '__main__':
 	# test_action(path,tol)
 	# test_inheritance(path,tol)
 	# test_convert(path,tol)
-	test_stability(path,tol)
+	# test_stability(path,tol)
+	# test_concatenate(path,tol)
+	test_seed(path,tol)
