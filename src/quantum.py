@@ -1676,7 +1676,7 @@ class Object(System):
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
 		state=None,conj=False,parameters=None,variable=None,
-		locality=None,local=None,
+		local=None,locality=None,support=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,base=None,
 		space=None,time=None,lattice=None,
@@ -1711,16 +1711,17 @@ class Object(System):
 		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
 		string = self.string
 
-		locality = self.locality if self.locality is not None else None
 		local = self.local if self.local is not None else None
+		locality = self.locality if self.locality is not None else None
+		support = self.support if self.support is not None else None
 
 		N = self.N if self.N is not None else None
 		D = self.D if self.D is not None else None
 
 
-		# Set local, locality, N
+		# Set local, locality, support
 		local = local
-		
+
 		if locality is not None:
 			locality = locality
 		elif isinstance(site,iterables):
@@ -1734,7 +1735,12 @@ class Object(System):
 		else:
 			locality = 1
 
+		if support is not None:
+			support = support
+		else:
+			support = None
 
+		# Set N
 		N = locality if local and N is None else N
 
 
@@ -1878,17 +1884,18 @@ class Object(System):
 		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
 			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
-			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
-			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
-			setter(parameters,defaults,delimiter=delim,default=False)
-			setter(parameters,self.parameters,delimiter=delim,default=False)
-			setter(parameters,{attr: getattr(self,attr) for attr in self.system if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
-			self.parameters = cls(**parameters)
+			keywords = dict(data=parameters) if not isinstance(parameters,dict) else parameters
+			setter(keywords,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(keywords,defaults,delimiter=delim,default=False)
+			setter(keywords,self.parameters,delimiter=delim,default=False)
+			setter(keywords,{attr: getattr(self,attr) for attr in self.system if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
+			
+			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
-			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			self.parameters.init(**parameters)
+			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			self.parameters.init(**keywords)
 
 		else:
 			self.parameters = parameters
@@ -1974,6 +1981,7 @@ class Object(System):
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
 		where = self.site if self.local else None
+		support = self.site if self.local or self.support is None else self.support
 
 		if self.state is not None and self.state() is not None:
 			try:
@@ -1986,23 +1994,11 @@ class Object(System):
 				ndim = state.ndim
 		else:
 			D = self.D
-			N = self.N
-			ndim = self.ndim
-			
-		if any(i not in (
-			range(self.N if self.N is not None else self.locality if self.locality is not None else None)
-			if self.N is not None or self.locality is not None else site) for i in self.site):
-			D = D
 			N = self.locality if self.local else self.N
-			ndim = ndim
-			shape = (D,N,ndim)
-			axes = [[list(range(N)).index(i) for i in self.site]]
-		else:
-			D = D
-			N = N
-			ndim = ndim
-			shape = (D,N,ndim)
-			axes = [self.site]
+			ndim = self.ndim
+		
+		shape = (D,N,ndim)
+		axes = [support] if not any(i not in range(N) for i in support) else [[list(range(N))]]
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
@@ -3313,7 +3309,7 @@ class Noise(Object):
 					data = empty((D**locality,)*ndim,dtype=dtype)
 
 					if operator in ['noise','rand']:
-						bounds = [-1,1]
+						btounds = [-1,1]
 						def function(parameters,state,shape=None,random=random,bounds=bounds,seed=None,dtype=dtype):
 							return state + parameters*rand(shape=state.shape,random=random,bounds=bounds,seed=seeder(seed),dtype=state.dtype)/2
 					else:
@@ -5051,15 +5047,12 @@ class Module(System):
 
 		model = groupby(model,**options)
 
-		# for key in model:
-		# 	shape=(instance.D,instance.N,instance.ndim)
-		# 	axes=list(set(i for instance in model[key] if isinstance(instance.site,iterables) for i in instance.site))
-		# 	for instance in model[key]:
-		# 		options= dict(
-		# 			shape=(*shape[:1],self.N,*shape[2:]),
-		# 			axes=[[axes.index(i) for i in indices.site]] if isinstance(instance.site,iterables) else None
-		# 			)
-		# 		instance.init(options=options)
+		for key in model:
+			N = max()
+			supports = list(set(i for instance in model[key] if isinstance(instance.site,iterables) for i in instance.site))
+			for instance in model[key]:
+				support = [supports.index(i) for i in instance.site] if isinstance(instance.site,iterables) else None
+				instance.init(support=support)
 
 		return model
 
