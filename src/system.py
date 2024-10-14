@@ -62,7 +62,7 @@ class System(Dictionary):
 			'configuration':None,
 			'base':None,
 			'unit':None,
-			'options':{},			
+			'options':None,			
 			'seed':None,
 			'key':None,
 			'instance':None,
@@ -83,9 +83,6 @@ class System(Dictionary):
 
 			attr = 'backend'
 			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
-
-			attr = 'options'
-			kwargs[attr] = defaults.get(attr) if not isinstance(kwargs.get(attr),dict) else kwargs.get(attr)
 
 			attr = 'instances'
 			if kwargs.get(attr) is not None:

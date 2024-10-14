@@ -15,8 +15,9 @@ from src.utils import array,asarray,asscalar,empty,identity,entity,ones,zeros,ra
 from src.utils import tensor,tensornetwork,gate,mps,representation
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,swap,shuffle,conjugate,dagger,einsum,dot,inner,outer,reshape,transpose,dots,sqrtm,addition,norm,real,imag,eig,trace,sort,relsort,prod,product,log
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,inner,outer,reshape,transpose,dots,sqrtm,addition,norm,real,imag,eig,trace,sort,relsort,prod,product
 from src.utils import inplace,insertion,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import swap,shuffle,groupby,sortby
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
 
@@ -4360,7 +4361,7 @@ class Objects(Object):
 
 		elif data is not None:
 			
-			self.data = type(self.data)(data)
+			self.data = type(self.data)({index:data[i] for index,i in enumerate(data)})
 
 		return
 
@@ -4378,7 +4379,9 @@ class Objects(Object):
 			index = len(self) + index if index < 0 else index
 
 			data = self.data.get(index)
+		
 		else:
+		
 			data = self.data
 
 		return data
@@ -4396,79 +4399,10 @@ class Objects(Object):
 		'''
 		Sort data of class
 		Args:
-			configuration (dict[str,str,object,iterable],iterable[str,dict],callable): configuration of data
-				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
-					{attr:[value]} or data {attr:None} to sort by all data attr values
-				iterable[str,dict]: objects to sort on, either strings or dictionaries:
-					[attr], [data.string], [{attr:[value]}], 
-					'_attr' may also be used for reversed sorting of attributes 
-				callable: function to yield data configuration, with signature configuration(data) = data					
+			configuration (dict): configuration options for layout
+				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
 		'''
-
-		def string(obj,data):
-	
-			if all(hasattr(data[i],obj) for i in data):
-				index = {i: getattr(data[i],obj) for i in data}
-				index = sorted(index,key=lambda i: index[i])
-			elif obj.startswith('_') and all(hasattr(data[i],'_'.join(obj.split('_')[1:])) for i in data):
-				index = {i: getattr(data[i],'_'.join(obj.split('_')[1:])) for i in data}
-				index = sorted(index,key=lambda i: index[i])
-			elif obj in [data[i].string for i in data]:
-				index = [i for i in data[i] if data[i].string == obj]
-			elif obj.startswith('_') and '_'.join(obj.split('_')[1:]) in [data[i].string for i in data]:
-				index = [i for i in data[i] if data[i].string == '_'.join(obj.split('_')[1:])][::-1]
-			else:
-				index = []
-
-			return index
-
-		def dictionary(obj,data):
-			index = {}
-			for attr in obj:
-
-				if all(hasattr(data[i],attr) for i in data):
-					
-					if obj[attr] is None:
-						value = {i: getattr(data[i],attr) for i in data}
-						value = {i: tuple(value[i]) if isinstance(value[i],iterables) else value[i] for i in value}
-						values = list(sorted(set((value[i] for i in value))))
-					else:
-						value = {i: getattr(data[i],attr) for i in data if getattr(data[i],attr) in obj[attr]}
-						values = [i for i in obj[attr]]
-					
-					for i in data:
-						if i not in value:
-							continue
-						if i not in index:
-							index[i] = {}
-						
-						index[i][attr] =  values.index(value[i])
-
-				elif attr.startswith('_') and all(hasattr(data[i],'_'.join(attr.split('_')[1:])) for i in data):
-			
-					if obj[attr] is None:
-						value = {i: getattr(data[i],'_'.join(attr.split('_')[1:])) for i in data}
-						value = {i: tuple(value[i]) if isinstance(value[i],iterables) else value[i] for i in value}
-						values = list(sorted(set((value[i] for i in value))))
-					else:
-						value = {i: getattr(data[i],'_'.join(attr.split('_')[1:])) for i in data if getattr(data[i],'_'.join(attr.split('_')[1:])) in obj[attr]}
-						values = [i for i in obj[attr]]
-					
-					for i in data:
-						if i not in value:
-							continue
-						if i not in index:
-							index[i] = {}
-						
-						index[i][attr] =  -values.index(value[i])
-
-
-			index = {i: tuple((index[i][attr] for attr in index[i])) for i in index if all(attr in index[i] for attr in obj)}
-
-			index = sorted(index,key=lambda i: index[i])
-
-			return index
-
 
 		self.set()
 
@@ -4476,37 +4410,9 @@ class Objects(Object):
 
 		configuration = self.configuration if configuration is None else configuration
 
+		options = dict(key=configuration.get('key',configuration.get('sort'))) if configuration is not None else {}
 
-		configuration = [configuration] if configuration is None or callable(configuration) or isinstance(configuration,(str,dict)) else [obj for obj in configuration]
-
-		indices = []
-		for obj in configuration:
-			
-			index = None
-
-			if callable(obj):
-				
-				data = obj(data)
-			
-			elif isinstance(obj,dict):
-				
-				index = dictionary(obj,data)
-
-			elif isinstance(obj,str):
-
-				index = string(obj,data)
-
-			if index is not None:
-
-				indices.append(index)
-
-
-		if indices:
-			
-			data = {i: data[i] for index in indices for i in index}
-
-		
-		data = {index: data[i] for index,i in enumerate(data)}
+		data = sortby(data,**options)
 
 		self.set(data)
 
@@ -5116,19 +5022,22 @@ class Module(System):
 		'''
 		Sort models of class
 		Args:
-			configuration (dict[str,str,object,iterable],iterable[str,dict],callable): configuration of data
-				dict[str,iterable]: data attributes to sort on as keys and order of data attributes as values:
-					{attr:[value]} or data {attr:None} to sort by all data attr values
-				iterable[str,dict]: objects to sort on, either strings or dictionaries:
-					[attr], [data.string], [{attr:[value]}], 
-					'_attr' may also be used for reversed sorting of attributes 
-				callable: function to yield data configuration, with signature configuration(data) = data					
+			configuration (dict): configuration options for layout
+				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
 		Returns:
-			models (dict[int,iterable[model]]): Sorted and grouped models of class
+			model (dict[int,iterable[model]]): Sorted and grouped models of class
 		'''
+
+		configuration = self.configuration if configuration is None else configuration
+
 		model = self.model
-		models = {i: [model.data[i]] for i in model.data} if model is not None else {}
-		return models
+
+		options = dict(key=configuration.get('key'),sort=configuration.get('sort')) if configuration is not None else {}
+
+		model = groupby(model,**options)
+
+		return model
 
 	def __call__(self,parameters=None,state=None,**kwargs):
 		'''
@@ -5848,11 +5757,11 @@ class Callback(System):
 				]:
 				options = {
 					**{attr: model.options[attr] for attr in model.options}
-					}
+					} if model.options is not None else {}
 				other = {
 					**options,
 					**{attr: getattr(self,attr) for attr in options if hasattr(self,attr)},
-					**{attr: self.options.get(attr) for attr in options if attr in self.options},
+					**{attr: self.options.get(attr) for attr in options if self.options is not None and attr in self.options},
 					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
 					}
 				value = getattrs(model,attributes[attr],delimiter=delim)(

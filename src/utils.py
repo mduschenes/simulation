@@ -7319,6 +7319,101 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
+def sortby(dictionary,key=None):
+	'''
+	Sort dictionary by keys
+	Args:
+		dictionary (dict): dictionary to be sorted
+		key (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+	Returns:
+		dictionary (dict[key,value]): Sorted dictionary
+	'''
+
+	def parse(value):
+		if isinstance(value,iterables):
+			try:
+				return tuple((parse(i) for i in value))
+			except:
+				return asscalar(value)
+		else:
+			return value
+
+	def get(value,key):
+		value = getattr(value,key,value.get(key)) if not callable(key) else key(value)
+		return value
+
+	if key is None:
+		key = None
+	elif callable(key) or not isinstance(key,iterables):
+		key = lambda value,key=key: parse(get(dictionary[value],key))
+	elif isinstance(key,iterables):
+		key = lambda value,key=key: parse([get(dictionary[value],item) for item in key])
+	else:
+		key = None
+
+	dictionary = {value: dictionary[value] for value in sorted(dictionary,key=key)}
+
+	return dictionary
+
+def groupby(iterable,key=None,sort=None):
+	'''
+	Group iterable by keys, after sorting by key or sort
+	Args:
+		iterable (iterable): Iterable to be grouped
+		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
+	Returns:
+		iterable (dict[key,value]): Grouped iterable with group keys and iterable values 
+	'''
+
+	def parse(value):
+		if isinstance(value,iterables):
+			try:
+				return tuple((parse(i) for i in value))
+			except:
+				return asscalar(value)
+		else:
+			return value
+
+	def get(value,key):
+		value = getattr(value,key,value.get(key)) if not callable(key) else key(value)
+		return value
+
+	if key is None:
+		key = None
+	elif callable(key) or not isinstance(key,iterables):
+		key = lambda value,key=key: parse(get(value,key))
+	elif isinstance(key,iterables):
+		key = lambda value,key=key: parse([get(value,item) for item in key])
+	else:
+		key = None
+
+	if sort is None:
+		sort = None
+	elif callable(sort) or not isinstance(sort,iterables):
+		sort = lambda value,sort=sort: parse(get(value,sort))
+	elif isinstance(sort,iterables):
+		sort = lambda value,sort=sort: parse([get(value,item) for item in sort])
+	else:
+		sort = None
+
+	sort = key if sort is None else sort
+
+	iterable = sorted(iterable,key=sort)
+
+	if key is not None:
+		iterable = itertools.groupby(iterable,key=key)
+	else:
+		iterable = ((index,[value]) for index,value in enumerate(iterable))
+
+	iterable = {key:list(group) for key,group in iterable}
+
+	return iterable
+
+
+
+
+
 def convert(iterable,type=list,types=(list,),default=None):
 	'''
 	Convert iterable to type

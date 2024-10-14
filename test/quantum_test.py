@@ -178,6 +178,7 @@ def test_channel(*args,**kwargs):
 def test_composite(*args,**kwargs):
 
 	kwargs = {
+		"module.configuration":[{"key":["site","string"],"sort":["site","string"]}],
 		**{attr:[4] for attr in ["model.N"]},
 		**{attr:[1] for attr in ["state.N"]},
 		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
@@ -185,7 +186,7 @@ def test_composite(*args,**kwargs):
 		"model.ndim":[2],"state.ndim":[2],
 		"model.local":[True],
 		"model.independent":[True],		
-		"model.configuration":[{"site":None}],		
+		"model.configuration":[{"key":["site"]}],
 		"model.data":[{
 			"xx":{
 				"operator":["X","X"],"site":"<ij>","string":"xx",
@@ -644,7 +645,7 @@ def test_module(*args,**kwargs):
 		'model.N':[4],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.local":[True],"state.local":[False],
-		"model.configuration":[{"site":None}],
+		"model.configuration":[{"key":["site"]}],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
 		"module.measure.architecture":["tensor"],

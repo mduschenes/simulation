@@ -989,6 +989,38 @@ def test_seed(path=None,tol=None):
 	return
 
 
+def test_groupby(path=None,tol=None):
+
+	from src.utils import groupby
+	from src.utils import array
+
+	iterable = [
+		{'hello':1,'world':(1,2,3),'goodbye':array([5,6,1])},
+		{'hello':1,'world':(1,2,3),'goodbye':array([52,6,41])},
+		{'hello':1,'world':(1,2,-3),'goodbye':array([-5,6,-1])},
+		{'hello':2,'world':(1,-2,3),'goodbye':array([5,46,1])},
+		{'hello':1,'world':(1,-2,3),'goodbye':array([52,6,41])},
+		{'hello':3,'world':(-1,2,3),'goodbye':array([5,6,1])},
+		{'hello':2,'world':(1,-2,3),'goodbye':array([-5,-6,-1])},
+		]
+
+	key = ['hello','world']
+
+	sort = ['hello',lambda value: value['goodbye'][-1]]
+
+	for value in iterable:
+		print(value)
+	print()
+
+	iterable = groupby(iterable,key=key,sort=sort)
+
+	for key in iterable:
+		for value in iterable[key]:
+			print(value)
+		print()
+	return
+
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -1008,4 +1040,5 @@ if __name__ == '__main__':
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_concatenate(path,tol)
-	test_seed(path,tol)
+	# test_seed(path,tol)
+	test_groupby(path,tol)
