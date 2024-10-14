@@ -574,7 +574,11 @@ class Measure(System):
 
 		self.parameters = parameters
 
-		self.setup(data)
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])
+
+		self.setup(data=data)
 
 		return
 
@@ -1853,6 +1857,10 @@ class Object(System):
 		if conj is None:
 			conj = False
 
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])
+
 		self.data = data
 		self.state = state
 		self.conj = conj
@@ -1988,13 +1996,13 @@ class Object(System):
 			N = self.locality if self.local else self.N
 			ndim = ndim
 			shape = (D,N,ndim)
-			axes = (list(range(N)),)			
+			axes = [[list(range(N)).index(i) for i in self.site]]
 		else:
 			D = D
 			N = N
 			ndim = ndim
 			shape = (D,N,ndim)
-			axes = (self.site,)
+			axes = [self.site]
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
@@ -3830,7 +3838,7 @@ class Objects(Object):
 				self.data.pop(i)
 				self.data[i] = None
 			elif isinstance(data[i],dict):
-				self.data[i].init(**data[i])
+				self.data[i].init(data[i])
 			elif isinstance(data[i],type(self.data[i])):
 				self.data[i] = data[i]
 			elif self.data[i] is not None:
@@ -3872,7 +3880,7 @@ class Objects(Object):
 			parameters = None
 
 		cls = Parameters
-		kwargs = dict(
+		keywords = dict(
 			parameters={i:self.data[i].parameters 
 				for i in self.data 
 				if ((self.data[i] is not None) and 
@@ -3881,9 +3889,15 @@ class Objects(Object):
 			system=self.system
 		)
 
-		parameters = cls(**kwargs)
+		parameters = cls(**keywords)
 
 		self.parameters = parameters
+
+
+		# Set kwargs
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])		
 
 
 		# Set identity
@@ -4966,7 +4980,7 @@ class Module(System):
 				continue
 
 			locality = max(model.locality for model in models[key])
-			where = list(set((i for model in models[key] for i in model.site)))
+			where = list(set((i for model in models[key] if isinstance(model.site,iterables) for i in model.site)))
 
 			for model in models[key]:
 				parameters = model.parameters()
@@ -5036,6 +5050,16 @@ class Module(System):
 		options = dict(key=configuration.get('key'),sort=configuration.get('sort')) if configuration is not None else {}
 
 		model = groupby(model,**options)
+
+		# for key in model:
+		# 	shape=(instance.D,instance.N,instance.ndim)
+		# 	axes=list(set(i for instance in model[key] if isinstance(instance.site,iterables) for i in instance.site))
+		# 	for instance in model[key]:
+		# 		options= dict(
+		# 			shape=(*shape[:1],self.N,*shape[2:]),
+		# 			axes=[[axes.index(i) for i in indices.site]] if isinstance(instance.site,iterables) else None
+		# 			)
+		# 		instance.init(options=options)
 
 		return model
 

@@ -646,6 +646,7 @@ def test_module(*args,**kwargs):
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.local":[True],"state.local":[False],
 		"model.configuration":[{"key":["site"]}],
+		"module.configuration":[{"key":["site"]}],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
 		"module.measure.architecture":["tensor"],
@@ -780,7 +781,6 @@ def test_module(*args,**kwargs):
 			print(model.data[i],model.data[i](model.data[i].parameters(),model.data[i].identity))
 		print(model.parameters())
 		print(model.state())
-		exit()
 
 		probability = measure.probability(parameters=parameters,state=state)
 
@@ -837,6 +837,7 @@ def test_module(*args,**kwargs):
 		module.init(model=model,state=state)
 
 		module.info(verbose=True)
+		exit()
 
 		parameters = module.parameters()
 		state = module.state()
@@ -852,8 +853,8 @@ def test_module(*args,**kwargs):
 		state = load(settings.cls.state)
 		system = settings.system
 
-		model = model(**{**settings.model,**dict(N=module.N,M=module.M,options=dict(shape=(settings.state.D,settings.module.N,settings.state.ndim))),**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(N=module.N),**dict(system=system)})
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
 		model.init(state=state)
 
