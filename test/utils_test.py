@@ -1020,6 +1020,33 @@ def test_groupby(path=None,tol=None):
 		print()
 	return
 
+def test_structure(path=None,tol=None):
+
+	from src.utils import array,structure,einsum,arrays
+
+	n = 10
+	d = 2
+	k = 2
+	shape = (n**d,)*k
+	dtype = None
+
+	subscripts = 'ij,jk->ik'
+
+	a = structure(shape=shape,dtype=dtype)
+
+	print(isinstance(a,arrays))
+
+
+	attrs = ['shape','size','ndim','dtype','nbytes']
+
+	for attr in attrs:
+		print(attr,getattr(a,attr))
+
+	# b = einsum(subscripts,a,a)
+	# print(b)
+
+	return
+
 
 
 if __name__ == '__main__':
@@ -1041,4 +1068,5 @@ if __name__ == '__main__':
 	# test_stability(path,tol)
 	# test_concatenate(path,tol)
 	# test_seed(path,tol)
-	test_groupby(path,tol)
+	# test_groupby(path,tol)
+	test_structure(path,tol)

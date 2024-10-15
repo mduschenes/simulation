@@ -175,6 +175,67 @@ def test_channel(*args,**kwargs):
 	return
 
 
+def test_tensorproduct(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State"
+		},
+		"model":{
+			"data":{
+				"cnot":{
+					"operator":["CNOT"],"site":"<ij>","string":"cnot",
+					"parameters":None,
+					"variable":False
+				},
+				"hadamard":{
+					"operator":["H"],"site":"i","string":"hadamard",
+					"parameters":None,
+					"variable":False
+				}					
+			},
+			"N":4,"D":2,"ndim":2,"local":True,
+			"system":{
+				"seed":12345,"dtype":"complex",
+				"architecture":None,"configuration":[{"key":["site"]}]
+				}
+		},	
+		"state": {
+			"data":None	,
+			"operator":"zero",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,"ndim":2,
+			"system":{"seed":12345,"dtype":"complex","architecture":None}
+			},
+	})
+
+	verbose = True
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+
+	model = model(**settings.model)
+	state = state(**settings.state)
+	model.init(state=state)
+
+	model.info(verbose=verbose)
+	state.info(verbose=verbose)
+	# for i in model.data:
+	# 	print(i,model.data[i])
+	# 	for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
+	# 		print(key,value)
+	# 	parameters = model.data[i].parameters()
+	# 	tmp = tensorprod([load(settings.cls.state)(**settings.state)()]*model.data[i].locality)
+	# 	model.data[i].init(state=tmp)
+	# 	print(model.data[i](parameters=parameters,state=tmp))
+	# 	print()
+	# exit()
+
+	return
+
 def test_composite(*args,**kwargs):
 
 	kwargs = {
@@ -185,7 +246,6 @@ def test_composite(*args,**kwargs):
 		"model.M":[1],
 		"model.ndim":[2],"state.ndim":[2],
 		"model.local":[True],
-		"model.independent":[True],		
 		"model.configuration":[{"key":["site"]}],
 		"model.data":[{
 			"xx":{
@@ -1042,5 +1102,6 @@ if __name__ == "__main__":
 	# test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 	# test_algebra(*args,**args)
+	test_tensorproduct(*args,**args)

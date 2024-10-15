@@ -178,6 +178,62 @@ class none(object):
 
 null = Null()
 
+class structure(object):
+	'''
+	array placeholder class
+	Args:
+		args (iterable): Dataframe arguments
+		kwargs (dict): Dataframe keyword arguments
+	Returns:
+		out (array): dataframe
+	'''
+	def __init__(self,shape=None,dtype=None,**kwargs):
+		self._shape = () if shape is None else (shape,) if not isinstance(shape,iterables) else (*shape,)
+		self._dtype = float if dtype is None else dtype
+		self._data = asscalar(asarray(0,dtype=self.dtype))
+		return 
+
+	@property
+	def shape(self):
+		return self._shape
+	
+	@property
+	def size(self):
+		return prod(self.shape)
+	
+	@property
+	def ndim(self):
+		return len(self.shape)
+
+	@property
+	def dtype(self):
+		return self._dtype
+
+	@property
+	def data(self):
+		return self._data
+
+	@property
+	def nbytes(self):
+		return sys.getsizeof(self)
+
+	def __len__(self):
+		return self.shape[0]
+
+	def __iter__(self):
+		for i in range(len(self)):
+			yield self.data
+
+	def __getitem__(self,item):
+		return self.data
+
+	def __setitem__(self,item,value):
+		self.data = self.dtype(value)
+		return
+
+
+
+
 # Types
 
 
@@ -196,7 +252,7 @@ if backend in ['jax','jax.autograd']:
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))
-	arrays = (np.ndarray,onp.ndarray)
+	arrays = (np.ndarray,onp.ndarray,structure)
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 
 	iterables = (*arrays,list,tuple,set)
@@ -225,7 +281,7 @@ elif backend in ['autograd']:
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
-	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
+	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,structure)
 	tensors = (qtn.Tensor,qtn.TensorNetwork)
 
 	iterables = (*arrays,list,tuple,set)
@@ -2351,58 +2407,6 @@ class dataframe(pd.DataFrame):
 	def __new__(cls,*args,**kwargs):
 		return pd.DataFrame(*args,**kwargs)
 		# return super().__init__(cls,*args,**kwargs)
-
-
-class entity(object):
-	'''
-	dataframe class
-	Args:
-		args (iterable): Dataframe arguments
-		kwargs (dict): Dataframe keyword arguments
-	Returns:
-		out (array): dataframe
-	'''
-	def __init__(self,shape=None,dtype=None,**kwargs):
-		self._shape = () if shape is None else (shape,) if not isinstance(shape,iterables) else (*shape,)
-		self._dtype = float if dtype is None else dtype
-		self._data = asscalar(asarray(0,dtype=self.dtype))
-		return 
-
-	@property
-	def shape(self):
-		return self._shape
-	
-	@property
-	def size(self):
-		return prod(self.shape)
-	
-	@property
-	def ndim(self):
-		return len(self.shape)
-
-	@property
-	def dtype(self):
-		return self._dtype
-
-	@property
-	def data(self):
-		return self._data
-
-	def __len__(self):
-		return self.shape[0]
-
-	def __iter__(self):
-		for i in range(len(self)):
-			yield self.data
-
-	def __getitem__(self,item):
-		return self.data
-
-	def __setitem__(self,item,value):
-		self.data = self.dtype(value)
-		return
-
-
 
 
 class identity(array):
