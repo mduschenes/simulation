@@ -13,12 +13,11 @@ for PATH in PATHS:
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,structure,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,tensornetwork,gate,mps,representation
-from src.utils import addition,product
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,norm,eig,diag,inv
-from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,sqrtm,sort,relsort,prod,product
+from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,norm,eig,diag,inv,addition,product
+from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sqrtm,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
-from src.utils import insertion,swap,shuffle,groupby,sortby,union,intersection,interleaver,splitter,seeder
+from src.utils import insertion,swap,shuffle,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
 
@@ -2024,7 +2023,7 @@ class Object(System):
 		state = self.state() if callable(self.state) else self.state
 		where = self.site if self.local else None
 
-		if local:
+		if self.local:
 			if self.state is not None and self.state() is not None:
 				try:
 					D = self.state.D
@@ -2036,7 +2035,7 @@ class Object(System):
 					ndim = state.ndim
 			else:
 				D = self.D
-				N = self.S
+				N = self.N
 				ndim = self.ndim				
 		else:
 			D = self.D
@@ -2045,7 +2044,7 @@ class Object(System):
 		
 
 		shape = (D,N,ndim)
-		axes = [site] if not any(i not in range(N) for i in site) else [[list(range(N))]]
+		axes = [self.site] if not any(i not in range(N) for i in self.site) else [[list(range(N))]]
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
@@ -2761,14 +2760,19 @@ class Pauli(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				data = tensorprod([(
-					basis.get(operator[site.index(i)])(**{**options})
-					if isinstance(operator[site.index(i)],str) else 
-					operator[site.index(i)]() 
-					if callable(operator[site.index(i)]) else
-					operator[site.index(i)])
-					for i in site
-					]) if operator is not None else None
+				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
+							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				if isinstance(operator,str):
+
+					data = basis.get(operator)(**{**options})
+
+				elif isinstance(operator,iterables):
+	
+					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
+
+				else:
+					data = None
 
 				default = basis.get(default)(**{**options})
 
@@ -2975,21 +2979,20 @@ class Gate(Object):
 					data = None
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
-				
-				operator = [operator]*len(site) if isinstance(operator,str) else [i for i in operator]
 
+				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
+							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
 				
-				assert sum(Basis.locality(basis.get(operator)))
-				print(local,locality,site,operator)
+				if isinstance(operator,str):
 
-				data = tensorprod([(
-					basis.get(operator[site.index(i)])(**{**options})
-					if isinstance(operator[site.index(i)],str) else 
-					operator[site.index(i)]() 
-					if callable(operator[site.index(i)]) else
-					operator[site.index(i)])
-					for i in site
-					]) if operator is not None else None
+					data = basis.get(operator)(**{**options})
+
+				elif isinstance(operator,iterables):
+	
+					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
+
+				else:
+					data = None
 
 				default = basis.get(default)(**{**options})
 
@@ -3181,14 +3184,19 @@ class Haar(Object):
 			
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				data = tensorprod([(
-					basis.get(operator[site.index(i)])(**{**options})
-					if isinstance(operator[site.index(i)],str) else 
-					operator[site.index(i)]() 
-					if callable(operator[site.index(i)]) else
-					operator[site.index(i)])
-					for i in site
-					]) if operator is not None else None
+				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
+							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				if isinstance(operator,str):
+
+					data = basis.get(operator)(**{**options})
+
+				elif isinstance(operator,iterables):
+	
+					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
+
+				else:
+					data = None
 
 				default = basis.get(default)(**{**options})
 
@@ -3411,14 +3419,19 @@ class Noise(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				data = tensorprod([(
-					basis.get(operator[site.index(i)])(**{**options})
-					if isinstance(operator[site.index(i)],str) else 
-					operator[site.index(i)]() 
-					if callable(operator[site.index(i)]) else
-					operator[site.index(i)])
-					for i in site
-					]) if operator is not None else None
+				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
+							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				if isinstance(operator,str):
+
+					data = basis.get(operator)(**{**options})
+
+				elif isinstance(operator,iterables):
+	
+					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
+
+				else:
+					data = None
 
 				default = basis.get(default)(**{**options})
 
@@ -3603,14 +3616,19 @@ class State(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				data = tensorprod([(
-					basis.get(operator[site.index(i)])(**{**options})
-					if isinstance(operator[site.index(i)],str) else 
-					operator[site.index(i)]() 
-					if callable(operator[site.index(i)]) else
-					operator[site.index(i)])
-					for i in site
-					]) if operator is not None else None
+				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
+							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				if isinstance(operator,str):
+
+					data = basis.get(operator)(**{**options})
+
+				elif isinstance(operator,iterables):
+	
+					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
+
+				else:
+					data = None
 
 				default = basis.get(default)(**{**options})
 
@@ -4613,9 +4631,25 @@ class Objects(Object):
 		status = self.status() if status is None else status
 		data = self.data if data is None else data
 
-		site = list(set((*(j
-				for i in data if data[i] is not None and isinstance(data[i].site,iterables)
-				for j in data[i].site),*(self.site if isinstance(self.site,iterables) else ()),))) if data is not None else None
+		site = []
+		for i in data:
+			if data[i] is None or not isinstance(data[i].site,iterables):
+				continue
+			site.extend([j for j in data[i].site if j not in site])
+
+		print(site)
+		attrs = ['local','locality','site','operator']
+		for i in data:
+
+			where = [0,*accumulate((Basis.locality(data[i].basis.get(j)) for j in (data[i].operator if isinstance(data[i].operator,iterables) else [data[i].operator])))]
+
+			print(where,len(data[i].site))
+			print(i,data[i],where,[data[i].site[where[j]:where[j+1]] for j in range(len(where)-1)])
+			for attr in attrs:
+				print(attr,getattr(data[i],attr))
+			print()
+
+		# where = [data[i].site[j] for j in accumulate((Basis.locality(data[i].basis.get(j)) for j in data[i].site))]
 
 		operator = [separ.join(sorted(set([
 					data[i].operator[data[i].site.index(j)] if isinstance(data[i].operator,iterables) else data[i].operator for i in data 

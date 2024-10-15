@@ -184,6 +184,11 @@ def test_tensorproduct(*args,**kwargs):
 		},
 		"model":{
 			"data":{
+				"cnot-hadamard":{
+					"operator":["S","CNOT","H"],"site":[3,2,0,5],"string":"cnot-hadamard",
+					"parameters":None,
+					"variable":False
+				},
 				"cnot":{
 					"operator":["CNOT"],"site":"<ij>","string":"cnot",
 					"parameters":None,
@@ -195,10 +200,10 @@ def test_tensorproduct(*args,**kwargs):
 					"variable":False
 				}					
 			},
-			"N":4,"D":2,"ndim":2,"local":True,
+			"N":6,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":12345,"dtype":"complex",
-				"architecture":None,"configuration":[{"key":["site"]}]
+				"architecture":None,"configuration":{"key":["site"]},
 				}
 		},	
 		"state": {

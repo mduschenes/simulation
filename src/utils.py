@@ -8374,6 +8374,17 @@ def intersection(*iterables,sort=False):
 
 	return intersection
 
+
+def accumulate(iterable):
+	'''
+	Cumulative summation of iterable
+	Args:
+		iterable (iterable): iterable to sum of length size
+	Returns:
+		accumulation (iterable): cumulative summation of elements of length size
+	'''
+	return itertools.accumulate(iterable)
+
 def copier(key,value,_copy):
 	'''
 	Copy value based on associated key 
