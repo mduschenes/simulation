@@ -565,7 +565,8 @@ class Measure(System):
 		data=None,base=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		basis=None,inverse=None,identity=None,
-		parameters=None,variable=False,
+		parameters=None,
+		variable=False,
 		func=None,gradient=None,
 		)
 
@@ -1711,8 +1712,8 @@ class Object(System):
 
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
-		state=None,conj=False,parameters=None,variable=None,
-		local=None,locality=None,
+		state=None,parameters=None,conj=False,
+		local=None,locality=None,variable=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,base=None,
 		space=None,time=None,lattice=None,
@@ -1740,6 +1741,13 @@ class Object(System):
 
 			return
 
+		# Set attributes
+		#	N: size of system acted on by locality number of non-local operators with indices site
+		#	local (bool): whether operator acts locally
+		# 	locality (int): number of indices acted on locally, non-trivially by operator
+		#	site (iterable[int]): indices of local action within space of size N
+
+
 		basis = self.basis
 		default = self.default
 		
@@ -1749,15 +1757,13 @@ class Object(System):
 
 		local = self.local if self.local is not None else None
 		locality = self.locality if self.locality is not None else None
+		variable = self.variable if self.variable is not None else None
 
 		N = self.N if self.N is not None else None
 		D = self.D if self.D is not None else None
 
 
-		# Set local, locality, site
-		#	local (bool): whether operator acts locally
-		# 	locality (int): number of indices acted on locally, non-trivially by operator
-		#	site (iterable[int]): indices of local action within space of size N
+		# Set local, locality, variable, site
 		local = local
 
 		if locality is not None:
@@ -1773,6 +1779,11 @@ class Object(System):
 		else:
 			locality = 1
 
+		if variable is not None:
+			variable = variable
+		else:
+			variable = None
+
 		if site is not None:
 			site = site
 		else:
@@ -1780,7 +1791,6 @@ class Object(System):
 
 
 		# Set N
-		#	N: size of system acted on by locality number of non-local operators with indices site
 		N = locality if local and N is None else N
 
 
@@ -1845,6 +1855,7 @@ class Object(System):
 
 		local = local
 		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if isinstance(site,iterables) else 0,locality if local else N) if locality is not None or isinstance(site,iterables) else None
+		variable = variable
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 		site = site[:locality] if isinstance(site,iterables) else site
@@ -1860,8 +1871,9 @@ class Object(System):
 		self.string = string if string is not None else None
 		self.system = system if system is not None else None
 
-		self.locality = locality
 		self.local = local
+		self.locality = locality
+		self.variable = variable
 
 		self.N = N
 		self.D = D
@@ -1871,20 +1883,20 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		self.init(data=self.data,state=self.state,conj=self.conj,parameters=self.parameters)
+		self.init(data=self.data,state=self.state,parameters=self.parameters,conj=self.conj)
 
 		self.info()
 
 		return
 
-	def init(self,data=None,state=None,conj=False,parameters=None,**kwargs):
+	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
 		'''
 		Initialize operator
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,Object): state of class
-			conj (bool): conjugate
 			parameters (array,dict): parameters of class
+			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
@@ -1936,7 +1948,9 @@ class Object(System):
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
+			print(parameters,type(parameters))
 			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			print(dict(keywords))
 			self.parameters.init(**keywords)
 
 		else:
@@ -1969,31 +1983,44 @@ class Object(System):
 			data = self.data
 		
 		elif isinstance(self.operator,objects) or callable(self.operator):
-			self.operator = self.string
 			data = self.operator
+			self.operator = self.string
 		
 		elif self.operator is None:
 			data = None
 		
-		elif isinstance(self.operator,iterables) or isinstance(self.operator,str):
-			basis = self.basis
-			default = self.default
-			operator = self.operator if isinstance(self.operator,iterables) else [self.operator]*len(self.site)
-			site = self.site
-			where = self.site if self.local else range(self.N if self.N is not None else self.locality if self.locality is not None else len(self.operator) if isinstance(self.operator,iterables) else 1)
-			options = dict(D=self.D,dtype=dtype,system=system)
+		elif isinstance(self.operator,str) or isinstance(self.operator,iterables):
 
-			data = tensorprod([
-				basis.get((
-				operator[site.index(i)]
-				if isinstance(operator[site.index(i)],str) else 
-				operator[site.index(i)]() 
-				if callable(operator[site.index(i)]) else
-				operator[site.index(i)])
-				if i in site else default)(**{**options})
-				for i in where]) if all(i in basis for i in operator) else None
+			options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+
+			assert (sum(Basis.locality(self.basis.get(i)) for i in self.operator) if isinstance(self.operator,iterables) else 
+						Basis.locality(self.basis.get(self.operator))) == self.locality, "Incorrect locality %r.locality != %d"%(self.operator,self.locality)
+				
+			where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+			where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
+			if isinstance(self.operator,str):
+
+				data = self.basis.get(self.operator)(**{**options})
+
+			elif isinstance(self.operator,iterables):
+
+				data = tensorprod([self.basis.get(i)(**{**options}) for i in self.operator])
+
+			else:
+				data = None
+
+			default = self.basis.get(self.default)(**{**options})
+
+			if local:
+				data = data if data is not None else None
+			else:
+				data = shuffle(tensorprod((data,*(default,)*(self.N-self.locality))),axes=self.site,shape=(self.D,self.N,self.ndim)) if data is not None else None
+				
+			data = array(data,dtype=dtype) if data is not None else None
 
 		else:
+			
 			data = self.data
 
 		self.data = data
@@ -2286,91 +2313,109 @@ class Object(System):
 		Args:
 			other (class,int): class instance or integer for tensor product
 		Returns:
-			new (class): new class instance with tensor product of instance and other
+			instance (class): new class instance with tensor product of instance and other
 		'''
-		raise NotImplementedError("<%r> @ <%r> Not Implemented"%(self,other))
 
-		# if isinstance(other,type(self)):
-	
-		# 	assert (self.ndim == other.ndim), 'Incorrect dimensions %r != %r'%(self.ndim,other.ndim)
+		if other is self or isinstance(other,integers):
 
-		# 	assert 
+			if other is self:
+				other = 2
 
-		# elif isinstance(other,integers):
+			if not ((not self.variable) and (self.parameters() is None or not len(self.parameters()))):
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
 
-		# else:
-		# 	raise NotImplementedError("<%r> @ <%r> Not Implemented"%(self,other))
+			if (not isinstance(self.site,iterables)):
+					raise NotImplementedError("<%r> @ <%r> Not Implemented - Disjoint support required"%(self,other))
 
+			data = None
+			operator = ([*self.operator] if isinstance(self.operator,iterables) else [self.operator])*other
+			site = [i+self.N*j for j in range(other) for i in self.site]
+			string = delim.join((self.string,)*other) if self.string is not None else None
 
-		#TODO: Clean up site,operator,locality initialization and merging, allowing non-local operators and sites
+			local = self.local
+			locality = self.locality*other
+			variable = self.variable
+			
+			N = self.N*other
+			D = self.D
+			ndim = self.ndim
 
-		if ((isinstance(self.operator,str)) or 
-			(self.operator is None) or 
-			(self.site is None) or 
-			(not isinstance(self.operator,str) and 
-			 len(self.site) != sum(i not in [self.default] for i in self.operator))
-			):
-			raise NotImplementedError('TODO: Allow matmul for non-local sites %r and basis operators %r'%(self.site,self.operator))
-
-		if ((isinstance(other.operator,str)) or 
-			(other.operator is None) or 
-			(other.site is None) or 
-			(not isinstance(other.operator,str) and 
-			 len(other.site) != sum(i not in [other.default] for i in other.operator))
-			):
-			raise NotImplementedError('TODO: Allow matmul for non-local sites %r and basis operators %r'%(other.site,other.operator))
-
-		if (self.variable) or (other.variable):
-			raise NotImplementedError('TODO: Allow variable object matmul')
-
-
-		if self.data is None and other.data is None:
-			data = self.func()
-		elif self.data is None and other.data is not None:
-			data = other.func()
-		elif isinstance(self.data,arrays) and self.data.ndim == 1 and other.data.ndim == 1:
-			data = self.func()*other.func()
-		elif isinstance(self.data,arrays) and self.data.ndim == 2 and other.data.ndim == 2:
-			data = self.func() @ other.func()
-		elif isinstance(self.data,objects):
-			data = self.func() @ other.func()
-		else:
-			data = self.func() @ other.func()
-
-		operator = []
-		site = []
-		for i in range(self.locality):
-			if self.site[i] in other.site:
-				s = [i for i in self.operator if i not in [self.default]][i]
-				t = [i for i in other.operator if i not in [other.default]][other.site.index(self.site[i])]
-				operator.append(s+t)
-				site.append(self.site[i])
+			if self.state is not None and self.state() is not None:
+				try:
+					state = self.state @ other
+				except Exception as exception:
+					state = None
 			else:
-				s = [i for i in self.operator if i not in [self.default]][i]
-				operator.append(s)
-				site.append(self.site[i])
-		
-		for i in range(other.locality):
-			if other.site[i] not in self.site:
-				s = [i for i in other.operator if i not in [other.default]][i]
-				operator.append(s)
-				site.append(other.site[i])
+				state = None
 
-		if self.string is None and other.string is None:
-			string = self.string
-		elif self.string is None and other.string is not None:
-			string = other.string
-		elif self.string is not None and other.string is not None:
-			string = '@'.join([self.string,other.string])
+			parameters = self.parameters
+
+			conj = self.conj
+
+		elif isinstance(other,type(self)):
+
+			if not ((not self.variable and not other.variable) and 
+					((self.parameters() is None and other.parameters() is None) or
+					 (not len(self.parameters()) and not len(other.parameters())))):
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
+
+			if (not isinstance(self.site,iterables) or not isinstance(other.site,iterables)) or len(intersection(self.site,other.site)) > 0:
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Disjoint support required"%(self,other))
+
+			if (self.D != other.D) or (self.ndim != other.ndim):
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical dimensions required"%(self,other))
+
+			data = None
+			operator = [*(self.operator if isinstance(self.operator,iterables) else [self.operator]),
+						*(other.operator if isinstance(other.operator,iterables) else [other.operator])]
+			site = [*(self.site if isinstance(self.site,iterables) else [self.site]),
+					*(other.site if isinstance(other.site,iterables) else [other.site])]
+			string = delim.join((self.string,other.string)) if self.string is not None and other.string is not None else self.string if self.string is not None else other.string if other.string is not None else None
+
+			local = all((self.local,other.local))
+			locality = sum((self.locality,other.locality))
+			variable = all((self.variable,other.variable))
+			
+			N = max((self.N,other.N,max(self.site)+1,max(other.site)+1))
+			D = max((self.D,other.D))
+			ndim = self.ndim
+
+			if self.state is not None and other.state is not None and self.state() is not None and other.state() is not None:
+				try:
+					state = self.state @ other.state
+				except:
+					state = None
+			elif self.state is not None:
+				state = self.state
+			elif other.state is not None:
+				state = other.state
+			else:
+				state = None
+
+			parameters = self.parameters
+
+			conj = all((self.conj,other.conj))
+
+		else:
+			
+			raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical classes required"%(self,other))
+		
 
 		kwargs = {
-			**other,
 			**self,
-			**dict(data=data,operator=operator,site=site,string=string),
-			**dict(parameters=None,func=None,gradient=None),
+			**dict(
+				data=data,operator=operator,site=site,string=string,
+				local=local,locality=locality,variable=variable,
+				N=N,D=D,ndim=ndim,
+				state=state,parameters=parameters,conj=conj
+				)
 			}
 
-		return self.__class__(**kwargs)
+		
+		instance = self.__class__(**kwargs)
+
+		
+		return instance
 
 
 	def info(self,display=None,ignore=None,verbose=None):
@@ -2491,7 +2536,7 @@ class Object(System):
 						substring = None if not len(substring) else substring
 					else:
 						substring = getattr(self.parameters,subattr)
-						substring = None if (0 in substring) else substring
+						substring = None if substring is None or (0 in substring) else substring
 
 					if isinstance(substring,(str,int,list,tuple,*arrays)):
 						substring = '%s'%(substring,)
@@ -2763,6 +2808,9 @@ class Pauli(Object):
 				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
 							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
 				
+				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
 				if isinstance(operator,str):
 
 					data = basis.get(operator)(**{**options})
@@ -2982,7 +3030,10 @@ class Gate(Object):
 
 				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
 							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
-				
+
+				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
 				if isinstance(operator,str):
 
 					data = basis.get(operator)(**{**options})
@@ -3186,7 +3237,10 @@ class Haar(Object):
 				
 				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
 							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
-				
+
+				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
 				if isinstance(operator,str):
 
 					data = basis.get(operator)(**{**options})
@@ -3422,6 +3476,9 @@ class Noise(Object):
 				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
 							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
 				
+				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
 				if isinstance(operator,str):
 
 					data = basis.get(operator)(**{**options})
@@ -3619,6 +3676,9 @@ class State(Object):
 				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
 							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
 				
+				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+
 				if isinstance(operator,str):
 
 					data = basis.get(operator)(**{**options})
@@ -3903,14 +3963,14 @@ class Objects(Object):
 
 		return	
 
-	def init(self,data=None,state=None,conj=False,parameters=None,**kwargs):
+	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
 		''' 
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
-			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
+			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments			
 		'''
 
@@ -4168,7 +4228,10 @@ class Objects(Object):
 		objs = Dictionary(operator=operator,site=site,string=string)
 
 		# Get data and kwargs
-		if isinstance(data,dict) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs) :
+		if (isinstance(data,dict) or data is None) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs):
+
+			if data is None:
+				data = {None:{}}
 
 			for obj in objs:
 				for name in data:
@@ -4179,6 +4242,7 @@ class Objects(Object):
 
 		for obj in objs:
 			objs[obj] = [] if not isinstance(objs[obj],list) else objs[obj]
+
 
 		if isinstance(data,dict):
 			for name in data:
@@ -4637,35 +4701,9 @@ class Objects(Object):
 				continue
 			site.extend([j for j in data[i].site if j not in site])
 
-		print(site)
-		attrs = ['local','locality','site','operator']
-		for i in data:
-
-			where = [0,*accumulate((Basis.locality(data[i].basis.get(j)) for j in (data[i].operator if isinstance(data[i].operator,iterables) else [data[i].operator])))]
-
-			print(where,len(data[i].site))
-			print(i,data[i],where,[data[i].site[where[j]:where[j+1]] for j in range(len(where)-1)])
-			for attr in attrs:
-				print(attr,getattr(data[i],attr))
-			print()
-
-		# where = [data[i].site[j] for j in accumulate((Basis.locality(data[i].basis.get(j)) for j in data[i].site))]
-
-		operator = [separ.join(sorted(set([
-					data[i].operator[data[i].site.index(j)] if isinstance(data[i].operator,iterables) else data[i].operator for i in data 
-					if data[i] is not None and 
-					(isinstance(data[i].operator,iterables) or isinstance(data[i].operator,str)) and 
-					isinstance(data[i].site,iterables)
-					and j in data[i].site]),
-					key = lambda operator: [operator if (
-						(isinstance(data[i].operator,iterables) and operator in data[i].operator) or 
-						(isinstance(data[i].operator,str) and operator == data[i].operator)) else None
-						for i in data
-						if data[i] is not None and 
-						(isinstance(data[i].operator,iterables) or isinstance(data[i].operator,str)) and 
-						isinstance(data[i].site,iterables)].index(operator)
-					))
-					for j in site] if data is not None and site is not None else None
+		operator = separ.join([
+					delim.join(data[i].operator) if isinstance(data[i].operator,iterables) else data[i].operator
+					for i in data if data[i] is not None and data[i].operator is not None])
 
 		string = separ.join([data[i].string for i in data if data[i] is not None]) if data is not None else None
 
@@ -4783,17 +4821,17 @@ class Channel(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['channel']}}
 
-	def init(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,parameters=None,conj=False):
 		''' 
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
-			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
+			conj (bool): conjugate
 		'''
 
-		super().init(data=data,state=state,conj=conj,parameters=parameters)
+		super().init(data=data,state=state,parameters=parameters,conj=conj)
 
 		# Set data
 		for i in self.data:
@@ -4864,17 +4902,17 @@ class Operators(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.I for attr in ['operators']}}
 
-	def init(self,data=None,state=None,conj=False,parameters=None):
+	def init(self,data=None,state=None,parameters=None,conj=False):
 		''' 
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
-			conj (bool): conjugate
 			parameters (dict,array,Parameters): parameters of class
+			conj (bool): conjugate
 		'''
 
-		super().init(data=data,state=state,conj=conj,parameters=parameters)
+		super().init(data=data,state=state,parameters=parameters,conj=conj)
 
 
 		# Set data
@@ -4995,7 +5033,8 @@ class Module(System):
 	defaults = dict(
 		model=None,
 		N=None,M=None,
-		state=None,parameters=None,variable=False,
+		state=None,parameters=None,
+		variable=False,
 		data=None,measure=None,callback=None,
 		func=None,gradient=None,
 		system=None,

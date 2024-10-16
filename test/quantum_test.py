@@ -180,27 +180,28 @@ def test_tensorproduct(*args,**kwargs):
 	settings = Dict({
 		"cls":{
 			"model":"src.quantum.Operators",
-			"state":"src.quantum.State"
+			"state":"src.quantum.State",
+			"basis":"src.quantum.Basis"
 		},
 		"model":{
 			"data":{
-				"cnot-hadamard":{
-					"operator":["S","CNOT","H"],"site":[3,2,0,5],"string":"cnot-hadamard",
-					"parameters":None,
-					"variable":False
-				},
-				"cnot":{
+				# "cnot-hadamard":{
+				# 	"operator":["S","CNOT","H"],"site":[3,2,0,5],"string":"cnot-hadamard",
+				# 	"parameters":None,
+				# 	"variable":False
+				# },
+				"data":{
 					"operator":["CNOT"],"site":"<ij>","string":"cnot",
 					"parameters":None,
 					"variable":False
 				},
-				"hadamard":{
-					"operator":["H"],"site":"i","string":"hadamard",
-					"parameters":None,
-					"variable":False
-				}					
+				# "hadamard":{
+				# 	"operator":["H"],"site":"i","string":"hadamard",
+				# 	"parameters":None,
+				# 	"variable":False
+				# }					
 			},
-			"N":6,"D":2,"ndim":2,"local":True,
+			"N":2,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":12345,"dtype":"complex",
 				"architecture":None,"configuration":{"key":["site"]},
@@ -208,11 +209,11 @@ def test_tensorproduct(*args,**kwargs):
 		},	
 		"state": {
 			"data":None	,
-			"operator":"zero",
+			"operator":"plus",
 			"site":None,
 			"string":"psi",
 			"parameters":None,
-			"D":2,"ndim":2,
+			"D":2,"ndim":2,"local":True,"variable":False,
 			"system":{"seed":12345,"dtype":"complex","architecture":None}
 			},
 	})
@@ -221,13 +222,42 @@ def test_tensorproduct(*args,**kwargs):
 
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
+	basis = load(settings.cls.basis)
 
 	model = model(**settings.model)
 	state = state(**settings.state)
-	model.init(state=state)
+	# model.init(state=state)
 
 	model.info(verbose=verbose)
+
 	state.info(verbose=verbose)
+
+	# attrs = ['local','variable','locality','state','parameters']
+	# for attr in attrs:
+	# 	value = getattr(state,attr) if not callable(getattr(state,attr)) else getattr(state,attr)()
+	# 	print(attr,value)
+
+
+	new = model @ model
+	new.info(verbose=verbose)
+	
+	test = new(parameters=new.parameters(),state=new.state())
+
+	_test = tensorprod([getattr(basis,j)(**settings.model) for i in settings.model.data for j in settings.model.data[i].operator]*2)
+
+	assert allclose(test,_test), "Incorrect model @ model"
+
+
+	new = state @ state
+	new.info(verbose=verbose)
+
+	test = new(parameters=new.parameters(),state=new.state())
+
+	_test = tensorprod([getattr(basis,settings.state.operator)(**settings.state)]*2)
+
+	assert allclose(test,_test), "Incorrect model @ model"
+
+
 	# for i in model.data:
 	# 	print(i,model.data[i])
 	# 	for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():

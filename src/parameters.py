@@ -106,7 +106,7 @@ class Parameter(System):
 		else:
 			return 0
 
-	def init(self,data=None,parameters=None,indices=None,variable=None):
+	def init(self,data=None,parameters=None,indices=None,variable=None,**kwargs):
 		'''
 		Initialize class data
 		Args:
@@ -114,6 +114,7 @@ class Parameter(System):
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
 			variable (bool): Parameter is variable or constant
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		# Set data
@@ -142,6 +143,12 @@ class Parameter(System):
 				self.parameters = Dict({**self.parameters,**dict(parameters=parameters)})
 			else:
 				self.parameters = Dict({**self.parameters,**parameters})
+
+		
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])		
+
 
 		self.data = initialize(**self)
 
@@ -420,7 +427,7 @@ class Parameters(System):
 		return
 
 
-	def init(self,data=None,parameters=None,indices=None,variable=None):
+	def init(self,data=None,parameters=None,indices=None,variable=None,**kwargs):
 		'''
 		Initialize class data
 		Args:
@@ -428,6 +435,7 @@ class Parameters(System):
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
 			variable (bool): Parameter is variable or constant
+			kwargs (dict): Additional class keyword arguments
 		'''
 	
 		data = self.data if data is not None else data
@@ -439,6 +447,10 @@ class Parameters(System):
 		self.parameters = parameters
 		self.indices = indices
 		self.variable = variable
+
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])		
 
 		return
 
