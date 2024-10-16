@@ -1972,10 +1972,8 @@ class Object(System):
 		self.state = state
 
 
-		if self.local:
-			identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.locality)
-		else:
-			identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.N)
+		options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+		identity = tensorprod([Basis.identity(**{**options})]*(self.locality if self.local else self.N))
 
 		self.identity = identity
 
@@ -4078,7 +4076,8 @@ class Objects(Object):
 
 
 		# Set identity
-		identity = tensorprod([Basis.identity(D=self.D,system=self.system)]*self.N) if self.identity is None else self.identity
+		options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+		identity = tensorprod([Basis.identity(**{**options})]*(self.locality if self.local else self.N)) if self.identity is None else self.identity
 
 		self.identity = identity
 
@@ -5100,8 +5099,7 @@ class Module(System):
 		state = self.state if state is None else state
 
 		if state is None or not callable(state):
-			parameters = self.parameters()
-			def state(parameters=parameters,state=state):
+			def state(parameters=None,state=state):
 				return state
 		
 		self.state = state
@@ -5163,7 +5161,7 @@ class Module(System):
 
 			for model in models[key]:
 				parameters = model.parameters()
-				state = tensorprod([obj]*locality)
+				state = obj @ locality
 				model.init(state=state)
 
 			def model(parameters,state):

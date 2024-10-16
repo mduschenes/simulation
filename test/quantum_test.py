@@ -314,9 +314,9 @@ def test_tensorproduct(*args,**kwargs):
 	# 	for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
 	# 		print(key,value)
 	# 	parameters = model.data[i].parameters()
-	# 	tmp = tensorprod([load(settings.cls.state)(**settings.state)()]*model.data[i].locality)
-	# 	model.data[i].init(state=tmp)
-	# 	print(model.data[i](parameters=parameters,state=tmp))
+	# 	state = load(settings.cls.state)(**settings.state)() @ model.data[i].locality
+	# 	model.data[i].init(state=state)
+	# 	print(model.data[i](parameters=parameters,state=state))
 	# 	print()
 	# exit()
 
@@ -400,9 +400,9 @@ def test_composite(*args,**kwargs):
 			for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
 				print(key,value)
 			parameters = model.data[i].parameters()
-			tmp = tensorprod([load(settings.cls.state)(**settings.state)()]*model.data[i].locality)
-			model.data[i].init(state=tmp)
-			print(model.data[i](parameters=parameters,state=tmp))
+			state = load(settings.cls.state)(**settings.state)() @ model.data[i].locality
+			model.data[i].init(state=state)
+			print(model.data[i](parameters=parameters,state=state))
 			print()
 		exit()
 
@@ -956,10 +956,10 @@ def test_module(*args,**kwargs):
 
 		# Operator
 		parameters = model.parameters()
-		state = [obj()]*model.locality
+		state = obj @ model.locality
 		where = list(range(model.locality))
 
-		model.init(state=tensorprod(state))
+		model.init(state=state)
 
 		state = measure.probability(parameters=parameters,state=state)
 
@@ -1048,9 +1048,9 @@ def test_module(*args,**kwargs):
 
 		# Model
 		parameters = model.parameters()
-		state = tensorprod([obj()]*module.N)
+		state = obj() @ module.N
 
-		model.init(state=tensorprod(state))
+		model.init(state=state)
 
 		state = measure.probability(parameters=parameters,state=state)
 
