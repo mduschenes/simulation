@@ -8374,6 +8374,30 @@ def intersection(*iterables,sort=False):
 
 	return intersection
 
+def exclusion(*iterables,sort=False):
+	'''
+	Get exclusion of elements in iterables
+	Args:
+		iterables (iterable[iterable]): Iterables
+		sort (bool): Sort elements as per order in iterables, or naturalsort if None
+	Returns:
+		exclusion (set,list): Exclusion of iterables, set if unsorted else list
+	'''
+
+	exclusion = union(*iterables) - intersection(*iterables)
+
+	if sort is None:
+		iterables = tuple((tuple(natsorted(tuple(iterable)))
+				for iterable in iterables))
+		n = max(len(iterable) for iterable in iterables)
+		key = lambda i: min(iterable.index(i) if i in iterable else n
+				for iterable in iterables)
+		exclusion = natsorted(exclusion,key=key,reverse=False)
+	elif sort is True:
+		exclusion = sorted(exclusion,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
+
+	return exclusion
+
 
 def accumulate(iterable):
 	'''

@@ -62,10 +62,21 @@ class Basis(Dict):
 
 	@classmethod
 	def get(cls,attr):
+		parse = lambda attr: attr.lower()
+		for item in cls.__dict__:
+			if parse(item) == parse(attr):
+				return getattr(cls,item)
 		return getattr(cls,attr)
+		
+
 
 	@classmethod
 	def set(cls,attr,value):
+		parse = lambda attr: attr.lower()
+		for item in cls.__dict__:
+			if parse(item) == parse(attr):
+				setattr(cls,item,value)
+				return
 		setattr(cls,attr,value)
 		return
 
@@ -470,7 +481,6 @@ class Basis(Dict):
 		data = data.reshape((kwargs.D**2,kwargs.D,kwargs.D))
 		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
 		return data
-
 
 class context(object):
 	'''
@@ -1943,14 +1953,12 @@ class Object(System):
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,self.parameters,delimiter=delim,default=False)
-			setter(keywords,{attr: getattr(self,attr) for attr in self.system if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
+			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
 			
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
-			print(parameters,type(parameters))
 			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			print(dict(keywords))
 			self.parameters.init(**keywords)
 
 		else:
@@ -2316,16 +2324,19 @@ class Object(System):
 			instance (class): new class instance with tensor product of instance and other
 		'''
 
+		support = self.site if isinstance(self.site,iterables) else None
+		attributes = ['D','ndim']
+
 		if other is self or isinstance(other,integers):
+
+			support = self.site if support is None else support
+			attributes = [attr for attr in attributes if hasattr(self,attr)]
 
 			if other is self:
 				other = 2
 
 			if not ((not self.variable) and (self.parameters() is None or not len(self.parameters()))):
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
-
-			if (not isinstance(self.site,iterables)):
-					raise NotImplementedError("<%r> @ <%r> Not Implemented - Disjoint support required"%(self,other))
 
 			data = None
 			operator = ([*self.operator] if isinstance(self.operator,iterables) else [self.operator])*other
@@ -2348,28 +2359,31 @@ class Object(System):
 			else:
 				state = None
 
-			parameters = self.parameters
+			parameters = None
 
 			conj = self.conj
 
 		elif isinstance(other,type(self)):
+
+			support = intersection(*(obj.site for obj in (self,other) if obj is not None and obj.site is not None))
+			attributes = [attr for attr in attributes if all(hasattr(obj,attr) for obj in (self,other))]
 
 			if not ((not self.variable and not other.variable) and 
 					((self.parameters() is None and other.parameters() is None) or
 					 (not len(self.parameters()) and not len(other.parameters())))):
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
 
-			if (not isinstance(self.site,iterables) or not isinstance(other.site,iterables)) or len(intersection(self.site,other.site)) > 0:
-				raise NotImplementedError("<%r> @ <%r> Not Implemented - Disjoint support required"%(self,other))
+			if len(support) and (self.site != other.site):
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical or Disjoint support required"%(self,other))
 
-			if (self.D != other.D) or (self.ndim != other.ndim):
+			if any(getattr(self,attr) != getattr(other,attr) for attr in attributes):
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical dimensions required"%(self,other))
 
 			data = None
 			operator = [*(self.operator if isinstance(self.operator,iterables) else [self.operator]),
 						*(other.operator if isinstance(other.operator,iterables) else [other.operator])]
-			site = [*(self.site if isinstance(self.site,iterables) else [self.site]),
-					*(other.site if isinstance(other.site,iterables) else [other.site])]
+			site = [*([i for i in self.site] if isinstance(self.site,iterables) else [self.site]),
+					*([i + self.N*(len(support) > 0) for i in other.site] if isinstance(other.site,iterables) else [other.site])]
 			string = delim.join((self.string,other.string)) if self.string is not None and other.string is not None else self.string if self.string is not None else other.string if other.string is not None else None
 
 			local = all((self.local,other.local))
@@ -2392,7 +2406,7 @@ class Object(System):
 			else:
 				state = None
 
-			parameters = self.parameters
+			parameters = None
 
 			conj = all((self.conj,other.conj))
 
@@ -5120,7 +5134,7 @@ class Module(System):
 		# Measure
 		cls = Measure
 		measure = self.measure if isinstance(self.measure,dict) else {}
-		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in self.system if hasattr(self,attr)},**measure,**dict(system=self.system)}
+		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if hasattr(self,attr)},**measure,**dict(system=self.system)}
 		measure = cls(**measure)
 
 		self.measure = measure

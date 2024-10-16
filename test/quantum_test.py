@@ -181,6 +181,7 @@ def test_tensorproduct(*args,**kwargs):
 		"cls":{
 			"model":"src.quantum.Operators",
 			"state":"src.quantum.State",
+			"operator":"src.quantum.Operator",
 			"basis":"src.quantum.Basis"
 		},
 		"model":{
@@ -209,13 +210,18 @@ def test_tensorproduct(*args,**kwargs):
 		},	
 		"state": {
 			"data":None	,
-			"operator":"plus",
+			"operator":["plus","minus"],
 			"site":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,"ndim":2,"local":True,"variable":False,
 			"system":{"seed":12345,"dtype":"complex","architecture":None}
 			},
+		"operator": {
+			"operator":["CNOT"],"site":[0,1],"string":"cnot",
+			"parameters":None,
+			"variable":False
+		}
 	})
 
 	verbose = True
@@ -243,7 +249,12 @@ def test_tensorproduct(*args,**kwargs):
 	
 	test = new(parameters=new.parameters(),state=new.state())
 
-	_test = tensorprod([getattr(basis,j)(**settings.model) for i in settings.model.data for j in settings.model.data[i].operator]*2)
+	_test = tensorprod([basis.get(j)(**settings.model) 
+		for i in settings.model.data 
+		for j in (
+			settings.model.data[i].operator 
+			if isinstance(settings.model.data[i].operator,iterables) else 
+			[settings.model.data[i].operator])]*2)
 
 	assert allclose(test,_test), "Incorrect model @ model"
 
@@ -253,9 +264,49 @@ def test_tensorproduct(*args,**kwargs):
 
 	test = new(parameters=new.parameters(),state=new.state())
 
-	_test = tensorprod([getattr(basis,settings.state.operator)(**settings.state)]*2)
+	_test = tensorprod([basis.get(i)(**settings.state)
+				for i in (
+					settings.state.operator
+					if isinstance(settings.state.operator,iterables) else
+					[settings.state.operator]
+					)]*2)
 
-	assert allclose(test,_test), "Incorrect model @ model"
+	assert allclose(test,_test), "Incorrect state @ state"
+
+
+	operators = ["plus","minus"]
+
+	kwargs = Dict(**{
+		"data":None	,
+		"operator":None,
+		"site":None,
+		"string":"psi",
+		"parameters":None,
+		"D":2,"ndim":2,"local":True,"variable":False,
+		"system":{"seed":12345,"dtype":"complex","architecture":None}
+		})
+
+	cls = load(settings.cls.state)
+
+
+	states = [cls(**{**kwargs,**dict(operator=operator)}) for operator in operators]
+
+	new = states[0] 
+	for state in states[1:]:
+		new @= state
+
+	new.info(verbose=verbose)
+
+	test = new(parameters=new.parameters(),state=new.state())
+
+	_test = tensorprod([basis.get(operator)(**kwargs) for operator in operators])
+
+	_test_ = tensorprod([
+			state(parameters=state.parameters(),state=state.state())
+			for state in states])
+
+	assert allclose(test,_test) and allclose(test,_test_) and allclose(_test,_test_), "Incorrect state @ state"
+
 
 
 	# for i in model.data:
