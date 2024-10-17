@@ -901,6 +901,8 @@ def test_module(*args,**kwargs):
 			}
 		})
 
+		verbose = True
+
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default='replace')
 
@@ -969,11 +971,21 @@ def test_module(*args,**kwargs):
 		# Operator
 		parameters = model.parameters()
 		state = obj @ model.locality
-		where = list(range(model.locality))
 
 		model.init(state=state)
 
+
+		model.info(verbose=verbose)
+		state.info(verbose=verbose)
+		exit()
+
+
+		parameters = model.parameters()
+		state = [obj]*model.locality
+
 		state = measure.probability(parameters=parameters,state=state)
+
+		where = list(range(model.locality))
 
 		operator = measure.operator(parameters=parameters,state=state,model=model,where=where)
 
@@ -1201,6 +1213,6 @@ if __name__ == "__main__":
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
 	# test_algebra(*args,**args)
-	# test_module(*args,**args)
-	test_tensorproduct(*args,**args)
+	# test_tensorproduct(*args,**args)
+	test_module(*args,**args)
 

@@ -92,7 +92,7 @@ class Basis(Dict):
 		elif attr in [cls.identity,cls.structure]:
 			locality = 1
 		elif attr in [cls.rand]:			
-			locality = int(round(log(prod(kwargs.shape))/log(kwargs.D)/kwargs.ndim))
+			locality = int(round(log(prod(kwargs.shape))/log(kwargs.D)/kwargs.ndim)) if kwargs.shape is not None and kwargs.ndim is not None else 1
 		elif attr in [cls.I,cls.X,cls.Y,cls.Z]:
 			locality = 1
 		elif attr in [cls.H,cls.S]:
@@ -100,7 +100,7 @@ class Basis(Dict):
 		elif attr in [cls.CNOT]:
 			locality = 2
 		elif attr in [cls.unitary,cls.state]:
-			locality = int(round(log(prod(kwargs.shape))/log(kwargs.D)/kwargs.ndim))
+			locality = int(round(log(prod(kwargs.shape))/log(kwargs.D)/kwargs.ndim)) if kwargs.shape is not None and kwargs.ndim is not None else 1
 		elif attr in [cls.state,cls.zero,cls.one,cls.plus,cls.minus,cls.plusi,cls.minusi]:
 			locality = 1
 		elif attr in [cls.element]:
@@ -1866,7 +1866,6 @@ class Object(System):
 		N = max(N if N is not None else 0,locality if locality is not None else 0) if N is not None or locality is not None else None
 		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
-
 		local = local
 		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if isinstance(site,iterables) else 0,locality if local else N) if locality is not None or isinstance(site,iterables) else None
 		variable = variable
@@ -1882,6 +1881,17 @@ class Object(System):
 		ndim = self.ndim if self.ndim is not None else getattr(data,'ndim',self.ndim) if data is not None else None
 		dtype = self.dtype if self.dtype is not None else getattr(data,'dtype',self.dtype) if data is not None else None
 
+
+		# Check attributes
+		assert ((operator is None and site is None and not locality) or 
+			   (len(site) == locality and (
+			   (not isinstance(operator,(iterables,str))) or 
+			   (isinstance(operator,iterables) and sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality) or
+			   ((locality % Basis.locality(basis.get(operator))) == 0)))
+			),"Inconsistent operator %r, site %r: locality != %d"%(operator,site,locality)
+
+
+		# Set attributes
 		self.data = data if data is not None else None
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
