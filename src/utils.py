@@ -7367,7 +7367,7 @@ def groupby(iterable,key=None,sort=None):
 		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
 		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
 	Returns:
-		iterable (dict[key,value]): Grouped iterable with group keys and iterable values 
+		iterable (iterable[group]): Grouped iterable with group keys and iterable values 
 	'''
 
 	def parse(value):
@@ -7408,9 +7408,7 @@ def groupby(iterable,key=None,sort=None):
 	if key is not None:
 		iterable = itertools.groupby(iterable,key=key)
 	else:
-		iterable = ((index,[value]) for index,value in enumerate(iterable))
-
-	iterable = {key:list(group) for key,group in iterable}
+		iterable = ((index,(value,)) for index,value in enumerate(iterable))
 
 	return iterable
 

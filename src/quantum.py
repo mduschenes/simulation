@@ -934,6 +934,8 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = len(state) if state is not None else None
+			D = self.D
+			ndim = self.ndim
 
 			if N is not None and N > 1:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
@@ -954,7 +956,7 @@ class Measure(System):
 				
 				model = vmap(model,in_axes=(None,0),out_axes=0)
 				
-				options = dict(axes=[where],shape=[self.D,N,self.ndim],execute=False)
+				options = dict(axes=[where],shape=(D,N,ndim),execute=False)
 				swapper = swap(state,**options,transform=True)
 				_swapper = swap(state,**options,transform=False)
 					
@@ -1445,24 +1447,26 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 
 	# Update data
 	for i in data:
+		
 		if data[i] is None:
 			continue
+
 		kwargs = dict(
 			parameters=dict(parameters=dict(trotter=trotter(p=compilation.trotter)) if (data[i].unitary) else None),
 			)
 		data[i].init(**kwargs)
 
 	# Filter None data
-	boolean = lambda i: (data[i] is not None) and (data[i].data is not None)
+	boolean = lambda i=None,data=None: (data is not None) and (data[i] is not None) and (data[i].data is not None)
 
-	data = {i: data[i] for i in data if boolean(i)}
+	data = {i: data[i] for i in data if boolean(i,data)}
 
 	# Filter constant data
 	if compilation.simplify:
 
-		boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
+		boolean = lambda i=None,data=None: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
 		
-		obj = {i: data[i] for i in data if boolean(i)}
+		obj = {i: data[i] for i in data if boolean(i,data)}
 
 		if len(obj)>1:
 
@@ -1475,17 +1479,17 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 				for i in obj:
 					if i == j:
 						continue
-					data[j] = data[j] @ data.pop(i)
+					data[j] @= data.pop(i)
 
 		data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 
 	# Filter trotterized data
-	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (data[i].unitary)
+	boolean = lambda i=None,data=None: (data[i] is not None) and (data[i].data is not None) and (data[i].unitary)
 
 	obj = [j
 		for i in interleaver(
-		[trotter(i,p=compilation.trotter) for i in splitter([i for i in data if boolean(i)])],
-		[i for i in splitter([i for i in data if not boolean(i)])]) 
+		[trotter(i,p=compilation.trotter) for i in splitter([i for i in data if boolean(i,data)])],
+		[i for i in splitter([i for i in data if not boolean(i,data)])]) 
 		for j in i]
 
 	data = [data[i] for i in obj]
@@ -1517,14 +1521,14 @@ def variables(data,state=None,conj=False,size=None,compilation=None,verbose=Fals
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
 
-	boolean = lambda i: (data[i] is not None) and (data[i].variable) and (data[i].parameters is not None) and (data[i].parameters.indices is not None)
+	boolean = lambda i=None,data=None: (data[i] is not None) and (data[i].variable) and (data[i].parameters is not None) and (data[i].parameters.indices is not None)
 	default = -1
 
-	length = len(set(([data[i].parameters.indices for i in data if boolean(i)])))
+	length = len(set(([data[i].parameters.indices for i in data if boolean(i,data)])))
 
 	shape = (size*length,)
 
-	indexes = [j*length + data[i].parameters.indices if boolean(i) else default for j in range(size) for i in data]
+	indexes = [j*length + data[i].parameters.indices if boolean(i,data) else default for j in range(size) for i in data]
 
 	return indexes,shape
 
@@ -1723,7 +1727,7 @@ class Object(System):
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
 		state=None,parameters=None,conj=False,
-		local=None,locality=None,variable=None,
+		local=None,locality=None,variable=None,constant=None,hermitian=None,unitary=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,base=None,
 		space=None,time=None,lattice=None,
@@ -1768,12 +1772,15 @@ class Object(System):
 		local = self.local if self.local is not None else None
 		locality = self.locality if self.locality is not None else None
 		variable = self.variable if self.variable is not None else None
+		constant = self.constant if self.constant is not None else None
+		hermitian = self.hermitian
+		unitary = self.unitary
 
 		N = self.N if self.N is not None else None
 		D = self.D if self.D is not None else None
 
 
-		# Set local, locality, variable, site
+		# Set local, locality, site
 		local = local
 
 		if locality is not None:
@@ -1781,18 +1788,15 @@ class Object(System):
 		elif isinstance(site,iterables):
 			locality = len(site)			
 		elif isinstance(operator,iterables):
-			locality = len(operator)
+			locality = sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator)
 		elif isinstance(operator,str) and operator.count(delim) > 0:
-			locality = operator.count(delim) + 1
-		elif N is not None and (isinstance(operator,str) or not local):
-			locality = N
+			locality = sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator.split(delim))
+		elif isinstance(operator,str) and local:
+			locality = Basis.locality(basis.get(operator))
+		elif N is not None and (isinstance(operator,str) and not local):
+			locality = N if N is not None else 1
 		else:
 			locality = 1
-
-		if variable is not None:
-			variable = variable
-		else:
-			variable = None
 
 		if site is not None:
 			site = site
@@ -1866,6 +1870,9 @@ class Object(System):
 		local = local
 		locality = min(locality if locality is not None else 0,sum(i not in [default] for i in site) if isinstance(site,iterables) else 0,locality if local else N) if locality is not None or isinstance(site,iterables) else None
 		variable = variable
+		constant = constant
+		hermitian = hermitian
+		unitary = unitary
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 		site = site[:locality] if isinstance(site,iterables) else site
@@ -1884,6 +1891,9 @@ class Object(System):
 		self.local = local
 		self.locality = locality
 		self.variable = variable
+		self.constant = constant
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		self.N = N
 		self.D = D
@@ -1949,7 +1959,7 @@ class Object(System):
 			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
 			keywords = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-			setter(keywords,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,self.parameters,delimiter=delim,default=False)
@@ -1958,7 +1968,13 @@ class Object(System):
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
+			defaults = dict()
+			parameters = parameters if parameters is not None else parameters			
 			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
+			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(keywords,defaults,delimiter=delim,default=False)
+			setter(keywords,self.parameters,delimiter=delim,default=False)
 			self.parameters.init(**keywords)
 
 		else:
@@ -1972,7 +1988,7 @@ class Object(System):
 		self.state = state
 
 
-		options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+		options = dict(D=self.D,ndim=self.ndim,dtype=self.dtype,system=self.system)
 		identity = tensorprod([Basis.identity(**{**options})]*(self.locality if self.local else self.N))
 
 		self.identity = identity
@@ -1997,17 +2013,17 @@ class Object(System):
 		
 		elif isinstance(self.operator,str) or isinstance(self.operator,iterables):
 
-			options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+			options = dict(D=self.D,ndim=self.ndim,dtype=self.dtype,system=self.system)
 
 			assert (sum(Basis.locality(self.basis.get(i)) for i in self.operator) if isinstance(self.operator,iterables) else 
 						Basis.locality(self.basis.get(self.operator))) == self.locality, "Incorrect locality %r.locality != %d"%(self.operator,self.locality)
 				
-			where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
+			where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator))))))] if self.operator is not None else None
 			where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
 			if isinstance(self.operator,str):
 
-				data = self.basis.get(self.operator)(**{**options})
+				data = tensorprod([self.basis.get(i)(**{**options}) for i in [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator)))])
 
 			elif isinstance(self.operator,iterables):
 
@@ -2054,30 +2070,25 @@ class Object(System):
 
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
-		where = self.site if self.local else None
 
 		if self.local:
 			if self.state is not None and self.state() is not None:
 				try:
-					D = self.state.D
-					N = self.state.N
-					ndim = self.state.ndim
+					shape = (self.state.D,self.state.N,self.state.ndim)
+					axes = [self.state.site]
+					where = self.site if self.local else None
 				except:
-					D = self.D
-					N = int(round(log(state.size)/log(D)/state.ndim))
-					ndim = state.ndim
+					shape = (self.D,int(round(log(state.size)/log(D)/state.ndim)),state.ndim)
+					axes = [self.site]
+					where = self.site if self.local else None
 			else:
-				D = self.D
-				N = self.N
-				ndim = self.ndim				
+				shape = (self.D,self.N,self.ndim)
+				axes = [self.site] if not any(i not in range(self.N) for i in self.site) else [list(range(self.N))]
+				where = self.site if self.local else None
 		else:
-			D = self.D
-			N = self.N
-			ndim = self.ndim
-		
-
-		shape = (D,N,ndim)
-		axes = [self.site] if not any(i not in range(N) for i in self.site) else [[list(range(N))]]
+			shape = (self.D,self.N,self.ndim)
+			axes = [self.site] if not any(i not in range(self.N) for i in self.site) else [list(range(self.N))]
+			where = self.site if self.local else None
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
@@ -2333,7 +2344,7 @@ class Object(System):
 			if other is self:
 				other = 2
 
-			if not ((not self.variable) and (self.parameters() is None or not len(self.parameters()))):
+			if not self.constant:
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
 
 			data = None
@@ -2344,9 +2355,11 @@ class Object(System):
 			local = self.local
 			locality = self.locality*other
 			variable = self.variable
+			constant = self.constant
 			
 			N = self.N*other
 			D = self.D
+			
 			ndim = self.ndim
 
 			if self.state is not None and self.state() is not None:
@@ -2357,7 +2370,7 @@ class Object(System):
 			else:
 				state = None
 
-			parameters = None
+			parameters = self.parameters()*other if self.parameters is not None and self.parameters() is not None else self.parameters() if self.parameters is not None else None
 
 			conj = self.conj
 
@@ -2366,13 +2379,11 @@ class Object(System):
 			support = intersection(*(obj.site for obj in (self,other) if obj is not None and obj.site is not None))
 			attributes = [attr for attr in attributes if all(hasattr(obj,attr) for obj in (self,other))]
 
-			if not ((not self.variable and not other.variable) and 
-					((self.parameters() is None and other.parameters() is None) or
-					 (not len(self.parameters()) and not len(other.parameters())))):
+			if (not self.constant) or (not other.constant):
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Constant classes required"%(self,other))
 
-			if len(support) and (self.site != other.site):
-				raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical or Disjoint support required"%(self,other))
+			if (self.parameters is not None and self.parameters() is not None) and (other.parameters is not None and other.parameters() is not None) and (self.operator != other.operator):
+				raise NotImplementedError("<%r> @ <%r> Not Implemented - Non-parameterized distinct classes required"%(self,other))
 
 			if any(getattr(self,attr) != getattr(other,attr) for attr in attributes):
 				raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical dimensions required"%(self,other))
@@ -2387,9 +2398,11 @@ class Object(System):
 			local = all((self.local,other.local))
 			locality = sum((self.locality,other.locality))
 			variable = all((self.variable,other.variable))
+			constant = all((self.constant,other.constant))
 			
 			N = max((self.N,other.N,max(self.site)+1,max(other.site)+1))
 			D = max((self.D,other.D))
+			
 			ndim = self.ndim
 
 			if self.state is not None and other.state is not None and self.state() is not None and other.state() is not None:
@@ -2404,7 +2417,7 @@ class Object(System):
 			else:
 				state = None
 
-			parameters = None
+			parameters = self.parameters()*other.parameters() if self.parameters is not None and self.parameters() is not None and other.parameters is not None and other.parameters() is not None else self.parameters() if self.parameters is not None else other.parameters() if other.parameters is not None else None
 
 			conj = all((self.conj,other.conj))
 
@@ -2417,7 +2430,7 @@ class Object(System):
 			**self,
 			**dict(
 				data=data,operator=operator,site=site,string=string,
-				local=local,locality=locality,variable=variable,
+				local=local,locality=locality,variable=variable,constant=constant,
 				N=N,D=D,ndim=ndim,
 				state=state,parameters=parameters,conj=conj
 				)
@@ -2468,7 +2481,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','locality','site','local']:
+		for attr in ['operator','site','locality','local','variable','constant']:
 		
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -2649,6 +2662,7 @@ class Object(System):
 		if self.architecture is None or self.architecture in ['array','tensor','mps']:
 		
 			shape = self.shape
+			size = self.size
 			ndim = self.ndim
 			dtype = self.dtype
 			hermitian = self.hermitian		
@@ -2745,6 +2759,9 @@ class Pauli(Object):
 
 		N = self.N
 		D = self.D
+		
+		shape = self.shape
+		size = self.size
 		ndim = self.ndim
 
 		locality = self.locality
@@ -2780,6 +2797,10 @@ class Pauli(Object):
 					else:
 						data = basis.get(operator)(**{**options})
 
+					shape = data.shape if data is not None else shape
+					size = data.size if data is not None else size
+					ndim = data.ndim if data is not None else ndim
+
 					default = basis.get(default)(**{**options})
 
 					if local:
@@ -2793,7 +2814,7 @@ class Pauli(Object):
 
 				elif operator in operators:
 
-					data = empty((D**locality,)*ndim,dtype=dtype)
+					data = structure((D**locality,)*ndim,dtype=dtype)
 
 					if operator in []:
 						def function(parameters,state):
@@ -2816,23 +2837,27 @@ class Pauli(Object):
 					data = None
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
-				
-				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
-							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
-				
-				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
-				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-				if isinstance(operator,str):
+				assert (sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality if isinstance(operator,iterables) else 
+						(locality % Basis.locality(basis.get(operator))) == 0), "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				where = [0,*accumulate((Basis.locality(basis.get(j)) for j in (operator if isinstance(operator,iterables) else [operator]*(locality//Basis.locality(basis.get(operator))))))] if operator is not None else None
+				where = [site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-					data = basis.get(operator)(**{**options})
+				if isinstance(operator,str) and Basis.locality(basis.get(operator)) == locality:
+
+					data = tensorprod([basis.get(i)(**{**options}) for i in [operator]*(locality//Basis.locality(basis.get(operator)))])
 
 				elif isinstance(operator,iterables):
-	
+
 					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
 
 				else:
 					data = None
+
+				shape = data.shape if data is not None else shape
+				size = data.size if data is not None else size
+				ndim = data.ndim if data is not None else ndim
 
 				default = basis.get(default)(**{**options})
 
@@ -2855,6 +2880,9 @@ class Pauli(Object):
 
 			data = self.data
 
+
+		variable = self.variable if self.variable is not None else None
+		constant = False
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -2909,6 +2937,8 @@ class Pauli(Object):
 		self.contract = contract
 		self.gradient_contract = gradient_contract
 
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -2965,6 +2995,9 @@ class Gate(Object):
 
 		N = self.N
 		D = self.D
+		
+		shape = self.shape
+		size = self.size
 		ndim = self.ndim
 
 		locality = self.locality
@@ -3005,6 +3038,10 @@ class Gate(Object):
 					else:
 						data = basis.get(operator)(**{**options})
 
+					shape = data.shape if data is not None else shape
+					size = data.size if data is not None else size
+					ndim = data.ndim if data is not None else ndim
+
 					default = basis.get(default)(**{**options})
 
 					if local:
@@ -3016,7 +3053,7 @@ class Gate(Object):
 
 				elif operator in operators:
 
-					data = empty((D**locality,)*ndim,dtype=dtype)
+					data = structure((D**locality,)*ndim,dtype=dtype)
 
 					if operator in []:
 						def function(parameters,state):
@@ -3040,22 +3077,26 @@ class Gate(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 
-				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
-							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				assert (sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality if isinstance(operator,iterables) else 
+						(locality % Basis.locality(basis.get(operator))) == 0), "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				where = [0,*accumulate((Basis.locality(basis.get(j)) for j in (operator if isinstance(operator,iterables) else [operator]*(locality//Basis.locality(basis.get(operator))))))] if operator is not None else None
+				where = [site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
-				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+				if isinstance(operator,str) and Basis.locality(basis.get(operator)) == locality:
 
-				if isinstance(operator,str):
-
-					data = basis.get(operator)(**{**options})
+					data = tensorprod([basis.get(i)(**{**options}) for i in [operator]*(locality//Basis.locality(basis.get(operator)))])
 
 				elif isinstance(operator,iterables):
-	
+
 					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
 
 				else:
 					data = None
+
+				shape = data.shape if data is not None else shape
+				size = data.size if data is not None else size
+				ndim = data.ndim if data is not None else ndim
 
 				default = basis.get(default)(**{**options})
 
@@ -3079,6 +3120,9 @@ class Gate(Object):
 			data = self.data
 
 
+		variable = self.variable if self.variable is not None else None
+		constant = True
+
 		if self.state is None or self.state() is None:
 			hermitian = False
 			unitary = True
@@ -3088,6 +3132,7 @@ class Gate(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
+		
 		hermitian = False
 		unitary = True
 
@@ -3104,9 +3149,11 @@ class Gate(Object):
 		self.contract = contract
 		self.gradient_contract = self.gradient_contract
 
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
-		
+
 		return
 
 class Haar(Object):
@@ -3155,6 +3202,9 @@ class Haar(Object):
 
 		N = self.N
 		D = self.D
+
+		shape = self.shape
+		size = self.size
 		ndim = self.ndim
 
 		locality = self.locality
@@ -3190,6 +3240,10 @@ class Haar(Object):
 					else:
 						data = basis.get(operator)(**{**options})
 
+					shape = data.shape if data is not None else shape
+					size = data.size if data is not None else size
+					ndim = data.ndim if data is not None else ndim
+
 					default = basis.get(default)(**{**options})
 
 					if local:
@@ -3201,7 +3255,7 @@ class Haar(Object):
 
 				elif operator in operators:
 
-					data = empty((D**locality,)*ndim,dtype=dtype)
+					data = structure((D**locality,)*ndim,dtype=dtype)
 
 					if local:
 						if operator in ['U','haar']:
@@ -3247,22 +3301,26 @@ class Haar(Object):
 			
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
-							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				assert (sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality if isinstance(operator,iterables) else 
+						(locality % Basis.locality(basis.get(operator))) == 0), "Incorrect locality %r.locality != %d"%(operator,locality)
+				
+				where = [0,*accumulate((Basis.locality(basis.get(j)) for j in (operator if isinstance(operator,iterables) else [operator]*(locality//Basis.locality(basis.get(operator))))))] if operator is not None else None
+				where = [site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
-				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+				if isinstance(operator,str) and Basis.locality(basis.get(operator)) == locality:
 
-				if isinstance(operator,str):
-
-					data = basis.get(operator)(**{**options})
+					data = tensorprod([basis.get(i)(**{**options}) for i in [operator]*(locality//Basis.locality(basis.get(operator)))])
 
 				elif isinstance(operator,iterables):
-	
+
 					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
 
 				else:
 					data = None
+
+				shape = data.shape if data is not None else shape
+				size = data.size if data is not None else size
+				ndim = data.ndim if data is not None else ndim
 
 				default = basis.get(default)(**{**options})
 
@@ -3286,6 +3344,9 @@ class Haar(Object):
 			data = self.data
 
 
+		variable = self.variable if self.variable is not None else None
+		constant = True
+
 		if self.state is None or self.state() is None:
 			hermitian = False
 			unitary = True
@@ -3297,6 +3358,7 @@ class Haar(Object):
 			unitary = False
 		hermitian = False
 		unitary = True
+
 
 		self.data = data
 
@@ -3310,6 +3372,9 @@ class Haar(Object):
 		self.contract = contract
 		self.gradient_contract = gradient_contract
 
+
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -3376,6 +3441,9 @@ class Noise(Object):
 
 		N = self.N
 		D = self.D
+
+		shape = self.shape
+		size = self.size
 		ndim = self.ndim
 
 		locality = self.locality
@@ -3449,6 +3517,10 @@ class Noise(Object):
 					else:
 						data = basis.get(operator)(**{**options})
 
+					shape = data.shape if data is not None else shape
+					size = data.size if data is not None else size
+					ndim = data.ndim if data is not None else ndim
+
 					default = basis.get(default)(**{**options})
 
 					if local:
@@ -3485,22 +3557,26 @@ class Noise(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
-							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				assert (sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality if isinstance(operator,iterables) else 
+						(locality % Basis.locality(basis.get(operator))) == 0), "Incorrect locality %r.locality != %d"%(operator,locality)
 				
-				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
-				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+				where = [0,*accumulate((Basis.locality(basis.get(j)) for j in (operator if isinstance(operator,iterables) else [operator]*(locality//Basis.locality(basis.get(operator))))))] if operator is not None else None
+				where = [site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-				if isinstance(operator,str):
+				if isinstance(operator,str) and Basis.locality(basis.get(operator)) == locality:
 
-					data = basis.get(operator)(**{**options})
+					data = tensorprod([basis.get(i)(**{**options}) for i in [operator]*(locality//Basis.locality(basis.get(operator)))])
 
 				elif isinstance(operator,iterables):
-	
+
 					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
 
 				else:
 					data = None
+
+				shape = data.shape if data is not None else shape
+				size = data.size if data is not None else size
+				ndim = data.ndim if data is not None else ndim
 
 				default = basis.get(default)(**{**options})
 
@@ -3523,6 +3599,9 @@ class Noise(Object):
 
 			data = self.data
 
+		variable = self.variable if self.variable is not None else None
+		constant = ((isinstance(operator,str) and (operator in operators or operator in strings)) or 
+					(isinstance(operator,iterables) and any(i in operator or i in strings for i in operators)))
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -3533,6 +3612,7 @@ class Noise(Object):
 		elif self.state().ndim == 2:
 			hermitian = True
 			unitary = False
+		
 		hermitian = False
 		unitary = False
 
@@ -3550,6 +3630,8 @@ class Noise(Object):
 		self.contract = contract
 		self.gradient_contract = gradient_contract
 
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -3609,6 +3691,9 @@ class State(Object):
 
 		N = self.N
 		D = self.D
+
+		shape = self.shape
+		size = self.size
 		ndim = self.ndim
 
 		locality = self.locality
@@ -3643,6 +3728,10 @@ class State(Object):
 						data = None
 					else:
 						data = basis.get(operator)(**{**options})
+
+					shape = data.shape if data is not None else shape
+					size = data.size if data is not None else size
+					ndim = data.ndim if data is not None else ndim
 
 					default = basis.get(default)(**{**options})
 
@@ -3685,22 +3774,26 @@ class State(Object):
 
 			elif isinstance(operator,str) or isinstance(operator,iterables):
 				
-				assert (sum(Basis.locality(basis.get(i)) for i in operator) if isinstance(operator,iterables) else 
-							Basis.locality(basis.get(operator))) == locality, "Incorrect locality %r.locality != %d"%(operator,locality)
+				assert (sum(Basis.locality(basis.get(i)) if i in basis else 1 for i in operator) == locality if isinstance(operator,iterables) else 
+						(locality % Basis.locality(basis.get(operator))) == 0), "Incorrect locality %r.locality != %d"%(operator,locality)
 				
-				where = [0,*accumulate((Basis.locality(self.basis.get(j)) for j in (self.operator if isinstance(self.operator,iterables) else [self.operator])))] if self.operator is not None else None
-				where = [self.site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
+				where = [0,*accumulate((Basis.locality(basis.get(j)) for j in (operator if isinstance(operator,iterables) else [operator]*(locality//Basis.locality(basis.get(operator))))))] if operator is not None else None
+				where = [site[where[j]:where[j+1]] for j in range(len(where)-1)] if where is not None else None
 
-				if isinstance(operator,str):
+				if isinstance(operator,str) and Basis.locality(basis.get(operator)) == locality:
 
-					data = basis.get(operator)(**{**options})
+					data = tensorprod([basis.get(i)(**{**options}) for i in [operator]*(locality//Basis.locality(basis.get(operator)))])
 
 				elif isinstance(operator,iterables):
-	
+
 					data = tensorprod([basis.get(i)(**{**options}) for i in operator])
 
 				else:
 					data = None
+
+				shape = data.shape if data is not None else shape
+				size = data.size if data is not None else size
+				ndim = data.ndim if data is not None else ndim
 
 				default = basis.get(default)(**{**options})
 
@@ -3730,6 +3823,10 @@ class State(Object):
 		def gradient(parameters=None,state=None):
 			return 0*self.data
 
+
+		variable = self.variable if self.variable is not None else None
+		constant = True
+
 		if self.ndim is None:
 			hermitian = True
 			unitary = False
@@ -3755,6 +3852,8 @@ class State(Object):
 		self.contract = contract
 		self.gradient_contract = gradient_contract
 
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -4076,7 +4175,7 @@ class Objects(Object):
 
 
 		# Set identity
-		options = dict(D=self.D,ndim=self.ndim,dtype=dtype,system=system)
+		options = dict(D=self.D,ndim=self.ndim,dtype=self.dtype,system=self.system)
 		identity = tensorprod([Basis.identity(**{**options})]*(self.locality if self.local else self.N)) if self.identity is None else self.identity
 
 		self.identity = identity
@@ -4094,20 +4193,9 @@ class Objects(Object):
 			self.data[i].init(**kwargs)
 
 		# Set attributes
-		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
-		if self.state is None or self.state() is None:
-			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
-			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state().ndim == 1:
-			hermitian = False
-			unitary = True
-		elif self.state().ndim == 2:
-			hermitian = True
-			unitary = False
+		self.update()
 
-		self.hermitian = hermitian
-		self.unitary = unitary
-
+		# Set functions
 		def func(parameters,state):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.n,dtype=self.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
@@ -4608,6 +4696,8 @@ class Objects(Object):
 
 		data = sortby(data,**options)
 
+		data = {index: data[i] for index,i in enumerate(data)}
+
 		self.set(data)
 
 		return
@@ -4707,32 +4797,46 @@ class Objects(Object):
 
 		status = self.status() if status is None else status
 		data = self.data if data is None else data
+		state = self.state() if callable(self.state) else self.state
+
+		boolean = lambda i=None,data=None: ((data is not None) and (data[i] is not None) and (data[i].data is not None))
 
 		site = []
 		for i in data:
-			if data[i] is None or not isinstance(data[i].site,iterables):
+			if not boolean(i,data) or not isinstance(data[i].site,iterables):
 				continue
 			site.extend([j for j in data[i].site if j not in site])
 
 		operator = separ.join([
 					delim.join(data[i].operator) if isinstance(data[i].operator,iterables) else data[i].operator
-					for i in data if data[i] is not None and data[i].operator is not None])
+					for i in data if boolean(i,data) and data[i].operator is not None])
 
-		string = separ.join([data[i].string for i in data if data[i] is not None]) if data is not None else None
+		string = separ.join([data[i].string for i in data if boolean(i,data)]) if data is not None else None
 
 		locality = len(site) if site is not None else None
 
-		local = all(data[i].local for i in data if data[i] is not None) if data is not None else None
+		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
 		variable = any(data[i].variable for i in data) if data is not None else False
+		constant = all(data[i].constant for i in data) if data is not None else False
+
+		if state is None:
+			hermitian = all(data[i].hermitian for i in data if boolean(i,data))
+			unitary = all(data[i].unitary for i in data if boolean(i,data))
+		elif state.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif state.ndim == 2:
+			hermitian = True
+			unitary = False
 
 		N = max([
 			self.N if self.N is not None else 0,
-			max([data[i].N for i in data if data[i] is not None and data[i].N is not None],default=0),
+			max([data[i].N for i in data if boolean(i,data) and data[i].N is not None],default=0),
 			],default=0) if data is not None else None
 
 		D = max([
-			max([data[i].D for i in data if data[i] is not None and data[i].D is not None],default=0),
+			max([data[i].D for i in data if boolean(i,data) and data[i].D is not None],default=0),
 			],default=0) if data is not None else None		
 
 		self.data = data
@@ -4744,6 +4848,9 @@ class Objects(Object):
 		self.locality = locality
 		self.local = local
 		self.variable = variable
+		self.constant = constant
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		self.N = N
 		self.D = D
@@ -4860,20 +4967,7 @@ class Channel(Objects):
 
 
 		# Set attributes
-		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
-		if self.state is None or self.state() is None:
-			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
-			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state().ndim == 1:
-			hermitian = False
-			unitary = True
-		elif self.state().ndim == 2:
-			hermitian = True
-			unitary = False
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
+		self.update()
 
 		# Set functions
 		func = scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
@@ -4941,20 +5035,7 @@ class Operators(Objects):
 
 
 		# Set attributes
-		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
-		if self.state is None or self.state() is None:
-			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
-			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
-		elif self.state().ndim == 1:
-			hermitian = False
-			unitary = True
-		elif self.state().ndim == 2:
-			hermitian = True
-			unitary = False
-
-		self.hermitian = hermitian
-		self.unitary = unitary
-
+		self.update()
 
 		# Set functions
 		def func(parameters,state):
@@ -5047,7 +5128,7 @@ class Module(System):
 		model=None,
 		N=None,M=None,
 		state=None,parameters=None,
-		variable=False,
+		variable=None,constant=None,
 		data=None,measure=None,callback=None,
 		func=None,gradient=None,
 		system=None,
@@ -5137,36 +5218,36 @@ class Module(System):
 
 		self.measure = measure
 
+		print(self.model)
+
 		# Data
-		models = self.layout()
+		self.layout()
 		obj = state() if callable(state) else state
 		options = self.options if self.options is not None else {}
 
 		data = []
 
-		for key in models:
+		print(self.model)
+		exit()
+
+		for key in self.model:
 			
-			if not models[key]:
+			if not self.model[key]:
 				continue
 
-			locality = max(model.locality for model in models[key])
-			where = list(set((i for model in models[key] if isinstance(model.site,iterables) for i in model.site)))
+			locality = max(model.locality for model in self.model[key])
+			site = list(set((i for model in self.model[key] if isinstance(model.site,iterables) for i in model.site)))
 
-			# for key in model:
-			# 	N = max()
-			# 	supports = list(set(i for instance in model[key] if isinstance(instance.site,iterables) for i in instance.site))
-			# 	for instance in model[key]:
-			# 		support = [supports.index(i) for i in instance.site] if isinstance(instance.site,iterables) else None
-			# 		instance.init(support=support)
-
-			for model in models[key]:
+			for model in self.model[key]:
 				parameters = model.parameters()
 				state = obj @ locality
+				
+				state.init(site=site)
 				model.init(state=state)
 
-			def model(parameters,state):
-				for model in models[key]:
-					state = model(parameters=parameters,state=state)
+			def model(parameters,state,model=self.model[key]):
+				for func in model:
+					state = func(parameters=parameters,state=state)
 				return state			
 
 			parameters = measure.parameters()
@@ -5216,19 +5297,23 @@ class Module(System):
 			configuration (dict): configuration options for layout
 				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
 				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
-		Returns:
-			model (dict[int,iterable[model]]): Sorted and grouped models of class
 		'''
 
 		configuration = self.configuration if configuration is None else configuration
 
-		model = self.model
+		model = [model for key in self.model if self.model[key] is not None 
+					   for model in (self.model[key] if not isinstance(self.model[key],dict) else 
+					   				 [self.model[key][index] for index in self.model[key]])]
 
 		options = dict(key=configuration.get('key'),sort=configuration.get('sort')) if configuration is not None else {}
 
 		model = groupby(model,**options)
 
-		return model
+		model = {key: [model for model in group] for key,group in model}
+
+		self.model = model
+
+		return
 
 	def __call__(self,parameters=None,state=None,**kwargs):
 		'''
@@ -5379,6 +5464,10 @@ class Label(Operator):
 		self = super().__new__(cls,*args,**kwargs)
 
 		# Set attributes
+
+		variable = self.variable
+		constant = self.constant
+
 		if self.state is None or self.state() is None:
 			hermitian = self.hermitian
 			unitary = self.unitary
@@ -5389,6 +5478,9 @@ class Label(Operator):
 			hermitian = True
 			unitary = False
 
+
+		self.variable = variable
+		self.constant = constant
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5963,7 +6055,9 @@ class Callback(System):
 
 			elif attr in ['noise.parameters']:
 
-				value = [model.model.data[i].parameters() for i in model.model.data if not model.model.data[i].unitary and not model.model.data[i].hermitian]
+				value = getattr(model,'model',model)
+
+				value = [value.data[i].parameters() for i in value.data if not value.data[i].unitary and not value.data[i].hermitian]
 
 			elif hasattrs(model,attributes[attr],delimiter=delim):
 

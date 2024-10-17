@@ -196,6 +196,11 @@ def test_tensorproduct(*args,**kwargs):
 					"parameters":None,
 					"variable":False
 				},
+				# "data":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"parameters":0.5,
+				# 	"variable":False
+				# },				
 				# "hadamard":{
 				# 	"operator":["H"],"site":"i","string":"hadamard",
 				# 	"parameters":None,
@@ -218,9 +223,9 @@ def test_tensorproduct(*args,**kwargs):
 			"system":{"seed":12345,"dtype":"complex","architecture":None}
 			},
 		"operator": {
-			"operator":["CNOT"],"site":[0,1],"string":"cnot",
+			"operator":["CNOT"],"site":None,"string":"cnot",
 			"parameters":None,
-			"variable":False
+			"D":2,"local":True,"variable":False,"dtype":"complex"
 		}
 	})
 
@@ -238,10 +243,6 @@ def test_tensorproduct(*args,**kwargs):
 
 	state.info(verbose=verbose)
 
-	# attrs = ['local','variable','locality','state','parameters']
-	# for attr in attrs:
-	# 	value = getattr(state,attr) if not callable(getattr(state,attr)) else getattr(state,attr)()
-	# 	print(attr,value)
 
 
 	new = model @ model
@@ -274,7 +275,7 @@ def test_tensorproduct(*args,**kwargs):
 	assert allclose(test,_test), "Incorrect state @ state"
 
 
-	operators = ["plus","minus"]
+	operators = [["plus","minus"]]*3
 
 	kwargs = Dict(**{
 		"data":None	,
@@ -290,16 +291,21 @@ def test_tensorproduct(*args,**kwargs):
 
 
 	states = [cls(**{**kwargs,**dict(operator=operator)}) for operator in operators]
+	site = [2*i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
 
 	new = states[0] 
 	for state in states[1:]:
+		print(new.site,new.N)
 		new @= state
+
+	new.init(site=site)
+
 
 	new.info(verbose=verbose)
 
 	test = new(parameters=new.parameters(),state=new.state())
 
-	_test = tensorprod([basis.get(operator)(**kwargs) for operator in operators])
+	_test = tensorprod([basis.get(i)(**kwargs) for operator in operators for i in (operator if isinstance(operator,iterables) else [operator])])
 
 	_test_ = tensorprod([
 			state(parameters=state.parameters(),state=state.state())
@@ -309,16 +315,26 @@ def test_tensorproduct(*args,**kwargs):
 
 
 
-	# for i in model.data:
-	# 	print(i,model.data[i])
-	# 	for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
-	# 		print(key,value)
-	# 	parameters = model.data[i].parameters()
-	# 	state = load(settings.cls.state)(**settings.state)() @ model.data[i].locality
-	# 	model.data[i].init(state=state)
-	# 	print(model.data[i](parameters=parameters,state=state))
-	# 	print()
-	# exit()
+
+	operator = load(settings.cls.operator)
+	operator = operator(**settings.operator)
+	
+	operator.info(verbose=verbose)
+
+
+	new = operator @ 3
+	new.info(verbose=verbose)
+	
+	# test = new(parameters=new.parameters(),state=new.state())
+
+	# _test = tensorprod([basis.get(j)(**settings.operator) 
+	# 	for i in (
+	# 		settings.operator.operator 
+	# 		if isinstance(settings.operator.operator,iterables) else 
+	# 		[settings.operator.operator])]*2)
+
+	# assert allclose(test,_test), "Incorrect operator @ operator"
+
 
 	return
 
@@ -787,7 +803,8 @@ def test_namespace(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[1],
+		"module.N":[4],
+		"model.M":[1],"module.M":[1],
 		'model.N':[4],'model.D':[2],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
 		"model.local":[True],"state.local":[False],
@@ -838,11 +855,6 @@ def test_module(*args,**kwargs):
 					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
 					"parameters":0,"variable":False
 				},
-				"tmp":{
-					"operator":"depolarize","site":None,"string":"depolarize",
-					"parameters":0,"variable":False,"N":4
-				},				
-
 			},
 			"D":2,
 			"local":True,
@@ -919,7 +931,7 @@ def test_module(*args,**kwargs):
 
 		# Probability
 		parameters = measure.parameters()
-		state = [obj()]*settings.module.N
+		state = [obj]*settings.module.N
 
 
 		model.info(verbose=True)
@@ -1188,6 +1200,7 @@ if __name__ == "__main__":
 	# test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
-	# test_module(*args,**args)
 	# test_algebra(*args,**args)
+	# test_module(*args,**args)
 	test_tensorproduct(*args,**args)
+
