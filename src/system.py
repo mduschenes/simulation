@@ -38,6 +38,7 @@ class System(Dictionary):
 		format (str): Format of array
 		device (str): Device for computation
 		seed (array,int): Seed for random number generation
+		random (str): Type of random number generation
 		key (object): key for class
 		timestamp (str): timestamp for class
 		backend (str): backend for class
@@ -64,6 +65,7 @@ class System(Dictionary):
 			'unit':None,
 			'options':None,			
 			'seed':None,
+			'random':None,
 			'key':None,
 			'instance':None,
 			'instances':None,

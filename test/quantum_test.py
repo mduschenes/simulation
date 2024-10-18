@@ -812,7 +812,7 @@ def test_module(*args,**kwargs):
 		"module.configuration":[{"key":["site"]}],
 		"module.measure.string":["pauli","tetrad"],
 		"module.measure.base":["pauli","tetrad"],
-		"module.measure.architecture":["tensor"],
+		"module.measure.architecture":["array","tensor"],
 		"module.measure.options":[{"cyclic":False}],
 		"module.options":[{"contract":"swap+split","max_bond":100,"cutoff":1e-10}]
 		}	
@@ -834,7 +834,7 @@ def test_module(*args,**kwargs):
 			"callback":"src.quantum.Callback"
 			},
 		"module":{
-			"N":2,
+			"N":3,
 			"M":1,
 			"string":"module",
 			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
@@ -847,14 +847,22 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				"xx":{
-					"operator":["X","X"],"site":"<ij>","string":"XX",
-					"parameters":0.5,"variable":False
+				# "xx":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"XX",
+				# 	"parameters":0.5,"variable":False
+				# },				
+				# "noise":{
+				# 	"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+				# 	"parameters":1e-8,"variable":False
+				# },
+				"unitary":{
+					"operator":"haar","site":"<ij>","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
 				},				
 				"noise":{
-					"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-					"parameters":0,"variable":False
-				},
+					"operator":["depolarize","depolarize"],"site":"<ij>","string":"depolarize",
+					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
+				},				
 			},
 			"D":2,
 			"local":True,
@@ -902,6 +910,9 @@ def test_module(*args,**kwargs):
 		})
 
 		verbose = True
+		precision = 8
+
+		parse = lambda data: data.round(precision)
 
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default='replace')
@@ -919,6 +930,17 @@ def test_module(*args,**kwargs):
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 
+		model.info(verbose=True)
+
+		parameters = model.parameters()
+		state = model.state() if model.state() is not None else model.identity
+
+		print(state.shape)
+
+		print(model(parameters=parameters,state=state))
+		print(model(parameters=parameters,state=state))
+		exit()
+
 
 		# Test
 
@@ -935,12 +957,14 @@ def test_module(*args,**kwargs):
 		parameters = measure.parameters()
 		state = [obj]*settings.module.N
 
+		print(parse(tensorprod([i() for i in state])))
 
-		model.info(verbose=True)
-		for i in model.data:
-			print(model.data[i],model.data[i](model.data[i].parameters(),model.data[i].identity))
-		print(model.parameters())
-		print(model.state())
+		# for i in model.data:
+		# 	parameters = model.data[i].parameters()
+		# 	state = model.data[i].identity
+		# 	print(model.data[i],model.data[i](parameters=parameters,state=state))
+		# print(model.parameters())
+		# print(model.state())
 
 		probability = measure.probability(parameters=parameters,state=state)
 
@@ -951,6 +975,8 @@ def test_module(*args,**kwargs):
 			value = representation(probability,to='array',contract=False)
 		
 		data[index][key] = value
+
+		print(parse(representation(probability)))
 
 
 		# Amplitude
@@ -967,6 +993,8 @@ def test_module(*args,**kwargs):
 		
 		data[index][key] = value
 
+		print(parse(amplitude))
+
 
 		# Operator
 		parameters = model.parameters()
@@ -977,13 +1005,17 @@ def test_module(*args,**kwargs):
 
 		model.info(verbose=verbose)
 		state.info(verbose=verbose)
+		model.state.info(verbose=verbose)
 		exit()
+
 
 
 		parameters = model.parameters()
 		state = [obj]*model.locality
 
 		state = measure.probability(parameters=parameters,state=state)
+
+		print(state)
 
 		where = list(range(model.locality))
 
@@ -996,6 +1028,9 @@ def test_module(*args,**kwargs):
 			value = representation(operator(parameters=parameters,state=state),to='tensor',contract=True)
 
 		data[index][key] = value
+
+		print(parse(value))
+		exit()
 
 		# Module
 		model = model		
@@ -1039,7 +1074,8 @@ def test_module(*args,**kwargs):
 		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
 
 		if settings.module['options']['contract'] is False or settings.module['options']['cutoff'] <= 1e-16:
-			assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(data[i]['module'].round(8),data[i]['init'].round(8),(data[i]['module'] - data[i]['init']).round(8))
+			assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(
+				parse(data[i]['module']),parse(data[i]['init']),parse(data[i]['module'] - data[i]['init']))
 
 		parameters = module.parameters()
 		state = module.state()
