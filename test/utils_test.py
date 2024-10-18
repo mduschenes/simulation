@@ -777,11 +777,11 @@ def test_swap(path=None,tol=None):
 	return
 
 def test_concatenate(path=None,tol=None):
-	d = [[2,3,4,5],[3,4,2,5]]
-	n = max(len(i) if not isinstance(i,integers) else 1 for i in d)
+	d = [[2,2,2,2],[2,3,4,5],[3,4,2,5]]
+	n = max((len(i) if not isinstance(i,integers) else 1 for i in d),default=0)
 	k = len(d)
-	r = [2,3]
-	m = max(len(i) if not isinstance(i,integers) else 1 for i in r)
+	r = []
+	m = max((len(i) if not isinstance(i,integers) else 1 for i in r),default=0)
 	q = len(r)
 	dtype = "complex"
 	
@@ -804,127 +804,7 @@ def test_concatenate(path=None,tol=None):
 	U = [rand(shape=(*r,*(d[j][i] for j in range(k)),),dtype=dtype) for i in axis]
 	I = [rand(shape=(*r,*(d[j][i] for j in range(k)),),dtype=dtype) for i in _axis]
 
-	# shape = {
-	# 	**{i:dimension[axis] for i,axis in enumerate(dimension)},
-	# 	**{len(dimension)+i:dimensions[axis] for i,axis in enumerate(dimensions)},
-	# 	}		
-
-	# U = [rand(shape=(*(d[j][i] for j in range(k)),*r,),dtype=dtype) for i in axis]
-	# I = [rand(shape=(*(d[j][i] for j in range(k)),*r,),dtype=dtype) for i in _axis]
-
 	Z = tensorprod((*U,*I))
-
-	def _shuffle(a,axes,shape,execute=None):
-
-		data = {}
-
-		dimension = {axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)}
-		dimensions = {axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)}
-
-		dim = len(dimension)
-		dims = len(dimensions)
-
-		n = max(len(dimension[axis]) for axis in dimension)
-		sort = [*[axis for axis in dimension],*[axis for axis in dimensions]]
-
-		dimension = {i: dimension[axis] for i,axis in enumerate(dimension)}
-		dimensions = {dim+i: dimensions[axis] for i,axis in enumerate(dimensions)}
-
-		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
-
-		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
-
-
-		# Permute
-		data['axes'] = copy.deepcopy(axes)
-		data['shape'] = copy.deepcopy(shape)
-		axes = [i for axis in axes for i in axis]
-		axes = [[axes.index(i)] if i in axes else [len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)]
-
-
-		# Split
-		attr = 'split'
-		
-		_shape = [*[dimension[axis][i] for axis in dimension for i in range(n)],*[dimensions[axis] for axis in dimensions]]
-		_axes = [*[i+j*n for i in range(n) for j in range(dim)],*[i for i in range(n*dim,n*dim+dims)]]
-		_func = lambda a: reshape(transpose(a,sort))
-		
-		data['%s.func'%(attr)] = _func(a).copy()
-		data['%s.reshape'%(attr)] = reshape(_func(a),_shape).copy()
-		data['%s.transpose'%(attr)] = transpose(reshape(_func(a),_shape),_axes).copy()
-		data['%s'%(attr)] = transpose(reshape(_func(a),_shape),_axes).copy()
-		
-		a = transpose(reshape(_func(a),_shape),_axes)
-		
-		print(attr,{i: data[i].shape for i in data if i.startswith('%s.'%(attr))})
-
-		# Group
-		attr = 'group'
-
-		_shape = [*[prod(dimension[i][j] for j in axis) for axis in axes for i in range(dim)],*[dimensions[axis] for axis in dimensions]]
-		_axes = [*[j*dim+i for axis in axes for i in range(dim) for j in axis],*[i for i in range(n*dim,n*dim+dims)]]
-		_func = lambda a: a
-		
-		data['%s.func'%(attr)] = _func(a).copy()
-		data['%s.transpose'%(attr)] = transpose(_func(a),_axes).copy()
-		data['%s.reshape'%(attr)] = reshape(transpose(_func(a),_axes),_shape).copy()
-		data['%s'%(attr)] = reshape(transpose(_func(a),_axes),_shape).copy()
-		
-		a = reshape(transpose(_func(a),_axes),_shape)
-
-		print(attr,{i: data[i].shape for i in data if i.startswith('%s.'%(attr))})
-
-
-		# Permute
-		axes = data['axes']
-		shape = data['shape']
-
-		axes = [i for axis in axes for i in axis]
-		shape = {axis: [shape[axis][axes.index(i)] if i in axes else shape[axis][len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)] if not isinstance(shape[axis],integers) else shape[axis] for axis in shape}
-		dimension = {axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)}
-		dimension = {i: dimension[axis] for i,axis in enumerate(dimension)}
-		axes = [[i] for i in range(n)]
-
-
-		# _Group
-		attr = '_group'
-	
-		_shape = [*[dimension[i][j] for axis in axes for i in range(dim) for j in axis],*[dimensions[axis] for axis in dimensions]]
-		_axes = [*[[j*dim+i for axis in axes for i in range(dim) for j in axis].index(i) for i in range(n*dim)],*[i for i in range(n*dim,n*dim+dims)]]
-		_func = lambda a: a
-		
-		data['%s.reshape'%(attr)] = reshape(a,_shape).copy()
-		data['%s.transpose'%(attr)] = transpose(reshape(a,_shape),_axes).copy()
-		data['%s.func'%(attr)] = _func(transpose(reshape(a,_shape),_axes)).copy()
-		data['%s'%(attr)] = _func(transpose(reshape(a,_shape),_axes)).copy()
-		
-		a = _func(transpose(reshape(a,_shape),_axes))
-
-		print(attr,{i: data[i].shape for i in data if i.startswith('%s.'%(attr))})
-
-
-		# _Split
-		attr = '_split'
-	
-		_shape = [*[prod(dimension[axis][i] for i in range(n)) for axis in dimension ],*[dimensions[axis] for axis in dimensions]]
-		_axes = [*[i+j*dim for i in range(dim) for j in range(n)],*[i for i in range(n*dim,n*dim+dims)]]
-		_func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
-	
-		data['%s.transpose'%(attr)] = transpose(a,_axes).copy()
-		data['%s.reshape'%(attr)] = reshape(transpose(a,_axes),_shape).copy()
-		data['%s.func'%(attr)] = _func(reshape(transpose(a,_axes),_shape)).copy()
-		data['%s'%(attr)] = _func(reshape(transpose(a,_axes),_shape)).copy()
-
-		a = _func(reshape(transpose(a,_axes),_shape))
-
-		print(attr,{i: data[i].shape for i in data if i.startswith('%s.'%(attr))})
-
-
-		# assert allclose(data['split'],data['_group'])
-		# assert allclose(data['split.reshape'],data['_split.transpose'])
-		# print('Correct')
-
-		return a
 
 	W = tensorprod((*(
 		U[axis.index(i)] if i in axis else 
@@ -932,14 +812,9 @@ def test_concatenate(path=None,tol=None):
 		for i in range(n)),)
 	)
 
-
 	V = shuffle(Z,axes=axes,shape=shape,execute=True)
-	_V = _shuffle(Z,axes=axes,shape=shape,execute=True)
-
-	assert allclose(V,_V), "Incorrect test shuffle"
 
 	assert allclose(V,W), "Incorrect shuffle"
-
 
 	V = shuffle(Z,axes=axes,shape=shape,execute=False)
 
@@ -949,9 +824,6 @@ def test_concatenate(path=None,tol=None):
 	print('Passed')
 	
 	return
-
-
-
 
 
 
@@ -1214,6 +1086,63 @@ def test_structure(path=None,tol=None):
 	return
 
 
+def test_reshape(path=None,tol=None):
+
+	# ~transform: (zx,wu,y,v,s) ->
+	# 	group.reshape-> (z,x,w,u,y,v,s)
+	#  	group.transpose-> (x,u,y,v,z,w,s)
+	#  	group.func-> (x,u,y,v,z,w,s)
+	#  	split.transpose-> (x,y,z,u,v,w,s)
+	#  	split.reshape-> (xyz,uvw,s)
+	# 	split.func-> (s,xyz,uvw)
+
+	from src.utils import array,arange,transpose,reshape,allclose,prod
+
+	x,y,z,u,v,w,s = 2,3,5,4,2,7,9
+
+	shape = (s,x*y*z,u*v*w)
+	size = prod(shape)
+	ndim = len(shape)
+
+	a = reshape(arange(size),shape)
+
+	# transform: (s,xyz,uvw) -> (x,z,w,u,y,v,s) -> (s,zx,) 
+	# with shape = {0:s,1:(x,y,z),2:(u,v,w)} and axes=[2,1]
+
+	# 	split.func-> (xyz,uvw,s)
+	axes = (1,2,0)
+	a = transpose(a,axes)
+
+	# 	split.reshape-> (x,y,z,u,v,w,s)
+	shape = (x,y,z,u,v,w,s)
+	a = reshape(a,shape)
+
+	#  	split.transpose-> (x,u,y,v,z,w,s)
+	axes = (0,3,1,4,2,5,6)
+	a = transpose(a,axes)
+
+	#  	group.func-> (x,u,y,v,z,w,s)
+	axes = (0,1,2,3,4,5,6)
+	a = transpose(a,axes)
+
+	#  	group.transpose-> (z,x,w,u,y,v,s)
+	axes = (4,0,5,1,2,3,6)
+	a = transpose(a,axes)
+
+	#  	group.reshape-> (z,x,w,u,y,v,s)
+	shape = (z*x,w*u,y,v,s)
+	a = reshape(a,shape)
+
+	b = reshape(a,shape)
+	c = reshape(reshape(a),shape)
+
+	print('Passed')
+
+	return
+
+
+
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -1227,8 +1156,9 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_swap(path,tol)	
+	test_swap(path,tol)	
 	test_concatenate(path,tol)
+	test_reshape(path,tol)
 	# test_action(path,tol)
 	# test_inheritance(path,tol)
 	# test_convert(path,tol)

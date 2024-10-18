@@ -7609,6 +7609,7 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 		dims = len(dimensions)
 
 		n = max(len(dimension[axis]) for axis in dimension)
+		
 		sort = [*[axis for axis in dimension],*[axis for axis in dimensions]]
 
 		dimension = {i: dimension[axis] for i,axis in enumerate(dimension)}
@@ -7626,7 +7627,7 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 		def split(a,axes,dimension,dimensions,dim,dims,n,sort):
 			shape = [*[dimension[axis][i] for axis in dimension for i in range(n)],*[dimensions[axis] for axis in dimensions]]
 			axes = [*[i+j*n for i in range(n) for j in range(dim)],*[i for i in range(n*dim,n*dim+dims)]]
-			func = lambda a: reshape(transpose(a,sort))
+			func = lambda a: transpose(a,sort)
 			return transpose(reshape(func(a),shape),axes)
 
 		def group(a,axes,dimension,dimensions,dim,dims,n,sort):
@@ -7648,7 +7649,6 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 			return func(transpose(reshape(a,shape),axes))
 
 	else:
-	
 
 		def split(obj,axes,dimension,dimensions,dim,dims,n,sort):
 			shape = [*[dimension[axis][i] for axis in dimension for i in range(n)],*[dimensions[axis] for axis in dimensions]]
@@ -7734,8 +7734,9 @@ def shuffle(a=None,axes=None,shape=None,execute=True):
 		return axes,shape,_axes,_shape	
 
 	axes,shape,_axes,_shape = permute(axes,shape)
+	transform = True
 
-	return swap(swap(a,axes=axes,shape=shape,transform=True,execute=execute),axes=_axes,shape=_shape,transform=False,execute=execute)
+	return swap(swap(a,axes=axes,shape=shape,transform=transform,execute=execute),axes=_axes,shape=_shape,transform=not transform,execute=execute)
 
 
 def broadcast_to(a,shape):
