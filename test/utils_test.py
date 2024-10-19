@@ -777,7 +777,8 @@ def test_swap(path=None,tol=None):
 	return
 
 def test_concatenate(path=None,tol=None):
-	d = [[2,2,2,2],[2,3,4,5],[3,4,2,5]]
+	
+	d = [[2,3,4,3],[2,3,4,5],[3,4,2,5]]
 	n = max((len(i) if not isinstance(i,integers) else 1 for i in d),default=0)
 	k = len(d)
 	r = []
@@ -826,31 +827,38 @@ def test_concatenate(path=None,tol=None):
 	return
 
 
-
-
-
-
 def test_action(path=None,tol=None):
 
-	d = 2
-	n = 6
+	d = 3
+	n = 5
 	k = 2
-	q = 2
-	axis = [i for i in [5,0,4,1,3,2] if i<n]
+
+	d = [[d]*n,]*k
+	
+	n = max((len(i) if not isinstance(i,integers) else 1 for i in d),default=0)
+	k = len(d)
+	r = []
+	m = max((len(i) if not isinstance(i,integers) else 1 for i in r),default=0)
+	q = len(r)
+	ndim = 2
+	index = k-1
+	dtype = "complex"
+	
+	axis = [i for i in [1,0,3,4] if i < n][:n]
 	l = len(axis)
-	dtype = int
 
-	I = eye(d,dtype=dtype)
-	U = array([[0,1],[1,0]],dtype=dtype)
+	_axis = [i for i in range(n) if i not in axis]
+	_l = len(_axis)
 
-	shape = (d**n,)*k
-	state = rand(shape,seed=123)
+	dimension = {i:[*[d[i][j] for j in axis],*[d[i][j] for j in _axis]] for i in range(k)}
+	dimensions = {i:r[i]**(l+_l) for i in range(q)}
 
-	shape = (d**l,)*q
-	operator = tensorprod((U,)*l)
+	U = [rand(shape=(*r,*(d[j][i] for j in range(k)),),dtype=dtype) for i in axis]
+	I = [eye(*(d[j][i] for j in range(k)),dtype=dtype) for i in _axis]
 
+	state = rand(shape=(*(prod(d[index]),)*ndim,),dtype=dtype)
 
-	data = {'dense':1,'local':1}
+	data = {'dense':1,'local':1,'exact':1}
 
 	for attr in data:
 
@@ -859,31 +867,56 @@ def test_action(path=None,tol=None):
 
 		if attr in ['dense']:
 			
-			shape = (d,n,q)
 			axes = [*axis]
-		
-			tmp = swap(swap(tensorprod((operator,*(I,)*(n-l))),axes=axes,shape=shape,transform=True,permute=True),axes=None,shape=shape,transform=False,permute=True)
+			shape = {
+				**{i:dimensions[axis] for i,axis in enumerate(dimensions)},
+				**{len(dimensions)+i:dimension[axis] for i,axis in enumerate(dimension)},
+				}
+			# shape = (max(max(i) for i in d),n,ndim)
+
+			tmp = shuffle(tensorprod((*U,*I)),axes=axes,shape=shape,execute=True)
 			
-			if k == 2:
+			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk,kl->il',data,state,dagger(data))
 				function = lambda state: func(state)
-			elif k == 1:
+			elif state.ndim == 1:
 				func = lambda state,data=tmp: einsum('ij,j->i',data,state)
 				function = lambda state: func(state)
 		
 		elif attr in ['local']:
 
-			shape = (d,n,k)
 			axes = [axis]
+			shape = {
+				**{i:d[index] for i in range(ndim)},
+				}
+			# shape = (max(max(i) for i in d),n,ndim)
 
-			tmp = operator
+			tmp = tensorprod(U)
 
-			if k == 2:
+			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
 				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
-			elif k == 1:
+			elif state.ndim == 1:
 				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
 				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+
+		elif attr in ['exact']:
+
+			axes = None
+			shape = None
+
+			tmp = tensorprod((*(
+				U[axis.index(i)] if i in axis else 
+				I[_axis.index(i)] if i in _axis else None
+				for i in range(n)),)
+			)
+
+			if state.ndim == 2:
+				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
+				function = lambda state: func(state)
+			elif state.ndim == 1:
+				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
+				function = lambda state: func(state)
 
 
 		print('---',attr,'---')
@@ -1156,10 +1189,10 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	test_swap(path,tol)	
-	test_concatenate(path,tol)
-	test_reshape(path,tol)
-	# test_action(path,tol)
+	# test_swap(path,tol)	
+	# test_concatenate(path,tol)
+	# test_reshape(path,tol)
+	test_action(path,tol)
 	# test_inheritance(path,tol)
 	# test_convert(path,tol)
 	# test_stability(path,tol)

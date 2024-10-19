@@ -2033,21 +2033,21 @@ class Object(System):
 
 			if isinstance(self.operator,str):
 
-				data = tensorprod([self.basis.get(i)(**{**options}) for i in [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator)))])
+				data = [self.basis.get(i)(**{**options}) for i in [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator)))]
 
 			elif isinstance(self.operator,iterables):
 
-				data = tensorprod([self.basis.get(i)(**{**options}) for i in self.operator])
+				data = [self.basis.get(i)(**{**options}) for i in self.operator]
 
 			else:
 				data = None
 
-			default = self.basis.get(self.default)(**{**options})
+			default = [self.basis.get(self.default)(**{**options})]*(self.N-self.locality)
 
 			if local:
 				data = data if data is not None else None
 			else:
-				data = shuffle(tensorprod((data,*(default,)*(self.N-self.locality))),axes=self.site,shape=(self.D,self.N,self.ndim)) if data is not None else None
+				data = shuffle(tensorprod((*data,*default)),axes=self.site,shape=(self.D,self.N,self.ndim)) if data is not None else None
 				
 			data = array(data,dtype=dtype) if data is not None else None
 

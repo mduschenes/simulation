@@ -6230,16 +6230,6 @@ def tr(obj,axis=None,shape=None,size=None):
 		obj = trace(obj,axis=[j*dim+i for j in range(ndim)])
 
 	obj = obj.reshape(shape)
-		
-#     subscripts = [i for i in characters[:dim*ndim]]
-#     for i in axis:
-#         for j in range(ndim-1,0,-1):
-#             subscripts[j*dim+i] = subscripts[i]
-#     subscripts = ''.join(subscripts)
-			
-#     obj = einsum(subscripts,obj)
-	
-#     obj = obj.reshape(shape)
 	
 	return obj
 
@@ -7526,14 +7516,14 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 	Split and swap, and group axis
 	
 	Array has shape, up to reordering of axis,
-		shape: (*(dimension_ij for j in range(n)) for i in range(dim)),*(dimensions_i for i in range(dims)))
+		shape: (*(dimension_ij for j in range(n)) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and axes are grouped by n components
 		axes: [[i,j,...],...,[k,l,...]] for i,j,k,l,... in [n]
 	
 	If transform: array gets split with shape to
-		shape -> (*(dimension_ij for j in range(n) for i in range(dim)),*(dimensions_i for i in range(dims)))
+		shape -> (*(dimension_ij for j in range(n) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and grouped with axes to
-		shape -> (*(prod(dimension_ij for j in axis) for axis in axes for i in range(dim) ),*(dimensions_i for i in range(dims)))
+		shape -> (*(prod(dimension_ij for j in axis) for axis in axes for i in range(ndim) ),*(dimensions_i for i in range(ndims)))
 	
 	If not transform, shape is assumed to be previously split and grouped, and is reverse grouped and split
 	
@@ -7543,8 +7533,8 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 			axes: ((2,0),(1))
 			dimension: {0:(x,y,z),1:(u,v,w)}
 			dimensions: {2: s}
-			dim: 2
-			dims: 1
+			ndim: 2
+			ndims: 1
 			n: 2
 			sort: [1,2,0]
 		
@@ -7568,15 +7558,16 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 	Args:
 		a (array): array to reshape into subspaces
 		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-		shape (dict[int,iterable[int] or int]): shape of array of form 
-				{axis_i: (dimension_ij for j in [n]) for i in [dim], axis_i: dimensions_i for i in [dims]}
-				for dim composite axes of n dimensions dimension = ((dimension_ij for j in [n]) for i in [dim]), 
-				where each dimension j has n components i with size dimension_ij, 
-				and remaining dims non-composite axes of dimension dimensions = (dimensions_i for i in [dims]), 
-				such that up to rearrangements according of axis_i ordering, the array has properties 
-				shape: (*(prod(dimension_ij for j in [n]) for i in [dim]),*(dimensions_i for i in [dims]),
-				size: prod(dimension)*prod(dimensions),
-				ndim: len(dimension)+len(dimensions)		
+		shape (dict[int,iterable[int] or int],iterable[int]): shape of array of form 
+				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}
+					for ndim composite axes of n dimensions shape = ((dimension_ij for j in [n]) for i in [ndim]), 
+					where each dimension j has n components i with size dimension_ij, 
+					and remaining ndims non-composite axes of dimension shapes = (dimensions_i for i in [ndims]), 
+					such that up to rearrangements according of axis_i ordering, the array has properties 
+					shape: (*(prod(dimension_ij for j in [n]) for i in [ndim]),*(dimensions_i for i in [ndims]),
+					size: prod(shape)*prod(shapes),
+					ndim: len(shape)+len(shapes)		
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		transform (bool): transformation of array options
 			True,None: split and swap and group axes
 			False: reverse split, and swap, and group
@@ -7591,106 +7582,113 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 		Args:
 			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 			shape (dict[int,iterable[int] or int]): shape of array of form 
-				{axis_i: (dimension_ij for j in [n]) for i in [dim], axis_i: dimensions_i for i in [dims]}	
+				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}	
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
 		Returns:
 			axes (iterable[iterable[int]]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-			dimension (dict[int,iterable[int]]): dimension of composite axis of form {axis_i: (dimension_ij for j in [n]) for i in [dim]}
-			dimensions (dict[int,int]): dimension of non-composite axis of form {axis_i: dimensions_i for i in [dims]}
-			dim (int): number of axis of composite space
-			dims (int): number of axis of non-composite space
+			shape (dict[int,iterable[int]]): dimension of composite axis of form {axis_i: (dimension_ij for j in [n]) for i in [ndim]}
+			shapes (dict[int,int]): dimension of non-composite axis of form {axis_i: dimensions_i for i in [ndims]}
+			ndim (int): number of axis of composite space
+			ndims (int): number of axis of non-composite space
 			n (int): number of composite dimensions
 			sort (iterable[int]): order of axis, with composite then non-composite axis
 		'''
 
-		dimension = {axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)}
-		dimensions = {axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)}
+		if not isinstance(shape,dict):
+			n,d,ndim = shape
+			shape = {axis: [d]*n for axis in range(ndim)}
 
-		dim = len(dimension)
-		dims = len(dimensions)
+		shape,shapes = ({axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)},
+					    {axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)})
 
-		n = max(len(dimension[axis]) for axis in dimension)
+		ndim = len(shape)
+		ndims = len(shapes)
+
+		n = max(len(shape[axis]) for axis in shape)
 		
-		sort = [*[axis for axis in dimension],*[axis for axis in dimensions]]
+		sort = [*[axis for axis in shape],*[axis for axis in shapes]]
 
-		dimension = {i: dimension[axis] for i,axis in enumerate(dimension)}
-		dimensions = {dim+i: dimensions[axis] for i,axis in enumerate(dimensions)}
+		shape,shapes = ({i: shape[axis] for i,axis in enumerate(shape)},
+					    {ndim+i: shapes[axis] for i,axis in enumerate(shapes)})
 
 		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
 		axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
 		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
 	
-		return axes,dimension,dimensions,dim,dims,n,sort
+		return axes,shape,shapes,ndim,ndims,n,sort
 
 
 	if execute:
 
-		def split(a,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[dimension[axis][i] for axis in dimension for i in range(n)],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[i+j*n for i in range(n) for j in range(dim)],*[i for i in range(n*dim,n*dim+dims)]]
+		def split(a,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
+			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: transpose(a,sort)
 			return transpose(reshape(func(a),shape),axes)
 
-		def group(a,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[prod(dimension[i][j] for j in axis) for axis in axes for i in range(dim)],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[j*dim+i for axis in axes for i in range(dim) for j in axis],*[i for i in range(n*dim,n*dim+dims)]]
+		def group(a,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
+			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
 			return reshape(transpose(func(a),axes),shape)
 
-		def _split(a,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[prod(dimension[axis][i] for i in range(n)) for axis in dimension ],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[i+j*dim for i in range(dim) for j in range(n)],*[i for i in range(n*dim,n*dim+dims)]]
+		def _split(a,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
+			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return func(reshape(transpose(a,axes),shape))
 
-		def _group(a,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[dimension[i][j] for axis in axes for i in range(dim) for j in axis],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[[j*dim+i for axis in axes for i in range(dim) for j in axis].index(i) for i in range(n*dim)],*[i for i in range(n*dim,n*dim+dims)]]
+		def _group(a,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
+			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
 			return func(transpose(reshape(a,shape),axes))
 
 	else:
 
-		def split(obj,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[dimension[axis][i] for axis in dimension for i in range(n)],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[i+j*n for i in range(n) for j in range(dim)],*[i for i in range(n*dim,n*dim+dims)]]
+		def split(obj,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
+			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: reshape(transpose(a,sort))
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (transpose(reshape(func(a),shape),axes)))
 
-		def group(obj,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[prod(dimension[i][j] for j in axis) for axis in axes for i in range(dim)],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[j*dim+i for axis in axes for i in range(dim) for j in axis],*[i for i in range(n*dim,n*dim+dims)]]
+		def group(obj,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
+			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (reshape(transpose(func(obj(a)),axes),shape)))
 
-		def _split(obj,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[prod(dimension[axis][i] for i in range(n)) for axis in dimension ],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[i+j*dim for i in range(dim) for j in range(n)],*[i for i in range(n*dim,n*dim+dims)]]
+		def _split(obj,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
+			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(reshape(transpose(obj(a),axes),shape))))
 
-		def _group(obj,axes,dimension,dimensions,dim,dims,n,sort):
-			shape = [*[dimension[i][j] for axis in axes for i in range(dim) for j in axis],*[dimensions[axis] for axis in dimensions]]
-			axes = [*[[j*dim+i for axis in axes for i in range(dim) for j in axis].index(i) for i in range(n*dim)],*[i for i in range(n*dim,n*dim+dims)]]
+		def _group(obj,axes,shape,shapes,ndim,ndims,n,sort):
+			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
+			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(obj(a),shape),axes))))
 
-	axes,dimension,dimensions,dim,dims,n,sort = parse(axes,shape)
+	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 
 	if transform is None or transform is True:
 
-		return group(split(a,axes,dimension,dimensions,dim,dims,n,sort),axes,dimension,dimensions,dim,dims,n,sort)
+		return group(split(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 		
 	elif transform is False:
 		
-		return _split(_group(a,axes,dimension,dimensions,dim,dims,n,sort),axes,dimension,dimensions,dim,dims,n,sort)
+		return _split(_group(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 
 def shuffle(a=None,axes=None,shape=None,execute=True):
 	'''
 	Shuffle axes of array of shape (d**n,)*k	
 	Args:
 		a (array): array to reshape into subspaces
-		axes (iterable[int],iterable[iterable[int]]): (i,j,k,...), order of to be shuffled axes of array, currently (i,j,k,...) to (0,1,2,...,n-1) , i,j,k in [n]		
-		shape (iterable[int]): (d,n,k), dimension of subspaces d, number of subspaces n, and number of dimensions of subspaces k, (d,...,n,k)
+		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+		shape (dict[int,iterable[int] or int]): shape of array of form 
+			dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
+			iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
 		execute (bool): Execute transformations or return function with precomputed axes and shapes
 	Returns:
 		a (array): shuffled array
@@ -7705,31 +7703,35 @@ def shuffle(a=None,axes=None,shape=None,execute=True):
 		Args:
 			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 			shape (dict[int,iterable[int] or int]): shape of array of form 
-				{axis_i: (dimension_ij for j in [n]) for i in [dim], axis_i: dimensions_i for i in [dims]}	
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
 		Returns:
 			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 			shape (dict[int,iterable[int] or int]): shape of array of form 
-				{axis_i: (dimension_ij for j in [n]) for i in [dim], axis_i: dimensions_i for i in [dims]}	
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
 			_axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 			_shape (dict[int,iterable[int] or int]): shape of array of form 
-				{axis_i: (dimension_ij for j in [n]) for i in [dim], axis_i: dimensions_i for i in [dims]}	
-
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
 		'''
 
 		# TODO: Allow inverse permutations of axes for grouped axes
 		assert all(isinstance(axis,integers) or len(axis) == 1 for axis in axes), "Inverse permutations not implemented for grouped axes"
-		
+
+		if not isinstance(shape,dict):
+			d,n,ndim = shape
+			shape = {axis: [d]*n for axis in range(ndim)}
+
 		axes = [i for axis in axes for i in (axis if not isinstance(axis,integers) else [axis])]
 
 		n = max(len(shape[axis]) for axis in shape if not isinstance(shape[axis],integers))
 
-		shape = {axis: [i for i in shape[axis]] if not isinstance(shape[axis],integers) else shape[axis] for axis in shape}
+		shape,_shape = ({axis: [i for i in shape[axis]] if not isinstance(shape[axis],integers) else shape[axis] for axis in shape},
+						{axis: [shape[axis][axes.index(i)] if i in axes else shape[axis][len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)] if not isinstance(shape[axis],integers) else shape[axis] for axis in shape})
 
-		_shape = {axis: [shape[axis][axes.index(i)] if i in axes else shape[axis][len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)] if not isinstance(shape[axis],integers) else shape[axis] for axis in shape}
-
-		axes = [[axes.index(i)] if i in axes else [len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)]
-
-		_axes = [[i] for i in range(n)]		
+		axes,_axes = ([[axes.index(i)] if i in axes else [len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)],
+					  [[i] for i in range(n)])
 
 		return axes,shape,_axes,_shape	
 
