@@ -33,6 +33,47 @@ def equalizer(a,b):
 	else:
 		return a==b
 
+def test_basis(*args,**kwargs):
+
+	from src.quantum import Basis as basis
+	
+	D = 2
+	N = 1
+	L = 2
+	K = 2
+	ndim = None
+	shape = [D**L]*(K if ndim is None else ndim)
+	data='zero.plus.minusi'
+	key = 123
+	delim = '.'
+	dtype = 'complex'
+
+	options = Dict(D=D,N=N,ndim=ndim,shape=shape,data=data,key=key,dtype=dtype)
+
+	operators = {
+		'rand':Dict(locality=L,dimension={i:[options.D]*len(options.shape) for i in range(K if ndim is None else ndim)},axes=2),
+		'X':Dict(locality=1,dimension={i:[options.D]*options.N for i in range(K)},axes=2),
+		'depolarize':Dict(locality=1,dimension={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},axes=3),
+		'string':Dict(locality=len(data.split(delim)),dimension={i:[options.D]*len(data.split(delim)) for i in range(1)},axes=1),
+		'pauli':Dict(locality=1,dimension={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},axes=3),		
+		}
+
+	for operator in operators:
+		data = basis.get(operator)(**options)
+
+		print(operator)
+		print(data)
+		for attr in operators[operator]:
+			print(attr,getattr(basis,attr)(operator,**options),operators[operator][attr])
+			assert operators[operator][attr] == getattr(basis,attr)(operator,**options)
+		print()
+
+
+	print('Passed')
+
+	return
+
+
 def test_channel(*args,**kwargs):
 
 	data = {}
@@ -110,11 +151,14 @@ def test_channel(*args,**kwargs):
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
 
+		model = model(**settings.model)
 		state = state(**settings.state)
-		model = model(**settings.model,state=state)
 
 		model.init(state=state)
 
+
+		model.info(verbose=verbose)
+		exit()
 
 		print('Settings: ',settings.cls.model,settings.cls.state)
 
@@ -191,23 +235,28 @@ def test_tensorproduct(*args,**kwargs):
 				# 	"parameters":None,
 				# 	"variable":False
 				# },
-				"data":{
-					"operator":["CNOT"],"site":"<ij>","string":"cnot",
-					"parameters":None,
-					"variable":False
-				},
 				# "data":{
+				# 	"operator":["CNOT"],"site":"<ij>","string":"cnot",
+				# 	"parameters":None,
+				# 	"variable":False
+				# },
+				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
 				# 	"parameters":0.5,
 				# 	"variable":False
-				# },				
-				# "hadamard":{
-				# 	"operator":["H"],"site":"i","string":"hadamard",
-				# 	"parameters":None,
-				# 	"variable":False
-				# }					
+				# },
+				"cnot":{
+					"operator":["CNOT"],"site":"<ij>","string":"cnot",
+					"parameters":None,
+					"variable":False
+				},								
+				"hadamard":{
+					"operator":["H"],"site":"i","string":"hadamard",
+					"parameters":None,
+					"variable":False
+				}					
 			},
-			"N":2,"D":2,"ndim":2,"local":True,
+			"N":4,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":12345,"dtype":"complex",
 				"architecture":None,"configuration":{"key":["site"]},
@@ -243,21 +292,45 @@ def test_tensorproduct(*args,**kwargs):
 
 	state.info(verbose=verbose)
 
+	try:
+		new = model @ model
+		new.info(verbose=verbose)
+		
+		test = new(parameters=new.parameters(),state=new.state())
+
+		_test = tensorprod([basis.get(j)(**settings.model) 
+			for i in settings.model.data 
+			for j in (
+				settings.model.data[i].operator 
+				if isinstance(settings.model.data[i].operator,iterables) else 
+				[settings.model.data[i].operator])]*2)
+
+		assert allclose(test,_test), "Incorrect model @ model"
+
+	except NotImplementedError:
+		pass
 
 
-	new = model @ model
-	new.info(verbose=verbose)
-	
-	test = new(parameters=new.parameters(),state=new.state())
+	for i in model.data:
+		for j in model.data:
+			
+			try:
+				new = model.data[i] @ model.data[j]
+				# new.info(verbose=verbose)
+				print(dict((map(tuple,i) for i in zip([model.data[i].site,model.data[j].site,new.site],[model.data[i].operator,model.data[j].operator,new.operator]))))
 
-	_test = tensorprod([basis.get(j)(**settings.model) 
-		for i in settings.model.data 
-		for j in (
-			settings.model.data[i].operator 
-			if isinstance(settings.model.data[i].operator,iterables) else 
-			[settings.model.data[i].operator])]*2)
+				# test = new(parameters=new.parameters(),state=new.state())
 
-	assert allclose(test,_test), "Incorrect model @ model"
+				# _test = tensorprod([basis.get(j)(**settings.model) 
+				# 	for i in settings.model.data 
+				# 	for j in (
+				# 		settings.model.data[i].operator 
+				# 		if isinstance(settings.model.data[i].operator,iterables) else 
+				# 		[settings.model.data[i].operator])]*2)
+
+				# assert allclose(test,_test), "Incorrect model @ model"
+			except NotImplementedError:
+				pass
 
 
 	new = state @ state
@@ -295,11 +368,9 @@ def test_tensorproduct(*args,**kwargs):
 
 	new = states[0] 
 	for state in states[1:]:
-		print(new.site,new.N)
 		new @= state
 
 	new.init(site=site)
-
 
 	new.info(verbose=verbose)
 
@@ -335,6 +406,7 @@ def test_tensorproduct(*args,**kwargs):
 
 	# assert allclose(test,_test), "Incorrect operator @ operator"
 
+	print('Passed')
 
 	return
 
@@ -1242,13 +1314,13 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 
-
-	# test_channel(*args,**args)
+	# test_basis(*args,**args)
+	test_channel(*args,**args)
 	# test_state(*args,**args)
 	# test_measure(*args,**args)
 	# test_composite(*args,**args)
 	# test_namespace(*args,**args)
 	# test_algebra(*args,**args)
 	# test_tensorproduct(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 

@@ -7682,7 +7682,7 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 
 def shuffle(a=None,axes=None,shape=None,execute=True):
 	'''
-	Shuffle axes of array of shape (d**n,)*k	
+	Shuffle axes of array
 	Args:
 		a (array): array to reshape into subspaces
 		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
@@ -8476,15 +8476,16 @@ def exclusion(*iterables,sort=False):
 	return exclusion
 
 
-def accumulate(iterable):
+def accumulate(iterable,initial=None):
 	'''
 	Cumulative summation of iterable
 	Args:
 		iterable (iterable): iterable to sum of length size
+		initial (object): initial value to accumulate
 	Returns:
 		accumulation (iterable): cumulative summation of elements of length size
 	'''
-	return itertools.accumulate(iterable)
+	return itertools.accumulate(iterable,initial=initial)
 
 def copier(key,value,_copy):
 	'''
