@@ -10,8 +10,9 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,allclose,product,representation
-from src.utils import einsum,conjugate,dot,tensorprod,trace,sqrtm,sqrt
+from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
+from src.utils import einsum,conjugate,dot,tensorprod,trace,sqrtm,sqrt,cos,sin
+from src.utils import swap,shuffle,seeder
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -43,7 +44,7 @@ def test_basis(*args,**kwargs):
 	K = 2
 	ndim = None
 	shape = [D**L]*(K if ndim is None else ndim)
-	data='zero.plus.minusi'
+	data='zero.depolarize.X'
 	key = 123
 	delim = '.'
 	dtype = 'complex'
@@ -51,11 +52,11 @@ def test_basis(*args,**kwargs):
 	options = Dict(D=D,N=N,ndim=ndim,shape=shape,data=data,key=key,dtype=dtype)
 
 	operators = {
-		'rand':Dict(locality=L,dimension={i:[options.D]*len(options.shape) for i in range(K if ndim is None else ndim)},axes=2),
-		'X':Dict(locality=1,dimension={i:[options.D]*options.N for i in range(K)},axes=2),
-		'depolarize':Dict(locality=1,dimension={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},axes=3),
-		'string':Dict(locality=len(data.split(delim)),dimension={i:[options.D]*len(data.split(delim)) for i in range(1)},axes=1),
-		'pauli':Dict(locality=1,dimension={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},axes=3),		
+		'rand':Dict(locality=L,shapes={i:[options.D]*len(options.shape) for i in range(K if ndim is None else ndim)},dimension=2),
+		'X':Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
+		'depolarize':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
+		'string':Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[1,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
+		'pauli':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
 		}
 
 	for operator in operators:
@@ -74,62 +75,55 @@ def test_basis(*args,**kwargs):
 	return
 
 
-def test_channel(*args,**kwargs):
+def test_operator(*args,**kwargs):
 
 	data = {}
 
 	kwargs = {
-		"cls.model":["src.quantum.Channel","src.quantum.Operators"],
-		**{attr:[3] for attr in ["model.N","state.N"]},
-		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
-		"model.M":[10],
-		"model.ndim":[2],"state.ndim":[1],
+		"operator.N":[4],"state.N":[4],
+		"operator.D":[2],"state.D":[2],
+		"operator.ndim":[None],"state.ndim":[2,1],
+		"operator.local":[True,False],
+		"operator.data":[None,None,None,None,None],
+		"operator.operator":[["TEST","H"],["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
+		"operator.site":[[3,0,1],[0,2],[3,1],[0],[0,2,1]],
+		"operator.string":["test","xz","U","u","noise"],
+		"operator.parameters":[None,0.5,None,None,1e-6],
+		"operator.variable":[False,False,False,False,False,False],
+		"operator.constant":[True,False,False,False,True,True],
+		"state.local":[False],
+		"state.data":[None],
+		"state.operator":["zero"],
+		"state.site":[None],
+		"state.string":["zero"],
+		"state.parameters":[None],
+		"state.variable":[False],
+		"state.constant":[True],
+
 		}
-	groups = [["model.N","state.N"],["model.system.architecture","state.system.architecture"],]
-	filters = lambda iterables: (iterable for iterable in iterables 
-		if not (iterable['cls.model'] in ['src.quantum.Channel'] and 
-				iterable['model.system.architecture'] in ['mps'] and
-				iterable['state.system.architecture'] in ['mps'])
-		)
+	groups = [[
+		"operator.data","operator.operator","operator.site",
+		"operator.string","operator.parameters","operator.variable","operator.constant"
+		],[
+		"state.data","state.operator","state.site",
+		"state.string","state.parameters","state.variable","state.constant"
+		],
+		]
+	filters = None
 	func = None
+
+	options = dict(dtype='complex')
 
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 	
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Channel",
+				"operator":"src.quantum.Operator",
 				"state":"src.quantum.State"
 			},
-			"model":{
-				"data":{
-					"x":{
-						"operator":["X"],"site":"i","string":"x",
-						"parameters":{"data":"random","seed":123},
-						"variable":True
-					},
-					"y":{
-						"operator":["Y"],"site":"i","string":"y",
-						"parameters":{"data":"random","seed":123},
-						"variable":True
-					},
-					"z":{
-						"operator":["Z"],"site":"i","string":"z",
-						"parameters":{"data":"random","seed":123},
-						"variable":True
-					},				
-					"zz":{
-						"operator":["Z","Z"],"site":"<ij>","string":"zz",
-						"parameters":{"data":"random","seed":123},
-						"variable":True
-					},
-					# "noise":{
-					# 	"operator":"depolarize","site":None,"string":"noise",
-					# 	"parameters":1e-12,
-					# 	"ndim":3,
-					# 	"variable":False
-					# }
-				},
-				"N":2,"D":2,"ndim":2,"M":4,
+			"operator":{
+				"data":None,"operator":None,"site":None,"string":None,
+				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
 				"system":{"seed":12345,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
@@ -146,76 +140,388 @@ def test_channel(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default=True)
 
 		verbose = True
-		ignore = "parameters"
-
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-
-		model = model(**settings.model)
-		state = state(**settings.state)
-
-		model.init(state=state)
 
 
-		model.info(verbose=verbose)
-		exit()
+		from src.quantum import Basis,Object
 
-		print('Settings: ',settings.cls.model,settings.cls.state)
 
-		# Model
+		# Data
+		operator = load(settings.cls.operator)
 
-		value = product([model.data[i].data for i in model.data])
+		operator = operator(**settings.operator)
 
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = array(value)
+		if operator.string in ['test']:
+			_data = [
+				array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options),
+				array([[1,1],[1,-1]],**options),
+				]
+			axes = [3,0,1,2]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ['xz']:
+			_data = [
+				array([[0,1],[1,0]],**options),
+				array([[1,0],[0,-1]],**options),
+				]
+			axes = [0,2,1,3]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ['U']:
+			_data = [
+				haar(shape=(2**2,)*2,seed=seeder(operator.seed),**options),
+				]
+			axes = [3,1,0,2]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ['u']:
+			_data = [
+				haar(shape=(2,)*2,seed=seeder(operator.seed),**options),
+				]
+			axes = [0,3,1,2]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ['noise']:
+			_data = [
+				array([
+				sqrt(1-(2**2-1)*operator.parameters()/(2**2))*array([[1,0],[0,1]],**options),
+				sqrt(operator.parameters()/(2**2))*array([[0,1],[1,0]],**options),
+				sqrt(operator.parameters()/(2**2))*array([[0,-1j],[1j,0]],**options),
+				sqrt(operator.parameters()/(2**2))*array([[1,0],[0,-1]],**options),
+				],**options),
+				array([
+					array([[1,0],[0,0]],**options) + 
+						sqrt(1-operator.parameters())*array([[0,0],[0,1]],**options),
+					sqrt(operator.parameters())*array([[0,1],[0,0]],**options)
+					],**options),
+				array([
+					sqrt(1-operator.parameters())*array([[1,0],[0,1]],**options),
+					sqrt(operator.parameters())*array([[1,0],[0,-1]],**options)
+					],**options),
+				]
+			axes = [0,2,1,3]
+			shape = {0:[4,2,2,1],1:[2,2,2,2],2:[2,2,2,2]}
 
-		print("--- model ---")
-		model.info(ignore=ignore,verbose=verbose)
-		print(model.data)
-		print("------")
+			
+		if operator.local:
+			_tmp = tensorprod(_data)
+		else:
+			_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
+			_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
+
+		if not operator.constant:
+			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.locality if operator.local else operator.N)) + 
+			        -1j*sin(operator.parameters(operator.parameters()))*_tmp)
+
+		operator.info(verbose=verbose)
+
+		parameters = operator.parameters()
+		state = operator.identity
+
+		tmp = operator(parameters=parameters,state=state)
+
+		if verbose:
+			print('----- data ------')
+			print(tmp)
+			print('-----------------')
+			print()
+			print('----- _data ------')
+			print(_tmp)
+			print('-----------------')
+			print()
+
+		assert allclose(tmp,_tmp), "Incorrect operator %r"%(operator)
+
 
 
 		# State
 
-		value = state()
+		state = load(settings.cls.state)
+		state = state(**settings.state)
+
+		operator.init(state=state)
+
+		parameters = operator.parameters()
+		state = operator.state()
+
+		tmp = operator(parameters=parameters,state=state)
+
+		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
+		_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
+
+		if not operator.constant:
+			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
+				        -1j*sin(operator.parameters(operator.parameters()))*_tmp)
+
+		if operator.ndim == 3:
+			if state is None:
+				_tmp = _tmp
+			elif state.ndim == 2:
+				_tmp = einsum('uij,jl,ukl->ik',_tmp,state,conjugate(_tmp))
+			elif state.ndim == 1:
+				continue
+			else:
+				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
+
+		elif operator.ndim == 2:
+			if state is None:
+				_tmp = _tmp
+			elif state.ndim == 2:
+				_tmp = einsum('ij,jl,kl->ik',_tmp,state,conjugate(_tmp))
+			elif state.ndim == 1:
+				_tmp = einsum('ij,j->i',_tmp,state)				
+			else:
+				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
 		
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
-
-		print("--- state ---")
-		state.info(ignore=ignore,verbose=verbose)
-		print(value)
-		print("------")
+		else:
+			
+			raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
 
 
-		# Value
-		
-		value = model(model.parameters(model.parameters()),model.state())
 
-		if kwargs["model.system.architecture"] in ["array"]:
-			value = array(value)
-		elif kwargs["model.system.architecture"] in ["mps"]:
-			value = value.to_dense().reshape(-1)
+		if verbose:
+			print('----- state ------')
+			print(tmp)
+			print('-----------------')
+			print()
+			print('----- _state ------')
+			print(_tmp)
+			print('-----------------')
+			print()
 
-		print("--- value ---")
-		print(value)
-		print("------")
+		assert allclose(tmp,_tmp), "Incorrect operator(parameters,state) %r"%(operator)
 
-		print()
-		print()
-		print()
+	print('Passed')
 
-		data[index] = value
+	return	
 
 
-	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+def test_data(path,tol):
 
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.init(state=state)	
+	model.init(state=state)
+
+
+	basis = {
+		'I':array([[1,0],[0,1]],dtype=model.dtype),
+		'X':array([[0,1],[1,0]],dtype=model.dtype),
+		'Y':array([[0,-1j],[1j,0]],dtype=model.dtype),
+		'Z':array([[1,0],[0,-1]],dtype=model.dtype),
+		}
+	default = 'I'
+
+	N = model.N
+	P = model.P
+	locality = model.locality
+	local = model.local
+
+	if local:
+		string = [
+			*[[O for k in range(N) if k in [i]]
+				for O in ['X','Y','Z']
+				for i in range(N)
+				],
+			*[[O for k in range(N) if k in [i,j] ]
+				for O in ['Z']
+				for i in range(N)
+				for j in range(N)
+				if i<j
+				],
+			]
+	else:
+		string = [
+			*[[O if k in [i] else default for k in range(N)]
+				for O in ['X','Y','Z']
+				for i in range(N)
+				],
+			*[[O if k in [i,j] else default for k in range(N)]
+				for O in ['Z']
+				for i in range(N)
+				for j in range(N)
+				if i<j
+				],
+			]
+
+	if local:
+		data = [tensorprod(array([basis[i] for i in s])) for s in string]
+		identity = tensorprod(array([basis[default]]*N))
+	else:
+		data = [tensorprod(array([basis[i] for i in s])) for s in string]
+		identity = tensorprod(array([basis[default]]*N))		
+
+	assert allclose(model.identity,identity), "Incorrect model identity"
+
+	data = trotter(data,P)
+	string = trotter(string,P)
+	datas = trotter([model.data[i].data for i in model.data if model.data[i].unitary],P)
+	sites = trotter([model.data[i].site for i in model.data if model.data[i].unitary],P)
+
+	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
+		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
+	
+	print('Passed')
+	
+	return
+
+def test_initialization(path,tol):
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.init(state=state)	
+	model.init(state=state)
+
+	print('First')
+	print(model.state)
+	print(label.state)
+	print()
+
+	parameters = model.parameters()
+	kwargs = dict(verbose=True)
+
+	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system,**kwargs)
+
+	def copier(model,metric,state,label):
+
+		copy = Dictionary(
+			model=Dictionary(func=model.__call__,data=model(model.parameters(),model.state()),state=state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
+			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
+			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
+			)
+
+		return copy
+
+	copy = copier(model,metric,state,label)
+
+	
+	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)},label=metric.label)
+
+
+	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else None for i in model.data},label=False)
+
+	label.init(state=tmp.state)	
+
+	model.init(state=tmp.state,data=tmp.data)
+
+	print('second')
+	print(model.state())
+	print(label.state())
+
+	metric.init(model=model,label=label)
+
+	tmp = copier(model,metric,state,label)
+
+	label.init(state=defaults.state)
+
+	model.init(state=defaults.state,data=defaults.data)
+
+	metric.init(model=model,label=label)
+
+	
+	new = copier(model,metric,state,label)
+
+
+	
+	print('--- COPY INFO ---')
+	copy.model.info(verbose=True)
+	print()
+
+	print('--- TMP INFO ---')
+	tmp.model.info(verbose=True)
+	print()
+
+	print('--- NEW INFO ---')
+	new.model.info(verbose=True)
+	print()
+
+
+	print('State model (hermitian: %s, unitary: %s)'%(copy.model.hermitian,copy.model.unitary))
+	print(copy.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(copy.label.hermitian,copy.label.unitary))
+	print(copy.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(copy.label.state.hermitian,copy.label.state.unitary))
+	print(copy.label.state())
+
+	print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
+	print(tmp.model.data)
+
+	print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
+	print(tmp.label.data)
+
+	print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
+	print(new.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
+	print(new.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
+	print(new.label.state())
+
+
+	UpsiU = copy.model.data
+	U = tmp.model.data
+	psi = copy.state.data
+	K = copy.model.noise[-1].data
+	VpsiV = copy.label.data
+	V = tmp.label.data
+
+	if K is None:
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			UpsiUtmp = einsum('ij,j->i',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,j->i',V,psi,conjugate(V))
+		elif psi.ndim == 2:
+			UpsiUtmp = einsum('ij,jk,lk->il',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+	elif K is not None:
+		#TODO: Implement test for multiple layers of noise 
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			return
+		elif psi.ndim == 2 and model.M == 1:
+			UpsiUtmp = einsum('uij,jk,kl,ml,unm->in',K,U,psi,conjugate(U),conjugate(K))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+		else:
+			return
+
+
+	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
+	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
+	assert allclose(new.metric.data,copy.metric.data), "Incorrect metric() re-initialization"
+	
 	print("Passed")
-
+	
 	return
 
 
@@ -410,254 +716,6 @@ def test_tensorproduct(*args,**kwargs):
 
 	return
 
-def test_composite(*args,**kwargs):
-
-	kwargs = {
-		"module.configuration":[{"key":["site","string"],"sort":["site","string"]}],
-		**{attr:[4] for attr in ["model.N"]},
-		**{attr:[1] for attr in ["state.N"]},
-		**{attr:["array"] for attr in ["model.system.architecture","state.system.architecture"]},
-		"model.M":[1],
-		"model.ndim":[2],"state.ndim":[2],
-		"model.local":[True],
-		"model.configuration":[{"key":["site"]}],
-		"model.data":[{
-			"xx":{
-				"operator":["X","X"],"site":"<ij>","string":"xx",
-				"parameters":0.5,
-				"variable":False
-			},
-			"noise":{
-				"operator":["dephase","dephase"],"site":"<ij>","string":"noise",
-				"parameters":1e-12,
-				"variable":False
-			},
-			"amplitude":{
-				"operator":["amplitude"],"site":"i","string":"amplitude",
-				"parameters":1e-1,
-				"variable":False
-			}
-		}
-		]
-		}
-	groups = None
-	filters = None
-	func = None
-
-	data = {}
-
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
-
-		settings = Dict({
-			"cls":{
-				"model":"src.quantum.Operators",
-				"state":"src.quantum.State"
-			},
-			"model":{
-				"data":{},
-				"D":2,"ndim":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-			},	
-			"state": {
-				"data":None	,
-				"operator":"plus",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"D":2,"ndim":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
-				},
-		})
-
-		setter(settings,kwargs,delimiter=delim,default="replace")
-
-		verbose = True
-
-		data[index] = {}
-
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-
-		model = model(**settings.model)
-		state = state(**settings.state)
-		model.init(state=state)
-
-		model.info(verbose=verbose)
-		for i in model.data:
-			print(i,model.data[i])
-			for key,value in  dict(site=model.data[i].site,parameters=model.data[i].parameters(),state=model.data[i].state()).items():
-				print(key,value)
-			parameters = model.data[i].parameters()
-			state = load(settings.cls.state)(**settings.state)() @ model.data[i].locality
-			model.data[i].init(state=state)
-			print(model.data[i](parameters=parameters,state=state))
-			print()
-		exit()
-
-
-		attrs = ['N','operator','site','locality','local']
-		for i in model.data:
-			print(i,{attr: getattr(model.data[i],attr) for attr in attrs})
-			for j in model.data[i].data:
-				print('---',j,{attr: getattr(model.data[i].data[j],attr) for attr in attrs})
-			print()
-
-		print(state,{attr: getattr(state,attr) for attr in attrs})
-
-
-		# Value
-		key = 'model'
-		value = model(model.parameters(model.parameters()),model.state())
-
-		print("--- value ---")
-		print(value)
-		print("------")
-		
-
-		data[index][key] = value
-
-
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
-
-	print("Passed")
-
-	return
-
-def test_contract(*args,**kwargs):
-
-	print('Not Implemented')
-
-	return
-
-	architecture = "array"
-
-	settings = Dict({
-		"cls":{
-				"model":"src.quantum.Operator",
-				"state":"src.quantum.State"
-			},		
-		"model":{
-			"operator":"X.X",
-			"site":[0,1],
-			"string":"operator",
-			"parameters":0.5,
-			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":None}
-		},	
-		"state": {
-			"operator":"zero",
-			"site":None,
-			"string":"psi",
-			"parameters":True,
-			"N":2,"D":2,"ndim":1,
-			"system":{"architecture":None}
-			},
-	})
-
-	verbose = True
-
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
-
-	model = model(**settings.model)
-	state = state(**settings.state)
-
-	print("--- state ---")
-	state.info(verbose=verbose)
-	print(state())
-	print("------")
-
-	model.init(state=state)
-
-	print()
-
-	print("--- model ---")
-	model.info(verbose=verbose)
-	print(model.data)
-	print("------")
-
-	print("--- contract ---")
-	print(model(model.parameters(model.parameters()),model.state()))
-	print("------")
-
-	print()
-
-
-	print("--- einsum ---",model.ndim,state.ndim)
-	if model.ndim == 3 and state.ndim == 2:
-		print(einsum("uij,jk,ulk",model.data,model.state(),conjugate(model.data)))
-	elif model.ndim == 3 and state.ndim == 1:
-		print(einsum("uij,jk",model.data,model.state()))
-	elif model.ndim == 2 and state.ndim == 2:
-		print(einsum("ij,jk,lk",model.data,model.state(),conjugate(model.data)))
-	elif model.ndim == 2 and state.ndim == 1:
-		print(einsum("ij,jk",model.data,model.state()))
-	print("------")
-
-	print()
-
-
-	model.init(state=state,parameters=dict())
-
-	print(model.data)
-	print(model(model.parameters(model.parameters()),model.state()))
-	print()
-
-	return
-
-def test_state(*args,**kwargs):
-
-	kwargs = {
-		"cls.state":["src.quantum.State","src.quantum.Operator"],
-		"state.data":[
-			"random",
-			[1/2]*2
-			],
-		"state.operator":[
-			"product",
-			"state"
-			],
-		"state.ndim":[1],
-		}
-	groups = [["state.data","state.operator"]]
-
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
-
-		settings = Dict({
-			"cls":{
-				"state":"src.quantum.State"
-			},
-			"state": {
-				"data":"random",
-				"operator":"state",
-				"site":None,
-				"string":"psi",
-				"parameters":True,
-				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array"}
-				}
-			})
-
-		from src.quantum import State
-
-		setter(settings,kwargs,delimiter=delim,default=True)
-
-		state = load(settings.cls.state)
-
-		state = state(**settings.state)
-
-		print(settings["cls"]["state"],settings["state"]["operator"],type(state))
-		print(state.data)
-		print(state(state.parameters(),state.state()))
-		print(state.norm())
-		print()
-
-		assert allclose(state(),state.data), "Incorrect data for %r"%(settings.cls.state)
-		assert allclose(state(state.parameters(),state.state()),state.data), "Incorrect state() for %r"%(settings.cls.state)
-		assert allclose(state.norm(),1), "Incorrect normalization for %r"%(settings.cls.state)
-
-	return
-
 
 def test_measure(*args,**kwargs):
 
@@ -719,6 +777,63 @@ def test_measure(*args,**kwargs):
 
 	return
 
+
+def test_metric(path=None,tol=None,**kwargs):
+
+	from src.utils import gradient
+	from src.utils import allclose,trace,dot
+
+	from src.iterables import getter,setter,permuter,equalizer,namespace
+
+	from src.io import load,dump
+
+	from src.optimize import Optimizer,Objective,Metric,Callback
+
+	from src.system import Dict
+
+	from src.parameters import Parameters
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.init(state=state)
+	model.init(state=state)
+
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+
+
+	print(state())
+	print(label.parameters())
+	print(label.data)
+
+	out = metric(label())
+
+	assert allclose(0,out), "Incorrect metric %0.5e"%(out)
+
+	print('Passed')
+	
+	return
 
 def test_namespace(*args,**kwargs):
 
@@ -1227,100 +1342,160 @@ def test_module(*args,**kwargs):
 	return
 
 
-def test_algebra(*args,**kwargs):
 
-	settings = Dict({
-		"cls":{
-			"measure":"src.quantum.Measure",
-			"state":"src.quantum.State"
-			},
-		"module":{
-			"N":8,
-			"M":1,
-			"d":1,
-			"string":"module",
-			"lattice":"square",
-			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":"swap+split","max_bond":4,"cutoff":1e-2}		
-		},
-		"measure":{
-			"base":"pauli",
-			"architecture":"tensor",
-			"options":{"cyclic":False}	
-		},		
-		"state": {
-			"operator":["haar"],
-			"site":None,
-			"string":"psi",
-			"parameters":None,
-			"D":2,
-			"ndim":2,
-			"local":True
-			},
-		"system":{
-			"dtype":"complex",
-			"format":"array",
-			"device":"cpu",
-			"backend":None,
-			"architecture":None,
-			"base":None,
-			"seed":123,
-			"key":None,
-			"instance":None,
-			"cwd":"data",
-			"path":"data.hdf5",
-			"conf":"logging.conf",
-			"logger":"log.log",
-			"cleanup":False,
-			"verbose":False
-			}
-		})
 
-	# Settings
+
+def test_objective(path=None,tol=None,**kwargs):
+
+	from src.utils import gradient
+	from src.utils import allclose,trace,dot
+
+	from src.iterables import getter,setter,permuter,equalizer,namespace
+
+	from src.io import load,dump
+
+	from src.optimize import Optimizer,Objective,Metric,Callback
+
+	from src.system import Dict
+
+	from src.parameters import Parameters
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
 	settings = Dict(settings)
 
-	# Class
-	measure = load(settings.cls.measure)
+
+
+	model = load(settings.cls.model)
 	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
 	system = settings.system
 
-	# State
-	state = state(**{**settings.state,**dict(system=system)})
-	measure = measure(**{**settings.measure,**dict(system=system)})
+	func = None
+	arguments = ()
+	keywords = {}
 
-	parameters = measure.parameters()
-	state = [state()]*settings.module.N
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
-	state = measure.transform(parameters=parameters,state=state,transformation=True)
+	label.init(state=state)
+	model.init(state=state)
 
-	data = measure.infidelity_quantum(parameters=parameters,state=state,other=state)
+	parameters = model.parameters()
+	state = model.state()
+	label = model(parameters,state=state)
 
-	# assert allclose(data,0), "Incorrect infidelity and sqrtm %s"%(data)
+	print(state)
+	print(label)
 
-	tol = 5e-7
-	assert abs(data) < tol, "Incorrect infidelity and sqrtm %s"%(data)
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
-	print(abs(data))
+	out = func(parameters,state=state)
+
+	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
 
 	print('Passed')
 
-	return 
+	return
+
+def test_grad(path=None,tol=None,**kwargs):
+
+	from src.utils import gradient
+	from src.utils import allclose,trace,dot
+
+	from src.iterables import getter,setter,permuter,equalizer,namespace
+
+	from src.io import load,dump
+
+	from src.optimize import Optimizer,Objective,Metric,Callback
+
+	from src.system import Dict
+
+	from src.parameters import Parameters
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.init(state=state)
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	# grad of unitary
+	grad_automatic = model.grad_automatic
+	grad_finite = model.grad_finite
+	grad_analytical = model.grad_analytical
+
+	index = slice(None)
+	print('----- grad -----')	
+	print(grad_automatic(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	print(grad_finite(parameters,state)[index])
+	print()
+	print('-----')
+	print()	
+	print(grad_analytical(parameters,state)[index])
+	print()
+	print('----- ratio -----')
+	print()
+	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
+	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
+
+	print('Passed')
+
+	return
 
 
 if __name__ == "__main__":
 
-	arguments = "path"
+	arguments = {"path":"config/settings.json","tol":5e-8}
 	args = argparser(arguments)
 
 	# main(*args,**args)
-
 	# test_basis(*args,**args)
-	test_channel(*args,**args)
-	# test_state(*args,**args)
-	# test_measure(*args,**args)
-	# test_composite(*args,**args)
-	# test_namespace(*args,**args)
-	# test_algebra(*args,**args)
+	test_operator(*args,**args)
+	# test_channel(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_module(*args,**args)
-
+	# test_metric(*args,**args)
+	# test_measure(*args,**args)
+	# test_namespace(*args,**args)
+	# test_objective(*args,**args)
+	# test_grad(*args,**args)

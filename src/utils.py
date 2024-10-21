@@ -4111,7 +4111,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(data,state,where=where):
-						return einsummation(data,state)
+						return data
 
 				else:
 					subscripts = 'uij,...j->i...'
@@ -4119,7 +4119,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(data,state,where=where):
-						return einsummation(data,state)
+						return data
 
 
 			elif isinstance(state,arrays):
@@ -7668,7 +7668,7 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
 			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
-			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(obj(a),shape),axes))))
+			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(a,shape),axes))))
 
 	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 
