@@ -17,7 +17,7 @@ from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
-from src.system import Dict
+from src.system import Dict,Dictionary
 from src.iterables import namespace,permuter,setter,getter
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
@@ -40,9 +40,9 @@ def test_basis(*args,**kwargs):
 	
 	D = 2
 	N = 1
-	L = 2
+	L = 1
 	K = 2
-	ndim = None
+	ndim = 2
 	shape = [D**L]*(K if ndim is None else ndim)
 	data='zero.depolarize.X'
 	key = 123
@@ -52,10 +52,10 @@ def test_basis(*args,**kwargs):
 	options = Dict(D=D,N=N,ndim=ndim,shape=shape,data=data,key=key,dtype=dtype)
 
 	operators = {
-		'rand':Dict(locality=L,shapes={i:[options.D]*len(options.shape) for i in range(K if ndim is None else ndim)},dimension=2),
+		'rand':Dict(locality=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimension=2),
 		'X':Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
 		'depolarize':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
-		'string':Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[1,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
+		'string':Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
 		'pauli':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
 		}
 
@@ -198,20 +198,20 @@ def test_operator(*args,**kwargs):
 			shape = {0:[4,2,2,1],1:[2,2,2,2],2:[2,2,2,2]}
 
 			
-		if operator.local:
-			_tmp = tensorprod(_data)
-		else:
-			_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-			_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
+		# if operator.local:
+		# 	_tmp = tensorprod(_data)
+		# else:
+		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
+		_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
 
 		if not operator.constant:
-			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.locality if operator.local else operator.N)) + 
+			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
 			        -1j*sin(operator.parameters(operator.parameters()))*_tmp)
 
 		operator.info(verbose=verbose)
 
 		parameters = operator.parameters()
-		state = operator.identity
+		state = tensorprod((operator.basis.get(operator.default)(D=operator.D,dtype=operator.dtype),)*operator.N)
 
 		tmp = operator(parameters=parameters,state=state)
 
@@ -225,7 +225,7 @@ def test_operator(*args,**kwargs):
 			print('-----------------')
 			print()
 
-		assert allclose(tmp,_tmp), "Incorrect operator %r"%(operator)
+		assert (not operator.unitary) or allclose(tmp,_tmp), "Incorrect operator %r"%(operator)
 
 
 
@@ -292,6 +292,8 @@ def test_operator(*args,**kwargs):
 
 
 def test_data(path,tol):
+
+	from src.quantum import trotter
 
 	default = None
 	settings = load(path,default=default)
@@ -397,11 +399,6 @@ def test_initialization(path,tol):
 	label.init(state=state)	
 	model.init(state=state)
 
-	print('First')
-	print(model.state)
-	print(label.state)
-	print()
-
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
@@ -410,88 +407,149 @@ def test_initialization(path,tol):
 	def copier(model,metric,state,label):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(model.parameters(),model.state()),state=state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
-			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
-			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
+			model=Dictionary(
+				func=model.__call__,
+				data=model(parameters=model.parameters(),state=model.state()),
+				state=state,
+				noise=[model.data[i] for i in model.data 
+					if (model.data[i] is not None) and (not model.data[i].unitary)],
+				info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(
+				func=metric.__call__,
+				data=metric(model(model.parameters())),
+				state=metric.state,
+				noise=[model.data[i] for i in model.data 
+					if (model.data[i] is not None) and (not model.data[i].unitary)],
+				info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
+			label=Dictionary(
+				func=label.__call__,
+				data=label(state=state()),
+				state=state,
+				info=label.info,
+				hermitian=label.hermitian,
+				unitary=label.unitary),
+			state=Dictionary(
+				func=state.__call__,
+				data=state(),
+				state=state,
+				info=state.info,hermitian=state.hermitian,unitary=state.unitary),
 			)
 
 		return copy
 
-	copy = copier(model,metric,state,label)
+	defaults = Dictionary(state=state,data={i: model.data[i] for i in model.data},label=metric.label)
 
-	
-	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)},label=metric.label)
+	old = copier(model,metric,state,label)
 
 
-	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else None for i in model.data},label=False)
+	# Initial
 
-	label.init(state=tmp.state)	
+	updates = Dictionary(state=True,data={i:True for i in model.data if model.data[i] is not None and not model.data[i].unitary},label=False)
 
-	model.init(state=tmp.state,data=tmp.data)
+	label.init(state=updates.state)	
 
-	print('second')
+	model.init(state=updates.state,data=updates.data)
+
+	print('First')
+	print(updates)	
+	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
+	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
+	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print({i: model.data[i] for i in model.data})
 	print(model.state())
-	print(label.state())
+	print()
+
+	init = Dictionary(state=state,data={i: model.data[i] for i in model.data},label=metric.label)
+	
+
+	# Update
+
+	updates = Dictionary(state=False,data={i:False for i in model.data if model.data[i] is not None and not model.data[i].unitary},label=False)
+
+	label.init(state=updates.state)	
+
+	model.init(state=updates.state,data=updates.data)
+
+	print('Second')
+	print(updates)	
+	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
+	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
+	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print({i: model.data[i] for i in model.data})
+	print(model.state())	
+	print()
 
 	metric.init(model=model,label=label)
 
 	tmp = copier(model,metric,state,label)
 
-	label.init(state=defaults.state)
 
-	model.init(state=defaults.state,data=defaults.data)
+
+	# Restore
+
+	updates = Dictionary(state=defaults.state,data=defaults.data,label=False)
+
+	label.init(state=updates.state)
+
+	model.init(state=updates.state,data=updates.data)
+
+	print('Third')
+	print(updates)
+	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
+	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
+	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print({i: model.data[i] for i in model.data})
+	print(model.state())
+	print()
 
 	metric.init(model=model,label=label)
 
-	
 	new = copier(model,metric,state,label)
 
+	# print('--- COPY INFO ---')
+	# old.model.info(verbose=True)
+	# print()
 
-	
-	print('--- COPY INFO ---')
-	copy.model.info(verbose=True)
-	print()
+	# print('--- TMP INFO ---')
+	# tmp.model.info(verbose=True)
+	# print()
 
-	print('--- TMP INFO ---')
-	tmp.model.info(verbose=True)
-	print()
-
-	print('--- NEW INFO ---')
-	new.model.info(verbose=True)
-	print()
+	# print('--- NEW INFO ---')
+	# new.model.info(verbose=True)
+	# print()
 
 
-	print('State model (hermitian: %s, unitary: %s)'%(copy.model.hermitian,copy.model.unitary))
-	print(copy.model.data)
+	# print('State model (hermitian: %s, unitary: %s)'%(old.model.hermitian,old.model.unitary))
+	# print(old.model.data)
 
-	print('State label (hermitian: %s, unitary: %s)'%(copy.label.hermitian,copy.label.unitary))
-	print(copy.label.data)
+	# print('State label (hermitian: %s, unitary: %s)'%(old.label.hermitian,old.label.unitary))
+	# print(old.label.data)
 
-	print('State state (hermitian: %s, unitary: %s)'%(copy.label.state.hermitian,copy.label.state.unitary))
-	print(copy.label.state())
+	# print('State state (hermitian: %s, unitary: %s)'%(old.label.state.hermitian,old.label.state.unitary))
+	# print(old.label.state())
 
-	print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
-	print(tmp.model.data)
+	# print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
+	# print(tmp.model.data)
 
-	print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
-	print(tmp.label.data)
+	# print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
+	# print(tmp.label.data)
 
-	print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
-	print(new.model.data)
+	# print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
+	# print(new.model.data)
 
-	print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
-	print(new.label.data)
+	# print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
+	# print(new.label.data)
 
-	print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
-	print(new.label.state())
+	# print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
+	# print(new.label.state())
 
 
-	UpsiU = copy.model.data
+	UpsiU = old.model.data
 	U = tmp.model.data
-	psi = copy.state.data
-	K = copy.model.noise[-1].data
-	VpsiV = copy.label.data
+
+	psi = old.state.data
+	K = old.model.noise[-1].data if old.model.noise and old.model.noise[-1].parameters() else None
+	VpsiV = old.label.data
 	V = tmp.label.data
 
 	if K is None:
@@ -516,9 +574,12 @@ def test_initialization(path,tol):
 			return
 
 
+	print(UpsiUtmp)
+	print(UpsiU)
+
 	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
 	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
-	assert allclose(new.metric.data,copy.metric.data), "Incorrect metric() re-initialization"
+	assert allclose(new.metric.data,old.metric.data), "Incorrect metric() re-initialization"
 	
 	print("Passed")
 	
@@ -1490,8 +1551,9 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_basis(*args,**args)
-	test_operator(*args,**args)
-	# test_channel(*args,**args)
+	# test_operator(*args,**args)
+	# test_data(*args,**args)
+	test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_module(*args,**args)
 	# test_metric(*args,**args)

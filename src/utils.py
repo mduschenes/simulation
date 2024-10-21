@@ -676,8 +676,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		# return wraps(func)(partial(func,**kwargs))
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -3936,7 +3936,10 @@ def contraction(data=None,state=None,where=None,**kwargs):
 		func (callable): contracted data and state with signature func(data,state,where=where)
 	'''
 
-	def func(data,state,where=where):
+	swapper = None
+	_swapper = None
+
+	def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 		return data
 
 	if state is None:
@@ -3948,33 +3951,34 @@ def contraction(data=None,state=None,where=None,**kwargs):
 	else:
 		wrapper = None
 
+
 	if data is None:
 
 		if state is None:
 		
-			def func(data,state,where=where):
+			def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 				return data
 
 		elif isinstance(state,arrays):
 			
 			if state.ndim == 1:
 
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return data
 	
 			elif state.ndim == 2:
 				
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return data
 	
 		elif isinstance(state,tensors):
 
-			def func(data,state,where=where):
+			def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 				return data
 
 	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
 	
-		def func(data,state,where=where):
+		def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 			return data(state)
 
 	elif isinstance(data,arrays):
@@ -3983,43 +3987,43 @@ def contraction(data=None,state=None,where=None,**kwargs):
 
 			if state is None:
 			
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return data
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return data
 
 			elif isinstance(state,tensors):
 
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 1:
 			
 			if state is None:
 			
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return data
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return data
 
 				elif state.ndim == 2:
 					
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return data
 
 			elif isinstance(state,tensors):
@@ -4037,7 +4041,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return einsummation(data,state)
 
 				else:
@@ -4048,7 +4052,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					swapper = swap(state,**kwargs,transform=True,execute=False)
 					_swapper = swap(state,**kwargs,transform=False,execute=False)
 					
-					def func(data,state,where=where):
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return _swapper(einsummation(data,swapper(state)))
 
 
@@ -4061,7 +4065,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(data,state)
 					else:
 						subscripts = 'ij,j...->i...'
@@ -4071,7 +4075,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(data,swapper(state)))
 
 
@@ -4081,7 +4085,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						subscripts = 'ij,jk,lk->il'
 						shapes = (data.shape,state.shape,data.shape)
 						einsummation = einsum(subscripts,*shapes)
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(data,state,conjugate(data))
 					else:
 						subscripts = 'ij,jk...,lk->il...'
@@ -4091,12 +4095,12 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(data,swapper(state),conjugate(data)))							
 
 			elif isinstance(state,tensors):
 				
-				def func(data,state,where=where):
+				def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return state.gate(data,where=where)
 
 		elif data.ndim == 3:
@@ -4106,20 +4110,23 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 				
 				if where is None:
-					subscripts = 'uij,...j->i...'
-					shapes = (data.shape,state.shape)
+					subscripts = 'uij,j...->i...'
+					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(data,state,where=where):
-						return data
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
+						return state
 
 				else:
-					subscripts = 'uij,...j->i...'
-					shapes = (data.shape,state.shape)
+					subscripts = 'uij,j...->i...'
+					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
+			
+					swapper = swap(state,**kwargs,transform=True,execute=False)
+					_swapper = swap(state,**kwargs,transform=False,execute=False)
 					
-					def func(data,state,where=where):
-						return data
+					def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
+						return state
 
 
 			elif isinstance(state,arrays):
@@ -4131,7 +4138,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape)
 						einsummation = einsum(subscripts,*shapes)
 					
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(data,state)
 					else:
 						subscripts = 'uij,j...->i...'
@@ -4141,7 +4148,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(data,swapper(state)))
 
 
@@ -4152,7 +4159,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape,data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(data,state,conjugate(data))
 
 					else:
@@ -4163,7 +4170,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(data,state,where=where):
+						def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(data,swapper(state),conjugate(data)))
 
 
@@ -4174,7 +4181,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 	elif isinstance(data,tensors):
 
 		if state is None:
-			def func(data,state,where=where):
+			def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 				return data
 		
 		elif isinstance(state,arrays):
@@ -4186,7 +4193,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 
 		elif isinstance(state,tensors):
 
-			def func(data,state,where=where):
+			def func(data,state,where=where,swapper=swapper,_swapper=_swapper):
 				return state.gate(data,where=where)
 
 	func = wrapper(func) if wrapper is not None else func
@@ -4206,8 +4213,11 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 		func (callable): contracted data and state with signature func(grad,data,state,where=where)
 	'''
 
-	def func(grad,data,state,where=where):
-		return 0
+	swapper = None
+	_swapper = None
+
+	def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
+		return grad
 
 	if state is None:
 		wrapper = jit
@@ -4222,19 +4232,19 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 		
 		if state is None:
 		
-			def func(grad,data,state,where=where):
+			def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 				return grad
 
 		elif isinstance(state,arrays):
 
 			if state.ndim == 1:
 
-				def func(grad,data,state,where=where):
+				def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return grad
 
 			elif state.ndim == 2:
 				
-				def func(grad,data,state,where=where):
+				def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return grad
 	
 		elif isinstance(state,tensors):
@@ -4251,19 +4261,19 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 
 			if state is None:
 			
-				def func(grad,data,state,where=where):
+				def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return grad
 			
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4274,19 +4284,19 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 			
 			if state is None:
 			
-				def func(grad,data,state,where=where):
+				def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 					return grad
 
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
 
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return grad
 
 				elif state.ndim == 2:
 					
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return grad
 
 			elif isinstance(state,tensors):
@@ -4304,7 +4314,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,state.shape)
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return einsummation(grad,state)
 
 				else:
@@ -4315,7 +4325,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					swapper = swap(state,**kwargs,transform=True,execute=False)
 					_swapper = swap(state,**kwargs,transform=False,execute=False)
 					
-					def func(grad,data,state,where=where):
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 						return _swapper(einsummation(grad,swapper(state)))					
 
 			elif isinstance(state,arrays):
@@ -4327,7 +4337,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(grad,state)
 
 					else:
@@ -4338,7 +4348,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(grad,swapper(state)))
 
 
@@ -4349,7 +4359,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape,data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -4361,7 +4371,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							out = _swapper(einsummation(grad,swapper(state),conjugate(data)))
 							return out + dagger(out)				
 
@@ -4376,20 +4386,23 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 
 				if where is None:
-					subscripts = 'uij,...j->i...'
-					shapes = (data.shape,state.shape)
+					subscripts = 'uij,j...->i...'
+					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where):
-						return einsummation(grad,state)
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
+						return state
 
 				else:
-					subscripts = 'uij,...j->i...'
-					shapes = (data.shape,state.shape)
+					subscripts = 'uij,j...->i...'
+					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
+
+					swapper = swap(state,**kwargs,transform=True,execute=False)
+					_swapper = swap(state,**kwargs,transform=False,execute=False)
 					
-					def func(grad,data,state,where=where):
-						return einsummation(grad,state)
+					def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
+						return state
 
 
 			elif isinstance(state,arrays):
@@ -4401,7 +4414,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return einsummation(grad,state)
 
 					else:
@@ -4412,7 +4425,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							return _swapper(einsummation(grad,swapper(state)))
 
 				elif state.ndim == 2:
@@ -4422,7 +4435,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,state.shape,data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -4434,7 +4447,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						swapper = swap(state,**kwargs,transform=True,execute=False)
 						_swapper = swap(state,**kwargs,transform=False,execute=False)
 						
-						def func(grad,data,state,where=where):
+						def func(grad,data,state,where=where,swapper=swapper,_swapper=_swapper):
 							out = _swapper(einsummation(grad,swapper(state),conjugate(data)))
 							return out + dagger(out)						
 

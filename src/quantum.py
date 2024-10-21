@@ -1963,7 +1963,7 @@ class Object(System):
 		basis = self.basis
 		default = self.default
 		
-		parameters = self.parameters(self.parameters()) if callable(self.parameters) else self.parameters if self.parameters is not None else None
+		parameters = self.parameters() if callable(self.parameters) else self.parameters if self.parameters is not None else None
 		system = self.system if self.system is not None else None
 
 		operator = self.operator if self.operator is not None else None
@@ -2192,10 +2192,10 @@ class Object(System):
 			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
 			keywords = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
+			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
-			setter(keywords,self.parameters,delimiter=delim,default=False)
+			setter(keywords,dict(self.parameters if isinstance(self.parameters,dict) else {}),delimiter=delim,default=False)
 			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
 			
 			self.parameters = cls(**keywords)
@@ -2204,10 +2204,10 @@ class Object(System):
 			defaults = dict()
 			parameters = parameters if parameters is not None else parameters			
 			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
+			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
-			setter(keywords,self.parameters,delimiter=delim,default=False)
+			setter(keywords,dict(self.parameters if isinstance(self.parameters,dict) else {}),delimiter=delim,default=False)
 			self.parameters.init(**keywords)
 
 		else:
@@ -2222,7 +2222,7 @@ class Object(System):
 
 
 		options = Dictionary(
-			parameters=self.parameters(self.parameters()),shape=self.shape,
+			parameters=self.parameters(),shape=self.shape,
 			D=self.D,N=self.locality,ndim=self.ndim,
 			random=self.random,seed=seeder(self.seed),
 			dtype=self.dtype,system=self.system)
@@ -2337,11 +2337,11 @@ class Object(System):
 				axes = [[i for i in self.site]]
 				where = self.site if self.local else None
 			else:
-				shape = {axis: [self.D for i in range(self.locality if self.local else self.N)] for axis in range(self.ndim)}
-				axes = [[i for i in range(self.locality if self.local else self.N)]]
+				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.identity.ndim)}
+				axes = [[i for i in self.site]]
 				where = [i for i in range(self.locality if self.local else self.N)] if self.local else None
 		else:
-			shape = {axis: [self.D for i in range(self.locality if self.local else self.N)] for axis in range(self.ndim)}
+			shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
 			axes = [[i for i in self.site]]
 			where = self.site if self.local else None
 		
@@ -3691,7 +3691,7 @@ class State(Object):
 						seeder(self.seed)
 						options = Dictionary(
 							shape=(self.D**self.locality,)*self.ndim,
-							random=self.random,seed=self.seed,dtype=self.dtype,
+							random=self.random,seed=seeder(self.seed),dtype=self.dtype,
 							data=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -3701,7 +3701,7 @@ class State(Object):
 						seeder(self.seed)
 						options = Dictionary(
 							shape=(self.D,)*self.ndim,
-							random=self.random,seed=self.seed,dtype=self.dtype,
+							random=self.random,seed=seeder(self.seed),dtype=self.dtype,
 							data=[i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -3716,7 +3716,7 @@ class State(Object):
 						seeder(self.seed)
 						options = Dictionary(
 							shape=(self.D**self.locality,)*self.ndim,
-							random=self.random,seed=self.seed,dtype=self.dtype,
+							random=self.random,seed=seeder(self.seed),dtype=self.dtype,
 							data=[data,*[self.default]*(self.N-self.locality)],
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -3726,7 +3726,7 @@ class State(Object):
 						seeder(self.seed)
 						options = Dictionary(
 							shape=(self.D**self.locality,)*self.ndim,
-							random=self.random,seed=self.seed,dtype=self.dtype,
+							random=self.random,seed=seeder(self.seed),dtype=self.dtype,
 							data=[self.operator[self.site.index(i)] if i in self.site else self.default for i in range(self.N)] if isinstance(self.operator,iterables) else [self.operator if i in self.site else self.default for i in range(self.N)] if isinstance(self.operator,str) else None,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -4044,15 +4044,16 @@ class Objects(Object):
 			data = {i: data[i] for i in data if i in self.data}
 
 		for i in data:
-			if data[i] is None or data[i] is False:
-				self.data.pop(i)
+			if data[i] is True:
+				continue
+			elif data[i] is None or data[i] is False:
 				self.data[i] = None
-			elif isinstance(data[i],dict):
-				self.data[i].init(data[i])
+			elif self.data[i] is None:
+				self.data[i] = data[i]
 			elif isinstance(data[i],type(self.data[i])):
 				self.data[i] = data[i]
-			elif self.data[i] is not None:
-				self.data[i].init(data=data[i])
+			else:
+				self.data[i].init(data[i])
 
 
 		# Set state
@@ -4112,7 +4113,7 @@ class Objects(Object):
 
 		# Set identity
 		options = dict(D=self.D,ndim=self.ndim,dtype=self.dtype,system=self.system)
-		identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if self.identity is None else self.identity
+		identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N))
 
 		self.identity = identity
 
@@ -4555,7 +4556,7 @@ class Objects(Object):
 		'''
 		data = self.data if data is None else data
 		
-		status = data is not None and all(isinstance(data[i],Object) for i in data)
+		status = data is not None and all(isinstance(data[i],Object) or data[i] is None or data[i] is True or data[i] is False for i in data)
 
 		return status
 
@@ -4708,8 +4709,9 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(N=self.N,D=self.D,local=self.local,verbose=False),delimiter=delim,default=False)
+		setter(kwargs,dict(N=self.N,D=self.D,local=self.local),delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,dict(verbose=False),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
 		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
@@ -4985,6 +4987,7 @@ class Operators(Objects):
 			else:
 				for i in indices:
 					out = self.data[i%shape[1]](parameters=parameters,state=out)
+
 			return out
 
 		def grad(parameters,state):
@@ -5731,7 +5734,7 @@ class Callback(System):
 						label=metric.label)
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						tmp.update(dict(data=tmp.data,state=tmp.state,label=tmp.label))
+						tmp.update(dict(data={i:True for i in tmp.data},state=tmp.state,label=tmp.label))
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
 						tmp.update(dict(data={i:False for i in tmp.data},state=tmp.state,label=tmp.label))
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
