@@ -865,7 +865,7 @@ def test_random(*args,**kwargs):
 
 
 
-def test_sites(*args,**kwargs):
+def test_layout(*args,**kwargs):
 
 	settings = Dict({
 		"cls":{
@@ -881,7 +881,7 @@ def test_sites(*args,**kwargs):
 				},
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
-					"parameters":None,
+					"parameters":{"data":[0,1,2,3,4,5,6]},
 					"variable":False
 				},	
 				# "noise":{
@@ -914,22 +914,28 @@ def test_sites(*args,**kwargs):
 			}
 	})
 
-	verbose = False
+	options = Dictionary(verbose=False,precision=4)
 
 	model = load(settings.cls.model)
 	model = model(**settings.model)
-	model.info(verbose=verbose)
+	model.info(**options)
 
 	# state = load(settings.cls.state)
 	# state = state(**settings.state)
-	# state.info(verbose=verbose)
+	# state.info(**options)
 
 	# model.init(state=state)
 
-	attrs = ['string','N','locality','operator','site']
+	attrs = ['string','parameters','N','locality','operator','site',]
 
 	for i in model.data:
-		print([id(model.data[i]) for i in model.data].index(id(model.data[i])),{attr: getattr(model.data[i],attr) for attr in attrs})
+		print(
+			[id(model.data[i]) for i in model.data].index(id(model.data[i])),
+			{attr: getattr(model.data[i],attr) 
+			if not callable(getattr(model.data[i],attr)) else 
+			str(getattr(model.data[i],attr)().round(options.precision))
+			for attr in attrs}
+			)
 
 	return
 
@@ -1161,7 +1167,6 @@ def test_namespace(*args,**kwargs):
 		attributes = {'model':model,'state':state,'label':label}
 		for attribute in attributes:
 			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary','architecture']},'>>>>',namespace(attributes[attribute].__class__,model))
-		print(i,state.local,{i:model.data[i].local for i in model.data})
 		print()
 
 		model.init(state=state)
@@ -1202,6 +1207,143 @@ def test_namespace(*args,**kwargs):
 
 	return
 
+
+def test_objective(path=None,tol=None,**kwargs):
+
+	from src.utils import gradient
+	from src.utils import allclose,trace,dot
+
+	from src.iterables import getter,setter,permuter,equalizer,namespace
+
+	from src.io import load,dump
+
+	from src.optimize import Optimizer,Objective,Metric,Callback
+
+	from src.system import Dict
+
+	from src.parameters import Parameters
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
+
+	label.init(state=state)
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+	label = model(parameters,state=state)
+
+	print(state)
+	print(label)
+
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
+
+	out = func(parameters,state=state)
+
+	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
+
+	print('Passed')
+
+	return
+
+def test_grad(path=None,tol=None,**kwargs):
+
+	from src.utils import gradient
+	from src.utils import allclose,trace,dot
+
+	from src.iterables import getter,setter,permuter,equalizer,namespace
+
+	from src.io import load,dump
+
+	from src.optimize import Optimizer,Objective,Metric,Callback
+
+	from src.system import Dict
+
+	from src.parameters import Parameters
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.init(state=state)
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	# grad of unitary
+	grad_automatic = model.grad_automatic
+	grad_finite = model.grad_finite
+	grad_analytical = model.grad_analytical
+
+	index = slice(None)
+	print('----- grad -----')	
+	print(grad_automatic(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	print(grad_finite(parameters,state)[index])
+	print()
+	print('-----')
+	print()	
+	print(grad_analytical(parameters,state)[index])
+	print()
+	print('----- ratio -----')
+	print()
+	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
+	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
+
+	print('Passed')
+
+	return
 
 
 def test_module(*args,**kwargs):
@@ -1566,146 +1708,6 @@ def test_module(*args,**kwargs):
 
 
 
-
-
-def test_objective(path=None,tol=None,**kwargs):
-
-	from src.utils import gradient
-	from src.utils import allclose,trace,dot
-
-	from src.iterables import getter,setter,permuter,equalizer,namespace
-
-	from src.io import load,dump
-
-	from src.optimize import Optimizer,Objective,Metric,Callback
-
-	from src.system import Dict
-
-	from src.parameters import Parameters
-
-	default = None
-	settings = load(path,default=default)
-	if settings is None:
-		raise Exception("settings %s not loaded"%(path))
-
-	settings = Dict(settings)
-
-
-
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
-	label = load(settings.cls.label)
-	callback = load(settings.cls.callback)
-
-	hyperparameters = settings.optimize
-	system = settings.system
-
-	func = None
-	arguments = ()
-	keywords = {}
-
-	model = model(**{**settings.model,**dict(system=system)})
-	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
-	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
-
-	label.init(state=state)
-	model.init(state=state)
-
-	parameters = model.parameters()
-	state = model.state()
-	label = model(parameters,state=state)
-
-	print(state)
-	print(label)
-
-	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
-	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
-
-	out = func(parameters,state=state)
-
-	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
-
-	print('Passed')
-
-	return
-
-def test_grad(path=None,tol=None,**kwargs):
-
-	from src.utils import gradient
-	from src.utils import allclose,trace,dot
-
-	from src.iterables import getter,setter,permuter,equalizer,namespace
-
-	from src.io import load,dump
-
-	from src.optimize import Optimizer,Objective,Metric,Callback
-
-	from src.system import Dict
-
-	from src.parameters import Parameters
-
-	default = None
-	settings = load(path,default=default)
-	if settings is None:
-		raise Exception("settings %s not loaded"%(path))
-
-	settings = Dict(settings)
-
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
-	label = load(settings.cls.label)
-	callback = load(settings.cls.callback)
-
-	hyperparameters = settings.optimize
-	system = settings.system
-
-	func = None
-	arguments = ()
-	keywords = {}
-
-	model = model(**{**settings.model,**dict(system=system)})
-	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
-
-	label.init(state=state)
-	model.init(state=state)
-
-	parameters = model.parameters()
-	state = model.state()
-
-	# grad of unitary
-	grad_automatic = model.grad_automatic
-	grad_finite = model.grad_finite
-	grad_analytical = model.grad_analytical
-
-	index = slice(None)
-	print('----- grad -----')	
-	print(grad_automatic(parameters,state)[index])
-	print()
-	print('-----')
-	print()
-	print(grad_finite(parameters,state)[index])
-	print()
-	print('-----')
-	print()	
-	print(grad_analytical(parameters,state)[index])
-	print()
-	print('----- ratio -----')
-	print()
-	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
-	print()
-	print('-----')
-	print()
-	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
-	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
-	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
-
-	print('Passed')
-
-	return
-
-
 if __name__ == "__main__":
 
 	arguments = {"path":"config/settings.json","tol":5e-8}
@@ -1718,10 +1720,10 @@ if __name__ == "__main__":
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_random(*args,**args)
-	test_sites(*args,**args)
+	# test_layout(*args,**args)
 	# test_measure(*args,**args)
 	# test_metric(*args,**args)
-	# test_module(*args,**args)
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
+	test_module(*args,**args)

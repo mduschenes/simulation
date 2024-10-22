@@ -39,10 +39,10 @@
 			"variable":false,"local":true
 		}
 	},
-	"N":4,
+	"N":3,
 	"D":2,
 	"d":1,
-	"M":5,
+	"M":4,
 	"tau":1,
 	"P":1,
 	"space":"spin",
