@@ -85,7 +85,7 @@ def test_operator(*args,**kwargs):
 		"operator.ndim":[None],"state.ndim":[2,1],
 		"operator.local":[True,False],
 		"operator.data":[None,None,None,None,None],
-		"operator.operator":[["TEST","H"],["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
+		"operator.operator":[["CNOT","H"],["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
 		"operator.site":[[3,0,1],[0,2],[3,1],[0],[0,2,1]],
 		"operator.string":["test","xz","U","u","noise"],
 		"operator.parameters":[None,0.5,None,None,1e-6],
@@ -781,20 +781,20 @@ def test_tensorproduct(*args,**kwargs):
 def test_measure(*args,**kwargs):
 
 	kwargs = {
-		"model.base":["pauli","tetrad"],
+		"measure.base":["pauli","tetrad"],
 		"state.D":[4,4],
 		}
-	groups = [["model.base","state.D",]]
+	groups = [["measure.base","state.D",]]
 
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
 		settings = Dict({
 			"cls":{
-				"model":"src.quantum.Measure",
+				"measure":"src.quantum.Measure",
 				"state":"src.quantum.State",
 				"basis":"src.quantum.Basis",
 			},
-			"model":{
+			"measure":{
 				"data":None,
 				"base":"pauli",
 				"string":"povm",
@@ -814,25 +814,25 @@ def test_measure(*args,**kwargs):
 
 		setter(settings,kwargs,delimiter=delim,default=True)
 
-		model = load(settings.cls.model)
+		measure = load(settings.cls.measure)
 		state = load(settings.cls.state)
 		basis = load(settings.cls.basis)
 
-		model = model(**settings.model)
+		measure = measure(**settings.measure)
 		state = state(**settings.state)
 
-		model.init(state=state)
+		measure.init(state=state)
 
-		print(settings["model"]["base"])
-		print(model,len(model),model.D,state.D)
-		print(model.identity)
-		print(model.data)
-		print(model.inverse)
+		print(settings["measure"]["base"])
+		print(measure,len(measure),measure.D,state.D)
+		print(measure.identity)
+		print(measure.data)
+		print(measure.inverse)
 		print()
 
 
-		assert allclose(sum(i for i in model.basis),basis.I(D=model.D,dtype=model.dtype)), "Incorrect %r basis"%(model)
-		assert allclose(einsum('uw,vw->uv',model.data,model.inverse),basis.identity(D=len(model),dtype=model.dtype)), "Incorrect %r data"%(model)
+		assert allclose(sum(i for i in measure.basis),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
+		assert allclose(einsum('uw,vw->uv',measure.data,measure.inverse),basis.identity(D=len(measure),dtype=measure.dtype)), "Incorrect %r data"%(measure)
 
 	print('Passed')
 
@@ -1550,14 +1550,14 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	# test_basis(*args,**args)
-	# test_operator(*args,**args)
-	# test_data(*args,**args)
+	test_basis(*args,**args)
+	test_operator(*args,**args)
+	test_data(*args,**args)
 	test_initialization(*args,**args)
-	# test_tensorproduct(*args,**args)
-	# test_module(*args,**args)
-	# test_metric(*args,**args)
+	test_tensorproduct(*args,**args)
 	# test_measure(*args,**args)
+	# test_metric(*args,**args)
+	# test_module(*args,**args)
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
