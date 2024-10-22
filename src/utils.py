@@ -686,8 +686,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		# return wraps(func)(partial(func,**kwargs))
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -3174,7 +3174,7 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
-		key = seeder(seed if key is None else key)
+		key = seed if key is None else key
 		generator = getattr(rng,random)
 
 		return astype(generator(key,shape=shape),dtype=dtype)
@@ -3192,7 +3192,7 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
-		key = seeder(seed if key is None else key)
+		key = seed if key is None else key
 		generator = rng.randint
 
 		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
@@ -3209,17 +3209,15 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
+		real,imag = rng.split(seed if key is None else key)
+
 		kwargs = dict(
 			shape = shape,
-			seed = seed,
-			key = key,
 			random = 'normal',
-			dtype=dtype
+			dtype = dtype
 		)
 
-		out = random(**kwargs)
-
-		out = out + 1j*out
+		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)
@@ -3504,7 +3502,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
-		key = seeder(seed if key is None else key)
+		key = seed if key is None else key
 		generator = getattr(rng,random)
 
 		return astype(generator(size=shape),dtype=dtype)
@@ -3522,7 +3520,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
-		key = seeder(seed if key is None else key)
+		key = seed if key is None else key
 		generator = rng.randint
 
 		return astype(generator(*bounds,size=shape),dtype=dtype)
@@ -3539,17 +3537,15 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
+		real,imag = seed if key is None else key,seed if key is None else key
+
 		kwargs = dict(
 			shape = shape,
-			seed = seed,
-			key = key,
 			random = 'normal',
-			dtype=dtype
+			dtype = dtype
 		)
 
-		out = random(**kwargs)
-
-		out = out + 1j*out
+		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)
@@ -7330,14 +7326,15 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
-def sortby(dictionary,key=None):
+def sortby(iterable,key=None,reverse=False):
 	'''
 	Sort dictionary by keys
 	Args:
-		dictionary (dict): dictionary to be sorted
-		key (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+		iterable (dict): dictionary to be sorted
+		key (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
+		reverse (bool): Reverse sort
 	Returns:
-		dictionary (dict[key,value]): Sorted dictionary
+		iterable (dict[key,value]): Sorted iterable
 	'''
 
 	def parse(value):
@@ -7349,30 +7346,31 @@ def sortby(dictionary,key=None):
 		else:
 			return value
 
-	def get(value,key):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value)
+	def get(value,key,iterable):
+		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
 		return value
 
 	if key is None:
 		key = None
 	elif callable(key) or not isinstance(key,iterables):
-		key = lambda value,key=key: parse(get(dictionary[value],key))
+		key = lambda value,key=key: parse(get(iterable[value],key,iterable))
 	elif isinstance(key,iterables):
-		key = lambda value,key=key: parse([get(dictionary[value],item) for item in key])
+		key = lambda value,key=key: parse([get(iterable[value],item,iterable) for item in key])
 	else:
 		key = None
 
-	dictionary = {value: dictionary[value] for value in sorted(dictionary,key=key)}
+	iterable = {value: iterable[value] for value in sorted(iterable,key=key,reverse=reverse)}
 
-	return dictionary
+	return iterable
 
-def groupby(iterable,key=None,sort=None):
+def groupby(iterable,key=None,sort=None,reverse=False):
 	'''
 	Group iterable by keys, after sorting by key or sort
 	Args:
 		iterable (iterable): Iterable to be grouped
-		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
-		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
+		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
+		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value,iterable)
+		reverse (bool): Reverse sort	
 	Returns:
 		iterable (iterable[group]): Grouped iterable with group keys and iterable values 
 	'''
@@ -7386,31 +7384,31 @@ def groupby(iterable,key=None,sort=None):
 		else:
 			return value
 
-	def get(value,key):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value)
+	def get(value,key,iterable):
+		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
 		return value
 
 	if key is None:
 		key = None
 	elif callable(key) or not isinstance(key,iterables):
-		key = lambda value,key=key: parse(get(value,key))
+		key = lambda value,key=key: parse(get(value,key,iterable))
 	elif isinstance(key,iterables):
-		key = lambda value,key=key: parse([get(value,item) for item in key])
+		key = lambda value,key=key: parse([get(value,item,iterable) for item in key])
 	else:
 		key = None
 
 	if sort is None:
 		sort = None
 	elif callable(sort) or not isinstance(sort,iterables):
-		sort = lambda value,sort=sort: parse(get(value,sort))
+		sort = lambda value,sort=sort: parse(get(value,sort,iterable))
 	elif isinstance(sort,iterables):
-		sort = lambda value,sort=sort: parse([get(value,item) for item in sort])
+		sort = lambda value,sort=sort: parse([get(value,item,iterable) for item in sort])
 	else:
 		sort = None
 
 	sort = key if sort is None else sort
 
-	iterable = sorted(iterable,key=sort)
+	iterable = sorted(iterable,key=sort,reverse=reverse)
 
 	if key is not None:
 		iterable = itertools.groupby(iterable,key=key)

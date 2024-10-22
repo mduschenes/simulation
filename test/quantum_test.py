@@ -11,8 +11,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
-from src.utils import einsum,conjugate,dot,tensorprod,trace,sqrtm,sqrt,cos,sin
-from src.utils import swap,shuffle,seeder
+from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin
+from src.utils import swap,shuffle,seeder,rng
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -816,26 +816,120 @@ def test_random(*args,**kwargs):
 
 	parameters = operator.parameters()
 	state = tensorprod([operator.basis.get(operator.default)(**operator)]*operator.N)
-	kwargs = dict(seed=seeder(123456789))
+	kwargs = Dictionary(seed=seeder(123456789))
 
 	obj = Dictionary()
 
 	obj.data = operator.data
 	obj.func = operator(parameters=parameters,state=state,**kwargs)
+
+	key,kwargs.seed = rng.split(kwargs.seed)
+
 	obj.tmp = operator(parameters=parameters,state=state,**kwargs)
+
+	obj.norm = trace(dot(dagger(obj.data),obj.data))/operator.D**operator.locality
 
 	for attr in obj:
 		print(attr)
 		print(getattr(obj,attr).round(options.precision))
 		print()
 
+	print()
+	print('-------------------')
+	print()
 
+	state = load(settings.cls.state)
+	state = state(**settings.state)
+	state.info(**options)
+
+	parameters = state.parameters()
+	kwargs = Dictionary(seed=seeder(123))
+
+	obj = Dictionary()
+
+	obj.data = state.data
+	obj.func = state(parameters=parameters,**kwargs)
+
+	key,kwargs.seed = rng.split(kwargs.seed)
+
+	obj.tmp = state(parameters=parameters,**kwargs)
+
+	obj.norm = trace(obj.data)
+
+	for attr in obj:
+		print(attr)
+		print(getattr(obj,attr).round(options.precision))
+		print()
+
+	return
+
+
+
+def test_sites(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State"
+		},
+		"model":{
+			"data":{
+				"xx":{
+					"operator":["X","X"],"site":"|ij|","string":"xx",
+					"parameters":0.5,
+					"variable":False
+				},
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
+					"parameters":None,
+					"variable":False
+				},	
+				# "noise":{
+				# 	"operator":["depolarize"],"site":"|i.j|","string":"noise",
+				# 	"parameters":None,
+				# 	"variable":False
+				# }				
+			},
+			"N":6,"D":2,"ndim":2,"local":True,
+			"system":{
+				"seed":12345,"dtype":"complex",
+				"architecture":None,"configuration":{
+					"key":[lambda value,iterable: (
+						# [tuple(j) for i in [*range(0,value.N,2),*range(1,value.N,2)] for j in [[i,i+1],[i],[i+1]]].index(tuple(value.site))
+						value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+						)],
+					"sort":None,
+					"reverse":False
+					},
+				}
+		},	
+		"state": {
+			"data":None	,
+			"operator":"zero",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":6,"ndim":2,"local":True,"variable":False,
+			"system":{"seed":12345,"dtype":"complex","architecture":None}
+			}
+	})
+
+	verbose = False
+
+	model = load(settings.cls.model)
+	model = model(**settings.model)
+	model.info(verbose=verbose)
 
 	# state = load(settings.cls.state)
 	# state = state(**settings.state)
 	# state.info(verbose=verbose)
 
-	# operator.init(state=state)
+	# model.init(state=state)
+
+	attrs = ['string','N','locality','operator','site']
+
+	for i in model.data:
+		print([id(model.data[i]) for i in model.data].index(id(model.data[i])),{attr: getattr(model.data[i],attr) for attr in attrs})
 
 	return
 
@@ -1623,7 +1717,8 @@ if __name__ == "__main__":
 	# test_data(*args,**args)
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
-	test_random(*args,**args)
+	# test_random(*args,**args)
+	test_sites(*args,**args)
 	# test_measure(*args,**args)
 	# test_metric(*args,**args)
 	# test_module(*args,**args)

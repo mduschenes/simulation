@@ -1926,7 +1926,7 @@ class Object(System):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -2436,7 +2436,7 @@ class Object(System):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -2605,11 +2605,12 @@ class Object(System):
 		return (
 			hash(self.string) ^ 
 			hash(tuple(self.operator) if not isinstance(self.operator,str) else self.operator) ^ 
-			hash(tuple(self.site))
+			hash(tuple(self.site)) ^
+			hash(id(self))
 			)
 
 	def __key__(self):
-		attrs = [self.string,self.operator,self.site]
+		attrs = [self.string,self.operator,self.site,id(self)]
 		key = []
 		for attr in attrs:
 			if attr is None:
@@ -3036,7 +3037,7 @@ class Pauli(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -3060,7 +3061,7 @@ class Pauli(Object):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -3188,7 +3189,7 @@ class Gate(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -3215,7 +3216,7 @@ class Gate(Object):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
 		'''
@@ -3315,7 +3316,7 @@ class Haar(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -3338,7 +3339,7 @@ class Haar(Object):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -3511,7 +3512,7 @@ class Noise(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -3548,7 +3549,7 @@ class Noise(Object):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -3672,7 +3673,7 @@ class State(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -3702,7 +3703,7 @@ class State(Object):
 		Args:
 			data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments				
 		'''
@@ -3989,7 +3990,7 @@ class Operator(Object):
 	Args:
 		data (str,array,tensor,iterable[str,array,tensor],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -4051,11 +4052,11 @@ class Objects(Object):
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators
 		string (iterable[str]): string labels of operators
 		N (int): Size of system
 		M (int): Duration of system
@@ -4332,11 +4333,11 @@ class Objects(Object):
 		Args:
 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
 				operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+				site (iterable[str,iterable[int,str]]): site of local operators
 				string (iterable[str]): string labels of operators
 				kwargs (dict): Additional operator keyword arguments			
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional class keyword arguments		
 		'''
@@ -4380,10 +4381,10 @@ class Objects(Object):
 
 		data = objs
 
-		# Lattice sites
-		sites = self.lattice
+		# Lattice
+		lattice = self.lattice
 		locality = self.N
-		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}
+		indices = self.lattice.structures
 
 		# Get number of operators
 		size = min([len(data[obj]) for obj in data if data[obj] is not None],default=0)
@@ -4406,13 +4407,15 @@ class Objects(Object):
 			for attr in attrs:
 				if tmp[attr] is None:
 					key = None
-				elif isinstance(tmp[attr],scalars) and tmp[attr] in indices:
+				elif isinstance(tmp[attr],str) and tmp[attr] in indices:
 					if len(indices[tmp[attr]]) > locality:
 						key = None
 						tmp[attr] = None
 					else:
 						key = tmp[attr]
 						tmp[attr] = indices[tmp[attr]]
+				elif isinstance(tmp[attr],str) and tmp[attr] not in indices:
+					raise NotImplementedError("Index %s Not Implemented"%(tmp[attr]))
 				elif isinstance(tmp[attr],scalars):
 					if tmp[attr] > locality:
 						key = None
@@ -4429,7 +4432,7 @@ class Objects(Object):
 								key = i
 								tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
 			if key is not None:
-				for i,index in enumerate(sites(key)):
+				for i,index in enumerate(lattice(key)):
 					value = {}
 					for obj in data:
 						
@@ -4437,12 +4440,6 @@ class Objects(Object):
 							value[obj] = attrs[obj](obj,index,tmp,indices[key])
 						else:
 							value[obj] = tmp[obj]
-
-					exists = [[i if value[obj] == item else None for i,item in enumerate(data[obj])] 
-						for obj in data]
-					
-					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
-						continue
 
 					for obj in data:
 						data[obj].append(value[obj])
@@ -4717,7 +4714,7 @@ class Objects(Object):
 
 		configuration = self.configuration if configuration is None else configuration
 
-		options = dict(key=configuration.get('key',configuration.get('sort'))) if configuration is not None else {}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,reverse=None).items()} if configuration is not None else {}
 
 		data = sortby(data,**options)
 
@@ -4733,7 +4730,7 @@ class Objects(Object):
 		Args:
 			data (iterable[str,Operator]): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -5141,7 +5138,7 @@ class Module(System):
 	'''
 	Class for Module
 	Args:
-		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
+		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 		N (int): Size of system
 		M (int): Duration of system
 		state (array,State): state for module			
@@ -5182,7 +5179,7 @@ class Module(System):
 		''' 
 		Setup class functions
 		Args:
-			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
+			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 			state (State): state for module
 			parameters (dict,array,Parameters): parameters of class
 			kwargs (dict): Additional class keyword arguments			
@@ -5221,7 +5218,7 @@ class Module(System):
 		'''
 		Setup class
 		Args:
-			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary with lattice locality where {'<ij>':model}
+			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 			state (State): state for module			
 			parameters (dict,array,Parameters): parameters of class			
 			kwargs (dict): Additional class keyword arguments		
@@ -5327,11 +5324,13 @@ class Module(System):
 
 		configuration = self.configuration if configuration is None else configuration
 
+		model = self.model if isinstance(self.model,dict) else {index:model for index,model in enumerate(self.model)} if isinstance(self.model,iterables) else {None:self.model}
+
 		model = [model for key in self.model if self.model[key] is not None 
 					   for model in (self.model[key] if not isinstance(self.model[key],dict) else 
 									 [self.model[key][index] for index in self.model[key]])]
 
-		options = dict(key=configuration.get('key'),sort=configuration.get('sort')) if configuration is not None else {}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,sort=None,reverse=None).items()} if configuration is not None else {}
 
 		model = groupby(model,**options)
 
