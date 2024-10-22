@@ -85,7 +85,7 @@ def test_operator(*args,**kwargs):
 		"operator.ndim":[None],"state.ndim":[2,1],
 		"operator.local":[True,False],
 		"operator.data":[None,None,None,None,None],
-		"operator.operator":[["CNOT","H"],["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
+		"operator.operator":["CNOT.H",["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
 		"operator.site":[[3,0,1],[0,2],[3,1],[0],[0,2,1]],
 		"operator.string":["test","xz","U","u","noise"],
 		"operator.parameters":[None,0.5,None,None,1e-6],
@@ -119,7 +119,8 @@ def test_operator(*args,**kwargs):
 		settings = Dict({
 			"cls":{
 				"operator":"src.quantum.Operator",
-				"state":"src.quantum.State"
+				"state":"src.quantum.State",
+				"basis":"src.quantum.Basis"
 			},
 			"operator":{
 				"data":None,"operator":None,"site":None,"string":None,
@@ -140,9 +141,6 @@ def test_operator(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default=True)
 
 		verbose = True
-
-
-		from src.quantum import Basis,Object
 
 
 		# Data
@@ -212,8 +210,9 @@ def test_operator(*args,**kwargs):
 
 		parameters = operator.parameters()
 		state = tensorprod((operator.basis.get(operator.default)(D=operator.D,dtype=operator.dtype),)*operator.N)
+		kwargs = dict()
 
-		tmp = operator(parameters=parameters,state=state)
+		tmp = operator(parameters=parameters,state=state,**kwargs)
 
 		if verbose:
 			print('----- data ------')
@@ -238,8 +237,9 @@ def test_operator(*args,**kwargs):
 
 		parameters = operator.parameters()
 		state = operator.state()
+		kwargs = dict()
 
-		tmp = operator(parameters=parameters,state=state)
+		tmp = operator(parameters=parameters,state=state,**kwargs)
 
 		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
 		_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
@@ -717,7 +717,7 @@ def test_tensorproduct(*args,**kwargs):
 
 	operators = [["plus","minus"]]*3
 
-	kwargs = Dict(**{
+	options = Dict(**{
 		"data":None	,
 		"operator":None,
 		"site":None,
@@ -730,7 +730,7 @@ def test_tensorproduct(*args,**kwargs):
 	cls = load(settings.cls.state)
 
 
-	states = [cls(**{**kwargs,**dict(operator=operator)}) for operator in operators]
+	states = [cls(**{**options,**dict(operator=operator)}) for operator in operators]
 	site = [2*i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
 
 	new = states[0] 
@@ -743,7 +743,7 @@ def test_tensorproduct(*args,**kwargs):
 
 	test = new(parameters=new.parameters(),state=new.state())
 
-	_test = tensorprod([basis.get(i)(**kwargs) for operator in operators for i in (operator if isinstance(operator,iterables) else [operator])])
+	_test = tensorprod([basis.get(i)(**options) for operator in operators for i in (operator if isinstance(operator,iterables) else [operator])])
 
 	_test_ = tensorprod([
 			state(parameters=state.parameters(),state=state.state())
@@ -774,6 +774,68 @@ def test_tensorproduct(*args,**kwargs):
 	# assert allclose(test,_test), "Incorrect operator @ operator"
 
 	print('Passed')
+
+	return
+
+
+def test_random(*args,**kwargs):
+
+	settings = Dict({
+		"cls":{
+			"state":"src.quantum.State",
+			"operator":"src.quantum.Operator",
+			"basis":"src.quantum.Basis"
+		},
+		"state": {
+			"data":None	,
+			"operator":"psi",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"N":3,"D":2,"ndim":2,
+			"local":True,"variable":False,
+			"seed":123,"dtype":"complex"
+			},
+		"operator": {
+			"data":None,
+			"operator":"U",
+			"site":[0,2],
+			"string":"U",
+			"parameters":None,
+			"N":3,"D":2,"ndim":2,
+			"local":True,"variable":False,
+			"seed":123,"dtype":"complex"
+		}
+	})
+
+	options = Dictionary(verbose=True,precision=8)
+
+	operator = load(settings.cls.operator)
+	operator = operator(**settings.operator)
+	operator.info(**options)
+
+	parameters = operator.parameters()
+	state = tensorprod([operator.basis.get(operator.default)(**operator)]*operator.N)
+	kwargs = dict(seed=seeder(123456789))
+
+	obj = Dictionary()
+
+	obj.data = operator.data
+	obj.func = operator(parameters=parameters,state=state,**kwargs)
+	obj.tmp = operator(parameters=parameters,state=state,**kwargs)
+
+	for attr in obj:
+		print(attr)
+		print(getattr(obj,attr).round(options.precision))
+		print()
+
+
+
+	# state = load(settings.cls.state)
+	# state = state(**settings.state)
+	# state.info(verbose=verbose)
+
+	# operator.init(state=state)
 
 	return
 
@@ -1182,11 +1244,12 @@ def test_module(*args,**kwargs):
 
 		parameters = model.parameters()
 		state = model.state() if model.state() is not None else model.identity
+		kwargs = dict()
 
 		print(state.shape)
 
-		print(model(parameters=parameters,state=state))
-		print(model(parameters=parameters,state=state))
+		print(model(parameters=parameters,state=state,**kwargs))
+		print(model(parameters=parameters,state=state,**kwargs))
 		exit()
 
 
@@ -1204,17 +1267,18 @@ def test_module(*args,**kwargs):
 		# Probability
 		parameters = measure.parameters()
 		state = [obj]*settings.module.N
+		kwargs = dict()
 
 		print(parse(tensorprod([i() for i in state])))
 
 		# for i in model.data:
 		# 	parameters = model.data[i].parameters()
 		# 	state = model.data[i].identity
-		# 	print(model.data[i],model.data[i](parameters=parameters,state=state))
+		# 	print(model.data[i],model.data[i](parameters=parameters,state=state,**kwargs))
 		# print(model.parameters())
 		# print(model.state())
 
-		probability = measure.probability(parameters=parameters,state=state)
+		probability = measure.probability(parameters=parameters,state=state,**kwargs)
 
 		key = 'probability'
 		if settings.measure.architecture in ['array']:
@@ -1230,8 +1294,9 @@ def test_module(*args,**kwargs):
 		# Amplitude
 		parameters = measure.parameters()
 		state = probability
+		kwargs = dict()
 
-		amplitude = measure.amplitude(parameters=parameters,state=state)
+		amplitude = measure.amplitude(parameters=parameters,state=state,**kwargs)
 
 		key = 'amplitude'
 		if settings.measure.architecture in ['array']:
@@ -1260,20 +1325,21 @@ def test_module(*args,**kwargs):
 
 		parameters = model.parameters()
 		state = [obj]*model.locality
+		kwargs = dict()
 
-		state = measure.probability(parameters=parameters,state=state)
+		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
 		print(state)
 
 		where = list(range(model.locality))
 
-		operator = measure.operator(parameters=parameters,state=state,model=model,where=where)
+		operator = measure.operator(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
 		key = 'operator'
 		if settings.measure.architecture in ['array']:
 			value = array(operator(parameters,state))
 		elif settings.measure.architecture in ['tensor']:
-			value = representation(operator(parameters=parameters,state=state),to='tensor',contract=True)
+			value = representation(operator(parameters=parameters,state=state,**kwargs),to='tensor',contract=True)
 
 		data[index][key] = value
 
@@ -1294,11 +1360,12 @@ def test_module(*args,**kwargs):
 
 		parameters = module.parameters()
 		state = module.state()
+		kwargs = dict()
 
 		state = module(parameters,state)
 
 		key = 'module'
-		value = module.measure.transform(parameters=parameters,state=state,transformation=False)
+		value = module.measure.transform(parameters=parameters,state=state,transformation=False,**kwargs)
 		data[index][key] = value
 
 		# Init
@@ -1357,12 +1424,13 @@ def test_module(*args,**kwargs):
 		# Model
 		parameters = model.parameters()
 		state = obj() @ module.N
+		kwargs = dict()
 
 		model.init(state=state)
 
-		state = measure.probability(parameters=parameters,state=state)
+		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		operator = measure.operator(parameters=parameters,state=state,model=model)
+		operator = measure.operator(parameters=parameters,state=state,model=model,**kwargs)
 
 		operator = operator(parameters,state)
 
@@ -1550,11 +1618,12 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	test_basis(*args,**args)
-	test_operator(*args,**args)
-	test_data(*args,**args)
-	test_initialization(*args,**args)
-	test_tensorproduct(*args,**args)
+	# test_basis(*args,**args)
+	# test_operator(*args,**args)
+	# test_data(*args,**args)
+	# test_initialization(*args,**args)
+	# test_tensorproduct(*args,**args)
+	test_random(*args,**args)
 	# test_measure(*args,**args)
 	# test_metric(*args,**args)
 	# test_module(*args,**args)

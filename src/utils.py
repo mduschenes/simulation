@@ -30,6 +30,9 @@ import scipy as osp
 import pandas as pd
 import scipy.special as ospsp
 
+orng = onp.random
+
+
 _partial = partial
 partial = lambda func,*args,**kwargs: wraps(func)(_partial(func,*args,**kwargs))
 
@@ -89,6 +92,8 @@ if backend in ['jax','jax.autograd']:
 
 	mapper = tree_map
 
+	rng = jax.random
+
 elif backend in ['autograd']:
 
 	import autograd
@@ -143,6 +148,9 @@ elif backend in ['autograd']:
 
 	mapper = tree_map
 
+	rng = np.random
+
+
 elif backend in ['numpy']:
 
 	import numpy as np
@@ -154,6 +162,8 @@ elif backend in ['numpy']:
 	import quimb.tensor as qtn
 
 	mapper = map
+
+	rng = np.random
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -676,8 +686,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		return wraps(func)(partial(func,**kwargs))
+		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		# return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -2652,7 +2662,7 @@ if backend in ['jax']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-		generator = jax.random
+		generator = rng
 
 		if is_key(seed):
 			return seed
@@ -2685,11 +2695,11 @@ if backend in ['jax']:
 
 		if seed is None:
 			bounds = [0,2**32]
-			seed = onp.random.randint(*bounds)
+			seed = orng.randint(*bounds)
 		else:
-			onp.random.seed(seed)
+			orng.seed(seed)
 		
-		key = jax.random.key(seed)
+		key = rng.key(seed)
 
 		return key
 
@@ -2710,7 +2720,7 @@ if backend in ['jax']:
 		def init(self,seed=None):
 			if seed is not None:
 				self.seed = seed
-				self.key = jax.random.key(self.seed) if not is_key(self.seed) else self.seed
+				self.key = rng.key(self.seed) if not is_key(self.seed) else self.seed
 			return
 
 		def split(self,shape=None,seed=None):
@@ -2720,14 +2730,14 @@ if backend in ['jax']:
 			if not is_key(self.key):
 				keys = onp.full(shape,self.key,dtype=object)
 			else:
-				keys = jax.random.split(self.key,shape)
+				keys = rng.split(self.key,shape)
 			return keys
 
 		def fold(self,folds=None,seed=None):
 			self.init(seed)			
 			if folds is None:
 				return self.key
-			key = jax.random.fold_in(self.key,self.hashes(folds))
+			key = rng.fold_in(self.key,self.hashes(folds))
 			return key
 
 		def hashes(self,hashes=None):
@@ -2783,6 +2793,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
+		generator = rng
+
 		if seed is None or isinstance(seed,integers):
 			seed = seeded(seed)
 		else:
@@ -2809,9 +2821,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		if seed is None:
 			bounds = [0,2**32]
-			seed = np.random.randint(*bounds)
+			seed = rng.randint(*bounds)
 
-		np.random.seed(seed)
+		rng.seed(seed)
 		
 		key = seed
 
@@ -2832,7 +2844,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		def init(self,seed=None):
 			if seed is not None:
-				onp.random.seed(seed)
+				orng.seed(seed)
 				self.seed = seed
 				self.key = seed
 			return
@@ -2920,7 +2932,7 @@ if backend in ['jax']:
 		
 		key = seeder(key)
 
-		generator = jax.random
+		generator = rng
 
 		bounds = bounding(bounds,dtype=dtype)
 
@@ -3162,8 +3174,8 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-		generator = getattr(jax.random,random)
+		key = seeder(seed if key is None else key)
+		generator = getattr(rng,random)
 
 		return astype(generator(key,shape=shape),dtype=dtype)
 
@@ -3180,8 +3192,8 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-		generator = jax.random.randint
+		key = seeder(seed if key is None else key)
+		generator = rng.randint
 
 		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
 
@@ -3189,7 +3201,7 @@ if backend in ['jax']:
 		'''
 		Get random haar array
 		Args:
-			shape (int,iterable): Size or Shape of random array
+			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
@@ -3197,17 +3209,15 @@ if backend in ['jax']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-
 		kwargs = dict(
-			shape = (shape,)*2 if isinstance(shape,integers) else shape,
+			shape = shape,
 			seed = seed,
 			key = key,
 			random = 'normal',
 			dtype=dtype
 		)
 
-		out = astype(random(**kwargs),dtype=dtype)
+		out = random(**kwargs)
 
 		out = out + 1j*out
 
@@ -3250,7 +3260,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		
 		key = seeder(key)
 
-		generator = onp.random.RandomState(key)
+		generator = rng
 
 		bounds = bounding(bounds,dtype=dtype)
 
@@ -3494,8 +3504,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-		generator = getattr(np.random,random)
+		key = seeder(seed if key is None else key)
+		generator = getattr(rng,random)
 
 		return astype(generator(size=shape),dtype=dtype)
 
@@ -3512,8 +3522,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-		generator = np.random.randint
+		key = seeder(seed if key is None else key)
+		generator = rng.randint
 
 		return astype(generator(*bounds,size=shape),dtype=dtype)
 
@@ -3521,7 +3531,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		'''
 		Get random haar array
 		Args:
-			shape (int,iterable): Size or Shape of random array
+			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
@@ -3529,17 +3539,15 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out (array): Random array
 		'''	
 
-		key = seed if key is None else key
-
 		kwargs = dict(
-			shape = (shape,)*2 if isinstance(shape,integers) else shape,
+			shape = shape,
 			seed = seed,
 			key = key,
 			random = 'normal',
 			dtype=dtype
 		)
 
-		out = astype(random(**kwargs),dtype=dtype)
+		out = random(**kwargs)
 
 		out = out + 1j*out
 
@@ -8123,8 +8131,7 @@ def is_numeric(a,*args,**kwargs):
 	Returns:
 		out (boolean): If object is a numeric
 	'''
-	dtype = getattr(a,'dtype',type(a))
-	return np.issubdtype(dtype, np.number)
+	return np.issubdtype(getattr(a,'dtype',type(a)), np.number)
 
 def is_null(a,*args,**kwargs):
 	'''
@@ -8263,7 +8270,7 @@ def is_key(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is nan
 	'''
-	return hasattr(a,'dtype') and jax.dtypes.issubdtype(a.dtype, jax.dtypes.prng_key)
+	return jax.dtypes.issubdtype(getattr(a,'dtype',type(a)), jax.dtypes.prng_key)
 
 
 def is_hermitian(obj,*args,**kwargs):
