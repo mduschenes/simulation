@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
-from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin
+from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2
 from src.utils import swap,shuffle,seeder,rng
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
@@ -44,19 +44,19 @@ def test_basis(*args,**kwargs):
 	K = 2
 	ndim = 2
 	shape = [D**L]*(K if ndim is None else ndim)
-	data='zero.depolarize.X'
+	data="zero.depolarize.X"
 	key = 123
-	delim = '.'
-	dtype = 'complex'
+	delim = "."
+	dtype = "complex"
 
 	options = Dict(D=D,N=N,ndim=ndim,shape=shape,data=data,key=key,dtype=dtype)
 
 	operators = {
-		'rand':Dict(locality=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimension=2),
-		'X':Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
-		'depolarize':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
-		'string':Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
-		'pauli':Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
+		"rand":Dict(locality=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimension=2),
+		"X":Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
+		"depolarize":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
+		"string":Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
+		"pauli":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
 		}
 
 	for operator in operators:
@@ -70,7 +70,7 @@ def test_basis(*args,**kwargs):
 		print()
 
 
-	print('Passed')
+	print("Passed")
 
 	return
 
@@ -84,13 +84,13 @@ def test_operator(*args,**kwargs):
 		"operator.D":[2],"state.D":[2],
 		"operator.ndim":[None],"state.ndim":[2,1],
 		"operator.local":[False,True],
-		"operator.data":[None,None,None,None,None,None],
-		"operator.operator":["CNOT.H",["X","Z"],"haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
-		"operator.site":[[3,0,1],[0,2],[1,2,0],[3,1],[0],[0,2,1]],
-		"operator.string":["test","xz","haar","U","u","noise"],
-		"operator.parameters":[None,0.5,None,None,None,1e-6],
-		"operator.variable":[False,False,False,False,False,False,False],
-		"operator.constant":[True,False,False,False,False,True,True],
+		"operator.data":[None,None,None,None,None,None,None],
+		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
+		"operator.site":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
+		"operator.string":["test","xz","Haar","haar","U","u","noise"],
+		"operator.parameters":[None,0.5,None,None,None,None,1e-6],
+		"operator.variable":[False,False,False,False,False,False,False,False],
+		"operator.constant":[True,False,False,False,False,False,True,True],
 		"state.local":[False],
 		"state.data":[None],
 		"state.operator":["zero"],
@@ -112,9 +112,9 @@ def test_operator(*args,**kwargs):
 	filters = None
 	func = None
 
-	options = dict(dtype='complex')
+	options = dict(dtype="complex")
 
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)[:]):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 	
 		settings = Dict({
 			"cls":{
@@ -148,40 +148,46 @@ def test_operator(*args,**kwargs):
 
 		operator = operator(**settings.operator)
 
-		if operator.string in ['test']:
+		if operator.string in ["test"]:
 			_data = [
 				array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options),
 				array([[1,1],[1,-1]],**options),
 				]
 			axes = [3,0,1,2]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
-		elif operator.string in ['xz']:
+		elif operator.string in ["xz"]:
 			_data = [
 				array([[0,1],[1,0]],**options),
 				array([[1,0],[0,-1]],**options),
 				]
 			axes = [0,2,1,3]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
-		elif operator.string in ['haar']:
+		elif operator.string in ["Haar"]:
+			_data = [
+				haar(shape=(2**4,)*2,seed=seeder(operator.seed),**options),
+				]
+			axes = [0,1,2,3]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ["haar"]:
 			_data = [
 				haar(shape=(2**3,)*2,seed=seeder(operator.seed),**options),
 				]
 			axes = [1,2,0,3]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
-		elif operator.string in ['U']:
+		elif operator.string in ["U"]:
 			_data = [
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				]
 			axes = [3,1,0,2]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
-		elif operator.string in ['u']:
+		elif operator.string in ["u"]:
 			_data = [
 				haar(shape=(2,)*2,seed=seeder(operator.seed),**options),
 				]
 			axes = [0,3,1,2]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
-		elif operator.string in ['noise']:
+		elif operator.string in ["noise"]:
 			_data = [
 				array([
 				sqrt(1-(2**2-1)*operator.parameters()/(2**2))*array([[1,0],[0,1]],**options),
@@ -222,13 +228,13 @@ def test_operator(*args,**kwargs):
 		tmp = operator(parameters=parameters,state=state,**kwargs)
 
 		if verbose:
-			print('----- data ------')
+			print("----- data ------")
 			print(tmp)
-			print('-----------------')
+			print("-----------------")
 			print()
-			print('----- _data ------')
+			print("----- _data ------")
 			print(_tmp)
-			print('-----------------')
+			print("-----------------")
 			print()
 
 		assert (not operator.unitary) or allclose(tmp,_tmp), "Incorrect operator %r"%(operator)
@@ -259,7 +265,7 @@ def test_operator(*args,**kwargs):
 			if state is None:
 				_tmp = _tmp
 			elif state.ndim == 2:
-				_tmp = einsum('uij,jl,ukl->ik',_tmp,state,conjugate(_tmp))
+				_tmp = einsum("uij,jl,ukl->ik",_tmp,state,conjugate(_tmp))
 			elif state.ndim == 1:
 				continue
 			else:
@@ -269,9 +275,9 @@ def test_operator(*args,**kwargs):
 			if state is None:
 				_tmp = _tmp
 			elif state.ndim == 2:
-				_tmp = einsum('ij,jl,kl->ik',_tmp,state,conjugate(_tmp))
+				_tmp = einsum("ij,jl,kl->ik",_tmp,state,conjugate(_tmp))
 			elif state.ndim == 1:
-				_tmp = einsum('ij,j->i',_tmp,state)				
+				_tmp = einsum("ij,j->i",_tmp,state)				
 			else:
 				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
 		
@@ -282,18 +288,18 @@ def test_operator(*args,**kwargs):
 
 
 		if verbose:
-			print('----- state ------')
+			print("----- state ------")
 			print(tmp)
-			print('-----------------')
+			print("-----------------")
 			print()
-			print('----- _state ------')
+			print("----- _state ------")
 			print(_tmp)
-			print('-----------------')
+			print("-----------------")
 			print()
 
 		assert allclose(tmp,_tmp), "Incorrect operator(parameters,state) %r"%(operator)
 
-	print('Passed')
+	print("Passed")
 
 	return	
 
@@ -324,12 +330,12 @@ def test_data(path,tol):
 
 
 	basis = {
-		'I':array([[1,0],[0,1]],dtype=model.dtype),
-		'X':array([[0,1],[1,0]],dtype=model.dtype),
-		'Y':array([[0,-1j],[1j,0]],dtype=model.dtype),
-		'Z':array([[1,0],[0,-1]],dtype=model.dtype),
+		"I":array([[1,0],[0,1]],dtype=model.dtype),
+		"X":array([[0,1],[1,0]],dtype=model.dtype),
+		"Y":array([[0,-1j],[1j,0]],dtype=model.dtype),
+		"Z":array([[1,0],[0,-1]],dtype=model.dtype),
 		}
-	default = 'I'
+	default = "I"
 
 	N = model.N
 	P = model.P
@@ -339,11 +345,11 @@ def test_data(path,tol):
 	if local:
 		string = [
 			*[[O for k in range(N) if k in [i]]
-				for O in ['X','Y','Z']
+				for O in ["X","Y","Z"]
 				for i in range(N)
 				],
 			*[[O for k in range(N) if k in [i,j] ]
-				for O in ['Z']
+				for O in ["Z"]
 				for i in range(N)
 				for j in range(N)
 				if i<j
@@ -352,11 +358,11 @@ def test_data(path,tol):
 	else:
 		string = [
 			*[[O if k in [i] else default for k in range(N)]
-				for O in ['X','Y','Z']
+				for O in ["X","Y","Z"]
 				for i in range(N)
 				],
 			*[[O if k in [i,j] else default for k in range(N)]
-				for O in ['Z']
+				for O in ["Z"]
 				for i in range(N)
 				for j in range(N)
 				if i<j
@@ -380,7 +386,7 @@ def test_data(path,tol):
 	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
 	
-	print('Passed')
+	print("Passed")
 	
 	return
 
@@ -392,6 +398,8 @@ def test_initialization(path,tol):
 		raise Exception("settings %s not loaded"%(path))
 
 	settings = Dict(settings)
+
+	verbose = True
 
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
@@ -407,7 +415,7 @@ def test_initialization(path,tol):
 	model.init(state=state)
 
 	parameters = model.parameters()
-	kwargs = dict(verbose=True)
+	kwargs = dict(verbose=verbose)
 
 	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system,**kwargs)
 
@@ -457,11 +465,11 @@ def test_initialization(path,tol):
 
 	model.init(state=updates.state,data=updates.data)
 
-	print('First')
+	print("First")
 	print(updates)	
-	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
-	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
-	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print(model.state,{attr:getattr(model,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(label.state,{attr:getattr(label,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(state.state,{attr:getattr(state,attr) for attr in ["N","D","ndim","locality","local"]})
 	print({i: model.data[i] for i in model.data})
 	print(model.state())
 	print()
@@ -477,11 +485,11 @@ def test_initialization(path,tol):
 
 	model.init(state=updates.state,data=updates.data)
 
-	print('Second')
+	print("Second")
 	print(updates)	
-	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
-	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
-	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print(model.state,{attr:getattr(model,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(label.state,{attr:getattr(label,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(state.state,{attr:getattr(state,attr) for attr in ["N","D","ndim","locality","local"]})
 	print({i: model.data[i] for i in model.data})
 	print(model.state())	
 	print()
@@ -500,11 +508,11 @@ def test_initialization(path,tol):
 
 	model.init(state=updates.state,data=updates.data)
 
-	print('Third')
+	print("Third")
 	print(updates)
-	print(model.state,{attr:getattr(model,attr) for attr in ['N','D','ndim','locality','local']})
-	print(label.state,{attr:getattr(label,attr) for attr in ['N','D','ndim','locality','local']})
-	print(state.state,{attr:getattr(state,attr) for attr in ['N','D','ndim','locality','local']})
+	print(model.state,{attr:getattr(model,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(label.state,{attr:getattr(label,attr) for attr in ["N","D","ndim","locality","local"]})
+	print(state.state,{attr:getattr(state,attr) for attr in ["N","D","ndim","locality","local"]})
 	print({i: model.data[i] for i in model.data})
 	print(model.state())
 	print()
@@ -513,41 +521,41 @@ def test_initialization(path,tol):
 
 	new = copier(model,metric,state,label)
 
-	# print('--- COPY INFO ---')
-	# old.model.info(verbose=True)
+	# print("--- COPY INFO ---")
+	# old.model.info(verbose=verbose)
 	# print()
 
-	# print('--- TMP INFO ---')
-	# tmp.model.info(verbose=True)
+	# print("--- TMP INFO ---")
+	# tmp.model.info(verbose=verbose)
 	# print()
 
-	# print('--- NEW INFO ---')
-	# new.model.info(verbose=True)
+	# print("--- NEW INFO ---")
+	# new.model.info(verbose=verbose)
 	# print()
 
 
-	# print('State model (hermitian: %s, unitary: %s)'%(old.model.hermitian,old.model.unitary))
+	# print("State model (hermitian: %s, unitary: %s)"%(old.model.hermitian,old.model.unitary))
 	# print(old.model.data)
 
-	# print('State label (hermitian: %s, unitary: %s)'%(old.label.hermitian,old.label.unitary))
+	# print("State label (hermitian: %s, unitary: %s)"%(old.label.hermitian,old.label.unitary))
 	# print(old.label.data)
 
-	# print('State state (hermitian: %s, unitary: %s)'%(old.label.state.hermitian,old.label.state.unitary))
+	# print("State state (hermitian: %s, unitary: %s)"%(old.label.state.hermitian,old.label.state.unitary))
 	# print(old.label.state())
 
-	# print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
+	# print("Unitary model (hermitian: %s, unitary: %s)"%(tmp.model.hermitian,tmp.model.unitary))
 	# print(tmp.model.data)
 
-	# print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
+	# print("Unitary label (hermitian: %s, unitary: %s)"%(tmp.label.hermitian,tmp.label.unitary))
 	# print(tmp.label.data)
 
-	# print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
+	# print("State model (hermitian: %s, unitary: %s)"%(new.model.hermitian,new.model.unitary))
 	# print(new.model.data)
 
-	# print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
+	# print("State label (hermitian: %s, unitary: %s)"%(new.label.hermitian,new.label.unitary))
 	# print(new.label.data)
 
-	# print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
+	# print("State state (hermitian: %s, unitary: %s)"%(new.label.state.hermitian,new.label.state.unitary))
 	# print(new.label.state())
 
 
@@ -563,11 +571,11 @@ def test_initialization(path,tol):
 		if psi is None:
 			return
 		elif psi.ndim == 1:
-			UpsiUtmp = einsum('ij,j->i',U,psi,conjugate(U))
-			VpsiVtmp = einsum('ij,j->i',V,psi,conjugate(V))
+			UpsiUtmp = einsum("ij,j->i",U,psi,conjugate(U))
+			VpsiVtmp = einsum("ij,j->i",V,psi,conjugate(V))
 		elif psi.ndim == 2:
-			UpsiUtmp = einsum('ij,jk,lk->il',U,psi,conjugate(U))
-			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+			UpsiUtmp = einsum("ij,jk,lk->il",U,psi,conjugate(U))
+			VpsiVtmp = einsum("ij,jk,lk->il",V,psi,conjugate(V))		
 	elif K is not None:
 		#TODO: Implement test for multiple layers of noise 
 		if psi is None:
@@ -575,8 +583,8 @@ def test_initialization(path,tol):
 		elif psi.ndim == 1:
 			return
 		elif psi.ndim == 2 and model.M == 1:
-			UpsiUtmp = einsum('uij,jk,kl,ml,unm->in',K,U,psi,conjugate(U),conjugate(K))
-			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+			UpsiUtmp = einsum("uij,jk,kl,ml,unm->in",K,U,psi,conjugate(U),conjugate(K))
+			VpsiVtmp = einsum("ij,jk,lk->il",V,psi,conjugate(V))		
 		else:
 			return
 
@@ -780,7 +788,7 @@ def test_tensorproduct(*args,**kwargs):
 
 	# assert allclose(test,_test), "Incorrect operator @ operator"
 
-	print('Passed')
+	print("Passed")
 
 	return
 
@@ -842,7 +850,7 @@ def test_random(*args,**kwargs):
 		print()
 
 	print()
-	print('-------------------')
+	print("-------------------")
 	print()
 
 	state = load(settings.cls.state)
@@ -933,7 +941,7 @@ def test_layout(*args,**kwargs):
 
 	# model.init(state=state)
 
-	attrs = ['string','parameters','N','locality','operator','site',]
+	attrs = ["string","parameters","N","locality","operator","site",]
 
 	for i in model.data:
 		print(
@@ -1001,9 +1009,9 @@ def test_measure(*args,**kwargs):
 
 
 		assert allclose(sum(i for i in measure.basis),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
-		assert allclose(einsum('uw,vw->uv',measure.data,measure.inverse),basis.identity(D=len(measure),dtype=measure.dtype)), "Incorrect %r data"%(measure)
+		assert allclose(einsum("uw,vw->uv",measure.data,measure.inverse),basis.identity(D=len(measure),dtype=measure.dtype)), "Incorrect %r data"%(measure)
 
-	print('Passed')
+	print("Passed")
 
 	return
 
@@ -1061,7 +1069,7 @@ def test_metric(path=None,tol=None,**kwargs):
 
 	assert allclose(0,out), "Incorrect metric %0.5e"%(out)
 
-	print('Passed')
+	print("Passed")
 	
 	return
 
@@ -1118,7 +1126,7 @@ def test_namespace(*args,**kwargs):
 				"architecture":"array"
 				},
 			"label": {
-				"operator":'X.X.X.X',
+				"operator":"X.X.X.X",
 				"site":None,
 				"string":"U",
 				"parameters":0.5,
@@ -1166,35 +1174,35 @@ def test_namespace(*args,**kwargs):
 		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
 		measure = measure(**{**namespace(measure,model),**settings.measure,**dict(system=system)})
 
-		print('Attributes',{attr: getattr(settings.model,attr,None) for attr in ['N','data']})
+		print("Attributes",{attr: getattr(settings.model,attr,None) for attr in ["N","data"]})
 
-		model.info(verbose=True)
-		state.info(verbose=True)
+		model.info(verbose=verbose)
+		state.info(verbose=verbose)
 
-		attributes = {'model':model,'state':state,'label':label}
+		attributes = {"model":model,"state":state,"label":label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary','architecture']},'>>>>',namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","site","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
 		print()
 
 		model.init(state=state)
 		label.init(state=state)
 
-		attributes = {'model':model,'label':label}
+		attributes = {"model":model,"label":label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['N','locality','site','hermitian','unitary','architecture']},'>>>>',namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","site","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
 		print()
 
-		print('Call')
+		print("Call")
 		print(state())
 		print(model(state=state()))
 		print(label(state=state()))
 		print()
 
 
-		print('Measure')
-		attributes = {'measure':measure}
+		print("Measure")
+		attributes = {"measure":measure}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['D','operator','ind','inds','tags','data','inverse','basis','architecture']},'>>>>',attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["D","operator","ind","inds","tags","data","inverse","basis","architecture"]},">>>>",attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
 		print()
 
 		print()
@@ -1273,7 +1281,7 @@ def test_objective(path=None,tol=None,**kwargs):
 
 	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
 
-	print('Passed')
+	print("Passed")
 
 	return
 
@@ -1327,28 +1335,28 @@ def test_grad(path=None,tol=None,**kwargs):
 	grad_analytical = model.grad_analytical
 
 	index = slice(None)
-	print('----- grad -----')	
+	print("----- grad -----")	
 	print(grad_automatic(parameters,state)[index])
 	print()
-	print('-----')
+	print("-----")
 	print()
 	print(grad_finite(parameters,state)[index])
 	print()
-	print('-----')
+	print("-----")
 	print()	
 	print(grad_analytical(parameters,state)[index])
 	print()
-	print('----- ratio -----')
+	print("----- ratio -----")
 	print()
 	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
 	print()
-	print('-----')
+	print("-----")
 	print()
 	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
 	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
 	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
 
-	print('Passed')
+	print("Passed")
 
 	return
 
@@ -1357,8 +1365,9 @@ def test_module(*args,**kwargs):
 
 	kwargs = {
 		"module.N":[5],"module.M":[1],
-		'model.N':[5],'model.D':[2],"model.M":[1],'model.ndim':[2],
-		'state.N':[None],'state.D':[2],'state.ndim':[2],
+		"model.N":[5],"model.D":[2],"model.M":[1],"model.ndim":[2],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],
+		"measure.D":[2],"measure.architecture":["tensor","array"],
 		}	
 
 	groups = None
@@ -1392,6 +1401,7 @@ def test_module(*args,**kwargs):
 		},
 		"measure":{
 			"operator":"pauli",
+			"D":2,"dtype":"complex",
 			"architecture":"tensor",
 			"options":{"cyclic":False},
 		},		
@@ -1466,13 +1476,13 @@ def test_module(*args,**kwargs):
 			}
 		})
 
-		verbose = True
+		verbose = False
 		precision = 8
 
 		parse = lambda data: data.round(precision)
 
 		# Settings
-		setter(settings,kwargs,delimiter=delim,default='replace')
+		setter(settings,kwargs,delimiter=delim,default="replace")
 		system = settings.system
 
 
@@ -1481,26 +1491,28 @@ def test_module(*args,**kwargs):
 		model = load(settings.cls.model)		
 		model = model(**{**settings.model,**dict(system=system)})
 		
-		model.info(verbose=True)
+		model.info(verbose=verbose)
 
 		parameters = model.parameters()
 		state = model.state() if model.state() is not None else model.identity
 		kwargs = dict()
 
-		print(model(parameters=parameters,state=state,**kwargs))
-		print()
-		print()
+		if verbose:
+			print(model(parameters=parameters,state=state,**kwargs))
+			print()
+			print()
 
 
 		# State
 		state = load(settings.cls.state)
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
-		state.info(verbose=True)
+		state.info(verbose=verbose)
 
-		print(state())
-		print()
-		print()
+		if verbose:
+			print(state())
+			print()
+			print()
 
 
 		# Test
@@ -1522,18 +1534,19 @@ def test_module(*args,**kwargs):
 
 		probability = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		print(probability)
+		if verbose:
+			print(probability)
 
-		key = 'probability'
-		if settings.measure.architecture in ['array']:
+		key = "probability"
+		if settings.measure.architecture in ["array"]:
 			value = array(probability)
-		elif settings.measure.architecture in ['tensor']:
-			value = representation(probability)
+		elif settings.measure.architecture in ["tensor"]:
+			value = tensorprod(representation(probability))
 		
 		data[index][key] = value
 
-		print(parse(representation(probability)))
-
+		if verbose:
+			print(settings.measure.architecture,parse(value),sum(value))
 
 		# Amplitude
 		parameters = measure.parameters()
@@ -1542,27 +1555,27 @@ def test_module(*args,**kwargs):
 
 		amplitude = measure.amplitude(parameters=parameters,state=state,**kwargs)
 
-		key = 'amplitude'
-		if settings.measure.architecture in ['array']:
-			value = tensorprod(amplitude)
-		elif settings.measure.architecture in ['tensor']:
+		key = "amplitude"
+		if settings.measure.architecture in ["array"]:
+			value = array(amplitude)
+		elif settings.measure.architecture in ["tensor"]:
 			value = array(amplitude)
 		
 		data[index][key] = value
 
-		print(parse(amplitude))
+		if verbose:
+			print(settings.measure.architecture,parse(value),trace(value))
 
-
-		tmp = tensorprod([obj()]*model.N)
-
-		print(parse(tmp))
+		tmp = tensorprod([obj()]*model.N).T
 
 		assert allclose(tmp,value),"Incorrect probability <-> amplitude conversion"
+
+		continue
 
 
 		# Operator
 		parameters = model.parameters()
-		state = obj @ model.locality
+		state = obj @ model.N
 
 		model.init(state=state)
 
@@ -1571,34 +1584,31 @@ def test_module(*args,**kwargs):
 		state.info(verbose=verbose)
 	
 
-
 		tmp = tensorprod([obj()]*model.N)
 
 		print(parse(tmp))
 
 		assert allclose(tmp,state()),"Incorrect state tensor product"
 
-		exit()
-
-
 
 		parameters = model.parameters()
-		state = [obj]*model.locality
+		state = [obj]*model.N
 		kwargs = dict()
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
 		print(state)
+		exit()
 
-		where = list(range(model.locality))
+		where = model.site
 
 		operator = measure.operator(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
-		key = 'operator'
-		if settings.measure.architecture in ['array']:
+		key = "operator"
+		if settings.measure.architecture in ["array"]:
 			value = array(operator(parameters,state))
-		elif settings.measure.architecture in ['tensor']:
-			value = representation(operator(parameters=parameters,state=state,**kwargs),to='tensor',contract=True)
+		elif settings.measure.architecture in ["tensor"]:
+			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contract=True)
 
 		data[index][key] = value
 
@@ -1622,7 +1632,7 @@ def test_module(*args,**kwargs):
 
 		module.init(model=model,state=state)
 
-		module.info(verbose=True)
+		module.info(verbose=verbose)
 		exit()
 
 		parameters = module.parameters()
@@ -1631,7 +1641,7 @@ def test_module(*args,**kwargs):
 
 		state = module(parameters,state)
 
-		key = 'module'
+		key = "module"
 		value = module.measure.transform(parameters=parameters,state=state,transformation=False,**kwargs)
 		data[index][key] = value
 
@@ -1648,16 +1658,16 @@ def test_module(*args,**kwargs):
 		parameters = model.parameters()
 		state = model.state()
 
-		key = 'init'
+		key = "init"
 		value = model(parameters,state)
 
 		data[index][key] = value
 
-		print({i:{attr: getattr(model.data[i],attr,None) for attr in ['string','operator','site']} for i in model.data})
+		print({i:{attr: getattr(model.data[i],attr,None) for attr in ["string","operator","site"]} for i in model.data})
 
-		if settings.module['options']['contract'] is False or settings.module['options']['cutoff'] <= 1e-16:
-			assert allclose(data[i]['module'],data[i]['init']), "Incorrect module() and model() ---\n%s\n%s\n%s"%(
-				parse(data[i]['module']),parse(data[i]['init']),parse(data[i]['module'] - data[i]['init']))
+		if settings.module["options"]["contract"] is False or settings.module["options"]["cutoff"] <= 1e-16:
+			assert allclose(data[i]["module"],data[i]["init"]), "Incorrect module() and model() ---\n%s\n%s\n%s"%(
+				parse(data[i]["module"]),parse(data[i]["init"]),parse(data[i]["module"] - data[i]["init"]))
 
 		parameters = module.parameters()
 		state = module.state()
@@ -1666,12 +1676,12 @@ def test_module(*args,**kwargs):
 		state,other = module(parameters,state,**options),module(parameters,state)
 
 
-		attrs = ['norm_classical','norm_quantum','infidelity_classical','infidelity_quantum']
+		attrs = ["norm_classical","norm_quantum","infidelity_classical","infidelity_quantum"]
 		for attr in attrs:
 			print(attr,getattr(module.measure,attr)(parameters,state,other=other))
 		exit()
 
-		key = 'infidelity'
+		key = "infidelity"
 		value = abs(
 			(module.measure.infidelity(parameters,state,other) -
 			 module.measure.infidelity(parameters,state,state)) / 
@@ -1685,55 +1695,10 @@ def test_module(*args,**kwargs):
 
 		module.load()
 
-		continue
-
-
-		# Model
-		parameters = model.parameters()
-		state = obj() @ module.N
-		kwargs = dict()
-
-		model.init(state=state)
-
-		state = measure.probability(parameters=parameters,state=state,**kwargs)
-
-		operator = measure.operator(parameters=parameters,state=state,model=model,**kwargs)
-
-		operator = operator(parameters,state)
-
-		continue
-
-
-		# Model
-		module = load(settings.cls.module)
-		measure = load(settings.cls.measure)
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-		system = settings.system
-
-		N = settings.module.N
-		model = model(**{**settings.model,**dict(N=N,local=True,system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(N=N,local=False,system=system)})
-
-		model.init(state=state)
-
-		parameters = model.parameters()
-		state = model.state()
-
-		key = 'model'
-		value = model(parameters,state)
-
-		data[index][key] = value
-
-		continue	
-
-
-		# Module
-		module = module(**{**namespace(module,model),**namespace(module,state),**settings.module,**dict(model=model,state=state,system=system)})
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
-	print('Passed')
+	print("Passed")
 
 	return
 

@@ -909,7 +909,7 @@ class Measure(System):
 		Call class for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability state of shape (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
@@ -1003,7 +1003,7 @@ class Measure(System):
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K,)*N or (self.D**N,self.D**N)
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
@@ -1034,19 +1034,29 @@ class Measure(System):
 			state (str,callable,iterable[str,callable],array): state of class of shape (N,self.D,self.D)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K)
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N)
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+
+		if state is None:
+			return state
 
 		if not isinstance(state,objects):
 			state = [getattr(Basis,i)(**kwargs) if isinstance(i,str) else i() if callable(i) else i for i in (state if not isinstance(state,str) else [state])]
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			state = array(state,dtype=self.dtype)
-			basis = self.basis
-			inverse = self.inverse
+			state = array(tensorprod(state) if not isinstance(state,objects) else state,dtype=self.dtype)
+		
+			N = int(round(log(state.size)/log(self.D)/state.ndim))
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				basis = self.basis
+				inverse = self.inverse
 
 			subscripts = 'uij,...ij->...u'
 			shapes = (basis.shape,state.shape)
@@ -1086,7 +1096,7 @@ class Measure(System):
 		Amplitude for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
@@ -1094,12 +1104,25 @@ class Measure(System):
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		
+		if state is None:
+			return state
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+
+			if N is not None and N > 1:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			else:
+				basis = self.basis
+				inverse = self.inverse
+
 			subscripts = '...u,uv,vij->...ij'
-			shapes = (state.shape,self.inverse.shape,self.basis.shape)
+			shapes = (state.shape,inverse.shape,basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 
-			state = einsummation(state,self.inverse,self.basis)
+			state = einsummation(state,inverse,basis)
 
 		elif self.architecture in ['tensor']:
 
@@ -1120,7 +1143,7 @@ class Measure(System):
 		Operator for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.D,self.D)
+			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (int,str,iterable[int,str]): indices of contraction
 			kwargs (dict): Additional class keyword arguments					
@@ -1128,11 +1151,13 @@ class Measure(System):
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
+		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			N = len(state) if state is not None else None
-			D = self.D
-			ndim = self.ndim
+			N = int(round(log(state.size)/log(self.K)/state.ndim)) if state is not None else None
+			K = self.K
+			ndim = 1
 
 			if N is not None and N > 1:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
@@ -1147,15 +1172,17 @@ class Measure(System):
 					return None
 			
 			else:
-				subscripts = 'uij,wij,wv,v...->u...'
+				
+				subscripts = 'uij,wij,wv,...v->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
-				model = vmap(model,in_axes=(None,0),out_axes=0)
+				options = dict(in_axes=(None,0),out_axes=0)
+				model = vmap(model,**options)
 				
-				options = dict(axes=[where],shape=(D,N,ndim),execute=False)
-				swapper = swap(state,**options,transform=True)
-				_swapper = swap(state,**options,transform=False)
+				options = dict(axes=[where],shape=(K,N,ndim),execute=False) if state is not None else None
+				swapper = swap(state,transform=True,**options)
+				_swapper = swap(state,transform=False,**options)
 					
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
 					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
@@ -1163,6 +1190,8 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			N = state.L
+			K = self.K
+			ndim = 1
 
 			if N is not None and N > 1:
 				basis = array([tensorprod(i) for i in permutations(*[representation(self.basis)]*N)],dtype=self.dtype)
@@ -1177,11 +1206,13 @@ class Measure(System):
 				def func(parameters,state,where=where,**kwargs):
 					return None
 			else:
+				
 				subscripts = 'uij,wij,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
-				model = vmap(model,in_axes=(None,0),out_axes=0)
+				options = dict(in_axes=(None,0),out_axes=0)
+				model = vmap(model,**options)
 				
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
 					return state.gate(einsummation(conjugate(basis),model(parameters,basis),inverse),where=where,**kwargs)
@@ -1200,7 +1231,7 @@ class Measure(System):
 		Args:
 			attr (str): attribute for calculation of data
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1218,8 +1249,8 @@ class Measure(System):
 		Infidelity for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1236,8 +1267,8 @@ class Measure(System):
 		Infidelity (Quantum) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1272,8 +1303,8 @@ class Measure(System):
 		Infidelity (Classical) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1315,8 +1346,8 @@ class Measure(System):
 		Infidelity (pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1368,7 +1399,7 @@ class Measure(System):
 		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1385,7 +1416,7 @@ class Measure(System):
 		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1417,7 +1448,7 @@ class Measure(System):
 		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
@@ -1449,7 +1480,7 @@ class Measure(System):
 		Norm (pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K,)*N
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
