@@ -7614,7 +7614,7 @@ def swap(a=None,axes=None,shape=None,transform=None,execute=True):
 		'''
 
 		if not isinstance(shape,dict):
-			n,d,ndim = shape
+			d,n,ndim = shape
 			shape = {axis: [d]*n for axis in range(ndim)}
 
 		shape,shapes = ({axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)},

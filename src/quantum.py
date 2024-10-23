@@ -1045,8 +1045,6 @@ class Measure(System):
 		if not isinstance(state,objects):
 			state = [getattr(Basis,i)(**kwargs) if isinstance(i,str) else i() if callable(i) else i for i in (state if not isinstance(state,str) else [state])]
 
-		print(self.architecture)
-
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			state = array(tensorprod(state) if not isinstance(state,objects) else state,dtype=self.dtype)
@@ -1155,11 +1153,13 @@ class Measure(System):
 
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		
+		where = [0] if where is None else where
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if state is not None else None
+			N = len(where)
 			K = self.K
-			ndim = state.ndim
+			ndim = 1
 
 			if N is not None and N > 1:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
@@ -1174,14 +1174,14 @@ class Measure(System):
 					return None
 			
 			else:
-				
+
 				subscripts = 'uij,wij,wv,v...->u...'
-				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
+				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
 				options = dict(in_axes=(None,0),out_axes=0)
 				model = vmap(model,**options)
-				
+
 				options = dict(axes=[where],shape=(K,N,ndim),execute=False) if state is not None else None
 				swapper = swap(state,transform=True,**options)
 				_swapper = swap(state,transform=False,**options)
@@ -1191,7 +1191,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			N = state.L
+			N = len(where)
 			K = self.K
 			ndim = 1
 
