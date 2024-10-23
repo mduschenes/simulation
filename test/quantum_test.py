@@ -1520,10 +1520,6 @@ def test_module(*args,**kwargs):
 		state = [obj]*settings.module.N
 		kwargs = dict()
 
-		tmp = tensorprod([i() for i in state])
-
-		print(parse(tmp))
-
 		probability = measure.probability(parameters=parameters,state=state,**kwargs)
 
 		print(probability)
@@ -1556,6 +1552,11 @@ def test_module(*args,**kwargs):
 
 		print(parse(amplitude))
 
+
+		tmp = tensorprod([obj()]*model.N)
+
+		print(parse(tmp))
+
 		assert allclose(tmp,value),"Incorrect probability <-> amplitude conversion"
 
 
@@ -1568,7 +1569,15 @@ def test_module(*args,**kwargs):
 
 		model.info(verbose=verbose)
 		state.info(verbose=verbose)
-		model.state.info(verbose=verbose)
+	
+
+
+		tmp = tensorprod([obj()]*model.N)
+
+		print(parse(tmp))
+
+		assert allclose(tmp,state()),"Incorrect state tensor product"
+
 		exit()
 
 
@@ -1737,7 +1746,7 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_basis(*args,**args)
-	test_operator(*args,**args)
+	# test_operator(*args,**args)
 	# test_data(*args,**args)
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
@@ -1748,4 +1757,4 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
