@@ -1514,6 +1514,12 @@ def test_module(*args,**kwargs):
 			print()
 			print()
 
+		obj = state
+
+		tmp = tensorprod([obj()]*model.N)
+
+		assert allclose(tmp,(state @ model.N)()),"Incorrect state tensor product"
+
 
 		# Test
 
@@ -1570,8 +1576,6 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,value),"Incorrect probability <-> amplitude conversion"
 
-		continue
-
 
 		# Operator
 		parameters = model.parameters()
@@ -1580,29 +1584,15 @@ def test_module(*args,**kwargs):
 		model.init(state=state)
 
 
-		model.info(verbose=verbose)
-		state.info(verbose=verbose)
-	
-
-		tmp = tensorprod([obj()]*model.N)
-
-		print(parse(tmp))
-
-		assert allclose(tmp,state()),"Incorrect state tensor product"
-
-
 		parameters = model.parameters()
 		state = [obj]*model.N
 		kwargs = dict()
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		print(state)
-		exit()
-
 		where = model.site
 
-		operator = measure.operator(parameters=parameters,state=state,model=model,where=where,**kwargs)
+		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
 		key = "operator"
 		if settings.measure.architecture in ["array"]:
@@ -1612,8 +1602,17 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		print(parse(value))
-		exit()
+		if verbose or True:
+			print(settings.measure.architecture,parse(value))
+
+		tmp = model(parameters=model.parameters(),state=(obj @ model.N)())
+
+		assert allclose(tmp,measure.probability(parameters=measure,state=operator(parameters=parameters,state=state,**kwargs),**kwargs)), "Incorrect model <-> operator conversion"
+
+		print('done')
+
+		continue
+
 
 
 		# Callback

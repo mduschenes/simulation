@@ -1019,7 +1019,7 @@ class Measure(System):
 		
 			state = self.transform(parameters=parameters,state=state,transformation=transformation)
 		
-			return self.operator(parameters=parameters,state=state,model=model,**kwargs)
+			return self.operation(parameters=parameters,state=state,model=model,**kwargs)
 
 		else:
 		
@@ -1044,6 +1044,8 @@ class Measure(System):
 
 		if not isinstance(state,objects):
 			state = [getattr(Basis,i)(**kwargs) if isinstance(i,str) else i() if callable(i) else i for i in (state if not isinstance(state,str) else [state])]
+
+		print(self.architecture)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1138,7 +1140,7 @@ class Measure(System):
 
 		return state
 
-	def operator(self,parameters=None,state=None,model=None,where=None,**kwargs):
+	def operation(self,parameters=None,state=None,model=None,where=None,**kwargs):
 		'''
 		Operator for POVM probability measure
 		Args:
@@ -1157,7 +1159,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if state is not None else None
 			K = self.K
-			ndim = 1
+			ndim = state.ndim
 
 			if N is not None and N > 1:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
@@ -1173,7 +1175,7 @@ class Measure(System):
 			
 			else:
 				
-				subscripts = 'uij,wij,wv,...v->u...'
+				subscripts = 'uij,wij,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
