@@ -2628,7 +2628,7 @@ def representation(obj,to=True,contract=None,func=None,**kwargs):
 	elif to in ['tensor']:
 		args = tuple(sorted(set((tuple(sorted(i for i in obj.inds if i.startswith(string))) for string in tuple(sorted(set(i[0] for i in obj.inds)))))))
 		kwargs = dict()
-		obj = obj.to_dense(*args,**kwargs)
+		obj = obj.to_dense(*args,**kwargs).T
 
 	elif to in ['data']:
 		obj,structure = qtn.pack(obj)

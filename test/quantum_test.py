@@ -83,14 +83,14 @@ def test_operator(*args,**kwargs):
 		"operator.N":[4],"state.N":[4],
 		"operator.D":[2],"state.D":[2],
 		"operator.ndim":[None],"state.ndim":[2,1],
-		"operator.local":[True,False],
-		"operator.data":[None,None,None,None,None],
-		"operator.operator":["CNOT.H",["X","Z"],["U"],["u"],["depolarize","amplitude","dephase"]],
-		"operator.site":[[3,0,1],[0,2],[3,1],[0],[0,2,1]],
-		"operator.string":["test","xz","U","u","noise"],
-		"operator.parameters":[None,0.5,None,None,1e-6],
-		"operator.variable":[False,False,False,False,False,False],
-		"operator.constant":[True,False,False,False,True,True],
+		"operator.local":[False,True],
+		"operator.data":[None,None,None,None,None,None],
+		"operator.operator":["CNOT.H",["X","Z"],"haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
+		"operator.site":[[3,0,1],[0,2],[1,2,0],[3,1],[0],[0,2,1]],
+		"operator.string":["test","xz","haar","U","u","noise"],
+		"operator.parameters":[None,0.5,None,None,None,1e-6],
+		"operator.variable":[False,False,False,False,False,False,False],
+		"operator.constant":[True,False,False,False,False,True,True],
 		"state.local":[False],
 		"state.data":[None],
 		"state.operator":["zero"],
@@ -114,7 +114,7 @@ def test_operator(*args,**kwargs):
 
 	options = dict(dtype='complex')
 
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)[:]):
 	
 		settings = Dict({
 			"cls":{
@@ -162,9 +162,16 @@ def test_operator(*args,**kwargs):
 				]
 			axes = [0,2,1,3]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
+		elif operator.string in ['haar']:
+			_data = [
+				haar(shape=(2**3,)*2,seed=seeder(operator.seed),**options),
+				]
+			axes = [1,2,0,3]
+			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ['U']:
 			_data = [
-				haar(shape=(2**2,)*2,seed=seeder(operator.seed),**options),
+				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
+				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				]
 			axes = [3,1,0,2]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
@@ -943,10 +950,10 @@ def test_layout(*args,**kwargs):
 def test_measure(*args,**kwargs):
 
 	kwargs = {
-		"measure.base":["pauli","tetrad"],
+		"measure.operator":["pauli","tetrad"],
 		"state.D":[4,4],
 		}
-	groups = [["measure.base","state.D",]]
+	groups = [["measure.operator","state.D",]]
 
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
@@ -958,7 +965,7 @@ def test_measure(*args,**kwargs):
 			},
 			"measure":{
 				"data":None,
-				"base":"pauli",
+				"operator":"pauli",
 				"string":"povm",
 				"D":2,
 				"dtype":"complex"
@@ -970,7 +977,7 @@ def test_measure(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":4,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array","base":"pauli"}
+				"system":{"seed":12345,"dtype":"complex","architecture":"array"}
 				}
 			})
 
@@ -985,7 +992,7 @@ def test_measure(*args,**kwargs):
 
 		measure.init(state=state)
 
-		print(settings["measure"]["base"])
+		print(settings["measure"]["operator"])
 		print(measure,len(measure),measure.D,state.D)
 		print(measure.identity)
 		print(measure.data)
@@ -1119,7 +1126,7 @@ def test_namespace(*args,**kwargs):
 				"seed":123
 				},
 			"measure":{
-				"base":"pauli",
+				"operator":"pauli",
 				"architecture":"tensor"				
 			},
 			"system":{
@@ -1187,7 +1194,7 @@ def test_namespace(*args,**kwargs):
 		print('Measure')
 		attributes = {'measure':measure}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['D','base','ind','inds','tags','data','inverse','basis','architecture']},'>>>>',attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ['D','operator','ind','inds','tags','data','inverse','basis','architecture']},'>>>>',attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
 		print()
 
 		print()
@@ -1349,22 +1356,12 @@ def test_grad(path=None,tol=None,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],
-		"model.M":[1],"module.M":[1],
-		'model.N':[4],'model.D':[2],'model.ndim':[2],
+		"module.N":[5],"module.M":[1],
+		'model.N':[5],'model.D':[2],"model.M":[1],'model.ndim':[2],
 		'state.N':[None],'state.D':[2],'state.ndim':[2],
-		"model.local":[True],"state.local":[False],
-		"model.configuration":[{"key":["site"]}],
-		"module.configuration":[{"key":["site"]}],
-		"module.measure.string":["pauli","tetrad"],
-		"module.measure.base":["pauli","tetrad"],
-		"module.measure.architecture":["array","tensor"],
-		"module.measure.options":[{"cyclic":False}],
-		"module.options":[{"contract":"swap+split","max_bond":100,"cutoff":1e-10}]
 		}	
 
-
-	groups = [["module.measure.string","module.measure.base"]]
+	groups = None
 	filters = None
 	func = None
 
@@ -1383,13 +1380,20 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"base":"tetrad","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":"swap+split","max_bond":4,"cutoff":1e-2}		
+			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
+			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}			
 		},
 		"measure":{
-			"base":"pauli",
+			"operator":"pauli",
 			"architecture":"tensor",
-			"options":{"cyclic":False}	
+			"options":{"cyclic":False},
 		},		
 		"model":{
 			"data":{
@@ -1402,21 +1406,28 @@ def test_module(*args,**kwargs):
 				# 	"parameters":1e-8,"variable":False
 				# },
 				"unitary":{
-					"operator":"haar","site":"<ij>","string":"unitary",
+					"operator":"haar","site":"|ij|","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
 				},				
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"<ij>","string":"depolarize",
+					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
 					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
 				},				
 			},
+			"N":4,
 			"D":2,
 			"local":True,
 			"space":"spin",
 			"time":"linear",
 			"lattice":"square",
 			"architecture":"array",
-			"configuration":None,
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}
 			},
 		"state": {
 			"operator":"haar",
@@ -1425,14 +1436,14 @@ def test_module(*args,**kwargs):
 			"parameters":None,
 			"D":2,
 			"ndim":2,
-			"local":True
+			"local":False
 			},
 		"callback":{
 			"attributes":{
 				"N":"N","M":"N","d":"d","D":"state.D",
 				"noise.parameters":"noise.parameters",
 				"objective":"objective",
-				"base":"measure.base"
+				"operator":"measure.operator"
 				},
 			"options":{"contract":False,"max_bond":None,"cutoff":0}
 		},
@@ -1443,13 +1454,13 @@ def test_module(*args,**kwargs):
 			"backend":None,
 			"architecture":None,
 			"base":None,
-			"seed":123,
+			"seed":1234567890,
 			"key":None,
 			"instance":None,
-			"cwd":"data",
+			"cwd":None,
 			"path":"data.hdf5",
 			"conf":"logging.conf",
-			"logger":"log.log",
+			"logger":None,
 			"cleanup":False,
 			"verbose":False
 			}
@@ -1462,31 +1473,34 @@ def test_module(*args,**kwargs):
 
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default='replace')
-
-		# Class
-		module = load(settings.cls.module)
-		measure = load(settings.cls.measure)
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-		callback = load(settings.cls.callback)
 		system = settings.system
 
-		# Model
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-		callback = callback(**{**settings.callback,**dict(system=system)})
 
+
+		# Model
+		model = load(settings.cls.model)		
+		model = model(**{**settings.model,**dict(system=system)})
+		
 		model.info(verbose=True)
 
 		parameters = model.parameters()
 		state = model.state() if model.state() is not None else model.identity
 		kwargs = dict()
 
-		print(state.shape)
+		print(model(parameters=parameters,state=state,**kwargs))
+		print()
+		print()
 
-		print(model(parameters=parameters,state=state,**kwargs))
-		print(model(parameters=parameters,state=state,**kwargs))
-		exit()
+
+		# State
+		state = load(settings.cls.state)
+		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+
+		state.info(verbose=True)
+
+		print(state())
+		print()
+		print()
 
 
 		# Test
@@ -1497,6 +1511,7 @@ def test_module(*args,**kwargs):
 
 
 		# Measure
+		measure = load(settings.cls.measure)		
 		measure = measure(**{**settings.measure,**dict(system=system)})
 
 
@@ -1505,22 +1520,19 @@ def test_module(*args,**kwargs):
 		state = [obj]*settings.module.N
 		kwargs = dict()
 
-		print(parse(tensorprod([i() for i in state])))
+		tmp = tensorprod([i() for i in state])
 
-		# for i in model.data:
-		# 	parameters = model.data[i].parameters()
-		# 	state = model.data[i].identity
-		# 	print(model.data[i],model.data[i](parameters=parameters,state=state,**kwargs))
-		# print(model.parameters())
-		# print(model.state())
+		print(parse(tmp))
 
 		probability = measure.probability(parameters=parameters,state=state,**kwargs)
+
+		print(probability)
 
 		key = 'probability'
 		if settings.measure.architecture in ['array']:
 			value = array(probability)
 		elif settings.measure.architecture in ['tensor']:
-			value = representation(probability,to='array',contract=False)
+			value = representation(probability)
 		
 		data[index][key] = value
 
@@ -1543,6 +1555,8 @@ def test_module(*args,**kwargs):
 		data[index][key] = value
 
 		print(parse(amplitude))
+
+		assert allclose(tmp,value),"Incorrect probability <-> amplitude conversion"
 
 
 		# Operator
@@ -1582,7 +1596,15 @@ def test_module(*args,**kwargs):
 		print(parse(value))
 		exit()
 
+
+		# Callback
+		callback = load(settings.cls.callback)
+		callback = callback(**{**settings.callback,**dict(system=system)})
+
+
 		# Module
+		module = load(settings.cls.module)
+
 		model = model		
 		state = obj
 		callback = callback
@@ -1715,7 +1737,7 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_basis(*args,**args)
-	# test_operator(*args,**args)
+	test_operator(*args,**args)
 	# test_data(*args,**args)
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
@@ -1726,4 +1748,4 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)

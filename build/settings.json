@@ -106,7 +106,7 @@
 	"d":1,
 	"string":"module",
 	"lattice":{"lattice":"square","structure":"<ij>"},
-	"measure":{"string":"povm","base":"pauli","architecture":"tensor","options":{"cyclic":true}},
+	"measure":{"string":"povm","operator":"pauli","architecture":"tensor","options":{"cyclic":true}},
 	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
 },
 "model":{
@@ -231,7 +231,7 @@
 	"attributes":{
 		"N":"N","M":"M","d":"d","D":"state.D",
 		"noise.parameters":"noise.parameters",
-		"base":"measure.base",
+		"operator":"measure.operator",
 		"max_bond":"options.max_bond",
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
