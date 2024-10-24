@@ -2626,9 +2626,10 @@ def representation(obj,to=True,contract=None,func=None,**kwargs):
 		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
 
 	elif to in ['tensor']:
-		args = tuple(sorted(set((tuple(sorted(i for i in obj.inds if i.startswith(string))) for string in tuple(sorted(set(i[0] for i in obj.inds)))))))
-		kwargs = dict()
-		obj = obj.to_dense(*args,**kwargs)
+		arguments = tuple(sorted(set((i for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_'))) for string in tuple(sorted(set(i[0] for i in obj.inds)))) if i))))
+		keywords = dict()
+		obj = obj.contract(**{**kwargs,**dict(output_inds=(j for i in arguments for j in i))})
+		obj = obj.to_dense(*arguments,**keywords)
 
 	elif to in ['data']:
 		obj,structure = qtn.pack(obj)
@@ -2639,7 +2640,6 @@ def representation(obj,to=True,contract=None,func=None,**kwargs):
 	elif to:
 		obj,structure = qtn.pack(obj)
 		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-
 	if func is not None:
 		obj = func(obj)
 

@@ -599,7 +599,7 @@ class Lattice(object):
 		else:
 			vertices = ()
 
-		vertices = ((*(self.label[i](i) for i in obj),) for obj in vertices)
+		vertices = ((*(self.label[i](i) for i in obj),) for obj in vertices if all(i in self.vertices for i in obj))
 
 		return vertices
 

@@ -1364,9 +1364,9 @@ def test_grad(path=None,tol=None,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[1],
-		"model.N":[2],"model.D":[2],"model.M":[1],"model.ndim":[2],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],
+		"module.N":[int(sys.argv[1]) if len(sys.argv[1:]) else 1],"module.M":[1],
+		"model.N":[int(sys.argv[1]) if len(sys.argv[1:]) else 1],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.architecture":["tensor","array"],
 		}	
 
@@ -1407,14 +1407,18 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				# "xx":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"XX",
-				# 	"parameters":0.5,"variable":False
-				# },				
-				# "noise":{
-				# 	"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-				# 	"parameters":1e-8,"variable":False
+				# "identity":{
+				# 	"operator":["I","I"],"site":"<ij>","string":"II",
+				# 	"parameters":0.5,"variable":True
 				# },
+				# "test":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"XX",
+				# 	"parameters":0.5,"variable":True
+				# },				
+				"u":{
+					"operator":"haar","site":"i","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
+				},	
 				"unitary":{
 					"operator":"haar","site":"|ij|","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
@@ -1422,7 +1426,7 @@ def test_module(*args,**kwargs):
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
 					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
-				},				
+				},								
 			},
 			"N":4,
 			"D":2,
@@ -1440,7 +1444,9 @@ def test_module(*args,**kwargs):
 				}
 			},
 		"state": {
-			"operator":"haar",
+			"operator":["zero","one","plus","minus"],
+			"operator":["haar","haar","haar","plus"],
+			# "operator":["test","test","haar","plus"],
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -1476,6 +1482,7 @@ def test_module(*args,**kwargs):
 			}
 		})
 
+
 		verbose = False
 		precision = 8
 
@@ -1484,8 +1491,6 @@ def test_module(*args,**kwargs):
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default="replace")
 		system = settings.system
-
-
 
 		# Model
 		model = load(settings.cls.model)		
@@ -1505,25 +1510,40 @@ def test_module(*args,**kwargs):
 
 		# State
 		state = load(settings.cls.state)
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-
-		state.info(verbose=verbose)
+		settings.state = [
+			{
+			**settings.state,
+			**dict(operator=settings.state.operator[i%len(settings.state.operator)] 
+				if not isinstance(settings.state.operator,str) 
+				else settings.state.operator)
+			} for i in range(model.N)]
+		state = [state(**{**i,**dict(system=system)})
+				for i in settings.state]
 
 		if verbose:
-			print(state())
-			print()
+			for i in state:
+				print(i())
 			print()
 
 		obj = state
 
-		tmp = tensorprod([obj()]*model.N)
+		tmp = None
+		for i in state:
+			tmp = i if tmp is None else tmp @ i
 
-		assert allclose(tmp,(state @ model.N)()),"Incorrect state tensor product"
+		tmp = tmp()
+		_tmp = tensorprod([i() for i in obj])
+
+		assert allclose(tmp,_tmp),"Incorrect state tensor product"
+
 
 
 		# Test
 
-		obj = state
+		objs = state
+		obj = None
+		for i in objs:
+			obj = i if obj is None else obj @ i
 		
 		data[index] = {}
 
@@ -1535,7 +1555,7 @@ def test_module(*args,**kwargs):
 
 		# Probability
 		parameters = measure.parameters()
-		state = [obj]*settings.module.N
+		state = objs
 		kwargs = dict()
 
 		probability = measure.probability(parameters=parameters,state=state,**kwargs)
@@ -1572,20 +1592,22 @@ def test_module(*args,**kwargs):
 		if verbose:
 			print(settings.measure.architecture,parse(value),trace(value))
 
-		tmp = tensorprod([obj()]*model.N).T
 
-		assert allclose(tmp,value),"Incorrect probability <-> amplitude conversion"
+		tmp = value
+		_tmp = tensorprod([i() for i in objs]).T 
+
+		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
 
 
 		# Operator
 		parameters = model.parameters()
-		state = obj @ model.N
+		state = obj
 
 		model.init(state=state)
 
 
 		parameters = model.parameters()
-		state = [obj]*model.N
+		state = objs
 		kwargs = dict()
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
@@ -1605,12 +1627,29 @@ def test_module(*args,**kwargs):
 		if verbose or True:
 			print(settings.measure.architecture,parse(value))
 
-		# tmp = model(parameters=model.parameters(),state=(obj @ model.N)())
+		tmp = measure.amplitude(
+			parameters=parameters,
+			state=measure.operation(
+				parameters=parameters,
+				state=objs,
+				model=model,
+				where=where,
+				**kwargs)(
+				parameters=parameters,
+				state=measure.probability(
+					parameters=parameters,
+					state=objs,
+					**kwargs),
+				**kwargs),
+			**kwargs)
+		_tmp = model(parameters=parameters,state=obj())
 
-		# print(tmp)
-		# print(measure.amplitude(parameters=parameters,state=operator(parameters=parameters,state=state,**kwargs),**kwargs))
 
-		# assert allclose(tmp,measure.amplitude(parameters=parameters,state=operator(parameters=parameters,state=state,**kwargs),**kwargs)), "Incorrect model <-> operator conversion"
+		print(obj())
+		print(parse(tmp))
+		print(parse(_tmp))
+
+		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
 		continue
 
