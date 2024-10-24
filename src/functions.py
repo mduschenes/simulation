@@ -390,6 +390,15 @@ def permutations(dictionaries,*args,**kwargs):
 	return 
 
 
+def state(*args,**kwargs):
+	data = array([
+		[ 0.19470377-0.j,-0.32788293+0.22200675j],
+		[-0.32788293-0.22200675j,0.80529623+0.j]
+		])
+	return data
+
+
+
 
 # def func(data,*args,**kwargs):
 # 	if data is None:
