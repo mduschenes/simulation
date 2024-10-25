@@ -704,13 +704,12 @@ class Basis(Dict):
 	def pauli(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/(kwargs.D**2-1))*array([
-			array([[1, 0],[0, 0]]),
-			(1/kwargs.D)*array([[1,1],[1,1]]),
-			(1/kwargs.D)*array([[1,-1j],[1j,1]]),
-			(1/kwargs.D)*(
-				2*array([[0,0],[0,1]]) + 
-				array([[1,-1],[-1,1]]) + 
-				array([[1,1j],[-1j,1]]))
+						 array([[1, 0],[0, 0]]),
+			(1/kwargs.D)*(array([[1,1],[1,1]])),
+			(1/kwargs.D)*(array([[1,-1j],[1j,1]])),
+						 (array([[0, 0],[0, 1]])+
+			 (1/kwargs.D)*array([[1,-1],[-1,1]])+
+			 (1/kwargs.D)*array([[1,1j],[-1j,1]]))
 			],dtype=kwargs.dtype)
 		return data
 
@@ -934,7 +933,7 @@ class Measure(System):
 
 		basis = getattr(Basis,operator)(**options)
 
-		data = einsum('u...,v...->uv',conjugate(basis),basis)
+		data = einsum('u...,v...->uv',basis,basis)
 		inverse = inv(data)
 
 		K = len(basis)
@@ -1272,7 +1271,7 @@ class Measure(System):
 				_swapper = swap(transform=False,**options) if where is not None else lambda state:state
 					
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
-					return _swapper(einsummation(conjugate(basis),model(parameters,basis),inverse,swapper(state)))
+					return _swapper(einsummation(basis,model(parameters,basis),inverse,swapper(state)))
 
 			else:
 			
@@ -1303,7 +1302,7 @@ class Measure(System):
 				model = vmap(model,**options)
 				
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
-					return state.gate(einsummation(conjugate(basis),model(parameters,basis),inverse),where=where,**kwargs)
+					return state.gate(einsummation(basis,model(parameters,basis),inverse),where=where,**kwargs)
 		
 			else:
 				def func(parameters,state,where=where,**kwargs):
@@ -2110,7 +2109,7 @@ class Object(System):
 		system = self.system if self.system is not None else None
 
 		options = Dictionary(
-			parameters=parameters,shape=shape,
+			parameters=parameters,
 			D=D,ndim=ndim,
 			data=self.data,
 			random=self.random,seed=seeder(self.seed),
@@ -2119,7 +2118,7 @@ class Object(System):
 		number = Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in (operator if isinstance(operator,iterables) else operator.split(delim))],**options) if operator is not None else None
 
 		options = Dictionary(
-			parameters=parameters,shape=shape,
+			parameters=parameters,
 			D=D,
 			N=((locality if isinstance(locality,integers) else len(site) if isinstance(site,iterables) else 1)//
 			   (number if isinstance(number,integers) else 1)),
@@ -2231,7 +2230,7 @@ class Object(System):
 		# Check attributes
 
 		options = Dictionary(
-			parameters=parameters,shape=shape,
+			parameters=parameters,
 			D=D,N=locality//number,ndim=ndim,
 			data=self.data,			
 			random=self.random,seed=seeder(self.seed),
@@ -2374,7 +2373,7 @@ class Object(System):
 
 
 		options = Dictionary(
-			parameters=self.parameters(),shape=self.shape,
+			parameters=self.parameters(),
 			D=self.D,N=self.locality//self.number,ndim=self.ndim,
 			data=self.data,			
 			random=self.random,seed=seeder(self.seed),
@@ -2382,6 +2381,7 @@ class Object(System):
 		
 		identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N))
 		self.identity = identity
+
 
 		if (((not isinstance(self.data,objects)) and not callable(self.data)) and (
 			((isinstance(self.operator,str) and self.operator in self.basis) or 
@@ -2428,12 +2428,12 @@ class Object(System):
 			data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in data] if data is not None else None
 			_data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in _data] if data is not None else None
 
-			data = [*data,*_data] if self.local else data
+			data = [*data,*_data] if not self.local else data
 
 			if self.local:
 				data = tensorprod(data) if data is not None else None
 			else:
-				data = shuffle(tensorprod((*data,*_data)),axes=axes,shape=shape) if data is not None else None
+				data = shuffle(tensorprod(data),axes=axes,shape=shape) if data is not None else None
 				
 			data = array(data,dtype=dtype) if data is not None else None
 
@@ -2797,6 +2797,8 @@ class Object(System):
 			N = self.N*other
 			D = self.D
 			
+			shape = None
+			size = None
 			ndim = self.ndim
 
 			if self.state is not None and self.state() is not None:
@@ -2841,6 +2843,8 @@ class Object(System):
 			N = max(self.N,other.N) if (len(support) == 0) else (self.N + other.N)
 			D = max(self.D,other.D)
 			
+			shape = None
+			size = None
 			ndim = self.ndim
 
 			if self.state is not None and other.state is not None and self.state() is not None and other.state() is not None:
@@ -2869,12 +2873,12 @@ class Object(System):
 			**dict(
 				data=data,operator=operator,site=site,string=string,
 				local=local,locality=locality,number=number,variable=variable,constant=constant,
-				N=N,D=D,ndim=ndim,
+				N=N,D=D,shape=shape,size=size,ndim=ndim,
 				state=state,parameters=parameters,conj=conj
 				)
 			}
 
-		
+
 		instance = self.__class__(**kwargs)
 
 		
@@ -3679,6 +3683,8 @@ class Haar(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
+				data = [*data,*_data] if not self.local else data
+
 				seed = seeder(self.seed)
 
 				if self.local:
@@ -3700,7 +3706,7 @@ class Haar(Object):
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
-						data=self.data,operator=[*data,*_data],
+						data=self.data,operator=data,
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
@@ -3995,6 +4001,8 @@ class State(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
+				data = [*data,*_data] if not self.local else data
+
 				seed = seeder(self.seed)
 
 				if self.local:
@@ -4016,7 +4024,7 @@ class State(Object):
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
-						data=self.data,operator=[*data,*_data],
+						data=self.data,operator=data,
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
@@ -5468,6 +5476,7 @@ class Module(System):
 		self.state = state
 		self.parameters = parameters
 
+
 		# Measure
 		cls = Measure
 		measure = self.measure if isinstance(self.measure,dict) else {}
@@ -5476,7 +5485,6 @@ class Module(System):
 
 		self.measure = measure
 
-		print(self.model)
 
 		# Data
 		self.layout()
@@ -5484,9 +5492,6 @@ class Module(System):
 		options = self.options if self.options is not None else {}
 
 		data = []
-
-		print(self.model)
-		exit()
 
 		for key in self.model:
 			

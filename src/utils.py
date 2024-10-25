@@ -686,8 +686,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		return wraps(func)(partial(func,**kwargs))
+		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		# return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -2639,7 +2639,7 @@ def representation(obj,to=True,contract=None,func=None,**kwargs):
 
 	elif to:
 		obj,structure = qtn.pack(obj)
-		obj = array([obj[i].T.ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
 	if func is not None:
 		obj = func(obj)
 

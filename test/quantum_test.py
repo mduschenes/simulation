@@ -44,18 +44,18 @@ def test_basis(*args,**kwargs):
 	K = 2
 	ndim = 2
 	shape = [D**L]*(K if ndim is None else ndim)
-	data="zero.depolarize.X"
+	operator="zero.depolarize.X"
 	key = 123
 	delim = "."
 	dtype = "complex"
 
-	options = Dict(D=D,N=N,ndim=ndim,shape=shape,data=data,key=key,dtype=dtype)
+	options = Dict(D=D,N=N,ndim=ndim,shape=shape,operator=operator,key=key,dtype=dtype)
 
 	operators = {
 		"rand":Dict(locality=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimension=2),
 		"X":Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
 		"depolarize":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
-		"string":Dict(locality=len(data.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(data.split(delim))},dimension=3),
+		"string":Dict(locality=len(operator.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(operator.split(delim))},dimension=3),
 		"pauli":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
 		}
 
@@ -1421,8 +1421,8 @@ def test_grad(path=None,tol=None,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[int(sys.argv[1]) if len(sys.argv[1:]) else 1],"module.M":[1],
-		"model.N":[int(sys.argv[1]) if len(sys.argv[1:]) else 1],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"module.N":[3],"module.M":[1],
+		"model.N":[3],"model.D":[2],"model.M":[4],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1464,30 +1464,14 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				# "identity":{
-				# 	"operator":["I","I"],"site":"<ij>","string":"II",
-				# 	"parameters":0.5,"variable":True
-				# },
-				"x":{
-					"operator":["X"],"site":"i","string":"X",
-					"parameters":0.5,"variable":True
-				},
-				# "test":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"XX",
-				# 	"parameters":0.5,"variable":True
-				# },				
-				# "u":{
-				# 	"operator":"haar","site":"i","string":"unitary",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
-				# },	
-				# "unitary":{
-				# 	"operator":"haar","site":"|ij|","string":"unitary",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
-				# },				
-				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-				# 	"parameters":1e-8,"variable":False,"ndim":3,"seed":123
-				# },								
+				"unitary":{
+					"operator":"haar","site":"|ij|","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
+				},				
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
+					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
+				},								
 			},
 			"N":4,
 			"D":2,
@@ -1505,9 +1489,7 @@ def test_module(*args,**kwargs):
 				}
 			},
 		"state": {
-			"operator":["zero","one","plus","minus"],
-			# "operator":["haar","haar","haar","plus"],
-			"operator":["test","test","haar","plus"],
+			"operator":"zero",
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -1542,7 +1524,6 @@ def test_module(*args,**kwargs):
 			"verbose":False
 			}
 		})
-
 
 		verbose = False
 		precision = 8
@@ -1581,10 +1562,6 @@ def test_module(*args,**kwargs):
 		state = [state(**{**i,**dict(system=system)})
 				for i in settings.state]
 
-		if verbose:
-			for i in state:
-				print(i())
-			print()
 
 		obj = state
 
@@ -1597,17 +1574,31 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
-		components = ['I','X','Y','Z']
-		component = state.component(string='X')
-
-
-
 		# Test
 
 		objs = state
 		obj = None
 		for i in objs:
 			obj = i if obj is None else obj @ i
+
+		if verbose:
+			basis = 'pauli'
+			indices = ['I','X','Y','Z']
+
+			print(obj())
+
+			for index in indices:
+				print(index,obj.component(basis=basis,index=index))
+			
+			model.init(state=obj)
+			
+			print(model())
+
+			for index in indices:
+				print(index,model.component(basis=basis,index=index))
+			
+			model.init(state=False)
+
 		
 		data[index] = {}
 
@@ -1659,10 +1650,7 @@ def test_module(*args,**kwargs):
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
-		# print(parse(tmp))
-		# print(parse(_tmp))
-
-		# assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
+		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
 
 		# Operator
 		parameters = model.parameters()
@@ -1689,7 +1677,7 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		if verbose or True:
+		if verbose:
 			print(settings.measure.architecture,parse(value))
 
 		tmp = measure.amplitude(
@@ -1709,14 +1697,9 @@ def test_module(*args,**kwargs):
 			**kwargs)
 		_tmp = model(parameters=parameters,state=obj())
 
-		print(obj())
-		print(parse(tmp))
-		print(parse(_tmp))
-
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
 		continue
-
 
 
 		# Callback
@@ -1814,7 +1797,7 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_basis(*args,**args)
-	test_component(*args,**args)
+	# test_component(*args,**args)
 	# test_operator(*args,**args)
 	# test_data(*args,**args)
 	# test_initialization(*args,**args)
@@ -1826,4 +1809,4 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
