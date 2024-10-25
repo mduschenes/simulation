@@ -68,7 +68,7 @@ class Dictionary(dict):
 
 			setter(kwargs,dict(system=system),delimiter=delim,default=False)
 			setter(kwargs,system,delimiter=delim,default=False)			
-			setter(kwargs,cls.properties,delimiter=delim,default='none')
+			setter(kwargs,cls.defaults,delimiter=delim,default='none')
 
 			out = func(cls,*args,**kwargs)
 			

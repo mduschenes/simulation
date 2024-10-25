@@ -209,7 +209,6 @@ class Space(System):
 		self.N = N
 		self.D = D
 		self.n = None
-		self.g = None
 		self.space = space
 		self.string = None		
 		self.dtype = datatype(self.dtype)
@@ -230,19 +229,15 @@ class Space(System):
 			'spin':{
 				'N': (lambda N,D,n,g,space: round(log(n)/log(D))),
 				'D': (lambda N,D,n,g,space: round(n**(1/N))),
-				'n': (lambda N,D,n,g,space: round(D**N)),
-				'g': (lambda N,D,n,g,space: round(n**2 - 1)),
 				},
 			None:{
 				'N': (lambda N,D,n,g,space: round(log(n)/log(D))),
 				'D': (lambda N,D,n,g,space: round(n**(1/N))),
-				'n': (lambda N,D,n,g,space: round(D**N)),
-				'g': (lambda N,D,n,g,space: round(n**2 - 1)),
 				},				
 			}
 
 		dtypes = {
-			'N': int,'D':int,'n':int,'g':int
+			'N': int,'D':int,
 		}
 
 		if isinstance(self.space,Space):
@@ -268,12 +263,7 @@ class Space(System):
 
 	def __size__(self):
 
-		assert sum(var is not None for var in [self.N,self.D]) > 1,'2 of 2 of N, D must be non-None'
-
-		self.n = self.funcs['n'](self.N,self.D,self.n,self.g,self.space)
-		self.g = self.funcs['g'](self.N,self.D,self.n,self.g,self.space)
-
-		self.size = self.n
+		self.size = self.D**self.N if self.D is not None and self.N is not None else None
 
 		return 
 
@@ -482,7 +472,7 @@ class Lattice(object):
 				boundary = any(map(lambda i,j: abs(i-j)>1,self.position(i),self.position(j)))
 				return boundary						
 
-		assert prod(L) == N, "Incorrect lattice size N:%d != L^d:%s"%(N,'x'.join(str(i) for i in L) if len(set(L))>1 else '%d^%d'%(sum(L)//d,d))
+		assert N is None or prod(L) == N, "Incorrect lattice size N:%d != L^d:%s"%(N,'x'.join(str(i) for i in L) if len(set(L))>1 else '%d^%d'%(sum(L)//d,d))
 
 		structures = {
 			'i':['i'],

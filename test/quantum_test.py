@@ -90,7 +90,7 @@ def test_component(*args,**kwargs):
 			},	
 			"state": {
 				"data":"src.functions.state",
-				"operator":"item",
+				"operator":"data",
 				"site":None,
 				"string":"psi",
 				"parameters":None,
@@ -127,6 +127,76 @@ def test_component(*args,**kwargs):
 		data = state.component(index=index,basis=basis)
 		print(index,data)
 		assert allclose(data,indices[index]),"Incorrect component"
+
+	return
+
+
+def test_null(*args,**kwargs):
+
+	settings = Dict({
+			"cls":{
+				"model":"src.quantum.Operators",
+				"operator":"src.quantum.Operator",
+				"state":"src.quantum.State",
+				"basis":"src.quantum.Basis"
+			},
+			"model":{
+				"data":{
+					"two":{
+						"operator":"haar","site":"<ij>","string":"two",
+						"parameters":None,"variable":False,"ndim":2,"seed":123
+					},
+					"one":{
+						"operator":"haar","site":"ij","string":"one",
+						"parameters":None,"variable":False,"ndim":2,"seed":123
+					}															
+				},
+				"N":1,
+				"D":2,
+				"local":True,
+				"space":"spin",
+				"time":"linear",
+				"lattice":"square",
+				"architecture":"array",
+				"configuration":{
+					"key":[lambda value,iterable: (
+						value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+						)],
+					"sort":None,
+					"reverse":False
+					}
+			},			
+			"operator":{
+				"data":None,"operator":None,"site":None,"string":None,
+				"N":2,"D":2,"ndim":2,"local":True,
+				"system":{"seed":12345,"dtype":"complex","architecture":None}				
+			},	
+			"state": {
+				"data":"src.functions.state",
+				"operator":"data",
+				"site":None,
+				"string":"psi",
+				"parameters":None,
+				"N":1,"D":2,"ndim":2,
+				"system":{"seed":12345,"dtype":"complex","architecture":None}
+				},
+		})
+
+	verbose = True
+
+	operator = load(settings.cls.operator)
+
+	operator = operator(**settings.operator)
+
+	operator.info(verbose=verbose)
+
+
+	model = load(settings.cls.model)
+
+	model = model(**settings.model)
+
+	model.info(verbose=verbose)
+
 
 	return
 
@@ -1559,7 +1629,8 @@ def test_module(*args,**kwargs):
 				if not isinstance(settings.state.operator,str) 
 				else settings.state.operator)
 			} for i in range(model.N)]
-		state = [state(**{**i,**dict(system=system)})
+		
+		state = [state(**{**settings.model,**i,**dict(system=system)})
 				for i in settings.state]
 
 
@@ -1796,17 +1867,18 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	# test_basis(*args,**args)
-	# test_component(*args,**args)
-	# test_operator(*args,**args)
-	# test_data(*args,**args)
-	# test_initialization(*args,**args)
-	# test_tensorproduct(*args,**args)
-	# test_random(*args,**args)
-	# test_layout(*args,**args)
-	# test_measure(*args,**args)
-	# test_metric(*args,**args)
-	# test_namespace(*args,**args)
-	# test_objective(*args,**args)
-	# test_grad(*args,**args)
+	test_basis(*args,**args)
+	test_component(*args,**args)
+	test_operator(*args,**args)
+	test_null(*args,**args)
+	test_data(*args,**args)
+	test_initialization(*args,**args)
+	test_tensorproduct(*args,**args)
+	test_random(*args,**args)
+	test_layout(*args,**args)
+	test_measure(*args,**args)
+	test_metric(*args,**args)
+	test_namespace(*args,**args)
+	test_objective(*args,**args)
+	test_grad(*args,**args)
 	test_module(*args,**args)
