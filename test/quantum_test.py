@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2
-from src.utils import swap,shuffle,seeder,rng
+from src.utils import shuffle,swap,seeder,rng
 from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -340,7 +340,7 @@ def test_operator(*args,**kwargs):
 		# 	_tmp = tensorprod(_data)
 		# else:
 		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-		_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
+		_tmp = swap(tensorprod(_tmp),axes=axes,shape=shape)
 
 		if not operator.constant:
 			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
@@ -382,7 +382,7 @@ def test_operator(*args,**kwargs):
 		tmp = operator(parameters=parameters,state=state,**kwargs)
 
 		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-		_tmp = shuffle(tensorprod(_tmp),axes=axes,shape=shape)
+		_tmp = swap(tensorprod(_tmp),axes=axes,shape=shape)
 
 		if not operator.constant:
 			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
@@ -1145,19 +1145,6 @@ def test_measure(*args,**kwargs):
 
 def test_metric(path=None,tol=None,**kwargs):
 
-	from src.utils import gradient
-	from src.utils import allclose,trace,dot
-
-	from src.iterables import getter,setter,permuter,equalizer,namespace
-
-	from src.io import load,dump
-
-	from src.optimize import Optimizer,Objective,Metric,Callback
-
-	from src.system import Dict
-
-	from src.parameters import Parameters
-
 	default = None
 	settings = load(path,default=default)
 	if settings is None:
@@ -1352,19 +1339,6 @@ def test_namespace(*args,**kwargs):
 
 def test_objective(path=None,tol=None,**kwargs):
 
-	from src.utils import gradient
-	from src.utils import allclose,trace,dot
-
-	from src.iterables import getter,setter,permuter,equalizer,namespace
-
-	from src.io import load,dump
-
-	from src.optimize import Optimizer,Objective,Metric,Callback
-
-	from src.system import Dict
-
-	from src.parameters import Parameters
-
 	default = None
 	settings = load(path,default=default)
 	if settings is None:
@@ -1413,19 +1387,6 @@ def test_objective(path=None,tol=None,**kwargs):
 	return
 
 def test_grad(path=None,tol=None,**kwargs):
-
-	from src.utils import gradient
-	from src.utils import allclose,trace,dot
-
-	from src.iterables import getter,setter,permuter,equalizer,namespace
-
-	from src.io import load,dump
-
-	from src.optimize import Optimizer,Objective,Metric,Callback
-
-	from src.system import Dict
-
-	from src.parameters import Parameters
 
 	default = None
 	settings = load(path,default=default)
@@ -1482,6 +1443,189 @@ def test_grad(path=None,tol=None,**kwargs):
 	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
 	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
 	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
+
+	print("Passed")
+
+	return
+
+def test_calculate(*args,**kwargs):
+
+	kwargs = {
+		"model.N":[5],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
+		}	
+
+	groups = None
+	filters = None
+	func = None
+
+	data = {}
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+
+		settings = Dict({
+		"cls":{
+			"measure":"src.quantum.Measure",
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State",
+			"callback":"src.quantum.Callback"
+			},
+		"module":{
+			"N":3,
+			"M":1,
+			"string":"module",
+			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
+			"options":{"contract":False,"max_bond":None,"cutoff":0},
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}			
+		},
+		"measure":{
+			"operator":"pauli",
+			"D":2,"dtype":"complex",
+			"architecture":"tensor",
+			"options":{"cyclic":False},
+		},		
+		"model":{
+			"data":{
+				"unitary":{
+					"operator":"haar","site":"|ij|","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
+				},				
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
+					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
+				},								
+			},
+			"N":5,
+			"D":2,
+			"local":True,
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square",
+			"architecture":"array",
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}
+			},
+		"state": {
+			"operator":"zero",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":False
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":1234567890,
+			"key":None,
+			"instance":None,
+			"cwd":None,
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":False
+			},
+		})
+
+		verbose = False
+		precision = 8
+
+		parse = lambda data: data.round(precision)
+
+		data[index] = {}
+
+		# Settings
+		setter(settings,kwargs,delimiter=delim,default="replace")
+		system = settings.system
+
+		# Model
+		model = load(settings.cls.model)		
+		model = model(**{**settings.model,**dict(system=system)})
+		
+		# State
+		state = load(settings.cls.state)
+		state = state(**{**settings.state,**dict(system=system)})
+
+
+		# Measure
+		measure = load(settings.cls.measure)		
+		measure = measure(**{**settings.measure,**dict(system=system)})
+
+
+		# Operator
+
+		model.init(state=state @ model.N)
+
+		parameters = model.parameters()
+		state = [state]*model.N
+		where = model.site
+		kwargs = dict()
+
+		state = measure.operation(
+				parameters=parameters,
+				state=state,
+				model=model,
+				where=where,
+				**kwargs)(
+				parameters=parameters,
+				state=measure.probability(
+					parameters=parameters,
+					state=state,
+					**kwargs),
+				**kwargs)
+
+		key = 'state'
+		if settings.measure.architecture in ['array']:
+			value = array(state)
+		elif settings.measure.architecture in ['tensor']:
+			value = representation(state,contraction=True).ravel()
+
+		if verbose:
+			print(parse(value))
+
+		data[index][key] = value
+
+		
+		attrs = ['trace_quantum'] #'trace_classical',
+		for attr in attrs:
+			
+			where = [i for i in range(model.N//2-1,model.N//2+2)]
+			kwargs = dict()
+
+			obj = measure.calculate(attr,state=state,where=where,**kwargs)
+
+			key = attr
+			if settings.measure.architecture in ['array']:
+				value = array(obj)
+			elif settings.measure.architecture in ['tensor']:
+				value = representation(obj,contraction=True).ravel()
+
+			if verbose or True:
+				print(settings.measure.architecture,attr,parse(value))
+
+			data[index][key] = value
+
+
+		continue
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
 
@@ -1559,7 +1703,7 @@ def test_module(*args,**kwargs):
 				}
 			},
 		"state": {
-			"operator":"zero",
+			"operator":"test",
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -1681,7 +1825,7 @@ def test_module(*args,**kwargs):
 
 		# Probability
 		parameters = measure.parameters()
-		state = objs
+		state = [i for i in objs]
 		kwargs = dict()
 
 		probability = measure.probability(parameters=parameters,state=state,**kwargs)
@@ -1731,7 +1875,7 @@ def test_module(*args,**kwargs):
 
 
 		parameters = model.parameters()
-		state = objs
+		state = [i for i in objs]
 		kwargs = dict()
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
@@ -1744,25 +1888,29 @@ def test_module(*args,**kwargs):
 		if settings.measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
 		elif settings.measure.architecture in ["tensor"]:
-			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contract=True)
+			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contraction=True)
 
 		data[index][key] = value
 
 		if verbose:
 			print(settings.measure.architecture,parse(value))
 
+
+		parameters = model.parameters()
+		state = [i for i in objs]
+
 		tmp = measure.amplitude(
 			parameters=parameters,
 			state=measure.operation(
 				parameters=parameters,
-				state=objs,
+				state=state,
 				model=model,
 				where=where,
 				**kwargs)(
 				parameters=parameters,
 				state=measure.probability(
 					parameters=parameters,
-					state=objs,
+					state=state,
 					**kwargs),
 				**kwargs),
 			**kwargs)
@@ -1776,6 +1924,8 @@ def test_module(*args,**kwargs):
 		# Callback
 		callback = load(settings.cls.callback)
 		callback = callback(**{**settings.callback,**dict(system=system)})
+
+		exit()
 
 
 		# Module
@@ -1867,18 +2017,19 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	test_basis(*args,**args)
-	test_component(*args,**args)
-	test_operator(*args,**args)
-	test_null(*args,**args)
-	test_data(*args,**args)
-	test_initialization(*args,**args)
-	test_tensorproduct(*args,**args)
-	test_random(*args,**args)
-	test_layout(*args,**args)
-	test_measure(*args,**args)
-	test_metric(*args,**args)
-	test_namespace(*args,**args)
-	test_objective(*args,**args)
-	test_grad(*args,**args)
+	# test_basis(*args,**args)
+	# test_component(*args,**args)
+	# test_operator(*args,**args)
+	# test_null(*args,**args)
+	# test_data(*args,**args)
+	# test_initialization(*args,**args)
+	# test_tensorproduct(*args,**args)
+	# test_random(*args,**args)
+	# test_layout(*args,**args)
+	# test_measure(*args,**args)
+	# test_metric(*args,**args)
+	# test_namespace(*args,**args)
+	# test_objective(*args,**args)
+	# test_grad(*args,**args)
+	# test_calculate(*args,**args)
 	test_module(*args,**args)

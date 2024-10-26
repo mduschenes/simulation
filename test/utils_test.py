@@ -20,7 +20,7 @@ from src.utils import jit,partial
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
-from src.utils import swap,shuffle,transpose,reshape
+from src.utils import shuffle,swap,transpose,reshape
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -718,7 +718,7 @@ def test_pytree(path=None,tol=None):
 	return
 
 
-def test_swap(path=None,tol=None):
+def test_shuffle(path=None,tol=None):
 
 	d = [[2,5],[3,4]]
 	s = [9,1]
@@ -762,15 +762,15 @@ def test_swap(path=None,tol=None):
 
 	axes = ((1,0,n-1),)
 
-	b = swap(a,axes=axes,shape=shape,transform=True)
+	b = shuffle(a,axes=axes,shape=shape,transform=True)
 
-	b = swap(a,axes=axes,shape=shape,transform=True)
+	b = shuffle(a,axes=axes,shape=shape,transform=True)
 
-	b = swap(swap(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)
+	b = shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)
 
-	assert allclose(a,swap(swap(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %r,%r"%(d,s)
+	assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %r,%r"%(d,s)
 
-	assert allclose(swap(a,axes=axes,shape=shape,transform=True,execute=False)(a),swap(a,axes=axes,shape=shape,transform=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
+	assert allclose(shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
 
 	print('Passed')
 
@@ -813,13 +813,13 @@ def test_concatenate(path=None,tol=None):
 		for i in range(n)),)
 	)
 
-	V = shuffle(Z,axes=axes,shape=shape,execute=True)
+	V = swap(Z,axes=axes,shape=shape,execute=True)
 
-	assert allclose(V,W), "Incorrect shuffle"
+	assert allclose(V,W), "Incorrect swap"
 
-	V = shuffle(Z,axes=axes,shape=shape,execute=False)
+	V = swap(Z,axes=axes,shape=shape,execute=False)
 
-	assert allclose(V(Z),W), "Incorrect shuffle"
+	assert allclose(V(Z),W), "Incorrect swap"
 
 	
 	print('Passed')
@@ -874,7 +874,7 @@ def test_action(path=None,tol=None):
 				}
 			# shape = (max(max(i) for i in d),n,ndim)
 
-			tmp = shuffle(tensorprod((*U,*I)),axes=axes,shape=shape,execute=True)
+			tmp = swap(tensorprod((*U,*I)),axes=axes,shape=shape,execute=True)
 			
 			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk,kl->il',data,state,dagger(data))
@@ -895,10 +895,10 @@ def test_action(path=None,tol=None):
 
 			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
-				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
 			elif state.ndim == 1:
 				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
-				function = lambda state: swap(func(swap(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
 
 		elif attr in ['exact']:
 
@@ -1189,7 +1189,7 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_swap(path,tol)	
+	# test_shuffle(path,tol)	
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	test_action(path,tol)
