@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
-from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce
+from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,diag,inv,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,eig,sqrtm,sort,relsort,prod,product
@@ -769,82 +769,6 @@ class Basis(Dict):
 		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
 		return data
 
-class context(object):
-	'''
-	Update object attributes within context with key
-	Args:
-		key (object): Key to update attributes
-		objs (iterable[object]): Objects with attributes to update
-		formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
-	'''
-	def __init__(self,*objs,key=None,formats=None):
-
-		if formats is None:
-			formats = ['inds','tags']
-		elif isinstance(formats,str):
-			formats = [formats]
-		if not isinstance(formats,dict):
-			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-				for attr in formats}
-		else:
-			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-				if not isinstance(formats[attr],iterables) else 
-				[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-				for attr in formats}
-		
-		attributes = [attr for attr in formats]
-		formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-		
-		def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-			obj = objs[i]
-			attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) if key is not None else formats[i][attr][index] for index in attrs[i][attr]}
-			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-			return
-		
-		def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-			obj = objs[i]
-			attrs = {formats[i][attr][index].format(key) if key is not None else formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-			return
-
-		self.key = key
-		self.objs = objs
-		self.formats = formats
-		self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
-		self.funcs = [{attr: func for attr in attributes} for obj in objs]
-		self._funcs = [{attr: _func for attr in attributes} for obj in objs]
-		self.args = tuple()
-		self.kwargs = dict(inplace=True)
-
-		return
-
-	def __enter__(self):
-		for i in range(len(self)):
-			for attr in self.funcs[i]:
-				self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-		return
-
-	def __exit__(self, type, value, traceback):
-		for i in range(len(self)):
-			for attr in self._funcs[i]:
-				self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-		return
-	
-	def __len__(self):
-		return len(self.objs)
-
-	@classmethod
-	def attributes(cls,obj,attr,attrs=None,**kwargs):
-		if attrs is None:
-			attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
-			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
-			return wrappers[attr](getattr(obj,attributes[attr]))
-		else:
-			attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
-			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
-			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-			return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
 
 class Measure(System):
 
@@ -861,7 +785,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,identity=None,
+		basis=None,inverse=None,ones=None,identity=None,
 		parameters=None,variable=None,constant=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -934,14 +858,15 @@ class Measure(System):
 
 		basis = getattr(Basis,operator)(**options)
 
-		data = einsum('u...,v...->uv',basis,basis)
-		inverse = inv(data)
-
 		K = len(basis)
 		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))]
 		size = prod(shape)
 		ndim = len(shape)
-		dtype = data.dtype
+		dtype = basis.dtype
+
+		data = einsum('u...,v...->uv',basis,basis)
+		inverse = inv(data)
+		ones = array([1 for i in range(K)],dtype=dtype)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
@@ -949,6 +874,7 @@ class Measure(System):
 			basis = array(basis,**kwargs)
 			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
+			ones = array(ones,**kwargs)
 
 		elif self.architecture in ['tensor']:
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
@@ -959,6 +885,9 @@ class Measure(System):
 			
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = tensor(inverse,**kwargs)
+
+			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
+			ones = tensor(ones,**kwargs)
 
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
@@ -976,6 +905,7 @@ class Measure(System):
 		self.data = data
 		self.basis = basis
 		self.inverse = inverse
+		self.ones = ones
 
 		self.shape = shape
 		self.size = size
@@ -999,8 +929,9 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 			def func(parameters=None,state=None,**kwargs):
-				for i in range(state.L):
-					with context(self.inverse,self.basis,key=i,formats=dict(inds=[{index:index for index in self.inds},{self.ind:self.inds[-1]}])):
+				N = state.L
+				for i in range(N):
+					with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
 						state &= self.inverse & self.basis
 				return state
 
@@ -1108,33 +1039,34 @@ class Measure(System):
 		return
 
 
-	def transform(self,parameters=None,state=None,model=None,transformation=None,**kwargs):
+	def transform(self,parameters=None,state=None,model=None,where=None,transform=None,**kwargs):
 		'''
 		Probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
-			kwargs (dict): Additional class keyword arguments
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
-			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
+			where (int,iterable[int]): indices of function
+			transform (bool,str): Type of transform, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		if transformation in [None,True,'probability','state'] and model is None:
+		if transform in [None,True,'probability','state'] and model is None:
 		
-			return self.probability(parameters=parameters,state=state,**kwargs)
+			return self.probability(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif transformation in [False,'amplitude','function']:
+		elif transform in [False,'amplitude','function']:
 
-			return self.amplitude(parameters=parameters,state=state,**kwargs)
+			return self.amplitude(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif transformation in [None,True,'operator','model'] and model is not None:
+		elif transform in [None,True,'operator','model'] and model is not None:
 		
-			state = self.transform(parameters=parameters,state=state,transformation=transformation)
+			state = self.transform(parameters=parameters,state=state,transform=transform,where=where)
 		
-			return self.operation(parameters=parameters,state=state,model=model,**kwargs)
+			return self.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
 		else:
 		
@@ -1210,6 +1142,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
@@ -1279,12 +1212,12 @@ class Measure(System):
 			state = state.copy()
 
 			N = state.L
+			where = where if where is not None else range(N)
 
-			for i in range(N):
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{index:index for index in self.inds},{self.ind:self.inds[-1]}],tags=None)):
+			for i in where:
+				with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
 					state &= self.inverse & self.basis
 
-			state = representation(state,to=self.architecture,contraction=True)
 
 		return state
 
@@ -1295,7 +1228,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
-			where (int,str,iterable[int,str]): indices of contraction
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
@@ -1396,213 +1329,65 @@ class Measure(System):
 
 		return data
 
-
 	def trace(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Trace for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (object): data
+			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
 		'''
 
-		attr = 'trace_classical'
-
-		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
-		else:
-			data = state
-
-		return data
-
-	def trace_quantum(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Trace (Quantum) for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-	
 		func = lambda data: data
 
-		if where is None:
-			return state
+		where = () if where is None else tuple(where)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			data = self.transform(parameters=parameters,state=state,transformation=False,**kwargs)
+			data = state
 
-			N = int(round(log(data.size)/log(self.D)/data.ndim))
-			D = self.D
+			N = int(round(log(data.size)/log(self.K)/data.ndim))
+			K = self.K
 			ndim = data.ndim
 
 			L = N-len(where) if where is not None else None
 
-			where = tuple(tuple(i*ndim+j for j in range(ndim)) for i in sorted(where,reverse=True)) if where is not None else tuple()
-
 			options = dict(
 				axes = [[i] for i in range(N)],
-				shape = [D,N,ndim],
+				shape = [K,N,ndim],
 				transform=True,
 				) if where is not None else None
 			_options = dict(
 				axes = [[i] for i in range(L)],
-				shape = [D,L,ndim],
+				shape = [K,L,ndim],
 				transform=False,
 				) if where is not None else None
 
-			data = shuffle(traces(shuffle(data,**options),axes=where),**_options) if where is not None else state
+			data = shuffle(addition(shuffle(data,**options),axis=where),**_options) if where is not None else state
 
 		elif self.architecture in ['tensor']:
 			
 			data = state.copy()
 
-			N = data.L
-
 			for i in where:
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{index:index for index in self.inds},{self.ind:self.inds[-1]}],tags=None)):
-					data &= self.inverse & self.basis
-			
-			inds = [
-				*[index.format(i) for i in range(N) if i not in where for index in self.inds[:1]],
-				*[index.format(i) for i in where for index in self.indices]
-				]
-			data = contract(data,inds)
-
-			inds = [index.format(i) for i in where for index in self.indices]
-			data = reduce(data,inds)
+				with context(self.ones,key=i):
+					data &= self.ones
 
 		data = func(data)
 
 		return data
 
-	def trace_classical(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Trace (Classical) for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-	
-		func = lambda data: data
-
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			K = self.K
-			ndim = state.ndim
-
-			L = N-len(where) if where is not None else None
-
-			where = tuple(i*ndim+j for i in sorted(where,reverse=True) for j in range(ndim)) if where is not None else None
-
-			options = dict(
-				axes = [[i] for i in range(N)],
-				shape = [K,N,ndim],
-				transform=True,
-				) if where is not None else None
-
-			_options = dict(
-				axes = [[i] for i in range(L)],
-				shape = [K,L,ndim],
-				transform=False,
-				) if where is not None else None
-
-			data = shuffle(addition(shuffle(state,**options),axis=where),**_options)
-
-		elif self.architecture in ['tensor']:
-			
-			N = state.L
-
-			L = N-len(where) if where is not None else None
-
-			where = tuple(index.format(i) for i in sorted(where,reverse=True) for index in self.inds[:1]) if where is not None else None
-
-			data = reduce(state,where=where)
-
-		data = func(data)
-
-		return data
-
-	def trace_pure(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Trace (Pure) for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-	
-		func = lambda data: data
-
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			K = self.K
-			ndim = state.ndim
-
-			L = N-len(where) if where is not None else None
-
-			where = tuple(i*ndim+j for i in sorted(where,reverse=True) for j in range(ndim)) if where is not None else None
-
-			options = dict(
-				axes = [[i] for i in range(N)],
-				shape = [K,N,ndim],
-				transform=True
-				) if where is not None else None
-
-			_options = dict(
-				axes = [[i] for i in range(L)],
-				shape = [K,L,ndim],
-				transform=False,
-				) if where is not None else None
-
-			data = shuffle(addition(shuffle(state,**options),axis=where),**_options)
-
-		elif self.architecture in ['tensor']:
-			
-			N = state.L
-
-			L = N-len(where) if where is not None else None
-
-			where = tuple(index.format(i) for i in sorted(where,reverse=True) for index in self.inds[:1]) if where is not None else None
-
-			data = reduce(state,where=where)
-
-		data = func(data)
-
-		return data
-
-	def infidelity(self,parameters=None,state=None,other=None,**kwargs):
+	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Infidelity for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1611,41 +1396,44 @@ class Measure(System):
 		attr = 'infidelity_classical'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,other=other,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def infidelity_quantum(self,parameters=None,state=None,other=None,**kwargs):
+	def infidelity_quantum(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Infidelity (Quantum) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		other = self.state() if other is None else other() if callable(other) else other
-		
 		func = lambda data: 1 - real(data) 
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			state = self.transform(parameters=parameters,state=state,transformation=False,**kwargs)
-			other = self.transform(parameters=parameters,state=other,transformation=False,**kwargs)
-
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
+			
 			data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
 
 		elif self.architecture in ['tensor']:
-	
-			state = self.transform(parameters=parameters,state=state,transformation=False,**kwargs)
-			other = self.transform(parameters=parameters,state=other,transformation=False,**kwargs)
+
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
+			
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
+			other = representation(other,**{**options,**kwargs})
 
 			data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
 		
@@ -1653,70 +1441,68 @@ class Measure(System):
 
 		return data		
 
-	def infidelity_classical(self,parameters=None,state=None,other=None,**kwargs):
+	def infidelity_classical(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Infidelity (Classical) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		other = self.state() if other is None else other() if callable(other) else other
-		
 		func = lambda data: 1 - real(data) 
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
+			function = sqrt
 			subscripts = '...u,...u->...'
 			shapes = (state.shape,other.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			state = sqrt(state)
-			other = sqrt(other)
+			state = function(state)
+			other = function(other)
 
 			data = einsummation(state,other)
 
 		elif self.architecture in ['tensor']:
-	
-			state = contract(state)
-			state.modify(apply=sqrt)
+			
+			function = sqrt
+			kwargs = dict()
 
-			other = contract(other)
-			other.modify(apply=sqrt)
+			state = contract(state,**kwargs)
+			state.modify(apply=function)
 
-			data = representation(state & other,contraction=True)
+			other = contract(other,**kwargs)
+			other.modify(apply=function)
+
+			data = representation(state & other,contraction=True,**kwargs)
 
 		data = func(data)
 
 		return data
 
-	def infidelity_pure(self,parameters=None,state=None,other=None,**kwargs):
+	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Infidelity (pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		other = self.state() if other is None else other() if callable(other) else other
-		
 		func = lambda data: 1 - sqrt(abs(real(data)))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = len(state)
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
 
@@ -1729,29 +1515,33 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 	
 			state = state.copy()
+			other = other.copy()
 
 			N = state.L
+			where = where if where is not None else range(N)
+			options = dict(contraction=True)
 
-			for i in range(N):
+			for i in where:
 				with context(self.inverse,key=i):
 					state &= self.inverse
 
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
 				state &= other
 
-				data = representation(state,contraction=True)
+				data = representation(state,**options)
 
 		data = func(data)
 
 		return data
 
-	def norm(self,parameters=None,state=None,**kwargs):
+	def norm(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1760,37 +1550,40 @@ class Measure(System):
 		attr = 'norm_quantum'
 	
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def norm_quantum(self,parameters=None,state=None,**kwargs):
+	def norm_quantum(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		
 		func = lambda data: 1 - real(data) 
 		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			state = self.transform(parameters=parameters,state=state,transformation=False,**kwargs)
-
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			
 			data = trace(state)
 
 		elif self.architecture in ['tensor']:
 		
-			state = self.transform(parameters=parameters,state=state,transformation=False,**kwargs)
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
 
 			data = trace(state)
 		
@@ -1798,57 +1591,64 @@ class Measure(System):
 
 		return data
 
-	def norm_classical(self,parameters=None,state=None,**kwargs):
+	def norm_classical(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function					
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
 		
 		func = lambda data: 1 - real(data) 
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			subscripts = '...u->...'
-			shapes = (state.shape)
+			shapes = (state.shape,)
 			einsummation = einsum(subscripts,*shapes)
 			
 			data = einsummation(state)
 	
 		elif self.architecture in ['tensor']:
 		
-			data = representation(state,contraction=True,func=addition)
+			state = state.copy()
+
+			N = state.L
+			where = where if where is not None else range(N)
+			options = dict(contraction=True)
+
+			for i in where:
+				with context(self.ones,key=i):
+					state &= self.ones
+
+			data = representation(state,**options)
+
 
 		data = func(data)
 
 		return data
 
-	def norm_pure(self,parameters=None,state=None,**kwargs):
+	def norm_pure(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Norm (pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
-		
 		func = lambda data: 1 - sqrt(abs(real(data)))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = len(state) if state is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
 
@@ -1864,16 +1664,18 @@ class Measure(System):
 			other = state.copy()
 
 			N = state.L
+			where = where if where is not None else range(N)
+			options = dict(contraction=True)
 
-			for i in range(N):
+			for i in where:
 				with context(self.inverse,key=i):
 					state &= self.inverse
 
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}])):
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
 				state &= other
 
-				data = representation(state,contraction=True)
+				data = representation(state,**options)
 
 		data = func(data)
 
@@ -1886,7 +1688,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1907,23 +1709,23 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
 		
 		func = lambda data: real(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if not isinstance(where,integers) else range(where))) if where is not None else None
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
 
-			state = self.trace_quantum(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
 
@@ -1938,10 +1740,20 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if not isinstance(where,integers) else range(where))) if where is not None else None
+			state = state.copy()
 
-			state = self.trace_quantum(parameters=parameters,state=state,where=where,**kwargs)
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
 
@@ -1964,23 +1776,20 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
 		
 		func = lambda data: real(data) 
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if not isinstance(where,integers) else range(where))) if where is not None else None
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
 
-			state = self.trace_classical(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = state
 
@@ -1995,10 +1804,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if not isinstance(where,integers) else range(where))) if where is not None else None
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
 
-			state = self.trace_classical(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = representation(state,contraction=True).ravel()
 
@@ -2021,14 +1830,11 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): where to compute data
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = self.state() if state is None else state() if callable(state) else state
 		
 		func = lambda data: real(data) 
 
@@ -2151,7 +1957,7 @@ class MPS(mps):
 			parameters (array): parameters
 			state (obj): state
 			data (obj): data for operator
-			where (int,str,iterable[int,str]): Where data contracts with state
+			where (int,iterable[int]): indices of function
 		Returns:
 			data (object): data
 		'''
@@ -2159,7 +1965,7 @@ class MPS(mps):
 		if data is None:
 			return state
 		else:
-			return self.gate(data,where=site,**kwargs)
+			return self.gate(data,where=where,**kwargs)
 
 def trotter(iterable=None,p=None,verbose=False):
 	'''
@@ -6005,7 +5811,7 @@ class Module(System):
 		# Functions
 		def func(parameters,state,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.transform(parameters=parameters,state=state,transformation=True,**kwargs)
+			state = self.measure.transform(parameters=parameters,state=state,transform=True,**kwargs)
 			for i in range(self.M):
 				for data in self.data:
 					state = data(parameters=parameters,state=state,**kwargs)
@@ -6787,8 +6593,7 @@ class Callback(System):
 		for attr in attributes:
 
 			if attr in [
-				'trace','objective','infidelity','norm','entanglement',
-				'trace.quantum','trace.classical','trace.pure',
+				'objective','infidelity','norm','entanglement','trace',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.pure'

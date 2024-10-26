@@ -2617,11 +2617,9 @@ def contract(obj,where=None,**kwargs):
 		obj (object): Contraction of object
 	'''
 
-	if isinstance(obj,tensors):
+	options = dict(output_inds=where) 
 
-		options = dict(output_inds=where) 
-
-		obj = obj.contract(**{**kwargs,**options})
+	obj = obj.contract(**{**kwargs,**options})
 
 	return obj
 
@@ -2639,12 +2637,11 @@ def reduce(obj,where=None,**kwargs):
 	'''
 
 	if where is None:
-		pass
+		return obj
 	
-	elif isinstance(obj,tensors):
-		for i in where:
-			options = dict(ind=i) 
-			obj = obj.sum_reduce(**{**kwargs,**options})
+	for i in where:
+		options = dict(ind=i) 
+		obj = obj.sum_reduce(**{**kwargs,**options})
 
 	return obj
 
@@ -2696,6 +2693,86 @@ def representation(obj,to=True,contraction=None,func=None,**kwargs):
 		obj = func(obj)
 
 	return obj
+
+
+class context(object):
+	'''
+	Update object attributes within context with key
+	Args:
+		key (object): Key to update attributes
+		objs (iterable[object]): Objects with attributes to update
+		formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+	'''
+	def __init__(self,*objs,key=None,formats=None):
+
+		if formats is None:
+			formats = ['inds','tags']
+		elif isinstance(formats,str):
+			formats = [formats]
+		if not isinstance(formats,dict):
+			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+				for attr in formats}
+		else:
+			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+				if not isinstance(formats[attr],iterables) else 
+				[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+				for attr in formats}
+		
+		attributes = [attr for attr in formats]
+		formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+		
+		def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+			obj = objs[i]
+			attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) if key is not None else formats[i][attr][index] for index in attrs[i][attr]}
+			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			return
+		
+		def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+			obj = objs[i]
+			attrs = {formats[i][attr][index].format(key) if key is not None else formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			return
+
+		self.key = key
+		self.objs = objs
+		self.formats = formats
+		self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+		self.funcs = [{attr: func for attr in attributes} for obj in objs]
+		self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+		self.args = tuple()
+		self.kwargs = dict(inplace=True)
+
+		return
+
+	def __enter__(self):
+		for i in range(len(self)):
+			for attr in self.funcs[i]:
+				self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+		return
+
+	def __exit__(self, type, value, traceback):
+		for i in range(len(self)):
+			for attr in self._funcs[i]:
+				self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+		return
+	
+	def __len__(self):
+		return len(self.objs)
+
+	@classmethod
+	def attributes(cls,obj,attr,attrs=None,**kwargs):
+		if attrs is None:
+			attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+			return wrappers[attr](getattr(obj,attributes[attr]))
+		else:
+			attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+			return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+
+
 
 if backend in ['jax']:
 
@@ -6256,7 +6333,7 @@ def trace(a,axis=(0,1)):
 		axis (iterable): Axes to compute trace with respect to
 	Returns:
 		out (array): Trace of array
-	'''	
+	'''	  
 	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
 @partial(jit,static_argnums=(1,))
@@ -6269,7 +6346,7 @@ def traces(a,axes=((0,1),)):
 	Returns:
 		out (array): Trace of array
 	'''	
-	for axis in axes:
+	for axis in sorted(axes,reverse=True):
 		a = trace(a,axis=axis)
 	return a
 

@@ -13,7 +13,7 @@ for PATH in PATHS:
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2
 from src.utils import shuffle,swap,seeder,rng
-from src.utils import arrays,iterables,scalars,integers,floats,pi,delim
+from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
@@ -1592,9 +1592,9 @@ def test_calculate(*args,**kwargs):
 				**kwargs)
 
 		key = 'state'
-		if settings.measure.architecture in ['array']:
+		if measure.architecture in ['array']:
 			value = array(state)
-		elif settings.measure.architecture in ['tensor']:
+		elif measure.architecture in ['tensor']:
 			value = representation(state,contraction=True).ravel()
 
 		if verbose:
@@ -1603,22 +1603,35 @@ def test_calculate(*args,**kwargs):
 		data[index][key] = value
 
 		
-		attrs = ['trace_quantum'] #'trace_classical',
+		attrs = [
+			'trace',
+			'norm_quantum','norm_classical','norm_pure',
+			'infidelity_quantum','infidelity_classical','infidelity_pure',
+			'entanglement_quantum','entanglement_classical'
+			]
 		for attr in attrs:
 			
-			where = [i for i in range(model.N//2-1,model.N//2+2)]
-			kwargs = dict()
+			other = load(settings.cls.state)
+			other = other(**{**settings.state,**dict(system=system)})
+			other = [other]*model.N
+			other = measure.probability(
+						parameters=parameters,
+						state=other,
+						**kwargs)			
+			where = {attr:[i for i in range(model.N//2-1,model.N//2+2)] for attr in ['trace','entanglement_quantum','entanglement_classical']}.get(attr,None)
+			kwargs = {attr: dict(other=other) for attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]}.get(attr,dict())
 
 			obj = measure.calculate(attr,state=state,where=where,**kwargs)
 
 			key = attr
-			if settings.measure.architecture in ['array']:
+
+			if isinstance(obj,tensors):
+				value = representation(obj,to=measure.architecture,contraction=True)
+			else:
 				value = array(obj)
-			elif settings.measure.architecture in ['tensor']:
-				value = representation(obj,contraction=True).ravel()
 
 			if verbose or True:
-				print(settings.measure.architecture,attr,parse(value))
+				print(measure.architecture,attr,parse(value))
 
 			data[index][key] = value
 
@@ -1834,15 +1847,15 @@ def test_module(*args,**kwargs):
 			print(probability)
 
 		key = "probability"
-		if settings.measure.architecture in ["array"]:
+		if measure.architecture in ["array"]:
 			value = array(probability)
-		elif settings.measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor"]:
 			value = tensorprod(representation(probability))
 		
 		data[index][key] = value
 
 		if verbose:
-			print(settings.measure.architecture,parse(value),sum(value))
+			print(measure.architecture,parse(value),sum(value))
 
 		# Amplitude
 		parameters = measure.parameters()
@@ -1852,15 +1865,15 @@ def test_module(*args,**kwargs):
 		amplitude = measure.amplitude(parameters=parameters,state=state,**kwargs)
 
 		key = "amplitude"
-		if settings.measure.architecture in ["array"]:
+		if measure.architecture in ["array"]:
 			value = array(amplitude)
-		elif settings.measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor"]:
 			value = array(amplitude)
 		
 		data[index][key] = value
 
 		if verbose:
-			print(settings.measure.architecture,parse(value),trace(value))
+			print(measure.architecture,parse(value),trace(value))
 
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
@@ -1885,15 +1898,15 @@ def test_module(*args,**kwargs):
 		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
 		key = "operator"
-		if settings.measure.architecture in ["array"]:
+		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
-		elif settings.measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor"]:
 			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contraction=True)
 
 		data[index][key] = value
 
 		if verbose:
-			print(settings.measure.architecture,parse(value))
+			print(measure.architecture,parse(value))
 
 
 		parameters = model.parameters()
@@ -2031,5 +2044,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_calculate(*args,**args)
-	test_module(*args,**args)
+	test_calculate(*args,**args)
+	# test_module(*args,**args)
