@@ -126,16 +126,6 @@ class Basis(Dict):
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else 
 					  (options.D**options.N,)*options.ndim)
 				))	
-		elif attr in ['Test']:
-			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else 
-					  (options.D**options.N,)*cls.dimension(attr,**options))
-				))			
-		elif attr in ['test']:
-			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else 
-					  (options.D**options.N,)*cls.dimension(attr,**options))
-				))	
 
 		return options
 
@@ -188,12 +178,8 @@ class Basis(Dict):
 			locality = 2
 		elif attr in ['unitary']:
 			locality = options.N
-		elif attr in ['Test']:
-			locality = options.N			
 		elif attr in ['state']:
 			locality = options.N	
-		elif attr in ['test']:
-			locality = 1				
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			locality = 1
 		elif attr in ['element']:
@@ -262,12 +248,8 @@ class Basis(Dict):
 			dimension = 2
 		elif attr in ['unitary']:
 			dimension = 2
-		elif attr in ['Test']:
-			dimension = 2			
 		elif attr in ['state']:
 			dimension = options.ndim
-		elif attr in ['test']:
-			dimension = options.ndim				
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			dimension = max(
 				options.ndim if options.ndim is not None else 0,
@@ -351,12 +333,8 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['unitary']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['Test']:
-			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['state']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['test']:
-			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['element']:
@@ -523,13 +501,6 @@ class Basis(Dict):
 			dtype=kwargs.dtype)
 		return data
 
-	@classmethod
-	@System.decorator
-	def Test(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		data = array([[1,0],[0,1]],dtype=kwargs.dtype)
-		return data
-
 
 	# State
 	@classmethod
@@ -545,18 +516,6 @@ class Basis(Dict):
 			len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
 			):
 			data = outer(data,data)
-		return data
-
-	@classmethod
-	@System.decorator	
-	def test(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		data = array([
-			[ 0.19470377-0.j,-0.32788293+0.22200675j],
-			[-0.32788293-0.22200675j,0.80529623+0.j]
-			],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
 		return data
 
 	@classmethod
@@ -1006,7 +965,7 @@ class Measure(System):
 	
 		precision = kwargs.get('precision',8)
 
-		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,objects) else str(obj)
+		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
 
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
@@ -1284,7 +1243,6 @@ class Measure(System):
 			else:
 				basis = representation(self.basis)
 				inverse = representation(self.inverse)
-
 
 			if model is not None and where:
 			
@@ -1919,7 +1877,6 @@ class MPS(mps):
 			basis = {
 				**{attr: Basis.state for attr in ['psi','state','product']},
 				**{attr: Basis.state for attr in ['haar']},
-				**{attr: Basis.state for attr in ['test']},
 				**{attr: Basis.rand for attr in ['random','rand']},
 				**{attr: Basis.zero for attr in ['zero','zeros','0']},
 				**{attr: Basis.one for attr in ['one','ones','1']},
@@ -2348,6 +2305,7 @@ class Object(System):
 		local = self.local if self.local is not None else None
 		locality = self.locality if self.locality is not None else None
 		number = self.number if self.number is not None else None
+		
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
 		hermitian = self.hermitian
@@ -2468,12 +2426,13 @@ class Object(System):
 				site = [i for i in site] if isinstance(site,iterables) else site
 				operator = operator
 
-		N = max((i for i in (N if N is not None else None,locality if locality is not None else None) if i is not None),default=None) if N is not None or locality is not None else None
+		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
 		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in site) if isinstance(site,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(site,iterables) else None
 		number = number
+		
 		variable = variable
 		constant = constant
 		hermitian = hermitian
@@ -2481,6 +2440,10 @@ class Object(System):
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
 		site = site[:locality] if isinstance(site,iterables) else site
+		string = string if string is not None else None
+		local = local if local is not None else None
+		locality = max(locality,len(site)) if isinstance(site,iterables) else locality
+		number = number if number is not None else None
 
 		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
 		size = self.size if self.size is not None else getattr(data,'size',self.size) if data is not None else None
@@ -2531,11 +2494,11 @@ class Object(System):
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
 		self.string = string if string is not None else None
-		self.system = system if system is not None else None
 
 		self.local = local
 		self.locality = locality
 		self.number = number
+		
 		self.variable = variable
 		self.constant = constant
 		self.hermitian = hermitian
@@ -2633,6 +2596,45 @@ class Object(System):
 
 		self.state = state
 
+		N = self.N
+		D = self.D
+
+		operator = self.operator
+		site = self.site
+		string = self.string
+		local = self.local
+		locality = self.locality
+		number = self.number
+
+		variable =  self.variable
+		constant =  self.constant
+		hermitian =  self.hermitian
+		unitary =  self.unitary
+
+		N = max((i for i in (min((i for i in (locality,len(site) if site is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
+		D = D if D is not None else None
+
+		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		site = site[:locality] if isinstance(site,iterables) else site
+		string = string if string is not None else None
+		local = local if local is not None else None
+		locality = max(locality,len(site)) if isinstance(site,iterables) else locality
+		number = number if number is not None else None
+
+		self.N = N
+		self.D = D
+
+		self.operator = operator
+		self.site = site
+		self.string = string
+		self.local = local
+		self.locality = locality
+		self.number = number
+
+		self.variable =  variable
+		self.constant =  constant
+		self.hermitian =  hermitian
+		self.unitary =  unitary
 
 		options = Dictionary(
 			parameters=self.parameters(),
@@ -2677,7 +2679,6 @@ class Object(System):
 
 			data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 			_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
-
 
 			shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 			axes = [*self.site,*(() if self.local else set(range(self.N))-set(self.site))] if data is not None else None
@@ -2731,7 +2732,7 @@ class Object(System):
 
 		self.data = data
 
-		self.N = max((i for i in (self.N if self.N is not None else None,self.locality if self.locality is not None else None) if i is not None),default=None) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
+		self.N = max((i for i in (self.N if self.N is not None else None,self.locality if self.locality is not None else None,) if i is not None),default=None) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
 		self.D = self.D if self.D is not None else None
 
 		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
@@ -2763,17 +2764,24 @@ class Object(System):
 			where = None
 		elif self.local:
 			if self.state is not None and self.state() is not None:
-				shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-				axes = [[i for i in self.site]]
-				where = self.site if self.local else None
+				if all(i in self.state.site for i in self.site):
+					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
+					axes = [[i for i in self.site]]
+					where = [i for i in self.site]
+				elif self.state.locality >= self.locality:
+					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
+					axes = [[i for i in self.site]]
+					where = [i for i in self.site]
+				else:
+					raise NotImplementedError("Incorrect state %r for locality %d, site %r"%(self.state,self.locality,self.site))
 			else:
 				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.identity.ndim)}
 				axes = [[i for i in self.site]]
-				where = [i for i in range(self.locality if self.local else self.N)] if self.local else None
+				where = [i for i in range(self.locality)]
 		else:
 			shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
 			axes = [[i for i in self.site]]
-			where = self.site if self.local else None
+			where = None
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
@@ -3250,7 +3258,7 @@ class Object(System):
 	
 		precision = kwargs.get('precision',8)
 
-		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,objects) else str(obj)
+		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
 
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
@@ -3900,7 +3908,6 @@ class Haar(Object):
 		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.identity for attr in ['I']},
 		**{attr: Basis.unitary for attr in ['U','haar','u']},
-		**{attr: Basis.Test for attr in ['Test']},
 		}
 	
 	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
@@ -3924,7 +3931,7 @@ class Haar(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = ['U','haar','u','Test']
+		functions = ['U','haar','u']
 
 		do = not self.null()
 
@@ -4211,7 +4218,6 @@ class State(Object):
 		**{attr: Basis.data for attr in ['data']},
 		**{attr: Basis.state for attr in ['psi','state','product']},
 		**{attr: Basis.state for attr in ['haar']},
-		**{attr: Basis.test for attr in ['test']},
 		**{attr: Basis.rand for attr in ['random','rand']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
 		**{attr: Basis.one for attr in ['one','ones','1']},
@@ -4242,7 +4248,7 @@ class State(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = ['psi','state','product','haar','random','rand','test']
+		functions = ['psi','state','product','haar','random','rand']
 
 		do = not self.null()
 
@@ -4256,8 +4262,8 @@ class State(Object):
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
-				shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
-				axes = [*self.site,*(() if self.local else set(range(self.N))-set(self.site))] if data is not None else None
+				shape = {axis: shape if self.local else [*shape] for axis,shape in Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options).items()} if data is not None else None
+				axes = [i for i in range(self.locality)] if data is not None else None
 				ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 				dtype = self.dtype
 
@@ -5137,7 +5143,8 @@ class Objects(Object):
 		'''
 		data = self.data if data is None else data
 		
-		status = data is not None and all(isinstance(data[i],Object) or data[i] is None or data[i] is True or data[i] is False for i in data)
+		cls = Object
+		status = data is not None and all(isinstance(data[i],cls) or data[i] is None or data[i] is True or data[i] is False for i in data)
 
 		return status
 
@@ -5326,11 +5333,8 @@ class Objects(Object):
 
 		boolean = lambda i=None,data=None: ((data is not None) and (data[i] is not None) and (not data[i].null()))
 
-		site = []
-		for i in data:
-			if not boolean(i,data) or not isinstance(data[i].site,iterables):
-				continue
-			site.extend([j for j in data[i].site if j not in site])
+		site = [j for i in data if boolean(i,data) and isinstance(data[i].site,iterables) for j in data[i].site]
+		site = list(sorted(set(site),key=lambda i:site.index(i)))
 
 		operator = separ.join([
 					delim.join(data[i].operator) if isinstance(data[i].operator,iterables) else data[i].operator
@@ -5750,42 +5754,73 @@ class Module(System):
 
 		self.measure = measure
 
+		self.measure.info()
 
 		# Data
+
+		print(self.model)
+
+		self.set(model=model)
+
 		self.layout()
-		obj = state() if callable(state) else state
+
+		print(self.model)
+		print()
+
 		options = self.options if self.options is not None else {}
 
 		data = []
 
-		for key in self.model:
-			
-			if not self.model[key]:
+		boolean = lambda model: ((model is not None) and (not model.null()))
+		attributes = lambda model: dict(state=False if model.state is None or model.state() is None else model.state(),site=model.site)
+		copy = {}
+
+		for index in self.model:
+
+			if not self.model[index]:
 				continue
 
-			locality = max(model.locality for model in self.model[key])
-			site = list(set((i for model in self.model[key] if isinstance(model.site,iterables) for i in model.site)))
+			copy[index] = [attributes(model) for model in self.model[index]]
 
-			for model in self.model[key]:
-				parameters = model.parameters()
-				state = obj @ locality
+			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
+			where = list(sorted(set(where),key=lambda i:where.index(i)))
+
+			locality = len(where)
+
+			for model in self.model[index]:
+				state = self.state @ locality
+				site = [where.index(i) for i in model.site]
 				
-				state.init(site=site)
-				model.init(state=state)
+				model.init(state=state,site=site)
 
-			def model(parameters,state,model=self.model[key],**kwargs):
+			model = [model for model in self.model[index]]
+
+			def model(parameters,state,model=model,**kwargs):
 				for func in model:
+					print('---',func,func.site,state.shape)
 					state = func(parameters=parameters,state=state,**kwargs)
 				return state			
 
 			parameters = measure.parameters()
-			state = [obj]*locality
+			state = [self.state]*locality
 			
-			model = measure.transform(parameters=parameters,state=state,model=model,**kwargs)
+			model = measure.transform(parameters=parameters,state=state,model=model,where=where,**kwargs)
+
+			print(where)
+			print(model(
+				parameters=parameters,
+				state=measure.transform(parameters=parameters,state=[self.state]*self.N,**kwargs),
+				where=where,
+				**kwargs)
+			)
+			print()
 
 			def func(parameters,state,where=where,model=model,options=options,**kwargs):
 				return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			
+			# for i,model in enumerate(self.model[index]):
+			# 	model.init(**copy[i])
+
 			data.append(func)
 
 
@@ -5811,7 +5846,7 @@ class Module(System):
 		# Functions
 		def func(parameters,state,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.transform(parameters=parameters,state=state,transform=True,**kwargs)
+			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
 			for i in range(self.M):
 				for data in self.data:
 					state = data(parameters=parameters,state=state,**kwargs)
@@ -5835,6 +5870,88 @@ class Module(System):
 
 		return
 
+	def status(self,model=None):
+		'''
+		Check status of class model
+		Args:
+			model (dict[Object]): class model
+		Returns:
+			status (bool): Status of model
+		'''
+		model = self.model if model is None else model
+		
+		cls = Object
+		status = model is not None and isinstance(model,dict) and all(isinstance(model[index],iterables) and all(isinstance(i,cls) for i in model[index]) for index in model)
+
+		return status
+
+
+	def set(self,model=None,index=None):
+		'''
+		Set model of class
+		Args:
+			model (dict): model for class
+			index (object): index of model for class
+		'''
+
+		if not self.status():
+			self.clear()
+
+		if index is not None and model is not None:
+
+			index = len(self)+1+index if index < 0 else index
+
+			self.model = insertion(self.model,index,{index:[model]})
+
+		elif model is not None:
+			
+			cls = Objects
+			if isinstance(model,cls):
+				model = {index:{model.data[index]:model.data[index].site} for index in model.data} 
+			elif isinstance(model,dict) and all(isinstance(model[key],cls) for key in model):
+				model = {index:{model[key]:model[key].site} for index,key in enumerate(model)}
+			elif isinstance(model,iterables) and all(isinstance(obj,cls) for obj in model):
+				model = {index:{obj:obj.site} if isinstance(obj,cls) else obj for index,obj in enumerate(model)}
+			elif isinstance(model,dict) and all(not isinstance(model[i],cls) and all(isinstance(j,cls) for j in j in model[i]) for i in model):
+				model = {index:{i:model[key]:model[key].site} for index,key in enumerate(model)}
+		
+			else:
+				raise NotImplementedError("Incorrect model %r"%(model))
+
+			self.model = type(self.model)({index:{i:i.site if i is not None else None for i in model[key]} for index,key in enumerate(model)})
+
+		return
+
+	def get(self,index=None):
+		'''
+		Get model of class
+		Args:
+			index (object): index of model of class
+		Returns:
+			model (object): model of class
+		'''
+
+		if index is not None:
+			
+			index = len(self) + index if index < 0 else index
+
+			model = self.model.get(index)
+		
+		else:
+		
+			model = self.model
+
+		return model
+
+	def clear(self):
+		'''
+		Clear model of class
+		'''
+
+		self.model = Dictionary()
+
+		return
+
 	def layout(self,configuration=None):
 		'''
 		Sort models of class
@@ -5844,21 +5961,20 @@ class Module(System):
 				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
 		'''
 
+		self.set()
+
+		model = self.get()
+
 		configuration = self.configuration if configuration is None else configuration
 
-		model = self.model if isinstance(self.model,dict) else {index:model for index,model in enumerate(self.model)} if isinstance(self.model,iterables) else {None:self.model}
-
-		model = [model for key in self.model if self.model[key] is not None 
-					   for model in (self.model[key] if not isinstance(self.model[key],dict) else 
-									 [self.model[key][index] for index in self.model[key]])]
-
+		model = [model for index in self.model for model in self.model[index]]
 		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,sort=None,reverse=None).items()} if configuration is not None else {}
 
 		model = groupby(model,**options)
 
-		model = {key: [model for model in group] for key,group in model}
+		model = {index: [model for model in group] for index,group in model}
 
-		self.model = model
+		self.set(model)
 
 		return
 
@@ -5898,12 +6014,12 @@ class Module(System):
 	
 		precision = kwargs.get('precision',8)
 
-		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,objects) else str(obj)
+		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
 
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','N','M','d','measure','architecture','model','data']:
+		for attr in [None,'string','N','M','measure','architecture','model','data']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5912,6 +6028,9 @@ class Module(System):
 			if attr is None:
 				attr = 'cls'
 				substring = str(self)
+			elif attr in ['model']:
+				substring = getattrs(self,attr,delimiter=delim,default=None)
+				substring = {index: {model:tuple(model.site) for model in substring[index]} for index in substring}
 			else:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
 
@@ -6607,11 +6726,24 @@ class Callback(System):
 					**{attr: self.options.get(attr) for attr in options if self.options is not None and attr in self.options},
 					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
 					}
-				value = getattrs(model,attributes[attr],delimiter=delim)(
-					parameters=parameters,
-					state=model(parameters,state,**options),
-					other=model(parameters,state,**other)
-					)
+				if attr in [
+					'objective','infidelity',
+					'infidelity.quantum','infidelity.classical','infidelity.pure',
+					]:
+					value = getattrs(model,attributes[attr],delimiter=delim)(
+						parameters=parameters,
+						state=model(parameters,state,**options),
+						other=model(parameters,state,**other)
+						)
+				elif attr in [
+					'norm','trace',
+					'norm.quantum','norm.classical','norm.pure',
+					'entanglement.quantum','entanglement.classical','entanglement.pure'
+					]:
+					value = getattrs(model,attributes[attr],delimiter=delim)(
+						parameters=parameters,
+						state=model(parameters,state,**options)
+						)
 
 			elif attr in ['noise.parameters']:
 

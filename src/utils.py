@@ -686,8 +686,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		# return wraps(func)(partial(func,**kwargs))
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -7470,9 +7470,9 @@ def sortby(iterable,key=None,reverse=False):
 	if key is None:
 		key = None
 	elif callable(key) or not isinstance(key,iterables):
-		key = lambda value,key=key: parse(get(iterable[value],key,iterable))
+		key = lambda value,key=key,iterable=iterable: parse(get(iterable[value],key,iterable))
 	elif isinstance(key,iterables):
-		key = lambda value,key=key: parse([get(iterable[value],item,iterable) for item in key])
+		key = lambda value,key=key,iterable=iterable: parse([get(iterable[value],item,iterable) for item in key])
 	else:
 		key = None
 
@@ -7508,18 +7508,18 @@ def groupby(iterable,key=None,sort=None,reverse=False):
 	if key is None:
 		key = None
 	elif callable(key) or not isinstance(key,iterables):
-		key = lambda value,key=key: parse(get(value,key,iterable))
+		key = lambda value,key=key,iterable=iterable: parse(get(value,key,iterable))
 	elif isinstance(key,iterables):
-		key = lambda value,key=key: parse([get(value,item,iterable) for item in key])
+		key = lambda value,key=key,iterable=iterable: parse([get(value,item,iterable) for item in key])
 	else:
 		key = None
 
 	if sort is None:
 		sort = None
 	elif callable(sort) or not isinstance(sort,iterables):
-		sort = lambda value,sort=sort: parse(get(value,sort,iterable))
+		sort = lambda value,sort=sort,iterable=iterable: parse(get(value,sort,iterable))
 	elif isinstance(sort,iterables):
-		sort = lambda value,sort=sort: parse([get(value,item,iterable) for item in sort])
+		sort = lambda value,sort=sort,iterable=iterable: parse([get(value,item,iterable) for item in sort])
 	else:
 		sort = None
 
