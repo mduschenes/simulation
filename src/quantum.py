@@ -823,15 +823,13 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = basis.dtype
 
-		data = einsum('u...,v...->uv',basis,basis)
-		inverse = inv(data)
+		inverse = inv(einsum('u...,v...->uv',basis,basis))
 		ones = array([1 for i in range(K)],dtype=dtype)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
 
 			basis = array(basis,**kwargs)
-			data = array(data,**kwargs)
 			inverse = array(inverse,**kwargs)
 			ones = array(ones,**kwargs)
 
@@ -839,9 +837,6 @@ class Measure(System):
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
 			basis = tensor(basis,**kwargs)
 
-			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			data = tensor(data,**kwargs)
-			
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = tensor(inverse,**kwargs)
 
@@ -861,7 +856,6 @@ class Measure(System):
 		self.operator = operator
 		self.string = string
 
-		self.data = data
 		self.basis = basis
 		self.inverse = inverse
 		self.ones = ones
@@ -998,7 +992,7 @@ class Measure(System):
 		return
 
 
-	def transform(self,parameters=None,state=None,model=None,where=None,transform=None,**kwargs):
+	def transform(self,parameters=None,state=None,model=None,where=None,transformation=None,**kwargs):
 		'''
 		Probability for POVM probability measure
 		Args:
@@ -1006,24 +1000,24 @@ class Measure(System):
 			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (int,iterable[int]): indices of function
-			transform (bool,str): Type of transform, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
+			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
 			kwargs (dict): Additional class keyword arguments
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		if transform in [None,True,'probability','state'] and model is None:
+		if transformation in [None,True,'probability','state'] and model is None:
 		
 			return self.probability(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif transform in [False,'amplitude','function']:
+		elif transformation in [False,'amplitude','function']:
 
 			return self.amplitude(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif transform in [None,True,'operator','model'] and model is not None:
+		elif transformation in [None,True,'operator','model'] and model is not None:
 		
-			state = self.transform(parameters=parameters,state=state,transform=transform,where=where)
+			state = self.transform(parameters=parameters,state=state,transformation=transformation,where=where)
 		
 			return self.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
@@ -1137,12 +1131,12 @@ class Measure(System):
 			# options = dict(
 			# 		axes=[[i] for i in range(N)],
 			# 		shape=[K,N,ndim],
-			# 		transform=True
+			# 		transformation=True
 			# 		)
 			# _options = dict(
 			# 		axes=[[i] for i in range(N)],
 			# 		shape=[D,N,2],
-			# 		transform=False
+			# 		transformation=False
 			# 		)
 
 			# state = shuffle(state,**options)
@@ -1217,8 +1211,8 @@ class Measure(System):
 				options = dict(in_axes=(None,0),out_axes=0)
 				model = vmap(model,**options)
 
-				options = dict(axes=[where],shape=(K,N,ndim),transform=True,execute=False) if where is not None else None
-				_options = dict(axes=[where],shape=(K,N,ndim),transform=False,execute=False) if where is not None else None
+				options = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False) if where is not None else None
+				_options = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False) if where is not None else None
 				
 				shuffler = shuffle(**options) if where is not None else lambda state:state
 				_shuffler = shuffle(**_options) if where is not None else lambda state:state
@@ -1316,12 +1310,12 @@ class Measure(System):
 			options = dict(
 				axes = [[i] for i in range(N)],
 				shape = [K,N,ndim],
-				transform=True,
+				transformation=True,
 				) if where is not None else None
 			_options = dict(
 				axes = [[i] for i in range(L)],
 				shape = [K,L,ndim],
-				transform=False,
+				transformation=False,
 				) if where is not None else None
 
 			data = shuffle(addition(shuffle(data,**options),axis=where),**_options) if where is not None else state
@@ -1377,7 +1371,7 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
@@ -1385,7 +1379,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
@@ -1530,14 +1524,14 @@ class Measure(System):
 		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			
 			data = trace(state)
 
 		elif self.architecture in ['tensor']:
 		
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			options = dict(to=self.architecture,contraction=True)
@@ -1682,7 +1676,7 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
@@ -1707,7 +1701,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transform=False)
+			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			options = dict(to=self.architecture,contraction=True)
@@ -2784,6 +2778,8 @@ class Object(System):
 			where = None
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
+
+		# print(self.string,self.site,where,axes,shape)
 
 		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
@@ -5141,6 +5137,7 @@ class Objects(Object):
 		Returns:
 			status (bool): Status of data
 		'''
+	
 		data = self.data if data is None else data
 		
 		cls = Object
@@ -5720,6 +5717,12 @@ class Module(System):
 		
 		self.state = state
 
+
+		# Set kwargs
+		for kwarg in kwargs:
+			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+				setattr(self,kwarg,kwargs[kwarg])		
+
 	
 		# Setup
 		self.setup()
@@ -5758,47 +5761,56 @@ class Module(System):
 
 		# Data
 
-		print(self.model)
-
 		self.set(model=model)
 
 		self.layout()
 
-		print(self.model)
-		print()
-
 		options = self.options if self.options is not None else {}
 
-		data = []
-
 		boolean = lambda model: ((model is not None) and (not model.null()))
-		attributes = lambda model: dict(state=False if model.state is None or model.state() is None else model.state(),site=model.site)
 		copy = {}
+
+		if self.architecture is None:
+			wrapper = jit
+		elif self.architecture in ['array']:		
+			wrapper = jit
+		elif self.architecture in ['tensor']:		
+			wrapper = jit
+		elif self.architecture in ['mps']:
+			wrapper = partial
+		else:
+			wrapper = jit
+
+		data = []
+		print('------')
 
 		for index in self.model:
 
 			if not self.model[index]:
 				continue
 
-			copy[index] = [attributes(model) for model in self.model[index]]
+			copy[index] = [{attr:getattr(model,attr,default) if default is None else default for attr,default in dict(site=None,state=False).items()} for model in self.model[index]]
 
 			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 			locality = len(where)
 
-			for model in self.model[index]:
-				state = self.state @ locality
-				site = [where.index(i) for i in model.site]
-				
-				model.init(state=state,site=site)
+			print(where)
 
-			model = [model for model in self.model[index]]
+			for model in self.model[index]:
+				site = [where.index(i) for i in model.site]
+				state = self.state @ locality
+				
+				model.init(site=site,state=state)
+
+			model = [wrapper(model) for model in self.model[index]]
 
 			def model(parameters,state,model=model,**kwargs):
 				for func in model:
-					print('---',func,func.site,state.shape)
+					shape = state.shape
 					state = func(parameters=parameters,state=state,**kwargs)
+					print(shape,state.shape)
 				return state			
 
 			parameters = measure.parameters()
@@ -5806,24 +5818,19 @@ class Module(System):
 			
 			model = measure.transform(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
-			print(where)
-			print(model(
-				parameters=parameters,
-				state=measure.transform(parameters=parameters,state=[self.state]*self.N,**kwargs),
-				where=where,
-				**kwargs)
-			)
-			print()
-
 			def func(parameters,state,where=where,model=model,options=options,**kwargs):
 				return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			
-			# for i,model in enumerate(self.model[index]):
-			# 	model.init(**copy[i])
+			# print(func(
+			# 	parameters=parameters,
+			# 	state=measure.probability(parameters=parameters,state=[self.state]*locality,**kwargs),
+			# 	where=where,
+			# 	**kwargs
+			# 	))
 
 			data.append(func)
 
-
+		# exit()
 		self.data = data
 
 
@@ -5868,6 +5875,11 @@ class Module(System):
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
 
+
+		# for index in self.model:
+		# 	for model,kwargs in zip(self.model[index],copy[index]):
+		# 		model.init(**kwargs)
+
 		return
 
 	def status(self,model=None):
@@ -5878,10 +5890,13 @@ class Module(System):
 		Returns:
 			status (bool): Status of model
 		'''
+	
 		model = self.model if model is None else model
-		
+
+
 		cls = Object
-		status = model is not None and isinstance(model,dict) and all(isinstance(model[index],iterables) and all(isinstance(i,cls) for i in model[index]) for index in model)
+
+		status = model is not None and isinstance(model,dict) and not isinstance(model,cls) and all(isinstance(instance,cls) for index in model for instance in model[index])
 
 		return status
 
@@ -5905,20 +5920,22 @@ class Module(System):
 
 		elif model is not None:
 			
-			cls = Objects
-			if isinstance(model,cls):
-				model = {index:{model.data[index]:model.data[index].site} for index in model.data} 
+			cls = Object
+			if isinstance(model,cls) and isinstance(model.data,Dictionary):
+				model = {index:[model.data[key]] for index,key in enumerate(model.data)}
+			elif isinstance(model,cls) and not isinstance(model.data,dict):
+				model = {None:[model]}
 			elif isinstance(model,dict) and all(isinstance(model[key],cls) for key in model):
-				model = {index:{model[key]:model[key].site} for index,key in enumerate(model)}
-			elif isinstance(model,iterables) and all(isinstance(obj,cls) for obj in model):
-				model = {index:{obj:obj.site} if isinstance(obj,cls) else obj for index,obj in enumerate(model)}
-			elif isinstance(model,dict) and all(not isinstance(model[i],cls) and all(isinstance(j,cls) for j in j in model[i]) for i in model):
-				model = {index:{i:model[key]:model[key].site} for index,key in enumerate(model)}
+				model = {index:[model[key]] for index,key in enumerate(model)}
+			elif isinstance(model,iterables) and all(isinstance(instance,cls) for instance in model):
+				model = {index:[instance] for index,instance in enumerate(model)}
+			elif isinstance(model,dict) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
+				model = {index:[instance for instance in model[key]] for index,key in enumerate(model)}
 		
 			else:
 				raise NotImplementedError("Incorrect model %r"%(model))
 
-			self.model = type(self.model)({index:{i:i.site if i is not None else None for i in model[key]} for index,key in enumerate(model)})
+			self.model = type(self.model)(model)
 
 		return
 
@@ -5972,7 +5989,7 @@ class Module(System):
 
 		model = groupby(model,**options)
 
-		model = {index: [model for model in group] for index,group in model}
+		model = {index: [model for model in group] for index,(key,group) in enumerate(model)}
 
 		self.set(model)
 
@@ -6030,7 +6047,6 @@ class Module(System):
 				substring = str(self)
 			elif attr in ['model']:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
-				substring = {index: {model:tuple(model.site) for model in substring[index]} for index in substring}
 			else:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
 

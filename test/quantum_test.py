@@ -1634,8 +1634,8 @@ def test_calculate(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[6],"module.M":[3],
-		"model.N":[6],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"module.N":[1],"module.M":[3],
+		"model.N":[1],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1663,7 +1663,7 @@ def test_module(*args,**kwargs):
 			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
 			"configuration":{
 				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],-value.locality,
+					value.site[0]%2,value.site[0],
 					)],
 				"sort":None,
 				"reverse":False
@@ -1677,10 +1677,10 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				# "u":{
-				# 	"operator":"haar","site":"i","string":"u",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
-				# },
+				"local":{
+					"operator":"haar","site":"i","string":"local",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
+				},
 				"unitary":{
 					"operator":"haar","site":"|ij|","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
@@ -1742,7 +1742,9 @@ def test_module(*args,**kwargs):
 			}
 		})
 
-		verbose = True
+		data[index] = {}
+
+		verbose = False
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -1801,26 +1803,23 @@ def test_module(*args,**kwargs):
 
 		# if verbose:
 		# 	basis = 'pauli'
-		# 	indices = ['I','X','Y','Z']
+		# 	components = ['I','X','Y','Z']
 
 		# 	print(obj())
 
-		# 	for index in indices:
-		# 		print(index,obj.component(basis=basis,index=index))
+		# 	for component in components:
+		# 		print(component,obj.component(basis=basis,index=component))
 			
 		# 	model.init(state=obj)
 			
 		# 	print(model())
 
-		# 	for index in indices:
-		# 		print(index,model.component(basis=basis,index=index))
+		# 	for component in components:
+		# 		print(component,model.component(basis=basis,index=component))
 			
 		# 	model.init(state=False)
 
 		
-		# data[index] = {}
-
-
 		# # Measure
 		# measure = load(settings.cls.measure)		
 		# measure = measure(**{**settings.measure,**dict(system=system)})
@@ -1924,6 +1923,9 @@ def test_module(*args,**kwargs):
 		# else:
 		# 	tmp = array(tmp)
 
+		# print(tmp)
+		# print(_tmp)
+
 		# assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
 
@@ -1945,75 +1947,39 @@ def test_module(*args,**kwargs):
 		state = state(**{**settings.state,**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
-		module = module(**{**settings.module,**dict(callback=callback,system=system)})
+		where = {index:dict(site=model.data[index].site) for index in model.data}
 
-		module.init(model=model,state=state)
+		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
 		module.info(verbose=verbose)
-		
+
 		parameters = module.parameters()
 		state = module.state()
 		kwargs = dict()
 
 		state = module(parameters,state)
 
-		print(state)
+		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
+	
+		if isinstance(state,tensors):
+			value = representation(state,to=module.measure.architecture,contraction=True)
+		else:
+			value = array(value)
+
+		key = 'model'
+		data[index][key] = value
+		
+		tmp = value
+		
+		for index in model.data:
+			print(index,where[index])
+			model.data[index].init(**where[index])
+		model.init(state=module.state @ module.N)
+		_tmp = model(parameters=module.parameters(),state=(module.state @ module.N)())
+
+		print(tmp)
+		print(_tmp)
 		exit()
-
-		key = "module"
-		value = module.measure.transform(parameters=parameters,state=state,transformation=False,**kwargs)
-		data[index][key] = value
-
-		# Init
-		model = load(settings.cls.model)
-		state = load(settings.cls.state)
-		system = settings.system
-
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-
-		model.init(state=state)
-
-		parameters = model.parameters()
-		state = model.state()
-
-		key = "init"
-		value = model(parameters,state)
-
-		data[index][key] = value
-
-		print({i:{attr: getattr(model.data[i],attr,None) for attr in ["string","operator","site"]} for i in model.data})
-
-		if settings.module["options"]["contract"] is False or settings.module["options"]["cutoff"] <= 1e-16:
-			assert allclose(data[i]["module"],data[i]["init"]), "Incorrect module() and model() ---\n%s\n%s\n%s"%(
-				parse(data[i]["module"]),parse(data[i]["init"]),parse(data[i]["module"] - data[i]["init"]))
-
-		parameters = module.parameters()
-		state = module.state()
-		options = {"contract":"swap+split","max_bond":8,"cutoff":1e-8}
-
-		state,other = module(parameters,state,**options),module(parameters,state)
-
-
-		attrs = ["norm_classical","norm_quantum","infidelity_classical","infidelity_quantum"]
-		for attr in attrs:
-			print(attr,getattr(module.measure,attr)(parameters,state,other=other))
-		exit()
-
-		key = "infidelity"
-		value = abs(
-			(module.measure.infidelity(parameters,state,other) -
-			 module.measure.infidelity(parameters,state,state)) / 
-			(module.measure.infidelity(parameters,state,state))
-			)
-
-		data[index][key] = value
-
-
-		module.dump()
-
-		module.load()
-
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 

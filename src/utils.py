@@ -686,8 +686,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		return wraps(func)(partial(func,**kwargs))
+		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		# return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 
@@ -4182,8 +4182,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 					einsummation = einsum(subscripts,*shapes)
 					
-					shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(data,shuffler(state)))
@@ -4205,8 +4205,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 						einsummation = einsum(subscripts,*shapes)
 						
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
@@ -4225,8 +4225,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))							
@@ -4255,8 +4255,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
 			
-					shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
@@ -4278,8 +4278,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 						einsummation = einsum(subscripts,*shapes)
 						
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
@@ -4300,8 +4300,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
@@ -4455,8 +4455,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 					einsummation = einsum(subscripts,*shapes)
 					
-					shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(grad,shuffler(state)))					
@@ -4478,8 +4478,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 						einsummation = einsum(subscripts,*shapes)
 
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
@@ -4501,8 +4501,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
@@ -4531,8 +4531,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					shapes = (data.shape,state.shape[1:])
 					einsummation = einsum(subscripts,*shapes)
 
-					shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
@@ -4555,8 +4555,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
 						einsummation = einsum(subscripts,*shapes)
 
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
@@ -4577,8 +4577,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
-						shuffler = shuffle(state,**kwargs,transform=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transform=False,execute=False)
+						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
+						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
@@ -7647,7 +7647,7 @@ def moveaxis(a,source,destination):
 	return np.moveaxis(a,source,destination)
 
 
-def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
+def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 	'''
 	Split and swap, and group axis
 	
@@ -7656,12 +7656,12 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 	and axes are grouped by n components
 		axes: [[i,j,...],...,[k,l,...]] for i,j,k,l,... in [n]
 	
-	If transform: array gets split with shape to
+	If transformation: array gets split with shape to
 		shape -> (*(dimension_ij for j in range(n) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and grouped with axes to
 		shape -> (*(prod(dimension_ij for j in axis) for axis in axes for i in range(ndim) ),*(dimensions_i for i in range(ndims)))
 	
-	If not transform, shape is assumed to be previously split and grouped, and is reverse grouped and split
+	If not transformation, shape is assumed to be previously split and grouped, and is reverse grouped and split
 	
 	Example:
 		shape(a) = (s,xyz,uvw) with shape = {1:(x,y,z),2:(u,v,w),0:s}, axes = ((2,0))
@@ -7674,7 +7674,7 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 			n: 2
 			sort: [1,2,0]
 		
-		transform: (s,xyz,uvw) ->
+		transformation: (s,xyz,uvw) ->
 			split.func-> (xyz,uvw,s)
 			split.reshape-> (x,y,z,u,v,w,s)
 		 	split.transpose-> (x,u,y,v,z,w,s)
@@ -7682,7 +7682,7 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 		 	group.transpose-> (z,x,w,u,y,v,s)
 		 	group.reshape-> (zx,wu,y,v,s)
 
-		~transform: (zx,wu,y,v,s) ->
+		~transformation: (zx,wu,y,v,s) ->
 			group.reshape-> (z,x,w,u,y,v,s)
 		 	group.transpose-> (x,u,y,v,z,w,s)
 		 	group.func-> (x,u,y,v,z,w,s)
@@ -7704,7 +7704,7 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 					size: prod(shape)*prod(shapes),
 					ndim: len(shape)+len(shapes)		
 				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
-		transform (bool): transformation of array options
+		transformation (bool): transformation of array options
 			True,None: split and swap and group axes
 			False: reverse split, and swap, and group
 		execute (bool): Execute transformations or return function with precomputed axes and shapes
@@ -7808,11 +7808,11 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 
 	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 
-	if transform is None or transform is True:
+	if transformation is None or transformation is True:
 
 		return group(split(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 		
-	elif transform is False:
+	elif transformation is False:
 		
 		return _split(_group(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 
@@ -7872,9 +7872,9 @@ def swap(a=None,axes=None,shape=None,execute=True):
 		return axes,shape,_axes,_shape	
 
 	axes,shape,_axes,_shape = permute(axes,shape)
-	transform = True
+	transformation = True
 
-	return shuffle(shuffle(a,axes=axes,shape=shape,transform=transform,execute=execute),axes=_axes,shape=_shape,transform=not transform,execute=execute)
+	return shuffle(shuffle(a,axes=axes,shape=shape,transformation=transformation,execute=execute),axes=_axes,shape=_shape,transformation=not transformation,execute=execute)
 
 
 def broadcast_to(a,shape):
