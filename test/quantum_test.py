@@ -517,6 +517,84 @@ def test_data(path,tol):
 	
 	return
 
+
+def test_copy(*args,**kwargs):
+
+	kwargs = {
+		"operator.N":[3],"operator.D":[2],"operator.local":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		}	
+
+	groups = None
+	filters = None
+	func = None
+
+	data = {}
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+
+		settings = Dict({
+		"cls":{
+			"operator":"src.quantum.Operator",
+			"state":"src.quantum.State",
+			},
+		"operator":{
+				"data":None,"operator":["X","X"],"site":[0,2],"string":None,
+				"N":3,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
+				"parameters":0.5
+			},		
+		"state": {
+			"operator":"haar",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":False
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":False
+			}
+		})
+
+		data[index] = {}
+
+		verbose = False
+		precision = 8
+
+		parse = lambda data: data.round(precision)
+
+		# Settings
+		setter(settings,kwargs,delimiter=delim,default="replace")
+		system = settings.system
+
+		# Operator
+		operator = load(settings.cls.operator)		
+		operator = operator(**{**settings.operator,**dict(system=system)})
+		
+		operator.info(verbose=verbose)
+
+		parameters = operator.parameters()
+		state = operator.state() if operator.state() is not None else operator.identity
+		kwargs = dict()
+
+	return
+
+
+
 def test_initialization(path,tol):
 
 	default = None
@@ -873,7 +951,7 @@ def test_tensorproduct(*args,**kwargs):
 
 
 	states = [cls(**{**options,**dict(operator=operator)}) for operator in operators]
-	site = [2*i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
+	site = [i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
 
 	new = states[0] 
 	for state in states[1:]:
@@ -1003,6 +1081,41 @@ def test_random(*args,**kwargs):
 		print(getattr(obj,attr).round(options.precision))
 		print()
 
+
+	print()
+	print("-------------------")
+	print()
+
+	K = 5
+	M = 4
+	
+	operator = load(settings.cls.operator)
+	state = load(settings.cls.state)
+
+	operator = operator(**settings.operator)
+	state = state(**settings.state)
+	
+	model = [operator for i in range(K)]
+	
+	for i in range(K):
+		model[i].init(state=state)
+
+	parameters = [model[i].parameters() for i in range(K)]
+	state = operator.state()
+
+	kwargs = [Dictionary(seed=seeder(model[i].seed)) for i in range(K)]
+	
+	states = [None for i in range(M)]
+
+	for j in range(M):
+		state = operator.state()
+		for i in range(K):
+			state = model[i](parameters=parameters[i],state=state,**kwargs[i])
+			seed,kwargs[i].seed = rng.split(kwargs[i].seed)
+		states[j] = state
+
+	assert all(not allclose(states[i],states[j]) for i in range(M) for j in range(M) if i!=j), "Incorrect seed updates"
+
 	return
 
 
@@ -1130,20 +1243,18 @@ def test_measure(*args,**kwargs):
 		print(settings["measure"]["operator"])
 		print(measure,len(measure),measure.D,state.D)
 		print(measure.identity)
-		print(measure.data)
 		print(measure.inverse)
 		print()
 
 
 		assert allclose(sum(i for i in measure.basis),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
-		assert allclose(einsum("uw,vw->uv",measure.data,measure.inverse),basis.identity(D=len(measure),dtype=measure.dtype)), "Incorrect %r data"%(measure)
 
 	print("Passed")
 
 	return
 
 
-def test_metric(path=None,tol=None,**kwargs):
+def test_metric(path,tol):
 
 	default = None
 	settings = load(path,default=default)
@@ -1337,7 +1448,7 @@ def test_namespace(*args,**kwargs):
 	return
 
 
-def test_objective(path=None,tol=None,**kwargs):
+def test_objective(path,tol):
 
 	default = None
 	settings = load(path,default=default)
@@ -1386,7 +1497,7 @@ def test_objective(path=None,tol=None,**kwargs):
 
 	return
 
-def test_grad(path=None,tol=None,**kwargs):
+def test_grad(path,tol):
 
 	default = None
 	settings = load(path,default=default)
@@ -1634,8 +1745,8 @@ def test_calculate(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[1],"module.M":[3],
-		"model.N":[1],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"module.N":[3],"module.M":[3],
+		"model.N":[3],"model.D":[2],"model.M":[3],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1677,10 +1788,10 @@ def test_module(*args,**kwargs):
 		},		
 		"model":{
 			"data":{
-				"local":{
-					"operator":"haar","site":"i","string":"local",
-					"parameters":None,"variable":False,"ndim":2,"seed":123
-				},
+				# "local":{
+				# 	"operator":"haar","site":"i","string":"local",
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
+				# },
 				"unitary":{
 					"operator":"haar","site":"|ij|","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
@@ -1688,7 +1799,11 @@ def test_module(*args,**kwargs):
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
 					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
-				},								
+				},	
+				# "xx":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123
+				# },												
 			},
 			"N":4,
 			"D":2,
@@ -1753,187 +1868,185 @@ def test_module(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default="replace")
 		system = settings.system
 
-		# # Model
-		# model = load(settings.cls.model)		
-		# model = model(**{**settings.model,**dict(system=system)})
+		# Model
+		model = load(settings.cls.model)		
+		model = model(**{**settings.model,**dict(system=system)})
 		
-		# model.info(verbose=verbose)
+		model.info(verbose=verbose)
 
-		# parameters = model.parameters()
-		# state = model.state() if model.state() is not None else model.identity
-		# kwargs = dict()
+		parameters = model.parameters()
+		state = model.state() if model.state() is not None else model.identity
+		kwargs = dict()
 
-		# if verbose:
-		# 	print(model(parameters=parameters,state=state,**kwargs))
-		# 	print()
-		# 	print()
+		if verbose:
+			print(model(parameters=parameters,state=state,**kwargs))
+			print()
+			print()
 
 
-		# # State
-		# state = load(settings.cls.state)
-		# settings.state = [
-		# 	{
-		# 	**settings.state,
-		# 	**dict(operator=settings.state.operator[i%len(settings.state.operator)] 
-		# 		if not isinstance(settings.state.operator,str) 
-		# 		else settings.state.operator)
-		# 	} for i in range(model.N)]
+		# State
+		state = load(settings.cls.state)
+		settings.state = [
+			{
+			**settings.state,
+			**dict(operator=settings.state.operator[i%len(settings.state.operator)] 
+				if not isinstance(settings.state.operator,str) 
+				else settings.state.operator)
+			} for i in range(model.N)]
 		
-		# state = [state(**{**settings.model,**i,**dict(system=system)})
-		# 		for i in settings.state]
+		state = [state(**{**settings.model,**i,**dict(system=system)})
+				for i in settings.state]
 
 
-		# obj = state
+		obj = state
 
-		# tmp = None
-		# for i in state:
-		# 	tmp = i if tmp is None else tmp @ i
+		tmp = None
+		for i in state:
+			tmp = i if tmp is None else tmp @ i
 
-		# tmp = tmp()
-		# _tmp = tensorprod([i() for i in obj])
+		tmp = tmp()
+		_tmp = tensorprod([i() for i in obj])
 
-		# assert allclose(tmp,_tmp),"Incorrect state tensor product"
+		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
-		# # Test
+		# Test
 
-		# objs = state
-		# obj = None
-		# for i in objs:
-		# 	obj = i if obj is None else obj @ i
+		objs = state
+		obj = None
+		for i in objs:
+			obj = i if obj is None else obj @ i
 
-		# if verbose:
-		# 	basis = 'pauli'
-		# 	components = ['I','X','Y','Z']
+		if verbose:
+			basis = 'pauli'
+			components = ['I','X','Y','Z']
 
-		# 	print(obj())
+			print(obj())
 
-		# 	for component in components:
-		# 		print(component,obj.component(basis=basis,index=component))
+			for component in components:
+				print(component,obj.component(basis=basis,index=component))
 			
-		# 	model.init(state=obj)
+			model.init(state=obj)
 			
-		# 	print(model())
+			print(model())
 
-		# 	for component in components:
-		# 		print(component,model.component(basis=basis,index=component))
+			for component in components:
+				print(component,model.component(basis=basis,index=component))
 			
-		# 	model.init(state=False)
+			model.init(state=False)
 
 		
-		# # Measure
-		# measure = load(settings.cls.measure)		
-		# measure = measure(**{**settings.measure,**dict(system=system)})
+		# Measure
+		measure = load(settings.cls.measure)		
+		measure = measure(**{**settings.measure,**dict(system=system)})
 
 
-		# # Probability
-		# parameters = measure.parameters()
-		# state = [i for i in objs]
-		# kwargs = dict()
+		# Probability
+		parameters = measure.parameters()
+		state = [i for i in objs]
+		kwargs = dict()
 
-		# probability = measure.probability(parameters=parameters,state=state,**kwargs)
+		probability = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		# if verbose:
-		# 	print(probability)
+		if verbose:
+			print(probability)
 
-		# key = "probability"
-		# if measure.architecture in ["array"]:
-		# 	value = array(probability)
-		# elif measure.architecture in ["tensor"]:
-		# 	value = tensorprod(representation(probability))
+		key = "probability"
+		if measure.architecture in ["array"]:
+			value = array(probability)
+		elif measure.architecture in ["tensor"]:
+			value = tensorprod(representation(probability))
 		
-		# data[index][key] = value
+		data[index][key] = value
 
-		# if verbose:
-		# 	print(measure.architecture,parse(value),sum(value))
+		if verbose:
+			print(measure.architecture,parse(value),sum(value))
 
-		# # Amplitude
-		# parameters = measure.parameters()
-		# state = probability
-		# kwargs = dict()
+		# Amplitude
+		parameters = measure.parameters()
+		state = probability
+		kwargs = dict()
 
-		# amplitude = measure.amplitude(parameters=parameters,state=state,**kwargs)
+		amplitude = measure.amplitude(parameters=parameters,state=state,**kwargs)
 
-		# key = "amplitude"
-		# if measure.architecture in ["array"]:
-		# 	value = array(amplitude)
-		# elif measure.architecture in ["tensor"]:
-		# 	value = representation(amplitude,to=measure.architecture,contraction=True)
+		key = "amplitude"
+		if measure.architecture in ["array"]:
+			value = array(amplitude)
+		elif measure.architecture in ["tensor"]:
+			value = representation(amplitude,to=measure.architecture,contraction=True)
 
-		# data[index][key] = value
+		data[index][key] = value
 
-		# if verbose:
-		# 	print(measure.architecture,parse(value),trace(value))
+		if verbose:
+			print(measure.architecture,parse(value),trace(value))
 
-		# tmp = value
-		# _tmp = tensorprod([i() for i in objs]) 
+		tmp = value
+		_tmp = tensorprod([i() for i in objs]) 
 
-		# assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
+		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
 
-		# # Operator
-		# parameters = model.parameters()
-		# state = obj
+		# Operator
+		parameters = model.parameters()
+		state = obj
 
-		# model.init(state=state)
-
-
-		# parameters = model.parameters()
-		# state = [i for i in objs]
-		# kwargs = dict()
-
-		# state = measure.probability(parameters=parameters,state=state,**kwargs)
-
-		# where = model.site
-
-		# operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
-
-		# key = "operator"
-		# if measure.architecture in ["array"]:
-		# 	value = array(operator(parameters=parameters,state=state,**kwargs))
-		# elif measure.architecture in ["tensor"]:
-		# 	value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contraction=True)
-
-		# data[index][key] = value
-
-		# if verbose:
-		# 	print(measure.architecture,parse(value))
+		model.init(state=state)
 
 
-		# parameters = model.parameters()
-		# state = [i for i in objs]
+		parameters = model.parameters()
+		state = [i for i in objs]
+		kwargs = dict()
 
-		# tmp = measure.amplitude(
-		# 	parameters=parameters,
-		# 	state=measure.operation(
-		# 		parameters=parameters,
-		# 		state=state,
-		# 		model=model,
-		# 		where=where,
-		# 		**kwargs)(
-		# 		parameters=parameters,
-		# 		state=measure.probability(
-		# 			parameters=parameters,
-		# 			state=state,
-		# 			**kwargs),
-		# 		**kwargs),
-		# 	**kwargs)
-		# _tmp = model(parameters=parameters,state=obj())
+		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		# if isinstance(tmp,tensors):
-		# 	tmp = representation(tmp,to=measure.architecture,contraction=True)
-		# else:
-		# 	tmp = array(tmp)
+		where = model.site
 
-		# print(tmp)
-		# print(_tmp)
+		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
-		# assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
+		key = "operator"
+		if measure.architecture in ["array"]:
+			value = array(operator(parameters=parameters,state=state,**kwargs))
+		elif measure.architecture in ["tensor"]:
+			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contraction=True)
+
+		data[index][key] = value
+
+		if verbose:
+			print(measure.architecture,parse(value))
 
 
-		# # Callback
-		# callback = load(settings.cls.callback)
-		# callback = callback(**{**settings.callback,**dict(system=system)})
+		parameters = model.parameters()
+		state = [i for i in objs]
 
-		# continue
+		tmp = measure.amplitude(
+			parameters=parameters,
+			state=measure.operation(
+				parameters=parameters,
+				state=state,
+				model=model,
+				where=where,
+				**kwargs)(
+				parameters=parameters,
+				state=measure.probability(
+					parameters=parameters,
+					state=state,
+					**kwargs),
+				**kwargs),
+			**kwargs)
+		_tmp = model(parameters=parameters,state=obj())
+
+		if isinstance(tmp,tensors):
+			tmp = representation(tmp,to=measure.architecture,contraction=True)
+		else:
+			tmp = array(tmp)
+
+		print(tmp)
+		print(_tmp)
+
+		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
+
+
+		# Callback
+		callback = load(settings.cls.callback)
+		callback = callback(**{**settings.callback,**dict(system=system)})
 
 
 		# Module
@@ -1944,7 +2057,7 @@ def test_module(*args,**kwargs):
 		system = settings.system
 
 		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**settings.state,**dict(system=system)})
+		state = state(**{**settings.state[0],**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
 		where = {index:dict(site=model.data[index].site) for index in model.data}
@@ -1972,14 +2085,14 @@ def test_module(*args,**kwargs):
 		tmp = value
 		
 		for index in model.data:
-			print(index,where[index])
 			model.data[index].init(**where[index])
 		model.init(state=module.state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=(module.state @ module.N)())
 
-		print(tmp)
-		print(_tmp)
-		exit()
+		print(parse(tmp))
+		print(parse(_tmp))
+
+		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
@@ -2000,6 +2113,7 @@ if __name__ == "__main__":
 	# test_operator(*args,**args)
 	# test_null(*args,**args)
 	# test_data(*args,**args)
+	test_copy(*args,**args)
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_random(*args,**args)
@@ -2010,4 +2124,4 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_calculate(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)

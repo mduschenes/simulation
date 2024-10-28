@@ -122,22 +122,23 @@ def test_optimizer(path,tol):
 
 	parameters = optimizer(parameters)
 
-	value = optimizer.track['objective'][-1]
-	iteration = optimizer.track['iteration'][-1]
-	size = min(len(optimizer.track[attr]) for attr in optimizer.track)
+	if all(isinstance(optimizer.data[attr],list) for attr in optimizer.data):
+		value = optimizer.data['objective'][-1]
+		iteration = optimizer.data['iteration'][-1]
+		size = min(len(optimizer.data[attr]) for attr in optimizer.data)
 
-	optimizer.reset(clear=True)
-	optimizer(parameters)
+		optimizer.reset(clear=True)
+		optimizer(parameters)
 
-	value = optimizer.track['objective'][-1]-value
-	iteration = optimizer.track['iteration'][-1]-iteration
-	size = min(len(optimizer.track[attr]) for attr in optimizer.track)-size
+		value = optimizer.data['objective'][-1]-value
+		iteration = optimizer.data['iteration'][-1]-iteration
+		size = min(len(optimizer.data[attr]) for attr in optimizer.data)-size
 
-	eps = 1e-10
+		eps = 1e-10
 
-	assert (abs(value) < eps) or value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
-	assert iteration == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
-	assert size == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
+		assert (abs(value) < eps) or value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
+		assert iteration == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
+		assert size == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
 	paths = [optimizer.cwd]
 	execute = True

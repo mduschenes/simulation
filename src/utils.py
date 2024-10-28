@@ -30,7 +30,12 @@ import scipy as osp
 import pandas as pd
 import scipy.special as ospsp
 
-orng = onp.random
+class RNG(onp.random.RandomState):
+	def split(self,key,shape=2):
+		return onp.full(shape,key)
+
+orng = RNG()
+
 
 
 _partial = partial
@@ -148,7 +153,7 @@ elif backend in ['autograd']:
 
 	mapper = tree_map
 
-	rng = np.random
+	rng = RNG()
 
 
 elif backend in ['numpy']:
@@ -163,7 +168,7 @@ elif backend in ['numpy']:
 
 	mapper = map
 
-	rng = np.random
+	rng = RNG()
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -686,8 +691,8 @@ if backend in ['jax','jax.autograd']:
 
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
-		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		# return wraps(func)(partial(func,**kwargs))
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))
 
 elif backend in ['autograd','numpy']:
 

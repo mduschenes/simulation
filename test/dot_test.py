@@ -18,7 +18,7 @@ from src.utils import np,onp,backend
 from src.utils import array,gradient,zeros,rand,eye
 from src.utils import abs2,trace,dot,allclose
 from src.utils import inner,inner_norm,inner_abs2,inner_real
-from src.utils import gradient_inner,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real
+from src.utils import gradient_inner_prod,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real
 
 
 def _setup(args,kwargs):

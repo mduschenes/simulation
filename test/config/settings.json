@@ -71,7 +71,7 @@
 	"metric":"abs2",	
 	"alpha":1e-4,"beta":1e-4,
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"track":{
+	"data":{
 		"iteration":[],"objective":[],
 		"alpha":[],"beta":[],
 		"purity":[],
@@ -95,5 +95,13 @@
 	"ndim":2,
 	"seed":123
 	},
-"callback":{}
+"callback":{
+	"attributes":{
+		"N":"N","M":"N","d":"d","D":"state.D",
+		"noise.parameters":"noise.parameters",
+		"objective":"measure.infidelity_classical",
+		"operator":"measure.operator",
+		"iteration":"iteration"
+		}
+	}
 }

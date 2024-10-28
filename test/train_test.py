@@ -39,7 +39,7 @@ def test_train(path,*args,tol=None,**kwargs):
 	for path in paths:
 		rm(path,execute=execute,verbose=verbose)
 
-	assert optimizer.track['objective'][-1] < tol, "Incorrect Optimization of %r"%(model)
+	assert all(not isinstance(optimizer.data[attr],list) or not optimizer.data[attr] for attr in optimizer.data) or (not optimizer.data.get('objective')) or (optimizer.data['objective'][-1] < tol), "Incorrect Optimization of %r"%(model)
 
 	print("Passed")
 

@@ -1208,17 +1208,16 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
-				options = dict(in_axes=(None,0),out_axes=0)
-				model = vmap(model,**options)
-
 				options = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False) if where is not None else None
 				_options = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False) if where is not None else None
 				
 				shuffler = shuffle(**options) if where is not None else lambda state:state
 				_shuffler = shuffle(**_options) if where is not None else lambda state:state
 					
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-					return _shuffler(einsummation(basis,model(parameters,basis),inverse,shuffler(state)))
+				options = dict()
+
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
+					return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
 
 			else:
 			
@@ -1243,12 +1242,11 @@ class Measure(System):
 				subscripts = 'uij,wij,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
-				
-				options = dict(in_axes=(None,0),out_axes=0)
-				model = vmap(model,**options)
-				
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,**kwargs):
-					return state.gate(einsummation(basis,model(parameters,basis),inverse),where=where,**kwargs)
+
+				options = dict()
+
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
+					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
 		
 			else:
 				def func(parameters,state,where=where,**kwargs):
@@ -2605,7 +2603,7 @@ class Object(System):
 		hermitian =  self.hermitian
 		unitary =  self.unitary
 
-		N = max((i for i in (min((i for i in (locality,len(site) if site is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
+		N = max((i for i in (max((i for i in (locality,len(site) if site is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
 		D = D if D is not None else None
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
@@ -2614,6 +2612,8 @@ class Object(System):
 		local = local if local is not None else None
 		locality = max(locality,len(site)) if isinstance(site,iterables) else locality
 		number = number if number is not None else None
+
+		assert self.null() or (N is None and locality is None and site is None) or ((locality <= N) and (locality == len(site)) and all(i in range(N) for i in site)), "Inconsistent N %d, locality %d, site %r"%(N,locality,site)
 
 		self.N = N
 		self.D = D
@@ -2778,8 +2778,6 @@ class Object(System):
 			where = None
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
-
-		# print(self.string,self.site,where,axes,shape)
 
 		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
@@ -4705,13 +4703,18 @@ class Objects(Object):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			for i in range(shape[1]):
+				kwargs[i].seed = seeder(self.data[i].seed)
 			out = state
-			if parameters is not None:
+			if parameters is not None and len(parameters):
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
+					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
 			else:
 				for i in indices:
-					out = self.data[i%shape[1]](state=out)
+					out = self.data[i%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
@@ -4720,65 +4723,31 @@ class Objects(Object):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			if parameters is not None:
+			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			for i in range(shape[1]):
+				kwargs[i].seed = seeder(self.data[i].seed)	
+			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
-					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out)
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
+					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
 					grad = inplace(grad,indexes.index(i),out,'add')
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)					
 			else:
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](state=out)
-					out = self.data[i%shape[1]].grad(state=out)
+						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+					out = self.data[i%shape[1]].grad(parameters=parameters,state=out,**kwargs[i%shape[1]])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](state=out)
+						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
 					grad = inplace(grad,indexes.index(i),out,'add')
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)			
 			return grad
-		# Set functions
-		def func(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
-			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
-			out = state
-			if parameters is not None:
-				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out)
-			else:
-				for i in indices:
-					out = self.data[i%shape[1]](state=out)
-			return out
-
-		def grad(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
-			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
-			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
-			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			if parameters is not None:
-				for i in indexes:
-					out = state
-					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
-					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out)
-					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out)
-					grad = inplace(grad,indexes.index(i),out,'add')
-			else:
-				for i in indexes:
-					out = state
-					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](state=out)
-					out = self.data[i%shape[1]].grad(state=out)
-					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](state=out)
-					grad = inplace(grad,indexes.index(i),out,'add')
-			return grad
-
+	
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
 		grad_analytical = grad
@@ -5573,13 +5542,18 @@ class Operators(Objects):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(kwargs) for i in range(len(self.data))]
+			for i in range(shape[1]):
+				kwargs[i].seed = seeder(self.data[i].seed)
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out,**kwargs)
+					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
 			else:
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters,state=out,**kwargs)
+					out = self.data[i%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
@@ -5588,24 +5562,29 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			for i in range(shape[1]):
+				kwargs[i].seed = seeder(self.data[i].seed)	
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs)
-					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out,**kwargs)
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
+					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs)
+						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
 					grad = inplace(grad,indexes.index(i),out,'add')
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)					
 			else:
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs)
-					out = self.data[i%shape[1]].grad(parameters=parameters,state=out,**kwargs)
+						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+					out = self.data[i%shape[1]].grad(parameters=parameters,state=out,**kwargs[i%shape[1]])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs)
+						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
 					grad = inplace(grad,indexes.index(i),out,'add')
+					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)			
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -5782,35 +5761,29 @@ class Module(System):
 			wrapper = jit
 
 		data = []
-		print('------')
 
 		for index in self.model:
 
 			if not self.model[index]:
 				continue
 
-			copy[index] = [{attr:getattr(model,attr,default) if default is None else default for attr,default in dict(site=None,state=False).items()} for model in self.model[index]]
+			copy[index] = [{attr:getattr(model,attr,default) if default is None else default for attr,default in dict(site=None,state=False,seed=None).items()} for model in self.model[index]]
 
 			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 			locality = len(where)
 
-			print(where)
-
 			for model in self.model[index]:
 				site = [where.index(i) for i in model.site]
 				state = self.state @ locality
-				
 				model.init(site=site,state=state)
 
 			model = [wrapper(model) for model in self.model[index]]
 
 			def model(parameters,state,model=model,**kwargs):
 				for func in model:
-					shape = state.shape
 					state = func(parameters=parameters,state=state,**kwargs)
-					print(shape,state.shape)
 				return state			
 
 			parameters = measure.parameters()
@@ -5819,18 +5792,10 @@ class Module(System):
 			model = measure.transform(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
 			def func(parameters,state,where=where,model=model,options=options,**kwargs):
-				return model(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+				return model(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			
-			# print(func(
-			# 	parameters=parameters,
-			# 	state=measure.probability(parameters=parameters,state=[self.state]*locality,**kwargs),
-			# 	where=where,
-			# 	**kwargs
-			# 	))
-
 			data.append(func)
 
-		# exit()
 		self.data = data
 
 
@@ -5851,15 +5816,27 @@ class Module(System):
 
 
 		# Functions
-		def func(parameters,state,**kwargs):
+
+		data = self.data
+		options = []
+		for index in self.model:
+			options.append(Dictionary())
+			for model in self.model[index]:
+				options[index].update({attr:getattr(model,attr,default) for attr,default in dict(seed=None).items()})
+
+		def func(parameters,state,options=options,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
-			for i in range(self.M):
-				for data in self.data:
-					state = data(parameters=parameters,state=state,**kwargs)
+			kwargs = [Dictionary(**{**options[i],**kwargs}) for i in range(len(self.data))]
+			for i in range(len(self.data)):
+				kwargs[i].seed = seeder(kwargs[i].seed)
+			for l in range(self.M):
+				for i,data in enumerate(self.data):
+					state = data(parameters=parameters,state=state,**kwargs[i])
+					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 			return state
 
-		def grad(parameters=None,state=None,**kwargs):
+		def grad(parameters=None,state=None,options=options,**kwargs):
 			return None
 
 		self.func = func
@@ -6268,8 +6245,8 @@ class Callback(System):
 		Callback
 		Args:
 			parameters (array): parameters
-			track (dict): callback tracking
-			optimizer (Optimizer): callback optimizer
+			track (dict): data tracking
+			optimizer (Optimizer): optimizer
 			model (object): Model instance
 			metric (str,callable): Callback metric
 			func (callable): Objective function with signature func(parameters)
@@ -6710,7 +6687,7 @@ class Callback(System):
 
 		return
 
-	def __call__(self,parameters,state,model,data,**kwargs):
+	def __call__(self,parameters=None,state=None,model=None,data=None,optimizer=None,**kwargs):
 		''' 
 		Callback
 		Args:
@@ -6718,14 +6695,25 @@ class Callback(System):
 			state (array): state
 			model (object): Model instance
 			data (dict): data
+			optimizer (Optimizer): optimizer			
 			kwargs (dict): additional keyword arguments for callback
 		Returns:
 			status (int): status of callback
 		'''
 
-		attributes = self.attributes
+		attributes = {attr:self.attributes[attr] 
+			for attr in self.attributes 
+			if hasattrs(model,self.attributes[attr]) or hasattrs(optimizer,self.attributes[attr]) or attr in ['noise.parameters']
+			}
+
+		status = True
+
+		logging = True
 
 		for attr in attributes:
+
+			if not isinstance(data.get(attr),list):
+				data[attr] = []
 
 			if attr in [
 				'objective','infidelity','norm','entanglement','trace',
@@ -6748,8 +6736,8 @@ class Callback(System):
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
-						state=model(parameters,state,**options),
-						other=model(parameters,state,**other)
+						state=model(parameters=parameters,state=state,options=options),
+						other=model(parameters=parameters,state=state,options=other)
 						)
 				elif attr in [
 					'norm','trace',
@@ -6758,7 +6746,7 @@ class Callback(System):
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
-						state=model(parameters,state,**options)
+						state=model(parameters=parameters,state=state,options=options)
 						)
 
 			elif attr in ['noise.parameters']:
@@ -6774,13 +6762,42 @@ class Callback(System):
 				if callable(value):
 					value = value(parameters=parameters,state=state,**kwargs)
 
+			elif hasattrs(optimizer,attributes[attr],delimiter=delim):
+
+				value = getattrs(optimizer,attributes[attr],delimiter=delim)
+
+				if callable(value):
+					value = value(parameters=parameters,state=state,**kwargs)
+
 			else:
 
 				value = None
 
-			data[attr] = value
+			data[attr].append(value)
 
-		return
+		if logging:
+
+			msg = '\n'.join([
+				'%d f(x) = %s'%(optimizer.iteration,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None,
+				),
+				'|x| = %s'%('%0.4e'%(norm(parameters)) if parameters is not None else None),
+				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),
+				# 'track: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),				
+				# 'x\n%s'%(to_string(parameters.round(4))),
+				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters=parameters,state=state,**kwargs)).round(4)),
+				# 	to_string((metric.label()).round(4))),
+				])
+
+
+			model.log(msg)
+
+		return status
 
 
 def main(settings,*args,**kwargs):

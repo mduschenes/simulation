@@ -839,19 +839,19 @@ class Function(System):
 		return self.value_and_gradient(parameters,*args,**kwargs)
 
 	# @partial(jit,static_argnums=(0,))
-	def __callback__(self,parameters,track,optimizer):
+	def __callback__(self,parameters,data,optimizer):
 		'''
 		Callback call
 		Args:
 			parameters (array): parameters
-			track (dict): callback track			
+			data (dict): callback data			
 			optimizer (Optimizer): callback optimizer
 		Returns:
 			status (int): status of callback
 		'''
 		status = self.callback(
 			parameters=parameters,
-			track=track,
+			data=data,
 			optimizer=optimizer,
 			model=self.model,
 			metric=self.metric,
@@ -994,17 +994,17 @@ class Callback(Function):
 		return
 
 	# @partial(jit,static_argnums=(0,))
-	def __call__(self,parameters,track,optimizer):
+	def __call__(self,parameters,data,optimizer):
 		''' 
 		Callback
 		Args:
 			parameters (array): parameters
-			track (dict): callback tracking
+			data (dict): callback tracking
 			optimizer (Optimizer): callback optimizer
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.__callback__(parameters,track,optimizer)
+		status = self.__callback__(parameters,data,optimizer)
 		return status
 
 
@@ -1275,10 +1275,10 @@ class Optimization(System):
 			'clear':True,
 			'cwd':None,
 			'path':None,
-			'modulo':{'log':None,'buffer':None,'attributes':None,'track':None,'callback':None,'alpha':None,'beta':None,'dump':None},
-			'length':{'log':None,'buffer':1,'attributes':5,'track':None,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'modulo':{'log':None,'buffer':None,'attributes':None,'data':None,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'length':{'log':None,'buffer':1,'attributes':5,'data':None,'callback':None,'alpha':None,'beta':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
-			'track':{},		
+			'data':{},		
 		}
 
 		setter(hyperparameters,defaults,delimiter=None,default=False)
@@ -1314,7 +1314,7 @@ class Optimization(System):
 		self.modulo = hyperparameters['modulo']
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
-		self.track = hyperparameters['track']
+		self.data = hyperparameters['data']
 		self.iterations = hyperparameters['iterations']
 		self.sizes = {attr: hyperparameters['length'].get(attr) if hyperparameters['length'].get(attr) else 1 for attr in ['buffer','attributes']}
 		self.search = hyperparameters['search']
@@ -1323,7 +1323,7 @@ class Optimization(System):
 		self.value = hyperparameters['value']
 		self.kwargs = hyperparameters['kwargs']
 
-		self.paths = {'track':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
+		self.paths = {'data':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
 
 		self.callback = callback
 
@@ -1434,9 +1434,9 @@ class Optimization(System):
 
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track		
+		data = self.data		
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 
@@ -1509,8 +1509,8 @@ class Optimization(System):
 		if not do:
 			return
 
-		path = self.paths['track']
-		data = self.track
+		path = self.paths['data']
+		data = self.data
 		dump(data,path)
 
 		path = self.paths['attributes']
@@ -1536,22 +1536,22 @@ class Optimization(System):
 			self.reset(initialize=False,clear=False,opt=opt)
 			return iteration,opt
 
-		path = self.paths['track']
+		path = self.paths['data']
 		data = load(path)
 
 		if data is not None:
 			for attr in data:
-				if attr not in self.track:
+				if attr not in self.data:
 					continue
-				self.track[attr] = [*data[attr],*self.track[attr]]
+				self.data[attr] = [*data[attr],*self.data[attr]]
 
 
-		size = max((len(self.track[attr]) for attr in self.track),default=0)
+		size = max((len(self.data[attr]) for attr in self.data),default=0)
 		default = nan
 
-		for attr in self.track:
-			data = [default for i in range(size-len(self.track[attr]))]
-			self.track[attr] = [*self.track[attr],*data]
+		for attr in self.data:
+			data = [default for i in range(size-len(self.data[attr]))]
+			self.data[attr] = [*self.data[attr],*data]
 
 
 		path = self.paths['attributes']
@@ -1596,21 +1596,21 @@ class Optimization(System):
 				self.attributes.pop(attr)
 			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.attributes[attr] = []
-		for attr in list(self.track):
-			value = self.track[attr]
+		for attr in list(self.data):
+			value = self.data[attr]
 			if ((not isinstance(value,list)) and (not value)):
-				self.track.pop(attr)
+				self.data.pop(attr)
 			elif ((not isinstance(value,list)) and (value)) or clear:
-				self.track[attr] = []
+				self.data[attr] = []
 
 		
 		objs = {'func.model':False,'hyperparameters':True}
-		for attr in list(self.track):
+		for attr in list(self.data):
 
 			if attr in self.attributes:
 				continue
 			
-			value = self.track.pop(attr)
+			value = self.data.pop(attr)
 			
 			for name in objs:
 
@@ -1631,12 +1631,12 @@ class Optimization(System):
 					if objs[name]:
 						attribute = delim.join([name,attribute])
 
-					self.track[attribute] = [*copy(value)]
+					self.data[attribute] = [*copy(value)]
 
 				if attribute is not None:
 					break
 				else:
-					self.track[attr] = [*copy(value)]
+					self.data[attr] = [*copy(value)]
 
 
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
@@ -1718,9 +1718,9 @@ class Optimization(System):
 		parameters = self.get_params(opt)	
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track
+		data = self.data
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		self.dump(iteration,opt)
 
@@ -1748,7 +1748,7 @@ class Optimization(System):
 
 			msg.append(string)
 
-		for attr in ['track','attributes']:
+		for attr in ['data','attributes']:
 			string = '%s %s: %s'%('Optimizer',attr,
 				{key: getattr(self,attr).get(key,[None])[-1] 
 				if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] 
@@ -1805,7 +1805,7 @@ class GradientDescent(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		defaults = {'data':{'beta':False},'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -1837,9 +1837,9 @@ class GradientDescent(Optimization):
 
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track		
+		data = self.data		
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 
@@ -1859,7 +1859,7 @@ class LineSearchDescent(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		defaults = {'data':{'beta':False},'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -1891,9 +1891,9 @@ class LineSearchDescent(Optimization):
 
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track		
+		data = self.data		
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 
@@ -1912,7 +1912,7 @@ class HessianDescent(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		defaults = {'data':{'beta':False},'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -1967,9 +1967,9 @@ class HessianDescent(Optimization):
 
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track		
+		data = self.data		
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 
@@ -2076,9 +2076,9 @@ class ConjugateGradient(Optimization):
 		
 			opt = self.opt_init(parameters)
 			parameters = self.get_params(opt)
-			track = self.track
+			data = self.data
 			optimizer = self
-			self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+			self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		parameters = self.get_params(opt)
 
@@ -2094,9 +2094,9 @@ class ConjugateGradient(Optimization):
 	
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track
+		data = self.data
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 
@@ -2116,7 +2116,7 @@ class Adam(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		defaults = {'data':{'beta':False},'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -2191,9 +2191,9 @@ class Adam(Optimization):
 
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
-		track = self.track		
+		data = self.data		
 		optimizer = self
-		self.status = self.callback(parameters=parameters,track=track,optimizer=optimizer)
+		self.status = self.callback(parameters=parameters,data=data,optimizer=optimizer)
 
 		return opt
 

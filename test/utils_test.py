@@ -12,11 +12,11 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-# os.environ['NUMPY_BACKEND'] = 'NUMPY'
+os.environ['NUMPY_BACKEND'] = 'JAX'
 
 
 from src.utils import np,onp,backend
-from src.utils import jit,partial
+from src.utils import jit,partial,vmap
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
@@ -1173,6 +1173,29 @@ def test_reshape(path=None,tol=None):
 
 	return
 
+def test_jax(path=None,tol=None):
+
+	shape = [3,2,4]
+	a = rand(shape=shape)
+
+	shape = [2,3,2]
+	b = rand(shape=shape)
+
+	kwargs = dict()
+
+	shape = [1,2,3]
+	option = rand(shape=shape)
+
+	def func(a,b,**kwargs):
+		return a*b.sum()
+
+	options = dict(in_axes=(None,0),out_axes=0)
+	func = vmap(func,**options)
+
+	print(func(a,b,**kwargs))
+
+	return
+
 
 
 
@@ -1192,10 +1215,11 @@ if __name__ == '__main__':
 	# test_shuffle(path,tol)	
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
-	test_action(path,tol)
+	# test_action(path,tol)
 	# test_inheritance(path,tol)
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
 	# test_structure(path,tol)
+	test_jax(path,tol)
