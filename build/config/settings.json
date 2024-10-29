@@ -5,26 +5,9 @@
 	"model":"src.quantum.Operators",
 	"state":"src.quantum.State"
 		},
-"module":{
-	"N":5,
-	"M":1,
-	"d":1,
-	"string":"module",
-	"lattice":"square",
-	"measure":{"string":"povm","base":"pauli","architecture":"tensor","options":{"cyclic":false}},
-	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
-},
+"module":{},
 "model":{
-	"data":{
-		"xx":{
-			"operator":["X","X"],"site":"<ij>","string":"XX",
-			"parameters":0.5,"variable":false
-		},				
-		"noise":{
-			"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
-			"parameters":1e-3,"variable":false
-		}
-	},
+	"data":{},
 	"N":null,
 	"M":null,
 	"D":2,
@@ -34,16 +17,7 @@
 	"time":"linear",
 	"lattice":"square"
 	},
-"state": {
-	"operator":["zero"],
-	"site":null,
-	"string":"psi",
-	"parameters":null,
-	"N":null,
-	"D":2,
-	"ndim":2,
-	"local":null
-	},
+"state": {},
 "system":{
 	"dtype":"complex",
 	"format":"array",

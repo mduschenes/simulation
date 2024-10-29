@@ -2804,7 +2804,7 @@ if backend in ['jax']:
 		if seed is None or isinstance(seed,integers):
 			seed = seeded(seed)
 		else:
-			seed = asndarray(seed,dtype=uint)
+			seed = generator.wrap_key_data(asarray(seed,dtype=uint))
 
 		if size:
 			key = generator.split(seed,num=size)

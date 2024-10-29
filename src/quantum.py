@@ -54,7 +54,6 @@ class Basis(Dict):
 		ndim = None,
 		dtype = None,
 
-		key = None,
 		seed = None,
 		random = None,
 		bounds = [-1,1],
@@ -429,7 +428,7 @@ class Basis(Dict):
 			shape=kwargs.shape,
 			random=kwargs.random,
 			bounds=kwargs.bounds,
-			key=kwargs.key if kwargs.key is not None else kwargs.seed,
+			seed=kwargs.seed,
 			dtype=kwargs.dtype)
 		if data is not None and data.ndim == 1:
 			data /= sqrt(inner(data,data))
@@ -497,7 +496,7 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = haar(
 			shape=kwargs.shape,
-			key=kwargs.key if kwargs.key is not None else kwargs.seed,
+			seed=kwargs.seed,
 			dtype=kwargs.dtype)
 		return data
 
@@ -1665,12 +1664,12 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)
+		func = lambda data: real(data)/(log(self.D**N) if self.D is not None and N is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1693,7 +1692,7 @@ class Measure(System):
 			state = state.copy()
 
 			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1732,12 +1731,12 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data) 
+		func = lambda data: real(data)/(log(self.K**N) if self.K is not None and N is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1755,7 +1754,7 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) else range(where) if where is not None else range(N)))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2670,7 +2669,6 @@ class Object(System):
 					(isinstance(self.operator,str) and not self.operator.count(delim))
 				),"Inconsistent operator %r, dimension %r"%(self.operator,[Basis.dimension(self.basis.get(i),**options) for i in (self.operator if isinstance(self.operator,iterables) else [self.operator])])
 
-
 			data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 			_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
@@ -2683,6 +2681,7 @@ class Object(System):
 			axes = [[i] for i in axes] if data is not None else None
 			ndim = ndim if data is not None else None
 			dtype = dtype
+
 			data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in data] if data is not None else None
 			_data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in _data] if data is not None else None
 
@@ -5771,12 +5770,20 @@ class Module(System):
 
 			locality = len(where)
 
+
+			keywords = dict(verbose=False)
+
+			state = self.state.__class__(**{**self.state,**keywords})
+
+
 			keywords = {model:dict(
-				state=self.state @ locality,
-				site=[where.index(i) for i in model.site]
+				state=state @ locality,
+				site=[where.index(i) for i in model.site],
+				verbose=False,
 				) for model in self.model[index]}
 
 			model = [wrapper(model.__class__(**{**model,**keywords[model]})) for model in self.model[index]]
+
 
 			def model(parameters,state,model=model,**kwargs):
 				for func in model:
@@ -5815,16 +5822,12 @@ class Module(System):
 		# Functions
 
 		data = self.data
-		options = []
-		for index in self.model:
-			options.append(Dictionary())
-			for model in self.model[index]:
-				options[index].update({attr:getattr(model,attr,default) for attr,default in dict(seed=None).items()})
+		options = {}
 
 		def func(parameters,state,options=options,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
-			kwargs = [Dictionary(**{**options[i],**kwargs}) for i in range(len(self.data))]
+			kwargs = [Dictionary(**{**dict(seed=None,options=options),**kwargs}) for i in range(len(self.data))]
 			for i in range(len(self.data)):
 				kwargs[i].seed = seeder(kwargs[i].seed)
 			for l in range(self.M):
@@ -6657,12 +6660,14 @@ class Callback(System):
 
 
 class Callback(System):
-	def __init__(self,*args,attributes={},**kwargs):
+	def __init__(self,*args,attributes=None,keywords=None,options=None,**kwargs):
 		'''	
 		Class for callback
 		Args:
 			attributes (dict): Attributes for callback
 			args (tuple): Class arguments
+			keywords (dict): Class keyword arguments
+			options (dict): Class keyword arguments
 			kwargs (dict): Class keyword arguments
 		'''
 
@@ -6673,7 +6678,22 @@ class Callback(System):
 		else:
 			attributes = {attr:attributes[attr] for attr in attributes}
 
-		setter(kwargs,dict(attributes=attributes),delimiter=delim,default=False)
+		if keywords is None:
+			keywords = {attr: {} for attr in attributes}
+		elif any(attr in keywords for attr in attributes):
+			keywords = {attr: keywords.get(attr,{}) for attr in attributes}
+		else:
+			keywords = {attr: {**keywords} for attr in attributes}
+
+		if options is None:
+			options = {attr: {} for attr in attributes}
+		elif any(attr in options for attr in attributes):
+			options = {attr: options.get(attr,{}) for attr in attributes}
+		else:
+			options = {attr: {**options} for attr in attributes}
+
+
+		setter(kwargs,dict(attributes=attributes,keywords=keywords,options=options),delimiter=delim,default=False)
 
 		super().__init__(*args,**kwargs)
 
@@ -6695,7 +6715,7 @@ class Callback(System):
 
 		attributes = {attr:self.attributes[attr] 
 			for attr in self.attributes 
-			if hasattrs(model,self.attributes[attr]) or hasattrs(optimizer,self.attributes[attr]) or attr in ['noise.parameters']
+			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
 			}
 
 		status = True
@@ -6713,15 +6733,20 @@ class Callback(System):
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.pure'
 				]:
+				
+				keywords = self.keywords.get(attr,{})
+
 				options = {
-					**{attr: model.options[attr] for attr in model.options}
+					**{key: model.options[key] for key in model.options}
 					} if model.options is not None else {}
 				other = {
 					**options,
-					**{attr: getattr(self,attr) for attr in options if hasattr(self,attr)},
-					**{attr: self.options.get(attr) for attr in options if self.options is not None and attr in self.options},
-					**{attr: kwargs.get(attr) for attr in kwargs if attr in options},
+					**{key: getattr(self,key) for key in options if hasattr(self,key)},
+					**{key: self.options.get(attr,[]).get(key) for key in options if self.options is not None and key in self.options},
+					**{key: kwargs.get(key) for key in kwargs if key in options},
 					}
+
+
 				if attr in [
 					'objective','infidelity',
 					'infidelity.quantum','infidelity.classical','infidelity.pure',
@@ -6729,8 +6754,8 @@ class Callback(System):
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
 						state=model(parameters=parameters,state=state,options=options),
-						other=model(parameters=parameters,state=state,options=other)
-						)
+						other=model(parameters=parameters,state=state,options=other),
+						**keywords)
 				elif attr in [
 					'norm','trace',
 					'norm.quantum','norm.classical','norm.pure',
@@ -6738,14 +6763,16 @@ class Callback(System):
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
-						state=model(parameters=parameters,state=state,options=options)
-						)
+						state=model(parameters=parameters,state=state,options=options),
+						**keywords)
 
 			elif attr in ['noise.parameters']:
 
 				value = getattr(model,'model',model)
 
-				value = [value.data[i].parameters() for i in value.data if not value.data[i].unitary and not value.data[i].hermitian]
+				value = [model.parameters() for index in value for model in value[index] if not model.unitary and not model.hermitian]
+
+				value = value[0] if value else None
 
 			elif hasattrs(model,attributes[attr],delimiter=delim):
 
@@ -6770,7 +6797,7 @@ class Callback(System):
 		if logging:
 
 			msg = '\n'.join([
-				'%d f(x) = %s'%(optimizer.iteration,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None),
+				'%r f(x) = %s'%(optimizer.iteration if optimizer is not None else None,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None),
 				'|x| = %s'%('%0.4e'%(norm(parameters)) if parameters is not None else None),
 				])
 
