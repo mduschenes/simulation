@@ -6248,7 +6248,7 @@ class Callback(System):
 			track (dict): data tracking
 			optimizer (Optimizer): optimizer
 			model (object): Model instance
-			metric (str,callable): Callback metric
+			metric (str,callable): metric
 			func (callable): Objective function with signature func(parameters)
 			grad (callable): Objective gradient with signature grad(parameters)
 		Returns:
@@ -6778,20 +6778,8 @@ class Callback(System):
 		if logging:
 
 			msg = '\n'.join([
-				'%d f(x) = %s'%(optimizer.iteration,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None,
-				),
+				'%d f(x) = %s'%(optimizer.iteration,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None),
 				'|x| = %s'%('%0.4e'%(norm(parameters)) if parameters is not None else None),
-				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
-				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
-				# 	for attr in attributes}),
-				# 'track: \t %s'%({attr: attributes[attr][-1].dtype 
-				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
-				# 	for attr in attributes}),				
-				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters=parameters,state=state,**kwargs)).round(4)),
-				# 	to_string((metric.label()).round(4))),
 				])
 
 

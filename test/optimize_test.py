@@ -122,7 +122,7 @@ def test_optimizer(path,tol):
 
 	parameters = optimizer(parameters)
 
-	if all(isinstance(optimizer.data[attr],list) for attr in optimizer.data):
+	if all(isinstance(optimizer.data[attr],list) and optimizer.data[attr] for attr in optimizer.data):
 		value = optimizer.data['objective'][-1]
 		iteration = optimizer.data['iteration'][-1]
 		size = min(len(optimizer.data[attr]) for attr in optimizer.data)

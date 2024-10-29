@@ -18,7 +18,7 @@ os.environ['NUMPY_BACKEND'] = 'JAX'
 from src.utils import np,onp,backend
 from src.utils import jit,partial,vmap
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
-from src.utils import gradient,rand,eye,diag,sin,cos,prod
+from src.utils import gradient,rand,eye,diag,sin,cos,prod,maximum,minimum
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
 from src.utils import shuffle,swap,transpose,reshape
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
@@ -762,15 +762,15 @@ def test_shuffle(path=None,tol=None):
 
 	axes = ((1,0,n-1),)
 
-	b = shuffle(a,axes=axes,shape=shape,transform=True)
+	b = shuffle(a,axes=axes,shape=shape,transformation=True)
 
-	b = shuffle(a,axes=axes,shape=shape,transform=True)
+	b = shuffle(a,axes=axes,shape=shape,transformation=True)
 
-	b = shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)
+	b = shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)
 
-	assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %r,%r"%(d,s)
+	assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)), "Incorrect split and merge axis %r,%r"%(d,s)
 
-	assert allclose(shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
+	assert allclose(shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
 
 	print('Passed')
 
@@ -802,6 +802,8 @@ def test_concatenate(path=None,tol=None):
 		**{len(dimensions)+i:dimension[axis] for i,axis in enumerate(dimension)},
 		}
 
+	print(axes,shape)
+
 	U = [rand(shape=(*r,*(d[j][i] for j in range(k)),),dtype=dtype) for i in axis]
 	I = [rand(shape=(*r,*(d[j][i] for j in range(k)),),dtype=dtype) for i in _axis]
 
@@ -815,11 +817,18 @@ def test_concatenate(path=None,tol=None):
 
 	V = swap(Z,axes=axes,shape=shape,execute=True)
 
-	assert allclose(V,W), "Incorrect swap"
+	assert allclose(V,W), "Incorrect swap V != W"
+
+	print(maximum(abs2(V-W)))
 
 	V = swap(Z,axes=axes,shape=shape,execute=False)
 
-	assert allclose(V(Z),W), "Incorrect swap"
+
+
+	print(V(Z).shape,W.shape)
+	# print(W)	
+
+	assert allclose(V(Z),W), "Incorrect swap V(Z) != W"
 
 	
 	print('Passed')
@@ -895,10 +904,10 @@ def test_action(path=None,tol=None):
 
 			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
-				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transformation=True)),shape=shape,axes=axes,transformation=False)
 			elif state.ndim == 1:
 				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
-				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transformation=True)),shape=shape,axes=axes,transformation=False)
 
 		elif attr in ['exact']:
 
@@ -1077,7 +1086,7 @@ def test_groupby(path=None,tol=None):
 
 	key = ['hello','world']
 
-	sort = ['hello',lambda value: value['goodbye'][-1]]
+	sort = ['hello',lambda value,iterable: value['goodbye'][-1]]
 
 	for value in iterable:
 		print(value)
@@ -1085,9 +1094,9 @@ def test_groupby(path=None,tol=None):
 
 	iterable = groupby(iterable,key=key,sort=sort)
 
-	for key in iterable:
-		for value in iterable[key]:
-			print(value)
+	for key,value in iterable:
+		for i in value:
+			print(i)
 		print()
 	return
 
@@ -1213,7 +1222,7 @@ if __name__ == '__main__':
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_shuffle(path,tol)	
-	# test_concatenate(path,tol)
+	test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
 	# test_inheritance(path,tol)
@@ -1222,4 +1231,4 @@ if __name__ == '__main__':
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
 	# test_structure(path,tol)
-	test_jax(path,tol)
+	# test_jax(path,tol)

@@ -124,6 +124,8 @@ def test_err(path=None,tol=None):
 	eps = norm(a-b)/norm(b)
 	assert eps < tol,'%s: %r - %r = %0.3e < %0.1e'%(s,a,b,eps,tol)
 
+	print('Passed')
+
 	return
 
 

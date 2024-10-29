@@ -2927,7 +2927,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-		generator = rng
+		generator = orng
 
 		if seed is None or isinstance(seed,integers):
 			seed = seeded(seed)
@@ -2935,6 +2935,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed = asndarray(seed,dtype=uint)
 
 		if size:
+			bounds = [0,2**32]			
 			key = generator.randint(*bounds,size=size)
 		else:
 			key = seed
@@ -2955,9 +2956,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		if seed is None:
 			bounds = [0,2**32]
-			seed = rng.randint(*bounds)
+			seed = orng.randint(*bounds)
 
-		rng.seed(seed)
+		orng.seed(seed)
 		
 		key = seed
 
@@ -3392,7 +3393,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		
 		key = seeder(key)
 
-		generator = rng
+		generator = orng
 
 		bounds = bounding(bounds,dtype=dtype)
 
@@ -7791,7 +7792,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
 			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: reshape(transpose(a,sort))
-			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (transpose(reshape(func(a),shape),axes)))
+			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (transpose(reshape(func(a if not callable(obj) else obj(a)),shape),axes)))
 
 		def group(obj,axes,shape,shapes,ndim,ndims,n,sort):
 			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
@@ -7809,7 +7810,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
 			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
 			func = lambda a: a
-			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(a,shape),axes))))
+			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(a if not callable(obj) else obj(a),shape),axes))))
 
 	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 

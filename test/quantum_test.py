@@ -591,6 +591,8 @@ def test_copy(*args,**kwargs):
 		state = operator.state() if operator.state() is not None else operator.identity
 		kwargs = dict()
 
+		
+
 	return
 
 
@@ -2086,6 +2088,7 @@ def test_module(*args,**kwargs):
 		
 		for index in model.data:
 			model.data[index].init(**where[index])
+
 		model.init(state=module.state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=(module.state @ module.N)())
 

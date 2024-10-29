@@ -402,7 +402,7 @@ def curve_fit(func,x,y,**kwargs):
 	path = kwargs.pop('path',None)
 	verbose = kwargs.pop('verbose',None)
 	
-	def callback(parameters,track,optimizer,model,metric,func,grad):
+	def callback(parameters,data,optimizer,model,metric,func,grad,**kwargs):
 		attr = 'value'
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
