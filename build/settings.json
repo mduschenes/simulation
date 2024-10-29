@@ -18,7 +18,6 @@
 		"module.N":[4,5,6],		
 		"module.M":[1,2,5,10,20,50],
 
-		"module.lattice.structure":[">ij<"],
 		"module.measure.options":[{"cyclic":true}],
 		"module.options.max_bond":[null],
 		"module.options.cutoff":[0],
@@ -238,7 +237,9 @@
 		"infidelity.pure":"measure.infidelity_pure",
 		"norm.quantum":"measure.norm_quantum",
 		"norm.classical":"measure.norm_classical",
-		"norm.pure":"measure.norm_pure"
+		"norm.pure":"measure.norm_pure",
+		"entanglement.quantum":"measure.entanglement_quantum",
+		"entanglement.classical":"measure.entanglement_classical"
 	},
 	"options":{"contract":true,"max_bond":null,"cutoff":0}
 },

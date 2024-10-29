@@ -1086,7 +1086,7 @@ def test_groupby(path=None,tol=None):
 
 	key = ['hello','world']
 
-	sort = ['hello',lambda value,iterable: value['goodbye'][-1]]
+	sort = ['hello',"src.functions.test_by_key"]
 
 	for value in iterable:
 		print(value)
@@ -1098,6 +1098,8 @@ def test_groupby(path=None,tol=None):
 		for i in value:
 			print(i)
 		print()
+
+	print('Passed')
 	return
 
 def test_structure(path=None,tol=None):
@@ -1222,13 +1224,13 @@ if __name__ == '__main__':
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_shuffle(path,tol)	
-	test_concatenate(path,tol)
+	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
 	# test_inheritance(path,tol)
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_seed(path,tol)
-	# test_groupby(path,tol)
+	test_groupby(path,tol)
 	# test_structure(path,tol)
 	# test_jax(path,tol)
