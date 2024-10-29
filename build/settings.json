@@ -7,7 +7,7 @@
 	},
 "seed":{
 	"seed":null,
-	"size":3,
+	"size":5,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -15,50 +15,50 @@
 "permutations":{
 	"permutations":{	
 
-		"module.N":[4,5,6],		
+		"module.N":[4,6,8],
 		"module.M":[1,2,5,10,20,50],
-
-		"module.measure.options":[{"cyclic":true}],
-		"module.options.max_bond":[null],
-		"module.options.cutoff":[0],
-		
+		"model.N":[4],
+		"model.M":[1],
 		"model.D":[2],
 		"model.local":[true],
-		"model.layout":[{"site":null}],
-		"model.options.shape":[[2,2,2]],
+		"model.configuration":[{
+			"key":["src.functions.key"],
+			"sort":null,
+			"reverse":false
+			}],
+		
+		"module.measure.string":["pauli"],
+		"module.measure.operator":["pauli"],
+		"module.measure.architecture":["tensor"],
+		"module.measure.D":[2],		
+		"module.measure.options":[{"cyclic":false}],
+		"module.options.max_bond":[null],
+		"module.options.max_bond":[2,3,4,6,8,16,32,64],
+		"module.options.cutoff":[0],
+		"module.configuration":[{
+			"key":["src.functions.key"],
+			"sort":null,
+			"reverse":false
+			}],
 
-		"model.data.xx.operator":[["X","X"]],
-		"model.data.xx.parameters":["random"],
-		"model.data.xx.site":[null],
 
-		"model.data.noise.operator":["phase"],
+		"model.data.unitary.operator":["haar"],
+		"model.data.unitary.parameters":[null],
+		"model.data.unitary.site":["|ij|"],
+
+		"model.data.noise.operator":[["depolarize","depolarize"]],
 		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.site":[null],
+		"model.data.noise.site":["|ij|"],
 
 		"state.string":["psi"],
-		"state.operator":[["zero"]],
-		"state.local":[true],
+		"state.operator":["zero"],
+		"state.local":[false],
 		"state.D":[2],
 		"state.ndim":[2],
 		"state.parameters":[null],
 
-		"jobs.job.cwd":["data"],
-		"jobs.postprocess.cwd":["data"],
-
-		"module.N":[6],
-		"module.M":[4,8,16,32,64,128,256],
-		"model.data.noise.parameters":[1e-8,1e-6,1e-4,1e-2,1e-1],
-		"module.options.max_bond":[2,3,4,6,8,16,32,64],
-
-		"module.N":[4,6,8],
-		"module.M":[4,8,16,32,64,128,256],
-		"model.data.noise.parameters":[1e-8,1e-6,1e-4,1e-2,1e-1],
-		"module.options.max_bond":[2,3,4,6,8,16,32,64],		
-
-		"module.N":[4],
-		"module.M":[4],
-		"model.data.noise.parameters":[1e-8],
-		"module.options.max_bond":[2],				
+		"jobs.job.cwd":["scratch/povm/entanglement.test"],
+		"jobs.postprocess.cwd":["scratch/povm/entanglement.test"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -94,7 +94,6 @@
 	},
 "cls":{
 	"module":"src.quantum.Module",
-	"measure":"src.quantum.Measure",
 	"model":"src.quantum.Operators",
 	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"	
@@ -102,32 +101,31 @@
 "module":{
 	"N":5,
 	"M":4,
-	"d":1,
 	"string":"module",
-	"lattice":{"lattice":"square","structure":"<ij>"},
-	"measure":{"string":"povm","operator":"pauli","architecture":"tensor","options":{"cyclic":true}},
+	"measure":{"string":"povm","operator":"pauli","architecture":"tensor","options":{"cyclic":false}},
+	"configuration":{},
 	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
 },
 "model":{
 	"data":{
-		"xx":{
-			"operator":["X","X"],"site":"<ij>","string":"XX",
-			"parameters":0.5,"variable":false
+		"unitary":{
+			"operator":"haar","site":"|ij|","string":"unitary",
+			"parameters":null,"variable":false,"seed":null
 		},				
 		"noise":{
-			"operator":["dephase","dephase"],"site":"<ij>","string":"dephase",
+			"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
 			"parameters":1e-8,"variable":false
 		}
 	},
-	"N":null,
-	"M":null,
+	"N":4,
+	"M":1,
 	"D":2,
 	"d":1,
 	"local":true,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"seed":null	
+	"seed":null
 	},
 "state": {
 	"operator":["zero"],
@@ -241,6 +239,7 @@
 		"entanglement.quantum":"measure.entanglement_quantum",
 		"entanglement.classical":"measure.entanglement_classical"
 	},
+	"keywords": {"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5}},
 	"options":{"contract":true,"max_bond":null,"cutoff":0}
 },
 "process": {},
