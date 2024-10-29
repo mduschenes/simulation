@@ -22,7 +22,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"max_bond": null,"cyclic": true,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -308,7 +308,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -600,7 +600,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -892,7 +892,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -1186,7 +1186,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -1478,7 +1478,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -1770,7 +1770,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -2064,7 +2064,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -2375,7 +2375,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -2686,7 +2686,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -2999,7 +2999,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -3291,7 +3291,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -3583,7 +3583,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -3877,7 +3877,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -4169,7 +4169,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -4461,7 +4461,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -4755,7 +4755,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -5066,7 +5066,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -5377,7 +5377,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -5690,7 +5690,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -5982,7 +5982,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -6274,7 +6274,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -6568,7 +6568,7 @@
 						"label": {
 							"label": {
 								"N": 4,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -6860,7 +6860,7 @@
 						"label": {
 							"label": {
 								"N": 6,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
@@ -7152,7 +7152,7 @@
 						"label": {
 							"label": {
 								"N": 8,
-								"max_bond": null,
+								"max_bond": null,"cyclic": true,
 								"noise.parameters": null
 							},
 							"labels": {
