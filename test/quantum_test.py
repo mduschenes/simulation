@@ -522,7 +522,7 @@ def test_copy(*args,**kwargs):
 
 	kwargs = {
 		"operator.N":[3],"operator.D":[2],"operator.local":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"state.N":[3],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		}	
 
 	groups = None
@@ -538,7 +538,7 @@ def test_copy(*args,**kwargs):
 			"state":"src.quantum.State",
 			},
 		"operator":{
-				"data":None,"operator":["X","X"],"site":[0,2],"string":None,
+				"data":None,"operator":"haar","site":[0,2],"string":None,
 				"N":3,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
 				"parameters":0.5
 			},		
@@ -572,7 +572,7 @@ def test_copy(*args,**kwargs):
 
 		data[index] = {}
 
-		verbose = False
+		verbose = True
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -581,17 +581,52 @@ def test_copy(*args,**kwargs):
 		setter(settings,kwargs,delimiter=delim,default="replace")
 		system = settings.system
 
+		# State
+		state = load(settings.cls.state)		
+		state = state(**{**settings.state,**dict(system=system)})
+		
 		# Operator
 		operator = load(settings.cls.operator)		
 		operator = operator(**{**settings.operator,**dict(system=system)})
-		
+		operator.init(state=state)
+
 		operator.info(verbose=verbose)
 
 		parameters = operator.parameters()
 		state = operator.state() if operator.state() is not None else operator.identity
 		kwargs = dict()
 
+		tmp = operator(parameters=parameters,state=state)
+
+
+		# State
+		_state = load(settings.cls.state)		
+		_state = _state(**{**settings.state,**dict(system=system)})
 		
+		# _Operator
+		_operator = load(settings.cls.operator)		
+		_operator = _operator(**operator)
+		# _operator.init(state=_state)
+
+		_operator.info(verbose=verbose)
+
+		_parameters = _operator.parameters()
+		_state = _operator.state() if _operator.state() is not None else _operator.identity
+		kwargs = dict()
+
+		_tmp = _operator(parameters=_parameters,state=_state)
+
+		print(parse(tmp))
+		print(parse(_tmp))
+
+		assert allclose(tmp,_tmp), "Incorrect Object copy"
+
+	print('Passed')
+
+	return
+
+
+
 
 	return
 
@@ -2062,7 +2097,7 @@ def test_module(*args,**kwargs):
 		state = state(**{**settings.state[0],**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
-		where = {index:dict(site=model.data[index].site) for index in model.data}
+		# where = {index:dict(site=model.data[index].site) for index in model.data}
 
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
@@ -2086,8 +2121,8 @@ def test_module(*args,**kwargs):
 		
 		tmp = value
 		
-		for index in model.data:
-			model.data[index].init(**where[index])
+		# for index in model.data:
+		# 	model.data[index].init(**where[index])
 
 		model.init(state=module.state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=(module.state @ module.N)())
@@ -2116,7 +2151,7 @@ if __name__ == "__main__":
 	# test_operator(*args,**args)
 	# test_null(*args,**args)
 	# test_data(*args,**args)
-	test_copy(*args,**args)
+	# test_copy(*args,**args)
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_random(*args,**args)
@@ -2127,4 +2162,4 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_calculate(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)

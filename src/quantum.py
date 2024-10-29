@@ -5747,7 +5747,6 @@ class Module(System):
 		options = self.options if self.options is not None else {}
 
 		boolean = lambda model: ((model is not None) and (not model.null()))
-		copy = {}
 
 		if self.architecture is None:
 			wrapper = jit
@@ -5767,19 +5766,17 @@ class Module(System):
 			if not self.model[index]:
 				continue
 
-			copy[index] = [{attr:getattr(model,attr,default) if default is None else default for attr,default in dict(site=None,state=False,seed=None).items()} for model in self.model[index]]
-
 			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 			locality = len(where)
 
-			for model in self.model[index]:
-				site = [where.index(i) for i in model.site]
-				state = self.state @ locality
-				model.init(site=site,state=state)
+			keywords = {model:dict(
+				state=self.state @ locality,
+				site=[where.index(i) for i in model.site]
+				) for model in self.model[index]}
 
-			model = [wrapper(model) for model in self.model[index]]
+			model = [wrapper(model.__class__(**{**model,**keywords[model]})) for model in self.model[index]]
 
 			def model(parameters,state,model=model,**kwargs):
 				for func in model:
@@ -5851,11 +5848,6 @@ class Module(System):
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
-
-
-		# for index in self.model:
-		# 	for model,kwargs in zip(self.model[index],copy[index]):
-		# 		model.init(**kwargs)
 
 		return
 
