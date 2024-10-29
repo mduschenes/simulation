@@ -114,14 +114,15 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 4
+					"ticks": 5
 				},
 				"set_ticklabels": {
 					"ticklabels": [
 						1e-12,
 						1e-08,
 						0.0001,
-						0.01
+						0.01,
+						1
 					],
 					"size": 50
 				},
@@ -399,14 +400,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -691,14 +693,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -983,14 +986,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -1277,14 +1281,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -1569,14 +1574,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -1861,14 +1867,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -3093,14 +3100,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -3385,14 +3393,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -3677,14 +3686,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -3971,14 +3981,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -4263,14 +4274,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -4555,14 +4567,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -5787,14 +5800,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -6079,14 +6093,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -6371,14 +6386,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -6665,14 +6681,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -6957,14 +6974,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
@@ -7249,14 +7267,15 @@
 						"size": 30
 					},
 					"set_ticks": {
-						"ticks": 4
+						"ticks": 5
 					},
 					"set_ticklabels": {
 						"ticklabels": [
 							1e-12,
 							1e-08,
 							0.0001,
-							0.01
+							0.01,
+							1
 						],
 						"size": 50
 					},
