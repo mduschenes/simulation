@@ -2333,7 +2333,7 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
+					"ncols": 3,
 					"index": 1
 				},
 				"share": {
@@ -2644,8 +2644,8 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
-					"index": 1
+					"ncols": 3,
+					"index": 2
 				},
 				"share": {
 					"ax": {
@@ -2955,8 +2955,8 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
-					"index": 1
+					"ncols": 3,
+					"index": 3
 				},
 				"share": {
 					"ax": {
@@ -5024,7 +5024,7 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
+					"ncols": 3,
 					"index": 1
 				},
 				"share": {
@@ -5335,8 +5335,8 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
-					"index": 1
+					"ncols": 3,
+					"index": 2
 				},
 				"share": {
 					"ax": {
@@ -5646,8 +5646,8 @@
 				},
 				"layout": {
 					"nrows": 1,
-					"ncols": 1,
-					"index": 1
+					"ncols": 3,
+					"index": 3
 				},
 				"share": {
 					"ax": {
