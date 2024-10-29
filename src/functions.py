@@ -402,6 +402,10 @@ def key(value,iterable):
 	return (value.site[0]%2,value.site[0],-value.locality)
 
 
+def key_test(value,iterable):
+	return (value.site[0],-value.locality)
+
+
 def test_by_key(value,iterable):
 	return value['goodbye'][-1]
 
