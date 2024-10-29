@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import intersection,scalars,copy
 from src.io import cd,mkdir,glob,join,split,load,dump,exists,basedir,environ
 from src.iterables import setter
-from src.parallel import Parallelize,Pooler
+# from src.parallel import Parallelize,Pooler
 
 # Logging
 from src.logger	import Logger
@@ -1391,13 +1391,17 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	)
 	callback_kwds = {'keys':keys}
 
-	parallelize = Pooler(processes)
+	for key in iterable:
+		task = init(key,**kwds)
+		callback(task,key,keys)
 
-	parallelize(
-		iterable,init,
-		callback=callback,
-		kwds=kwds,callback_kwds=callback_kwds
-		)
+	# parallelize = Pooler(processes)
+
+	# parallelize(
+	# 	iterable,init,
+	# 	callback=callback,
+	# 	kwds=kwds,callback_kwds=callback_kwds
+	# 	)
 
 	def booleans(key,keys):
 		boolean = keys[key] and keys[key]['boolean']
