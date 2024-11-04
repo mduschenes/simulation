@@ -822,7 +822,7 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = basis.dtype
 
-		inverse = inv(einsum('u...,v...->uv',basis,basis))
+		inverse = inv(einsum('u...,v...->uv',conjugate(basis),basis))
 		ones = array([1 for i in range(K)],dtype=dtype)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
@@ -1083,6 +1083,7 @@ class Measure(System):
 				state = state
 
 			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**(self.options if self.options is not None else dict())}
+			
 			state = mps(state,**options)
 
 		return state
@@ -1213,14 +1214,18 @@ class Measure(System):
 				shuffler = shuffle(**options) if where is not None else lambda state:state
 				_shuffler = shuffle(**_options) if where is not None else lambda state:state
 					
-				options = dict()
+				options = {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
 					return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
 
 			else:
+
+				basis = self.basis
+				inverse = self.inverse
+				options = {}
 			
-				def func(parameters,state,where=where,**kwargs):
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 
 		elif self.architecture in ['tensor']:
@@ -1242,20 +1247,25 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 
-				options = dict()
+				options = {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
 					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
 		
 			else:
-				def func(parameters,state,where=where,**kwargs):
-					return None
+				
+				basis = self.basis
+				inverse = self.inverse
+				options = {}
+			
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+					return None				
 
 		parameters = self.parameters() if parameters is None else parameters
 		wrapper = partial
 		kwargs = dict()
 
-		func = wrapper(func,parameters=parameters,**kwargs)
+		func = wrapper(func,parameters=parameters,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs)
 
 		return func
 
@@ -1615,7 +1625,9 @@ class Measure(System):
 			N = state.L
 			where = where if where is not None else range(N)
 			options = dict(contraction=True)
-
+	
+			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
+			
 			for i in where:
 				with context(self.inverse,key=i):
 					state &= self.inverse
@@ -5782,13 +5794,12 @@ class Module(System):
 				verbose=False,
 				) for model in self.model[index]}
 
-			model = [wrapper(model.__class__(**{**model,**keywords[model]})) for model in self.model[index]]
-
+			model = [wrapper(model.__class__(**{**model,**keywords[model]}),parameters=model.parameters()) for model in self.model[index]]
 
 			def model(parameters,state,model=model,**kwargs):
 				for func in model:
 					state = func(parameters=parameters,state=state,**kwargs)
-				return state			
+				return state		
 
 			parameters = measure.parameters()
 			state = [self.state]*locality
@@ -5822,7 +5833,7 @@ class Module(System):
 		# Functions
 
 		data = self.data
-		options = {}
+		options = self.options
 
 		def func(parameters,state,options=options,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
@@ -6770,7 +6781,7 @@ class Callback(System):
 
 				value = getattr(model,'model',model)
 
-				value = [model.parameters() for index in value for model in value[index] if not model.unitary and not model.hermitian]
+				value = [value.data[index].parameters() for index in value.data if not value.data[index].unitary and not value.data[index].hermitian]
 
 				value = value[0] if value else None
 

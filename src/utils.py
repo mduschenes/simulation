@@ -2641,9 +2641,13 @@ def reduce(obj,where=None,**kwargs):
 		obj (object): Contraction of object
 	'''
 
+	obj = contract(obj)
+
+	where = getattr(obj,'inds',getattr(obj,'sites',None))
+
 	if where is None:
 		return obj
-	
+
 	for i in where:
 		options = dict(ind=i) 
 		obj = obj.sum_reduce(**{**kwargs,**options})
@@ -7472,6 +7476,8 @@ def sortby(iterable,key=None,reverse=False):
 		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
 		return value
 
+	reverse = False if not reverse else True
+
 	if key is None:
 		key = None
 	elif callable(key) or not isinstance(key,iterables):
@@ -7513,6 +7519,8 @@ def groupby(iterable,key=None,sort=None,reverse=False):
 	def get(value,key,iterable):
 		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
 		return value
+
+	reverse = False if not reverse else True
 
 	if key is None:
 		key = None

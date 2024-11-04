@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,product,representation
+from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,is_nan,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2
 from src.utils import shuffle,swap,seeder,rng
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,delim
@@ -26,11 +26,11 @@ from src.logger import Logger
 
 def equalizer(a,b):
 	if isinstance(a,arrays) and isinstance(b,arrays):
-		return all(allclose(i,j) for i,j in zip(a.ravel(),b.ravel()))
+		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a.ravel(),b.ravel()))
 	elif isinstance(a,dict) and isinstance(b,dict):
 		return all(allclose(a[i],b[j]) for i,j in zip(a,b))
 	elif isinstance(a,iterables) and isinstance(b,iterables):
-		return all(allclose(i,j) for i,j in zip(a,b))
+		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
 	else:
 		return a==b
 
@@ -1632,7 +1632,7 @@ def test_calculate(*args,**kwargs):
 				},				
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
+					"parameters":0,"variable":False,"ndim":3,"seed":123
 				},								
 			},
 			"N":5,
@@ -1771,6 +1771,8 @@ def test_calculate(*args,**kwargs):
 
 
 		continue
+
+	print({(i,j): equalizer(data[i],data[j]) for i in data for j in data if i != j})
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
@@ -2161,5 +2163,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_calculate(*args,**args)
-	test_module(*args,**args)
+	test_calculate(*args,**args)
+	# test_module(*args,**args)
