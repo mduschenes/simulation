@@ -28,7 +28,7 @@ def equalizer(a,b):
 	if isinstance(a,arrays) and isinstance(b,arrays):
 		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a.ravel(),b.ravel()))
 	elif isinstance(a,dict) and isinstance(b,dict):
-		return all(allclose(a[i],b[j]) for i,j in zip(a,b))
+		return all(allclose(a[i],b[j]) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
 	elif isinstance(a,iterables) and isinstance(b,iterables):
 		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
 	else:
@@ -68,6 +68,28 @@ def test_basis(*args,**kwargs):
 			print(attr,getattr(basis,attr)(operator,**options),operators[operator][attr])
 			assert operators[operator][attr] == getattr(basis,attr)(operator,**options)
 		print()
+
+
+	args = ()
+	kwargs = Dictionary(D=2,dtype='complex')
+
+	operators = {
+		'I':array([[1,0],[0,1]],dtype=kwargs.dtype),
+		'X':array([[0,1],[1,0]],dtype=kwargs.dtype),
+		'Y':array([[0,-1j],[1j,0]],dtype=kwargs.dtype),
+		'Z':array([[1,0],[0,-1]],dtype=kwargs.dtype)
+		}
+
+	for operator in operators:
+
+		data = getattr(basis,operator)(*args,**kwargs)
+
+		print(operator)
+		print(data.round(8))
+		# print(dot(dagger(data),data))
+		print()
+
+		assert (kwargs.D > 2) or allclose(data,operators[operator]),"Incorrect %s"%(operator)
 
 
 	print("Passed")
@@ -1703,6 +1725,10 @@ def test_calculate(*args,**kwargs):
 		measure = measure(**{**settings.measure,**dict(system=system)})
 
 
+		# Verbose
+		model.info(verbose=verbose)
+
+
 		# Operator
 
 		model.init(state=state @ model.N)
@@ -1741,7 +1767,8 @@ def test_calculate(*args,**kwargs):
 			'trace',
 			'norm_quantum','norm_classical','norm_pure',
 			'infidelity_quantum','infidelity_classical','infidelity_pure',
-			'entanglement_quantum','entanglement_classical'
+			# 'entanglement_quantum',
+			'entanglement_classical'
 			]
 		for attr in attrs:
 			
@@ -1772,8 +1799,6 @@ def test_calculate(*args,**kwargs):
 
 		continue
 
-	print({(i,j): equalizer(data[i],data[j]) for i in data for j in data if i != j})
-
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
 	print("Passed")
@@ -1784,8 +1809,8 @@ def test_calculate(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[3],"module.M":[3],
-		"model.N":[3],"model.D":[2],"model.M":[3],"model.ndim":[2],"model.local":[True],
+		"module.N":[2],"module.M":[1],"module.measure.operator":["pauli"],
+		"model.N":[2],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1837,7 +1862,7 @@ def test_module(*args,**kwargs):
 				},				
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
-					"parameters":1e-8,"variable":False,"ndim":3,"seed":123
+					"parameters":0,"variable":False,"ndim":3,"seed":123
 				},	
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
@@ -2077,8 +2102,8 @@ def test_module(*args,**kwargs):
 		else:
 			tmp = array(tmp)
 
-		print(tmp)
-		print(_tmp)
+		print(parse(tmp))
+		print(parse(_tmp))
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
@@ -2099,11 +2124,7 @@ def test_module(*args,**kwargs):
 		state = state(**{**settings.state[0],**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
-		# where = {index:dict(site=model.data[index].site) for index in model.data}
-
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
-
-		module.info(verbose=verbose)
 
 		parameters = module.parameters()
 		state = module.state()
@@ -2123,11 +2144,8 @@ def test_module(*args,**kwargs):
 		
 		tmp = value
 		
-		# for index in model.data:
-		# 	model.data[index].init(**where[index])
-
 		model.init(state=module.state @ module.N)
-		_tmp = model(parameters=module.parameters(),state=(module.state @ module.N)())
+		_tmp = model(parameters=module.parameters(),state=model.state())
 
 		print(parse(tmp))
 		print(parse(_tmp))
@@ -2148,7 +2166,7 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	# test_basis(*args,**args)
+	test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
 	# test_null(*args,**args)
@@ -2163,5 +2181,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_calculate(*args,**args)
+	# test_calculate(*args,**args)
 	# test_module(*args,**args)

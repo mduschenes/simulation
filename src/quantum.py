@@ -442,28 +442,40 @@ class Basis(Dict):
 	@System.decorator
 	def I(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([[1,0],[0,1]],dtype=kwargs.dtype)
+		if kwargs.D is None:
+			data = array([[1,0],[0,1]],dtype=kwargs.dtype)
+		else:
+			data = sum(cls.element(D=kwargs.D,data='%d%d'%(i,i),dtype=kwargs.dtype) for i in range(kwargs.D))
 		return data
 
 	@classmethod
 	@System.decorator
 	def X(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([[0,1],[1,0]],dtype=kwargs.dtype)
+		if kwargs.D is None:
+			data = array([[0,1],[1,0]],dtype=kwargs.dtype)
+		else:
+			data = sum(cls.element(D=kwargs.D,data='%d%d'%((i+1)%kwargs.D,i),dtype=kwargs.dtype) for i in range(kwargs.D))
 		return data
 
 	@classmethod
 	@System.decorator
 	def Y(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)		
+		if kwargs.D is None:
+			data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)		
+		else:
+			data = -1j*dot(cls.Z(*args,**kwargs),cls.X(*args,**kwargs))
 		return data
 
 	@classmethod
 	@System.decorator	
 	def Z(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([[1,0],[0,-1]],dtype=kwargs.dtype)
+		if kwargs.D is None:
+			data = array([[1,0],[0,-1]],dtype=kwargs.dtype)
+		else:
+			data = sum((e**(1j*2*pi*i/kwargs.D))*cls.element(D=kwargs.D,data='%d%d'%(i,i),dtype=kwargs.dtype) for i in range(kwargs.D))
 		return data
 
 	# Gate
@@ -665,6 +677,14 @@ class Basis(Dict):
 		kwargs = Dictionary(**kwargs)
 		data = (1/(kwargs.D**2-1))*array([
 						 array([[1, 0],[0, 0]]),
+						 array([[0, 0],[0, 1]]),
+			(1/kwargs.D)*(array([[1,1],[1,1]])),
+			 ((1/kwargs.D)*array([[1,-1],[-1,1]])+
+			 (1/kwargs.D)*array([[1,1j],[-1j,1]])+
+			 (1/kwargs.D)*array([[1,-1j],[1j,1]]))
+			],dtype=kwargs.dtype)		
+		data = (1/(kwargs.D**2-1))*array([
+						 array([[1, 0],[0, 0]]),
 			(1/kwargs.D)*(array([[1,1],[1,1]])),
 			(1/kwargs.D)*(array([[1,-1j],[1j,1]])),
 						 (array([[0, 0],[0, 1]])+
@@ -698,7 +718,8 @@ class Basis(Dict):
 				1*array([[1,0],[0,1]]) + 
 				-sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
 				-sqrt(kwargs.D/(kwargs.D**2-1))*array([[0,-1j],[1j,0]])+
-				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]])
+				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
+
 				],dtype=kwargs.dtype)
 
 		return data
@@ -822,8 +843,14 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = basis.dtype
 
-		inverse = inv(einsum('u...,v...->uv',conjugate(basis),basis))
+		inverse = inv(einsum('u...,v...->uv',basis,basis))
 		ones = array([1 for i in range(K)],dtype=dtype)
+
+		print(self.operator)
+		print(basis)
+		print(12*einsum('u...,v...->uv',basis,basis))
+		print(inverse)
+		exit()
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
@@ -5781,7 +5808,6 @@ class Module(System):
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 			locality = len(where)
-
 
 			keywords = dict(verbose=False)
 
