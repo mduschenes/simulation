@@ -29,7 +29,7 @@
 							"max_bond": null
 						},
 						"wrapper": {
-							"objective": null, "y": null, "yerr": null
+							"objective": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 						},
 						"legend": {
 							"include": [
@@ -316,7 +316,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.classical": null, "y": null, "yerr": null
+								"infidelity.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -609,7 +609,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.classical": null, "y": null, "yerr": null
+								"infidelity.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -902,7 +902,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.classical": null, "y": null, "yerr": null
+								"infidelity.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -1197,7 +1197,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.classical": null, "y": null, "yerr": null
+								"norm.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -1490,7 +1490,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.classical": null, "y": null, "yerr": null
+								"norm.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -1783,7 +1783,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.classical": null, "y": null, "yerr": null
+								"norm.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -2078,7 +2078,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.classical": null, "y": null, "yerr": null
+								"entanglement.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -2390,7 +2390,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.classical": null, "y": null, "yerr": null
+								"entanglement.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -2702,7 +2702,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.classical": null, "y": null, "yerr": null
+								"entanglement.classical": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -3016,7 +3016,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.quantum": null, "y": null, "yerr": null
+								"infidelity.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -3309,7 +3309,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.quantum": null, "y": null, "yerr": null
+								"infidelity.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -3602,7 +3602,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.quantum": null, "y": null, "yerr": null
+								"infidelity.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -3897,7 +3897,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.quantum": null, "y": null, "yerr": null
+								"norm.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -4190,7 +4190,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.quantum": null, "y": null, "yerr": null
+								"norm.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -4483,7 +4483,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.quantum": null, "y": null, "yerr": null
+								"norm.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -4778,7 +4778,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.quantum": null, "y": null, "yerr": null
+								"entanglement.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -5090,7 +5090,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.quantum": null, "y": null, "yerr": null
+								"entanglement.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -5402,7 +5402,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"entanglement.quantum": null, "y": null, "yerr": null
+								"entanglement.quantum": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -5716,7 +5716,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.pure": null, "y": null, "yerr": null
+								"infidelity.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -6009,7 +6009,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.pure": null, "y": null, "yerr": null
+								"infidelity.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -6302,7 +6302,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"infidelity.pure": null, "y": null, "yerr": null
+								"infidelity.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -6597,7 +6597,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.pure": null, "y": null, "yerr": null
+								"norm.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -6890,7 +6890,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.pure": null, "y": null, "yerr": null
+								"norm.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [
@@ -7183,7 +7183,7 @@
 								"max_bond": null
 							},
 							"wrapper": {
-								"norm.pure": null, "y": null, "yerr": null
+								"norm.pure": "src.functions.func_objective", "y":"src.functions.func_y","yerr":"src.functions.func_yerr"
 							},
 							"legend": {
 								"include": [

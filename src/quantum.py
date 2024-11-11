@@ -985,7 +985,7 @@ class Measure(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','operator','K','ind','inds','tags','basis','data','inverse']:
+		for attr in [None,'string','key','seed','instance','instances','operator','K','ind','inds','tags','basis','data','inverse']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -6040,7 +6040,7 @@ class Module(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','N','M','measure','architecture','model','data']:
+		for attr in [None,'string','key','seed','instance','instances','N','M','measure','architecture','model','data']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
