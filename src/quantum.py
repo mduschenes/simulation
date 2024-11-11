@@ -675,22 +675,19 @@ class Basis(Dict):
 	@System.decorator
 	def pauli(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
+		
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+		
 		data = (1/(kwargs.D**2-1))*array([
-						 array([[1, 0],[0, 0]]),
-						 array([[0, 0],[0, 1]]),
-			(1/kwargs.D)*(array([[1,1],[1,1]])),
-			 ((1/kwargs.D)*array([[1,-1],[-1,1]])+
-			 (1/kwargs.D)*array([[1,1j],[-1j,1]])+
-			 (1/kwargs.D)*array([[1,-1j],[1j,1]]))
+				cls.zero(*args,**kwargs),
+				cls.plus(*args,**kwargs),
+				cls.plusi(*args,**kwargs),
+			   (cls.one(*args,**kwargs)+
+				cls.minus(*args,**kwargs)+
+				cls.minusi(*args,**kwargs)),
 			],dtype=kwargs.dtype)		
-		data = (1/(kwargs.D**2-1))*array([
-						 array([[1, 0],[0, 0]]),
-			(1/kwargs.D)*(array([[1,1],[1,1]])),
-			(1/kwargs.D)*(array([[1,-1j],[1j,1]])),
-						 (array([[0, 0],[0, 1]])+
-			 (1/kwargs.D)*array([[1,-1],[-1,1]])+
-			 (1/kwargs.D)*array([[1,1j],[-1j,1]]))
-			],dtype=kwargs.dtype)
+
 		return data
 
 
@@ -698,29 +695,21 @@ class Basis(Dict):
 	@System.decorator
 	def tetrad(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
+	
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+
 		data = (1/(kwargs.D**2))*array([
-
-				1*array([[1,0],[0,1]]) + 
-				0*array([[0,1],[1,0]])+
-				0*array([[0,-1j],[1j,0]])+
-				1*array([[1,0],[0,-1]]),
-
-				1*array([[1,0],[0,1]]) + 
-				kwargs.D*sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
-				0*array([[0,-1j],[1j,0]])+
-				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
-
-				1*array([[1,0],[0,1]]) + 
-				-sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
-				sqrt(kwargs.D/(kwargs.D**2-1))*array([[0,-1j],[1j,0]])+
-				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
-
-				1*array([[1,0],[0,1]]) + 
-				-sqrt(kwargs.D)/(kwargs.D**2-1)*array([[0,1],[1,0]])+
-				-sqrt(kwargs.D/(kwargs.D**2-1))*array([[0,-1j],[1j,0]])+
-				-1/(kwargs.D**2-1)*array([[1,0],[0,-1]]),
-
-				],dtype=kwargs.dtype)
+			sum(i*operator(*args,**kwargs)
+				for i,operator in 
+				zip(coefficient,(cls.I,cls.X,cls.Y,cls.Z)))
+			for coefficient in [
+			(1,0,0,1),
+			(1,2*sqrt(2)/3,0,-1/3),
+			(1,-sqrt(2)/3,sqrt(2/3),-1/3),
+			(1,-sqrt(2)/3,-sqrt(2/3),-1/3)
+			]
+			],dtype=kwargs.dtype)
 
 		return data
 
@@ -728,24 +717,36 @@ class Basis(Dict):
 	@System.decorator
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
+	
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+
 		data = (1/(kwargs.D**2-1))*array([
 										cls.I(D=kwargs.D,dtype=kwargs.dtype) + 
 			cos(i*2*pi/(kwargs.D**2-1))*cls.Z(D=kwargs.D,dtype=kwargs.dtype) + 
 			sin(i*2*pi/(kwargs.D**2-1))*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			for i in range(kwargs.D**2-1)
 			],dtype=kwargs.dtype)
+		
 		raise ValueError('Not Informationally Complete POVM <%s>'%(sys._getframe().f_code.co_name))
+		
 		return data
 
 	@classmethod
 	@System.decorator
 	def standard(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
+		
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2		
+
 		data = zeros((kwargs.D**2,kwargs.D**2),dtype=kwargs.dtype)
 		for i in range(kwargs.D**2):
 			data = inplace(data,(i,i),1)
 		data = data.reshape((kwargs.D**2,kwargs.D,kwargs.D))
+
 		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
+
 		return data
 
 
@@ -843,14 +844,8 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = basis.dtype
 
-		inverse = inv(einsum('u...,v...->uv',basis,basis))
+		inverse = inv(einsum('uij,vji->uv',basis,basis))
 		ones = array([1 for i in range(K)],dtype=dtype)
-
-		print(self.operator)
-		print(basis)
-		print(12*einsum('u...,v...->uv',basis,basis))
-		print(inverse)
-		exit()
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
@@ -1076,7 +1071,7 @@ class Measure(System):
 
 				data = state[i] if not callable(state[i]) else state[i]()
 
-				subscripts = 'uij,...ij->...u'
+				subscripts = 'uij,...ji->...u'
 				shapes = (self.basis.shape,data.shape)
 				einsummation = einsum(subscripts,*shapes)
 
@@ -1093,7 +1088,7 @@ class Measure(System):
 				for i in range(len(state)):
 
 					data = state[i] if not callable(state[i]) else state[i]()
-					inds = (*self.indices,)
+					inds = (*self.indices[::-1],)
 					tags = (self.tag,*self.tags,)
 
 					data = tensor(data=data,inds=inds,tags=tags)
@@ -1231,7 +1226,7 @@ class Measure(System):
 			
 			if model is not None and where:
 
-				subscripts = 'uij,wij,wv,v...->u...'
+				subscripts = 'uij,wji,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
@@ -1270,7 +1265,7 @@ class Measure(System):
 
 			if model is not None and where:
 			
-				subscripts = 'uij,wij,wv->uv'
+				subscripts = 'uij,wji,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 
@@ -4741,9 +4736,9 @@ class Objects(Object):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
-			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(self.data[i].seed)
+				kwargs[i].seed = seeder(kwargs[i].seed)
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
@@ -4761,9 +4756,9 @@ class Objects(Object):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(self.data[i].seed)	
+				kwargs[i].seed = seeder(kwargs[i].seed)	
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
@@ -5580,9 +5575,9 @@ class Operators(Objects):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
-			kwargs = [Dictionary(kwargs) for i in range(len(self.data))]
+			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(self.data[i].seed)
+				kwargs[i].seed = seeder(kwargs[i].seed)
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
@@ -5600,9 +5595,9 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
-			kwargs = [Dictionary(kwargs) for i in range(shape[1])]
+			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(self.data[i].seed)	
+				kwargs[i].seed = seeder(kwargs[i].seed)
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
@@ -5864,7 +5859,7 @@ class Module(System):
 		def func(parameters,state,options=options,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
-			kwargs = [Dictionary(**{**dict(seed=None,options=options),**kwargs}) for i in range(len(self.data))]
+			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
 			for i in range(len(self.data)):
 				kwargs[i].seed = seeder(kwargs[i].seed)
 			for l in range(self.M):

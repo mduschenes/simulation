@@ -1835,7 +1835,7 @@ def test_module(*args,**kwargs):
 			"M":1,
 			"string":"module",
 			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
+			"options":{"contract":False,"max_bond":None,"cutoff":0},
 			"configuration":{
 				"key":[lambda value,iterable: (
 					value.site[0]%2,value.site[0],
@@ -2046,6 +2046,9 @@ def test_module(*args,**kwargs):
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
+		print(parse(tmp))
+		print(parse(_tmp))
+
 		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
 
 		# Operator
@@ -2112,7 +2115,6 @@ def test_module(*args,**kwargs):
 		callback = load(settings.cls.callback)
 		callback = callback(**{**settings.callback,**dict(system=system)})
 
-
 		# Module
 		module = load(settings.cls.module)
 		model = load(settings.cls.model)		
@@ -2166,7 +2168,7 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	test_basis(*args,**args)
+ 	# test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
 	# test_null(*args,**args)
@@ -2182,4 +2184,4 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_calculate(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
