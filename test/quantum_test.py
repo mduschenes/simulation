@@ -1809,8 +1809,8 @@ def test_calculate(*args,**kwargs):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[1],"module.measure.operator":["pauli"],
-		"model.N":[2],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"module.N":[2],"module.M":[5],"module.measure.operator":["pauli"],
+		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1862,7 +1862,7 @@ def test_module(*args,**kwargs):
 				},				
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
-					"parameters":0,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123
 				},	
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
