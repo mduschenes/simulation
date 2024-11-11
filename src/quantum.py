@@ -6800,9 +6800,14 @@ class Callback(System):
 
 			elif attr in ['noise.parameters']:
 
-				value = getattr(model,'model',model)
+				if hasattr(model,'model'):
+					value = getattr(model,'model')
+					value = [model for index in value for model in value[index]]
+				else:
+					value = model.data
+					value = [value[index] for index in value]
 
-				value = [value.data[index].parameters() for index in value.data if not value.data[index].unitary and not value.data[index].hermitian]
+				value = [model.parameters() for model in value if not model.unitary and not model.hermitian]
 
 				value = value[0] if value else None
 
