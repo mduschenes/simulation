@@ -23,7 +23,7 @@ from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
-from src.io import load,dump,join,split
+from src.io import load,dump,join,split,exists
 
 from src.system import System,Space,Time,Lattice
 
@@ -6085,7 +6085,10 @@ class Module(System):
 		# Set callback
 		callback = self.callback if self.callback is not None else None
 
-		if callback is not None:
+		# Set do
+		do = callback is not None and not exists(path)
+
+		if do:
 			parameters = self.parameters()
 			state = self.state()
 			model = self
