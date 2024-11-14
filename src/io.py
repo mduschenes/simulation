@@ -838,9 +838,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 				def iterable(data):
-					return not isinstance(data,scalars) and data.size > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
+					return not isinstance(data,scalars) and getattr(data,'size',len(data)) > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
 				def scalar(data):
-					return isinstance(data,scalars) or data.size <= 1				
+					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1				
 				def func(path,data):
 					for attr in data:
 						if iterable(data[attr]):

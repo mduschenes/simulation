@@ -1085,7 +1085,6 @@ def loader(data,plots,processes,verbose=None):
 
 	if processes['load'] and not processes['reset']:
 
-
 		# Load plots
 		path = metadata
 		default = None
