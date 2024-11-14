@@ -238,10 +238,19 @@
 		"norm.classical":"measure.norm_classical",
 		"norm.pure":"measure.norm_pure",
 		"entanglement.quantum":"measure.entanglement_quantum",
-		"entanglement.classical":"measure.entanglement_classical"
+		"entanglement.classical":"measure.entanglement_classical",
+		"entanglement.renyi":"measure.entanglement_renyi",
+		"entangling.quantum":"measure.entangling_quantum",
+		"entangling.classical":"measure.entangling_classical",
+		"entangling.renyi":"measure.entangling_renyi"		
 	},
-	"keywords": {"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5}},
-	"options":{"contract":true,"max_bond":null,"cutoff":0}
+	"keywords": {
+		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5}
+	},
+	"options":{
+		"contract":true,"max_bond":null,"cutoff":0
+	}
 },
 "process": {},
 "plot": {}

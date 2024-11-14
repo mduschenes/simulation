@@ -1767,8 +1767,8 @@ def test_calculate(*args,**kwargs):
 			'trace',
 			'norm_quantum','norm_classical','norm_pure',
 			'infidelity_quantum','infidelity_classical','infidelity_pure',
-			# 'entanglement_quantum',
-			'entanglement_classical'
+			'entanglement_quantum','entanglement_classical','entanglement_renyi',
+			'etangling_quantum','etangling_classical','etangling_renyi',
 			]
 		for attr in attrs:
 			
@@ -1779,7 +1779,7 @@ def test_calculate(*args,**kwargs):
 						parameters=parameters,
 						state=other,
 						**kwargs)			
-			where = {attr:[i for i in range(model.N//2-1,model.N//2+2)] for attr in ['trace','entanglement_quantum','entanglement_classical']}.get(attr,None)
+			where = {attr:[i for i in range(model.N//2-1,model.N//2+2)] for attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','etangling_quantum','etangling_classical','etangling_renyi',]}.get(attr,None)
 			kwargs = {attr: dict(other=other) for attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]}.get(attr,dict())
 
 			obj = measure.calculate(attr,state=state,where=where,**kwargs)
@@ -2183,5 +2183,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_calculate(*args,**args)
-	test_module(*args,**args)
+	test_calculate(*args,**args)
+	# test_module(*args,**args)

@@ -17,6 +17,10 @@
         "M.norm.pure.noise.parameters.N": 1,        
         "M.entanglement.quantum.noise.parameters.N": 1,
         "M.entanglement.classical.noise.parameters.N": 1,
+        "M.entanglement.renyi.noise.parameters.N": 1,
+        "M.entangling.quantum.noise.parameters.N": 1,
+        "M.entangling.classical.noise.parameters.N": 1,
+        "M.entangling.renyi.noise.parameters.N": 1,                
         "M.noise.parameters.objective": 0
     },
     "texify": {

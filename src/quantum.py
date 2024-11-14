@@ -1528,7 +1528,7 @@ class Measure(System):
 			data (object): data
 		'''
 	
-		attr = 'norm_quantum'
+		attr = 'norm_classical'
 	
 		if hasattr(self,attr):
 			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
@@ -1677,7 +1677,7 @@ class Measure(System):
 			data (object): data
 		'''
 	
-		attr = 'entanglement_quantum'
+		attr = 'entanglement_classical'
 		
 		if hasattr(self,attr):
 			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
@@ -1807,9 +1807,9 @@ class Measure(System):
 
 		return data	
 
-	def entanglement_pure(self,parameters=None,state=None,where=None,**kwargs):
+	def entanglement_renyi(self,parameters=None,state=None,where=None,**kwargs):
 		'''
-		Entanglement Entropy (Classical) for POVM probability measure with respect to where
+		Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
@@ -1819,11 +1819,154 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data) 
+		func = lambda data: 1 - real(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			state = self.trace_pure(parameters=parameters,state=state,where=where,**kwargs)
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,inverse.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state,inverse,state)
+
+		elif self.architecture in ['tensor']:
+	
+			state = state.copy()
+			other = state.copy()
+
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			options = dict(contraction=True)
+	
+			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
+			
+			for i in where:
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+
+				state &= other
+
+				data = representation(state,**options)
+
+		data = func(data)
+
+		return data
+
+	def entangling(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entangling Power/Operator Entanglement Entropy for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+	
+		attr = 'entangling_renyi'
+		
+		if hasattr(self,attr):
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+		else:
+			data = state
+
+		return data
+
+	def entangling_quantum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entangling Power/Operator Entanglement Entropy (Quantum) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)/(log(self.D**N) if self.D is not None and N is not None else 1)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			data = eig(state,hermitian=self.hermitian)
+
+			options = Dictionary(**{**dict(eps=None),**kwargs})
+			size = data.size
+			count = nonzero(data,eps=options.eps)
+			indices = slice(size-count,size)
+
+			data = data[indices]
+
+			data = -addition(data*log(data))
+
+		elif self.architecture in ['tensor']:
+		
+			state = state.copy()
+
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
+
+			data = eig(state,hermitian=self.hermitian)
+
+			options = Dictionary(**{**dict(eps=None),**kwargs})
+			size = data.size
+			count = nonzero(data,eps=options.eps)
+			indices = slice(size-count,size)
+
+			data = data[indices]
+
+			data = -addition(data*log(data))
+		
+		data = func(data)
+
+		return data	
+
+	def entangling_classical(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entangling Power/Operator Entanglement Entropy (Classical) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)/(log(self.K**N) if self.K is not None and N is not None else 1)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = state
 
@@ -1838,7 +1981,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			state = self.trace_pure(parameters=parameters,state=state,where=where,**kwargs)
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = representation(state,contraction=True).ravel()
 
@@ -1854,6 +2000,59 @@ class Measure(System):
 		data = func(data)
 
 		return data	
+
+	def entangling_renyi(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entangling Power/Operator Entanglement Entropy (Renyi) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: 1 - real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,inverse.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state,inverse,state)
+
+		elif self.architecture in ['tensor']:
+	
+			state = state.copy()
+			other = state.copy()
+
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			options = dict(contraction=True)
+	
+			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
+			
+			for i in where:
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+
+				state &= other
+
+				data = representation(state,**options)
+
+		data = func(data)
+
+		return data
+
 
 class MPS(mps): 
 	'''
@@ -3290,7 +3489,7 @@ class Object(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','seed','cwd','path','backend','architecture','conf','logger','cleanup']:
+		for attr in [None,'string','key','seed','instance','instances','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -6763,10 +6962,11 @@ class Callback(System):
 				data[attr] = []
 
 			if attr in [
-				'objective','infidelity','norm','entanglement','trace',
+				'objective','infidelity','norm','entanglement','entangling','trace',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
-				'entanglement.quantum','entanglement.classical','entanglement.pure'
+				'entanglement.quantum','entanglement.classical','entanglement.renyi',
+				'entangling.quantum','entangling.classical','entangling.renyi',
 				]:
 				
 				keywords = self.keywords.get(attr,{})
@@ -6792,9 +6992,10 @@ class Callback(System):
 						other=model(parameters=parameters,state=state,options=other),
 						**keywords)
 				elif attr in [
-					'norm','trace',
+					'norm','entanglement','entangling','trace',
 					'norm.quantum','norm.classical','norm.pure',
-					'entanglement.quantum','entanglement.classical','entanglement.pure'
+					'entanglement.quantum','entanglement.classical','entanglement.renyi',
+					'entangling.quantum','entangling.classical','entangling.renyi',
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
