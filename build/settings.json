@@ -231,6 +231,7 @@
 		"noise.parameters":"noise.parameters",
 		"operator":"measure.operator",
 		"max_bond":"options.max_bond",
+		"cyclic":"measure.options.cyclic",		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":"measure.infidelity_pure",

@@ -6905,23 +6905,32 @@ class Callback(System):
 			kwargs (dict): Class keyword arguments
 		'''
 
+		defaults = [
+			'objective','infidelity','norm','entanglement','entangling','trace',
+			'infidelity.quantum','infidelity.classical','infidelity.pure',
+			'norm.quantum','norm.classical','norm.pure',
+			'entanglement.quantum','entanglement.classical','entanglement.renyi',
+			'entangling.quantum','entangling.classical','entangling.renyi',
+			'noise.parameters'
+			]
+
 		if attributes is None:
-			attributes = dict()
+			attributes = {attr:attr for attr in defaults}
 		elif not isinstance(attributes,dict):
 			attributes = {attr:attr for attr in attributes}
 		else:
-			attributes = {attr:attributes[attr] for attr in attributes}
+			attributes = {attr:attributes[attr] for attr in attributes if attributes[attr]}
 
 		if keywords is None:
 			keywords = {attr: {} for attr in attributes}
-		elif any(attr in keywords for attr in attributes):
+		elif any(attr in keywords for attr in [*attributes,*defaults]):
 			keywords = {attr: keywords.get(attr,{}) for attr in attributes}
 		else:
 			keywords = {attr: {**keywords} for attr in attributes}
 
 		if options is None:
 			options = {attr: {} for attr in attributes}
-		elif any(attr in options for attr in attributes):
+		elif any(attr in options for attr in [*attributes,*defaults]):
 			options = {attr: options.get(attr,{}) for attr in attributes}
 		else:
 			options = {attr: {**options} for attr in attributes}
