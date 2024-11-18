@@ -2667,9 +2667,15 @@ def representation(obj,to=True,contraction=None,func=None,**kwargs):
 	Returns:
 		obj (object): data of object
 	'''
+
+	if not isinstance(obj,tensors):
+		return obj
 	
 	if contraction:
 		obj = contract(obj,**kwargs)
+
+	if not isinstance(obj,tensors):
+		return obj
 
 	if to in ['array']:
 		obj,structure = qtn.pack(obj)

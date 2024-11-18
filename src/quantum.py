@@ -1193,7 +1193,7 @@ class Measure(System):
 			state = state.copy()
 
 			N = state.L
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 
 			for i in where:
 				with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
@@ -1337,7 +1337,7 @@ class Measure(System):
 			N = int(round(log(data.size)/log(self.K)/data.ndim))
 			K = self.K
 			ndim = data.ndim
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 			L = N - len(where) if N is not None and where is not None else None
 
 			options = dict(
@@ -1358,7 +1358,7 @@ class Measure(System):
 			data = state.copy()
 
 			N = state.L
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 			L = N - len(where) if N is not None and where is not None else None
 
 			for i in where:
@@ -1390,7 +1390,7 @@ class Measure(System):
 			other = state if other is None else other
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse if i in where else self.identity for i in range(N)])],dtype=self.dtype)
 
@@ -1408,7 +1408,7 @@ class Measure(System):
 			other = other.copy()
 
 			N = state.L
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 			options = dict(contraction=True)
 
 			for i in where:
@@ -1647,14 +1647,16 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 			options = dict(contraction=True)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -1682,14 +1684,16 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
-			where = where if where is not None else range(N)
+			where = tuple(where) if where is not None else range(N)
 			options = dict(contraction=True)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -1717,6 +1721,8 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 	

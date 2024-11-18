@@ -1621,7 +1621,7 @@ def test_grad(path,tol):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"model.N":[5],"model.D":[2],"model.M":[3],"model.ndim":[2],"model.local":[True],
+		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["array","tensor"],
 		}	
@@ -1654,7 +1654,7 @@ def test_calculate(*args,**kwargs):
 				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123
 				},								
 			},
 			"N":5,
@@ -1764,13 +1764,16 @@ def test_calculate(*args,**kwargs):
 
 		
 		attrs = [
-			# 'trace',
-			# 'norm_quantum','norm_classical',
-			# 'norm_pure',
-			# 'infidelity_quantum','infidelity_classical','infidelity_pure',
+			'trace',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
 			# 'entanglement_quantum',
 			# 'entanglement_classical',
-			'entanglement_renyi',
+			# 'entanglement_renyi',
 			# 'entangling_quantum',
 			# 'entangling_classical',
 			# 'entangling_renyi',
@@ -1793,6 +1796,10 @@ def test_calculate(*args,**kwargs):
 
 				kwargs = dict()
 				where = [i for i in range(model.N//2-1,model.N//2+2)]
+
+			else:
+
+				kwargs = dict()
 				where = None
 
 			obj = measure.calculate(attr,state=state,where=where,**kwargs)
@@ -1805,7 +1812,7 @@ def test_calculate(*args,**kwargs):
 				value = array(obj)
 
 			if verbose or True:
-				print(measure.architecture,attr,where,parse(value))
+				print(measure.architecture,attr,where,value.shape,parse(value))
 
 			data[index][key] = value
 
