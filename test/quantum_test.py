@@ -1654,7 +1654,7 @@ def test_calculate(*args,**kwargs):
 				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-					"parameters":0,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
 				},								
 			},
 			"N":5,
@@ -1767,16 +1767,16 @@ def test_calculate(*args,**kwargs):
 
 		
 		attrs = [
-			'trace',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			# 'entanglement_quantum',
-			# 'entanglement_classical',
-			# 'entanglement_renyi',
+			# 'trace',
+			# 'norm_quantum',
+			# 'norm_classical',
+			# 'norm_pure',
+			# 'infidelity_quantum',
+			# 'infidelity_classical',
+			# 'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
 			# 'entangling_quantum',
 			# 'entangling_classical',
 			# 'entangling_renyi',

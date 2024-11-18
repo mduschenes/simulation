@@ -1399,7 +1399,7 @@ class Measure(System):
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse if i in where else self.identity for i in range(N)])],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse for i in where])],dtype=self.dtype)
 
 			subscripts = '...u,uv,...v->...'
 			shapes = (state.shape,inverse.shape,other.shape)
@@ -1777,7 +1777,7 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
@@ -1832,7 +1832,7 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
@@ -1880,38 +1880,19 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse for i in where])],dtype=self.dtype)
-
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state,inverse,state)
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 	
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
-			
-			options = dict(contraction=True)
-	
+
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = state.copy()
-			other = state.copy()
-
-			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
-
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
-
-				state &= other
-
-				data = representation(state,**options)
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 		data = func(data)
 
@@ -1954,7 +1935,7 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
@@ -2042,7 +2023,7 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
