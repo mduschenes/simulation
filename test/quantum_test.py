@@ -1624,7 +1624,7 @@ def test_calculate(*args,**kwargs):
 		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[0],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["array","tensor"],
+		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
 
 	groups = None
@@ -1769,15 +1769,16 @@ def test_calculate(*args,**kwargs):
 		
 		attrs = [
 			# 'trace',
+			'vectorize',
 			# 'norm_quantum',
 			# 'norm_classical',
 			# 'norm_pure',
 			# 'infidelity_quantum',
 			# 'infidelity_classical',
 			# 'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
+			# 'entanglement_renyi',
 			# 'entangling_quantum',
 			# 'entangling_classical',
 			# 'entangling_renyi',
@@ -1813,7 +1814,7 @@ def test_calculate(*args,**kwargs):
 				kwargs = dict(other=other)
 				where = None
 
-			elif attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
+			elif attr in ['trace','vectorize','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
 
 				kwargs = dict()
 				where = [i for i in range(model.N//2-1,model.N//2+1) if i < model.N]
@@ -1833,7 +1834,9 @@ def test_calculate(*args,**kwargs):
 				value = array(obj)
 
 			if verbose or True:
-				print(measure.architecture,attr,where,value.shape,parse(value))
+				print(measure.architecture,attr,where,value.shape)
+				print(parse(value))
+				print()
 
 			data[index][key] = value
 

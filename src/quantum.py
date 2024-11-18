@@ -1358,7 +1358,7 @@ class Measure(System):
 				transformation=False,
 				) if where is not None else None
 
-			data = shuffle(addition(shuffle(data,**options),axis=where),**_options) if where is not None else state
+			data = shuffle(addition(shuffle(data,**options),axis=where),**_options)
 
 		elif self.architecture in ['tensor']:
 			
@@ -1413,6 +1413,69 @@ class Measure(System):
 
 			state = state.copy()
 			other = other.copy()
+
+			N = state.L
+			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
+			for i in where:
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+
+				state &= other
+
+				data = state
+
+		data = func(data)
+
+		return data
+
+	def vectorize(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Partial Trace of Vectorized Operator for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			data = state
+
+			N = int(round(log(data.size)/log(self.K)/data.ndim))
+			K = self.K
+			ndim = data.ndim
+			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
+			options = dict(
+				axes = [[i for i in range(N) if i not in where],[i for i in range(N) if i in where]],
+				shape = [K,N,ndim],
+				transformation=True,
+				) if where is not None else None
+
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+
+			data = shuffle(data,**options)
+
+			subscripts = 'us,sp,vp->uv'
+			shapes = (data.shape,inverse.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			data = einsummation(data,inverse,data)
+
+		elif self.architecture in ['tensor']:
+	
+			state = state.copy()
+			other = state.copy()
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
