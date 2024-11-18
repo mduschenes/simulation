@@ -1202,7 +1202,7 @@ class Measure(System):
 
 		return state
 
-	def operation(self,parameters=None,state=None,model=None,where=None,**kwargs):
+	def operation(self,parameters=None,state=None,model=None,where=None,options=None,**kwargs):
 		'''
 		Operator for POVM probability measure
 		Args:
@@ -1210,6 +1210,7 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (int,iterable[int]): indices of function
+			options (dict): Operator keyword options			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
@@ -1236,13 +1237,14 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
-				options = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False) if where is not None else None
-				_options = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False) if where is not None else None
+				opts = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False) if where is not None else None
+				_opts = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False) if where is not None else None
 				
-				shuffler = shuffle(**options) if where is not None else lambda state:state
-				_shuffler = shuffle(**_options) if where is not None else lambda state:state
-					
-				options = {}
+				shuffler = shuffle(**opts) if where is not None else lambda state:state
+				_shuffler = shuffle(**_opts) if where is not None else lambda state:state
+			
+				where = tuple(where) if where is not None else None		
+				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
 					return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
@@ -1251,8 +1253,10 @@ class Measure(System):
 
 				basis = self.basis
 				inverse = self.inverse
-				options = {}
-			
+				
+				where = tuple(where) if where is not None else None
+				options = options if options is not None else dict()
+
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 
@@ -1275,7 +1279,8 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 
-				options = {}
+				where = tuple(where) if where is not None else None
+				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
 					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
@@ -1284,8 +1289,10 @@ class Measure(System):
 				
 				basis = self.basis
 				inverse = self.inverse
-				options = {}
-			
+				
+				where = tuple(where) if where is not None else None
+				options = options if options is not None else dict()
+
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 

@@ -1654,7 +1654,7 @@ def test_calculate(*args,**kwargs):
 				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123
+					"parameters":0,"variable":False,"ndim":3,"seed":123
 				},								
 			},
 			"N":5,
@@ -1664,6 +1664,7 @@ def test_calculate(*args,**kwargs):
 			"time":"linear",
 			"lattice":"square",
 			"architecture":"array",
+			"seed":123,
 			"configuration":{
 				"key":[lambda value,iterable: (
 					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
@@ -1737,12 +1738,14 @@ def test_calculate(*args,**kwargs):
 		state = [state]*model.N
 		where = model.site
 		kwargs = dict()
+		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=None,cutoff=0)
 
 		state = measure.operation(
 				parameters=parameters,
 				state=state,
 				model=model,
 				where=where,
+				options=options,				
 				**kwargs)(
 				parameters=parameters,
 				state=measure.probability(
@@ -1781,21 +1784,38 @@ def test_calculate(*args,**kwargs):
 		for attr in attrs:
 			
 			if attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]:
+			
 				other = load(settings.cls.state)
 				other = other(**{**settings.state,**dict(system=system)})
+
+				parameters = model.parameters()
 				other = [other]*model.N
-				other = measure.probability(
+				where = model.site
+				kwargs = dict()
+				options = dict(contract=False,max_bond=None,cutoff=0)
+
+				other = measure.operation(
+						parameters=parameters,
+						state=other,
+						model=model,
+						where=where,
+						options=options,
+						**kwargs)(
+						parameters=parameters,
+						state=measure.probability(
 							parameters=parameters,
 							state=other,
-							**kwargs)			
-				
+							**kwargs),
+						**kwargs)
+
+
 				kwargs = dict(other=other)
 				where = None
 
 			elif attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
 
 				kwargs = dict()
-				where = [i for i in range(model.N//2-1,model.N//2+2)]
+				where = [i for i in range(model.N//2-1,model.N//2+2) if i < model.N]
 
 			else:
 
