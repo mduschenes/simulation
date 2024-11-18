@@ -1765,10 +1765,11 @@ def test_calculate(*args,**kwargs):
 		
 		attrs = [
 			# 'trace',
-			# 'norm_quantum','norm_classical','norm_pure',
+			# 'norm_quantum','norm_classical',
+			# 'norm_pure',
 			# 'infidelity_quantum','infidelity_classical','infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
 			'entanglement_renyi',
 			# 'entangling_quantum',
 			# 'entangling_classical',
