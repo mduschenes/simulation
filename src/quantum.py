@@ -1367,6 +1367,58 @@ class Measure(System):
 
 		return data
 
+
+	def entropy(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entropy for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		where = () if where is None else tuple(where)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			data = state
+
+			data = abs(data)
+
+			options = Dictionary(**{**dict(eps=None),**kwargs})
+			size = data.size
+			count = nonzero(data,eps=options.eps)
+			indices = slice(size-count,size)
+
+			data = data[indices]
+
+			data = -addition(data*log(data))
+
+		elif self.architecture in ['tensor']:
+			
+			data = state
+
+			data = abs(data)
+
+			options = Dictionary(**{**dict(eps=None),**kwargs})
+			size = data.size
+			count = nonzero(data,eps=options.eps)
+			indices = slice(size-count,size)
+
+			data = data[indices]
+
+			data = -addition(data*log(data))
+
+		data = func(data)
+
+		return data
+
+
 	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Infidelity for POVM probability measure with respect to other POVM
@@ -1715,18 +1767,9 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = eig(state,hermitian=self.hermitian)
+			state = eig(state,hermitian=self.hermitian)
 
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
@@ -1746,19 +1789,10 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = eig(state,hermitian=self.hermitian)
+			state = eig(state,hermitian=self.hermitian)
 
-			data = abs(data)
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-		
 		data = func(data)
 
 		return data	
@@ -1785,18 +1819,7 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = state
-
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
@@ -1806,19 +1829,10 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = representation(state,contraction=True).ravel()
+			state = representation(state,contraction=True).ravel()
 
-			data = abs(data)
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-		
 		data = func(data)
 
 		return data	
@@ -1924,18 +1938,9 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = eig(state,hermitian=self.hermitian)
+			state = eig(state,hermitian=self.hermitian)
 
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
@@ -1955,19 +1960,10 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = eig(state,hermitian=self.hermitian)
+			state = eig(state,hermitian=self.hermitian)
 
-			data = abs(data)
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-		
 		data = func(data)
 
 		return data	
@@ -1994,18 +1990,7 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = state
-
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
@@ -2015,19 +2000,10 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = representation(state,contraction=True).ravel()
+			state = representation(state,contraction=True).ravel()
 
-			data = abs(data)
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-		
 		data = func(data)
 
 		return data	
