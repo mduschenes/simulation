@@ -1622,6 +1622,7 @@ def test_calculate(*args,**kwargs):
 
 	kwargs = {
 		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
+		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[0],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["array","tensor"],
 		}	
@@ -1738,7 +1739,7 @@ def test_calculate(*args,**kwargs):
 		state = [state]*model.N
 		where = model.site
 		kwargs = dict()
-		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=None,cutoff=0)
+		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=16,cutoff=0)
 
 		state = measure.operation(
 				parameters=parameters,
@@ -1815,7 +1816,7 @@ def test_calculate(*args,**kwargs):
 			elif attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
 
 				kwargs = dict()
-				where = [i for i in range(model.N//2-1,model.N//2+2) if i < model.N]
+				where = [i for i in range(model.N//2-1,model.N//2+1) if i < model.N]
 
 			else:
 

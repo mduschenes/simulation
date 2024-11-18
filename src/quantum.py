@@ -1376,7 +1376,6 @@ class Measure(System):
 
 		return data
 
-
 	def square(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
 		Trace of Square for POVM probability measure with respect to other POVM
@@ -1398,8 +1397,9 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse for i in where])],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
 
 			subscripts = '...u,uv,...v->...'
 			shapes = (state.shape,inverse.shape,other.shape)
@@ -1416,7 +1416,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			options = dict(contraction=True)
+			L = N - len(where) if N is not None and where is not None else None
 
 			for i in where:
 				with context(self.inverse,key=i):
@@ -1426,12 +1426,11 @@ class Measure(System):
 
 				state &= other
 
-				data = representation(state,**options)
+				data = state
 
 		data = func(data)
 
 		return data
-
 
 	def entropy(self,parameters=None,state=None,where=None,**kwargs):
 		'''
@@ -1446,8 +1445,6 @@ class Measure(System):
 		'''
 
 		func = lambda data: data
-
-		where = () if where is None else tuple(where)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -1482,7 +1479,6 @@ class Measure(System):
 		data = func(data)
 
 		return data
-
 
 	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
@@ -1609,8 +1605,12 @@ class Measure(System):
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
+
+			options = dict(contraction=True)
 	
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
+
+			data = representation(data,**options)
 
 		data = func(data)
 
@@ -1655,6 +1655,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1664,6 +1665,8 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
 			options = dict(contraction=True)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -1692,6 +1695,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1701,6 +1705,8 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+		
 			options = dict(contraction=True)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -1726,14 +1732,26 @@ class Measure(System):
 		func = lambda data: 1 - sqrt(abs(real(data)))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-			
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
+
+			N = state.L
+			where = tuple(where) if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
+			options = dict(contraction=True)
 	
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = representation(data,**options)
 
 		data = func(data)
 
@@ -1892,7 +1910,11 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
+			options = dict(contraction=True)
+
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = representation(data,**options)
 
 		data = func(data)
 
