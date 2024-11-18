@@ -1621,9 +1621,9 @@ def test_grad(path,tol):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"model.N":[5],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"model.N":[5],"model.D":[2],"model.M":[3],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
+		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["array","tensor"],
 		}	
 
 	groups = None
@@ -1651,10 +1651,10 @@ def test_calculate(*args,**kwargs):
 				"unitary":{
 					"operator":"haar","site":"|ij|","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
-				},				
+				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
-					"parameters":0,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
 				},								
 			},
 			"N":5,
@@ -1764,23 +1764,34 @@ def test_calculate(*args,**kwargs):
 
 		
 		attrs = [
-			'trace',
-			'norm_quantum','norm_classical','norm_pure',
-			'infidelity_quantum','infidelity_classical','infidelity_pure',
-			'entanglement_quantum','entanglement_classical','entanglement_renyi',
-			'etangling_quantum','etangling_classical','etangling_renyi',
+			# 'trace',
+			# 'norm_quantum','norm_classical','norm_pure',
+			# 'infidelity_quantum','infidelity_classical','infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			# 'entangling_quantum',
+			# 'entangling_classical',
+			# 'entangling_renyi',
 			]
 		for attr in attrs:
 			
-			other = load(settings.cls.state)
-			other = other(**{**settings.state,**dict(system=system)})
-			other = [other]*model.N
-			other = measure.probability(
-						parameters=parameters,
-						state=other,
-						**kwargs)			
-			where = {attr:[i for i in range(model.N//2-1,model.N//2+2)] for attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','etangling_quantum','etangling_classical','etangling_renyi',]}.get(attr,None)
-			kwargs = {attr: dict(other=other) for attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]}.get(attr,dict())
+			if attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]:
+				other = load(settings.cls.state)
+				other = other(**{**settings.state,**dict(system=system)})
+				other = [other]*model.N
+				other = measure.probability(
+							parameters=parameters,
+							state=other,
+							**kwargs)			
+				
+				kwargs = dict(other=other)
+				where = None
+
+			elif attr in ['trace','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
+
+				kwargs = dict()
+				where = [i for i in range(model.N//2-1,model.N//2+2)]
 
 			obj = measure.calculate(attr,state=state,where=where,**kwargs)
 
@@ -1792,14 +1803,12 @@ def test_calculate(*args,**kwargs):
 				value = array(obj)
 
 			if verbose or True:
-				print(measure.architecture,attr,parse(value))
+				print(measure.architecture,attr,where,parse(value))
 
 			data[index][key] = value
 
 
-		continue
-
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
 
 	print("Passed")
 

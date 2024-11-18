@@ -765,7 +765,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,ones=None,identity=None,
+		basis=None,inverse=None,identity=None,ones=None,
 		parameters=None,variable=None,constant=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -845,6 +845,7 @@ class Measure(System):
 		dtype = basis.dtype
 
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
+		identity = Basis.identity(D=K,dtype=dtype)
 		ones = array([1 for i in range(K)],dtype=dtype)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
@@ -852,6 +853,7 @@ class Measure(System):
 
 			basis = array(basis,**kwargs)
 			inverse = array(inverse,**kwargs)
+			identity = array(identity,**kwargs)
 			ones = array(ones,**kwargs)
 
 		elif self.architecture in ['tensor']:
@@ -860,6 +862,9 @@ class Measure(System):
 
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = tensor(inverse,**kwargs)
+
+			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
+			identity = tensor(identity,**kwargs)
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
 			ones = tensor(ones,**kwargs)
@@ -879,6 +884,7 @@ class Measure(System):
 
 		self.basis = basis
 		self.inverse = inverse
+		self.identity = identity
 		self.ones = ones
 
 		self.shape = shape
@@ -1648,8 +1654,6 @@ class Measure(System):
 			where = where if where is not None else range(N)
 			options = dict(contraction=True)
 	
-			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
-			
 			for i in where:
 				with context(self.inverse,key=i):
 					state &= self.inverse
@@ -1698,12 +1702,13 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**N) if self.D is not None and N is not None else 1)
+		func = lambda data: real(data)/(log(self.D**L) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1711,6 +1716,8 @@ class Measure(System):
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1727,6 +1734,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1739,6 +1747,8 @@ class Measure(System):
 			state = representation(state,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1765,16 +1775,19 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.K**N) if self.K is not None and N is not None else 1)
+		func = lambda data: real(data)/(log(self.K**L) if self.K is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = state
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1789,10 +1802,13 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = representation(state,contraction=True).ravel()
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1825,8 +1841,9 @@ class Measure(System):
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse if i in where else self.identity for i in range(N)])],dtype=self.dtype)
 
 			subscripts = '...u,uv,...v->...'
 			shapes = (state.shape,inverse.shape,state.shape)
@@ -1841,19 +1858,21 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+			
 			options = dict(contraction=True)
 	
-			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
-			
-			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
+			for i in range(N):
+				obj = self.inverse if i in where else self.identity
+				with context(obj,key=i):
+					state &= obj
 
 			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
 				state &= other
 
 				data = representation(state,**options)
+
 
 		data = func(data)
 
@@ -1892,12 +1911,13 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**N) if self.D is not None and N is not None else 1)
+		func = lambda data: real(data)/(log(self.D**L) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1905,6 +1925,8 @@ class Measure(System):
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1921,6 +1943,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1933,6 +1956,8 @@ class Measure(System):
 			state = representation(state,**{**options,**kwargs})
 
 			data = eig(state,hermitian=self.hermitian)
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1959,16 +1984,19 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.K**N) if self.K is not None and N is not None else 1)
+		func = lambda data: real(data)/(log(self.K**L) if self.K is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if where is not None else None
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = state
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -1983,10 +2011,13 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = representation(state,contraction=True).ravel()
+
+			data = abs(data)
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = data.size
@@ -2019,6 +2050,7 @@ class Measure(System):
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
 
@@ -2035,13 +2067,14 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
 			options = dict(contraction=True)
 	
-			tmp = representation(self.transform(parameters=parameters,state=state,transformation=False),to=self.architecture,contraction=True)
-			
-			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
+			for i in range(N):
+				obj = self.inverse if i in where else self.identity
+				with context(obj,key=i):
+					state &= obj
 
 			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
