@@ -1330,8 +1330,6 @@ class Measure(System):
 
 		func = lambda data: data
 
-		where = () if where is None else tuple(where)
-
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			data = state
@@ -1339,8 +1337,8 @@ class Measure(System):
 			N = int(round(log(data.size)/log(self.K)/data.ndim))
 			K = self.K
 			ndim = data.ndim
-
-			L = N-len(where) if where is not None else None
+			where = where if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
 
 			options = dict(
 				axes = [[i] for i in range(N)],
@@ -1359,9 +1357,69 @@ class Measure(System):
 			
 			data = state.copy()
 
+			N = state.L
+			where = where if where is not None else range(N)
+			L = N - len(where) if N is not None and where is not None else None
+
 			for i in where:
 				with context(self.ones,key=i):
 					data &= self.ones
+
+		data = func(data)
+
+		return data
+
+
+	def square(self,parameters=None,state=None,other=None,where=None,**kwargs):
+		'''
+		Trace of Square for POVM probability measure with respect to other POVM
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			other = state if other is None else other
+
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = where if where is not None else range(N)
+
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse if i in where else self.identity for i in range(N)])],dtype=self.dtype)
+
+			subscripts = '...u,uv,...v->...'
+			shapes = (state.shape,inverse.shape,other.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(state,inverse,other)
+
+		elif self.architecture in ['tensor']:
+	
+			other = state if other is None else other
+
+			state = state.copy()
+			other = other.copy()
+
+			N = state.L
+			where = where if where is not None else range(N)
+			options = dict(contraction=True)
+
+			for i in where:
+				with context(self.inverse,key=i):
+					state &= self.inverse
+
+			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+
+				state &= other
+
+				data = representation(state,**options)
 
 		data = func(data)
 
@@ -1541,34 +1599,11 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state,inverse,other)
+			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 	
-			state = state.copy()
-			other = other.copy()
-
-			N = state.L
-			where = where if where is not None else range(N)
-			options = dict(contraction=True)
-
-			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
-
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
-
-				state &= other
-
-				data = representation(state,**options)
+			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
 
 		data = func(data)
 
@@ -1611,21 +1646,21 @@ class Measure(System):
 		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-			
-			data = trace(state)
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = where if where is not None else range(N)
+
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			N = state.L
+			where = where if where is not None else range(N)
+			options = dict(contraction=True)
 
-			options = dict(to=self.architecture,contraction=True)
-			state = representation(state,**{**options,**kwargs})
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = trace(state)
-		
+			data = representation(data,**options)
+
 		data = func(data)
 
 		return data
@@ -1643,29 +1678,23 @@ class Measure(System):
 		'''
 		
 		func = lambda data: 1 - real(data) 
-
+		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			subscripts = '...u->...'
-			shapes = (state.shape,)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state)
-	
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = where if where is not None else range(N)
+
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
 		elif self.architecture in ['tensor']:
 		
-			state = state.copy()
-
 			N = state.L
 			where = where if where is not None else range(N)
 			options = dict(contraction=True)
 
-			for i in where:
-				with context(self.ones,key=i):
-					state &= self.ones
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = representation(state,**options)
-
+			data = representation(data,**options)
 
 		data = func(data)
 
@@ -1687,34 +1716,11 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
-
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state,inverse,state)
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 	
-			state = state.copy()
-			other = state.copy()
-
-			N = state.L
-			where = where if where is not None else range(N)
-			options = dict(contraction=True)
-	
-			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
-
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
-
-				state &= other
-
-				data = representation(state,**options)
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 		data = func(data)
 

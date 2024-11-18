@@ -1308,7 +1308,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p}$"
+					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p_{\\chi}}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -1601,7 +1601,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p}$"
+					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p_{\\chi}}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -1894,7 +1894,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p}$"
+					"ylabel": "$\\textrm{Classical Norm} ~~ 1-\\abs{p_{\\chi}}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -6822,7 +6822,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho)$"
+					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho_{\\chi})$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -7115,7 +7115,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho)$"
+					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho_{\\chi})$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -7408,7 +7408,7 @@
 					"label": "N"
 				},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho)$"
+					"ylabel": "$\\textrm{Quantum Norm} ~~ 1-\\textrm{tr}(\\rho_{\\chi})$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Depth} ~~ M$"

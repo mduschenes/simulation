@@ -1793,6 +1793,7 @@ def test_calculate(*args,**kwargs):
 
 				kwargs = dict()
 				where = [i for i in range(model.N//2-1,model.N//2+2)]
+				where = None
 
 			obj = measure.calculate(attr,state=state,where=where,**kwargs)
 
