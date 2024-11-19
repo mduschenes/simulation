@@ -7139,6 +7139,24 @@ class Callback(System):
 
 		logging = True
 
+
+		attr = list(attributes)[0] if attributes else None
+		keywords = self.keywords.get(attr,{})
+
+		options = {
+			**{key: model.options[key] for key in model.options}
+			} if model.options is not None else {}
+		_options = {
+			**options,
+			**{key: getattr(self,key) for key in options if hasattr(self,key)},
+			**{key: self.options.get(attr,[]).get(key) for key in options if self.options is not None and key in self.options},
+			**{key: kwargs.get(key) for key in kwargs if key in options},
+			}
+
+		obj = model(parameters=parameters,state=state,options=options)
+		_obj = model(parameters=parameters,state=state,options=_options)
+
+
 		for attr in attributes:
 
 			if not isinstance(data.get(attr),list):
@@ -7157,13 +7175,12 @@ class Callback(System):
 				options = {
 					**{key: model.options[key] for key in model.options}
 					} if model.options is not None else {}
-				other = {
+				_options = {
 					**options,
 					**{key: getattr(self,key) for key in options if hasattr(self,key)},
 					**{key: self.options.get(attr,[]).get(key) for key in options if self.options is not None and key in self.options},
 					**{key: kwargs.get(key) for key in kwargs if key in options},
 					}
-
 
 				if attr in [
 					'objective','infidelity',
@@ -7171,8 +7188,8 @@ class Callback(System):
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
-						state=model(parameters=parameters,state=state,options=options),
-						other=model(parameters=parameters,state=state,options=other),
+						state=obj,
+						other=_obj,
 						**keywords)
 				elif attr in [
 					'norm','entanglement','entangling','trace',
@@ -7182,7 +7199,7 @@ class Callback(System):
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
-						state=model(parameters=parameters,state=state,options=options),
+						state=obj,
 						**keywords)
 
 			elif attr in ['noise.parameters']:
