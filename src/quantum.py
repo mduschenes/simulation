@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
-from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,context,reshape,transpose
+from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,diag,inv,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,eig,sqrtm,sort,relsort,prod,product
@@ -743,7 +743,7 @@ class Basis(Dict):
 		data = zeros((kwargs.D**2,kwargs.D**2),dtype=kwargs.dtype)
 		for i in range(kwargs.D**2):
 			data = inplace(data,(i,i),1)
-		data = data.reshape((kwargs.D**2,kwargs.D,kwargs.D))
+		data = reshape(data,shape=(kwargs.D**2,kwargs.D,kwargs.D))
 
 		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
 
@@ -761,6 +761,8 @@ class Measure(System):
 	indices = ('i{}','j{}',)
 	tag = 'I{}'
 	tags = ()
+	symbol = ('x{}','y{}','z{}','w{}','q{}','r{}','s{}','t{}')
+	symbols = ('k{}','l{}','m{}','n{}','o{}','p{}','a{}','b{}')
 
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
@@ -1466,6 +1468,8 @@ class Measure(System):
 
 			data = shuffle(data,**options)
 
+			data = reshape(data,shape=(1,*data.shape)) if not L else data
+
 			subscripts = 'us,sp,vp->uv'
 			shapes = (data.shape,inverse.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
@@ -2016,7 +2020,7 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**L) if self.D is not None and L is not None else 1)
+		func = lambda data: real(data)/(log(self.D**(2*L)) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2024,67 +2028,56 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse if i in where else self.identity for i in range(N)])],dtype=self.dtype)
+			where = tuple(i for i in range(N) if i not in where)
 
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,state.shape)
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*(N-L))],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+
+			basis = reshape(basis,shape=(self.K**(N-L),-1))
+
+			subscripts = 'uv,us,vp,si,pj->ij'
+			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			data = einsummation(state,inverse,state)
+			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
 
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
-
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-
-			state = eig(state,hermitian=self.hermitian)
+			state = eig(data,hermitian=self.hermitian)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
-			state = state.copy()
-			other = state.copy()
-
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
-			for i in range(N):
-				obj = self.inverse if i in where else self.identity
-				with context(obj,key=i):
-					state &= obj
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+			for i in where:
+				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
+					data &= self.inverse & self.basis
+				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
+					data &= self.inverse & self.basis.conj()
 
-				state &= other
+			options = dict()
+			data = contract(data,**options)
+			
+			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
+			data = fuse(data,**options)
 
-				for i in where:
-					with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
-						state &= self.inverse & self.basis
-						other &= self.inverse & self.basis
+			options = dict(contraction=True)
+			data = representation(data,**options)
 
+			options = dict()
+			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-				data = representation(state,**options)
-
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
-
-			where = tuple(i for i in range(N) if i not in where)
-
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-
-			options = dict(to=self.architecture,contraction=True)
-			state = representation(state,**{**options,**kwargs})
-
-			state = eig(state,hermitian=self.hermitian)
+			state = eig(data,hermitian=self.hermitian)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2104,7 +2097,7 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.K**L) if self.K is not None and L is not None else 1)
+		func = lambda data: real(data)/(log(self.D**(2*L)) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2112,7 +2105,13 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+
+			state = eig(data,hermitian=self.hermitian)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2122,9 +2121,23 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
-			state = representation(state,contraction=True).ravel()
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict()
+			data = contract(data,**options)
+			
+			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
+			data = fuse(data,**options)
+
+			options = dict(contraction=True)
+			data = representation(data,**options)
+
+			options = dict()
+			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+
+			state = eig(data,hermitian=self.hermitian)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2147,40 +2160,68 @@ class Measure(System):
 		func = lambda data: 1 - real(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-			
+		
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,state.shape)
+			where = tuple(i for i in range(N) if i not in where)
+
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*(N-L))],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+
+			basis = reshape(basis,shape=(self.K**(N-L),-1))
+
+			subscripts = 'uv,us,vp,si,pj->ij'
+			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			data = einsummation(state,inverse,state)
+			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+
+			data = trace(dot(data,data))
 
 		elif self.architecture in ['tensor']:
-	
-			state = state.copy()
-			other = state.copy()
-
+		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
 			L = N - len(where) if N is not None and where is not None else None
 
-			options = dict(contraction=True)
-	
-			for i in range(N):
-				obj = self.inverse if i in where else self.identity
-				with context(obj,key=i):
-					state &= obj
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
-			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+			where = tuple(i for i in range(N) if i not in where)
 
-				state &= other
+			# options = dict()
+			# data = contract(data,**options)
 
-				data = representation(state,**options)
+			other = data.copy()
+
+			with context(data,other,formats=dict(sites=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+
+				for i in where:
+					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+						data &= self.inverse
+					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]}],tags=None)):
+						other &= self.inverse
+
+				# print(data)
+				# print()
+				# print(other)
+				# exit()
+
+
+				data &= other
+
+				# print(data)
+				# exit()
+
+				options = dict(contraction=True)
+				data = representation(data,**options)
+
+				data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
 
 		data = func(data)
 

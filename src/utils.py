@@ -2616,7 +2616,6 @@ def contract(obj,where=None,**kwargs):
 	Args:
 		obj (tensor): object
 		where (int,str,iterable[int,str]): where not to contract
-		contract (bool): Contract data
 		kwargs (dict): Additional keyword arguments for data
 	Returns:
 		obj (object): Contraction of object
@@ -2635,7 +2634,6 @@ def reduce(obj,where=None,**kwargs):
 	Args:
 		obj (tensor): object
 		where (int,str,iterable[int,str]): where not to contract
-		contract (bool): Contract data
 		kwargs (dict): Additional keyword arguments for data
 	Returns:
 		obj (object): Contraction of object
@@ -2651,6 +2649,24 @@ def reduce(obj,where=None,**kwargs):
 	for i in where:
 		options = dict(ind=i) 
 		obj = obj.sum_reduce(**{**kwargs,**options})
+
+	return obj
+
+
+def fuse(obj,where=None,**kwargs):
+	'''
+	Fuse object
+	Args:
+		obj (tensor): object
+		where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
+		kwargs (dict): Additional keyword arguments for data
+	Returns:
+		obj (object): Fused object
+	'''
+
+	options = dict(fuse_map=where) 
+
+	obj = obj.fuse(**{**kwargs,**options})
 
 	return obj
 

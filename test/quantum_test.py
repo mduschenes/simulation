@@ -1622,7 +1622,7 @@ def test_calculate(*args,**kwargs):
 
 	kwargs = {
 		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
-		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[0],
+		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[1e-6],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1769,7 +1769,7 @@ def test_calculate(*args,**kwargs):
 		
 		attrs = [
 			# 'trace',
-			'vectorize',
+			# 'vectorize',
 			# 'norm_quantum',
 			# 'norm_classical',
 			# 'norm_pure',
@@ -1779,8 +1779,8 @@ def test_calculate(*args,**kwargs):
 			# 'entanglement_quantum',
 			# 'entanglement_classical',
 			# 'entanglement_renyi',
-			# 'entangling_quantum',
-			# 'entangling_classical',
+			'entangling_quantum',
+			'entangling_classical',
 			# 'entangling_renyi',
 			]
 		for attr in attrs:
