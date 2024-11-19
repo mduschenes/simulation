@@ -4861,7 +4861,7 @@
 			}
 		}
 	},
-	"M.entanglement.renyi.noise.parameters.N": {
+	"M.entangling.renyi.noise.parameters.N": {
 		"4": {
 			"fig": {
 				"set_size_inches": {
