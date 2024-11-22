@@ -2744,23 +2744,44 @@ class context(object):
 			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
 				for attr in formats}
 		else:
-			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-				if not isinstance(formats[attr],iterables) else 
-				[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-				for attr in formats}
-		
+			if key is None:
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					if not isinstance(formats[attr],iterables) else 
+					[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+					for attr in formats}
+			elif isinstance(key,iterables):
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					if not isinstance(formats[attr],iterables) else 
+					[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
+					for attr in formats}		
+			else:
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					if not isinstance(formats[attr],iterables) else 
+					[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+					for attr in formats}					
+
 		attributes = [attr for attr in formats]
 		formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
 		
 		def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
 			obj = objs[i]
-			attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) if key is not None else formats[i][attr][index] for index in attrs[i][attr]}
+			if key is None:
+				attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+			elif isinstance(key,iterables):
+				attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+			else:
+				attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
 			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
 			return
 		
 		def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
 			obj = objs[i]
-			attrs = {formats[i][attr][index].format(key) if key is not None else formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+			if key is None:
+				attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+			elif isinstance(key,iterables):
+				attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+			else:
+				attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
 			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
 			return
 

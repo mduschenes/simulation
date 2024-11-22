@@ -2032,10 +2032,10 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*(N-L))],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
 
-			basis = reshape(basis,shape=(self.K**(N-L),-1))
+			basis = reshape(basis,shape=(self.K**L,-1))
 
 			subscripts = 'uv,us,vp,si,pj->ij'
 			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
@@ -2169,20 +2169,17 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*(N-L))],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
 
-			basis = reshape(basis,shape=(self.K**(N-L),-1))
-
-			subscripts = 'uv,us,vp,si,pj->ij'
-			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
+			subscripts = 'uv,up,vs,sp->'
+			shapes = (data.shape,inverse.shape,inverse.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
+			data = einsummation(data,inverse,inverse,data)
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			data = trace(dot(data,data))
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
@@ -2194,33 +2191,25 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			# options = dict()
-			# data = contract(data,**options)
+			options = dict()
+			data = contract(data,**options)
 
 			other = data.copy()
 
-			with context(data,other,formats=dict(sites=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+			with context(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
 
 				for i in where:
 					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
 						data &= self.inverse
-					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]}],tags=None)):
+					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
 						other &= self.inverse
 
-				# print(data)
-				# print()
-				# print(other)
-				# exit()
-
-
 				data &= other
-
-				# print(data)
-				# exit()
 
 				options = dict(contraction=True)
 				data = representation(data,**options)
 
+				options = dict()
 				data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
 
 		data = func(data)
