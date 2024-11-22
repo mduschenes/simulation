@@ -2378,8 +2378,14 @@ def plotter(plots,processes,verbose=None):
 						else:
 							value = data[attr%(axes)][kwarg]
 
+					options = {attr: data.pop(attr,dict()) 
+						for attr,default in {
+							'texify':dict(),
+							'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+						}
+
 					if value is not None:
-						data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
+						data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
 					else:
 						data[attr%(axes)][kwarg] = value
 
