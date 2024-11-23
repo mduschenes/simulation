@@ -23,7 +23,7 @@
         "M.entangling.renyi.noise.parameters.N": 1,                
         "M.noise.parameters.objective": 0
     },
-    "configuration":{"position":"col","value":{"N":[4,8]}},    
+    "configuration":{"position":"col","value":{"N":null}},    
     "texify": {
         "iteration": "\\textrm{Iteration}",
         "objective": "\\textrm{Infidelity}",
