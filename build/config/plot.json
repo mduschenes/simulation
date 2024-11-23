@@ -108,6 +108,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -394,6 +395,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -688,6 +690,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -982,6 +985,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -1295,6 +1299,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -1328,7 +1333,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Classical Operator Entanglement} ~~ -p^{2}_{\\chi}\\cdot\\log{p^{2}_{\\chi}}$"
+				"ylabel": "$\\textrm{Classical Entangling} ~~ -p^{2}_{\\chi}\\cdot\\log{p^{2}_{\\chi}}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -1608,6 +1613,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -1921,6 +1927,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -1954,7 +1961,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Renyi Operator Entanglement} ~~ 1 - \\textrm{tr}((\\ket{\\rho_{\\chi}}\\bra{\\rho_{\\chi}})^{2})$"
+				"ylabel": "$\\textrm{Renyi Entangling} ~~ 1 - \\textrm{tr}((\\psi_{\\rho_{\\chi}})^{2})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -2234,6 +2241,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -2528,6 +2536,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -2822,6 +2831,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -3135,6 +3145,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -3168,7 +3179,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Quantum Operator Entanglement} ~~ -\\textrm{tr}(\\ket{\\rho_{\\chi}}\\bra{\\rho_{\\chi}}\\log{\\ket{\\rho_{\\chi}}\\bra{\\rho_{\\chi}}})$"
+				"ylabel": "$\\textrm{Quantum Entangling} ~~ -\\textrm{tr}(\\psi_{\\rho_{\\chi}}\\log{\\psi_{\\rho_{\\chi}}})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -3448,6 +3459,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -3742,6 +3754,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
@@ -4019,6 +4032,7 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.1,
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Impurity} ~~ 1-\\textrm{tr}(\\rho_{\\chi}\\rho)$",
 					"labelpad": 10,
