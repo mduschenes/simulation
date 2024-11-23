@@ -20,12 +20,12 @@ for PATH in PATHS:
 from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
-from src.utils import e,pi,nan,scalars,iterables,arrays,delim,nulls,null,Null,scinotation
+from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer,permutations,Dict
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,LAYOUTDIM
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS
 
 # Logging
 from src.logger	import Logger
@@ -205,9 +205,9 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			while index<(len(e)-1):
 				if isinstance(i,list):
 					if (e[index] >= len(i)):
-						i.extend([[] if isinstance(e[index+1],int) else {} for j in range(e[index]-len(i)+1)])
+						i.extend([[] if isinstance(e[index+1],integers) else {} for j in range(e[index]-len(i)+1)])
 				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
-					i[e[index]] = [] if isinstance(e[index+1],int) else {}
+					i[e[index]] = [] if isinstance(e[index+1],integers) else {}
 				i = i[e[index]]
 				index+=1
 
@@ -409,14 +409,15 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	attr = 'instance'
 	if processes.get(attr) is None:
 		processes[attr] = {}
-	elif isinstance(processes.get(attr),(bool,int)):
+	elif isinstance(processes.get(attr),(bool,*integers)):
 		processes[attr] = {instance: bool(processes[attr][instance]) for instance in plots}
 	elif isinstance(processes.get(attr),list):
 		processes[attr] = {**{instance: False for instance in plots},**{instance: True for instance in processes[attr]}}
 	elif isinstance(processes.get(attr),dict):
-		processes[attr] = {**{instance: False for instance in plots},**{instance: bool(processes[attr][instance]) for instance in processes[attr]}}
+		processes[attr] = {**{instance: False for instance in plots},**{instance: processes[attr][instance] for instance in processes[attr]}}
 
 	for instance in list(plots):
+
 		if (not processes.get(attr,{}).get(instance)) or (not plots[instance]):
 			plots.pop(instance,None);
 			continue
@@ -434,6 +435,15 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		if instance not in ax:
 			ax[instance] = None
 	processes['fig'],processes['ax'] = fig,ax
+
+
+	# Get configuration
+	options = {'position':[None,None],'shape':[1,None],'value':{},'kwargs':{}}
+	configuration = processes.get('configuration',processes.get('instance',{}))
+	configuration = configuration if isinstance(configuration,dict) and all(instance in plots for instance in configuration) else {instance:[configuration] if isinstance(configuration,dict) else configuration for instance in plots}
+	configuration = {instance: [config.update({option:config.get(option,options[option]) for option in options}) 
+		for config in configuration[instance]] for instance in configuration}
+	processes['configuration'] = configuration
 
 	# Get texify
 	texify = processes.get('texify',{})
@@ -973,9 +983,6 @@ def loader(data,plots,processes,verbose=None):
 	if (data is None) or (plots is None) or (processes is None):
 		return
 
-	# Get keys
-	keys = find(plots)
-
 	# Set data boolean
 	new = False
 
@@ -1123,9 +1130,13 @@ def loader(data,plots,processes,verbose=None):
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
 
+		# Get keys
+		keys = find(plots)
+
 		# Get functions of data
 		apply(keys,data,plots,processes,verbose=verbose)
 
+	
 	# Check plots
 	attr = 'instance'
 	for instance in list(plots):
@@ -1393,7 +1404,7 @@ def apply(keys,data,plots,processes,verbose=None):
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
-		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((label[attr] is null) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
 		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
@@ -1527,7 +1538,6 @@ def apply(keys,data,plots,processes,verbose=None):
 						source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
 						destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
 
-
 						if grouping.shape[0]:
 							if source in grouping:
 								if dtypes[attr] in ['array']:
@@ -1578,6 +1588,7 @@ def plotter(plots,processes,verbose=None):
 	cwd = processes['cwd']
 	fig = processes['fig']
 	ax = processes['ax']
+	configuration = processes['configuration']
 	texify = processes['texify']
 	valify = processes['valify']
 	obj = 'ax'
@@ -1638,8 +1649,12 @@ def plotter(plots,processes,verbose=None):
 		if not plots[instance]:
 			plots.pop(instance);
 
-	# Set grid layout based on GRID
+	# Set grid layout based on GRID {instance:{subinstance:shape}} 
+	# where shape = [*layout,*axis,*axes] 
+	# for layout = [rows,cols of subfigures], axis = [*data dimensions axis], axes = [number of data points]
+	
 	grid = {}
+
 	for instance in list(plots):
 
 		logger.log(info*verbose,"Setting : %s"%(instance))
@@ -1700,18 +1715,18 @@ def plotter(plots,processes,verbose=None):
 									data[axes] = data[axes][indexes]
 
 							if transpose:
-								transpose = [transpose] if isinstance(transpose,int) else transpose
+								transpose = [transpose] if isinstance(transpose,integers) else transpose
 								transpose = [data[axes].ndim + i if i < 0 else i for i in transpose]
 								transpose = [*transpose,*[i for i in range(data[axes].ndim) if i not in transpose]]
 								data[axes] = data[axes].transpose(transpose)
 
 							if reshape:
 								reshape = [reshape] if isinstance(reshape,(int,str)) else reshape
-								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) if i is not None else data[axes].shape[reshape.index(i)] for i in reshape]
+								reshape = [i if isinstance(i,integers) else int(data[OTHER].get(i)) if i is not None else data[axes].shape[reshape.index(i)] for i in reshape]
 								data[axes] = data[axes].reshape(reshape)
 							
 							if shape:
-								shape = {prop: [shape[prop]] if isinstance(shape.get(prop),int) else shape.get(prop) if shape.get(prop) is not None else [] for prop in GRID}
+								shape = {prop: [shape[prop]] if isinstance(shape.get(prop),integers) else shape.get(prop) if shape.get(prop) is not None else [] for prop in GRID}
 								shape = {prop: [data[axes].ndim + i if i < 0 else i for i in shape[prop]] for prop in GRID}
 								shape = {prop:{
 									**{prop: shape[prop] for prop in GRID if shape.get(prop)},
@@ -1774,6 +1789,12 @@ def plotter(plots,processes,verbose=None):
 								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
 
 
+	# Set layout form data
+	# Each plot in grid as a separate subinstance with key (subinstance,*position)
+	# for position (row,col) in layout
+	# where data in search(plots[instance][subinstance][obj][prop]
+	# for each instance,subinstance,position is itself a set of data to plot of arbitrary shape [*labels,]
+
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			
@@ -1823,9 +1844,63 @@ def plotter(plots,processes,verbose=None):
 			plots[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
 
-	# set layout
-	# TODO: Check cases of plots containing multiple nrows,ncols + additional reshaped axes induced rows and columns
+
+	# Set layout from configuration
+	# Each plot in grid as a separate subinstance with key (subinstance,*position)
+
+	# TODO: Cases of plots containing multiple nrows,ncols + additional reshaped axes induced rows and columns from data
+
+	for instance in list(plots):
+		for subinstance in list(plots[instance]):
+
+			if not plots[instance][subinstance].get(obj):
+				continue
+
+			plots[instance][key] = copy(plots[instance][subinstance])
+			grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
+
+			key,position = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
+
+			print(key,position)
+
+			for prop in PLOTS:
+						
+				if prop not in plots[instance][subinstance][obj]:
+					continue
+				
+				for index,shape,data in search(copy(plots[instance][subinstance][obj][prop]),returns=True):
+				
+					if not data:
+						continue
+
+					print(index,{attr: data[OTHER][attr] for attr in ['N','max_bond','noise.parameters']})
+					continue
+
+					index = [*index[:-len(axis)],*axis]
+					item = data if any(data[axes] is not None for axes in ALL if axes in data) else None
+					iterable = plots[instance][key][obj][prop]
+					inserter(index,item,iterable)
+
+			# for position in itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM])):
+				
+			# 	key = delim.join([subinstance,*[str(i) for i in position]])
+				
+			# 	plots[instance][key] = copy(plots[instance][subinstance])
+			# 	grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
+
+
+							
+			# plots[instance].pop(subinstance);
+			# grid[instance].pop(subinstance);
+
+
+	print(grid)
+	exit()
+
+	# Set layout
+	
 	layout = {}
+	
 	for instance in plots:
 
 		for index,subinstance in enumerate(plots[instance]):		
@@ -1864,6 +1939,7 @@ def plotter(plots,processes,verbose=None):
 
 			grid[instance][subinstance] = [sublayout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
 
+
 	# Set kwargs
 	for instance in list(plots):
 	
@@ -1873,7 +1949,6 @@ def plotter(plots,processes,verbose=None):
 				continue
 
 			position = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
-
 
 			# variables
 
@@ -2315,7 +2390,7 @@ def plotter(plots,processes,verbose=None):
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
 						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
-						if isinstance(data[attr%(axes)].get(kwarg),int):
+						if isinstance(data[attr%(axes)].get(kwarg),integers):
 							
 							size = data[attr%(axes)][kwarg]
 
@@ -2352,7 +2427,7 @@ def plotter(plots,processes,verbose=None):
 						scale = data.get('scale')
 						value = items
 						
-						if isinstance(data[attr%(axes)].get(kwarg),int):
+						if isinstance(data[attr%(axes)].get(kwarg),integers):
 
 							length = len(value)
 							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
@@ -2371,7 +2446,7 @@ def plotter(plots,processes,verbose=None):
 
 								if value is None:
 									pass
-								elif any(isinstance(i,int) for i in items):
+								elif any(isinstance(i,integers) for i in items):
 									value = [int(i) for i in value]
 								else:
 									value = [i for i in value]
