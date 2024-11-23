@@ -440,7 +440,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	# Get configuration
 	options = {'position':None,'value':None}
 	configuration = processes.get('configuration',processes.get('instance',{}))
-	configuration = configuration if isinstance(configuration,dict) and not any(instance not in plots for instance in configuration if configuration[instance]) else {instance:[configuration] if isinstance(configuration,dict) else configuration for instance in plots}
+	configuration = configuration if isinstance(configuration,dict) and not any(instance not in plots for instance in configuration if configuration[instance]) else {instance: configuration if isinstance(configuration,iterables) else [configuration] for instance in plots}
 	configuration = {instance: configuration[instance] if isinstance(configuration[instance],iterables) else [configuration[instance]] for instance in configuration if configuration[instance]}
 	configuration = {instance: [{**config,**{option:config.get(option,options[option]) for option in options}} 
 		for config in configuration[instance]] for instance in configuration}
@@ -1800,7 +1800,7 @@ def plotter(plots,processes,verbose=None):
 								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
 
 
-	# Set layout form data
+	# Set layout from data
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
 	# for position (row,col) in layout
 	# where data in search(plots[instance][subinstance][obj][prop]
