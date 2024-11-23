@@ -21,7 +21,7 @@ from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
-from src.iterables import search,inserter,indexer,permutations,Dict
+from src.iterables import search,inserter,indexer,sizer,permuter,Dict
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
@@ -438,10 +438,11 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 
 	# Get configuration
-	options = {'position':[None,None],'shape':[1,None],'value':{},'kwargs':{}}
+	options = {'position':None,'value':None}
 	configuration = processes.get('configuration',processes.get('instance',{}))
-	configuration = configuration if isinstance(configuration,dict) and all(instance in plots for instance in configuration) else {instance:[configuration] if isinstance(configuration,dict) else configuration for instance in plots}
-	configuration = {instance: [config.update({option:config.get(option,options[option]) for option in options}) 
+	configuration = configuration if isinstance(configuration,dict) and not any(instance not in plots for instance in configuration if configuration[instance]) else {instance:[configuration] if isinstance(configuration,dict) else configuration for instance in plots}
+	configuration = {instance: configuration[instance] if isinstance(configuration[instance],iterables) else [configuration[instance]] for instance in configuration if configuration[instance]}
+	configuration = {instance: [{**config,**{option:config.get(option,options[option]) for option in options}} 
 		for config in configuration[instance]] for instance in configuration}
 	processes['configuration'] = configuration
 
@@ -574,7 +575,7 @@ def parse(key,value,data,verbose=None):
 	Parse key and value condition for data, such that data[key] == value
 	Args:
 		key (str): key of condition
-		value (str,iterable,dict[str,str,iterable]): value of condition, allowed string in 
+		value (str,iterable,dict[str,str,iterable],callable): value of condition, allowed string in 
 			[None,
 			'$value,$' (explicit value),
 			'@key,@' (data value), 
@@ -589,6 +590,7 @@ def parse(key,value,data,verbose=None):
 			'==value,==' (include values),
 			'!=value,!=' (exclude values),
 			]
+			or callable or string to load callable with signature value(key,data) -> bool
 		data (dataframe): data of condition
 		verbose (bool): Verbosity		
 	Returns:
@@ -615,152 +617,162 @@ def parse(key,value,data,verbose=None):
 		pass
 	elif value is None:
 		pass
+	elif callable(value):
+		try:
+			func = value
+			out = func(key,data)
+		except:
+			pass
 	elif isinstance(value,str):
-		outs = [default]
-		for value in value.split(parserator):
+		try:
+			func = load(value,default=None)
+			out = func(key,data)
+		except:
+			outs = [default]
+			for value in value.split(parserator):
 
-			negate = False
-			for negator in negators:
-				if value.startswith(negator) and value.endswith(negator):
-					negate = True
-					value = value[len(negator):-len(negator)]
-					break
+				negate = False
+				for negator in negators:
+					if value.startswith(negator) and value.endswith(negator):
+						negate = True
+						value = value[len(negator):-len(negator)]
+						break
 
-			for delimiter in delimiters:
+				for delimiter in delimiters:
 
-				if value.startswith(delimiter) and value.endswith(delimiter):
-				
-					values = value[len(delimiter):-len(delimiter)].split(separator)
+					if value.startswith(delimiter) and value.endswith(delimiter):
+					
+						values = value[len(delimiter):-len(delimiter)].split(separator)
 
-					if delimiter in ['$']: # Explicit value: value
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [i for value in values for i in [parser(value),value]]           
-						values = [value for value in values if (value is not null)]
-						if values and (values is not null):
-							try:
-								out = data[key].isin(values)
-							except:
-								out = data[key] in values
+						if delimiter in ['$']: # Explicit value: value
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [i for value in values for i in [parser(value),value]]           
+							values = [value for value in values if (value is not null)]
+							if values and (values is not null):
+								try:
+									out = data[key].isin(values)
+								except:
+									out = data[key] in values
 
-					elif delimiter in ['@']: # Data value: key
-						parser = lambda value: (to_str(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-					  
-						if values and (values is not null):
-							out = conditions([data[key]==data[value] for value in values if value in data],op='or')
+						elif delimiter in ['@']: # Data value: key
+							parser = lambda value: (to_str(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
+						  
+							if values and (values is not null):
+								out = conditions([data[key]==data[value] for value in values if value in data],op='or')
 
-					elif delimiter in ['#']: # Index value: i,j,k,...
-						parser = lambda value: (to_int(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]
-						values = [value for value in values if (value is not null)]
+						elif delimiter in ['#']: # Index value: i,j,k,...
+							parser = lambda value: (to_int(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]
+							values = [value for value in values if (value is not null)]
 
-						if values and (values is not null):
-							try:
-								out = data[key].unique()
-								out = data[key].isin(out[[value for value in values if value < out.size]])
-							except:
-								if isinstance(default,bool):
-									out = not default
-								else:
-									out = ~ default
+							if values and (values is not null):
+								try:
+									out = data[key].unique()
+									out = data[key].isin(out[[value for value in values if value < out.size]])
+								except:
+									if isinstance(default,bool):
+										out = not default
+									else:
+										out = ~ default
 
-					elif delimiter in ['%']: # Slice value start,stop,step
-						parser = lambda value: (to_int(value) if len(value)>0 else None)
-						values = [*(parser(value) for value in values),*[None]*(3-len(values))]
-						values = [value for value in values if (value is not null)]
-				
-						if values and (values is not null):
-							try:
-								out = data[key].isin(data[key].unique()[slice(*values)])
-							except:
-								if isinstance(default,bool):
-									out = not default
-								else:
-									out = ~ default
+						elif delimiter in ['%']: # Slice value start,stop,step
+							parser = lambda value: (to_int(value) if len(value)>0 else None)
+							values = [*(parser(value) for value in values),*[None]*(3-len(values))]
+							values = [value for value in values if (value is not null)]
+					
+							if values and (values is not null):
+								try:
+									out = data[key].isin(data[key].unique()[slice(*values)])
+								except:
+									if isinstance(default,bool):
+										out = not default
+									else:
+										out = ~ default
 
-					elif delimiter in [':']: # Data value: func
-						
-						parser = lambda value: (to_str(value) if len(value)>0 else null)
-						values = [i for value in values for i in [parser(value),value]]           
-						values = [value for value in values if (value is not null)]
+						elif delimiter in [':']: # Data value: func
+							
+							parser = lambda value: (to_str(value) if len(value)>0 else null)
+							values = [i for value in values for i in [parser(value),value]]           
+							values = [value for value in values if (value is not null)]
 
-						if values and (values is not null):
-							try:
-								out = conditions([data[key]==getattr(data[key],value)() for value in values if hasattr(data[key],value)],op='or')
-							except:
-								if isinstance(default,bool):
-									out = not default
-								else:
-									out = ~ default								
+							if values and (values is not null):
+								try:
+									out = conditions([data[key]==getattr(data[key],value)() for value in values if hasattr(data[key],value)],op='or')
+								except:
+									if isinstance(default,bool):
+										out = not default
+									else:
+										out = ~ default								
 
-					elif delimiter in ['*']: # Regex value pattern
-						def parser(value):
-							replacements = {'.':r'\.','*':'.'}							
-							if not len(value):
+						elif delimiter in ['*']: # Regex value pattern
+							def parser(value):
+								replacements = {'.':r'\.','*':'.'}							
+								if not len(value):
+									return value
+								value = r'%s'%(to_str(value))
+								for replacement in replacements:
+									value = value.replace(replacement,replacements[replacement])
+								value = r'%s'%(value)
 								return value
-							value = r'%s'%(to_str(value))
-							for replacement in replacements:
-								value = value.replace(replacement,replacements[replacement])
-							value = r'%s'%(value)
-							return value
 
-						values = [parser(value) for value in values if (value is not None)]
-						values = [value for value in values if (value is not None)]
-				
-						if values and (values is not null):
-							out = conditions([data[key].str.contains(r'%s'%(value)) for value in values],op='or')
+							values = [parser(value) for value in values if (value is not None)]
+							values = [value for value in values if (value is not None)]
+					
+							if values and (values is not null):
+								out = conditions([data[key].str.contains(r'%s'%(value)) for value in values],op='or')
 
-					elif delimiter in ['<']: # Bound value: upper (exclusive)
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-					  
-						if values and (values is not null):
-							out = conditions([data[key] < value for value in values],op='or')
+						elif delimiter in ['<']: # Bound value: upper (exclusive)
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
+						  
+							if values and (values is not null):
+								out = conditions([data[key] < value for value in values],op='or')
 
-					elif delimiter in ['<=']: # Bound value: upper (inclusive)
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-					  
-						if values and (values is not null):
-							out = conditions([data[key] <= value for value in values],op='or')
+						elif delimiter in ['<=']: # Bound value: upper (inclusive)
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
+						  
+							if values and (values is not null):
+								out = conditions([data[key] <= value for value in values],op='or')
 
-					elif delimiter in ['>']: # Bound value: lower (exclusive)
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-					  
-						if values and (values is not null):
-							out = conditions([data[key] > value for value in values],op='or')
+						elif delimiter in ['>']: # Bound value: lower (exclusive)
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
+						  
+							if values and (values is not null):
+								out = conditions([data[key] > value for value in values],op='or')
 
-					elif delimiter in ['>=']: # Bound value: lower (inclusive)
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-					  
-						if values and (values is not null):
-							out = conditions([data[key] >= value for value in values],op='or')
+						elif delimiter in ['>=']: # Bound value: lower (inclusive)
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
+						  
+							if values and (values is not null):
+								out = conditions([data[key] >= value for value in values],op='or')
 
-					elif delimiter in ['==']: # Include value
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [i for value in values for i in [parser(value),value]]           
+						elif delimiter in ['==']: # Include value
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [i for value in values for i in [parser(value),value]]           
 
-						if values and (values is not null):
-							out = conditions([data[key] == value for value in values],op='or')																												
+							if values and (values is not null):
+								out = conditions([data[key] == value for value in values],op='or')																												
 
-					elif delimiter in ['!=']: # Exclude value
-						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
+						elif delimiter in ['!=']: # Exclude value
+							parser = lambda value: (to_number(value) if len(value)>0 else null)
+							values = [parser(value) for value in values]           
 
-						if values and (values is not null):
-							out = conditions([data[key] != value for value in values],op='or')																												
+							if values and (values is not null):
+								out = conditions([data[key] != value for value in values],op='or')																												
 
 
-					if negate:
-						out = ~out
+						if negate:
+							out = ~out
 
-					outs.append(out)
-				
-					break
+						outs.append(out)
+					
+						break
 
-		out = conditions(outs,op='and')
+			out = conditions(outs,op='and')
 
 	else:
 		if not isinstance(value,list):
@@ -1282,7 +1294,6 @@ def apply(keys,data,plots,processes,verbose=None):
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
 				for attr in data}
 
-
 	for name in keys:
 
 		logger.log(info,"Processing : %r"%(name,))
@@ -1472,8 +1483,6 @@ def apply(keys,data,plots,processes,verbose=None):
 		# 				},
 		# }		
 
-		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
-
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
 		variables = [
@@ -1481,6 +1490,8 @@ def apply(keys,data,plots,processes,verbose=None):
 			*dependent,
 			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
 			]
+
+		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
 	
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
@@ -1801,12 +1812,20 @@ def plotter(plots,processes,verbose=None):
 			if not plots[instance][subinstance].get(obj):
 				continue
 
+			plts = copy(plots[instance][subinstance])
+			grd = [i for i in grid[instance][subinstance]][:LAYOUTDIM]
+
 			for position in itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM])):
 				
-				key = delim.join([subinstance,*[str(i) for i in position]])
+				key = subinstance
+				coordinate = [i for i in position]
+
+				key = delim.join([str(key),*[str(i) for i in coordinate]])
 				
-				plots[instance][key] = copy(plots[instance][subinstance])
-				grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
+				plots[instance][key] = copy(plts)
+				grid[instance][key] = [i for i in grd][:LAYOUTDIM]
+
+				boolean = lambda data: any(data[axes] is not None for axes in ALL if axes in data)
 
 				for axis in itertools.product(*(range(i) for i in grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])):
 
@@ -1837,7 +1856,7 @@ def plotter(plots,processes,verbose=None):
 									data[axes] = data[axes].tolist()
 
 							index = [*index[:-len(axis)],*axis]
-							item = data if any(data[axes] is not None for axes in ALL if axes in data) else None
+							item = data if boolean(data) else None
 							iterable = plots[instance][key][obj][prop]
 							inserter(index,item,iterable)
 							
@@ -1848,7 +1867,7 @@ def plotter(plots,processes,verbose=None):
 	# Set layout from configuration
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
 
-	# TODO: Cases of plots containing multiple nrows,ncols + additional reshaped axes induced rows and columns from data
+	# TODO: Cases of plots with position-dependent, not just row,col independent labels for layout
 
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
@@ -1856,88 +1875,100 @@ def plotter(plots,processes,verbose=None):
 			if not plots[instance][subinstance].get(obj):
 				continue
 
-			plots[instance][key] = copy(plots[instance][subinstance])
-			grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
+			if not configuration.get(instance):
+				continue
 
-			key,position = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
+			if all(config[attr] is None for config in configuration[instance] for attr in config):
+				continue
 
-			print(key,position)
+			data = [{attr: data[OTHER][attr]  for attr in data[OTHER] if attr not in [*ALL,OTHER]}
+				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop])]
+			data = {attr:[i[attr] for i in data] for attr in set(attr for i in data for attr in i)}
+			data = {attr: list(sorted(set(data[attr]),key=lambda i:data[attr].index(i))) for attr in data}
 
-			for prop in PLOTS:
-						
-				if prop not in plots[instance][subinstance][obj]:
-					continue
-				
-				for index,shape,data in search(copy(plots[instance][subinstance][obj][prop]),returns=True):
-				
-					if not data:
-						continue
+			layout = {position: {attr:config['value'][attr] for config in configuration[instance] if config['position'] in [position,None] for attr in config['value'] if attr in data}
+				for position in ['row','col'][:LAYOUTDIM]}
+			layout = {position: list(permuter({attr: list(sorted([i for i in data[attr] if parse(attr,layout[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(layout[position][attr],iterables) else list(layout[position][attr]).index(i)))
+				for attr in layout[position]}))
+				for position in layout}
+			layout = [[{**i,**j} for j in layout['col']] for i in layout['row']]
 
-					print(index,{attr: data[OTHER][attr] for attr in ['N','max_bond','noise.parameters']})
-					continue
+			shapes = [len(layout),max(len(i) for i in layout)]
 
-					index = [*index[:-len(axis)],*axis]
-					item = data if any(data[axes] is not None for axes in ALL if axes in data) else None
-					iterable = plots[instance][key][obj][prop]
-					inserter(index,item,iterable)
+			plts = copy(plots[instance].pop(subinstance))
+			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
 
-			# for position in itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM])):
-				
-			# 	key = delim.join([subinstance,*[str(i) for i in position]])
-				
-			# 	plots[instance][key] = copy(plots[instance][subinstance])
-			# 	grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
+			for position in itertools.product(*(range(i) for i in shapes[:LAYOUTDIM])):
 
+				key,coordinate = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
 
+				key = key
+				coordinate = [position[i]*grd[i]+coordinate[i] for i in range(LAYOUTDIM)]
+
+				key = delim.join([str(key),*[str(i) for i in coordinate]])
+
+				plots[instance][key] = copy(plts)
+				grid[instance][key] = [i*j for i,j in zip(grd,shapes)][:LAYOUTDIM]
+
+				boolean = lambda data,item=indexer(position,layout): all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER])
+
+				for prop in PLOTS:
 							
-			# plots[instance].pop(subinstance);
-			# grid[instance].pop(subinstance);
+					if prop not in plts[obj]:
+						continue
+					
+					for index,shape,data in search(copy(plts[obj][prop]),returns=True):
+					
+						if not data:
+							continue
 
+						index = index
+						item = data if boolean(data) else None
+						iterable = plots[instance][key][obj][prop]
+						inserter(index,item,iterable)
 
-	print(grid)
-	exit()
 
 	# Set layout
 	
-	layout = {}
+	layouts = {}
 	
 	for instance in plots:
 
 		for index,subinstance in enumerate(plots[instance]):		
 			
-			sublayout = plots[instance][subinstance]['style']['layout']
+			layout = plots[instance][subinstance]['style']['layout']
 			
-			if not layout.get(instance):
-				layout[instance] = sublayout
-			layout[instance].update({
-				**layout[instance],
-				**{attr: max(sublayout[attr]*grid[instance][subinstance][GRID.index(attr[1:-1])],layout[instance][attr])
-					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
+			if not layouts.get(instance):
+				layouts[instance] = layout
+			layouts[instance].update({
+				**layouts[instance],
+				**{attr: max(layout[attr],grid[instance][subinstance][GRID.index(attr[1:-1])],layouts[instance][attr])
+					if (layout[attr] is not None) and (layouts[instance][attr] is not None) else None
 					for attr in ['nrows','ncols']},
 				**{attr: None for attr in ['index']},
 				})
 
 		for index,subinstance in enumerate(plots[instance]):
 			
-			sublayout = copy(layout[instance])
+			layout = copy(layouts[instance])
 
-			index = sublayout['index']-1 if sublayout['index'] is not None else index
-			nrow = (index - index%sublayout['ncols'])//sublayout['ncols']
-			ncol = index%sublayout['ncols']
+			index = layout['index']-1 if layout['index'] is not None else index
+			nrow = (index - index%layout['ncols'])//layout['ncols']
+			ncol = index%layout['ncols']
 
-			sublayout.update({
+			layout.update({
 				**{'index':index+1},
 				**{
-					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
-					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
-					'right':(ncol+1)/sublayout['ncols'] if sublayout['right'] and sublayout['ncols']>1 else None,
-					'left':(ncol)/sublayout['ncols'] if sublayout['left'] and sublayout['ncols']>1 else None,											
+					'top':1 - (nrow)/layout['nrows'] if layout['top'] and layout['nrows']>1 else None,
+					'bottom':1 - (nrow+1)/layout['nrows'] if layout['bottom'] and layout['nrows']>1 else None,
+					'right':(ncol+1)/layout['ncols'] if layout['right'] and layout['ncols']>1 else None,
+					'left':(ncol)/layout['ncols'] if layout['left'] and layout['ncols']>1 else None,											
 					}
 				})
 
-			plots[instance][subinstance]['style']['layout'] = sublayout
+			plots[instance][subinstance]['style']['layout'] = layout
 
-			grid[instance][subinstance] = [sublayout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
+			grid[instance][subinstance] = [layout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
 
 
 	# Set kwargs

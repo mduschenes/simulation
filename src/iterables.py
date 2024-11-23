@@ -658,6 +658,8 @@ def find(item,iterable,types=(list,),exceptions=()):
 			return index
 	return None
 
+
+
 def indexer(index,iterable,types=(list,),exceptions=()):
 	'''
 	Get item at index in iterable
@@ -705,6 +707,28 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 
 	return
 
+
+def sizer(iterable,types=(list,),exceptions=()):
+	'''
+	Get shape of iterable
+	Args:
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	Returns:
+		shape (iterable[int]): Shape of iterable
+	'''
+
+	if (isinstance(iterable,types)) and (not isinstance(iterable,exceptions)):
+		size = len(iterable)
+		shape = [sizer(item,types=types,exceptions=exceptions) for item in iterable]
+		shape = [i for i in shape if i is not None]
+		length = max((len(i) for i in shape),default=0)
+		shape = [[*i,*[None]*(length-len(i))] for i in shape]
+		shape = [size,*(max((j for j in i if j is not None),default=None) for i in zip(*shape))]
+	else:
+		shape = None
+	return shape
 
 def iterate(obj,attr,attributes=[],delimiter=None):
 	'''

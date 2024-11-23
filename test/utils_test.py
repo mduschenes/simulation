@@ -28,7 +28,7 @@ from src.utils import arrays,scalars,iterables,integers,floats,pi,asarray,asscal
 
 from src.optimize import Metric
 
-from src.iterables import getter,setter,permutations,namespace
+from src.iterables import getter,setter,sizer,namespace
 from src.io import load,dump,join,split,edit
 
 
@@ -375,6 +375,23 @@ def test_setter(path=None,tol=None):
 	print('Passed')
 
 	return
+
+def test_sizer(path=None,tol=None):
+	iterable = [[[None]*3,[None]*5],[[[None]*6,None],[None]*3,[None]*2]]
+	types = (list,)
+	exceptions = ()
+
+	size = [2,3,5,6]
+
+	shape = sizer(iterable,types=types,exceptions=exceptions)
+
+	assert all(i==j for i,j in zip(shape,size)), "Incorrect shape %r"%(shape)
+
+	print('Passed')
+
+	return
+
+
 
 def test_scinotation(path=None,tol=None):
 	number = 1e5
@@ -1216,6 +1233,7 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_getter(path,tol)
 	# test_setter(path,tol)
+	test_sizer(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
@@ -1231,6 +1249,6 @@ if __name__ == '__main__':
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_seed(path,tol)
-	test_groupby(path,tol)
+	# test_groupby(path,tol)
 	# test_structure(path,tol)
 	# test_jax(path,tol)
