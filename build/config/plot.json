@@ -568,9 +568,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -863,9 +863,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -1177,9 +1177,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -1491,9 +1491,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -1805,9 +1805,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -2119,9 +2119,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -2414,9 +2414,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -2709,9 +2709,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -3023,9 +3023,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -3337,9 +3337,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -3632,9 +3632,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -3927,9 +3927,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
@@ -4173,9 +4173,9 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
 					},
 					"set_xlabel": "bottom",
 					"set_ylabel": "left",
