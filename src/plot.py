@@ -720,24 +720,27 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 	def _positions(layout=None):
 		if layout is None:
 			return {
-				'top':(1,None),'bottom':(1,None),
-				'left':(None,1),'right':(None,1),
-				'top_left':(1,1),'bottom_right':(1,1),
-				'top_right':(1,1),'bottom_left':(1,1),
+				'top':(1,None),'bottom':(1,None),'middle':(None,None),
+				'left':(None,1),'right':(None,1),'centre':(None,None),
+				'top_left':(None,None),'bottom_left':(None,None),'middle_left':(None,None),
+				'top_right':(None,None),'bottom_right':(None,None),'middle_right':(None,None),
+				'top_centre':(None,None),'bottom_centre':(None,None),'middle_centre':(None,None),
 				}
 		elif all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			positions = {
-				'top':(1,None),'bottom':(layout['nrows'],None),
-				'left':(None,1),'right':(None,layout['ncols']),
-				'top_left':(1,1),'bottom_right':(layout['nrows'],layout['ncols']),
-				'top_right':(1,layout['ncols']),'bottom_left':(layout['nrows'],1),
+				'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
+				'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
+				'top_left':(1,1),'bottom_left':(layout['nrows'],1),'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
+				'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
+				'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
 				}
 		else:
 			positions = {
-				'top':(1,None),'bottom':(1,None),
-				'left':(None,1),'right':(None,1),
-				'top_left':(1,1),'bottom_right':(1,1),
-				'top_right':(1,1),'bottom_left':(1,1),
+				'top':(1,None),'bottom':(1,None),'middle':(None,None),
+				'left':(None,1),'right':(None,1),'centre':(None,None),
+				'top_left':(None,None),'bottom_left':(None,None),'middle_left':(None,None),
+				'top_right':(None,None),'bottom_right':(None,None),'middle_right':(None,None),
+				'top_centre':(None,None),'bottom_centre':(None,None),'middle_centre':(None,None),
 				}
 		return positions
 
@@ -949,7 +952,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwarg = ['call']
 
 			if attr in ['legend']:
-				handles,labels = getattr(obj,'get_legend_handles_labels')()
+
+				if kwargs[attr].get('merge') is not None:
+					handles_labels = [getattr(ax,'get_legend_handles_labels')() for ax in obj.get_figure().axes]
+					handles_labels = [sum(i, []) for i in zip(*handles_labels)]
+				else:
+					handles_labels = getattr(obj,'get_legend_handles_labels')()
+
+				handles,labels = handles_labels
 				handles,labels = (
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
@@ -1095,14 +1105,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if kwargs[attr].get('set_%s'%(prop)) is not None}} if any(kwargs[attr].get('set_%s'%(prop)) is not None for prop in ['alpha','color']) else {})
 					})
 
-				call = (not (
+				call = (
+					(not (
 					(( (not kwargs[attr]['handles']) or (not kwargs[attr]['labels'])) or 
 					(all([kwargs[attr][k] is None for k in kwargs[attr]]))) or
 					((min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))>=1) and
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
-					))
+					)) or (
+					(min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))==1) and 
+					(kwargs[attr].get('set_label',True)))
+					)
 
-				nullkwargs.extend(['prop','join','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2

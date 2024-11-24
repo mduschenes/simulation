@@ -438,7 +438,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 
 	# Get configuration
-	options = {'position':None,'value':None}
+	options = {'position':None,'value':None,'kwargs':None}
 	configuration = processes.get('configuration',processes.get('instance',{}))
 	configuration = configuration if isinstance(configuration,dict) and not any(instance not in plots for instance in configuration if configuration[instance]) else {instance: configuration if isinstance(configuration,iterables) else [configuration] for instance in plots}
 	configuration = {instance: configuration[instance] if isinstance(configuration[instance],iterables) else [configuration[instance]] for instance in configuration if configuration[instance]}
@@ -1898,6 +1898,11 @@ def plotter(plots,processes,verbose=None):
 			plts = copy(plots[instance].pop(subinstance))
 			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
 
+			options = {position:[config['kwargs'] for config in configuration[instance] if config['position'] in [position,None] and config['kwargs'] is not None]
+				for position in ['row','col'][:LAYOUTDIM]}
+			options = {position:[{}] if not len(options[position]) else [i for kwargs in options[position] for i in (kwargs if not isinstance(kwargs,dict) else [kwargs])] for position in options}
+			options = [[{**options[['row','col'][0]][i%len(options[['row','col'][0]])],**options[['row','col'][1]][j%len(options[['row','col'][1]])]} for j in range(shapes[1])] for i in range(shapes[0])]
+
 			for position in itertools.product(*(range(i) for i in shapes[:LAYOUTDIM])):
 
 				key,coordinate = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
@@ -1926,6 +1931,18 @@ def plotter(plots,processes,verbose=None):
 						item = data if boolean(data) else None
 						iterable = plots[instance][key][obj][prop]
 						inserter(index,item,iterable)
+
+				opts = indexer(position,options)
+				for attr in list(opts):
+					index,item,tmp = delim.join(attr.split(delim)[:-1]),attr.split(delim)[-1],opts.pop(attr)
+					value = getter(plots[instance][key],index,delimiter=delim)
+					if value is None:
+						opts[attr] = tmp
+					elif isinstance(value,list):
+						opts[index] = [{**i,item:tmp} if isinstance(i,dict) else tmp for i in value]
+					else:
+						opts[attr] = tmp
+				setter(plots[instance][key],opts,delimiter=delim)
 
 
 	# Set layout
@@ -2217,6 +2234,7 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 						for label in list(value):
+							
 							for delimiter in delimiters:
 								
 								if not (label.startswith(delimiter) and label.endswith(delimiter)):
@@ -2230,7 +2248,7 @@ def plotter(plots,processes,verbose=None):
 									if not any(label in values[prop] for prop in values):
 										continue
 									
-									if isinstance(val,dict):
+									if isinstance(val,dict) and any(prop in val for prop in ['value','type','func']):
 										defaults = {'value':None,'type':None,'func':None}
 										val.update({prop: val.get(prop,defaults[prop]) for prop in defaults})
 
@@ -2252,6 +2270,23 @@ def plotter(plots,processes,verbose=None):
 												**{attr:data[OTHER][attr] for attr in [label]},
 												**{attr:np.array([list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
 												})											
+										elif prop in PLOTS:
+											if label in data:
+												item = [i for i in data[label]]
+												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+											else:
+												item = data[OTHER].get(label)
+												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+										else:
+											continue
+
+									elif isinstance(val,dict) and not any(prop in val for prop in ['value','type','func']):
+
+										val = {i:{label:val[i]} for i in val}
+
+										if prop not in PLOTS:
+											item = None
+											items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
@@ -2297,6 +2332,7 @@ def plotter(plots,processes,verbose=None):
 											}
 								
 								elif delimiter in ['__']:
+									
 									if label not in [*GRID[:LAYOUTDIM],*INDEXES]:
 										continue
 									if label in GRID[:LAYOUTDIM]:
@@ -2372,7 +2408,7 @@ def plotter(plots,processes,verbose=None):
 					value = data[attr]['__value__']
 					indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
 
-					if isinstance(value,dict):
+					if isinstance(value,dict) and any(prop in value for prop in ['value','type','func']):
 						defaults = {'value':None,'type':None,'func':None}
 						value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
@@ -2382,6 +2418,9 @@ def plotter(plots,processes,verbose=None):
 							value = indices
 						else:
 							value = indices
+
+					elif isinstance(value,dict) and not any(prop in value for prop in ['value','type','func']):
+						pass
 
 					elif value is not None:
 						value = indices
@@ -2514,20 +2553,20 @@ def plotter(plots,processes,verbose=None):
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>1))))))},
+								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>=1))))))},
 						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>1))))))},
+								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>=1))))))},
 						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})})) 
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 					
 							for label in values[prop] 
-							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(set(values[prop][label]['value']))>1)) and 
+							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(set(values[prop][label]['value']))>=1)) and 
 								not (values[prop][label]['other']))))))},
 					},					
 					{
@@ -2540,7 +2579,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))==1))))))},
+								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))<1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}) 
@@ -2550,7 +2589,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))==1))))))},
+								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))<1))))))},
 					},
 					{
 						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
@@ -2607,7 +2646,7 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				value = list(set(label for value in (data[attr] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))
-				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>1))})
+				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>=1))})
 
 				def func(value,attrs=None):
 
@@ -2633,7 +2672,7 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				value = list(set(label for value in ([i['value'] for i in data[attr]] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))
-				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>1))})
+				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>=1))})
 
 				def func(value,attrs=None):
 
@@ -2777,7 +2816,7 @@ def plotter(plots,processes,verbose=None):
 								if isinstance(data[attr]['__value__'],str):
 									value = data[attr]['__value__']
 								
-								elif isinstance(value,dict):
+								elif isinstance(value,dict) and any(prop in value for prop in ['value','type']):
 									defaults = {'value':None,'type':None}
 									value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
@@ -2806,11 +2845,21 @@ def plotter(plots,processes,verbose=None):
 											value['value'] = tmp[data[attr]['__index__']]
 
 									value = value['value']
-
+								elif isinstance(value,dict) and not any(prop in value for prop in ['value','type']):
+									value = data[attr]['__value__']
 								elif not isinstance(data[attr]['__value__'],scalars):
 									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
 								else:
 									value = data[attr]['__value__']
+
+								if isinstance(value,dict) and attr in ['alpha','zorder','marker','linestyle']:
+									value = [i for i in value if all(
+										((not isinstance(value[i][attr],iterables) and 
+											data[OTHER][attr] == value[i][attr]) or 
+										(isinstance(value[i][attr],iterables) and 
+											data[OTHER][attr] in value[i][attr]))
+										for attr in value[i] if attr in data[OTHER])]
+									value = value[0] if value else None
 
 								if attr in ['color','ecolor']:
 									pass
@@ -2926,7 +2975,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop] 
 							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and 
-								(len(set(values[prop][label]['value']))>1)) and 
+								(len(set(values[prop][label]['value']))>=1)) and 
 								not (values[prop][label]['other'])))))))},							
 						**({label: func(label)
 							for label in data[OTHER][OTHER]['legend'].get('label')} 
