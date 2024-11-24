@@ -254,8 +254,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -544,8 +544,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -839,8 +839,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -1153,8 +1153,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -1467,8 +1467,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -1781,8 +1781,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -1961,7 +1961,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Renyi Entangling} ~~ 1 - \\textrm{tr}((\\psi_{\\rho_{\\chi}})^{2})$"
+				"ylabel": "$\\textrm{Renyi Entangling} ~~ 1 - \\textrm{tr}(\\psi_{\\rho_{\\chi}}^{2})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -2095,8 +2095,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -2390,8 +2390,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -2685,8 +2685,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -2999,8 +2999,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -3313,8 +3313,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -3608,8 +3608,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
@@ -3903,8 +3903,8 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					1.4,
-					0.35
+					1.5,
+					0.315
 				],
 				"ncol": 1,
 				"keep": "middle",
