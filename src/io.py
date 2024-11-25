@@ -905,15 +905,14 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 		elif wrapper in ['pd']:
 			def wrapper(data):
+				options = {}
+				def func(path,data):
+					return data
+				try:
+					data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path] is not None),**options)
+				except Exception as exception:
+					data = default
 				return data
-				# options = {}
-				# def func(path,data):
-				# 	return data
-				# try:
-				# 	data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path]),**options)
-				# except Exception as exception:
-				# 	data = default
-				# return data
 		else:
 			def wrapper(data):
 				return data
@@ -922,10 +921,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	for wrapper in wrappers:
 		data = wrapper(data)
-	if isinstance(args['path'],str) and (any(((i in [None,'pd']) or (isinstances(i,dict,reverse=True))) for i in args['wrapper'])):
+	if isinstance(args['path'],str) and (any(((i in [None]) or (isinstances(i,dict,reverse=True))) for i in args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (any(((i in [None,'pd'])) for i in args['wrapper'])):
+	elif not isinstance(args['path'],dict) and (any(((i in [None])) for i in args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
