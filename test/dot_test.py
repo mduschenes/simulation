@@ -5,9 +5,6 @@ import pytest
 import os,sys
 import itertools,functools,copy,warnings
 
-import jax
-import jax.numpy as np
-import numpy as onp
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -17,8 +14,9 @@ for PATH in PATHS:
 
 from src.io import load,dump,join,split,edit
 
-from src.utils import array,zeros,rand,eye
-from src.utils import abs2,trace,dot,allclose,product,gradient
+from src.utils import np,onp,backend
+from src.utils import array,gradient,zeros,rand,eye
+from src.utils import abs2,trace,dot,allclose
 from src.utils import inner,inner_norm,inner_abs2,inner_real
 from src.utils import gradient_inner,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real
 
@@ -62,11 +60,11 @@ def test_dot(path=None,tol=None):
 				_g = lambda *operands,optimize: (lambda a,b,da: (2*dot(da,(a-b.conj()).T.conj())).real)				
 			elif d == 2:
 				_f = lambda *operands,optimize: (lambda a,b: ((abs2(a-b.conj())).sum()).real)
-				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).T.conj()),axes=(-2,-1))).real)				
+				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).T.conj()),axis=(-2,-1))).real)				
 				# _g = lambda *operands,optimize: (lambda a,b,da: (2*(da*(a-b.conj()).conj()).sum(axis=[-2,-1])).real)				
 			else:
 				_f = lambda *operands,optimize: (lambda a,b: ((abs2(a-b.conj())).sum()).real)
-				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).T.conj()),axes=(-2,-1))).real)				
+				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).T.conj()),axis=(-2,-1))).real)				
 
 		elif metric in ['real']:
 			f = lambda *operands,optimize: inner_real
@@ -76,10 +74,10 @@ def test_dot(path=None,tol=None):
 				_g = lambda *operands,optimize: (lambda a,b,da: ((dot(da,b.T))).real)
 			elif d == 2:
 				_f = lambda *operands,optimize: (lambda a,b: (trace(dot(a,b.T))).real)
-				_g = lambda *operands,optimize: (lambda a,b,da: (trace(dot(da,b.T),axes=(-2,-1))).real)
+				_g = lambda *operands,optimize: (lambda a,b,da: (trace(dot(da,b.T),axis=(-2,-1))).real)
 			else:
 				_f = lambda *operands,optimize: (lambda a,b: (trace(dot(a,b.T))).real)
-				_g = lambda *operands,optimize: (lambda a,b,da: (trace(dot(da,b.T),axes=(-2,-1))).real)
+				_g = lambda *operands,optimize: (lambda a,b,da: (trace(dot(da,b.T),axis=(-2,-1))).real)
 		elif metric in ['abs2']:
 			f = lambda *operands,optimize: inner_abs2
 			g = lambda *operands,optimize: gradient_inner_abs2            
@@ -88,10 +86,10 @@ def test_dot(path=None,tol=None):
 				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((dot(a,b.T)).conj()))*dot(da,b.T)).real)
 			elif d == 2:
 				_f = lambda *operands,optimize: (lambda a,b: abs2(trace(dot(a,b.T))))
-				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axes=(-2,-1))).conj()))*trace(dot(da,b.T),axes=(-2,-1))).real)
+				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axis=(-2,-1))).conj()))*trace(dot(da,b.T),axis=(-2,-1))).real)
 			else:
 				_f = lambda *operands,optimize: (lambda a,b: abs2(trace(dot(a,b.T))))
-				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axes=(-2,-1))).conj()))*trace(dot(da,b.T),axes=(-2,-1))).real)             
+				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axis=(-2,-1))).conj()))*trace(dot(da,b.T),axis=(-2,-1))).real)             
 		else:
 			f = inner_abs
 			g = gradient_inner_abs2
@@ -100,10 +98,10 @@ def test_dot(path=None,tol=None):
 				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((dot(a,b.T)).conj()))*dot(da,b.T)).real)
 			elif d == 2:
 				_f = lambda *operands,optimize: (lambda a,b: abs2(trace(dot(a,b.T))))
-				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axes=(-2,-1))).conj()))*trace(dot(da,b.T),axes=(-2,-1))).real)
+				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axis=(-2,-1))).conj()))*trace(dot(da,b.T),axis=(-2,-1))).real)
 			else:
 				_f = lambda *operands,optimize: (lambda a,b: abs2(trace(dot(a,b.T))))
-				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axes=(-2,-1))).conj()))*trace(dot(da,b.T),axes=(-2,-1))).real)
+				_g = lambda *operands,optimize: (lambda a,b,da: ((2*((trace(dot(a,b.T),axis=(-2,-1))).conj()))*trace(dot(da,b.T),axis=(-2,-1))).real)
 
 		func = f(*shapes,optimize=optimize)
 		_func = _f(*shapes,optimize=optimize)

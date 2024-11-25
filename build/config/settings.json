@@ -1,41 +1,41 @@
-	{
-"class":{
-	"model":"src.quantum.Unitary",
+{
+"cls":{
+	"model":"src.quantum.Channel",
+	"parameters":"src.parameters.Parameters",
+	"label":"src.quantum.Label",
+	"noise":"src.quantum.Noise",
+	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"
 	},
-"hyperparameters":null, 
+"hyperparameters":null,
 "boolean":{
 	"train":1,
 	"load":0,
 	"dump":0
 	},
 "seed":{
-	"seed":5576,
+	"seed":39123,
 	"size":1,
-	"reset":5576,
+	"reset":39123,
+	"group":null,
 	"index":null
 	},
 "permutations":{
 	"permutations":{},
-	"groups":[],
+	"groups":null,
 	"index":null
 	},
 "model":{
-	"data":{
-		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
-		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
-		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
-		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
-		},
+	"data":{},
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":20,
 	"T":null,
-	"tau":50e0,
-	"P":2,
+	"tau":1,
+	"P":1,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
@@ -44,35 +44,42 @@
 	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
-	"backend":"jax",
+	"backend":null,
 	"architecture":null,
-	"seed":null,
+	"seed":12345,
 	"key":null,
+	"instance":null,
 	"cwd":".",
 	"path":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":true,
+	"cleanup":false,
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":5,
+	"iterations":10,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"search":{"alpha":"line_search","beta":"fletcher_reeves"},
-	"search":{"alpha":"line_search","beta":"dai_yuan"},
-	"eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":10,"alpha":0,"beta":0},
+	"eps":{"value":0,"grad":0,"value.difference":0,"grad.difference":0,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":1e4,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":{"scale":1e-3}},
+	"kwargs":{},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":5},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"do":{
+		"parameters":true,
+		"grad":true,
+		"search":true,
+		"parameters.relative":true,"parameters.relative.mean":true,		
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"entropy":true,"purity":true,"similarity":true,"divergence":true		
+	},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -80,115 +87,22 @@
 		},
 	"track":{}	
 	},
-"parameters":{
-	"xy": {
-		"string":"xy",
-		"init":true,		
-		"category":"variable",
-		"method":"unconstrained",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
-		"parameters":null,
-		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
-		"size":[-1,-1],
-		"group":[["x"],["y"]],
-		"scale":1,
-		"initialization":"interpolation",
-		"random":"uniform",
-		"interpolation":3,
-		"smoothness":2,
-		"pad":"random",
-		"seed":null,	
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
-		},
-	"z": {
-		"string":"z",
-		"init":true,		
-		"category":"constant",
-		"method":null,		
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],
-		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
-		"size":[-1,-1],
-		"group":[["z"]],
-		"scale":1,
-		"initialization":"random",
-		"random":"uniform",
-		"pad":"random",
-		"seed":null,
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"args":[],
-		"kwargs":{}
-		},
-	"zz": {
-		"string":"zz",
-		"init":true,		
-		"category":"constant",
-		"method":null,		
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
-		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
-		"size":[-1,-1],
-		"group":[["zz"]],
-		"scale":1,
-		"initialization":"random",
-		"random":"uniform",	
-		"pad":"random",
-		"seed":null,
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"args":[],
-		"kwargs":{}
-		}
-	},
 "label": {
-	"string":"random",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"parameters":null,
-	"shape":[-1,-1],
-	"size":null,
-	"scale":1,
-	"initialization":"random",
-	"random":"haar",
-	"seed":null,
-	"bounds":[-1,1]
+	"operator":"I",
+	"site":null,
+	"string":"U",
+	"parameters":1,
+	"ndim":2,
+	"seed":null
 	},
 "state": {
-	"string":"random",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"shape":[-1,-1],
-	"size":[1,1],
-	"scale":1,
-	"initialization":"random",
-	"random":"haar",
-	"seed":null,
-	"bounds":[-1,1]
-	},
-"noise": {
-	"string":"phase",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"shape":[-1,-1],
-	"size":null,
-	"scale":1e-12,
-	"initialization":"random",
-	"random":"gaussian",
-	"seed":null,
-	"bounds":[-1,1]
+	"operator":"haar",
+	"site":null,
+	"string":"U",
+	"parameters":false,
+	"ndim":2,
+	"samples":1,
+	"seed":null
 	},
 "jobs":{
 	"preprocess":null,
@@ -196,15 +110,14 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
-			"JOB_ENV":"jax",
+			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json",
-			"conf":"logging.conf"			
+			"settings":"settings.json"		
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -218,6 +131,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
+		"resume":null,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
@@ -230,11 +144,11 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"jax",
+			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{
 			"plot":"plot.json",
@@ -257,11 +171,9 @@
 		"execute":1,
 		"process":null,
 		"verbose":"info"
-		},
-	"preprocess":null,
-	"job":null,
-	"postprocess":null
+		}
 	},
+"callback":{},
 "process": {},
 "plot": {}
 }

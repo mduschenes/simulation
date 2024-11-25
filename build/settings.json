@@ -1,5 +1,5 @@
 {
-"class":{
+"cls":{
 	"model":"src.quantum.Unitary",
 	"callback":"src.quantum.Callback"
 	},
@@ -99,7 +99,7 @@
 	"architecture":null,
 	"seed":null,
 	"key":null,
-	"cwd":".",
+	"cwd":"data",
 	"path":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
@@ -310,7 +310,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=."]
 			},
 		"paths":{
 			"plot":"plot.json",

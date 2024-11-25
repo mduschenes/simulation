@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --account=def-carrasqu
+##SBATCH --account=mduschenes
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
@@ -15,13 +15,18 @@
 
 ##SBATCH --dependency=afterany:
 
+##SBATCH --signal=B:USRSIG@60
+##SBATCH --open-mode=append
+
+##--nodelist=cpu[0-10]
+##--exclude=cpu[0-10]
+
 #SBATCH --parsable
 #SBATCH --get-user-env
 #SBATCH --cpus-per-task=1
 
 
 # Run Parallel tasks
-
 
 # Function
 function RUN(){
@@ -43,6 +48,17 @@ function RUN(){
 
 }
 export -f RUN
+
+# Queue
+function QUEUE(){
+
+	job=${BASH_SOURCE[0]}
+	id=${SLURM_ARRAY_JOB_ID}
+
+	# scontrol requeue ${id}
+	# sbatch --export=ALL < ${job}
+}
+export -f QUEUE
 
 # Job
 export JOB_NAME=${SLURM_JOB_NAME}
@@ -85,7 +101,12 @@ module purge &>/dev/null 2>&1
 source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
-CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+if ([ ! -z ${JOB_SRC} ] && [ ! -z ${JOB_CMD} ])
+then
+	CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+else
+	CMD=(${JOB_ARGS[@]})
+fi
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 # Processes
@@ -106,4 +127,7 @@ ${EXE[@]} ${TASKS[@]}
 # Status
 # squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 # sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}  2>/dev/null
+scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
+
+# Queue
+# trap 'QUEUE' SIGUSRSIG

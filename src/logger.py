@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit
@@ -95,6 +94,7 @@ def config(name=None,conf=None,**kwargs):
 					prop = 'args'
 					config[section][prop] = '(%s)'%(','.join([
 						'"%s"'%(path),
+						# '"%s"'%('"a"'),
 						*(config[section][prop][1:-1].split(',')[1:] 
 						if not os.path.exists(path) else ['"a"'])]
 						))
@@ -135,7 +135,6 @@ def config(name=None,conf=None,**kwargs):
 					if not config[section][prop]:
 						config.pop(section);
 						break
-
 
 			with open(conf, 'w') as configfile:
 				config.write(configfile)
@@ -183,7 +182,7 @@ class Logger(object):
 		self.conf = conf
 		self.file = file
 
-		self.string = str(self.file) if self.file is not None else 'stdout'
+		self.string = os.path.basename(str(self.file)) if self.file is not None else 'stdout'
 
 		self.cleanup = cleanup
 		self.__clean__()
@@ -242,6 +241,7 @@ class Logger(object):
 		for logger in loggers:
 			try:
 				os.remove(logger)
+				os.rmdir(os.path.dirname(logger))
 			except:
 				pass
 

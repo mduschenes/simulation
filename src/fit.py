@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy,traceback
+import os,sys,itertools,warnings,traceback
 
 import matplotlib.pyplot as plt
 
@@ -13,14 +13,20 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,einsum,diag,partial,where
+from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
-from src.utils import norm,inv,lstsq,interp,piecewise
-from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
-from src.utils import nan,null,scalars,delim
+from src.utils import norm,inv,lstsq,interp,piecewise,inplace
+from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
+from src.utils import nan,null,arrays,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
+
+# Logging
+from src.logger	import Logger
+logger = Logger(verbose=True)
+info = 100
+debug = 0
 
 class cov(Covariance):pass
 
@@ -66,10 +72,10 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	if postprocess is None or callable(postprocess):
 		postprocess = [postprocess for i in range(n)]
 
-	if parameters is None or isinstance(parameters,(array,*scalars)):
+	if parameters is None or isinstance(parameters,(arrays,*scalars)):
 		parameters = [parameters for i in range(n)]
 
-	if covariance is None or isinstance(covariance,(array,*scalars)):
+	if covariance is None or isinstance(covariance,(arrays,*scalars)):
 		covariance = [covariance for i in range(n)]
 
 	if intercept is None or isinstance(intercept,bool):
@@ -115,9 +121,9 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			)
 
 		_func[i] = returns[0]
-		_y = _y.at[_condition[i]].set(returns[1]) 
+		_y = inplace(_y,_condition[i],returns[1] )
 		_parameters[i] = returns[2]
-		_yerr = _yerr.at[_condition[i]].set(returns[3])
+		_yerr = inplace(_yerr,_condition[i],returns[3])
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]
 
@@ -174,7 +180,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		'metric':'lstsq',
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 
 	transform,invtransform = transformation(x,y,parameters,preprocess=preprocess,postprocess=postprocess,**kwargs)
@@ -184,6 +190,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	_x,_y = transform(_x,_y)
 
 	invgrad = gradtransform(x,y,parameters)
+
 	if xerr is not None:
 		i = 0
 		if xerr.ndim == 1:
@@ -224,7 +231,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if func is None or (isinstance(func,str) and func in ['lstsq','mse']):
 
 		def func(parameters,x,*args,**kwargs):
-			y = x.dot(parameters)
+			y = dot(x,parameters)
 			return y
 
 		if intercept:
@@ -243,7 +250,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		if yerr.dim == 1:
 			yerr = diag(yerr)
 		
-		_covariance = lstsq(x.T.dot(x),lstsq(x.T.dot(x),x.T.dot(yerr).dot(x)).T).T
+		_covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
 
 	elif isinstance(func,str):
 
@@ -287,7 +294,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		elif _covariance.ndim == 1:
 			_yerr = abs(diag(_grad)*_covariance)
 		elif _covariance.ndim == 2:
-			_yerr = sqrt(diag(_grad.dot(_covariance).dot(_grad.T)))
+			_yerr = sqrt(diag(dot(dot(_grad,_covariance),_grad.T)))
 
 	elif isinstance(func,array):
 		z = func
@@ -310,7 +317,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			xerr = abs(jac*xerr)
 		else:
 			jac = invgrad[i][i]
-			xerr = jac.dot(xerr).dot(jac.T)
+			xerr = dot(dot(jac,xerr),jac.T)
 	if yerr is not None:
 		i = 1
 		if yerr.ndim == 1:
@@ -318,7 +325,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			yerr = abs(jac*yerr)
 		else:
 			jac = invgrad[i][i]
-			yerr = jac.dot(yerr).dot(jac.T)
+			yerr = dot(dot(jac,yerr),jac.T)
 
 	_invgrad = gradtransform(_x,_y,_parameters)
 	if _xerr is not None:
@@ -328,7 +335,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_xerr = abs(_jac*_xerr)
 		else:
 			_jac = _invgrad[i][i]
-			_xerr = _jac.dot(_xerr).dot(_jac.T)
+			_xerr = dot(dot(_jac,_xerr),_jac.T)
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
@@ -336,7 +343,8 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr = abs(_jac*_yerr)
 		else:
 			_jac = _invgrad[i][i]
-			_yerr = _jac.dot(_yerr).dot(_jac.T)
+			_yerr = dot(dot(_jac,_yerr),_jac.T)
+
 
 	if _covariance is not None:
 		i = 2
@@ -345,7 +353,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_covariance = abs(_jac*_covariance)
 		else:
 			_jac = _invgrad[i][i]
-			_covariance = _jac.dot(_covariance).dot(_jac.T)
+			_covariance = dot(dot(_jac,_covariance),_jac.T)
 
 	x,y,parameters = invtransform(x,y,parameters)
 
@@ -384,7 +392,7 @@ def curve_fit(func,x,y,**kwargs):
 		'path':None,
 		'verbose':None,
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	function = func
 	model = jit(func,x=x)
@@ -399,14 +407,16 @@ def curve_fit(func,x,y,**kwargs):
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
 		
-		if verbose:
-			print('\t'.join(['%s: %0.3e'%(attr,value) for attr,value in [
-				['value',optimizer.attributes['value'][-1]],
-				['alpha',optimizer.attributes['alpha'][-1]],
-				['grad',norm(optimizer.attributes['grad'][-1])]
-				]
-				])
-			)
+		logger.log(
+			verbose=verbose,
+			msg='\t'.join(['%s: %0.3e'%(attr,value) for attr,value in [
+			['iteration',optimizer.attributes['iteration'][-1]],
+			['value',optimizer.attributes['value'][-1]],
+			['alpha',optimizer.attributes['alpha'][-1]],
+			['grad',norm(optimizer.attributes['grad'][-1])]
+			]
+			])
+			)	
 		return status
 
 	defaults = {
@@ -416,7 +426,7 @@ def curve_fit(func,x,y,**kwargs):
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	uncertainty = kwargs.pop('uncertainty',True)
 	shapes = kwargs.pop('shapes',None)

@@ -5,19 +5,17 @@ import pytest
 import os,sys
 import itertools,functools,copy
 
-import numpy as onp
-import jax.numpy as np
-	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import is_array,is_ndarray
+from src.utils import np,onp
+from src.utils import arrays,scalars
 from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
-from src.iterables import search,indexer,insert
+from src.iterables import search,find,inserter,indexer
 
 def test_equalizer(path=None,tol=None):
 	a = {1:{2:[3,4],3:lambda x:x,4:{1:[],2:[{4:np.array([])}]}}}
@@ -25,7 +23,7 @@ def test_equalizer(path=None,tol=None):
 
 	types = (dict,list,)
 	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
-			for exception in [[callable],[is_array,is_ndarray]])
+			for exception in [[callable],[lambda a: isinstance(a,arrays)]])
 
 	x,y = a[1][4][2][0][4],b[1][4][2][0][4]
 
@@ -50,14 +48,14 @@ def test_search(path=None,tol=None):
 	print()
 
 	item = -1
-	index = indexer(item,iterable,returns=True,types=types)
+	index = find(item,iterable,types=types)
 	print(item,list(index))
 
 	print()
 
 	index = [0,2,'goodbye',2,'label','axis',1]
 	item = -2
-	insert(index,item,iterable,types=types)
+	inserter(index,item,iterable,types=types)
 	print(iterable)
 
 	print()
@@ -90,3 +88,4 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	test_search(path=path,tol=tol)
+	test_equalizer(path=path,tol=tol)

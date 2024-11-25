@@ -5,28 +5,25 @@ import pytest
 import os,sys
 import itertools,functools,copy,warnings
 
-import jax
-import jax.numpy as np
-import numpy as onp
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import load,dump,join,split,edit
-
-from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
+from src.utils import np,onp,backend
+from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
-from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
+from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
+from src.utils import arrays,scalars
 
 from src.optimize import Metric
 
 from src.iterables import getter,setter
+from src.io import load,dump,join,split,edit
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -103,6 +100,8 @@ def test_expm():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -145,6 +144,8 @@ def test_expmv():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -184,14 +185,16 @@ def test_expmm():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
-def test_expmmc(*args,**kwargs):
+def test_expmmn(*args,**kwargs):
 
 	def func(*args,**kwargs):
 		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 		return out
 
 	def _func(*args,**kwargs):
@@ -228,6 +231,8 @@ def test_expmmc(*args,**kwargs):
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -247,9 +252,9 @@ def test_gradient_expm(path=None,tol=None):
 		for i in range(m*d):
 			for j in range(m*d):
 				U = _expm(x[j],A[j%d],I)
-				out = out.at[i].set(U.dot(out[i]))
+				out = inplace(out,i,U.dot(out[i]))
 				if j == i:
-					out = out.at[i].set(A[j%d].dot(out[i]))
+					out = inplace(out,i,A[j%d].dot(out[i]))
 
 		return out
 
@@ -272,6 +277,8 @@ def test_gradient_expm(path=None,tol=None):
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -282,7 +289,7 @@ def test_expmi():
 
 		B = array([I,*[0*I]*(B.shape[0]-1)])
 
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 
 		return out
 
@@ -312,39 +319,39 @@ def test_expmi():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
 
 def test_getter(path=None,tol=None):
-	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = [
-		('hi','world',1,0,'di'),
-		('hi','world',4),
-		('hi','world',1),        
-		('hi','world',1,0),        
+		'hi.world.di',
+		'hi.world',
 	]
 	tests = [
 		(lambda value,element,iterable: value==99),
-		(lambda value,element,iterable: value is None),
-		(lambda value,element,iterable: isinstance(value,list)),
 		(lambda value,element,iterable: isinstance(value,dict)),
 	]
 	
 	for element,test in zip(elements,tests):
 		iterable = iterables
-		value = getter(iterable,element)
+		value = getter(iterable,element,delimiter=delim)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
+	print('Passed')
+
 	return
 
 def test_setter(path=None,tol=None):
-	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = {
-		('hi','world',1,4,'di'):-99,
-		('hi','world',1,2,0):89,
+		'hi.world.di':-99,
+		'hi.world':89,
 	}
 	
 	tests = [
@@ -356,11 +363,12 @@ def test_setter(path=None,tol=None):
 #         iterable = deepcopy(iterables)
 		iterable = iterables
 		value = elements[element]
-		setter(iterable,{element:value},delimiter=delim,func=True)
-		value = getter(iterable,element)
-		# print(iterable)
-		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
+		setter(iterable,{element:value},delimiter=delim,default=True)
+		value = getter(iterable,element,delimiter=delim)
+		assert test(value,element,iterable), "Incorrect setter %r %r"%(element,value)
 	
+	print('Passed')
+
 	return
 
 def test_scinotation(path=None,tol=None):
@@ -388,9 +396,15 @@ def test_scinotation(path=None,tol=None):
 	string = scinotation(number,**kwargs)
 	assert string == _string, "%s != %s"%(string,_string)
 
+	print('Passed')
+
 	return
 
 def test_gradient(path=None,tol=None):
+
+	if backend in ['autograd']:
+		return
+
 	def func(x,y,z):
 		x,y,z = sin(z),cos(x),sin(y)
 		return x,y
@@ -408,7 +422,9 @@ def test_gradient(path=None,tol=None):
 
 	assert isinstance(g,tuple) and len(g)==d
 	assert all(isinstance(h,tuple) and len(h)==p for i,h in enumerate(g))
-	assert all(isinstance(k,array) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
+	assert all(isinstance(k,arrays) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
+
+	print('Passed')
 
 	return
 
@@ -423,6 +439,8 @@ def test_mult(path=None,tol=None):
 	d = b.dot(diag(a))
 
 	assert allclose(c,d)
+
+	print('Passed')
 
 	return
 
@@ -456,6 +474,48 @@ def test_norm(path=None,tol=None):
 
 	assert all((allclose(d,e),allclose(d,f),allclose(d,h),allclose(e,f),allclose(e,h))), "norm^2 incorrect"
 
+	print('Passed')
+
+	return
+
+
+def test_rand(path,tol):
+	from importlib import reload
+	import src.utils
+
+	kwargs = [
+		{'shape':(4,3),'random':'haar'},
+		{'shape':(100,),'random':'normal'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		]
+	seed = 1234
+	reset = 1234
+	size = len(kwargs)
+	a = [[] for i in range(size)]
+
+
+	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,prng,backend
+	keys = prng(seed,reset=reset,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,prng,backend
+	keys = prng(seed,reset=reset,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	assert all(allclose(*a[i]) for i in range(size)), "Incorrect Random Initialization"
+
+	print('Passed')
+
 	return
 
 
@@ -463,10 +523,12 @@ def test_norm(path=None,tol=None):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_getter(path,tol)
-	test_setter(path,tol)
-	test_scinotation(path,tol)
+	# test_getter(path,tol)
+	# test_setter(path,tol)
+	# test_scinotation(path,tol)
 	test_gradient(path,tol)
-	test_gradient_expm(path,tol)
-	test_norm(path,tol)
-	
+	# test_gradient_expm(path,tol)
+	# test_norm(path,tol)
+	# test_expmi()	
+	# test_rand(path,tol)
+	# test_gradient_expm(path,tol)

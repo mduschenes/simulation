@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime
+import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
-from copy import deepcopy
 import glob as globber
 import importlib
-import json,jsonpickle,h5py,pickle,dill
+import json,pickle,h5py
 import numpy as np
 import pandas as pd
 
@@ -18,17 +17,18 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,is_array,is_ndarray,concatenate
+from src.utils import array,concatenate,padding
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
-from src.utils import scalars,nan,delim
+from src.utils import arrays,scalars,iterables,nan,delim
+
+from src.iterables import getter,setter
 
 # Logging
 from src.logger	import Logger
 logger = Logger()
 info = 100	
 debug = 0
-
 
 class cd(object):
 	'''
@@ -77,6 +77,22 @@ def environ():
 
 	return os.environ
 
+def contains(string,pattern):
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+		
+	boolean = re.fullmatch(pattern,string) is not None
+
+	return boolean
 
 
 def exists(path):
@@ -203,7 +219,7 @@ def rm(path):
 	return
 
 
-def copy(source,destination):
+def cp(source,destination):
 	'''
 	Copy paths
 	Args:
@@ -253,7 +269,6 @@ def split(path,directory=False,file=False,ext=False,directory_file_ext=False,dir
 		paths['directory'] = dirname(path)
 	if abspath:
 		paths['directory'] = os.path.abspath(os.path.expandvars(os.path.expanduser(paths['directory'])))
-
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
@@ -305,6 +320,85 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 		path = os.path.abspath(path)
 	return path
 
+def scan(path,pattern=None,**kwargs):
+	'''
+	Recursively search for paths
+	Args:
+		path (str): Path
+		pattern (str): Pattern of paths to search
+		kwargs (dict): Keyword arguments for searching paths
+	Yields:
+		path (str): Path matching pattern
+	'''
+	for path in os.scandir(path):
+		recursive = path.is_dir(**kwargs)
+		path = path.path
+		if recursive:
+			yield from scan(path,pattern=pattern,**kwargs)
+		elif contains(path,pattern):
+			yield path
+
+def wildcard(path,pattern='*'):
+	'''
+	Get base directory with pattern
+	Args:
+		path (str): Path
+		pattern (str): Pattern of sub-directories
+	Returns:
+		path (str): Path of base directory
+	'''
+	while pattern in os.path.basename(path):
+		path = os.path.dirname(path)
+	if not path:
+		path = '.'
+	return path
+			
+def glob(path,include=None,recursive=False,default=None,**kwargs):
+
+	'''
+	Expand path
+	Args:
+		path (str): Path to expand
+		include (str,callable): Type of paths to expand, allowed ['directory','file'] or callable with signature include(path)
+		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
+		default (str): Default path to return
+		kwargs (dict): Additional glob keyword arguments
+	Yields:
+		path (str): Expanded, absolute paths
+	'''
+
+
+	if include in ['file']:
+		include = os.path.isfile
+	elif include in ['directory']:
+		include = os.path.isdir
+	elif isinstance(include,str):
+		include = lambda path,include=include: contains(path,include)
+
+	if not isinstance(recursive,str):
+		if recursive:
+			recursive = '**'
+		else:
+			recursive = None
+
+	path = join(path,recursive)
+
+	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+
+	path,pattern = os.path.dirname(path),os.path.basename(path)
+	path = wildcard(path)
+
+	if ('*' not in path) and (not exists(path)):
+		path = (path for path in [default])
+	else:
+		path = scan(path,pattern=pattern,**kwargs)
+		# path = globber.iglob(path,recursive=True,**kwargs)
+
+	if include is not None:
+		path = natsorted(filter(include,path))
+
+	yield from path
+
 
 def glob(path,include=None,recursive=False,default=None,**kwargs):
 	'''
@@ -323,6 +417,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		include = os.path.isfile
 	elif include in ['directory']:
 		include = os.path.isdir
+	elif isinstance(include,str):
+		include = lambda path,include=include: contains(path,include)
 
 	if not isinstance(recursive,str):
 		if recursive:
@@ -338,7 +434,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path = (path for path in [default])
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
-	
+
+
 	if include is not None:
 		path = list(natsorted(filter(include,path)))
 
@@ -389,7 +486,19 @@ def basename(path,**kwargs):
 	'''	
 	return os.path.basename(os.path.splitext(path)[0])
 
-# 
+
+def basedir(path,**kwargs):
+	'''
+	Get base path name from path
+	Args:
+		path (str): Path
+		kwargs (dict): Additional path keyword arguments
+	Returns:
+		file (str): Base filename
+	'''	
+	return basename(dirname(path))
+
+ 
 class funcclass(object):
 	'''
 	Class wrapper for functions
@@ -401,49 +510,22 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
-def encode_json(obj,represent=False,**kwargs):
-	'''
-	Encode object into jsonable
-	Args:
-		obj(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		dictionary (dictionary): Jsonable dictionary of object
-	'''
-	if not isinstance(obj,dict):
-		dictionary = deepcopy(dump_json(obj))
-	else:
-		dictionary = obj
-		# dictionary = {}
-		# for key in obj:
-			# dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
-	return dictionary
+class encode_json(json.JSONEncoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		if isinstance(obj,arrays):
+			return obj.tolist()
+		elif isinstance(obj,np.bool_):
+			return encode(bool(obj))
+		else:
+			return default(default(obj))
 
-def decode_json(dictionary,represent=False,**kwargs):
-	'''
-	Convert jsonable into dictionary
-	Args:
-		dictionary(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		obj (dictionary): Dictionary to convert to obj
-	'''
-	obj = dictionary
-	return obj
-
-	# obj = {}
-	# if not isinstance(dictionary,dict):
-	# 	obj = dictionary
-	# else:
-	# 	for key in dictionary:
-	# 		try:
-	# 			obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# 		except (ValueError,SyntaxError):
-	# 			obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# return obj
-
+class decode_json(json.JSONDecoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		return default(obj)
 
 
 def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
@@ -458,9 +540,6 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	Returns:
 		obj (object): Serialized object
 	'''	
-
-	if is_array(obj) or is_ndarray(obj):
-		obj = obj.tolist()
 	return obj
 
 def load_json(obj,key='py/object',wr='r',ext='json',**kwargs):
@@ -649,7 +728,8 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 	with open(path,'w') as fobj:
 		try:
 			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
-			json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 			isjsonable = True
 		except Exception as exception:
 			pass
@@ -668,7 +748,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -676,56 +756,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	'''
 	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb']
-
+	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})	
 
-	if path is None:
-		return
-
-	if wrapper is None:
-		def wrapper(data):
-			return data
-	elif callable(wrapper):
-		pass
-	elif wrapper in ['df']:
-		def wrapper(data):
-			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
-			def convert(path,data):
-				for attr in data:
-					if any(is_ndarray(i) for i in data[attr]):
-						data[attr] = [tuple(i) for i in data[attr]]
-				size = max([len(data[attr]) for attr in data],default=0)
-				data['__path__'] = [path]*size
-				return data
-			try:
-				data = pd.concat((pd.DataFrame(convert(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
-			except Exception as exception:
-				data = default
-			return data
-	elif wrapper in ['np']:
-		def wrapper(data):
-			options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
-			try:
-				data = np.concatenate(tuple((np.array(data[path]) for path in data)),**options)
-			except ValueError:
-				data = default
-			return data	
-	elif wrapper in ['array']:
-		def wrapper(data):
-			options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
-			try:
-				data = concatenate(tuple((array(data[path]) for path in data)),**options)
-			except ValueError:
-				data = default
-			return data	
-	elif wrapper in ['pd']:
-		def wrapper(data):
-			return data				
-	else:
-		def wrapper(data):
-			return data
+	if path is None or not isinstance(path,(str,iterables)):
+		return default
 
 	if isinstance(path,str):
 		paths = [path]
@@ -761,13 +798,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			try:
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:			
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 
@@ -775,12 +812,109 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 		logger.log(info*verbose,'Load : %s'%(relpath(paths[name])))
 
-	data = wrapper(data)
+	wrappers = []
+	for wrapper in kwargs['wrapper']:
 
-	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd']):
+		if wrapper is None:
+			def wrapper(data):
+				return data
+		elif callable(wrapper):
+			if any(i in kwargs['wrapper'] for i in ['pd']):
+				continue
+			else:
+				try:
+					if isinstance(wrapper(),dict):
+						def wrapper(data,wrapper=wrapper):
+							if not data:
+								return data
+							data = data[list(data)[0]]
+							data = wrapper(data)
+							return data
+					else:
+						pass
+				except:
+					pass	
+		elif wrapper in ['df']:
+			def wrapper(data):
+				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
+				def func(path,data):
+					for attr in data:
+						if any(isinstance(i,arrays) for i in data[attr]):
+							data[attr] = [tuple(i) for i in data[attr]]
+					size = max([len(data[attr]) for attr in data],default=0)
+					data['__path__'] = [path]*size
+					return data
+				try:
+					data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
+				except Exception as exception:
+					data = default
+				return data
+		elif wrapper in ['np']:
+			def wrapper(data):
+				options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
+				try:
+					data = np.concatenate(tuple((np.array(data[path]) for path in data)),**options)
+				except ValueError:
+					data = default
+				return data	
+		elif wrapper in ['array']:
+			def wrapper(data):
+				options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
+				try:
+					data = concatenate(tuple((array(data[path]) for path in data)),**options)
+				except ValueError:
+					data = default
+				return data
+		elif wrapper in ['dict']:
+			def wrapper(data):
+				return data
+		elif wrapper in ['merge']:
+			def wrapper(data):
+
+				data = {key:[i for path in data for i in data[path][key] if data[path] is not None] 
+					for key in set((key for path in data for key in data[path]))}
+
+				for key in data:
+
+					if not any(i.ndim>0 for i in data[key]):
+						continue
+
+					indices = {}
+					for i,tmp in enumerate(data[key]):
+						index = len(tmp)
+						if index not in indices:
+							indices[index] = []
+						indices[index].append(i)
+
+					tmp = {index: array([data[key][index] for index in indices[index]]) for index in indices}
+
+					shape = tuple((max(tmp[index].shape[i] for index in tmp) for i in range(min(tmp[index].ndim for index in tmp))))
+
+					tmp = {index: padding(tmp[index],shape=shape,random='zeros',dtype=tmp[index].dtype) for index in tmp}
+
+					indices = {i:(index,indices[index].index(i)) for index in indices for i in indices[index]}
+					indices = [indices[i] for i in range(len(indices))]
+
+					data[key] = [tmp[i[0]][i[1]] for i in indices]
+
+				return data
+
+		elif wrapper in ['pd']:
+			def wrapper(data):
+				return data	
+		else:
+			def wrapper(data):
+				return data
+
+		wrappers.append(wrapper)
+
+	for wrapper in wrappers:
+		data = wrapper(data)
+
+	if isinstance(args['path'],str) and (any(((i in [None,'pd'])) for i in args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd']):
+	elif not isinstance(args['path'],dict) and (any(((i in [None,'pd'])) for i in args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
@@ -800,18 +934,23 @@ def _load(obj,wr,ext,**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
-	wrapper = kwargs.pop('wrapper',None)
-	
+	wrappers = kwargs.pop('wrapper',None)
+
 	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		# try:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
-		obj = os.path.basename(obj)
-		data = getattr(importlib.import_module(obj),module)
-		# except Exception as exception:
-		# 	raise exception
+		try:
+			path = os.path.basename(obj).strip('.')
+			data = getattr(importlib.import_module(path),module)
+		except:
+			path = obj
+			spec = importlib.util.spec_from_file_location(module,path)
+			data = importlib.util.module_from_spec(spec)
+			sys.modules[module] = data
+			spec.loader.exec_module(data)
+			data = getattr(data,module)
 
 	if ext in ['npy']:
 		data = np.load(obj,**{'allow_pickle':True,**kwargs})
@@ -825,14 +964,20 @@ def _load(obj,wr,ext,**kwargs):
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
-		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
-		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}),**kwargs)
+		data = json.load(obj,**{'cls':decode_json,'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5','h5','ckpt']:
-		if wrapper in ['pd']:
-			ext = 'hdf'
-			data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
-		else:
-			data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
+		for wrapper in list(wrappers):
+			if wrapper in ['pd']:
+				try:
+					ext = 'hdf'
+					data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+					break
+				except:
+					data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
+					wrappers.append('df')
+					break
+			else:
+				data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
 	return data
 
@@ -846,12 +991,12 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to dump object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
-
 	wrs = [wr,'w','wb']
+	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})
@@ -859,26 +1004,45 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	if path is None:
 		return
 
-	if wrapper is None:
-		def wrapper(data):
-			return data
-	elif callable(wrapper):
-		pass
-	elif wrapper in ['df']:
-		def wrapper(data):
-			return pd.DataFrame(data)
-	elif wrapper in ['np']:
-		def wrapper(data):
-			return np.array(data)
-	elif wrapper in ['array']:
-		def wrapper(data):
-			return array(data)
-	elif wrapper in ['pd']:
-		def wrapper(data):
-			return data
-	else:
-		def wrapper(data):
-			return data
+	wrappers = []
+	for wrapper in kwargs['wrapper']:
+		if wrapper is None:
+			def wrapper(data):
+				return data
+		elif callable(wrapper):
+			if any(i in kwargs['wrapper'] for i in ['pd']):
+				continue
+			else:
+				pass
+		elif wrapper in ['df']:
+			def wrapper(data):
+				return pd.DataFrame(data)
+		elif wrapper in ['np']:
+			def wrapper(data):
+				return np.array(data)
+		elif wrapper in ['array']:
+			def wrapper(data):
+				return array(data)
+		elif wrapper in ['dict']:
+			def wrapper(data):
+				try:
+					if isinstance(data,pd.DataFrame):
+						return data.to_dict(orient='list')
+					else:
+						raise AttributeError
+				except:
+					return data
+		elif wrapper in ['merge']:
+			def wrapper(data):
+				return data			
+		elif wrapper in ['pd']:
+			def wrapper(data):
+				return data
+		else:
+			def wrapper(data):
+				return data
+
+		wrappers.append(wrapper)
 
 	if isinstance(path,str):
 		paths = [path]
@@ -898,19 +1062,20 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		ext = split(path,ext=True,delimiter=delimiter)
 		mkdir(path)
 
-		data = wrapper(data)
+		for wrapper in wrappers:
+			data = wrapper(data)
 
 		for wr in wrs:	
 			try:
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
-			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
-				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 		
@@ -931,7 +1096,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 		kwargs (dict): Additional dumping keyword arguments
 	'''	
 
-	wrapper = kwargs.pop('wrapper',None)
+	wrappers = kwargs.pop('wrapper',None)
 
 	exts = ['npy','npz','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
 	assert ext in exts, "Cannot dump extension %s"%(ext)
@@ -955,22 +1120,184 @@ def _dump(data,obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		# jsonable(data,callables=kwargs.pop('callables',False))	
 		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5','h5','ckpt']:
-		if wrapper in ['pd']:
-			ext = 'hdf'
-			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
-		else:
-			dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
+		for wrapper in wrappers:
+			if wrapper in ['pd']:
+				ext = 'hdf'
+				getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
+				break
+			else:
+				dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
 		data.savefig(obj,**{**kwargs})
 
 	return
 
+def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Append objects to path
+	Args:
+		data (object,callable): Object to append or function to append with signature data(path,obj)
+		path (str,iterable[str],dict[str,str]): Path to append object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = path
+	
+	if not isinstance(path,dict):
+		paths = {path: path for path in paths}
+	else:
+		paths = path
+
+	paths = {(delim*3).join([name,str(path)]): path
+		for name in paths
+		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
+		}
+
+	if not callable(data):
+
+		if isinstance(data,str):
+			tmp = load(data)
+		if tmp is not None:
+			data = tmp
+		def _append(path,obj,data=data):
+			setter(obj,data,delimiter=delim)
+			return obj
+	else:
+		def _append(path,obj,data=data):
+			obj = data(path,obj)
+			return obj
+
+	for name in paths:
+
+		path = paths[name]
+
+		obj = load(path,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+		
+		obj = _append(path,obj)
+
+		dump(obj,path,delimiter=delimiter,verbose=verbose,**kwargs)
+
+	return
 
 
+def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Convert objects to path
+	Args:
+		data (str): Existing path
+		path (str,iterable[str],dict[str,str]): Path to convert object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+
+	if isinstance(data,str):
+		datas = [data]
+	else:
+		datas = data
+	
+	if not isinstance(data,dict):
+		datas = {data: data for data in datas}
+	else:
+		datas = data
+
+	paths = {(delim*3).join([name,str(data)]): join(split(data,directory=True),split(path,file_ext=True))
+		for name in datas
+		for data in natsorted(glob(datas[name],default=(None if split(datas[name],ext=True) in exts else datas[name])))
+		}
+
+	datas = {(delim*3).join([name,str(data)]): data
+		for name in datas
+		for data in natsorted(glob(datas[name],default=(None if split(datas[name],ext=True) in exts else datas[name])))
+		}
+
+	def _convert(path,data):
+		try:
+			try:
+				data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+			except Exception as exception:
+				data = load(data,wr=wr,delimiter=delimiter,wrapper=None,verbose=verbose,**kwargs)
+
+			dump(data,path,delimiter=delimiter,verbose=verbose,**kwargs)
+		except Exception as exception:
+			pass
+		return
+
+
+	for name in datas:
+
+		data = datas[name]
+		path = paths[name]
+
+		_convert(path,data)
+
+	return
+
+
+def merge(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Merge objects to path
+	Args:
+		data (str,iterable[str],dict[str,str]): Path to convert object
+		path (str,iterable[str],dict[str,str]): Path to convert object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	wrappers = ['merge']
+
+	wrapper = [wrapper,*wrappers] if not isinstance(wrapper,iterables) else [*wrapper,*wrappers]
+
+	wr = wr
+	data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+
+	wr = 'w'
+	dump(data,path,wr=wr,delimiter=delimiter,verbose=verbose,**kwargs)
+
+	return
+
+def cleanup(data,path,verbose=True):
+	'''
+	Process path
+	Args:
+		data (iterable[str]): Attributes to remove
+		path (str): Path to remove attributes
+		verbose (bool): Verbosity
+	'''
+
+	for path in glob(path):
+
+		obj = load(path,verbose=verbose)
+
+		for attr in data:
+			if attr not in obj:
+				continue
+			obj.pop(attr)
+
+		dump(obj,path)
+
+	return
 
 def update(dictionary,field,func):
 	"""

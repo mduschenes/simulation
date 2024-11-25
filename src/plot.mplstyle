@@ -332,7 +332,7 @@
 #axes.prop_cycle    : cycler('color', ['1f77b4', 'ff7f0e', '2ca02c', 'd62728', '9467bd', '8c564b', 'e377c2', '7f7f7f', 'bcbd22', '17becf'])
                       ## color cycle for plot lines  as list of string
                       ## colorspecs: single letter, long name, or web-style hex
-					  ## Note the use of string escapes here ('1f77b4', instead of 1f77b4)
+                      ## Note the use of string escapes here ('1f77b4', instead of 1f77b4)
                       ## as opposed to the rest of this file.
 #axes.autolimit_mode : data ## How to scale axes limits to the data.
                             ## Use "data" to use data limits, plus some margin
@@ -540,7 +540,7 @@
                                 ## leave empty to always use current working directory
 #savefig.transparent : False    ## setting that controls whether figures are saved with a
                                 ## transparent background by default
-#savefig.orientation : portrait	## Orientation of saved figure
+#savefig.orientation : portrait ## Orientation of saved figure
 
 ### tk backend params
 #tk.window_focus   : False    ## Maintain shell focus for TkAgg
@@ -625,17 +625,17 @@
 
 ## Custom rcParams
 
-text.usetex : True
-pgf.texsystem : pdflatex
+#text.usetex : True
+#pgf.texsystem : pdflatex
 
 
 #text.latex.preamble : \usepackage[T1]{fontenc}\usepackage{textcomp}\usepackage{lmodern}\boldmath\renewcommand{\seriesdefault}{\bfdefault}\usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
 
 
 
-text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
+#text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
 
-pgf.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
+#pgf.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
 
 
 #text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{scalerel}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\renewcommand{\square}{\mathord{\scalebox{0.8}[0.8]{\scalerel*{\Box}{gX}}}}\newcommand{\hrectangle}{\mathord{\scalebox{2}[0.8]{\scalerel*{\Box}{gX}}}}\newcommand{\vrectangle}{\mathord{\scalebox{0.8}[1.2]{\scalerel*{\Box}{gX}}}}
