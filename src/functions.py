@@ -48,14 +48,14 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
-def func_objective(data):
-	return abs(data['objective'])
-
 def func_y(data):
-	return abs(np.array(data[data['y']['label']]))
+	return abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
 
 def func_yerr(data):
-	return abs(np.array(data[data['yerr']['label']]))
+	return abs(np.array(data['yerr']))#*(data['N']*log(data['D']))/log(2)
+
+def func_objective(data):
+	return abs(data['objective'])
 
 def func_MN(data):
 	return data['M']/data['N']

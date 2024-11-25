@@ -1395,11 +1395,12 @@ def apply(keys,data,plots,processes,verbose=None):
 					funcs[function][axes][func] = obj
 
 
-		tmp = {}
-		for attr in wrappers:
 
-			if attr in ALL:
-				continue
+		wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL and wrappers[attr] is not None}
+
+		tmp = {}
+
+		for attr in wrappers:
 
 			wrapper = load(wrappers[attr],default=None)
 			
@@ -1462,6 +1463,20 @@ def apply(keys,data,plots,processes,verbose=None):
 						},
 		}
 
+		by = [*labels]
+		variables = [
+			*independent,
+			*dependent,
+			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
+			]
+		
+		droplevel = dict(level=0,axis=1)
+
+		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+	
+		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
+
+
 		# agg = {
 		# 	**{attr : {attr: pd.NamedAgg(
 		# 				column=attr,
@@ -1483,18 +1498,8 @@ def apply(keys,data,plots,processes,verbose=None):
 		# 				},
 		# }		
 
-		droplevel = dict(level=0,axis=1)
-		by = [*labels]
-		variables = [
-			*independent,
-			*dependent,
-			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
-			]
-
-		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+		# by = [*labels]
 	
-		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
-
 		# variables = [
 		# 	*independent,
 		# 	*dependent,
@@ -1502,7 +1507,12 @@ def apply(keys,data,plots,processes,verbose=None):
 		# 	]
 		# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
 		
+		# droplevel = dict(level=0,axis=1)
+
+		# dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+	
 		# groups = groups.agg(**agg).astype(dtype)
+
 
 		if by:
 			groups = groups.groupby(by=by,as_index=False,dropna=False)
@@ -1512,7 +1522,9 @@ def apply(keys,data,plots,processes,verbose=None):
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
+			
 			logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
+			
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
@@ -1624,14 +1636,14 @@ def plotter(plots,processes,verbose=None):
 							if wrappers is None:
 								wrappers = {}
 							else:
-								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL}
-
+								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL and wrappers[attr] is not None}
 
 							for attr in data[OTHER]:
 								if wrappers.get(attr):
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
 										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+										**{attr: data[attr] for attr in data if attr in ALL},
 										}
 									value = wrappers[attr](value)
 									data[OTHER][attr] = value
@@ -1798,7 +1810,6 @@ def plotter(plots,processes,verbose=None):
 								data[axes][...] = 0
 							else:
 								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
-
 
 	# Set layout from data
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
@@ -2735,7 +2746,7 @@ def plotter(plots,processes,verbose=None):
 					if wrappers is None:
 						wrappers = {}
 					else:
-						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL}
+						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL and wrappers[attr] is not None}
 
 
 					normalize = data[OTHER][OTHER].get('normalize')
@@ -2765,11 +2776,12 @@ def plotter(plots,processes,verbose=None):
 						value = data[attr]
 
 						if wrappers.get(attr):
-							value = wrappers[attr]({
+							value = {
 								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 								**{attr: data[OTHER][attr] for attr in data[OTHER]},
-								})
-
+								**{attr: data[attr] for attr in data if attr in ALL},
+								}
+							value = wrappers[attr](value)
 
 						if attr in [OTHER]:
 						
@@ -3042,7 +3054,7 @@ def plotter(plots,processes,verbose=None):
 				value = join(delim.join(value),ext=split(path,ext=True))
 				
 				data[attr] = value
-		
+
 
 	# Plot data
 	for instance in plots:
