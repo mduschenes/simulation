@@ -7522,7 +7522,7 @@ def sortby(iterable,key=None,reverse=False):
 	reverse = False if not reverse else True
 
 	if key is None:
-		key = None
+		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 	elif callable(key) or not isinstance(key,iterables):
 		func = load(key,default=None) if isinstance(key,str) else None
 		key = func if func is not None else key
@@ -7532,7 +7532,7 @@ def sortby(iterable,key=None,reverse=False):
 		key = [item if function is None else function for item,function in zip(key,func)]
 		key = lambda value,key=key,iterable=iterable: parse([get(iterable[value],item,iterable) for item in key])
 	else:
-		key = None
+		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 
 	iterable = {value: iterable[value] for value in sorted(iterable,key=key,reverse=reverse)}
 
@@ -7566,7 +7566,7 @@ def groupby(iterable,key=None,sort=None,reverse=False):
 	reverse = False if not reverse else True
 
 	if key is None:
-		key = None
+		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 	elif callable(key) or not isinstance(key,iterables):
 		func = load(key,default=None) if isinstance(key,str) else None
 		key = func if func is not None else key
@@ -7576,10 +7576,10 @@ def groupby(iterable,key=None,sort=None,reverse=False):
 		key = [item if function is None else function for item,function in zip(key,func)]
 		key = lambda value,key=key,iterable=iterable: parse([get(value,item,iterable) for item in key])
 	else:
-		key = None
+		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 
 	if sort is None:
-		sort = None
+		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 	elif callable(sort) or not isinstance(sort,iterables):
 		func = load(sort,default=None) if isinstance(sort,str) else None
 		sort = func if func is not None else sort
@@ -7589,7 +7589,7 @@ def groupby(iterable,key=None,sort=None,reverse=False):
 		sort = [item if function is None else function for item,function in zip(sort,func)]
 		sort = lambda value,sort=sort,iterable=iterable: parse([get(value,item,iterable) for item in sort])
 	else:
-		sort = None
+		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
 
 	sort = key if sort is None else sort
 
