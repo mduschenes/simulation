@@ -102,7 +102,7 @@
 	"callback":"src.quantum.Callback"	
 	},
 "module":{
-	"N":5,
+	"N":4,
 	"M":4,
 	"seed":null,
 	"string":"module",
