@@ -905,7 +905,15 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 		elif wrapper in ['pd']:
 			def wrapper(data):
-				return data	
+				return data
+				# options = {}
+				# def func(path,data):
+				# 	return data
+				# try:
+				# 	data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path]),**options)
+				# except Exception as exception:
+				# 	data = default
+				# return data
 		else:
 			def wrapper(data):
 				return data
