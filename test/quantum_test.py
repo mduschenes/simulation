@@ -1621,8 +1621,8 @@ def test_grad(path,tol):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
-		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[0],
+		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
+		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[1e-3],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
@@ -1739,7 +1739,7 @@ def test_calculate(*args,**kwargs):
 		state = [state]*model.N
 		where = model.site
 		kwargs = dict()
-		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=16,cutoff=0)
+		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=int(model.D**(model.N)),cutoff=0)
 
 		state = measure.operation(
 				parameters=parameters,

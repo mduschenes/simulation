@@ -1670,14 +1670,20 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
+
+			data = data/sqrt(state*other)
 
 		elif self.architecture in ['tensor']:
 
 			options = dict(contraction=True)
 	
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
 
-			data = representation(data,**options)
+			data = representation(data,**options)/sqrt(representation(state,**options)*representation(other,**options))
 
 		data = func(data)
 
