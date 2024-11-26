@@ -905,7 +905,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 		elif wrapper in ['pd']:
 			def wrapper(data):
-				options = {}
+				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 				def func(path,data):
 					return data
 				try:

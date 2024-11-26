@@ -400,7 +400,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	}
 	setter(processes['path'],defaults,delimiter=delim,default=False)
 	for attr in processes['path']:
-		processes['directory'][attr] = split(processes['path'][attr],directory=True)
+		processes['directory'][attr] = split(processes['path'][attr],directory=True) if split(processes['path'][attr],directory=True) else cwd
 		processes['file'][attr],processes['ext'][attr] = split(processes['path'][attr],file=True,ext=True)
 		processes['path'][attr] = join(processes['directory'][attr],processes['file'][attr],ext=processes['ext'][attr])
 
@@ -2000,6 +2000,51 @@ def plotter(plots,processes,verbose=None):
 
 
 	# Set kwargs
+	metadata = {}
+	for instance in list(plots):
+
+		metadata[instance] = {}
+	
+		for subinstance in list(plots[instance]):
+			
+			if not plots[instance][subinstance].get(obj):
+				continue
+
+			metadata[instance][subinstance] = {}
+
+			for prop in PLOTS:
+				
+				if prop not in plots[instance][subinstance][obj]:
+					continue
+
+				metadata[instance][subinstance][prop] = {}
+
+			for prop in metadata[instance][subinstance]:
+
+				labels = list(natsorted(set(label
+					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
+					for data in search(plots[instance][subinstance][obj][prop])
+					if (data)
+					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
+					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
+					)))
+				metadata[instance][subinstance][prop] = {label: [
+						(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
+								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
+							to_tuple(data[OTHER][label]) if (
+								(label in data[OTHER])) else 
+							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
+								(label in data[OTHER][OTHER][OTHER] and 
+								(data[OTHER][OTHER][OTHER].get(label) is not None) and
+								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
+						for subinstance in plots[instance] if obj in plots[instance][subinstance]
+						for prop in PLOTS
+						if prop in plots[instance][subinstance][obj]
+						for data in search(plots[instance][subinstance][obj][prop]) if (
+							((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
+						]
+						for label in labels}
+
 	for instance in list(plots):
 	
 		for subinstance in list(plots[instance]):
@@ -2009,43 +2054,13 @@ def plotter(plots,processes,verbose=None):
 
 			position = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
 
-			# variables
-
 			values = {}
-			for prop in PLOTS:
-				
-				if prop not in plots[instance][subinstance][obj]:
-					continue
 
+			for prop in metadata[instance][subinstance]:
 				values[prop] = {}
-
-			for prop in values:
-
-				labels = list(natsorted(set(label
-					for data in search(plots[instance][subinstance][obj][prop])
-					if (data)
-					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
-					)))
-				tmp = {label: [
-						(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
-								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
-							to_tuple(data[OTHER][label]) if (
-								(label in data[OTHER])) else 
-							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
-								(label in data[OTHER][OTHER][OTHER] and 
-								(data[OTHER][OTHER][OTHER].get(label) is not None) and
-								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
-							
-						for prop in PLOTS
-						if prop in plots[instance][subinstance][obj]
-						for data in search(plots[instance][subinstance][obj][prop]) if (
-							((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-						]
-						for label in labels}
-				for label in labels:
+				for label in metadata[instance][subinstance][prop]:
 					value = {}
-					value['value'] = tmp[label]
+					value['value'] = metadata[instance][subinstance][prop][label]
 					value['include'] = any((
 							(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
 							(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
@@ -2062,7 +2077,7 @@ def plotter(plots,processes,verbose=None):
 								data[OTHER][OTHER]['legend'].get('include')
 								if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
 								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
-								[]))
+								[]))							
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
@@ -2114,7 +2129,7 @@ def plotter(plots,processes,verbose=None):
 							if data 
 							for attr,value in (data[OTHER][OTHER]['legend'].get('label') if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
 								).items()							
-							if attr not in labels
+							if attr not in metadata[instance][subinstance][prop]
 							}
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
@@ -2163,7 +2178,7 @@ def plotter(plots,processes,verbose=None):
 					value = {}
 					value['value'] = tmp[label]
 					value['include'] = True
-					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort')))
+					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort')))							
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
