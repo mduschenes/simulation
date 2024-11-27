@@ -57,6 +57,12 @@ def func_yerr(data):
 def func_objective(data):
 	return abs(data['objective'])
 
+def func_infidelity(data):
+	return 1 - abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+
+def func_infidelity_err(data):
+	return abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+
 def func_MN(data):
 	return data['M']/data['N']
 
