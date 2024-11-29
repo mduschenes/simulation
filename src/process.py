@@ -225,7 +225,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
 			else:
 				i[e[index]] = value
-		except Exception as exception:
+		except:
 			pass
 
 	return
@@ -626,7 +626,7 @@ def parse(key,value,data,verbose=None):
 		try:
 			func = load(value,default=None)
 			out = func(data)
-		except Exception as exception:
+		except:
 			outs = [default]
 			for value in value.split(parserator):
 
@@ -778,7 +778,7 @@ def parse(key,value,data,verbose=None):
 			value = [value]
 		try:
 			out = data[key].isin(value)
-		except Exception as exception:
+		except:
 			try:
 				out = data[key] in value
 			except:
@@ -1128,7 +1128,7 @@ def loader(data,plots,processes,verbose=None):
 			wrapper = 'pd'
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
-		except Exception as exception:
+		except:
 			path = data
 			wrapper = 'df'			
 			default = None
@@ -1880,11 +1880,56 @@ def plotter(plots,processes,verbose=None):
 
 	# TODO: Cases of plots with position-dependent, not just row,col independent labels for layout
 
-	layouts = {}
+	information = {}
+	metadata = {}
 
 	for instance in list(plots):
 
-		layouts[instance] = {}
+		information[instance] = {}
+	
+		for subinstance in list(plots[instance]):
+			
+			if not plots[instance][subinstance].get(obj):
+				continue
+
+			information[instance][subinstance] = {}
+
+			for prop in PLOTS:
+				
+				if prop not in plots[instance][subinstance][obj]:
+					continue
+
+				information[instance][subinstance][prop] = {}
+
+			for prop in information[instance][subinstance]:
+
+				labels = list(natsorted(set(label
+					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
+					for data in search(plots[instance][subinstance][obj][prop])
+					if (data)
+					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
+					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
+					)))
+				information[instance][subinstance][prop] = {label: [
+						(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
+								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
+							to_tuple(data[OTHER][label]) if (
+								(label in data[OTHER])) else 
+							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
+								(label in data[OTHER][OTHER][OTHER] and 
+								(data[OTHER][OTHER][OTHER].get(label) is not None) and
+								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
+						for subinstance in plots[instance] if obj in plots[instance][subinstance]
+						for prop in PLOTS
+						if prop in plots[instance][subinstance][obj]
+						for data in search(plots[instance][subinstance][obj][prop]) if (
+							((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
+						]
+						for label in labels}
+
+	for instance in list(plots):
+
+		metadata[instance] = {}
 
 		for subinstance in list(plots[instance]):
 
@@ -1915,6 +1960,7 @@ def plotter(plots,processes,verbose=None):
 
 			plts = copy(plots[instance].pop(subinstance))
 			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
+			inf = information[instance].pop(subinstance)
 
 			options = {position:[config['kwargs'] for config in configuration[instance] if config['position'] in [position,None] and config['kwargs'] is not None]
 				for position in ['row','col'][:LAYOUTDIM]}
@@ -1935,7 +1981,8 @@ def plotter(plots,processes,verbose=None):
 
 				plots[instance][key] = copy(plts)
 				grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index]
-				layouts[instance][key] = indexer(position,layout)
+				metadata[instance][key] = indexer(position,layout)
+				information[instance][key] = inf
 
 				boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER])
 
@@ -1967,30 +2014,39 @@ def plotter(plots,processes,verbose=None):
 					if any(i in [OTHER] for i in index.split(delim)):
 						index = delim.join([OTHER,*index.split(delim)])
 
-					value = getter(plots[instance][key],attr,delimiter=delim)
-
 					if isinstance(tmp,str):
 						try:
-							func = load(tmp,default=None)
-							tmp = func(plots[instance][key])
+							function = load(tmp,default=None)
+						except:
+							function = lambda data,plots,tmp=tmp:tmp
+					else:
+						function = lambda data,plots,tmp=tmp:tmp
+
+					def func(data,plots,tmp=tmp,function=function):
+						try:
+							return function(data,plots)
 						except Exception as exception:
-							pass
+							return tmp
+
+					value = getter(plots[instance][key],attr,delimiter=delim)
+					item = func(metadata[instance][key],information[instance][key])
+
 					if value is None:
 						values = [plots[instance][key]]
-						item = {delim.join([attr,index]):tmp}
+						items = {delim.join([attr,index]):item}
 					elif isinstance(value,list):
 						values = search(value)
-						item = {index:tmp}
+						items = {index:item}
 					else:
 						values = [value]
-						item = {index:tmp}
+						items = {index:item}
 
 					for data in values:
 
 						if not data:
 							continue
 
-						setter(data,copy(item),delimiter=delim)
+						setter(data,copy(items),delimiter=delim)
 
 
 
@@ -2038,50 +2094,6 @@ def plotter(plots,processes,verbose=None):
 
 
 	# Set kwargs
-	metadata = {}
-	for instance in list(plots):
-
-		metadata[instance] = {}
-	
-		for subinstance in list(plots[instance]):
-			
-			if not plots[instance][subinstance].get(obj):
-				continue
-
-			metadata[instance][subinstance] = {}
-
-			for prop in PLOTS:
-				
-				if prop not in plots[instance][subinstance][obj]:
-					continue
-
-				metadata[instance][subinstance][prop] = {}
-
-			for prop in metadata[instance][subinstance]:
-
-				labels = list(natsorted(set(label
-					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
-					for data in search(plots[instance][subinstance][obj][prop])
-					if (data)
-					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
-					)))
-				metadata[instance][subinstance][prop] = {label: [
-						(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
-								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
-							to_tuple(data[OTHER][label]) if (
-								(label in data[OTHER])) else 
-							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
-								(label in data[OTHER][OTHER][OTHER] and 
-								(data[OTHER][OTHER][OTHER].get(label) is not None) and
-								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
-						for subinstance in plots[instance] if obj in plots[instance][subinstance]
-						for prop in PLOTS
-						if prop in plots[instance][subinstance][obj]
-						for data in search(plots[instance][subinstance][obj][prop]) if (
-							((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-						]
-						for label in labels}
 
 	for instance in list(plots):
 	
@@ -2094,11 +2106,11 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
-			for prop in metadata[instance][subinstance]:
+			for prop in information[instance][subinstance]:
 				values[prop] = {}
-				for label in metadata[instance][subinstance][prop]:
+				for label in information[instance][subinstance][prop]:
 					value = {}
-					value['value'] = metadata[instance][subinstance][prop][label]
+					value['value'] = information[instance][subinstance][prop][label]
 					value['include'] = any((
 							(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
 							(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
@@ -2167,7 +2179,7 @@ def plotter(plots,processes,verbose=None):
 							if data 
 							for attr,value in (data[OTHER][OTHER]['legend'].get('label') if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
 								).items()							
-							if attr not in metadata[instance][subinstance][prop]
+							if attr not in information[instance][subinstance][prop]
 							}
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
@@ -2970,8 +2982,8 @@ def plotter(plots,processes,verbose=None):
 						else:
 							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if data and OTHER in data for i in data[OTHER]}
 
-							if layouts[instance].get(subinstance) is not None:
-								objs.update({i:layouts[instance][subinstance][i] for i in layouts[instance][subinstance] if i not in objs})
+							if metadata[instance].get(subinstance) is not None:
+								objs.update({i:metadata[instance][subinstance][i] for i in metadata[instance][subinstance] if i not in objs})
 
 							if data[attr%(axes)] in objs:
 								data[attr%(axes)] = "%s = %s"%(data[attr%(axes)],objs[data[attr%(axes)]])

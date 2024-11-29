@@ -66,11 +66,9 @@ def func_infidelity_err(data):
 def func_max_bond(data):
 	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
 
-def func_layout(data):
-	from src.plot import PLOTS
-	return 2 if any(tmp.get('N') in [8] 
-		for prop in PLOTS if prop in data.get('ax',{}) 
-		for tmp in search(data.get('ax',{}).get(prop)) if tmp) else None
+def func_layout(data,metadata):
+	attr = 'N'
+	return 2 if data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None) else None
 
 def func_MN(data):
 	return data['M']/data['N']
