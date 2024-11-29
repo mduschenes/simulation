@@ -27,7 +27,7 @@ from src.utils import to_tuple,asscalar
 from src.utils import maximum,minimum,abs,sort,log
 from src.utils import arrays,scalars,nonzero,delim
 
-from src.iterables import permuter,setter,getter
+from src.iterables import permuter,setter,getter,search
 from src.parallel import Parallel
 from src.workflow import workflow
 
@@ -65,6 +65,12 @@ def func_infidelity_err(data):
 
 def func_max_bond(data):
 	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
+
+def func_layout(data):
+	from src.plot import PLOTS
+	return 3 if not any(tmp['label']['label'].get('N') in [8] 
+		for prop in PLOTS if prop in data.get('ax',{}) 
+		for tmp in search(data.get('ax',{}).get(prop)) if tmp) else None
 
 def func_MN(data):
 	return data['M']/data['N']

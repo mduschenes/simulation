@@ -107,7 +107,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -394,7 +395,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -689,7 +691,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -984,7 +987,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -1298,7 +1302,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -1612,7 +1617,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -1926,7 +1932,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -2240,7 +2247,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -2535,7 +2543,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -2830,7 +2839,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -3144,7 +3154,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -3458,7 +3469,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -3753,7 +3765,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
@@ -4031,7 +4044,8 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-				"pad": 0.1,
+                "pad": 0.1,
+                "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
 					"label": "$\\textrm{Impurity} ~~ 1-\\textrm{tr}(\\rho_{\\chi}\\rho)$",

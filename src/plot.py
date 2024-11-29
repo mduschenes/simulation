@@ -719,14 +719,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def _positions(layout=None):
 		if layout is None:
-			return {
+			grid = [[1,1,1],[1,1,1]]
+			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
 				'left':(None,1),'right':(None,1),'centre':(None,None),
 				'top_left':(None,None),'bottom_left':(None,None),'middle_left':(None,None),
 				'top_right':(None,None),'bottom_right':(None,None),'middle_right':(None,None),
 				'top_centre':(None,None),'bottom_centre':(None,None),'middle_centre':(None,None),
 				}
-		elif all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
+		elif all([kwarg == _kwarg and _kwarg in layout for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
+			
+			# attr = 'indices'
+			# if attr in layout:
+			# 	grid = [[1,max(layout[attr])//2,],[1,]]
+			# else:
 			positions = {
 				'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
 				'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
@@ -735,6 +741,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
 				}
 		else:
+			grid = [[1,1,1],[1,1,1],[1,1,1]]			
 			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
 				'left':(None,1),'right':(None,1),'centre':(None,None),
@@ -1476,7 +1483,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_colorbar']:
 
-				nullkwargs.extend(['value','color','norm','scale','alpha','segments','size','pad','orientation','position','set_yscale','set_xscale','normed_values'])
+				nullkwargs.extend(['value','color','norm','scale','alpha',
+					'segments','size','pad','padding','orientation','position','set_yscale','set_xscale','normed_values','share'])
 				call = False
 
 				kwds = ['value','values','color','norm','scale','alpha']
@@ -1511,10 +1519,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					segments = kwargs[attr].get('segments',1)
 					sizing = kwargs[attr].get('size','5%')
-					padding = kwargs[attr].get('pad',0.05)
+					padding = kwargs[attr].get('padding',kwargs[attr].get('pad',0.05))
 					orientation = kwargs[attr].get('orientation','vertical')
 					position = kwargs[attr].get('position','right')
 					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+					share = kwargs[attr].get('share')
+
+					options = {option:kwargs[attr].get(option) for option in ['fraction','shrink','aspect','pad'] if option in kwargs[attr]}
+
+					nullkwargs.extend(options)
 
 					for axes in ['',*AXES]:
 						prop = 'set_%slabel'%(axes)
@@ -1526,15 +1539,22 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
 
-						pos = obj.get_position()
-						divider = make_axes_locatable(obj)
-						cax = divider.append_axes(position,size=sizing,pad=padding)
+						if share:
+							cax,options = matplotlib.colorbar.make_axes([ax for ax in obj.get_figure().axes],**options)
+						else:
+							pos = obj.get_position()
+							divider = make_axes_locatable(obj)
+							cax,options = divider.append_axes(position,size=sizing,pad=padding),dict()
 						
-						# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
-						# cax = plt.add_axes()
-						# cax.set_position(pos)
+							# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
+							# cax = plt.add_axes()
+							# cax.set_position(pos)
+						
+						options = {**options,**dict(cmap=cmap,norm=norm,orientation=orientation,
+							)}
 
-						colorbar = matplotlib.colorbar.ColorbarBase(cax,cmap=cmap,norm=norm,orientation=orientation)
+						colorbar = matplotlib.colorbar.ColorbarBase(cax,**options)
+
 						obj = colorbar	
 
 						for kwarg in kwargs[attr]:
@@ -1559,7 +1579,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								except Exception as exception:
 									continue
 							else:
-								continue
+								try:
+									getattr(_obj,'set_%s'%(kwarg))(kwargs[attr][kwarg])
+								except Exception as exception:
+									continue									
 				
 
 			elif attr in ['savefig']:
@@ -1700,13 +1723,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						_attr = _obj(**_kwargs_)
 					else:
 						_attr = None
-			# exit()
 			# except Exception as e:
 			# 	_attr = None
 			# 	if not isinstance(e,AttributeError):
 			# 		logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
 			# 		logger.log(debug,'%r'%(traceback.format_exc()))
-			# 		exit()
 			for k in _kwds:
 				_attr_ = _attr
 				for a in k.split('.')[:-1]:
@@ -1804,7 +1825,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			kwargs = {
 				'texify':settings[key]['style'].get('texify'),
 				'share':settings[key]['style'].get('share',{}).get(attr,{}),
-				'layout':_layout(settings[key]['style'].get('layout',{})),
+				'layout':_layout({
+					**{attr:settings[key]['style'].get('layout',{}).get(attr) for attr in LAYOUT},
+					**{attrs:[settings[k]['style'].get('layout',{}).get(attr) for k in settings if attr in settings[k]['style'].get('layout',{})] for attr,attrs in {'index':'indices'}.items()},
+					})
 				}
 			return kwargs
 

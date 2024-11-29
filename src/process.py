@@ -1958,39 +1958,40 @@ def plotter(plots,processes,verbose=None):
 				for attr in list(opts):
 
 					attr,tmp = attr.split(delim),opts.pop(attr)
-					
-					if any(i in PLOTS for i in attr):
-						index = [attr.index(i) for i in attr if i in PLOTS][0]
-						attr,item = delim.join(attr[:index+1]),delim.join(attr[index+1:])
+						
+					if attr[0] in [obj]:
+						attr,index = delim.join(attr[:2]),delim.join(attr[2:])
 					else:
-						index = None
-						attr,item = delim.join(attr[:-1]),delim.join(attr[-1:])
+						attr,index = delim.join(attr[:-1]),delim.join(attr[-1:])
+
+					if any(i in [OTHER] for i in index.split(delim)):
+						index = delim.join([OTHER,*index.split(delim)])
 
 					value = getter(plots[instance][key],attr,delimiter=delim)
 
-					print(value)
-					exit()
+					if isinstance(tmp,str):
+						try:
+							func = load(tmp,default=None)
+							tmp = func(plots[instance][key])
+						except Exception as exception:
+							pass
 					if value is None:
-						setter(plots[instance][key],{attr:plot}opts,delimiter=delim)
-
-						attr = delim.join([attr,item])
-						opts[attr] = {item:tmp}
+						values = [plots[instance][key]]
+						item = {delim.join([attr,index]):tmp}
 					elif isinstance(value,list):
-						for index,shape,data in search(value,returns=True):
-							if not data:
-								continue
-							setter()
-							data.update()
-							data[item] = 
-							setter(data,item)
-							inserter(index,)
-						opts[attr] = [{**i,item:tmp} if isinstance(i,dict) else tmp for i in value]
+						values = search(value)
+						item = {index:tmp}
 					else:
-						opts[attr] = {item:tmp}
+						values = [value]
+						item = {index:tmp}
 
-				print(opts)
+					for data in values:
 
-				setter(plots[instance][key],opts,delimiter=delim)
+						if not data:
+							continue
+
+						setter(data,copy(item),delimiter=delim)
+
 
 
 	# Set layout
@@ -2766,6 +2767,7 @@ def plotter(plots,processes,verbose=None):
 
 					slices = []
 					subslices = copy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
+
 					for subslice in subslices:
 						if subslice is None:
 							subslice = [slice(None)]
