@@ -868,7 +868,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								  ('%sticklabels'%(axes),'labels')]},
 			**{k:[OTHER] for k in PLOTS},	
 			**{
-				'set_title':[OTHER],
+				'set_title':['label'],
 				'suptitle':['t'],
 				'annotate':['s'],
 				'set_colorbar':['value','values'],
@@ -1813,10 +1813,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		obj = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}[attr]
 		obj = obj(attr,key,fig,ax)
 
-		ordering = {'close':-1,'savefig':-2}
+		objs = []
+
+		try:
+			axes = [ax for ax in obj.get_figure().axes]
+		except:
+			axes = None
 
 		if obj is not None:
+			
 			props = list(settings[key][attr])
+
+			ordering = {'close':-1,'savefig':-2}
 			for prop in ordering:
 				if prop in settings[key][attr]:
 					if ordering[prop] == -1:
@@ -1825,12 +1833,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						ordering[prop] += 1
 					props.insert(ordering[prop],props.pop(props.index(prop)))
 
-			objs = []
 			for prop in props:
 
 				kwargs = attr_kwargs(attr,key,settings)
 
 				attr_wrap(obj,prop,objs,settings[key][attr],**kwargs)
+
+		try:
+			axes = [ax for ax in obj.get_figure().axes if ax not in axes]
+			if not any(obj['attr'] in PLOTS for obj in objs if obj is not None):
+				for ax in [*axes,obj]:
+					obj.get_figure().delaxes(ax)
+		except:
+			pass
 
 		return
 		

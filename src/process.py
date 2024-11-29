@@ -625,8 +625,8 @@ def parse(key,value,data,verbose=None):
 	elif isinstance(value,str):
 		try:
 			func = load(value,default=None)
-			out = func(key,data)
-		except:
+			out = func(data)
+		except Exception as exception:
 			outs = [default]
 			for value in value.split(parserator):
 
@@ -1880,7 +1880,12 @@ def plotter(plots,processes,verbose=None):
 
 	# TODO: Cases of plots with position-dependent, not just row,col independent labels for layout
 
+	layouts = {}
+
 	for instance in list(plots):
+
+		layouts[instance] = {}
+
 		for subinstance in list(plots[instance]):
 
 			if not plots[instance][subinstance].get(obj):
@@ -1897,12 +1902,14 @@ def plotter(plots,processes,verbose=None):
 			data = {attr:[i[attr] for i in data] for attr in set(attr for i in data for attr in i)}
 			data = {attr: list(sorted(set(data[attr]),key=lambda i:data[attr].index(i))) for attr in data}
 
-			layout = {position: {attr:config['value'][attr] for config in configuration[instance] if config['position'] in [position,None] for attr in config['value'] if attr in data}
+			config = {position: {attr:config['value'][attr] for config in configuration[instance] if config['position'] in [position,None] for attr in config['value'] if attr in data}
 				for position in ['row','col'][:LAYOUTDIM]}
-			layout = {position: list(permuter({attr: list(sorted([i for i in data[attr] if parse(attr,layout[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(layout[position][attr],iterables) else list(layout[position][attr]).index(i)))
-				for attr in layout[position]}))
-				for position in layout}
-			layout = [[{**i,**j} for j in layout['col']] for i in layout['row']]
+
+			layout = {position: list(permuter({attr: list(sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i)))
+				for attr in config[position]}))
+				for position in config}
+			layout = {position: [{**i,**{attr:data[attr][0] for attr in data if len(data[attr])==1}} for i in layout[position]] for position in layout}
+			layout = [[{**i,**j} if all(parse(attr,config[position][attr],{**i,**j}) for position in config for attr in config[position]) else None for j in layout['col']] for i in layout['row']]
 
 			shapes = [len(layout),max(len(i) for i in layout)]
 
@@ -1914,7 +1921,10 @@ def plotter(plots,processes,verbose=None):
 			options = {position:[{}] if not len(options[position]) else [i for kwargs in options[position] for i in (kwargs if not isinstance(kwargs,dict) else [kwargs])] for position in options}
 			options = [[{**options[['row','col'][0]][i%len(options[['row','col'][0]])],**options[['row','col'][1]][j%len(options[['row','col'][1]])]} for j in range(shapes[1])] for i in range(shapes[0])]
 
-			for position in itertools.product(*(range(i) for i in shapes[:LAYOUTDIM])):
+			for index,position in enumerate(itertools.product(*(range(i) for i in shapes[:LAYOUTDIM]))):
+
+				if indexer(position,layout) is None:
+					continue
 
 				key,coordinate = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
 
@@ -1924,9 +1934,10 @@ def plotter(plots,processes,verbose=None):
 				key = delim.join([str(key),*[str(i) for i in coordinate]])
 
 				plots[instance][key] = copy(plts)
-				grid[instance][key] = [i*j for i,j in zip(grd,shapes)][:LAYOUTDIM]
+				grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index]
+				layouts[instance][key] = indexer(position,layout)
 
-				boolean = lambda data,item=indexer(position,layout): all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER])
+				boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER])
 
 				for prop in PLOTS:
 							
@@ -1945,58 +1956,84 @@ def plotter(plots,processes,verbose=None):
 
 				opts = indexer(position,options)
 				for attr in list(opts):
-					index,item,tmp = delim.join(attr.split(delim)[:-1]),attr.split(delim)[-1],opts.pop(attr)
-					value = getter(plots[instance][key],index,delimiter=delim)
-					if value is None:
-						opts[attr] = tmp
-					elif isinstance(value,list):
-						opts[index] = [{**i,item:tmp} if isinstance(i,dict) else tmp for i in value]
+
+					attr,tmp = attr.split(delim),opts.pop(attr)
+					
+					if any(i in PLOTS for i in attr):
+						index = [attr.index(i) for i in attr if i in PLOTS][0]
+						attr,item = delim.join(attr[:index+1]),delim.join(attr[index+1:])
 					else:
-						opts[attr] = tmp
+						index = None
+						attr,item = delim.join(attr[:-1]),delim.join(attr[-1:])
+
+					value = getter(plots[instance][key],attr,delimiter=delim)
+
+					print(value)
+					exit()
+					if value is None:
+						setter(plots[instance][key],{attr:plot}opts,delimiter=delim)
+
+						attr = delim.join([attr,item])
+						opts[attr] = {item:tmp}
+					elif isinstance(value,list):
+						for index,shape,data in search(value,returns=True):
+							if not data:
+								continue
+							setter()
+							data.update()
+							data[item] = 
+							setter(data,item)
+							inserter(index,)
+						opts[attr] = [{**i,item:tmp} if isinstance(i,dict) else tmp for i in value]
+					else:
+						opts[attr] = {item:tmp}
+
+				print(opts)
+
 				setter(plots[instance][key],opts,delimiter=delim)
 
 
 	# Set layout
 	
-	layouts = {}
+	layout = {}
 	
 	for instance in plots:
 
 		for index,subinstance in enumerate(plots[instance]):		
 			
-			layout = plots[instance][subinstance]['style']['layout']
+			config = plots[instance][subinstance]['style']['layout']
 			
-			if not layouts.get(instance):
-				layouts[instance] = layout
-			layouts[instance].update({
-				**layouts[instance],
-				**{attr: max(layout[attr],grid[instance][subinstance][GRID.index(attr[1:-1])],layouts[instance][attr])
-					if (layout[attr] is not None) and (layouts[instance][attr] is not None) else None
+			if not layout.get(instance):
+				layout[instance] = config
+			layout[instance].update({
+				**layout[instance],
+				**{attr: max(config[attr],grid[instance][subinstance][GRID.index(attr[1:-1])],layout[instance][attr])
+					if (config[attr] is not None) and (layout[instance][attr] is not None) else None
 					for attr in ['nrows','ncols']},
 				**{attr: None for attr in ['index']},
 				})
 
 		for index,subinstance in enumerate(plots[instance]):
 			
-			layout = copy(layouts[instance])
+			config = copy(layout[instance])
 
-			index = layout['index']-1 if layout['index'] is not None else index
-			nrow = (index - index%layout['ncols'])//layout['ncols']
-			ncol = index%layout['ncols']
+			index = config['index']-1 if config['index'] is not None else grid[instance][subinstance][-1] if grid[instance].get(subinstance) else index
+			nrow = (index - index%config['ncols'])//config['ncols']
+			ncol = index%config['ncols']
 
-			layout.update({
+			config.update({
 				**{'index':index+1},
 				**{
-					'top':1 - (nrow)/layout['nrows'] if layout['top'] and layout['nrows']>1 else None,
-					'bottom':1 - (nrow+1)/layout['nrows'] if layout['bottom'] and layout['nrows']>1 else None,
-					'right':(ncol+1)/layout['ncols'] if layout['right'] and layout['ncols']>1 else None,
-					'left':(ncol)/layout['ncols'] if layout['left'] and layout['ncols']>1 else None,											
+					'top':1 - (nrow)/config['nrows'] if config['top'] and config['nrows']>1 else None,
+					'bottom':1 - (nrow+1)/config['nrows'] if config['bottom'] and config['nrows']>1 else None,
+					'right':(ncol+1)/config['ncols'] if config['right'] and config['ncols']>1 else None,
+					'left':(ncol)/config['ncols'] if config['left'] and config['ncols']>1 else None,											
 					}
 				})
 
-			plots[instance][subinstance]['style']['layout'] = layout
+			plots[instance][subinstance]['style']['layout'] = config
 
-			grid[instance][subinstance] = [layout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
+			grid[instance][subinstance] = [*[config['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)],index]
 
 
 	# Set kwargs
@@ -2930,6 +2967,10 @@ def plotter(plots,processes,verbose=None):
 							data[attr%(axes)] = data[attr%(axes)]%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(data[attr%(axes)].count('%s'))))
 						else:
 							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if data and OTHER in data for i in data[OTHER]}
+
+							if layouts[instance].get(subinstance) is not None:
+								objs.update({i:layouts[instance][subinstance][i] for i in layouts[instance][subinstance] if i not in objs})
+
 							if data[attr%(axes)] in objs:
 								data[attr%(axes)] = "%s = %s"%(data[attr%(axes)],objs[data[attr%(axes)]])
 

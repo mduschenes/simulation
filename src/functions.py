@@ -63,6 +63,9 @@ def func_infidelity(data):
 def func_infidelity_err(data):
 	return abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
 
+def func_max_bond(data):
+	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
+
 def func_MN(data):
 	return data['M']/data['N']
 
