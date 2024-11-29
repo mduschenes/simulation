@@ -46,6 +46,8 @@ CAXES = ['colorbar']
 PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf','imshow','matshow']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
+OBJS = ['ax','fig']
+OBJ = 'ax'
 PATHS = {
 	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
 	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
@@ -763,7 +765,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		attr = 'indices'
 
 		if layout is None:
-			grid = [[1,1,1],[1,1,1]]
 			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
 				'left':(None,1),'right':(None,1),'centre':(None,None),
@@ -774,26 +775,51 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		elif all([kwarg == _kwarg and _kwarg in layout for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			
 			if layout.get(attr):
-				grid = [[(i-1)%layout['ncols']+1 for i in layout[attr]],[(i-1)//layout['ncols']+1 for i in layout[attr]]]
+				positions = [((((i-1)//layout['ncols'])%layout['nrows'])+1,((i-1)%layout['ncols'])+1) for i in layout[attr]]
+
+				positions = [{j:[i for i in positions if i[k]==j] for j in set(i[k] for i in positions)} for k in range(LAYOUTDIM)]
+
+				positions = {
+					'top':positions[0][min(positions[0])],
+					'bottom':positions[0][max(positions[0])],
+					'middle':positions[0][len(positions[0])//2],
+					'left':positions[0][min(positions[0])],
+					# 'right':(None,layout['ncols']),
+					# 'centre':(None,layout['ncols']//2+layout['ncols']%2),
+					# 'top_left':(1,1),
+					# 'bottom_left':(layout['nrows'],1),
+					# 'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
+					# 'top_right':(1,layout['ncols']),
+					# 'bottom_right':(layout['nrows'],layout['ncols']),
+					# 'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
+					# 'top_centre':(1,layout['ncols']//2+layout['ncols']%2),
+					# 'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),
+					# 'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
+					}
+	
+
+				print(positions)
+				print()
+				exit()
+
+
+				positions = [[min(positions[0]),positions[0][positions[0].index(sorted(positions[0])[len(positions[0])//2+len(positions[0])%2])],max(positions[0])],[min(positions[1]),positions[1][positions[1].index(sorted(positions[1])[len(positions[1])//2+len(positions[1])%2])],max(positions[1])]]
+				positions = {
+					'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
+					'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
+					'top_left':(1,1),'bottom_left':(layout['nrows'],1),'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
+					'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
+					'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
+					}
 			else:
-				grid = None
-
-			if grid:
-				grid = [[min(grid[0]),grid[0][grid[0].index(sorted(grid[0])[len(grid[0])//2+len(grid[0])%2])],max(grid[0])],[min(grid[1]),grid[1][grid[1].index(sorted(grid[1])[len(grid[1])//2+len(grid[1])%2])],max(grid[1])]]
-			else:
-				grid = [[1,layout['nrows']//2+layout['nrows']%2,layout['nrows']],[1,layout['ncols']//2+layout['ncols']%2,layout['ncols']]]
-
-			print(grid)
-
-			positions = {
-				'top':(range(grid[0][0],grid[0][-1]),None),'bottom':(grid[0][-1],None),'middle':(grid[0][1],None),
-				'left':(None,1),'right':(None,grid[1][-1]),'centre':(None,grid[1][1]),
-				'top_left':(1,1),'bottom_left':(grid[0][-1],1),'middle_left':(grid[0][1],1),
-				'top_right':(1,grid[1][-1]),'bottom_right':(grid[0][-1],grid[1][-1]),'middle_right':(grid[0][1],grid[1][-1]),
-				'top_centre':(1,grid[1][1]),'bottom_centre':(grid[0][-1],grid[1][1]),'middle_right':(grid[0][1],grid[1][1]),
-				}
+				positions = {
+					'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
+					'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
+					'top_left':(1,1),'bottom_left':(layout['nrows'],1),'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
+					'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
+					'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
+					}
 		else:
-			grid = [[1,1,1],[1,1,1]]			
 			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
 				'left':(None,1),'right':(None,1),'centre':(None,None),
@@ -966,7 +992,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif isinstance(share,str) and share in _positions():
 				_position_ = _positions(kwargs['layout']).get(share,share)
 				position = _position(kwargs['layout'])
-				if all([((_position_[i] is None) or (isinstance(_position_[i],int) and (position[i] == _position_[i])) or (not isinstance(_position_[i],int) and (position[i] in _position_[i]))) for i in range(LAYOUTDIM)]):
+				_position_ = (_position_,) if not all(isinstance(i,tuple) for i in _position_) else _position_
+				if any(all(pos[i] is None or pos[i] == position[i] for i in range(LAYOUTDIM)) for pos in _position_):
 					return value
 				else:
 					if isinstance(value,list):
@@ -1873,20 +1900,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):
+
+		defaults = {
+			'texify':None,
+			'share': {},
+			'layout':{
+				**{attrs:[settings[k]['style'].get('layout',{}).get(attr) 
+					for k in settings 
+					if (attr in settings[k]['style'].get('layout',{}) and 
+						any((data is not None and any(data.get(i) is not None and len(data.get(i))  for i in ALL))
+						for prop in PLOTS if prop in settings[k][OBJ] 
+						for data in search(settings[k][OBJ][prop])))] 
+					for attr,attrs in {'index':'indices'}.items()},
+				}
+			}
+
 		def attr_kwargs(attr,key,settings):
 			kwargs = {
-				'texify':settings[key]['style'].get('texify'),
-				'share':settings[key]['style'].get('share',{}).get(attr,{}),
+				'texify':settings[key]['style'].get('texify',defaults['texify']),
+				'share':settings[key]['style'].get('share',{}).get(attr,defaults['share']),
 				'layout':_layout({
 					**{attr:settings[key]['style'].get('layout',{}).get(attr) for attr in LAYOUT},
-					**{attrs:[settings[k]['style'].get('layout',{}).get(attr) 
-						for k in settings 
-						if (attr in settings[k]['style'].get('layout',{}) and 
-							any((data is not None and any(data.get(attr) for attr in ALL))
-							for prop in PLOTS if prop in settings[k]['ax'] 
-							for data in search(settings[k]['ax'][prop],returns=False)))] 
-						for attr,attrs in {'index':'indices'}.items()},
-					})
+					**defaults['layout']
+					}),
 				}
 			return kwargs
 
@@ -2020,11 +2056,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				})
 			if update:
 				plotsettings = settings[key].get('ax',{}).pop('plot',{})				
-				_settings['ax'].update({
+				_settings[OBJ].update({
 					**{'plot':[{'x':_x,'y':_y,'z':_z,**(plotsettings if isinstance(plotsettings,dict) else plotsettings[_i])} 
 								for _i,(_x,_y,_z) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key],z[key]))]
 								},
-					**settings[key].get('ax',{}), 
+					**settings[key].get(OBJ,{}), 
 					})
 
 			for attr in settings[key]:
