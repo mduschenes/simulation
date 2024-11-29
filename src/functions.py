@@ -68,7 +68,7 @@ def func_max_bond(data):
 
 def func_layout(data):
 	from src.plot import PLOTS
-	return 3 if not any(tmp['label']['label'].get('N') in [8] 
+	return 2 if any(tmp.get('N') in [8] 
 		for prop in PLOTS if prop in data.get('ax',{}) 
 		for tmp in search(data.get('ax',{}).get(prop)) if tmp) else None
 

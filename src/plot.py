@@ -207,28 +207,69 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 
 
 
-def search(iterable,index=[],shape=[],types=(list,),exceptions=()):
+def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exceptions=()):
 	'''
-	Search of iterable, returning elements and indices of elements
+	Search of iterable, returning keys and indices of keys
 	Args:
 		iterable (iterable): Nested iterable
-		index (iterable[int]): Index of element
+		index (iterable[int,str]): Index of key
 		shape (iterable[int]): Shape of iterable
+		returns (bool,str): Returns of search, 
+			None returns item, True returns index,shape,item, False returns None, 
+			allowed strings (.delimited) for combinations of ['index','shape','item']
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
-		index (iterable[int]): Index of item
+		index (iterable[int,str]): Index of item
 		shape (iterable[iterable[int]]): Shape of iterable at index
-		item (iterable): Iterable element
+		item (iterable): Iterable key
 	'''
-	kwargs = (dict,)
-	if isinstance(iterable,types) and not isinstance(iterable,exceptions):
+	def returner(index,shape,item,returns=None):
+		if returns is None:
+			yield item
+		elif returns is True:
+			yield (index,shape,item)
+		elif returns is False:
+			return None
+		elif returns in ['index']:
+			yield index
+		elif returns in ['shape']:
+			yield shape
+		elif returns in ['item']:
+			yield item
+		elif returns in ['index.shape']:
+			yield (index,shape)
+		elif returns in ['index.item']:
+			yield (index,item)
+		elif returns in ['shape.item']:
+			yield (shape,item)
+		elif returns in ['index.shape.item']:
+			yield (index,shape,item)
+
+	dictionaries = (dict,)
+	items = [items] if (items is not None) and isinstance(items,scalars) else items
+	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and all(item in iterable for item in items)):
+		
+		if items:
+			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
+				return
+			elif isinstance(iterable,dictionaries):
+				item = [iterable[item] for item in items]
+			else:
+				item = items
+		else:
+			item = iterable
+
+		yield from returner(index,shape,item,returns=returns)
+
+
+	if (isinstance(iterable,types)) and (not isinstance(iterable,exceptions)):
 		for i,item in enumerate(iterable):
-			if isinstance(iterable,kwargs):
+			if isinstance(iterable,dictionaries):
 				i,item = item,iterable[item]
-			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],types=types,exceptions=exceptions)
-	else:
-		yield (index,shape,iterable)
+			size = len(iterable)					
+			yield from search(item,index=[*index,i],shape=[*shape,size],
+				returns=returns,items=items,types=types,exceptions=exceptions)
 
 
 # Load from path
@@ -718,6 +759,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		return position
 
 	def _positions(layout=None):
+	
+		attr = 'indices'
+
 		if layout is None:
 			grid = [[1,1,1],[1,1,1]]
 			positions = {
@@ -729,19 +773,27 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				}
 		elif all([kwarg == _kwarg and _kwarg in layout for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			
-			# attr = 'indices'
-			# if attr in layout:
-			# 	grid = [[1,max(layout[attr])//2,],[1,]]
-			# else:
+			if layout.get(attr):
+				grid = [[(i-1)%layout['ncols']+1 for i in layout[attr]],[(i-1)//layout['ncols']+1 for i in layout[attr]]]
+			else:
+				grid = None
+
+			if grid:
+				grid = [[min(grid[0]),grid[0][grid[0].index(sorted(grid[0])[len(grid[0])//2+len(grid[0])%2])],max(grid[0])],[min(grid[1]),grid[1][grid[1].index(sorted(grid[1])[len(grid[1])//2+len(grid[1])%2])],max(grid[1])]]
+			else:
+				grid = [[1,layout['nrows']//2+layout['nrows']%2,layout['nrows']],[1,layout['ncols']//2+layout['ncols']%2,layout['ncols']]]
+
+			print(grid)
+
 			positions = {
-				'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
-				'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
-				'top_left':(1,1),'bottom_left':(layout['nrows'],1),'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
-				'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
-				'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
+				'top':(range(grid[0][0],grid[0][-1]),None),'bottom':(grid[0][-1],None),'middle':(grid[0][1],None),
+				'left':(None,1),'right':(None,grid[1][-1]),'centre':(None,grid[1][1]),
+				'top_left':(1,1),'bottom_left':(grid[0][-1],1),'middle_left':(grid[0][1],1),
+				'top_right':(1,grid[1][-1]),'bottom_right':(grid[0][-1],grid[1][-1]),'middle_right':(grid[0][1],grid[1][-1]),
+				'top_centre':(1,grid[1][1]),'bottom_centre':(grid[0][-1],grid[1][1]),'middle_right':(grid[0][1],grid[1][1]),
 				}
 		else:
-			grid = [[1,1,1],[1,1,1],[1,1,1]]			
+			grid = [[1,1,1],[1,1,1]]			
 			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
 				'left':(None,1),'right':(None,1),'centre':(None,None),
@@ -914,7 +966,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif isinstance(share,str) and share in _positions():
 				_position_ = _positions(kwargs['layout']).get(share,share)
 				position = _position(kwargs['layout'])
-				if all([((_position_[i] is None) or (position[i]==_position_[i])) for i in range(LAYOUTDIM)]):
+				if all([((_position_[i] is None) or (isinstance(_position_[i],int) and (position[i] == _position_[i])) or (not isinstance(_position_[i],int) and (position[i] in _position_[i]))) for i in range(LAYOUTDIM)]):
 					return value
 				else:
 					if isinstance(value,list):
@@ -1138,7 +1190,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1164,7 +1216,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1181,7 +1233,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					err = kwargs[attr].get(prop)
 					value = kwargs[attr].get(subprop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 					
 					err = set_err(err=err,value=value,scale=scale)
 
@@ -1209,7 +1261,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1225,7 +1277,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					err = kwargs[attr].get(prop)
 					value = kwargs[attr].get(subprop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 
 					err = set_err(err=err,value=value,scale=scale)
 
@@ -1274,7 +1326,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1808,7 +1860,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 
-		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,))]
+		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,),returns=True)]
 		indices = [index for index,shape,kwarg in finds]
 
 		for count,(index,shape,kwarg) in enumerate(finds):
@@ -1827,7 +1879,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'share':settings[key]['style'].get('share',{}).get(attr,{}),
 				'layout':_layout({
 					**{attr:settings[key]['style'].get('layout',{}).get(attr) for attr in LAYOUT},
-					**{attrs:[settings[k]['style'].get('layout',{}).get(attr) for k in settings if attr in settings[k]['style'].get('layout',{})] for attr,attrs in {'index':'indices'}.items()},
+					**{attrs:[settings[k]['style'].get('layout',{}).get(attr) 
+						for k in settings 
+						if (attr in settings[k]['style'].get('layout',{}) and 
+							any((data is not None and any(data.get(attr) for attr in ALL))
+							for prop in PLOTS if prop in settings[k]['ax'] 
+							for data in search(settings[k]['ax'][prop],returns=False)))] 
+						for attr,attrs in {'index':'indices'}.items()},
 					})
 				}
 			return kwargs
