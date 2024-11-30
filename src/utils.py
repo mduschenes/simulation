@@ -4020,6 +4020,49 @@ def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,
 	else:
 		return rand(shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
 
+def grouper(data,by=None,filter=None,apply=None,agg=None,**kwargs):
+	'''
+	Filter,Group,Apply,Aggregate Functions of Groups of data
+	Args:
+		data (dataframe): Data to apply functions
+		by (iterable[str]): Attributes of data to group
+		filter (bool): Filter or mask of data to apply
+		apply (callable): Function to apply to each group of data
+		agg (callable): Function to aggregate groups of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		data (dataframe): Data with Filter,Group,Apply,Aggregate
+	'''
+
+	if filter is not None:
+		data = data[filter]
+
+	dtype = {attr: data[attr].dtype for attr in data}
+
+	if by is not None:
+		options = dict(as_index=False,dropna=False)
+		data = data.groupby(by=by,**options)
+
+	if apply is not None and by is not None:
+		options = dict(drop=True)
+		data = data.apply(apply).reset_index(**options)
+
+		options = dict(as_index=False,dropna=False)
+		data = data.groupby(by=by,**options)
+	elif apply is not None:
+		options = dict(drop=True)
+		data = data.apply(apply).reset_index(**options)
+
+	if agg is not None and by is not None:
+		options = dict(level=0,axis=1)
+		data = data.agg(agg).astype(dtype)
+		try:
+			data = data.droplevel(**options)
+		except:
+			pass
+
+	return data
+
 @jit
 def nansqrt(a):
 	'''

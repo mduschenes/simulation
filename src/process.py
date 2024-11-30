@@ -803,6 +803,8 @@ def analyse(data,analyses=None,verbose=None):
 		out (dataframe): Analysed data
 	'''
 
+	analyses = copy(analyses)
+
 	default = True
 
 	out = default
@@ -888,14 +890,36 @@ def analyse(data,analyses=None,verbose=None):
 					return out					
 			elif analysis in ['func']:
 				def func(attrs,data):
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = data
 					for attr in attrs:
-						function = attrs[attr]
-						default = None
-						function = load(function,default=None)
-						if function is not None:
-							out[attr] = function(data)
+						for kwarg in kwargs[attr]:
+							function = kwargs[attr][kwarg]
+							default = None
+							function = load(function,default=default)
+							if function is not None:
+								out = function(data,**kwargs[attr])
 					return out
+			elif isinstance(analyses[analysis],(str,dict,*iterables)):
+				if isinstance(analyses[analysis],str):
+					analyses[analysis] = {analysis:{analyses[analysis]:{}}}
+				elif isinstance(analyses[analysis],dict):
+					analyses[analysis] = {analysis:analyses[analysis]}
+				else:
+					analyses[analysis] = {analysis:{i:{} for i in analyses[analysis]}}
+				def func(attrs,data):
+					value = {attr: {i:i for i in attrs[attr]} for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = data
+					for attr in attrs:
+						for kwarg in kwargs[attr]:
+							function = value[attr][kwarg]
+							default = None
+							function = load(function,default=default)
+							if function is not None:
+								out = function(data,**kwargs[attr][kwarg])
+					return out					
 			else:
 				continue
 
@@ -920,6 +944,8 @@ def analyse(data,analyses=None,verbose=None):
 					value = value.to_numpy() if not isinstance(value,bool) else value
 					out = conditions([out,value],op='and')
 				elif analysis in ['abs','log','log10','replace','func']:
+					data = func(attrs,data)
+				elif func is not None:
 					data = func(attrs,data)
 
 	if out is True:
@@ -1291,17 +1317,9 @@ def apply(keys,data,plots,processes,verbose=None):
 	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
 	data = data.astype(dtype)
 
-	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
-				for attr in data}
-
 	for name in keys:
 
 		logger.log(info,"Processing : %r"%(name,))
-
-		if any((keys[name][axes] not in data) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
-			key,value = name,None
-			setter(plots,{key:value},delimiter=delim,default=True)
-			continue
 
 		dimensions = [axes for axes in AXES if axes in keys[name]]
 		other = OTHER
@@ -1317,13 +1335,27 @@ def apply(keys,data,plots,processes,verbose=None):
 		funcs = copy(funcs)
 		stat = 'stat'
 		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
+		funcs = {} if not isinstance(funcs,dict) else funcs
+		analyses = {} if not isinstance(analyses,dict) else analyses
+		wrappers = {} if not isinstance(wrappers,dict) else wrappers
 		functions = {
 			'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log',
 			'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
 			'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
 			'mean_bootstrap':mean_bootstrap,'std_bootstrap':std_bootstrap,'sem_bootstrap':sem_bootstrap,
 			}
-		
+
+		attributes = list(set((
+			*[attr for attr in data],
+			*[attr for attr in analyses if any(i in attr for i in data)],
+			*[attr for attr in wrappers if attr in data or attr in analyses]
+			)))
+
+		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
+			key,value = name,None
+			setter(plots,{key:value},delimiter=delim,default=True)
+			continue
+
 		if not funcs:
 			funcs = {stat:None}
 		
@@ -1414,9 +1446,10 @@ def apply(keys,data,plots,processes,verbose=None):
 			except:
 				pass
 
-		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
-		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
-		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
+		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
+		labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
 		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
@@ -1428,7 +1461,8 @@ def apply(keys,data,plots,processes,verbose=None):
 			setter(plots,{key:value},delimiter=delim,default=True)
 			continue
 
-		groups = data[boolean].groupby(by=by,as_index=False,dropna=False)
+		options = dict(as_index=False,dropna=False)
+		groups = data[boolean].groupby(by=by,**options)
 
 		properties = {}
 		variables = independent
@@ -1440,8 +1474,11 @@ def apply(keys,data,plots,processes,verbose=None):
 			properties[prop] = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
 			properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
 
+		
 		if analyses:
-			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False,dropna=False)
+			options = dict(as_index=False,dropna=False)
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
+			groups = groups.groupby(by=by,**options)
 
 		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -1449,10 +1486,15 @@ def apply(keys,data,plots,processes,verbose=None):
 					for prop in properties}
 		shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
 
+		dtypes = {attr: (
+				('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
+				if attr in data else 'dtype') 
+				for attr in attributes}
+
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
 					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
-					  for attr in data},
+					  for attr in attributes},
 			**{attr : [(delim.join(((attr,function,func))),
 						{'array':{'':mean,'err':std}[func],
 						 'object':{'':'first','err':none}[func],
@@ -1463,19 +1505,17 @@ def apply(keys,data,plots,processes,verbose=None):
 						},
 		}
 
-		by = [*labels]
 		variables = [
 			*independent,
 			*dependent,
 			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
 			]
-		
-		droplevel = dict(level=0,axis=1)
+
+		options = dict(level=0,axis=1)
 
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
 	
-		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
-
+		groups = groups.agg(agg).droplevel(**options).astype(dtype)
 
 		# agg = {
 		# 	**{attr : {attr: pd.NamedAgg(
@@ -1514,10 +1554,14 @@ def apply(keys,data,plots,processes,verbose=None):
 		# groups = groups.agg(**agg).astype(dtype)
 
 
+		by = [*labels]
+
+		options = dict(as_index=False,dropna=False)
+
 		if by:
-			groups = groups.groupby(by=by,as_index=False,dropna=False)
+			groups = groups.groupby(by=by,**options)
 		else:
-			groups = GroupBy(groups,by=by,as_index=False,dropna=False)
+			groups = GroupBy(groups,by=by,**options)
 
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
@@ -1532,7 +1576,7 @@ def apply(keys,data,plots,processes,verbose=None):
 				key = (*name[:-3],i,j,*name[-1:])
 				value = copy(getter(plots,name,delimiter=delim))
 
-				source = [attr for attr in data if attr not in variables]
+				source = [attr for attr in attributes if attr not in variables]
 				destination = other
 
 				value[destination] = {

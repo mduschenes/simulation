@@ -1513,6 +1513,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 								break
 
+			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
+				pass
+
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
 				props = ['transform']

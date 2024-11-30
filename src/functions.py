@@ -25,6 +25,7 @@ from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
 from src.utils import to_tuple,asscalar
 from src.utils import maximum,minimum,abs,sort,log
+from src.utils import grouper,conditions
 from src.utils import arrays,scalars,nonzero,delim
 
 from src.iterables import permuter,setter,getter,search
@@ -47,6 +48,27 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	attr = slice(None) if attr is None else attr
 	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
+
+def func_stat_group(data,independent=None,dependent=None,**kwargs):
+
+	if independent is None or dependent is None:
+		return data
+
+	booleans = {attr:lambda data,attr=attr:(data[attr] == data[attr].max()) for attr in dependent}
+
+	options = dict(
+		by=independent,
+		filter=None,
+		apply=None,
+		agg={**{attr:'first' for attr in data},**{attr:'mean' for attr in dependent}},
+		)
+	data = grouper(data,**options)
+
+	boolean = conditions([booleans[attr](data) for attr in booleans],op='and')
+
+	data = data[boolean]
+
+	return data
 
 def func_y(data):
 	return abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
