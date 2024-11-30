@@ -107,7 +107,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -395,7 +395,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -691,7 +691,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -987,7 +987,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -1302,7 +1302,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -1617,7 +1617,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -1932,7 +1932,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -2247,7 +2247,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -2543,7 +2543,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -2839,7 +2839,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -3154,7 +3154,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -3469,7 +3469,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -3765,7 +3765,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
@@ -4044,7 +4044,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "3%",
-                "pad": 0.1,
+                "pad": 0.01,
                 "share":true,
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
 				"set_label": {
