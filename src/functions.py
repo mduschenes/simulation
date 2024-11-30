@@ -66,9 +66,19 @@ def func_infidelity_err(data):
 def func_max_bond(data):
 	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
 
-def func_layout(data,metadata):
+def func_title(data,metadata):
 	attr = 'N'
-	return 2 if data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None) else None
+	return 2.2 if (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
+
+def func_xlabel(data,metadata):
+	attr = 'N'
+	return -2 if not (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
+
+def func_ylabel(data,metadata):
+	attr = 'N'
+	return 2 if (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
+
+
 
 def func_MN(data):
 	return data['M']/data['N']

@@ -2007,11 +2007,11 @@ def plotter(plots,processes,verbose=None):
 					attr,tmp = attr.split(delim),opts.pop(attr)
 						
 					if attr[0] in [obj]:
-						attr,index = delim.join(attr[:2]),delim.join(attr[2:])
+						attr,index = (delim.join(attr[:2]),delim.join(attr[2:])) if len(attr)>2 else (delim.join(attr[:1]),delim.join(attr[1:]))
 					else:
 						attr,index = delim.join(attr[:-1]),delim.join(attr[-1:])
 
-					if any(i in [OTHER] for i in index.split(delim)):
+					if any(i in PLOTS for i in attr.split(delim)) and any(i in [OTHER] for i in index.split(delim)):
 						index = delim.join([OTHER,*index.split(delim)])
 
 					if isinstance(tmp,str):
@@ -2036,10 +2036,10 @@ def plotter(plots,processes,verbose=None):
 						items = {delim.join([attr,index]):item}
 					elif isinstance(value,list):
 						values = search(value)
-						items = {index:item}
+						items = {index:item} if index else item
 					else:
 						values = [value]
-						items = {index:item}
+						items = {index:item} if index else item
 
 					for data in values:
 
@@ -2047,7 +2047,6 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 						setter(data,copy(items),delimiter=delim)
-
 
 
 	# Set layout
@@ -2509,22 +2508,29 @@ def plotter(plots,processes,verbose=None):
 					items = data[attr]
 
 				attr = 'set_%slabel'
-				kwarg = '%slabel'
-
+				kwargs = ['%slabel']
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
+					for kwarg in kwargs:
 					
-					value = texify(data[attr%(axes)][kwarg%(axes)])
+						if data[attr%(axes)].get(kwarg%(axes)) is None:
+							continue
 
-					data[attr%(axes)][kwarg%(axes)] = value
+						value = texify(data[attr%(axes)][kwarg%(axes)])
+
+						data[attr%(axes)][kwarg%(axes)] = value
 
 				attr = 'set_%sticks'
-				kwarg = 'ticks'
+				kwargs = ['ticks']
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
-					else:
+					for kwarg in kwargs:
+					
+						if data[attr%(axes)].get(kwarg) is None:
+							continue
+
 						norm = data.get('norm')
 						scale = data.get('scale')
 						length = len(data.get('value',[]))
@@ -2564,12 +2570,16 @@ def plotter(plots,processes,verbose=None):
 							data[attr%(axes)][kwarg] = value
 
 				attr = 'set_%sticklabels'
-				kwarg = 'ticklabels'
+				kwargs = ['labels','ticklabels']
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
-					else:
-						
+
+					for kwarg in kwargs:
+
+						if data[attr%(axes)].get(kwarg) is None:
+							continue
+
 						scale = data.get('scale')
 						value = items
 						
@@ -2599,16 +2609,16 @@ def plotter(plots,processes,verbose=None):
 						else:
 							value = data[attr%(axes)][kwarg]
 
-					options = {attr: data.pop(attr,dict()) 
-						for attr,default in {
-							'texify':dict(),
-							'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
-						}
+						options = {attr: data.pop(attr,dict()) 
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+							}
 
-					if value is not None:
-						data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
-					else:
-						data[attr%(axes)][kwarg] = value
+						if value is not None:
+							data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
+						else:
+							data[attr%(axes)][kwarg] = value
 
 			# set legend
 			prop = 'legend'
@@ -2990,6 +3000,33 @@ def plotter(plots,processes,verbose=None):
 
 					data[attr%(axes)] = texify(data[attr%(axes)])
 
+			# Set tick labels
+			attr = 'set_%sticklabels'
+			kwargs = ['labels','ticklabels']
+			for axes in ['',*AXES]:
+				
+				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
+				
+					if data is None:
+						continue
+
+					for kwarg in kwargs:
+
+						if data.get(kwarg) is None:
+							continue
+
+						value = data[kwarg]
+
+						options = {attr: data.pop(attr,default) 
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+							}
+
+						if value is not None:
+							data[kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
+						else:
+							data[kwarg] = value
 
 			# set label
 			attr = 'label'
@@ -3088,11 +3125,11 @@ def plotter(plots,processes,verbose=None):
 							(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
 							(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
 							((((not isinstance(data[OTHER][OTHER]['legend'].get('include'),dict)) and 
-							  	(not isinstance(data[OTHER][OTHER]['legend'].get('parse'),dict))) or (
-							  	all(parse(label,
-							  		{**(data[OTHER][OTHER]['legend'].get('include') if isinstance(data[OTHER][OTHER]['legend'].get('include'),dict) else {}),
-							  		 **(data[OTHER][OTHER]['legend'].get('parse') if isinstance(data[OTHER][OTHER]['legend'].get('parse'),dict) else {}),},
-							  		 tmp)))
+								(not isinstance(data[OTHER][OTHER]['legend'].get('parse'),dict))) or (
+								all(parse(label,
+									{**(data[OTHER][OTHER]['legend'].get('include') if isinstance(data[OTHER][OTHER]['legend'].get('include'),dict) else {}),
+									 **(data[OTHER][OTHER]['legend'].get('parse') if isinstance(data[OTHER][OTHER]['legend'].get('parse'),dict) else {}),},
+									 tmp)))
 							  ) and
 							 ((not data[OTHER][OTHER]['legend'].get('include')) or 
 							  (label in data[OTHER][OTHER]['legend'].get('include'))) and

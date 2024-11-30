@@ -776,41 +776,30 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			if layout.get(attr):
 				positions = [((((i-1)//layout['ncols'])%layout['nrows'])+1,((i-1)%layout['ncols'])+1) for i in layout[attr]]
-
-				positions = [{j:[i for i in positions if i[k]==j] for j in set(i[k] for i in positions)} for k in range(LAYOUTDIM)]
-
+				positions = [{index:list(set(tuple(i[axis] for i in positions 
+					if all(i[j]==index[k] for k,j in enumerate(axes)))))
+					for index in sorted(set(tuple(i[j] for j in axes) for i in positions))}
+					for axis,axes in {i:[j for j in range(LAYOUTDIM) if j not in [i]] for i in range(LAYOUTDIM)}.items()]
 				positions = {
-					'top':positions[0][min(positions[0])],
-					'bottom':positions[0][max(positions[0])],
-					'middle':positions[0][len(positions[0])//2],
-					'left':positions[0][min(positions[0])],
-					# 'right':(None,layout['ncols']),
-					# 'centre':(None,layout['ncols']//2+layout['ncols']%2),
-					# 'top_left':(1,1),
-					# 'bottom_left':(layout['nrows'],1),
-					# 'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
-					# 'top_right':(1,layout['ncols']),
-					# 'bottom_right':(layout['nrows'],layout['ncols']),
-					# 'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
-					# 'top_centre':(1,layout['ncols']//2+layout['ncols']%2),
-					# 'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),
-					# 'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
+					'top':[[*i[:0],min(positions[0][i]),*i[0:]] for i in positions[0]],
+					'bottom':[[*i[:0],max(positions[0][i]),*i[0:]] for i in positions[0]],
+					'middle':[[*i[:0],positions[0][i][len(positions[0][i])//2],*i[0:]] for i in positions[0]],
+					'left':[[*i[:1],min(positions[1][i]),*i[1:]] for i in positions[1]],
+					'right':[[*i[:1],max(positions[1][i]),*i[1:]] for i in positions[1]],
+					'centre':[[*i[:1],positions[1][i][len(positions[1][i])//2],*i[1:]] for i in positions[1]],					
 					}
-	
-
-				print(positions)
-				print()
-				exit()
-
-
-				positions = [[min(positions[0]),positions[0][positions[0].index(sorted(positions[0])[len(positions[0])//2+len(positions[0])%2])],max(positions[0])],[min(positions[1]),positions[1][positions[1].index(sorted(positions[1])[len(positions[1])//2+len(positions[1])%2])],max(positions[1])]]
 				positions = {
-					'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
-					'left':(None,1),'right':(None,layout['ncols']),'centre':(None,layout['ncols']//2+layout['ncols']%2),
-					'top_left':(1,1),'bottom_left':(layout['nrows'],1),'middle_left':(layout['nrows']//2+layout['nrows']%2,1),
-					'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
-					'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
-					}
+					**{index: positions[index] for index in ['top','bottom','middle']},
+					**{index: [i for i in positions[index] if i[1] == min(i[1] for i in positions[index])] for index in ['left']},
+					**{index: [i for i in positions[index] if i[1] == max(i[1] for i in positions[index])] for index in ['right']},
+					**{index: positions[index] for index in ['centre']},
+					}					
+				positions = {
+					**{index: positions[index] for index in positions},
+					**{'%s_%s'%(row,col):[i for i in positions[row]+positions[col] if i in positions[row] and i in positions[col]]
+						for row in ['top','bottom','middle'] for col in ['left','right','centre']},
+				}
+
 			else:
 				positions = {
 					'top':(1,None),'bottom':(layout['nrows'],None),'middle':(layout['nrows']//2+layout['nrows']%2,None),
@@ -819,6 +808,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					'top_right':(1,layout['ncols']),'bottom_right':(layout['nrows'],layout['ncols']),'middle_right':(layout['nrows']//2+layout['nrows']%2,layout['ncols']),
 					'top_centre':(1,layout['ncols']//2+layout['ncols']%2),'bottom_centre':(layout['nrows'],layout['ncols']//2+layout['ncols']%2),'middle_center':(layout['nrows']//2+layout['nrows']%2,layout['ncols']//2+layout['ncols']%2),
 					}
+				
 		else:
 			positions = {
 				'top':(1,None),'bottom':(1,None),'middle':(None,None),
@@ -927,7 +917,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			((isinstance(attrs[attr],list) and (kwarg in attrs[attr])) or 
 			 (isinstance(attrs[attr],dict) and (kwarg in attrs[attr])))):
 			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
-				string = [scinotation(substring,decimals=1,usetex=True) for substring in string]
+				string = [scinotation(substring,decimals=1,usetex=True) if '$' not in substring else substring for substring in string]
 			elif isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(string)
 				if len(string.replace('$','')) == 0:
@@ -962,10 +952,22 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				},
 			}
 
+		def returns(value,attr,kwarg):
+			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
+				if kwarg in ['labels']:
+					return []
+				else:
+					return None
+			elif isinstance(value,list):
+				return []
+			else:
+				return None			
+
 		if ((attr in attrs) and (kwarg not in attrs[attr])):
 			return value
 
-		if ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
+		if ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str,list,tuple))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
+
 			if isinstance(share[attr],dict):
 				share = share[attr][kwarg]
 			else:
@@ -975,39 +977,27 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					for k in ['layout']]))):
 				return value
 			if isinstance(share,bool) and (not share) and (share is not None):
-				if isinstance(value,list):
-					return []
-				else:
-					return None     
+				return returns(value,attr,kwarg)
 			elif isinstance(share,bool) and share:
 				_position_ = _position(kwargs['layout']) 
 				position = _position(kwargs['layout'])
 				if all([((_position_[i] is None) or (position[i]==_position_[i])) for i in range(LAYOUTDIM)]):
 					return value
 				else:
-					if isinstance(value,list):
-						return []
-					else:
-						return None     
-			elif isinstance(share,str) and share in _positions():
-				_position_ = _positions(kwargs['layout']).get(share,share)
+					return returns(value,attr,kwarg)
+			elif (isinstance(share,str) and share in _positions()) or isinstance(share,(list,tuple)):
+				_position_ = _positions(kwargs['layout']).get(share,share) if isinstance(share,str) else share
 				position = _position(kwargs['layout'])
-				_position_ = (_position_,) if not all(isinstance(i,tuple) for i in _position_) else _position_
+				_position_ = (_position_,) if all(i is None or isinstance(i,int) for i in _position_) else _position_
 				if any(all(pos[i] is None or pos[i] == position[i] for i in range(LAYOUTDIM)) for pos in _position_):
 					return value
 				else:
-					if isinstance(value,list):
-						return []
-					else:
-						return None     						
+					return returns(value,attr,kwarg)
 			else:
 				if value == share:
 					return value
 				else:
-					if isinstance(value,list):
-						return []
-					else:
-						return None
+					return returns(value,attr,kwarg)
 		else:
 			return value
 		return
@@ -1802,10 +1792,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						_attr = _obj(**_kwargs_)
 					else:
 						_attr = None
-			# except Exception as e:
+					# except Exception as exception:
+					# 	_attr = None
+			# except Exception as exception:
 			# 	_attr = None
-			# 	if not isinstance(e,AttributeError):
-			# 		logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
+			# 	if not isinstance(exception,AttributeError):
+			# 		logger.log(debug,'%r %r %s %r %r'%(exception,_obj,attr,args,_kwargs_))
 			# 		logger.log(debug,'%r'%(traceback.format_exc()))
 			for k in _kwds:
 				_attr_ = _attr
