@@ -1487,13 +1487,31 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			elif attr in ['%saxis.set_%s_%s'%(axes,which,formatter) for axes in AXES for which in WHICH for formatter in FORMATTER]:
+				
+				class LogFormatterCustom(matplotlib.ticker.LogFormatterMathtext):
+					def __call__(self, x, pos=None):
+						if not (self._base**options['scilimits'][0] <= x <= self._base**options['scilimits'][-1]):
+							return matplotlib.ticker.LogFormatterMathtext.__call__(self,x,pos=pos)
+						else:
+							return "${x:g}$".format(x=x)
+
+				formatters = {"LogFormatterCustom":LogFormatterCustom}
+
 				axes = attr.split('.')[0].replace('axis','')
 				which = attr.split('.')[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
 				formatter = attr.split('_')[-1]
 				for k in kwargs[attr]:
 					for a in kwargs[attr][k]:
+						options = {i:kwargs[attr][k][a].pop(i,default)
+							for i,default in {'scilimits':[0,1]}.items()}
+						if a in formatters:
+							Formatter = formatters.get(a)
+						elif hasattr(getattr(matplotlib,k),a):
+							Formatter = getattr(getattr(matplotlib,k),a)
+						else:
+							continue
 						getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,k),a)(**kwargs[attr][k][a]))					
+							Formatter(**kwargs[attr][k][a]))
 				call = False
 
 
@@ -1515,6 +1533,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
 				pass
+
+			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
+				print(attr,kwargs[attr])
+				pass				
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
@@ -1790,13 +1812,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					_attr = _obj(**_kwargs_)
 				except:
-					_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
-					if _kwargs_:
-						_attr = _obj(**_kwargs_)
-					else:
+					try:
+						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
+						if _kwargs_:
+							_attr = _obj(**_kwargs_)
+						else:
+							_attr = None
+					except Exception as exception:
+						print(exception)
 						_attr = None
-					# except Exception as exception:
-					# 	_attr = None
+						# exit()
 			# except Exception as exception:
 			# 	_attr = None
 			# 	if not isinstance(exception,AttributeError):
