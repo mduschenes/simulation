@@ -6,7 +6,7 @@
 	"dump":1
 	},
 "seed":{
-	"seed":null,
+	"seed":123,
 	"size":5,
 	"reset":null,
 	"group":null,
@@ -231,10 +231,13 @@
 "callback":{
 	"attributes":{
 		"N":"N","M":"M","d":"d","D":"state.D",
+		"key":"key","instance":"instance","timestamp":"timestamp",
+		"seed":"seed","seeding":"seeding",
 		"noise.parameters":"noise.parameters",
 		"operator":"measure.operator",
 		"max_bond":"options.max_bond",
-		"cyclic":"measure.options.cyclic",		
+		"cyclic":"measure.options.cyclic",
+		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":"measure.infidelity_pure",
@@ -246,7 +249,7 @@
 		"entanglement.renyi":"measure.entanglement_renyi",
 		"entangling.quantum":"measure.entangling_quantum",
 		"entangling.classical":"measure.entangling_classical",
-		"entangling.renyi":"measure.entangling_renyi"		
+		"entangling.renyi":"measure.entangling_renyi"
 	},
 	"keywords": {
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},

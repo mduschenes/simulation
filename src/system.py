@@ -65,6 +65,7 @@ class System(Dictionary):
 			'unit':None,
 			'options':None,			
 			'seed':None,
+			'seedling':None,
 			'random':None,
 			'key':None,
 			'instance':None,

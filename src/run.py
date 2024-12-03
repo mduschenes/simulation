@@ -146,7 +146,7 @@ def setup(settings):
 	else:
 		seeds = [{}]
 
-	other = [{'system.key':None,'system.instance':None,'system.instances':None,'system.seed':seed}]
+	other = [{'system.key':None,'system.instance':None,'system.instances':None,'system.seed':seed,'system.seeding':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds,'other':other}
