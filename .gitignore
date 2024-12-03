@@ -30,6 +30,8 @@ docs/site
 
 build/config/test.slurm
 build/settings.tmp.json
+build/*.stdout
+build/*.stderr
 build/tmp
 build/data
 build/data/**/data*.hdf5
