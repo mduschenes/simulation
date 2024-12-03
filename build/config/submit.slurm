@@ -2,7 +2,8 @@
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=submit
-#SBATCH --output=%x.stdouterr
+#SBATCH --output=%x.stdout
+#SBATCH --error=%x.stderr
 
 #SBATCH --partition=cpu
 #SBATCH --time=06:00:00
@@ -53,3 +54,16 @@ scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 
 # Queue
 # trap 'QUEUE' SIGUSRSIG
+
+# Cleanup
+FILE=${SLURM_JOB_ID}.stdout
+if [[ -s ${FILE} || ! -s ${FILE} ]]
+then
+	rm ${FILE}
+fi 
+
+FILE=${SLURM_JOB_ID}.stderr
+if [[ -s ${FILE} ]]
+then
+	rm ${FILE}
+fi
