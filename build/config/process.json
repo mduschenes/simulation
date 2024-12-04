@@ -26,7 +26,7 @@
 		"max_bond.M.quantum.noise.parameters.N": 1,			
 		"max_bond.entangling.renyi.noise.parameters.N": 1,
 		"max_bond.M.renyi.noise.parameters.N": 1
-	},	 
+	},
 	"configuration": {
 		"position": "col",
 		"value": {
@@ -92,7 +92,7 @@
 			"ax.set_colorbar.aspect":40,
 			"ax.set_colorbar.pad":0.02,
 			"ax.set_colorbar.ax.tick_params.labelsize":36,
-			"ax.legend.loc": [1.5,2.575],
+			"ax.legend.loc": [1.5,3.375],
 			"ax.legend.title_fontsize": 36,
 			"ax.legend.fontsize": 36,
 			"ax.legend.prop.size": 36,
@@ -108,7 +108,7 @@
 			"style.share.ax.set_xticklabels":true,			
 			"style.share.ax.set_colorbar":"bottom_right",
 			"style.share.ax.legend":"bottom_right",
-			"fig.set_size_inches": {"w": 36,"h": 24}
+			"fig.set_size_inches": {"w": 40,"h": 30}
 		}
 		},
 		{
