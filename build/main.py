@@ -20,8 +20,52 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = 'settings'
+	arguments = {
+		'--settings':{
+			'help':'Settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--device':{
+			'help':'Device',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--job':{
+			'help':'Job',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},	
+		'--cmd':{
+			'help':'Command',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--env':{
+			'help':'Environment',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
+		},										
+		}		
 
-	args = argparser(arguments)
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}
+
+	args = argparser(arguments,wrappers)
 
 	main(*args,**args)

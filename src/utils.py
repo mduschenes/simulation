@@ -9775,6 +9775,22 @@ def nester(iterable,keys,func=None):
 	return iterable
 
 
+def funcpath(func):
+	'''
+	Get path of function
+	Args:
+		func (callable): Function to get path
+	Returns:
+		path (str): Path of function
+	'''
+	
+	try:
+		path = func.__code__.co_filename
+	except:
+		path = None
+
+	return path
+
 def projector(i,shape):
 	'''
 	Create projector at indices i

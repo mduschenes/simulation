@@ -81,22 +81,25 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	processes = -1 if processes is None else processes
 
 	if device in ['pc']:
-		exe = [*['./%s'%(e) for e in exe[:1]],*exe[1:]]
+		exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
 		flags = [*flags]
 		cmd = [*cmd]
 		options = [*options]		
 		env = {
 			**{
-				'SLURM_JOB_NAME':kwargs.get('key'),
-				'SLURM_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
-				'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
-				'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
-				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
-				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
-				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+				**({
+					'SLURM_JOB_NAME':kwargs.get('key'),
+					'SLURM_JOB_ID':kwargs.get('key'),
+					'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+					'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+					'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+					'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
+					'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					} if len(kwargs) else {}
+					),
 				**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
 			},
 			**env			
@@ -105,16 +108,19 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	elif device in ['slurm']:
 		exe,flags,cmd,options,env = (
 			['sbatch'],
-			[*flags,
-			'-J',basedir(kwargs.get('cwd')),
-			'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))
+			[
+			*flags,
+			*(['-J',basedir(kwargs.get('cwd'))] if len(kwargs) else []),
+			*(['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))] if len(args) else []),
 			],
 			['<'],
 			[*exe,*cmd,*options],
 			{
 			**{
-				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+				**({
+					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+				} if len(kwargs) else {}),
 				},
 			**env
 			}
@@ -127,16 +133,18 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 		options = [*[subarg for arg in args for subarg in args[arg]],*options]
 		env = {
 			**{
-				'SLURM_JOB_NAME':kwargs.get('key'),
-				'SLURM_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
-				'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
-				'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
-				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
-				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
-				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
+				**({
+					'SLURM_JOB_NAME':kwargs.get('key'),
+					'SLURM_JOB_ID':kwargs.get('key'),
+					'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+					'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+					'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+					'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
+					'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
+				} if len(kwargs) else {}),
 			},
 			**env,			
 		}
@@ -478,7 +486,7 @@ def run(file,path,*args,env=None,process=None,processes=None,device=None,execute
 		verbose (int,str,bool): Verbosity
 	'''
 
-	exe = ['./%s'%(file)]
+	exe = ['%s%s'%('./' if not e.startswith('/') else '',file)]
 	flags = []
 	cmd = []
 	options = []

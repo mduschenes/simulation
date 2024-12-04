@@ -9,10 +9,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,seeder,delim,union,convert,arrays,asscalar,is_equal
+from src.utils import copy,seeder,delim,union,is_equal,funcpath,argparser
 from src.iterables import getter,setter,permuter,search
-from src.io import load,dump,join,split
-from src.call import launch
+from src.io import load,dump,join,split,environ
+from src.call import launch,call,command
 
 def allowed(index,value,values):
 	'''
@@ -261,17 +261,114 @@ def setup(settings):
 
 
 
-def run(settings):
+def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=None):
 	'''
 	Run simulations
 	Args:
-		settings (dict,str): settings
+		settings (dict,str): settings for simulations
+		device (str): Name of device to submit to
+		job (str): Name of job to run simulations
+		cmd (str): Name of command to run simulations
+		env (str): Name of environment to run simulations
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity		
 	Returns:
 		results (iterable[str]): Return of commands for each job		
-	'''		
+	'''
+	
+	device = None if device is None else device
+	job = 'submit.slurm' if job is None else job
+	cmd = funcpath(run) if cmd is None else cmd
+	env = environ().get('CONDA_PREFIX',environ().get('VIRTUAL_ENV')) if env is None else env
+	execute = True if execute is None else execute
+	verbose = True if verbose is None else verbose
 
-	jobs = setup(settings)
+	if device is not None:
 
-	results = launch(jobs)
+		args = {
+			"JOB_SETTINGS":settings,
+			"JOB_ENV":env,
+			"JOB_CMD":cmd,
+			}
+		kwargs = {}
+		
+		exe = join(split(cmd,directory=True),job)
+		flags = []
+		cmd = []
+		options = []
+		env = []
+
+		process = None
+		processes = None
+
+		args,env = command(args,kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+		results = call(args,env=env,execute=execute,verbose=verbose)
+
+	else:
+
+		jobs = setup(settings)
+
+		results = launch(jobs)
 
 	return results
+
+
+def main(*args,**kwargs):
+
+	run(*args,**kwargs)
+
+	return
+
+if __name__ == '__main__':
+
+	arguments = {
+		'--settings':{
+			'help':'Settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--device':{
+			'help':'Device',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--job':{
+			'help':'Job',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},	
+		'--cmd':{
+			'help':'Command',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--env':{
+			'help':'Environment',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
+		},										
+		}		
+
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}
+
+
+	args = argparser(arguments,wrappers)
+
+	main(*args,**args)

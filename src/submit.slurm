@@ -27,9 +27,9 @@
 
 
 # Variables
-export JOB_SETTINGS=${1:-settings.json}
-export JOB_ENV=${2-env}
-export JOB_CMD=${3:-${HOME}/code/tensor/build/main.py}
+export JOB_SETTINGS=${1:-${JOB_SETTINGS:-settings.json}}
+export JOB_ENV=${2-${JOB_ENV:-env}}
+export JOB_CMD=${3:-${JOB_CMD:-${HOME}/code/tensor/build/main.py}}
 
 # Environment
 module purge &>/dev/null 2>&1
@@ -56,14 +56,14 @@ scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 # trap 'QUEUE' SIGUSRSIG
 
 # Cleanup
-FILE=${SLURM_JOB_ID}.stdout
+FILE=${SLURM_JOB_NAME}.stdout
 if [[ -s ${FILE} || ! -s ${FILE} ]]
 then
-	rm ${FILE}
+	rm -rf ${FILE}
 fi 
 
-FILE=${SLURM_JOB_ID}.stderr
+FILE=${SLURM_JOB_NAME}.stderr
 if [[ -s ${FILE} ]]
 then
-	rm ${FILE}
+	rm -rf ${FILE}
 fi

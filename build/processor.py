@@ -62,7 +62,6 @@ def main(args):
 		'data':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'**/data.hdf5'),
 	}
 
-
 	args = argparser(arguments,wrappers)
 
 	process(*args,**args)
