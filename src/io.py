@@ -496,7 +496,7 @@ def basedir(path,**kwargs):
 	Returns:
 		file (str): Base filename
 	'''	
-	return basename(dirname(path)) if path is not None else None
+	return basename(dirname(path))
 
  
 class funcclass(object):
