@@ -22,10 +22,10 @@
 		"M.entangling.quantum.noise.parameters.N": 1,
 		"M.entangling.classical.noise.parameters.N": 1,
 		"M.entangling.renyi.noise.parameters.N": 1,
-		"max_bond.entangling.quantum.noise.parameters.N":1,
-		"max_bond.M.quantum.noise.parameters.N":1,			
-		"max_bond.entangling.renyi.noise.parameters.N":1,
-		"max_bond.M.renyi.noise.parameters.N":1
+		"max_bond.entangling.quantum.noise.parameters.N": 1,
+		"max_bond.M.quantum.noise.parameters.N": 1,			
+		"max_bond.entangling.renyi.noise.parameters.N": 1,
+		"max_bond.M.renyi.noise.parameters.N": 1
 	},	 
 	"configuration": {
 		"position": "col",
@@ -33,8 +33,22 @@
 			"N": null
 		}      
 	},
-	"configuration": {
-		"M.entangling.quantum.noise.parameters.N":
+	"configuration": [
+		[
+		[
+		"M.infidelity.quantum.noise.parameters.N",
+		"M.infidelity.classical.noise.parameters.N",
+		"M.infidelity.pure.noise.parameters.N",
+		"M.norm.quantum.noise.parameters.N",
+		"M.norm.classical.noise.parameters.N",
+		"M.norm.pure.noise.parameters.N",
+		"M.entanglement.quantum.noise.parameters.N",
+		"M.entanglement.classical.noise.parameters.N",
+		"M.entanglement.renyi.noise.parameters.N",
+		"M.entangling.quantum.noise.parameters.N",
+		"M.entangling.classical.noise.parameters.N",
+		"M.entangling.renyi.noise.parameters.N"
+		],
 		[{
 		"position": "col",
 		"value": {
@@ -104,7 +118,23 @@
 		}
 		}
 		]
-	},
+		],
+		[
+			[
+			"max_bond.entangling.quantum.noise.parameters.N",
+			"max_bond.entangling.renyi.noise.parameters.N",
+			"max_bond.M.quantum.noise.parameters.N",
+			"max_bond.M.renyi.noise.parameters.N"
+			],
+			[{
+				"position": "col",
+				"value": {
+					"N": null
+				}      
+			}
+			]
+		]
+	],
 	"texify": {
 		"iteration": "\\textrm{Iteration}",
 		"objective": "\\textrm{Infidelity}",
