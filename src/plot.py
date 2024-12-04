@@ -140,6 +140,33 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	return
 
 
+def isiterable(obj,exceptions=()):
+	'''
+	Check if object is iterable
+	Args:
+		obj (object): object to be tested
+		exceptions (tuple[type]): Exceptional iterable types to exclude
+	Returns:
+		iterable (bool): whether object is iterable
+	'''
+	return hasattr(obj,'__iter__') and not isinstance(obj,exceptions)
+
+
+def copier(obj,copy):
+	'''
+	Copy object based on copy
+
+	Args:
+		obj (object): object to be copied
+		copy (bool): boolean or None whether to copy value
+	Returns:
+		Copy of value
+	'''
+
+	if copy:
+		return deepcopy(obj)
+	else:
+		return obj
 
 def to_position(index,shape):
 	'''
@@ -870,6 +897,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for k in other:
 				ax[k] = fig[key].add_axes(**other[k])
+
 		return
 
 	def attr_texify(string,attr,kwarg,texify=None,**kwargs):
@@ -1535,7 +1563,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				pass
 
 			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
-				print(attr,kwargs[attr])
 				pass				
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
@@ -1690,6 +1717,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				else:
 					call = False
 
+				call = call and (len(obj.get_figure().axes)>0)
+
 			elif attr in ['close']:
 				try:
 					plt.close(obj,**kwargs[attr])
@@ -1819,7 +1848,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						else:
 							_attr = None
 					except Exception as exception:
-						print(exception)
+						logger.log(debug,'%r'%(exception))
 						_attr = None
 						# exit()
 			# except Exception as exception:
@@ -1905,8 +1934,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if not isinstance(settings[attr],(dict,list)):
 			return
 
-
-
 		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,),returns=True)]
 		indices = [index for index,shape,kwarg in finds]
 
@@ -1970,6 +1997,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					elif ordering[prop] < -1:
 						ordering[prop] += 1
 					props.insert(ordering[prop],props.pop(props.index(prop)))
+
+			modify = {'savefig':-1}
+			for prop in modify:
+				if prop in settings[key][attr]:
+					if modify[prop] == -1:
+						modify[prop] = len(settings)-1
+					if list(settings).index(key) != modify[prop]:
+						props.pop(props.index(prop))
 
 			for prop in props:
 
@@ -2089,6 +2124,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			setter(settings[key],_settings,default=True)
 
+
 		for key in settings:
 			settings[key].update({k:defaults[k] 
 				for k in defaults if k not in settings[key]})
@@ -2106,6 +2142,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			attr = 'style'
 			for prop,obj in zip(['mplstyle','texify'],[mplstyle,texify]):
 				settings[key][attr][prop] = settings[key][attr].get(prop,obj)
+
 
 		return settings,fig,ax
 
@@ -2140,7 +2177,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 	try:
 		matplotlib.use(use)		
 		fig,ax = context(x,y,z,settings,fig,ax,mplstyle,texify)
-	except:
+	except Exception as exception:
 		rc_params = {'text.usetex': False}
 		matplotlib.rcParams.update(rc_params)
 		matplotlib.use(use) 
