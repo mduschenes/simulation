@@ -3025,14 +3025,20 @@ def plotter(plots,processes,verbose=None):
 								else:
 									value = data[attr]['__value__']
 
-								if isinstance(value,dict) and attr in ['alpha','zorder','marker','linestyle']:
-									value = [i for i in value if all(
-										((not isinstance(value[i][attr],iterables) and 
-											data[OTHER][attr] == value[i][attr]) or 
-										(isinstance(value[i][attr],iterables) and 
-											data[OTHER][attr] in value[i][attr]))
-										for attr in value[i] if attr in data[OTHER])]
-									value = value[0] if value else None
+
+								if attr in ['alpha','zorder','marker','linestyle']:
+
+									if isinstance(value,dict):
+										value = [i for i in value if all(
+											((not isinstance(value[i][attr],iterables) and 
+												data[OTHER][attr] == value[i][attr]) or 
+											(isinstance(value[i][attr],iterables) and 
+												data[OTHER][attr] in value[i][attr]))
+											for attr in value[i] if attr in data[OTHER])]
+										value = value[0] if value else None
+									elif isinstance(value,iterables):
+										if data[attr]['__index__'] is not None:
+											value = value[data[attr]['__index__']%len(value)] 
 
 								if attr in ['color','ecolor']:
 									pass
