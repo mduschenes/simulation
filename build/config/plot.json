@@ -3432,9 +3432,9 @@
 							"cyclic": null,
 							"noise.parameters": null
 						},
-                        "analysis": {
-                        	"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
-                        },	                        						
+						"analysis": {
+							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+						},	                        						
 						"labels": {
 							"max_bond": null
 						},
@@ -3571,14 +3571,16 @@
 				"base": 2
 			},
 			"set_xlim": {
-				"xmin": 7,
+				"xmin": 0.5,
 				"xmax": 300
 			},
 			"set_xnbins": {
-				"nbins": 6
+				"nbins": 8
 			},
 			"set_xticks": {
 				"ticks": [
+				    2,
+				    4,
 					8,
 					16,
 					32,
@@ -3743,9 +3745,9 @@
 							"cyclic": null,
 							"noise.parameters": null
 						},
-                        "analysis": {
-                        	"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
-                        },	                        						
+						"analysis": {
+							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+						},	                        						
 						"labels": {
 							"max_bond": null
 						},
@@ -3882,14 +3884,16 @@
 				"base": 2
 			},
 			"set_xlim": {
-				"xmin": 7,
+				"xmin": 0.5,
 				"xmax": 300
 			},
 			"set_xnbins": {
-				"nbins": 6
+				"nbins": 8
 			},
 			"set_xticks": {
 				"ticks": [
+				    2,
+				    4,
 					8,
 					16,
 					32,
@@ -4054,9 +4058,9 @@
 							"cyclic": null,
 							"noise.parameters": null
 						},
-                        "analysis": {
-                        	"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
-                        },	                        						
+						"analysis": {
+							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+						},	                        						
 						"labels": {
 							"max_bond": null
 						},
@@ -4193,14 +4197,16 @@
 				"base": 2
 			},
 			"set_xlim": {
-				"xmin": 7,
+				"xmin": 0.5,
 				"xmax": 300
 			},
 			"set_xnbins": {
-				"nbins": 6
+				"nbins": 8
 			},
 			"set_xticks": {
 				"ticks": [
+				    2,
+				    4,
 					8,
 					16,
 					32,
@@ -4365,9 +4371,9 @@
 							"cyclic": null,
 							"noise.parameters": null
 						},
-                        "analysis": {
-                        	"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
-                        },	                        						
+						"analysis": {
+							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+						},	                        						
 						"labels": {
 							"max_bond": null
 						},
@@ -4504,14 +4510,16 @@
 				"base": 2
 			},
 			"set_xlim": {
-				"xmin": 7,
+				"xmin": 0.5,
 				"xmax": 300
 			},
 			"set_xnbins": {
-				"nbins": 6
+				"nbins": 8
 			},
 			"set_xticks": {
 				"ticks": [
+				    2,
+				    4,
 					8,
 					16,
 					32,

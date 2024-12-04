@@ -439,11 +439,27 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	# Get configuration
 	options = {'position':None,'value':None,'kwargs':None}
 	configuration = processes.get('configuration',processes.get('instance',{}))
-	configuration = configuration if isinstance(configuration,dict) and not any(instance not in plots for instance in configuration if configuration[instance]) else {instance: configuration if isinstance(configuration,iterables) else [configuration] for instance in plots}
-	configuration = {instance: configuration[instance] if isinstance(configuration[instance],iterables) else [configuration[instance]] for instance in configuration if configuration[instance]}
-	configuration = {instance: [{**config,**{option:config.get(option,options[option]) for option in options}} 
-		for config in configuration[instance]] for instance in configuration}
+
+	if isinstance(configuration,dict):
+		if all(instance in plots for instance in configuration if configuration[instance]):
+			configuration = {instance: configuration[instance] if isinstance(configuration[instance],iterables) else [configuration[instance]] for instance in configuration}
+		else:
+			configuration = {instance: [configuration] for instance in plots}
+	elif isinstance(configuration,iterables):
+		if all(isinstance(config,dict) for config in configuration):
+			configuration = {instance:[config for config in configuration] for instance in plots}
+		elif all(isinstance(config,(dict,*iterables)) and len(config)==2 for config in configuration):
+			configuration = {instance:config for instances,config in configuration for instance in instances if instance in plots}
+	else:
+		raise Exception("Incorrect configuration format\n%r"%(configuration))
+
+	configuration = {instance:configuration[instance] for instance in configuration if instance in plots}
+	configuration = {instance: [{**config,**{option:config.get(option,options[option]) for option in options}}
+		for config in configuration[instance]]
+		for instance in configuration}
+
 	processes['configuration'] = configuration
+
 
 	# Get texify
 	texify = processes.get('texify',{})
@@ -1980,18 +1996,30 @@ def plotter(plots,processes,verbose=None):
 			if not plots[instance][subinstance].get(obj):
 				continue
 
+			data = [{attr: data[OTHER][attr]  for attr in data[OTHER] if attr not in [*ALL,OTHER]}
+				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop])]
+			data = {attr:[i[attr] if isinstance(i[attr],scalars) else tuple(i[attr]) for i in data] for attr in set(attr for i in data for attr in i)}
+			data = {attr: list(sorted(set(data[attr]),key=lambda i:data[attr].index(i))) for attr in data}
+			data = {attr: [i if isinstance(i,scalars) else [*i] for i in data[attr]] for attr in data}
+
+			metadata[instance][subinstance] = data
+
+	for instance in list(plots):
+
+		for subinstance in list(plots[instance]):
+
+			if not plots[instance][subinstance].get(obj):
+				continue
+
 			if not configuration.get(instance):
 				continue
 
 			if all(config[attr] is None for config in configuration[instance] for attr in config):
 				continue
 
-			data = [{attr: data[OTHER][attr]  for attr in data[OTHER] if attr not in [*ALL,OTHER]}
-				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop])]
-			data = {attr:[i[attr] for i in data] for attr in set(attr for i in data for attr in i)}
-			data = {attr: list(sorted(set(data[attr]),key=lambda i:data[attr].index(i))) for attr in data}
+			data = metadata[instance][subinstance]
 
-			config = {position: {attr:config['value'][attr] for config in configuration[instance] if config['position'] in [position,None] for attr in config['value'] if attr in data}
+			config = {position: {attr:config['value'][attr] if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
 				for position in ['row','col'][:LAYOUTDIM]}
 
 			layout = {position: list(permuter({attr: list(sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i)))
@@ -2004,6 +2032,8 @@ def plotter(plots,processes,verbose=None):
 
 			plts = copy(plots[instance].pop(subinstance))
 			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
+			
+			meta = metadata[instance].pop(subinstance)
 			inf = information[instance].pop(subinstance)
 
 			options = {position:[config['kwargs'] for config in configuration[instance] if config['position'] in [position,None] and config['kwargs'] is not None]
@@ -2025,7 +2055,8 @@ def plotter(plots,processes,verbose=None):
 
 				plots[instance][key] = copy(plts)
 				grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index]
-				metadata[instance][key] = indexer(position,layout)
+				
+				metadata[instance][key] = {attr: [value] for attr,value in indexer(position,layout).items()}
 				information[instance][key] = inf
 
 				boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER])
@@ -2046,6 +2077,7 @@ def plotter(plots,processes,verbose=None):
 						inserter(index,item,iterable)
 
 				opts = indexer(position,options)
+				vals = indexer(position,layout)
 				for attr in list(opts):
 
 					attr,tmp = attr.split(delim),opts.pop(attr)
@@ -2072,8 +2104,8 @@ def plotter(plots,processes,verbose=None):
 						except Exception as exception:
 							return tmp
 
-					value = getter(plots[instance][key],attr,delimiter=delim)
-					item = func(metadata[instance][key],information[instance][key])
+					value = getter({i: plots[instance][key][i] for i in plots[instance][key]},attr,delimiter=delim)
+					item = func({i: metadata[instance][key][i][0] for i in metadata[instance][key]},information[instance][key])
 
 					if value is None:
 						values = [plots[instance][key]]
@@ -2091,6 +2123,37 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 						setter(data,copy(items),delimiter=delim)
+
+	for instance in list(plots):
+
+		for subinstance in list(metadata[instance]):
+			if subinstance not in plots[instance]:
+				metadata[instance].pop(subinstance)
+
+		for subinstance in list(plots[instance]):
+
+			data = metadata[instance][subinstance]
+			data = {attr: data[attr][0] for attr in data if len(data[attr]) == 1}
+
+			metadata[instance][subinstance] = data
+
+
+
+	for instance in plots:
+		for subinstance in plots[instance]:
+			if plots[instance][subinstance].get(obj) is None:
+				continue
+			for prop in PLOTS:
+				if prop not in plots[instance][subinstance][obj]:
+					continue
+				for data in search(plots[instance][subinstance][obj][prop]):
+					if data is None:
+						continue
+					print(instance,subinstance,prop,glist(data))
+
+	exit()
+
+
 
 
 	# Set layout
