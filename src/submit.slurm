@@ -63,7 +63,7 @@ then
 fi 
 
 FILE=${SLURM_JOB_NAME}.stderr
-if [[ -s ${FILE} ]]
+if [[ ! -s ${FILE} ]]
 then
 	rm -rf ${FILE}
 fi
