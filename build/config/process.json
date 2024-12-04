@@ -27,12 +27,6 @@
 		"max_bond.entangling.renyi.noise.parameters.N": 1,
 		"max_bond.M.renyi.noise.parameters.N": 1
 	},
-	"configuration": {
-		"position": "col",
-		"value": {
-			"N": null
-		}      
-	},
 	"configuration": [
 		[
 		[
@@ -112,9 +106,9 @@
 		}
 		},
 		{
-		"position": "row",
-		"value": {
-		   "max_bond":null
+			"position": "row",
+			"value": {
+				"max_bond":null
 		}
 		}
 		]
@@ -130,7 +124,7 @@
 				"position": "col",
 				"value": {
 					"N": null
-				}      
+				}
 			}
 			]
 		]
