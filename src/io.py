@@ -4,6 +4,7 @@
 import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 import glob as globber
+from braceexpand import braceexpand
 import importlib
 import json,pickle,h5py
 import numpy as np
@@ -89,7 +90,7 @@ def contains(string,pattern):
 	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
 	for replacement in replacements:
 		pattern = pattern.replace(replacement,replacements[replacement])
-		
+	
 	boolean = re.fullmatch(pattern,string) is not None
 
 	return boolean
@@ -367,7 +368,6 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path (str): Expanded, absolute paths
 	'''
 
-
 	if include in ['file']:
 		include = os.path.isfile
 	elif include in ['directory']:
@@ -426,15 +426,17 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		else:
 			recursive = None
 
-	path = join(path,recursive)
+	paths = (join(path,recursive) for path in braceexpand(path))
 
-	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+	paths = (os.path.abspath(os.path.expandvars(os.path.expanduser(path))) for path in paths)
 
-	if ('*' not in path) and (not exists(path)):
-		path = (path for path in [default])
-	else:
-		path = globber.iglob(path,recursive=True,**kwargs)
-
+	path = (i for path in paths 
+		for i in (
+			[default] if (('*' not in path) and (not exists(path)))
+			else
+			globber.iglob(path,recursive=True,**kwargs)
+			)
+		)
 
 	if include is not None:
 		path = list(natsorted(filter(include,path)))

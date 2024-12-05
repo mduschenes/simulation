@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,allclose,scalars
-from src.io import load,dump,join,split,edit,dirname,exists
+from src.io import load,dump,join,split,edit,dirname,exists,glob
 from src.call import rm
 
 # Logging
@@ -225,8 +225,34 @@ def test_importlib(path=None,**kwargs):
 	return
 
 
+def test_glob(path=None,**kwargs):
+
+	directory = 'config'
+
+	paths = {
+		os.path.join(directory,'*.json'):
+			[os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),directory,path))
+			for path in  ['settings.json','test.json','process.json','plot.json']],
+		os.path.join(directory,'{job.slurm,logging.conf}'):
+			[os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),directory,path))
+			for path in  ['job.slurm','logging.conf']],		
+		}
+
+	for path in paths:
+		print(path)
+		for i in glob(path):
+			print(i)
+			assert i in paths[path], "Incorrect glob(%r)"%(path)
+		print()
+
+	print('Passed')
+
+	return
+
+
 if __name__ == '__main__':
 	# test_load()
 	# test_dump()
-	test_importlib()
+	# test_importlib()
+	test_glob()
 

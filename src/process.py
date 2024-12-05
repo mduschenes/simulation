@@ -390,7 +390,8 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	setter(processes,defaults,delimiter=delim,default=False)
 
 	# Get paths
-	path = data if isinstance(data,str) else None
+	path = data if isinstance(data,str) else processes.get('path') if isinstance(processes.get('path'),str) else None
+	processes['path'] = {} if not isinstance(processes.get('path'),dict) else processes.get('path')
 	processes['file'],processes['directory'],processes['ext'] = {},{},{}
 	processes['cwd'],processes['pwd'] = cwd,pwd
 	defaults = {
@@ -398,7 +399,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'tmp': 	join(cwd,join(split(path,file=True),ext='tmp'),ext=split(data,ext=True) if isinstance(data,str) else 'hdf5'),
 		'metadata': join(cwd,join(split(path,file=True),ext=None),ext=split(plots,ext=True) if isinstance(plots,str) else 'json'),
 	}
-	setter(processes['path'],defaults,delimiter=delim,default=False)
+	processes['path'].update({attr:defaults[attr] for attr in defaults if processes['path'].get(attr) is None})
 	for attr in processes['path']:
 		processes['directory'][attr] = split(processes['path'][attr],directory=True) if split(processes['path'][attr],directory=True) else cwd
 		processes['file'][attr],processes['ext'][attr] = split(processes['path'][attr],file=True,ext=True)

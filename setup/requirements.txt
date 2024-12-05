@@ -8,6 +8,7 @@ matplotlib
 pytest
 typing
 natsort
+braceexpand
 joblib
 parallel
 jax
