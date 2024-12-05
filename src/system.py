@@ -482,6 +482,7 @@ class Lattice(object):
 			'<ij>':['i','j'],'<i.j>':['i'],
 			'>ij<':['i','j'],'>i.j<':['i'],
 			'|ij|':['i','j'],'|i.j|':['i'],
+			'||ij||':['i','j'],'||i.j||':['i'],
 			'i...j':['i','j'],'.i...j.':['i'],
 			}
 
@@ -534,9 +535,10 @@ class Lattice(object):
 				'<i.j>' : vertices from nearest neighbour edges, periodic boundaries (i),(j)
 				'>ij<' : nearest neighbour edges, non-periodic boundaries (i,j)
 				'>i.j<' : vertices from nearest neighbour edges, non-periodic boundaries (i),(j)
-				'|ij|' : brickwork edges (i,j)
-				'|i.j|' : vertices from brickwork edges (i),(j)
-				'|i.j|' : vertices from nearest neighbour edges, periodic boundaries (i),(j)
+				'|ij|' : brickwork edges (i,j), periodic boundaries (i,j)
+				'|i.j|' : vertices from brickwork edges (i),(j), periodic boundaries (i,j)
+				'||ij||' : brickwork edges (i,j) , periodic boundaries, non-periodic boundaries (i,j)
+				'||i.j||' : vertices from brickwork edges, non-periodic boundaries (i),(j)				
 				'i...j' : all vertices in a tuple (0,1,...,N)
 				'.i...j.' : vertices from all vertices i a tuple (0,1,...,N)
 		Returns:
@@ -563,14 +565,18 @@ class Lattice(object):
 			elif structure in ['i.<j.']:
 				vertices = ((k,) for i in self.vertices for j in self.vertices if (i<j) for k in (i,j))
 			elif structure in ['<ij>']:
-				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (not self.boundaries((i,j)) and (i<j)) or (self.boundaries((i,j)) and i>j))
+				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)))
 			elif structure in ['<i.j>']:
-				vertices = ((k,) for i in self.vertices for j in self.edges(i) if (not self.boundaries((i,j)) and (i<j)) or (self.boundaries((i,j)) and i>j) for k in (i,j))
+				vertices = ((k,) for i in self.vertices for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)) for k in (i,j))
 			elif structure in ['>ij<']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)))
 			elif structure in ['>i.j<']:
 				vertices = ((k,) for i in self.vertices for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)) for k in (i,j))
 			elif structure in ['|ij|']:
+				vertices = ((i,j) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)))
+			elif structure in ['|i.j|']:
+				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)) for k in (i,j))
+			elif structure in ['||ij||']:
 				vertices = ((i,j) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)))
 			elif structure in ['|i.j|']:
 				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)) for k in (i,j))

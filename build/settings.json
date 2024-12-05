@@ -41,7 +41,6 @@
 			"reverse":false
 			}],
 
-
 		"model.data.unitary.operator":["haar"],
 		"model.data.unitary.parameters":[null],
 		"model.data.unitary.site":["|ij|"],
