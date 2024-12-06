@@ -715,6 +715,33 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 
 	return err
 
+def get_obj(obj,attr=None):
+	'''
+	Return object relative to to obj
+	Args:
+		obj (object): Object instance
+		attr (str): attribute
+	Returns:
+		instance (object): Object instance
+	'''
+
+	if attr is None:
+		instance = obj
+	elif attr in ['twin%s'%(axes) for axes in AXES]:
+		instance = None
+		axes = attr[-1]
+		siblings = getattr(obj,"get_shared_%s_axes"%(axes))().get_siblings(obj)
+		for sibling in siblings:
+			if sibling.bbox.bounds == obj.bbox.bounds and sibling is not obj:
+				instance = sibling
+				break
+		if instance is None:
+			instance = getattr(obj,attr)()
+	else:
+		instance = obj
+
+	return instance
+
 
 def get_children(obj,attr):
 	'''
@@ -1054,6 +1081,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			kwargs = deepcopy(kwargs)
 			nullkwargs = []				
 			nullkwarg = ['call']
+
+
+			attribute = kwargs[attr].pop('obj',None)
+			obj = get_obj(obj,attribute)
 
 			if attr in ['legend']:
 

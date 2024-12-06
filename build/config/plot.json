@@ -61,6 +61,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -367,6 +368,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -682,6 +684,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -997,6 +1000,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1305,6 +1309,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1613,6 +1618,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1921,6 +1927,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2229,6 +2236,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2544,6 +2552,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2859,6 +2868,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3167,6 +3177,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3466,6 +3477,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3779,6 +3791,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -4032,6 +4045,1294 @@
 			}
 		}
 	},
+	"max_bond.infidelity.classical.noise.parameters.N":{
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "max_bond",
+					"y": "infidelity.classical",
+					"label": {
+						"label": {
+							"N": null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"analysis": {
+							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+						},	                        						
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"infidelity.classical": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": "o",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel": "$\\textrm{Classical Infidelity of Max Quantum Entangling} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "log",
+				"base": 2
+			},
+			"set_xlim": {
+				"xmin": 1.5,
+				"xmax": 350
+			},
+			"set_xnbins": {
+				"nbins": 8
+			},
+			"set_xticks": {
+				"ticks": [
+					2,
+					4,
+					8,
+					16,
+					32,
+					64,
+					128,
+					256
+				]
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 1e-19,
+				"ymax": 10.0
+			},
+			"set_ynbins": {
+				"nbins": 10
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-18,
+					1e-16,
+					1e-14,
+					1e-12,
+					1e-10,
+					1e-08,
+					1e-06,
+					0.0001,
+					0.01,
+					1.0
+				]
+			},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 10}
+				}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {
+					"N": "$\\textrm{System Size} ~~ N$"
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"ncol": 1,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": {
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}
+	},
+	"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N":{
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "max_bond",
+					"y": "entangling.quantum",
+					"label": {
+						"label": {
+							"N": null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"analysis": {
+							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+						},	                        						
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"entangling.quantum": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							],
+							"label":"$\\textrm{Quantum Entangling}$"
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.4,
+							0.8,
+							1.0
+						]
+					},
+					"marker": "o",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				},
+				{
+					"x": "max_bond",
+					"y": "infidelity.classical",
+					"label": {
+						"label": {
+							"N": null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"analysis": {
+							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+						},	                        						
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"infidelity.classical": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							],
+							"label":"$\\textrm{Classical Infidelity}$"
+						}
+					},
+					"obj":"twinx",
+					"alpha": {
+						"@N@": [
+							0.4,
+							0.8,
+							1.0
+						]
+					},
+					"marker": "^",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": "-",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}				
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "2%",
+				"pad": -0.025,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": [
+				{
+				"ylabel": "$\\textrm{Max Quantum Entangling} ~~ -\\textrm{tr}(\\psi_{\\rho_{\\chi}}\\log{\\psi_{\\rho_{\\chi}}})$"
+				},
+				{
+				"obj":"twinx",
+				"ylabel": "$\\textrm{Classical Infidelity of Max Quantum Entangling} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
+				}
+			],				
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
+			},
+			"yaxis.offsetText.set_fontsize": [
+				{
+				"fontsize": 20
+				},
+				{
+				"obj":"twinx",
+				"fontsize": 20
+				}
+			],
+			"set_xscale": {
+				"value": "log",
+				"base": 2
+			},
+			"set_xlim": {
+				"xmin": 1.5,
+				"xmax": 350
+			},
+			"set_xnbins": {
+				"nbins": 8
+			},
+			"set_xticks": {
+				"ticks": [
+					2,
+					4,
+					8,
+					16,
+					32,
+					64,
+					128,
+					256
+				]
+			},
+			"set_yscale": [
+				{
+				"value": "linear"
+				},
+				{
+				"obj":"twinx",
+				"value": "log",
+				"base": 10				
+				}
+			],
+			"set_ylim": [
+				{
+				"ymin": -0.1,
+				"ymax": 1.1
+				},
+				{
+				"obj":"twinx",
+				"ymin": 1e-17,
+				"ymax": 10.0
+				}
+			],
+			"set_ynbins": [
+				{
+				"nbins": 10
+				},
+				{
+				"obj":"twinx",
+				"nbins": 5
+				}
+			],
+			"set_yticks": [
+				{
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]			
+				},
+				{
+				"obj":"twinx",
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-04,
+					1.0
+				]
+				}
+			],
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
+			},
+			"xaxis.set_minor_locator": null,
+			"xaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"yaxis.set_major_formatter": [
+				{	
+				"ticker": {}
+				},
+				{
+				"obj":"twinx",
+				"ticker": {
+					"LogFormatterMathtext": {"base": 10}
+				}
+				}
+			],
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": [
+				{
+				"ticker": {
+					"NullFormatter": {}
+				}
+				},
+				{
+				"obj":"twinx",
+				"ticker": {
+					"NullFormatter": {}
+				}
+				}
+			],
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"obj":"twinx",
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"obj":"twinx",					
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"obj":"twinx",					
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"obj":"twinx",
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}				
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {
+					"N": "$\\textrm{System Size} ~~ N$"
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					0.6,
+					0.925
+				],
+				"ncol": 2,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": {
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
+	"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N":{
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "max_bond",
+					"y": "entangling.renyi",
+					"label": {
+						"label": {
+							"N": null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"analysis": {
+							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+						},	                        						
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"entangling.renyi": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							],
+							"label":"$\\textrm{Renyi Entangling}$"
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.4,
+							0.8,
+							1.0
+						]
+					},
+					"marker": "o",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 12,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				},
+				{
+					"x": "max_bond",
+					"y": "infidelity.classical",
+					"label": {
+						"label": {
+							"N": null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"analysis": {
+							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+						},	                        						
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"infidelity.classical": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							],
+							"label":"$\\textrm{Classical Infidelity}$"
+						}
+					},
+					"obj":"twinx",
+					"alpha": {
+						"@N@": [
+							0.4,
+							0.8,
+							1.0
+						]
+					},
+					"marker": "^",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}				
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "2%",
+				"pad": -0.025,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": [
+				{
+				"ylabel": "$\\textrm{Max Renyi Entangling} ~~ 1 - \\textrm{tr}(\\psi_{\\rho_{\\chi}}^{2})$"		
+				},
+				{
+				"obj":"twinx",
+				"ylabel": "$\\textrm{Classical Infidelity of Max Renyi Entangling} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
+				}
+			],				
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
+			},
+			"yaxis.offsetText.set_fontsize": [
+				{
+				"fontsize": 20
+				},
+				{
+				"obj":"twinx",
+				"fontsize": 20
+				}
+			],
+			"set_xscale": {
+				"value": "log",
+				"base": 2
+			},
+			"set_xlim": {
+				"xmin": 1.5,
+				"xmax": 350
+			},
+			"set_xnbins": {
+				"nbins": 8
+			},
+			"set_xticks": {
+				"ticks": [
+					2,
+					4,
+					8,
+					16,
+					32,
+					64,
+					128,
+					256
+				]
+			},
+			"set_yscale": [
+				{
+				"value": "linear"
+				},
+				{
+				"obj":"twinx",
+				"value": "log",
+				"base": 10				
+				}
+			],
+			"set_ylim": [
+				{
+				"ymin": -0.05,
+				"ymax": 1.05
+				},
+				{
+				"obj":"twinx",
+				"ymin": 1e-16,
+				"ymax": 10.0
+				}
+			],
+			"set_ynbins": [
+				{
+				"nbins": 6
+				},
+				{
+				"obj":"twinx",
+				"nbins": 6
+				}
+			],
+			"set_yticks": [
+				{
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]			
+				},
+				{
+				"obj":"twinx",
+				"ticks": [
+					1e-15,
+					1e-12,
+					1e-9,
+					1e-6,
+					1e-03,
+					1.0
+				]
+				}
+			],
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
+			},
+			"xaxis.set_minor_locator": null,
+			"xaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"yaxis.set_major_formatter": [
+				{	
+				"ticker": {}
+				},
+				{
+				"obj":"twinx",
+				"ticker": {
+					"LogFormatterMathtext": {"base": 10}
+				}
+				}
+			],
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": [
+				{
+				"ticker": {
+					"NullFormatter": {}
+				}
+				},
+				{
+				"obj":"twinx",
+				"ticker": {
+					"NullFormatter": {}
+				}
+				}
+			],
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"obj":"twinx",
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"obj":"twinx",					
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"obj":"twinx",					
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"obj":"twinx",
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}				
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": [
+				{
+				"visible": true,
+				"which": "major",
+				"axis": "y",
+				"linestyle": ":",
+				"linewidth": 2				
+				},
+				{
+				"visible": true,
+				"which": "major",
+				"axis": "x"
+				},				
+				{
+				"obj":"twinx",
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+				}
+			],
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {
+					"N": "$\\textrm{System Size} ~~ N$"
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					0.1,
+					0.925
+				],
+				"ncol": 2,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": {
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
 	"max_bond.M.quantum.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
@@ -4092,6 +5393,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -4405,6 +5707,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -4727,6 +6030,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -5054,6 +6358,7 @@
 						]
 					},
 					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
