@@ -23,9 +23,6 @@
 		"M.entangling.classical.noise.parameters.N": 1,
 		"M.entangling.renyi.noise.parameters.N": 1,
 		"max_bond.entangling.quantum.noise.parameters.N": 1,
-		"max_bond.infidelity.classical.noise.parameters.N":1,
-		"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N":1,
-		"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N":1,
 		"max_bond.M.quantum.noise.parameters.N": 1,			
 		"max_bond.entangling.renyi.noise.parameters.N": 1,
 		"max_bond.M.renyi.noise.parameters.N": 1
@@ -120,9 +117,6 @@
 			[
 			"max_bond.entangling.quantum.noise.parameters.N",
 			"max_bond.entangling.renyi.noise.parameters.N",
-			"max_bond.infidelity.classical.noise.parameters.N",
-			"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N",
-			"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N",
 			"max_bond.M.quantum.noise.parameters.N",
 			"max_bond.M.renyi.noise.parameters.N"
 			],
