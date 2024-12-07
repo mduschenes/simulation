@@ -495,6 +495,12 @@ def find(dictionary,verbose=None):
 	other = [OTHER]
 	dim = len(dimensions)
 
+	strings = [
+		*[[*dimensions[:i],*other] for i in range(dim,0,-1)],
+		# *[[i,*other] for i in dimensions]
+		]
+
+
 	def parser(string,separator,default):
 		if string.count(separator):
 			key,value = string.split(separator)[0],to_number(separator.join(string.split(separator)[1:]))
@@ -533,13 +539,17 @@ def find(dictionary,verbose=None):
 
 	keys = {}
 
-	for i in range(dim,0,-1):
-
-		items = [*dimensions[:i],*other]
+	for items in strings:
 		types = (list,dict,)
 		key = search(dictionary,items=items,returns=True,types=types)
 		
 		key = {tuple(index): dict(zip(items,item)) for index,shape,item in key}
+
+		# key = {index:key[index] for index in key
+		# 	if (index) and (
+		# 	(isinstance(index[-1],str) and index[-1] in PLOTS) or 
+		# 	(isinstance(index[-1],integers)))
+		# 	}
 
 		key = {index:key[index] for index in key if index not in keys}
 
@@ -684,8 +694,8 @@ def parse(key,value,data,verbose=None):
 
 							if values and (values is not null):
 								try:
-									out = data[key].unique()
-									out = data[key].isin(out[[value for value in values if value < out.size]])
+									out = np.sort(data[key].unique())
+									out = data[key].isin(out[[value if value >=0 else len(out)+value for value in values if value < len(out)]])
 								except:
 									if isinstance(default,bool):
 										out = not default
@@ -699,7 +709,8 @@ def parse(key,value,data,verbose=None):
 					
 							if values and (values is not null):
 								try:
-									out = data[key].isin(data[key].unique()[slice(*values)])
+									out = np.sort(data[key].unique())
+									out = data[key].isin(out[slice(*values)])
 								except:
 									if isinstance(default,bool):
 										out = not default

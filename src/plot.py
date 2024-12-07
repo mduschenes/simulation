@@ -1253,7 +1253,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
 
-			elif attr in ['plot','axvline','axhline']:
+			elif attr in ['plot']:
 				dim = 2
 		
 				props = '%s'
@@ -1275,6 +1275,36 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+
+				call = len(args)>0		
+
+			elif attr in ['axvline','axhline']:
+				dim = 1
+		
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+					
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr),returns=True) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
+				if attr in ['axvline']:
+					args.extend([kwargs[attr].get(k) for k in [AXES[0]] if k in kwargs[attr]])
+				elif attr in ['axhline']:
+					args.extend([kwargs[attr].get(k) for k in [AXES[1]] if k in kwargs[attr]])
+
+				args = [arg if isinstance(arg,scalars) else np.mean(arg) for arg in args if arg is not None and (isinstance(arg,scalars) or len(arg))]
+
+				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:] for k in AXES[:]],*['%s%s'%(k,s) for s in VARIANTS[:] for k in AXES],*[]])
 
 				call = len(args)>0			
 
