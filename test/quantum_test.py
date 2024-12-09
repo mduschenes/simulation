@@ -11,9 +11,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,is_nan,product,representation
-from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2
+from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng
-from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,delim
+from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
@@ -2203,6 +2203,33 @@ def test_module(*args,**kwargs):
 	return
 
 
+def test_function(*args,**kwargs):
+	D = [2]
+	N = [2,4,8,16]
+	values = {
+		(2,2) : 0.12022458674074693,
+		(2,4) : 0.6202836021067056,
+		(2,8) : 0.8190755813771532,
+		(2,16) : 0.9098304133895853,
+		(2,32) : 0.9549157799634724,
+		}
+	for D,N in permutations(D,N):
+		parameters = {'D':D,'N':N}
+		
+		data = (sum(1/i for i in range(int(parameters['D']**(parameters['N']/2))+1,int(parameters['D']**(parameters['N'])))) - 
+			   ((int(parameters['D']**(parameters['N']/2))-1)/(2*int(parameters['D']**(parameters['N']/2)))))
+		data = data*2/log(parameters['D']**(parameters['N']/2))/2
+
+		string = f'D={D},N={N} : {data}'
+
+		assert allclose(values[(D,N)],data), "Incorrect %s"%(string)
+
+		print(string)
+
+	print('Passed')
+
+	return
+
 
 if __name__ == "__main__":
 
@@ -2210,6 +2237,7 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
+	test_function(*args,**args)
  	# test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
@@ -2225,5 +2253,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_calculate(*args,**args)
+	# test_calculate(*args,**args)
 	# test_module(*args,**args)

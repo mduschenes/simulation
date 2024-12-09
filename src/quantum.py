@@ -2026,7 +2026,7 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**(2*L)) if self.D is not None and L is not None else 1)
+		func = lambda data: (1/2)*real(data)/(log(self.D**(L)) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2103,7 +2103,7 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**(2*L)) if self.D is not None and L is not None else 1)
+		func = lambda data: (1/2)*real(data)/(log(self.K**(L)) if self.D is not None and L is not None else 1)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		

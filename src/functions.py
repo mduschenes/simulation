@@ -81,7 +81,7 @@ def func_line(data,attr=None):
 		return data
 	values = {i: data[i].mean() for i in ['D','N']}
 	data[attr] = 2*(sum(1/i for i in range(int(values['D']**(values['N']/2))+1,int(values['D']**(values['N'])))) - 
-		   ((int(values['D']**(values['N']/2))-1)/(2*int(values['D']**(values['N']/2)))))/log(values['D']**(values['N']))
+		   ((int(values['D']**(values['N']/2))-1)/(2*int(values['D']**(values['N']/2)))))/log(values['D']**(2*values['N']/2))
 	return data
 
 def func_line_err(data):

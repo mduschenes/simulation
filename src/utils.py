@@ -6596,6 +6596,17 @@ def log10(a):
 
 
 @jit
+def log2(a):
+	'''
+	Calculate log base 2 of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Base 2 log of array
+	'''
+	return np.log2(a)
+
+@jit
 def log(a):
 	'''
 	Calculate natural log of array a
