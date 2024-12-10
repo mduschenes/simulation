@@ -825,7 +825,7 @@ def analyse(data,analyses=None,verbose=None):
 		data (dataframe): data of attributes
 		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
 			{analysis:[({attr:value},kwargs)]},
-			allowed analysis strings in ['zscore','quantile','slice','parse','abs','log','log10','replace','func']
+			allowed analysis strings in ['zscore','quantile','slice','parse','abs','log','log10','log2','replace','func']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Analysed data
@@ -889,7 +889,7 @@ def analyse(data,analyses=None,verbose=None):
 					out = [function(attr,value[attr],out,verbose=verbose) for attr in attrs]
 					out = conditions(out,op='and')
 					return out
-			elif analysis in ['abs','log','log10']:
+			elif analysis in ['abs','log','log10','log2']:
 				def func(attrs,data):
 					function = analysis
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
@@ -971,7 +971,7 @@ def analyse(data,analyses=None,verbose=None):
 					value = func(attrs,data)
 					value = value.to_numpy() if not isinstance(value,bool) else value
 					out = conditions([out,value],op='and')
-				elif analysis in ['abs','log','log10','replace','func']:
+				elif analysis in ['abs','log','log10','log2','replace','func']:
 					data = func(attrs,data)
 				elif func is not None:
 					data = func(attrs,data)
@@ -2630,6 +2630,7 @@ def plotter(plots,processes,verbose=None):
 
 						norm = data.get('norm')
 						scale = data.get('scale')
+						base = data.get('base')
 						length = len(data.get('value',[]))
 						if norm is None:
 							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
@@ -2650,8 +2651,9 @@ def plotter(plots,processes,verbose=None):
 								value = np.array(value)
 								value = np.linspace(*value,size,endpoint=True)
 							elif scale in ['log','symlog']:
-								value = np.log10(value)
-								value = np.logspace(*value,size,endpoint=True)
+								base = 10 if base is None else base
+								value = np.log10(value)/np.log(base)
+								value = np.logspace(*value,size,base=base,endpoint=True)
 							else:
 								value = np.array(value)
 								value = np.linspace(*value,size,endpoint=True)
@@ -2678,6 +2680,7 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 						scale = data.get('scale')
+						base = data.get('base')
 						value = items
 						
 						if isinstance(data[attr%(axes)].get(kwarg),integers):
@@ -2691,7 +2694,8 @@ def plotter(plots,processes,verbose=None):
 							else:
 								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
 								if scale in ['log','symlog']:
-									value = np.logspace(min(value),max(value),size,endpoint=True)
+									base = 10 if base is None else base
+									value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
 								elif scale in ['linear']:
 									value = np.linspace(min(value),max(value),size,endpoint=True)
 								else:

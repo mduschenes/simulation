@@ -527,7 +527,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 
 
-def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**kwargs):
+def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alpha=None,**kwargs):
 	'''
 	Set color
 	Args:
@@ -536,6 +536,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 		values (iterable[int,float]): Values to process colors
 		norm (iterable[int,float],dict[str,[int,float]]): Range of values, either iterable [vmin,vmax] or dictionary {'vmin':vmin,'vmax':vmax}
 		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		base (int): Scale base for normalization
 		alpha (int,float,iterable[int,float]): Alpha of color
 		kwargs (dict): Additional keyword arguments
 	Returns:
@@ -580,8 +581,10 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 		norm = matplotlib.colors.Normalize(**norm)  
 	elif scale in ['log','symlog']:
 		values = [i for i in values if is_number(i) and i>0]
+		base = 10 if base is None else base
 		norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
 		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
+		norm = {i: norm[i] if isinstance(norm[i],scalars) else norm[i] for i in norm}
 		norm = matplotlib.colors.LogNorm(**norm)  
 	else:
 		norm = matplotlib.colors.Normalize(**norm)					
@@ -621,12 +624,13 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 
 	return value,color,values,colors,norm
 
-def set_data(data=None,scale=None,**kwargs):
+def set_data(data=None,scale=None,base=None,**kwargs):
 	'''
 	Set data
 	Args:
 		data (int,float,iterable[int,float]): Data
 		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		base (int): Scale base for normalization		
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		data (array): Data
@@ -653,13 +657,14 @@ def set_data(data=None,scale=None,**kwargs):
 	return data
 
 
-def set_err(err=None,value=None,scale=None,**kwargs):
+def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 	'''
 	Set error
 	Args:
 		err (int,float,iterable[int,float],iterable[iterable[int,float]]): Error, either scalar, or iterable of scalars for equal +- errors, or iterable of 2 iterables for independent +- errors
 		value (int,float,iterable[int,float]): Value to process error
 		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		base (int): Scale base for normalization		
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		err (iterable[iterable[int,float]]): Errors normalized as per value and scale
@@ -1461,7 +1466,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 					if isinstance(kwargs[attr][prop],dict):
 
-						kwds = ['value','values','color','norm','scale','alpha']
+						kwds = ['value','values','color','norm','scale','base','alpha']
 					
 						kwds = {kwd: kwargs[attr][prop].get(kwd,None) for kwd in kwds}
 
@@ -1488,7 +1493,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr]['vmax'] = norm.vmax
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
-				nullkwargs.extend([i for i in ['label', 'alpha', 'marker','markersize','linestyle','linewidth','elinewidth','capsize','color', 'ecolor']])
+				nullkwargs.extend([i for i in ['label', 'alpha', 'marker','markersize','linestyle','linewidth','elinewidth','capsize','color', 'ecolor','scale','base']])
 
 				call = True
 
@@ -1524,7 +1529,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							continue
 						if isinstance(kwargs[attr][prop],dict):
 
-							kwds = ['value','values','color','norm','scale','alpha']
+							kwds = ['value','values','color','norm','scale','base','alpha']
 						
 							kwds = {kwd: kwargs[attr][prop].get(kwd,None) for kwd in kwds}
 
@@ -1570,7 +1575,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
-				nullkwargs.extend(['value','color','ecolor','label','alpha','marker','markersize','linestyle','linewidth','elinewidth','capsize'])
+				nullkwargs.extend(['value','color','ecolor','label','alpha','marker','markersize','linestyle','linewidth','elinewidth','capsize','scale','base'])
 
 				call = True
 
@@ -1665,11 +1670,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_colorbar']:
 
-				nullkwargs.extend(['value','color','norm','scale','alpha',
+				nullkwargs.extend(['value','color','norm','scale','base','alpha',
 					'segments','size','pad','padding','orientation','position','set_yscale','set_xscale','normed_values','share'])
 				call = False
 
-				kwds = ['value','values','color','norm','scale','alpha']
+				kwds = ['value','values','color','norm','scale','base','alpha']
 	
 				subcall = not all(prop not in kwargs[attr] or kwargs[attr][prop] is None or kwargs[attr][prop] == [] for prop in ['value'])
 
@@ -1848,7 +1853,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					if field in ['color','ecolor','c']:
 
-						kwds = ['value','values','color','norm','scale','alpha']
+						kwds = ['value','values','color','norm','scale','base','alpha']
 
 						kwds = {prop: None	for prop in kwds}
 
