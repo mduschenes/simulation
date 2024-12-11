@@ -248,7 +248,10 @@
 		"entanglement.renyi":"measure.entanglement_renyi",
 		"entangling.quantum":"measure.entangling_quantum",
 		"entangling.classical":"measure.entangling_classical",
-		"entangling.renyi":"measure.entangling_renyi"
+		"entangling.renyi":"measure.entangling_renyi",
+		"mutual.quantum":"measure.mutual_quantum",
+		"mutual.classical":"measure.mutual_classical",
+		"mutual.renyi":"measure.mutual_renyi"
 	},
 	"keywords": {
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},

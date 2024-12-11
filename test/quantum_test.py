@@ -1768,24 +1768,29 @@ def test_calculate(*args,**kwargs):
 
 		
 		attrs = [
-			'trace',
-			'vectorize',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
-			'entangling_quantum',
-			'entangling_classical',
-			'entangling_renyi',
+			# 'trace',
+			# 'vectorize',
+			# 'norm_quantum',
+			# 'norm_classical',
+			# 'norm_pure',
+			# 'infidelity_quantum',
+			# 'infidelity_classical',
+			# 'infidelity_pure',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
+			# 'entanglement_renyi',
+			# 'entangling_quantum',
+			# 'entangling_classical',
+			# 'entangling_renyi',
+			'mutual_quantum',
+			# 'mutual_classical',
+			# 'mutual_renyi',
 			]
 		for attr in attrs:
 			
-			if attr in ['infidelity_quantum','infidelity_classical','infidelity_pure',]:
+			if attr in [
+				'infidelity_quantum','infidelity_classical','infidelity_pure',
+				]:
 			
 				other = load(settings.cls.state)
 				other = other(**{**settings.state,**dict(system=system)})
@@ -1814,7 +1819,12 @@ def test_calculate(*args,**kwargs):
 				kwargs = dict(other=other)
 				where = None
 
-			elif attr in ['trace','vectorize','entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',]:
+			elif attr in [
+				'trace','vectorize',
+				'entanglement_quantum','entanglement_classical','entanglement_renyi',
+				'entangling_quantum','entangling_classical','entangling_renyi',
+				'mutual_quantum','mutual_classical','mutual_renyi',
+				]:
 
 				kwargs = dict()
 				where = [i for i in range(model.N//2-1,model.N//2+1) if i < model.N]

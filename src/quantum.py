@@ -2222,6 +2222,235 @@ class Measure(System):
 
 		return data
 
+	def mutual(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Mutual Information for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+	
+		attr = 'mutual_renyi'
+		
+		if hasattr(self,attr):
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+		else:
+			data = state
+
+		return data
+
+	def mutual_quantum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Mutual Information (Quantum) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: (1/2)*real(data)/(log(self.D**(L)) if self.D is not None and L is not None else 1)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+
+			basis = reshape(basis,shape=(self.K**L,-1))
+
+			subscripts = 'uv,us,vp,si,pj->ij'
+			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+
+			state = eig(data,hermitian=self.hermitian)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['tensor']:
+		
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			for i in where:
+				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
+					data &= self.inverse & self.basis
+				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
+					data &= self.inverse & self.basis.conj()
+
+			options = dict()
+			data = contract(data,**options)
+			
+			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
+			data = fuse(data,**options)
+
+			options = dict(contraction=True)
+			data = representation(data,**options)
+
+			options = dict()
+			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+
+			state = eig(data,hermitian=self.hermitian)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+		data = func(data)
+
+		return data	
+
+	def mutual_classical(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Mutual Information (Classical) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: (1/2)*real(data)/(log(self.K**(L)) if self.D is not None and L is not None else 1)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+
+			state = eig(data,hermitian=self.hermitian)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['tensor']:
+		
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict()
+			data = contract(data,**options)
+			
+			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
+			data = fuse(data,**options)
+
+			options = dict(contraction=True)
+			data = representation(data,**options)
+
+			options = dict()
+			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+
+			state = eig(data,hermitian=self.hermitian)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+		data = func(data)
+
+		return data	
+
+	def mutual_renyi(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Mutual Information (Renyi) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: 1 - real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+
+			subscripts = 'uv,up,vs,sp->'
+			shapes = (data.shape,inverse.shape,inverse.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			data = einsummation(data,inverse,inverse,data)
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['tensor']:
+		
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where) if N is not None and where is not None else None
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict()
+			data = contract(data,**options)
+
+			other = data.copy()
+
+			with context(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+
+				for i in where:
+					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+						data &= self.inverse
+					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
+						other &= self.inverse
+
+				data &= other
+
+				options = dict(contraction=True)
+				data = representation(data,**options)
+
+				options = dict()
+				data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
+
+		data = func(data)
+
+		return data
+
 
 class MPS(mps): 
 	'''
