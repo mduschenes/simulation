@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,is_nan,product,representation
+from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
@@ -1189,12 +1189,12 @@ def test_layout(*args,**kwargs):
 		"model":{
 			"data":{
 				"xx":{
-					"operator":["X","X"],"site":"|ij|","string":"xx",
+					"operator":["X","X"],"site":"||ij||","string":"xx",
 					"parameters":0.5,
 					"variable":False
 				},
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 					"parameters":{"data":[0,1,2,3,4,5,6]},
 					"variable":False
 				},	
@@ -1621,7 +1621,7 @@ def test_grad(path,tol):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
+		"model.N":[4],"model.D":[2],"model.M":[2],"model.ndim":[2],"model.local":[True],
 		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[1e-3],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
@@ -1650,11 +1650,11 @@ def test_calculate(*args,**kwargs):
 		"model":{
 			"data":{
 				"unitary":{
-					"operator":"haar","site":"|ij|","string":"unitary",
+					"operator":"haar","site":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
 				},	
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"|ij|","string":"depolarize",
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
 					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
 				},								
 			},
@@ -1739,7 +1739,7 @@ def test_calculate(*args,**kwargs):
 		state = [state]*model.N
 		where = model.site
 		kwargs = dict()
-		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=int(model.D**(model.N)),cutoff=0)
+		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=None,cutoff=0)
 
 		state = measure.operation(
 				parameters=parameters,
@@ -1768,23 +1768,25 @@ def test_calculate(*args,**kwargs):
 
 		
 		attrs = [
-			# 'trace',
-			# 'vectorize',
-			# 'norm_quantum',
-			# 'norm_classical',
-			# 'norm_pure',
-			# 'infidelity_quantum',
-			# 'infidelity_classical',
-			# 'infidelity_pure',
-			# 'entanglement_quantum',
-			# 'entanglement_classical',
-			# 'entanglement_renyi',
-			# 'entangling_quantum',
-			# 'entangling_classical',
-			# 'entangling_renyi',
+			'trace',
+			'vectorize',
+			'conditional',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			'entangling_quantum',
+			'entangling_classical',
+			'entangling_renyi',
 			'mutual_quantum',
-			# 'mutual_classical',
-			# 'mutual_renyi',
+			'mutual_measure',
+			'mutual_classical',
+			'mutual_renyi',
 			]
 		for attr in attrs:
 			
@@ -1823,11 +1825,18 @@ def test_calculate(*args,**kwargs):
 				'trace','vectorize',
 				'entanglement_quantum','entanglement_classical','entanglement_renyi',
 				'entangling_quantum','entangling_classical','entangling_renyi',
-				'mutual_quantum','mutual_classical','mutual_renyi',
+				'mutual_quantum','mutual_measure','mutual_classical','mutual_renyi',
 				]:
 
 				kwargs = dict()
-				where = [i for i in range(model.N//2-1,model.N//2+1) if i < model.N]
+				where = [i for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N]
+
+			elif attr in [
+				'conditional',
+				]:
+
+				kwargs = dict()
+				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N}
 
 			else:
 
@@ -1909,11 +1918,11 @@ def test_module(*args,**kwargs):
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
 				# },
 				"unitary":{
-					"operator":"haar","site":"|ij|","string":"unitary",
+					"operator":"haar","site":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":123
 				},				
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123
 				},	
 				# "xx":{
@@ -2247,7 +2256,7 @@ if __name__ == "__main__":
 	args = argparser(arguments)
 
 	# main(*args,**args)
-	test_function(*args,**args)
+	# test_function(*args,**args)
  	# test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
@@ -2263,5 +2272,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_calculate(*args,**args)
+	test_calculate(*args,**args)
 	# test_module(*args,**args)

@@ -250,12 +250,18 @@
 		"entangling.classical":"measure.entangling_classical",
 		"entangling.renyi":"measure.entangling_renyi",
 		"mutual.quantum":"measure.mutual_quantum",
+		"mutual.measure":"measure.mutual_measure",
 		"mutual.classical":"measure.mutual_classical",
-		"mutual.renyi":"measure.mutual_renyi"
+		"mutual.renyi":"measure.mutual_renyi",
+		"discord.quantum":"measure.discord_quantum",
+		"discord.classical":"measure.discord_classical",
+		"discord.renyi":"measure.discord_renyi"		
 	},
 	"keywords": {
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
-		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5}
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
+		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5}
 	},
 	"options":{
 		"contract":true,"max_bond":null,"cutoff":0

@@ -15,7 +15,7 @@ from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,rand
 from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,diag,inv,addition,product
-from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,eig,sqrtm,sort,relsort,prod,product
+from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,eig,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
@@ -767,7 +767,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,identity=None,ones=None,
+		basis=None,inverse=None,identity=None,ones=None,zeros=None,
 		parameters=None,variable=None,constant=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -849,6 +849,7 @@ class Measure(System):
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
 		identity = Basis.identity(D=K,dtype=dtype)
 		ones = array([1 for i in range(K)],dtype=dtype)
+		zeros = array([0 for i in range(K)],dtype=dtype)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
@@ -857,6 +858,7 @@ class Measure(System):
 			inverse = array(inverse,**kwargs)
 			identity = array(identity,**kwargs)
 			ones = array(ones,**kwargs)
+			zeros = array(zeros,**kwargs)
 
 		elif self.architecture in ['tensor']:
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
@@ -870,6 +872,9 @@ class Measure(System):
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
 			ones = tensor(ones,**kwargs)
+
+			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
+			zeros = tensor(zeros,**kwargs)			
 
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
@@ -888,6 +893,7 @@ class Measure(System):
 		self.inverse = inverse
 		self.identity = identity
 		self.ones = ones
+		self.zeros = zeros
 
 		self.shape = shape
 		self.size = size
@@ -1347,7 +1353,7 @@ class Measure(System):
 			K = self.K
 			ndim = data.ndim
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			options = dict(
 				axes = [[i] for i in range(N)],
@@ -1360,7 +1366,9 @@ class Measure(System):
 				transformation=False,
 				) if where is not None else None
 
-			data = shuffle(addition(shuffle(data,**options),axis=where),**_options)
+			function = lambda data: addition(data,axis=where)
+
+			data = shuffle(function(shuffle(data,**options)),**_options)
 
 		elif self.architecture in ['tensor']:
 			
@@ -1368,11 +1376,68 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			for i in where:
 				with context(self.ones,key=i):
 					data &= self.ones
+
+		data = func(data)
+
+		return data
+
+	def measure(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Measure probability for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (dict[int,int]): indices and values of measured probability
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			data = state
+
+			N = int(round(log(data.size)/log(self.K)/data.ndim))
+			K = self.K
+			ndim = data.ndim
+			where = dict(where) if where is not None else dict()
+			L = N - len(where)
+
+			options = dict(
+				axes = [[i] for i in range(N)],
+				shape = [K,N,ndim],
+				transformation=True,
+				) if where is not None else None
+			_options = dict(
+				axes = [[i] for i in range(L)],
+				shape = [K,L,ndim],
+				transformation=False,
+				) if where is not None else None
+
+			function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(N))]
+
+			data = shuffle(function(shuffle(data,**options)),**_options)
+
+		elif self.architecture in ['tensor']:
+			
+			data = state.copy()
+
+			N = state.L
+			where = dict(where) if where is not None else dict()
+			L = N - len(where)
+
+			for i in where:
+				self.zeros.modify(data=array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+				with context(self.zeros,key=i):
+					data &= self.zeros
+				self.zeros.modify(data=array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
 
 		data = func(data)
 
@@ -1399,7 +1464,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
 
@@ -1418,7 +1483,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			for i in where:
 				with context(self.inverse,key=i):
@@ -1456,7 +1521,7 @@ class Measure(System):
 			K = self.K
 			ndim = data.ndim
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			options = dict(
 				axes = [[i for i in range(N) if i not in where],[i for i in range(N) if i in where]],
@@ -1483,7 +1548,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			for i in where:
 				with context(self.inverse,key=i):
@@ -1504,11 +1569,11 @@ class Measure(System):
 		Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
+			data (array,Probability,MPS): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
 		'''
 
 		func = lambda data: data
@@ -1546,6 +1611,31 @@ class Measure(System):
 		data = func(data)
 
 		return data
+
+	def eig(self,parameters=None,state=None,**kwargs):
+		'''
+		Spectrum for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): Eigenvalues of shape (self.D**L,) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			data = eig(state,hermitian=self.hermitian)
+
+		elif self.architecture in ['tensor']:
+			
+			data = eig(state,hermitian=self.hermitian)
+
+		data = func(data)
+
+		return data		
 
 	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
@@ -1590,7 +1680,9 @@ class Measure(System):
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
-			data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
+			state = dot(state,other)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = addition(sqrt(data))
 
 		elif self.architecture in ['tensor']:
 
@@ -1602,7 +1694,11 @@ class Measure(System):
 			state = representation(state,**{**options,**kwargs})
 			other = representation(other,**{**options,**kwargs})
 
-			data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
+			state = dot(state,other)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = addition(sqrt(data))
+
+			# data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
 		
 		data = func(data)
 
@@ -1728,7 +1824,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1738,7 +1834,7 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			options = dict(contraction=True)
 
@@ -1768,7 +1864,7 @@ class Measure(System):
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1778,7 +1874,7 @@ class Measure(System):
 		
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 		
 			options = dict(contraction=True)
 
@@ -1808,7 +1904,7 @@ class Measure(System):
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1818,7 +1914,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(where) if where is not None else range(N)
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			options = dict(contraction=True)
 	
@@ -1864,22 +1960,24 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.D**L) if self.D is not None and L is not None else 1)
+		func = lambda data: real(data)/log(self.D**L)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			state = eig(state,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=state,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
@@ -1887,7 +1985,7 @@ class Measure(System):
 
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1899,7 +1997,7 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			state = eig(state,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=state,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1919,23 +2017,25 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/(log(self.K**L) if self.K is not None and L is not None else 1)
+		func = lambda data: real(data)/log(self.K**L)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
+			data = asscalar(data)
+
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1965,7 +2065,7 @@ class Measure(System):
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1973,11 +2073,13 @@ class Measure(System):
 
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
+			data = asscalar(data)
+
 		elif self.architecture in ['tensor']:
 	
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2026,13 +2128,13 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/(log(self.D**(L)) if self.D is not None and L is not None else 1)
+		func = lambda data: (1/2)*real(data)/log(self.D**L)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2051,15 +2153,17 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			state = eig(data,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2083,7 +2187,7 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			state = eig(data,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2103,13 +2207,13 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/(log(self.K**(L)) if self.D is not None and L is not None else 1)
+		func = lambda data: (1/2)*real(data)/log(self.K**L)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2117,15 +2221,17 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			state = eig(data,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2143,7 +2249,7 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			state = eig(data,hermitian=self.hermitian)
+			state = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2183,7 +2289,7 @@ class Measure(System):
 			
 			data = einsummation(data,inverse,inverse,data)
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs)**2
 
 			data = asscalar(data)
 
@@ -2255,70 +2361,150 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/(log(self.D**(L)) if self.D is not None and L is not None else 1)
+		func = lambda data: real(data)/log(self.D**N)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-		
+			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data += tmp
 
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data += tmp
 
-			basis = reshape(basis,shape=(self.K**L,-1))
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data -= tmp
 
-			subscripts = 'uv,us,vp,si,pj->ij'
-			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
-
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
-
-			state = eig(data,hermitian=self.hermitian)
-
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data += tmp
 
-			for i in where:
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
-					data &= self.inverse & self.basis
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
-					data &= self.inverse & self.basis.conj()
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data += tmp
 
-			options = dict()
-			data = contract(data,**options)
-			
-			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
-			data = fuse(data,**options)
-
-			options = dict(contraction=True)
-			data = representation(data,**options)
-
-			options = dict()
-			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
-
-			state = eig(data,hermitian=self.hermitian)
-
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			data -= tmp
 
 		data = func(data)
 
 		return data	
+
+	def mutual_measure(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Mutual Information (Measure) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)/log(self.D**N)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where)
+
+			data = 0
+
+			index = tuple(i for i in range(N) if i not in where)
+			tmp = state
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=index,**kwargs)*log(self.D**L)
+
+			for index in permutations(*[range(self.K)]*(N-L)):
+
+				index = dict(zip(where,index))
+				tmp = self.measure(parameters=parameters,state=state,where=index,**kwargs)
+
+				index = range(L)
+				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				index = range(L)
+				options = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+
+				tmp /= norm
+
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				data += norm*tmp
+
+			data = asscalar(data)
+
+		elif self.architecture in ['tensor']:
+
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where)
+
+			data = 0
+
+			index = tuple(i for i in range(N) if i not in where)
+			tmp = state
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=index,**kwargs)*log(self.D**L)
+
+			for index in permutations(*[range(self.K)]*(N-L)):
+
+				index = dict(zip(where,index))
+				tmp = self.measure(parameters=parameters,state=state,where=index,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				options = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+
+				options = dict(to=self.architecture,contraction=True)
+				tmp = representation(tmp,**{**options,**kwargs})
+
+				options = dict(to=self.architecture,contraction=True)
+				norm = representation(norm,**{**options,**kwargs})
+
+				tmp /= norm
+
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+
+				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				data += norm*tmp
+
+		data = func(data)
+
+		return data			
 
 	def mutual_classical(self,parameters=None,state=None,where=None,**kwargs):
 		'''
@@ -2332,49 +2518,55 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/(log(self.K**(L)) if self.D is not None and L is not None else 1)
+		func = lambda data: real(data)/log(self.K**N)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-		
+			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data += tmp
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data += tmp
 
-			state = eig(data,hermitian=self.hermitian)
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data -= tmp
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data += tmp
 
-			options = dict()
-			data = contract(data,**options)
-			
-			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
-			data = fuse(data,**options)
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data += tmp
 
-			options = dict(contraction=True)
-			data = representation(data,**options)
-
-			options = dict()
-			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
-
-			state = eig(data,hermitian=self.hermitian)
-
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			data -= tmp
 
 		data = func(data)
 
@@ -2392,64 +2584,159 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data)
+		func = lambda data: real(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-		
+			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data += tmp
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data += tmp
 
-			subscripts = 'uv,up,vs,sp->'
-			shapes = (data.shape,inverse.shape,inverse.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(data,inverse,inverse,data)
-
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
-
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data -= tmp
+		
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
 			N = state.L
 			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			L = N - len(where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = 0
 
-			where = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i not in where)
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data += tmp
 
-			options = dict()
-			data = contract(data,**options)
+			index = tuple(i for i in range(N) if i in where)
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data += tmp
 
-			other = data.copy()
-
-			with context(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
-
-				for i in where:
-					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
-						data &= self.inverse
-					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
-						other &= self.inverse
-
-				data &= other
-
-				options = dict(contraction=True)
-				data = representation(data,**options)
-
-				options = dict()
-				data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
+			index = tuple(i for i in range(N))
+			S = len(index)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			data -= tmp
 
 		data = func(data)
 
 		return data
+
+	def discord(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Discord for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+	
+		attr = 'discord_quantum'
+		
+		if hasattr(self,attr):
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+		else:
+			data = state
+
+		return data
+
+	def discord_quantum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Discord (Quantum) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['tensor']:
+		
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+
+		data = func(data)
+
+		return data	
+
+	def discord_classical(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Discord (Classical) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			data = 0
+
+		elif self.architecture in ['tensor']:
+		
+			data = 0
+
+		data = func(data)
+
+		return data	
+
+	def discord_renyi(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Discord (Renyi) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = lambda data: real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			data = 0
+
+		elif self.architecture in ['tensor']:
+		
+			data = 0
+
+		data = func(data)
+
+		return data
+
 
 
 class MPS(mps): 
@@ -7309,6 +7596,8 @@ class Callback(System):
 			'norm.quantum','norm.classical','norm.pure',
 			'entanglement.quantum','entanglement.classical','entanglement.renyi',
 			'entangling.quantum','entangling.classical','entangling.renyi',
+			'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
+			'discord.quantum','discord.classical','discord.renyi',
 			'noise.parameters'
 			]
 
@@ -7392,6 +7681,8 @@ class Callback(System):
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.renyi',
 				'entangling.quantum','entangling.classical','entangling.renyi',
+				'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
+				'discord.quantum','discord.classical','discord.renyi',
 				]:
 				
 				keywords = self.keywords.get(attr,{})
@@ -7420,6 +7711,8 @@ class Callback(System):
 					'norm.quantum','norm.classical','norm.pure',
 					'entanglement.quantum','entanglement.classical','entanglement.renyi',
 					'entangling.quantum','entangling.classical','entangling.renyi',
+					'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
+					'discord.quantum','discord.classical','discord.renyi',
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
