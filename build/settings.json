@@ -105,18 +105,18 @@
 	"M":4,
 	"seed":null,
 	"string":"module",
-	"measure":{"string":"povm","operator":"pauli","architecture":"tensor","options":{"cyclic":false}},
+	"measure":{"string":"povm","operator":"pauli","D":2,"architecture":"tensor","options":{"cyclic":false}},
 	"configuration":{},
 	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
 },
 "model":{
 	"data":{
 		"unitary":{
-			"operator":"haar","site":"|ij|","string":"unitary",
+			"operator":"haar","site":"||ij||","string":"unitary",
 			"parameters":null,"variable":false,"seed":null
 		},				
 		"noise":{
-			"operator":["depolarize","depolarize"],"site":"|ij|","string":"noise",
+			"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 			"parameters":1e-8,"variable":false
 		}
 	},
@@ -256,10 +256,10 @@
 		"discord.quantum":"measure.discord_quantum",
 		"discord.classical":"measure.discord_classical",
 		"discord.renyi":"measure.discord_renyi",
-		"spectrum.quantum":"spectrum_quantum",
-		"spectrum.classical":"spectrum_classical",
-		"rank.quantum":"rank_quantum",
-		"rank.classical":"rank_classical"
+		"spectrum.quantum":"measure.spectrum_quantum",
+		"spectrum.classical":"measure.spectrum_classical",
+		"rank.quantum":"measure.rank_quantum",
+		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},

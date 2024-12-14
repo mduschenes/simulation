@@ -999,7 +999,7 @@ class Measure(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','operator','K','ind','inds','tags','basis','data','inverse']:
+		for attr in [None,'string','key','seed','instance','instances','timestamp','operator','D','K','ind','inds','tags','basis','data','inverse']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -1766,7 +1766,7 @@ class Measure(System):
 			
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
-			data = addition(sqrt(data))
+			data = addition(sqrt(abs(data)))
 
 		elif self.architecture in ['tensor']:
 
@@ -1780,7 +1780,8 @@ class Measure(System):
 
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
-			data = addition(sqrt(data))
+			
+			data = addition(sqrt(abs(data)))
 
 			# data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
 		
@@ -2668,7 +2669,7 @@ class Measure(System):
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)
+		func = lambda data: (1/2)*real(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -7865,8 +7866,8 @@ class Callback(System):
 			'entangling.quantum','entangling.classical','entangling.renyi',
 			'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 			'discord.quantum','discord.classical','discord.renyi',
-			'spectrum_quantum','spectrum_classical',
-			'rank_quantum','rank_classical',
+			'spectrum.quantum','spectrum.classical',
+			'rank.quantum','rank.classical',
 			'noise.parameters'
 			]
 
@@ -7952,8 +7953,8 @@ class Callback(System):
 				'entangling.quantum','entangling.classical','entangling.renyi',
 				'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 				'discord.quantum','discord.classical','discord.renyi',
-				'spectrum_quantum','spectrum_classical',
-				'rank_quantum','rank_classical',				
+				'spectrum.quantum','spectrum.classical',
+				'rank.quantum','rank.classical',				
 				]:
 				
 				keywords = self.keywords.get(attr,{})
@@ -7984,8 +7985,8 @@ class Callback(System):
 					'entangling.quantum','entangling.classical','entangling.renyi',
 					'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 					'discord.quantum','discord.classical','discord.renyi',
-					'spectrum_quantum','spectrum_classical',
-					'rank_quantum','rank_classical',
+					'spectrum.quantum','spectrum.classical',
+					'rank.quantum','rank.classical',
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
