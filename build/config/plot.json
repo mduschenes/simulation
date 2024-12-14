@@ -14157,5 +14157,449 @@
 				}
 			}
 		}
+	},
+"None.spectrum.quantum.M.noise.parameters":{
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "spectrum.quantum",
+                    "label": {
+                        "label": {
+							"N": null,
+							"M": [2,4,8,16],
+							"cyclic": null,
+                            "noise.parameters": null,
+                            "rank":"spectrum.quantum.rank"
+                        },
+                        "analysis":{"func":{"spectrum.quantum.rank":"src.functions.func_spectrum_quantum_rank"}},
+                        "wrapper":{"spectrum.quantum.rank":"src.functions.func_spectrum_quantum_rank"},
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "legend": {
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            2000,
+                            null
+                        ]
+                    },
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
+                    },
+                    "ecolor": {
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
+                    }
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ $\\frac{\\sigma}{\\sigma{\\textrm{max}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Singular Value Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 7
+            },
+            "set_xlim":{"xmin":-50,"xmax":300},
+            "set_xticks":{"ticks":[0,50,100,150,200,250,300]},
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim":{"ymin":1e-25,"ymax":1e1},
+            "set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_locator":null,
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "major",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "upper right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    
+	},
+"None.spectrum.classical.M.noise.parameters":{
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "spectrum.classical",
+                    "label": {
+                        "label": {
+							"N": null,
+							"M": [2,4,8,16],
+							"cyclic": null,
+                            "noise.parameters": null,
+                            "rank":"spectrum.classical.rank"
+                        },
+                        "analysis":{"func":{"spectrum.classical.rank":"src.functions.func_spectrum_classical_rank"}},
+                        "wrapper":{"spectrum.classical.rank":"src.functions.func_spectrum_classical_rank"},
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "legend": {
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            2000,
+                            null
+                        ]
+                    },
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
+                    },
+                    "ecolor": {
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
+                    }
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "\\textrm{Singular Values of } p_{\\chi} ~~ $\\frac{\\sigma}{\\sigma{\\textrm{max}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Singular Value Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 7
+            },
+            "set_xlim":{"xmin":-50,"xmax":300},
+            "set_xticks":{"ticks":[0,50,100,150,200,250,300]},
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim":{"ymin":1e-25,"ymax":1e1},
+            "set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_locator":null,
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "major",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "upper right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    
 	}
 }

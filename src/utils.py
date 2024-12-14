@@ -269,6 +269,7 @@ if backend in ['jax','jax.autograd']:
 	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,structure)
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+	matrices = (qtn.MatrixProductState,)
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -297,7 +298,8 @@ elif backend in ['autograd']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,structure)
-	tensors = (qtn.Tensor,qtn.TensorNetwork)
+	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+	matrices = (qtn.MatrixProductState,)	
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -325,8 +327,8 @@ elif backend in ['numpy']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,)
-	tensors = (qtn.Tensor,qtn.TensorNetwork)
-
+	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+	matrices = (qtn.MatrixProductState,)	
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)

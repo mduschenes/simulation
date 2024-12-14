@@ -14,12 +14,12 @@ from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slic
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,diag,inv,addition,product
-from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,eig,sort,relsort,prod,product
-from src.utils import real,imag,abs,abs2,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,svd,diag,inv,sqrtm,addition,product
+from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
+from src.utils import real,imag,abs,abs2,mod,sqr,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,nulls,integers,floats,iterables,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,matrices,nulls,integers,floats,iterables,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -1228,17 +1228,19 @@ class Measure(System):
 		
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			N = len(where) if where is not None else None
+			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
+			L = len(where) if where is not None else None
 			K = self.K
 			ndim = 1
 
-			if N:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+			if L:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
 			else:
 				basis = self.basis
 				inverse = self.inverse
 			
+
 			if model is not None and where:
 
 				subscripts = 'uij,wji,wv,v...->u...'
@@ -1612,12 +1614,13 @@ class Measure(System):
 
 		return data
 
-	def eig(self,parameters=None,state=None,**kwargs):
+	def eig(self,parameters=None,state=None,where=None,**kwargs):
 		'''
-		Spectrum for POVM probability measure
+		Eigenvalues for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): Eigenvalues of shape (self.D**L,) or (self.K**L,)
@@ -1625,15 +1628,96 @@ class Measure(System):
 
 		func = lambda data: data
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if isinstance(state,arrays):
 
-			data = eig(state,hermitian=self.hermitian)
+			where = tuple(where) if where is not None else None
 
-		elif self.architecture in ['tensor']:
+			data = eig(state,**kwargs)
+
+		elif isinstance(state,matrices):
+
+			where = max(where) if where is not None else None
+
+			data = state.singular_values(where)
+
+			data = sqr(data)
+
+		elif isinstance(state,tensors):
 			
-			data = eig(state,hermitian=self.hermitian)
+			where = tuple(self.ind.format(i) for i in where) if where is not None else None
+
+			data = state.singular_values(where)
+
+			data = sqr(data)
+
+		else:
+
+			where = tuple(where) if where is not None else None
+			
+			data = state
 
 		data = func(data)
+
+		return data
+
+	def svd(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Singular values for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): Singular values of shape (self.D**L,) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if isinstance(state,arrays):
+
+			where = tuple(where) if where is not None else None
+
+			data = svd(state,**kwargs)
+
+		elif isinstance(state,matrices):
+
+			where = ((min(where)) if min(where) > 0 else (max(where))) if where is not None else None
+
+			data = state.singular_values(where)
+
+		elif isinstance(state,tensors):
+			
+			where = tuple(self.ind.format(i) for i in where) if where is not None else None
+
+			data = state.singular_values(where)
+
+		else:
+
+			where = tuple(where) if where is not None else None
+
+			data = state
+
+		data = func(data)
+
+		return data
+
+	def rank(self,parameters=None,state=None,where=None,eps=None,**kwargs):
+		'''
+		Rank for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			eps (float): precision of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+
+		func = lambda data: nonzero(real(data)/maximum(abs(real(data))),eps=eps)
+
+		data = func(state)
 
 		return data		
 
@@ -1681,7 +1765,7 @@ class Measure(System):
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
 			data = addition(sqrt(data))
 
 		elif self.architecture in ['tensor']:
@@ -1695,7 +1779,7 @@ class Measure(System):
 			other = representation(other,**{**options,**kwargs})
 
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
 			data = addition(sqrt(data))
 
 			# data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
@@ -1973,9 +2057,9 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			state = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 			data = asscalar(data)
 
@@ -1997,9 +2081,9 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			state = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 		data = func(data)
 
@@ -2153,9 +2237,9 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			state = self.eig(parameters=parameters,state=data,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 			data = asscalar(data)
 
@@ -2187,9 +2271,9 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			state = self.eig(parameters=parameters,state=data,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 		data = func(data)
 
@@ -2221,9 +2305,9 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			state = self.eig(parameters=parameters,state=data,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 			data = asscalar(data)
 
@@ -2249,9 +2333,9 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			state = self.eig(parameters=parameters,state=data,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 		data = func(data)
 
@@ -2455,7 +2539,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
@@ -2496,7 +2580,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
 
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
@@ -2732,6 +2816,188 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 		
 			data = 0
+
+		data = func(data)
+
+		return data
+
+	def spectrum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Spectrum for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		attr = 'spectrum_classical'
+		
+		if hasattr(self,attr):
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,**kwargs)
+		else:
+			data = state
+
+		return data
+
+	def spectrum_quantum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Spectrum (Quantum) for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		func = lambda data: real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+
+			data = sqrt(data)
+
+		elif self.architecture in ['tensor']:
+		
+			state = state.copy()
+
+			N = state.L
+			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = N - len(where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
+
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+
+			data = sqrt(data)
+
+		data = func(data)
+
+		return data
+
+	def spectrum_classical(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Spectrum (Classical) for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		func = lambda data: real(data)
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		
+			N = int(round(log(state.size)/log(self.K)/state.ndim))
+			K = self.K
+			ndim = state.ndim
+			where = tuple(i for i in range(N) if i in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = len(where)
+
+			options = dict(
+				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
+				shape = [K,N,ndim],
+				transformation=True,
+				) if where is not None else None
+
+			state = shuffle(state,**options)
+
+			data = self.svd(parameters=parameters,state=state,**kwargs)
+
+		elif self.architecture in ['tensor']:
+		
+			N = state.L
+			where = tuple(i for i in range(N) if i in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
+			L = len(where)
+
+			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
+
+		data = func(data)
+
+		return data	
+
+	def rank_quantum(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Rank (Quantum) for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+
+		elif self.architecture in ['tensor']:
+
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+
+		data = func(data)
+
+		return data
+
+	def rank_classical(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Rank (Classical) for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function				
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		func = lambda data: data
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+
+		elif self.architecture in ['tensor']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
 		data = func(data)
 
@@ -6686,6 +6952,7 @@ class Module(System):
 			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
+			N = max((model.N for model in self.model[index] if boolean(model) and model.N is not None),default=len(where))
 			locality = len(where)
 
 			keywords = dict(verbose=False)
@@ -6707,7 +6974,7 @@ class Module(System):
 				return state		
 
 			parameters = measure.parameters()
-			state = [self.state]*locality
+			state = [self.state]*N
 			
 			model = measure.transform(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
@@ -7598,6 +7865,8 @@ class Callback(System):
 			'entangling.quantum','entangling.classical','entangling.renyi',
 			'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 			'discord.quantum','discord.classical','discord.renyi',
+			'spectrum_quantum','spectrum_classical',
+			'rank_quantum','rank_classical',
 			'noise.parameters'
 			]
 
@@ -7683,6 +7952,8 @@ class Callback(System):
 				'entangling.quantum','entangling.classical','entangling.renyi',
 				'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 				'discord.quantum','discord.classical','discord.renyi',
+				'spectrum_quantum','spectrum_classical',
+				'rank_quantum','rank_classical',				
 				]:
 				
 				keywords = self.keywords.get(attr,{})
@@ -7713,6 +7984,8 @@ class Callback(System):
 					'entangling.quantum','entangling.classical','entangling.renyi',
 					'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 					'discord.quantum','discord.classical','discord.renyi',
+					'spectrum_quantum','spectrum_classical',
+					'rank_quantum','rank_classical',
 					]:
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,

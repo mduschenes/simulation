@@ -25,14 +25,17 @@ from src.logger import Logger
 
 
 def equalizer(a,b):
-	if isinstance(a,arrays) and isinstance(b,arrays):
-		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a.ravel(),b.ravel()))
-	elif isinstance(a,dict) and isinstance(b,dict):
-		return all(allclose(a[i],b[j]) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
-	elif isinstance(a,iterables) and isinstance(b,iterables):
-		return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
-	else:
-		return a==b
+	try:
+		if isinstance(a,arrays) and isinstance(b,arrays):
+			return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a.ravel(),b.ravel()))
+		elif isinstance(a,dict) and isinstance(b,dict):
+			return all(allclose(a[i],b[j]) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
+		elif isinstance(a,iterables) and isinstance(b,iterables):
+			return all(allclose(i,j) or (is_nan(i) or is_nan(j)) for i,j in zip(a,b))
+		else:
+			return a==b
+	except:
+		return False
 
 def test_basis(*args,**kwargs):
 
@@ -1618,255 +1621,6 @@ def test_grad(path,tol):
 
 	return
 
-def test_calculate(*args,**kwargs):
-
-	kwargs = {
-		"model.N":[4],"model.D":[2],"model.M":[2],"model.ndim":[2],"model.local":[True],
-		"model.data.unitary.parameters":[None],"model.data.noise.parameters":[1e-3],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
-		}	
-
-	groups = None
-	filters = None
-	func = None
-
-	data = {}
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
-
-		settings = Dict({
-		"cls":{
-			"measure":"src.quantum.Measure",
-			"model":"src.quantum.Operators",
-			"state":"src.quantum.State",
-			"callback":"src.quantum.Callback"
-			},
-		"measure":{
-			"operator":"pauli",
-			"D":2,"dtype":"complex",
-			"architecture":"tensor",
-			"options":{"cyclic":False},
-		},		
-		"model":{
-			"data":{
-				"unitary":{
-					"operator":"haar","site":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":123
-				},	
-				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
-					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
-				},								
-			},
-			"N":5,
-			"D":2,
-			"local":True,
-			"space":"spin",
-			"time":"linear",
-			"lattice":"square",
-			"architecture":"array",
-			"seed":123,
-			"configuration":{
-				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-					)],
-				"sort":None,
-				"reverse":False
-				}
-			},
-		"state": {
-			"operator":"zero",
-			"site":None,
-			"string":"psi",
-			"parameters":None,
-			"D":2,
-			"ndim":2,
-			"local":False
-			},
-		"system":{
-			"dtype":"complex",
-			"format":"array",
-			"device":"cpu",
-			"backend":None,
-			"architecture":None,
-			"base":None,
-			"seed":123,
-			"key":None,
-			"instance":None,
-			"cwd":None,
-			"path":"data.hdf5",
-			"conf":"logging.conf",
-			"logger":None,
-			"cleanup":False,
-			"verbose":False
-			},
-		})
-
-		verbose = False
-		precision = 8
-
-		parse = lambda data: data.round(precision)
-
-		data[index] = {}
-
-		# Settings
-		setter(settings,kwargs,delimiter=delim,default="replace")
-		system = settings.system
-
-		# Model
-		model = load(settings.cls.model)		
-		model = model(**{**settings.model,**dict(system=system)})
-		
-		# State
-		state = load(settings.cls.state)
-		state = state(**{**settings.state,**dict(system=system)})
-
-
-		# Measure
-		measure = load(settings.cls.measure)		
-		measure = measure(**{**settings.measure,**dict(system=system)})
-
-
-		# Verbose
-		model.info(verbose=verbose)
-
-
-		# Operator
-
-		model.init(state=state @ model.N)
-
-		parameters = model.parameters()
-		state = [state]*model.N
-		where = model.site
-		kwargs = dict()
-		options = dict(contract="swap+split" if len(where) <= 2 else False,max_bond=None,cutoff=0)
-
-		state = measure.operation(
-				parameters=parameters,
-				state=state,
-				model=model,
-				where=where,
-				options=options,				
-				**kwargs)(
-				parameters=parameters,
-				state=measure.probability(
-					parameters=parameters,
-					state=state,
-					**kwargs),
-				**kwargs)
-
-		key = 'state'
-		if measure.architecture in ['array']:
-			value = array(state)
-		elif measure.architecture in ['tensor']:
-			value = representation(state,contraction=True).ravel()
-
-		if verbose:
-			print(parse(value))
-
-		data[index][key] = value
-
-		
-		attrs = [
-			'trace',
-			'vectorize',
-			'conditional',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
-			'entangling_quantum',
-			'entangling_classical',
-			'entangling_renyi',
-			'mutual_quantum',
-			'mutual_measure',
-			'mutual_classical',
-			'mutual_renyi',
-			]
-		for attr in attrs:
-			
-			if attr in [
-				'infidelity_quantum','infidelity_classical','infidelity_pure',
-				]:
-			
-				other = load(settings.cls.state)
-				other = other(**{**settings.state,**dict(system=system)})
-
-				parameters = model.parameters()
-				other = [other]*model.N
-				where = model.site
-				kwargs = dict()
-				options = dict(contract=False,max_bond=None,cutoff=0)
-
-				other = measure.operation(
-						parameters=parameters,
-						state=other,
-						model=model,
-						where=where,
-						options=options,
-						**kwargs)(
-						parameters=parameters,
-						state=measure.probability(
-							parameters=parameters,
-							state=other,
-							**kwargs),
-						**kwargs)
-
-
-				kwargs = dict(other=other)
-				where = None
-
-			elif attr in [
-				'trace','vectorize',
-				'entanglement_quantum','entanglement_classical','entanglement_renyi',
-				'entangling_quantum','entangling_classical','entangling_renyi',
-				'mutual_quantum','mutual_measure','mutual_classical','mutual_renyi',
-				]:
-
-				kwargs = dict()
-				where = [i for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N]
-
-			elif attr in [
-				'conditional',
-				]:
-
-				kwargs = dict()
-				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N}
-
-			else:
-
-				kwargs = dict()
-				where = None
-
-			obj = measure.calculate(attr,state=state,where=where,**kwargs)
-
-			key = attr
-
-			if isinstance(obj,tensors):
-				value = representation(obj,to=measure.architecture,contraction=True)
-			else:
-				value = array(obj)
-
-			if verbose or True:
-				print(measure.architecture,attr,where,value.shape)
-				print(parse(value))
-				print()
-
-			data[index][key] = value
-
-
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
-
-	print("Passed")
-
-	return
-
-
 def test_module(*args,**kwargs):
 
 	kwargs = {
@@ -2041,7 +1795,7 @@ def test_module(*args,**kwargs):
 		for i in objs:
 			obj = i if obj is None else obj @ i
 
-		if verbose:
+		if verbose and model.N in [1]:
 			basis = 'pauli'
 			components = ['I','X','Y','Z']
 
@@ -2222,6 +1976,275 @@ def test_module(*args,**kwargs):
 	return
 
 
+def test_calculate(*args,**kwargs):
+
+	kwargs = {
+		"module.N":[4],"module.M":[3],"module.measure.operator":["pauli"],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
+		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"module.measure.D":[2],"module.measure.operator":["pauli"],
+		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
+		"module.measure.options":[{"cyclic":False}],
+		"module.measure.architecture":["tensor","array"],
+		}	
+
+	groups = None
+	filters = None
+	func = None
+
+	data = {}
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+
+		settings = Dict({
+		"cls":{
+			"module":"src.quantum.Module",
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State",
+			"callback":"src.quantum.Callback"
+			},
+		"module":{
+			"N":4,
+			"M":5,
+			"string":"module",
+			"measure":{
+				"operator":"pauli",
+				"D":2,"dtype":"complex",
+				"architecture":"tensor",
+				"options":{"cyclic":False},
+				},	
+			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],
+					)],
+				"sort":None,
+				"reverse":False
+				}			
+		},
+		"model":{
+			"data":{
+				# "local":{
+				# 	"operator":"haar","site":"i","string":"local",
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
+				# },
+				"unitary":{
+					"operator":"haar","site":"||ij||","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123
+				},	
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
+					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
+				},								
+				# "xx":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123
+				# },												
+			},
+			"N":4,
+			"D":2,
+			"local":True,
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square",
+			"architecture":"array",
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}
+			},
+		"state": {
+			"operator":"zero",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":False
+			},
+		"callback":{
+			"attributes":{
+				"N":"N","M":"N","d":"d","D":"state.D",
+				"noise.parameters":"noise.parameters",
+				"objective":"objective",
+				"operator":"measure.operator"
+				},
+			"options":{"contract":False,"max_bond":None,"cutoff":0}
+		},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":False
+			}
+		})
+
+	
+		attrs = [
+			'trace',
+			'vectorize',
+			'measure',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			'entangling_quantum',
+			'entangling_classical',
+			'entangling_renyi',
+			'mutual_quantum',
+			'mutual_measure',
+			'mutual_classical',
+			'mutual_renyi',
+			'discord_quantum',
+			'discord_classical',
+			'discord_renyi',
+			'spectrum_quantum',
+			'spectrum_classical',
+			'rank_quantum',
+			'rank_classical',
+			]
+
+
+		# Verbose
+		verbose = False
+		precision = 8
+
+		parse = lambda data: data.round(precision)
+
+		data[index] = {}
+
+		# Settings
+		setter(settings,kwargs,delimiter=delim,default="replace")
+		system = settings.system
+
+		# Class
+		module = load(settings.cls.module)
+		model = load(settings.cls.model)		
+		state = load(settings.cls.state)		
+		callback = load(settings.cls.callback)		
+		system = settings.system
+
+		# Model
+		model = model(**{**settings.model,**dict(system=system)})
+
+		# State
+		state = state(**{**settings.state,**dict(system=system)})
+
+		# Callback
+		callback = callback(**{**settings.callback,**dict(system=system)})
+	
+		# Module
+		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
+
+		# Verbose
+		model.info(verbose=verbose)
+
+		# State
+		parameters = module.parameters()
+		state = module.state()
+		kwargs = dict()
+
+		state = module(parameters,state,**kwargs)
+
+
+		# Test
+
+		key = 'state'
+		if module.measure.architecture in ['array']:
+			value = array(state)
+		elif module.measure.architecture in ['tensor']:
+			value = representation(state.copy(),contraction=True).ravel()
+
+		if verbose:
+			print(parse(value))
+
+		data[index][key] = value
+
+
+		for attr in attrs:
+			
+			if attr in [
+				'infidelity_quantum','infidelity_classical','infidelity_pure',
+				]:
+			
+				kwargs = dict(
+					other=module(
+						parameters=module.parameters(),
+						state=module.state(),
+						**dict(options = dict(contract=False,max_bond=None,cutoff=0))
+						)
+					)
+				where = None
+
+			elif attr in [
+				'trace','vectorize',
+				'entanglement_quantum','entanglement_classical','entanglement_renyi',
+				'entangling_quantum','entangling_classical','entangling_renyi',
+				'mutual_quantum','mutual_measure','mutual_classical','mutual_renyi',
+				'discord_quantum','discord_classical','discord_renyi',
+				'spectrum_quantum','spectrum_classical',
+				'rank_quantum','rank_classical',
+				]:
+
+				kwargs = dict()
+				where = [i for j,i in enumerate(range(model.N//2,model.N)) if i < model.N]
+
+			elif attr in [
+				'measure',
+				]:
+
+				kwargs = dict()
+				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N}
+
+			else:
+
+				kwargs = dict()
+				where = None
+
+			obj = module.measure.calculate(attr,state=state,where=where,**kwargs)
+
+			key = attr
+
+			if isinstance(obj,tensors):
+				value = representation(obj,to=module.measure.architecture,contraction=True)
+			else:
+				value = array(obj)
+
+			if verbose or True:
+				print(module.measure.architecture,attr,where,value.shape)
+				print(parse(value))
+				print()
+
+			data[index][key] = value
+
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
+
+	print("Passed")
+
+	return
+
+
 def test_function(*args,**kwargs):
 	D = [2]
 	N = [2,4,8,16]
@@ -2272,5 +2295,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_calculate(*args,**args)
 	# test_module(*args,**args)
+	test_calculate(*args,**args)

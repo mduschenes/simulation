@@ -43,11 +43,11 @@
 
 		"model.data.unitary.operator":["haar"],
 		"model.data.unitary.parameters":[null],
-		"model.data.unitary.site":["|ij|"],
+		"model.data.unitary.site":["||ij||"],
 
 		"model.data.noise.operator":[["depolarize","depolarize"]],
 		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.site":["|ij|"],
+		"model.data.noise.site":["||ij||"],
 
 		"state.string":["psi"],
 		"state.operator":["zero"],
@@ -255,13 +255,18 @@
 		"mutual.renyi":"measure.mutual_renyi",
 		"discord.quantum":"measure.discord_quantum",
 		"discord.classical":"measure.discord_classical",
-		"discord.renyi":"measure.discord_renyi"		
+		"discord.renyi":"measure.discord_renyi",
+		"spectrum.quantum":"spectrum_quantum",
+		"spectrum.classical":"spectrum_classical",
+		"rank.quantum":"rank_quantum",
+		"rank.classical":"rank_classical"
 	},
 	"keywords": {
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
-		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5}
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
+		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
 	"options":{
 		"contract":true,"max_bond":null,"cutoff":0

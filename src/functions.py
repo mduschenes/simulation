@@ -112,6 +112,36 @@ def func_ylabel(data,metadata):
 	return 2 if (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
 
 
+def func_spectrum_quantum(data):
+	out = np.array(list(data['spectrum.quantum']))
+	out = abs(out)
+	out = out/maximum(out)
+	out = to_tuple(out)
+	return out
+
+def func_spectrum_quantum_rank(data):
+	out = np.array(list(data['spectrum.quantum']))
+	out = sort(abs(out))
+	out = out/maximum(out)
+	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
+	return out
+
+
+def func_spectrum_classical(data):
+	out = np.array(list(data['spectrum.classical']))
+	out = abs(out)
+	out = out/maximum(out)
+	out = to_tuple(out)
+	return out
+
+def func_spectrum_classical_rank(data):
+	out = np.array(list(data['spectrum.classical']))
+	out = sort(abs(out))
+	out = out/maximum(out)
+	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
+	return out
+
+
 
 def func_MN(data):
 	return data['M']/data['N']
