@@ -23,7 +23,7 @@ for PATH in PATHS:
 
 from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
-from src.utils import to_tuple,asscalar
+from src.utils import to_tuple,is_nan,asscalar
 from src.utils import maximum,minimum,abs,sort,log
 from src.utils import grouper,conditions
 from src.utils import arrays,scalars,nonzero,delim
@@ -112,32 +112,23 @@ def func_ylabel(data,metadata):
 	return 2 if (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
 
 
-def func_spectrum_quantum(data):
-	out = np.array(list(data['spectrum.quantum']))
-	out = abs(out)
-	out = out/maximum(out)
+def func_spectrum(data,attr=None):
+	if attr not in data:
+		raise ValueError("Incorrect attribute %s"%(attr))
+		return 
+	out = np.array(list(data[attr]))
+	nan = is_nan(out)
+	out = np.array([*sort(abs(out[~nan]))[::-1],*out[nan]])/maximum(out[~nan])
 	out = to_tuple(out)
 	return out
 
-def func_spectrum_quantum_rank(data):
-	out = np.array(list(data['spectrum.quantum']))
-	out = sort(abs(out))
-	out = out/maximum(out)
-	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
-	return out
-
-
-def func_spectrum_classical(data):
-	out = np.array(list(data['spectrum.classical']))
-	out = abs(out)
-	out = out/maximum(out)
-	out = to_tuple(out)
-	return out
-
-def func_spectrum_classical_rank(data):
-	out = np.array(list(data['spectrum.classical']))
-	out = sort(abs(out))
-	out = out/maximum(out)
+def func_spectrum_rank(data,attr=None):
+	if attr not in data:
+		raise ValueError("Incorrect attribute %s"%(attr))
+		return 	
+	out = np.array(list(data[attr]))
+	nan = is_nan(out)
+	out = sort(abs(out[~nan]))/maximum(out[~nan])
 	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
 	return out
 

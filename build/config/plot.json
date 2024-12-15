@@ -14158,7 +14158,7 @@
 			}
 		}
 	},
-"None.spectrum.quantum.M.noise.parameters":{
+	"None.spectrum.quantum.M.noise.parameters":{
         "fig": {
             "set_size_inches": {
                 "w": 8,
@@ -14197,9 +14197,7 @@
                             "one": false
                         },
                         "legend": {
-                            "exclude": [
-                                "iteration"
-                            ]
+                        	"include":{"M":null,"rank":null}
                         },
                         "slice": [
                             0,
@@ -14208,7 +14206,7 @@
                         ]
                     },
                     "marker": {
-                        "@noise.parameters@": [
+                        "@M@": [
                             "o",
                             "^",
                             "s",
@@ -14218,40 +14216,89 @@
                     "linestyle": "--",
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    },
-                    "ecolor": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    }
-                }
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}                    
             ],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},            
             "set_ylabel": {
                 "ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ $\\frac{\\sigma}{\\sigma{\\textrm{max}}}$"
             },

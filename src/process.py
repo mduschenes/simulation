@@ -1456,23 +1456,41 @@ def apply(keys,data,plots,processes,verbose=None):
 
 
 
-		wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL and wrappers[attr] is not None}
+		wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+
+		for attr in list(wrappers):
+
+			if wrappers[attr] is None:
+				wrappers.pop(attr)
+				continue
+			elif isinstance(wrappers[attr],str):
+				wrappers[attr] = {wrappers[attr]:{}}
+			elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
+				wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+			else:
+				continue
+
+			for func in list(wrappers[attr]):
+				try:
+					wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+				except:
+					wrappers[attr].pop(func)
+					continue
 
 		tmp = {}
 
 		for attr in wrappers:
 
-			wrapper = load(wrappers[attr],default=None)
-			
 			if attr in data:
 				tmp[attr] = data[attr]
 			else:
 				tmp[attr] = None
 
-			try:
-				data[attr] = wrapper(data)
-			except:
-				pass
+			for func in wrappers[attr]:
+				try:
+					data[attr] = wrappers[attr][func](data)
+				except:
+					pass
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
@@ -1705,19 +1723,42 @@ def plotter(plots,processes,verbose=None):
 
 						if OTHER in data and OTHER in data[OTHER]:
 							wrappers = data[OTHER][OTHER].get('wrapper')
+
 							if wrappers is None:
 								wrappers = {}
 							else:
-								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL and wrappers[attr] is not None}
+								wrappers = {attr: wrappers[attr] for attr in wrappers}
+							
+							wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+
+							for attr in list(wrappers):
+
+								if wrappers[attr] is None:
+									wrappers.pop(attr)
+									continue
+								elif isinstance(wrappers[attr],str):
+									wrappers[attr] = {wrappers[attr]:{}}
+								elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
+									wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+								else:
+									continue
+
+								for func in list(wrappers[attr]):
+									try:
+										wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+									except:
+										wrappers[attr].pop(func)
+										continue
 
 							for attr in data[OTHER]:
-								if wrappers.get(attr):
+								if wrappers.get(attr) is not None:
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
 										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 										**{attr: data[attr] for attr in data if attr in ALL},
 										}
-									value = wrappers[attr](value)
+									for func in wrappers[attr]:
+										value = wrappers[attr][func](value)
 									data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
@@ -2280,30 +2321,30 @@ def plotter(plots,processes,verbose=None):
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
 								for data in search(plots[instance][subinstance][obj][prop]) 
-								if ((data) and attr in data[OTHER][OTHER])
+								if ((data) and (data[OTHER][OTHER].get(attr) is not None))
 								for string in data[OTHER][OTHER][attr]}
 								for attr in ['texify','valify']},
 							**{attr: {
 								**{kwarg:[
 								min((data[OTHER][OTHER][attr][kwarg][0]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0),
 								max((data[OTHER][OTHER][attr][kwarg][1]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0),											
 								] for kwarg in ['scilimits']},
 								**{kwarg: 
 									max((data[OTHER][OTHER][attr][kwarg]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0) 
 									for kwarg in ['decimals']},
 								**{kwarg: 
 									any((data[OTHER][OTHER][attr][kwarg]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))))
 									for kwarg in ['one']},										
 								}
 								for attr in ['scinotation']},
@@ -2338,30 +2379,30 @@ def plotter(plots,processes,verbose=None):
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
 								for data in search(plots[instance][subinstance][obj][prop]) 
-								if ((data) and attr in data[OTHER][OTHER])
+								if ((data) and data[OTHER][OTHER].get(attr) is not None)
 								for string in data[OTHER][OTHER][attr]}
 								for attr in ['texify','valify']},
 							**{attr: {
 								**{kwarg:[
 								min((data[OTHER][OTHER][attr][kwarg][0]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0),
 								max((data[OTHER][OTHER][attr][kwarg][1]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0),											
 								] for kwarg in ['scilimits']},
 								**{kwarg: 
 									max((data[OTHER][OTHER][attr][kwarg]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
 									default=0) 
 									for kwarg in ['decimals']},
 								**{kwarg: 
 									any((data[OTHER][OTHER][attr][kwarg]
 									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
+									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))))
 									for kwarg in ['one']},										
 								}
 								for attr in ['scinotation']},
@@ -2920,10 +2961,32 @@ def plotter(plots,processes,verbose=None):
 					slices = [subslice for subslice in slices if subslice is not None and subslice is not True and subslice is not False]
 
 					wrappers = data[OTHER][OTHER].get('wrapper')
+
 					if wrappers is None:
 						wrappers = {}
 					else:
-						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL and wrappers[attr] is not None}
+						wrappers = {attr: wrappers[attr] for attr in wrappers}
+
+					wrappers = {attr: wrappers[attr] for attr in wrappers if attr in ALL}
+
+					for attr in list(wrappers):
+
+						if wrappers[attr] is None:
+							wrappers.pop(attr)
+							continue
+						elif isinstance(wrappers[attr],str):
+							wrappers[attr] = {wrappers[attr]:{}}
+						elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
+							wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+						else:
+							continue
+
+						for func in list(wrappers[attr]):
+							try:
+								wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+							except:
+								wrappers[attr].pop(func)
+								continue
 
 
 					normalize = data[OTHER][OTHER].get('normalize')
@@ -2952,13 +3015,14 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[attr]
 
-						if wrappers.get(attr):
+						if wrappers.get(attr) is not None:
 							value = {
 								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 								**{attr: data[OTHER][attr] for attr in data[OTHER]},
 								**{attr: data[attr] for attr in data if attr in ALL},
 								}
-							value = wrappers[attr](value)
+							for func in wrappers[attr]:
+								value = wrappers[attr][func](value)
 
 						if attr in [OTHER]:
 						
@@ -3152,7 +3216,7 @@ def plotter(plots,processes,verbose=None):
 						continue
 
 
-					def func(label):
+					def func(label,labels):
 
 						if label in data[OTHER][OTHER][OTHER]:
 							if values[prop][label]['label']:
@@ -3166,7 +3230,7 @@ def plotter(plots,processes,verbose=None):
 						if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict):
 							strings = data[OTHER][OTHER]['legend'].get('label').get(label,label)
 						elif isinstance(data[OTHER][OTHER]['legend'].get('label'),str):
-							strings = data[OTHER][OTHER]['legend'].get('label')
+							strings = string
 						else:
 							strings = string
 
@@ -3183,56 +3247,59 @@ def plotter(plots,processes,verbose=None):
 
 						string = texify(
 							scinotation(string,**data[OTHER][OTHER].get('scinotation',{})),
-							texify=data[OTHER][OTHER].get('texify'))
+							texify=data[OTHER][OTHER].get('texify')) if string is not None else labels[label]
 
 						return string
 
-					value = {
-						**{label: func(label)
-							for label in natsorted(set((
-							label 
-							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>1))))))},
-						**{label: func(label)
-							for label in natsorted(set((
-							label 
-							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>1))))))},
-						**{label: func(label) 
-							for label in natsorted(set((
-							label 
-							for label in values[prop] 
-							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and 
-								(len(set(values[prop][label]['value']))>=1)) and 
-								not (values[prop][label]['other'])))))))},							
-						**({label: func(label)
-							for label in data[OTHER][OTHER]['legend'].get('label')} 
-							if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else 
-							{None:func(data[OTHER][OTHER]['legend'].get('label'))} 
-							if data[OTHER][OTHER]['legend'].get('label') is not None else {}
-							)
-						}
-
-					def func(value,key=None):
+					def sorter(value):
 						if data[OTHER][OTHER]['legend'].get('sort') is not None:
 							index = [*[i for i in data[OTHER][OTHER]['legend'].get('sort')],*[i for i in natsorted(set(value)) if i not in data[OTHER][OTHER]['legend'].get('sort')]]
 							index = sorted(set(value),key=lambda i,index=index: index.index(i))
 						else:
 							index = natsorted(set(value))
 
-						return index
-				
+						return index						
+
+					value = {
+						**{label: label
+							for label in natsorted(set((
+							label 
+							for label in values[prop]
+							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>1))))))},
+						**{label: label
+							for label in natsorted(set((
+							label 
+							for label in values[prop]
+							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>1))))))},
+						**{label: label 
+							for label in natsorted(set((
+							label 
+							for label in values[prop] 
+							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and 
+								(len(set(values[prop][label]['value']))>=1)) and 
+								not (values[prop][label]['other'])))))))},							
+						**({label: label
+							for label in data[OTHER][OTHER]['legend'].get('label')} 
+							if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else 
+							{None:data[OTHER][OTHER]['legend'].get('label')} 
+							if data[OTHER][OTHER]['legend'].get('label') is not None else {}
+							)
+						}
+
+					value = {label:value[label] for label in sorter(value)}
+					value = {label:func(label,value) for label in value}
+
 					separator = ',~'
 
 					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace('@',''),
 						data[OTHER][OTHER][OTHER][label].replace('@',''))] 
 						for label in value if label is not None})
 
-					value = [value[label] for label in func(value)
+					value = [(value[label],) if label is None else value[label] for label in value
 							if (
-							(label is None) or (
+							(label is None and value[label].count('%s')==0) or ( (label is not None) and
 							(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
 							(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
 							((((not isinstance(data[OTHER][OTHER]['legend'].get('include'),dict)) and 
@@ -3249,7 +3316,15 @@ def plotter(plots,processes,verbose=None):
 							))))
 							]
 
-					value = separator.join(value)
+					if any(isinstance(i,tuple) for i in value):
+						value = ': '.join([
+							separator.join([j for i in value if isinstance(i,tuple) for j in i]),
+							separator.join([j for i in value if isinstance(i,str) for j in [i]])
+							])
+					else:
+						value = (
+							separator.join([j for i in value if isinstance(i,str) for j in [i]])
+							)						
 
 					value = value if value else None
 

@@ -15,6 +15,7 @@ matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 # improt matplotlib.lines import Line2D
 
 # Logging
@@ -415,6 +416,20 @@ def to_number(a,dtype=None,**kwargs):
 	return number
 
 
+def to_tuple(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to tuple
+	Args:
+		a (iterable): Iterable to convert to list
+		dtype (datatype): Datatype of number
+	Returns:
+		out (tuple): List representation of iterable
+	'''
+	try:
+		return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+	except:
+		return a
+
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	'''
 	Check if arrays a and b are all close within tolerance
@@ -769,6 +784,19 @@ def get_children(obj,attr):
 			tree = getattr(obj,attr,[])
 			for i in tree:
 				yield i
+	elif attr in ['legendLabels']:
+		for i in obj.get_texts():
+			yield i
+		# try:
+		# 	tree = obj._legend_box.get_children()[1]
+		# 	for column in tree.get_children():
+		# 		for row in column.get_children():
+		# 			for i in row.get_children()[0].get_children():
+		# 				yield i
+		# except:
+		# 	tree = getattr(obj,attr,[])
+		# 	for i in tree:
+		# 		yield i				
 	else:
 		tree = getattr(obj,attr,[])
 		for i in tree:
@@ -1157,25 +1185,48 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
 				if kwargs[attr].get('keep') is not None:
 					keep = kwargs[attr]['keep']
-					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
-					if unique:
-						indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
-						keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep
-						elements = []
-						for k,i in zip(keep,indexes):
+					if (keep in ['unique']) or (isinstance(keep,list) and all(isinstance(i,str) for i in keep)):
+						
+						if isinstance(keep,str):
+							keep = ['marker','linestyle','alpha','color']
 
-							if k in ['first']:
-								elements.append(0)
-							elif k in ['middle']:
-								elements.append(len(i)//2)
-							elif k in ['last']:
-								elements.append(-1)
-							elif isinstance(k,int):
-								elements.append(k)
-							else:
-								elements.append(k)
-						if elements is not None:
-							labels,handles = [labels[i[j]] for i,j in zip(indexes,elements)],[handles[i[j]] for i,j in zip(indexes,elements)]
+						unique = {
+							'labels':[label for label in labels],
+							'handles':[
+								tuple(getattr(handle,'get_%s'%(prop))() for prop in keep)
+								for handle in handles]
+							}
+						unique = {
+							'labels':[i for i in unique['labels']],
+							'handles':[tuple(j if not isinstance(j,np.ndarray) else to_tuple(j) for j in i) for i in unique['handles']],
+							}
+						unique = [(i,*j) for index,(i,j) in enumerate(zip(unique['labels'],unique['handles']))]
+
+						unique = [unique.index(i) for i in list(sorted(set(unique),key=lambda i:unique.index(i)))]
+
+						handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
+
+					else:
+						unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
+						if unique:
+							indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
+							keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep
+							unique = []
+							for k,i in zip(keep,indexes):
+
+								if k in ['first']:
+									unique.append(0)
+								elif k in ['middle']:
+									unique.append(len(i)//2)
+								elif k in ['last']:
+									unique.append(-1)
+								elif isinstance(k,int):
+									unique.append(k)
+								else:
+									unique.append(k)
+							if unique is not None:
+								labels,handles = [labels[i[j]] for i,j in zip(indexes,unique)],[handles[i[j]] for i,j in zip(indexes,unique)]
+				
 				if kwargs[attr].get('multiline') is True:
 					pass
 				if kwargs[attr].get('sort') is not None:
@@ -1230,19 +1281,201 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					handles = []
 				if ('labels' in kwargs[attr]) and (not kwargs[attr]['labels']):
 					labels = []
+
+				if len(handles)>0 and len(labels)>0 and kwargs[attr].get('set_title_col') is not None:
+					if isinstance(kwargs[attr].get('set_title_col'),str):
+						kwargs[attr]['set_title_col'] = [kwargs[attr].get('set_title_col')]
+					elif isinstance(kwargs[attr].get('set_title_col'),(list,tuple)):
+						kwargs[attr]['set_title_col'] = [*kwargs[attr].get('set_title_col')]
+					else:
+						kwargs[attr]['set_title_col'] = []
+					
+					prop = 'set_title'
+					subprop = 'label'
+
+					titles = [attr_texify(title,prop,subprop,**{**kwargs[attr],**_kwargs}) for title in (kwargs[attr].get('set_title_col') if isinstance(kwargs[attr].get('set_title_col'),list) else [])]
+					number = kwargs[attr].get('ncol') if isinstance(kwargs[attr].get('ncol'),int) else 1
+
+					if kwargs[attr].get('set_title_col') is not None and kwargs[attr].get('set_title_row') is not None:
+						indexes = [len(handles)//number+1,number+1]
+						indexes = list(range(indexes[0],prod(indexes),indexes[0]))
+					elif kwargs[attr].get('set_title_col') is not None and kwargs[attr].get('set_title_row') is None:
+						indexes = [len(handles)//number+1,number]
+						indexes = list(range(0,prod(indexes),indexes[0]))
+					elif kwargs[attr].get('set_title_col') is None and kwargs[attr].get('set_title_row') is not None:
+						indexes = []
+					elif kwargs[attr].get('set_title_col') is None and kwargs[attr].get('set_title_row') is None:
+						indexes = []
+
+					patches = [matplotlib.patches.Patch(label=title) for title in titles]
+
+					handles = [
+						j for i in range(number) 
+						for j in [*patches[i:i+1],*handles[(i*len(handles)//number):((i+1)*len(handles)//number)]]
+						]
+					labels = [
+						j for i in range(number) 
+						for j in [*titles[i:i+1],*labels[(i*len(labels)//number):((i+1)*len(labels)//number)]]
+						]	
+
+					kwargs[attr]['ncol'] = (kwargs[attr].get('ncol') if isinstance(kwargs[attr].get('ncol'),int) else None)
+
+					
+					funcs = {'handles':{},'labels':{}}
+
+					def func(attr,obj):
+						return 0
+					funcs['handles']['width'] = func
+					
+					def func(attr,obj):
+						return 0
+					funcs['handles']['height'] = func		
+
+					def func(attr,obj):
+						return False
+					funcs['handles']['visible'] = func	
+					
+					def func(attr,obj):
+						return False
+					funcs['handles']['in_layout'] = func	
+
+					def func(attr,obj):
+						return "left"
+					funcs['labels']['ha'] = func																
+					
+					def func(attr,obj):
+						x = -max([0.95*label.get_window_extent().width for label in obj.get_texts()])
+						y = 0
+						return (x,y)
+					funcs['labels']['position'] = func	
+
+					if indexes:
+						_kwds.update({
+							**({'legendHandles': {
+									**_kwds.get('legendHandles',{}),
+									**({
+										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
+										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
+										} if kwargs[attr].get('set_title_col') is not None else {}),							
+									}
+									}),
+							**({'legendLabels': {
+									**_kwds.get('legendLabels',{}),						
+									**({
+										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
+										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
+										} if kwargs[attr].get('set_title_col') is not None else {}),							
+									}
+									}),					
+							})
+
+
+
+				if len(handles)>0 and len(labels)>0 and kwargs[attr].get('set_title_row') is not None:
+					if isinstance(kwargs[attr].get('set_title_row'),str):
+						kwargs[attr]['set_title_row'] = [kwargs[attr].get('set_title_row')]
+					elif isinstance(kwargs[attr].get('set_title_row'),(list,tuple)):
+						kwargs[attr]['set_title_row'] = [*kwargs[attr].get('set_title_row')]
+					else:
+						kwargs[attr]['set_title_row'] = []
+					
+					prop = 'set_title'
+					subprop = 'label'
+
+					titles = [attr_texify(title,prop,subprop,**{**kwargs[attr],**_kwargs}) for title in (kwargs[attr].get('set_title_row') if isinstance(kwargs[attr].get('set_title_row'),list) else [])]
+					number = kwargs[attr].get('ncol') if isinstance(kwargs[attr].get('ncol'),int) else 1
+
+					if kwargs[attr].get('set_title_col') is not None and kwargs[attr].get('set_title_row') is not None:
+						indexes = [len(handles)//number+1,number+1]
+						indexes = list(range(0,indexes[0],1))
+					elif kwargs[attr].get('set_title_col') is not None and kwargs[attr].get('set_title_row') is None:
+						indexes = []
+					elif kwargs[attr].get('set_title_col') is None and kwargs[attr].get('set_title_row') is not None:
+						indexes = [len(handles)//number,number+1]
+						indexes = list(range(0,indexes[0],1))
+					elif kwargs[attr].get('set_title_col') is None and kwargs[attr].get('set_title_row') is None:
+						indexes = []
+
+					patches = [matplotlib.patches.Patch(label=title) for title in titles]
+
+					if kwargs[attr].get('set_title_col') is not None:
+						patches = [matplotlib.patches.Patch(label=''),*patches]
+						titles = ['',*titles]
+
+					handles = [*patches,*handles]
+					labels = [*titles,*labels]
+
+
+					kwargs[attr]['ncol'] = (kwargs[attr].get('ncol') if isinstance(kwargs[attr].get('ncol'),int) else 1)+1
+
+
+					funcs = {'handles':{},'labels':{}}
+
+					def func(attr,obj):
+						return 0
+					funcs['handles']['width'] = func
+					
+					def func(attr,obj):
+						return 0
+					funcs['handles']['height'] = func		
+
+					def func(attr,obj):
+						return False
+					funcs['handles']['visible'] = func	
+					
+					def func(attr,obj):
+						return False
+					funcs['handles']['in_layout'] = func	
+
+					def func(attr,obj):
+						return "right"
+					funcs['labels']['ha'] = func																
+					
+					def func(attr,obj):
+						x = max([0*label.get_window_extent().width for label in obj.get_texts()])
+						y = 0
+						return (x,y)
+					funcs['labels']['position'] = func	
+
+					if indexes:
+						_kwds.update({
+							**({'legendHandles': {
+									**_kwds.get('legendHandles',{}),
+									**({
+										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
+										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
+										} if kwargs[attr].get('set_title_row') is not None else {}),							
+									}
+									}),
+							**({'legendLabels': {
+									**_kwds.get('legendLabels',{}),						
+									**({
+										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
+										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
+										} if kwargs[attr].get('set_title_row') is not None else {}),							
+									}
+									}),					
+							})
+
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
+				
+
 				_kwds.update({
 					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
 					'set_title':{
 						**({'title': kwargs[attr].get('set_title',kwargs[attr].get('title',None)),
 							'prop':{'size':kwargs[attr].get('prop',{}).get('size')},
 							} 
-									if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
+							if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts']},
 					**({'legendHandles': {
-							'set_%s'%(prop): [kwargs[attr]['set_%s'%(prop)]]*len(handles) if isinstance(kwargs[attr]['set_%s'%(prop)],scalars) else kwargs[attr]['set_%s'%(prop)]
+							**_kwds.get('legendHandles',{}),												
+							**({'set_%s'%(prop): [kwargs[attr]['set_%s'%(prop)]]*len(handles) if isinstance(kwargs[attr]['set_%s'%(prop)],scalars) else kwargs[attr]['set_%s'%(prop)]
 							for prop in ['alpha','color']
-							if kwargs[attr].get('set_%s'%(prop)) is not None}} if any(kwargs[attr].get('set_%s'%(prop)) is not None for prop in ['alpha','color']) else {})
+							if kwargs[attr].get('set_%s'%(prop)) is not None} 
+							if any(kwargs[attr].get('set_%s'%(prop)) is not None for prop in ['alpha','color']) else {}),
+							}
+						}),
 					})
 
 				call = (
@@ -1256,7 +1489,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(kwargs[attr].get('set_label',True)))
 					)
 
-				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label','set_title_col','set_title_row'])
 
 			elif attr in ['plot']:
 				dim = 2
@@ -1948,7 +2181,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								try:
 									for j,_subattr_ in enumerate(list(get_children(_attr,a))):
 										for l in _kwds[k]:
-											getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])])
+											try:
+												if isinstance(_kwds[k][l],list):
+													if callable(_kwds[k][l][j%len(_kwds[k][l])]):
+														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])](_subattr_,_attr))
+													else:
+														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])])
+												elif isinstance(_kwds[k][l],dict) and j in _kwds[k][l]:
+													if callable(_kwds[k][l][j]):
+														getattr(_subattr_,l)(_kwds[k][l][j](_subattr_,_attr))
+													else:
+														getattr(_subattr_,l)(_kwds[k][l][j])
+											except:
+												continue
 								except Exception as exception:
 									try:
 										for j,_subattr_ in enumerate(getattr(_attr_,a)):
