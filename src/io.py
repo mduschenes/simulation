@@ -46,7 +46,8 @@ class cd(object):
 		self.cwd = cwd()
 
 		try:
-			os.chdir(self.path)
+			path = os.path.expandvars(os.path.expanduser(self.path))
+			os.chdir(path)
 		except:
 			pass
 		return

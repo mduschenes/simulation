@@ -1205,6 +1205,11 @@ def init(key,
 			value = task[subattr]
 			task[attr] = value
 
+			attr = 'file'
+			value = task[attr]		
+			value = join(value,root=task['cwd'])
+			task[attr] = value	
+
 			attr = 'source'
 			value = task[attr]		
 			value = join(task[attr],root=task['pwd'])
@@ -1250,6 +1255,7 @@ def init(key,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
+			'file':file,
 			'source':jobs[key],
 			'destination':jobs[key],
 			'resume':resume[key],
@@ -1288,7 +1294,7 @@ def init(key,
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-			msg = 'Job : %s'%(key)
+			msg = 'Job : %s\n%s'%(key,task)
 			logger.log(info,msg)
 		
 		return task
@@ -1432,6 +1438,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		cmd = task['cmd']
 		env = task['env']
 		path = task['path']
+		file = task['file']
 		patterns = task['patterns']		
 		source = task['source']
 		destination = task['destination']
