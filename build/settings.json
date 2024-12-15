@@ -107,7 +107,7 @@
 	"N":4,
 	"M":4,
 	"D":2,
-	"d":1,	
+	"d":1,
 	"seed":null,
 	"string":"module",
 	"measure":{"string":"povm","operator":"pauli","D":2,"architecture":"tensor","options":{"cyclic":false}},
