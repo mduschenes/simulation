@@ -14460,6 +14460,7 @@
 						"label": {
 							"N": null,
 							"M": [2,4,8,16],
+							"max_bond":null,							
 							"cyclic": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.quantum@"
@@ -14768,6 +14769,7 @@
 						"label": {
 							"N": null,
 							"M": [2,4,8,16],
+							"max_bond":null,							
 							"cyclic": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.classical@"
