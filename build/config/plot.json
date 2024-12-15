@@ -14263,7 +14263,10 @@
 					"length": 8,
 					"width": 1
 				}
-			},            
+			}, 
+			"set_title": {
+				"label": "N"
+			},			          
 			"set_ylabel": {
 				"ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ ${\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 			},
@@ -14584,7 +14587,10 @@
 					"length": 8,
 					"width": 1
 				}
-			},            
+			},
+			"set_title": {
+				"label": "N"
+			},
 			"set_ylabel": {
 				"ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ ${\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 			},
@@ -14889,7 +14895,10 @@
 					"length": 8,
 					"width": 1
 				}
-			},            
+			},
+			"set_title": {
+				"label": "N"
+			},			            
 			"set_ylabel": {
 				"ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ ${\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 			},
