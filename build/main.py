@@ -45,6 +45,12 @@ if __name__ == '__main__':
 			'default':None,
 			'nargs':'?'
 		},
+		'--path':{
+			'help':'Path',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
 		'--env':{
 			'help':'Environment',
 			'type':str,

@@ -261,7 +261,7 @@ def setup(settings):
 
 
 
-def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=None):
+def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=None,verbose=None):
 	'''
 	Run simulations
 	Args:
@@ -269,6 +269,7 @@ def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=Non
 		device (str): Name of device to submit to
 		job (str): Name of job to run simulations
 		cmd (str): Name of command to run simulations
+		path (str): Path where to submit job
 		env (str): Name of environment to run simulations
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
@@ -278,7 +279,9 @@ def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=Non
 	
 	device = None if device is None else device
 	job = 'submit.slurm' if job is None else job
+	settings = join(settings,abspath=True)
 	cmd = funcpath(run) if cmd is None else cmd
+	path = join(path,abspath=True)	
 	env = environ().get('CONDA_PREFIX',environ().get('VIRTUAL_ENV')) if env is None else env
 	execute = True if execute is None else execute
 	verbose = True if verbose is None else verbose
@@ -292,6 +295,7 @@ def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=Non
 			}
 		kwargs = {}
 		
+		path = path
 		exe = join(split(cmd,directory=True),job)
 		flags = []
 		cmd = []
@@ -303,7 +307,7 @@ def run(settings,device=None,job=None,cmd=None,env=None,execute=None,verbose=Non
 
 		args,env = command(args,kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-		results = call(args,env=env,execute=execute,verbose=verbose)
+		results = call(args,path=path,env=env,execute=execute,verbose=verbose)
 
 	else:
 
@@ -347,6 +351,12 @@ if __name__ == '__main__':
 			'default':None,
 			'nargs':'?'
 		},
+		'--path':{
+			'help':'Path',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},		
 		'--env':{
 			'help':'Environment',
 			'type':str,
