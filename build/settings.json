@@ -94,7 +94,7 @@
 		},
 	"groups":[["module.N","model.N"]],
 	"filters":null,
-	"func":"src.functions.permutations",
+	"func":null,
 	"index":null
 	},
 "cls":{
