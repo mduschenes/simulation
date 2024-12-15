@@ -57,7 +57,7 @@ scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 
 # Cleanup
 FILE=${SLURM_JOB_NAME}.stdout
-if [[ -s ${FILE} || ! -s ${FILE} ]]
+if [[ ! -s ${FILE} ]]
 then
 	rm -rf ${FILE}
 fi 
