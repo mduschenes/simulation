@@ -1289,16 +1289,28 @@ def apply(keys,data,plots,processes,verbose=None):
 		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))	
 
 	def mean_obj(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.mean(axis=0))
+		try:
+			obj = np.array(list(obj))
+			obj = to_tuple(obj.mean(axis=0))
+		except ValueError:
+			obj = np.array([list(obj)[0]])
+			obj = obj[0]
 		return obj
 	def std_obj(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+		try:
+			obj = np.array(list(obj))
+			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+		except ValueError:
+			obj = np.array([list(obj)[0]])
+			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))
 		return obj
 	def sem_obj(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
+		try:
+			obj = np.array(list(obj))
+			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+		except ValueError:
+			obj = np.array([list(obj)[0]])
+			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))		
 		return obj	
 
 	def mean_arithmetic(obj,*args,**kwargs):

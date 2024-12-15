@@ -14032,8 +14032,8 @@
 	"None.spectrum.quantum.classical.M.noise.parameters":{
 		"fig": {
 			"set_size_inches": {
-				"w": 8,
-				"h": 8
+				"w": 16,
+				"h": 16
 			},
 			"subplots_adjust": {},
 			"tight_layout": {},
@@ -14051,7 +14051,7 @@
 					"y": "spectrum.quantum",
 					"label": {
 						"label": {
-							"N": null,
+							"N": [8],
 							"max_bond":null,
 							"cyclic": null,
 							"noise.parameters": null
@@ -14083,9 +14083,14 @@
 					},
 					"alpha": {
 						"@max_bond@": [
+							0.2,
+							0.3,
 							0.4,
+							0.5,
 							0.6,
+							0.7,
 							0.8,
+							0.9,
 							1
 						]
 					},
@@ -14094,7 +14099,11 @@
 							"o",
 							"^",
 							"s",
-							"P"
+							"P",
+							"h",
+							"H",
+							"D",
+							"X"
 						]
 					},
 					"linestyle": "-",
@@ -14132,7 +14141,7 @@
 					"y": "spectrum.classical",
 					"label": {
 						"label": {
-							"N": null,
+							"N": [8],
 							"max_bond":null,
 							"cyclic": null,
 							"noise.parameters": null
@@ -14164,9 +14173,14 @@
 					},
 					"alpha": {
 						"@max_bond@": [
+							0.2,
+							0.3,
 							0.4,
+							0.5,
 							0.6,
+							0.7,
 							0.8,
+							0.9,
 							1
 						]
 					},
@@ -14175,7 +14189,11 @@
 							"o",
 							"^",
 							"s",
-							"P"
+							"P",
+							"h",
+							"H",
+							"D",
+							"X"
 						]
 					},
 					"linestyle": "--",
@@ -14320,6 +14338,22 @@
 			},
 			"set_ylim":{"ymin":1e-9,"ymax":1e1},
 			"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0]},
+
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xlim":{"xmin":-10,"xmax":150},
+			"set_xticks":{"ticks":[0,20,40,60,80,100,120,140]},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-9,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0]},
+
 
 			"yaxis.set_major_formatter": {
 				"ticker": {
