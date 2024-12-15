@@ -62,6 +62,9 @@
 		"jobs.job.cwd":["scratch/povm/test"],
 		"jobs.postprocess.cwd":["scratch/povm/test"],
 
+		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
+		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/src/config"],
+
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
 		"jobs.job.process":["series"],
@@ -188,7 +191,7 @@
 			},
 		"dependencies":[],
 		"pwd":"config",
-		"cwd":"test",
+		"cwd":"data",
 		"pool":null,
 		"resume":null,
 		"pause":1,
@@ -221,7 +224,7 @@
 			},
 		"dependencies":[],	
 		"pwd":"config",
-		"cwd":"test",
+		"cwd":"data",
 		"pool":null,		
 		"pause":1,	
 		"file":"postprocess.sh",

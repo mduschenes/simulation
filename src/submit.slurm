@@ -2,8 +2,8 @@
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=submit
-#SBATCH --output=%x.stdout
-#SBATCH --error=%x.stderr
+#SBATCH --output=%x.%j.stdout
+#SBATCH --error=%x.%j.stderr
 
 #SBATCH --partition=cpu
 #SBATCH --time=06:00:00
