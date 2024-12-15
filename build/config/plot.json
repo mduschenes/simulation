@@ -14051,7 +14051,7 @@
 					"y": "spectrum.quantum",
 					"label": {
 						"label": {
-							"N": [8],
+							"N": null,
 							"max_bond":null,
 							"cyclic": null,
 							"noise.parameters": null
@@ -14141,7 +14141,7 @@
 					"y": "spectrum.classical",
 					"label": {
 						"label": {
-							"N": [8],
+							"N": null,
 							"max_bond":null,
 							"cyclic": null,
 							"noise.parameters": null
