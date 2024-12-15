@@ -6813,6 +6813,8 @@ class Module(System):
 		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 		N (int): Size of system
 		M (int): Duration of system
+		D (int): Local Dimension of system
+		d (int): Spatial Dimension of system
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,configuration,base,unit,options,seed,seeding,random,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -6821,7 +6823,7 @@ class Module(System):
 
 	defaults = dict(
 		model=None,
-		N=None,M=None,
+		N=None,M=None,D=None,d=None,
 		state=None,parameters=None,
 		variable=None,constant=None,hermitian=None,unitary=None,
 		data=None,measure=None,callback=None,
@@ -6829,11 +6831,11 @@ class Module(System):
 		system=None,
 		)
 
-	def __init__(self,model=None,N=None,M=None,
+	def __init__(self,model=None,N=None,M=None,D=None,d=None,
 		state=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,N=N,M=M,
+			model=model,N=N,M=M,D=D,d=d,
 			state=state,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -7868,7 +7870,7 @@ class Callback(System):
 			'discord.quantum','discord.classical','discord.renyi',
 			'spectrum.quantum','spectrum.classical',
 			'rank.quantum','rank.classical',
-			'noise.parameters'
+			'noise.parameters',
 			]
 
 		if attributes is None:
@@ -7992,6 +7994,7 @@ class Callback(System):
 						parameters=parameters,
 						state=obj,
 						**keywords)
+
 
 			elif attr in ['noise.parameters']:
 

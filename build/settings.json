@@ -17,9 +17,12 @@
 
 		"module.N":[4,6,8],
 		"module.M":[1,2,5,10,20,50],
+		"module.D":[2],
+		"module.d":[1],
 		"model.N":[4,6,8],
 		"model.M":[1],
 		"model.D":[2],
+		"model.d":[1],
 		"model.local":[true],
 		"model.configuration":[{
 			"key":["src.functions.key"],
@@ -103,6 +106,8 @@
 "module":{
 	"N":4,
 	"M":4,
+	"D":2,
+	"d":1,	
 	"seed":null,
 	"string":"module",
 	"measure":{"string":"povm","operator":"pauli","D":2,"architecture":"tensor","options":{"cyclic":false}},
@@ -229,7 +234,7 @@
 	},
 "callback":{
 	"attributes":{
-		"N":"N","M":"M","d":"d","D":"state.D",
+		"N":"N","M":"M","d":"d","D":"D",
 		"key":"key","instance":"instance","timestamp":"timestamp",
 		"seed":"seed","seeding":"seeding",
 		"noise.parameters":"noise.parameters",
@@ -243,12 +248,14 @@
 		"norm.quantum":"measure.norm_quantum",
 		"norm.classical":"measure.norm_classical",
 		"norm.pure":"measure.norm_pure",
+
 		"entanglement.quantum":"measure.entanglement_quantum",
 		"entanglement.classical":"measure.entanglement_classical",
 		"entanglement.renyi":"measure.entanglement_renyi",
 		"entangling.quantum":"measure.entangling_quantum",
 		"entangling.classical":"measure.entangling_classical",
 		"entangling.renyi":"measure.entangling_renyi",
+		
 		"mutual.quantum":"measure.mutual_quantum",
 		"mutual.measure":"measure.mutual_measure",
 		"mutual.classical":"measure.mutual_classical",
@@ -256,6 +263,7 @@
 		"discord.quantum":"measure.discord_quantum",
 		"discord.classical":"measure.discord_classical",
 		"discord.renyi":"measure.discord_renyi",
+		
 		"spectrum.quantum":"measure.spectrum_quantum",
 		"spectrum.classical":"measure.spectrum_classical",
 		"rank.quantum":"measure.rank_quantum",
