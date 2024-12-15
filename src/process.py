@@ -1526,6 +1526,13 @@ def apply(keys,data,plots,processes,verbose=None):
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
 			groups = groups.groupby(by=by,**options)
 
+
+		if not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes):
+			key,value = name,None
+			setter(plots,{key:value},delimiter=delim,default=True)
+			continue
+
+
 		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
 					for i in range(groups.ndim)))

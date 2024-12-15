@@ -51,7 +51,7 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 
 def func_stat_group(data,independent=None,dependent=None,**kwargs):
 
-	if independent is None or dependent is None:
+	if independent is None or dependent is None or any(attr not in data for attr in independent) or any(attr not in data for attr in dependent):
 		return data
 
 	booleans = {attr:lambda data,attr=attr:(data[attr] == data[attr].max()) for attr in dependent}
