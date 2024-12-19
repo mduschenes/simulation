@@ -2545,7 +2545,7 @@ class Measure(System):
 				index = tuple(i for i in range(N) if i not in where)
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
-				data += norm*tmp
+				data -= norm*tmp
 
 			data = asscalar(data)
 
@@ -2585,7 +2585,7 @@ class Measure(System):
 
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
-				data += norm*tmp
+				data -= norm*tmp
 
 		data = func(data)
 
