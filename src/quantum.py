@@ -1623,7 +1623,7 @@ class Measure(System):
 			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): Eigenvalues of shape (self.D**L,) or (self.K**L,)
+			data (array): Eigenvalues, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
 
 		func = lambda data: data
@@ -1632,7 +1632,7 @@ class Measure(System):
 
 			where = tuple(where) if where is not None else None
 
-			data = eig(state,**kwargs)
+			data = eig(state,**kwargs)[::-1]
 
 		elif isinstance(state,matrices):
 
@@ -1669,7 +1669,7 @@ class Measure(System):
 			where (int,iterable[int]): indices of function
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array): Singular values of shape (self.D**L,) or (self.K**L,)
+			data (array): Singular values, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
 
 		func = lambda data: data
@@ -1682,7 +1682,7 @@ class Measure(System):
 
 		elif isinstance(state,matrices):
 
-			where = ((min(where)) if min(where) > 0 else (max(where))) if where is not None else None
+			where = ((min(where)-1) if min(where) > 0 else (max(where)+1)) if where is not None else None
 
 			data = state.singular_values(where)
 

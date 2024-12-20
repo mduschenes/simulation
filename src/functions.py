@@ -119,7 +119,7 @@ def func_spectrum(data,attr=None):
 	out = np.array(list(data[attr]))
 	nan = is_nan(out)
 	out = np.array([*sort(abs(out[~nan]))[::-1],*out[nan]])/maximum(out[~nan])
-	out = to_tuple(out)
+	out = to_tuple([out]) if len(out) != len(data[attr]) else to_tuple(out)
 	return out
 
 def func_spectrum_rank(data,attr=None):

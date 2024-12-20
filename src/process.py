@@ -3291,7 +3291,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>1))))))},
+								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>=1))))))},
 						**{label: label 
 							for label in natsorted(set((
 							label 

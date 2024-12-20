@@ -1979,7 +1979,7 @@ def test_module(*args,**kwargs):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[1],"module.measure.operator":["pauli"],
+		"module.N":[4],"module.M":[3],"module.measure.operator":["pauli"],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
 		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],
@@ -2097,32 +2097,32 @@ def test_calculate(*args,**kwargs):
 
 	
 		attrs = [
-			# 'trace',
-			# 'vectorize',
-			# 'measure',
-			# 'norm_quantum',
-			# 'norm_classical',
-			# 'norm_pure',
-			# 'infidelity_quantum',
-			# 'infidelity_classical',
-			# 'infidelity_pure',
-			# 'entanglement_quantum',
-			# 'entanglement_classical',
-			# 'entanglement_renyi',
-			# 'entangling_quantum',
-			# 'entangling_classical',
-			# 'entangling_renyi',
+			'trace',
+			'vectorize',
+			'measure',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			'entangling_quantum',
+			'entangling_classical',
+			'entangling_renyi',
 			'mutual_quantum',
 			'mutual_measure',
-			# 'mutual_classical',
-			# 'mutual_renyi',
-			# 'discord_quantum',
-			# 'discord_classical',
-			# 'discord_renyi',
-			# 'spectrum_quantum',
-			# 'spectrum_classical',
-			# 'rank_quantum',
-			# 'rank_classical',
+			'mutual_classical',
+			'mutual_renyi',
+			'discord_quantum',
+			'discord_classical',
+			'discord_renyi',
+			'spectrum_quantum',
+			'spectrum_classical',
+			'rank_quantum',
+			'rank_classical',
 			]
 
 
@@ -2208,14 +2208,14 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = [i for j,i in enumerate(range(model.N//2,model.N)) if i < model.N]
+				where = 1/2
 
 			elif attr in [
 				'measure',
 				]:
 
 				kwargs = dict()
-				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2-1,model.N//2+1)) if i < model.N}
+				where = 1/2
 
 			else:
 
