@@ -1988,7 +1988,6 @@ def test_calculate(*args,**kwargs):
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
 		"module.measure.options":[{"cyclic":False}],
 		"module.measure.architecture":["tensor","array"],
-		"module.measure.architecture":["tensor"],
 		}	
 
 	groups = None
@@ -2199,6 +2198,12 @@ def test_calculate(*args,**kwargs):
 
 			elif attr in [
 				'trace','vectorize',
+				]:
+
+				kwargs = dict()
+				where = [i for i in range(model.N//2)]
+
+			elif attr in [
 				'entanglement_quantum','entanglement_classical','entanglement_renyi',
 				'entangling_quantum','entangling_classical','entangling_renyi',
 				'mutual_quantum','mutual_measure','mutual_classical','mutual_renyi',
@@ -2215,7 +2220,7 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = 1/2
+				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2,model.N)) if i < model.N}
 
 			else:
 
