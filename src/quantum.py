@@ -1333,6 +1333,163 @@ class Measure(System):
 
 		return data
 
+	def eig(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Eigenvalues for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): Eigenvalues, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if isinstance(state,arrays):
+
+			where = tuple(where) if where is not None else None
+
+			data = eig(state,**kwargs)[::-1]
+
+		elif isinstance(state,matrices):
+
+			where = max(where) if where is not None else None
+
+			data = state.singular_values(where)
+
+			data = sqr(data)
+
+		elif isinstance(state,tensors):
+			
+			where = tuple(self.ind.format(i) for i in where) if where is not None else None
+
+			data = state.singular_values(where)
+
+			data = sqr(data)
+
+		else:
+
+			where = tuple(where) if where is not None else None
+			
+			data = state
+
+		data = func(data)
+
+		return data
+
+	def svd(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Singular values for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): Singular values, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if isinstance(state,arrays):
+
+			where = tuple(where) if where is not None else None
+
+			data = svd(state,**kwargs)
+
+		elif isinstance(state,matrices):
+
+			where = ((min(where)-1) if min(where) > 0 else (max(where)+1)) if where is not None else None
+
+			data = state.singular_values(where)
+
+		elif isinstance(state,tensors):
+			
+			where = tuple(self.ind.format(i) for i in where) if where is not None else None
+
+			data = state.singular_values(where)
+
+		else:
+
+			where = tuple(where) if where is not None else None
+
+			data = state
+
+		data = func(data)
+
+		return data
+
+	def rank(self,parameters=None,state=None,where=None,eps=None,**kwargs):
+		'''
+		Rank for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			eps (float): precision of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array): data
+		'''
+
+		func = lambda data: nonzero(real(data)/maximum(abs(real(data))),eps=eps)
+
+		data = func(state)
+
+		return data		
+
+	def entropy(self,parameters=None,state=None,where=None,**kwargs):
+		'''
+		Entropy for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
+			where (int,iterable[int]): indices of function
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (array,Probability,MPS): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
+		'''
+
+		func = lambda data: data
+
+		if isinstance(state,arrays):
+
+			data = state
+
+			data = abs(data)
+
+			options = Dictionary(**{**dict(eps=None),**kwargs})
+			size = nonzero(data,eps=options.eps)
+			indices = slice(size)
+
+			data = data[indices]
+
+			data = -addition(data*log(data))
+
+		elif isinstance(state,matrices):
+
+			where = max(where) if where is not None else None
+
+			data = state.entropy(where)
+
+		elif isinstance(state,tensors):
+			
+			where = tuple(self.ind.format(i) for i in where) if where is not None else None
+
+			data = state.entropy(where)
+
+		else:
+
+			where = tuple(where) if where is not None else None
+			
+			data = state
+
+		data = func(data)
+
+		return data
+
 	def trace(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Trace for POVM probability measure
@@ -1565,161 +1722,6 @@ class Measure(System):
 		data = func(data)
 
 		return data
-
-	def entropy(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Entropy for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (array,Probability,MPS): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
-		'''
-
-		func = lambda data: data
-
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
-
-			data = state
-
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-
-		elif self.architecture in ['tensor']:
-			
-			data = state
-
-			data = abs(data)
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = data.size
-			count = nonzero(data,eps=options.eps)
-			indices = slice(size-count,size)
-
-			data = data[indices]
-
-			data = -addition(data*log(data))
-
-		data = func(data)
-
-		return data
-
-	def eig(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Eigenvalues for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (array): Eigenvalues, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
-		'''
-
-		func = lambda data: data
-
-		if isinstance(state,arrays):
-
-			where = tuple(where) if where is not None else None
-
-			data = eig(state,**kwargs)[::-1]
-
-		elif isinstance(state,matrices):
-
-			where = max(where) if where is not None else None
-
-			data = state.singular_values(where)
-
-			data = sqr(data)
-
-		elif isinstance(state,tensors):
-			
-			where = tuple(self.ind.format(i) for i in where) if where is not None else None
-
-			data = state.singular_values(where)
-
-			data = sqr(data)
-
-		else:
-
-			where = tuple(where) if where is not None else None
-			
-			data = state
-
-		data = func(data)
-
-		return data
-
-	def svd(self,parameters=None,state=None,where=None,**kwargs):
-		'''
-		Singular values for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (array): Singular values, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
-		'''
-
-		func = lambda data: data
-
-		if isinstance(state,arrays):
-
-			where = tuple(where) if where is not None else None
-
-			data = svd(state,**kwargs)
-
-		elif isinstance(state,matrices):
-
-			where = ((min(where)-1) if min(where) > 0 else (max(where)+1)) if where is not None else None
-
-			data = state.singular_values(where)
-
-		elif isinstance(state,tensors):
-			
-			where = tuple(self.ind.format(i) for i in where) if where is not None else None
-
-			data = state.singular_values(where)
-
-		else:
-
-			where = tuple(where) if where is not None else None
-
-			data = state
-
-		data = func(data)
-
-		return data
-
-	def rank(self,parameters=None,state=None,where=None,eps=None,**kwargs):
-		'''
-		Rank for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
-			eps (float): precision of function
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (array): data
-		'''
-
-		func = lambda data: nonzero(real(data)/maximum(abs(real(data))),eps=eps)
-
-		data = func(state)
-
-		return data		
 
 	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
 		'''
