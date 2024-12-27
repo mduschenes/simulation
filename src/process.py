@@ -1565,8 +1565,9 @@ def apply(keys,data,plots,processes,verbose=None):
 						 'object':{'':'first','err':none}[func],
 						 'dtype':funcs[function][axes][func]
 						}[dtypes[attr]]) 
-						for function in funcs for func in funcs[function][axes]] 
-						for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
+						for function in funcs for func in funcs[function][axes]
+						if delim.join(((attr,function,func))) not in data] 
+						for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])						
 						},
 		}
 
@@ -3335,15 +3336,21 @@ def plotter(plots,processes,verbose=None):
 							))))
 							]
 
-					if any(isinstance(i,tuple) for i in value):
+					if any(isinstance(i,tuple) for i in value) and any(isinstance(i,str) for i in value):
 						value = ': '.join([
 							separator.join([j for i in value if isinstance(i,tuple) for j in i]),
 							separator.join([j for i in value if isinstance(i,str) for j in [i]])
 							])
-					else:
+					elif any(isinstance(i,tuple) for i in value):
+						value = (
+							separator.join([j for i in value if isinstance(i,tuple) for j in i])
+							)
+					elif any(isinstance(i,str) for i in value):
 						value = (
 							separator.join([j for i in value if isinstance(i,str) for j in [i]])
-							)						
+							)
+					else:
+						value = None
 
 					value = value if value else None
 

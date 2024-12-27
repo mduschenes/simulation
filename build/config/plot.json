@@ -5570,7 +5570,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -5881,7 +5881,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6192,7 +6192,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6499,7 +6499,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6810,7 +6810,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.measure":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.measure"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7121,7 +7121,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.classical"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7432,7 +7432,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7743,7 +7743,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8054,7 +8054,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.classical"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8365,7 +8365,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8676,7 +8676,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8753,7 +8753,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9163,7 +9163,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9240,7 +9240,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9661,7 +9661,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -9981,7 +9981,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10301,7 +10301,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10621,7 +10621,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.measure":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.measure"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10941,7 +10941,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.classical"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11261,7 +11261,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11581,7 +11581,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11901,7 +11901,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.classical":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.classical"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12221,7 +12221,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12541,7 +12541,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -12852,7 +12852,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -14032,7 +14032,7 @@
 	"None.spectrum.quantum.classical.M.noise.parameters":{
 		"fig": {
 			"set_size_inches": {
-				"w": 16,
+				"w": 32,
 				"h": 16
 			},
 			"subplots_adjust": {},
@@ -14061,7 +14061,7 @@
 							"rank.quantum":{"src.functions.func_spectrum_rank":{"attr":"spectrum.quantum"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	   
 						"scinotation": {
 							"scilimits": [
@@ -14151,7 +14151,7 @@
 							"rank.classical":{"src.functions.func_spectrum_rank":{"attr":"spectrum.classical"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"src.functions.func_stat_group":{"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -14436,7 +14436,7 @@
 				"framealpha": 0.8,
 				"loc": [
 					1.5,
-					0.225
+					0.3
 				],
 				"set_color": "grey",
 				"keep":["marker","linestyle"],
@@ -14461,10 +14461,16 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
-					}
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
 				}
 			}
 		}
@@ -14473,8 +14479,8 @@
 	"None.spectrum.quantum.M.noise.parameters":{
 		"fig": {
 			"set_size_inches": {
-				"w": 8,
-				"h": 8
+				"w": 32,
+				"h": 16
 			},
 			"subplots_adjust": {},
 			"tight_layout": {},
@@ -14745,7 +14751,7 @@
 				"framealpha": 0.8,
 				"loc": [
 					1.5,
-					0.225
+					0.3
 				],
 				"set_color": "grey",
 				"keep":["marker","linestyle","alpha"],
@@ -14770,10 +14776,16 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
-					}
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
 				}
 			}
 		}
@@ -14782,8 +14794,8 @@
 	"None.spectrum.classical.M.noise.parameters":{
 		"fig": {
 			"set_size_inches": {
-				"w": 8,
-				"h": 8
+				"w": 32,
+				"h": 16
 			},
 			"subplots_adjust": {},
 			"tight_layout": {},
@@ -15054,7 +15066,7 @@
 				"framealpha": 0.8,
 				"loc": [
 					1.5,
-					0.225
+					0.3
 				],
 				"set_color": "grey",
 				"keep":["marker","linestyle","alpha"],
@@ -15079,10 +15091,16 @@
 			"share": {
 				"ax": {
 					"legend": {
-						"title": true,
-						"handles": true,
-						"labels": true
-					}
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
 				}
 			}
 		}

@@ -49,24 +49,62 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
-def func_stat_group(data,independent=None,dependent=None,**kwargs):
+def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,**kwargs):
+
+	independent = [independent] if isinstance(independent,str) else independent
+	dependent = [dependent] if isinstance(dependent,str) else dependent
 
 	if independent is None or dependent is None or any(attr not in data for attr in independent) or any(attr not in data for attr in dependent):
 		return data
 
-	booleans = {attr:lambda data,attr=attr:(data[attr] == data[attr].max()) for attr in dependent}
+	if seed is not None:
+		options = dict(seed=seed)
+		key = seeded(**options)
 
-	options = dict(
-		by=independent,
-		filter=None,
-		apply=None,
-		agg={**{attr:'first' for attr in data},**{attr:'mean' for attr in dependent}},
-		)
-	data = grouper(data,**options)
+	def split(data):
+		options = dict(seed=seed)
+		key = seeded(**options)
 
-	boolean = conditions([booleans[attr](data) for attr in booleans],op='and')
+		options = dict(frac=1)
+		data = data.sample(**options)
 
-	data = data[boolean]
+		options = dict(drop=True)
+		data = data.reset_index(**options)
+
+		data[attr] = data.index % samples
+
+		return data
+
+	def agg(data):
+		by = independent
+		agg = {**{attr:'first' for attr in data},**{attr:'mean' for attr in dependent}}
+		options = dict(by=by,agg=agg)
+		data = grouper(data,**options)
+		return data
+
+	def mask(data):
+		booleans = {attr:lambda data,attr=attr:(data[attr].index == data[attr].abs().idxmax()) for attr in dependent}
+		boolean = conditions([booleans[attr](data) for attr in booleans],op='and')
+		data = data[boolean]
+		return data
+
+	if samples is not None:
+
+		attr = '__group__'
+
+		by = independent
+		apply = split
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+
+		by = attr
+		apply = lambda data: mask(agg(data))
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+
+	else:
+		
+		data = mask(agg(data))
 
 	return data
 

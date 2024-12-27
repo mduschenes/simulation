@@ -2902,9 +2902,29 @@ if backend in ['jax']:
 
 		def init(self,seed=None):
 			if seed is not None:
+				self.seeds(seed)
 				self.seed = seed
 				self.key = rng.key(self.seed) if not is_key(self.seed) else self.seed
 			return
+
+		def seeds(self,seed=None):
+			'''
+			Set random seed
+			Args:
+				seed (int,array,Key): Seed for random number generation or random key for future seeding
+			Returns:
+				key (key): Random key
+			'''
+
+			if seed is None:
+				bounds = [0,2**32]
+				seed = orng.randint(*bounds)
+			else:
+				orng.seed(seed)
+			
+			key = rng.key(seed)
+
+			return key
 
 		def split(self,shape=None,seed=None):
 			self.init(seed)
@@ -3028,10 +3048,29 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		def init(self,seed=None):
 			if seed is not None:
-				orng.seed(seed)
+				self.seeds(seed)
 				self.seed = seed
 				self.key = seed
 			return
+
+		def seeds(self,seed=None):
+			'''
+			Set random seed
+			Args:
+				seed (int,array,Key): Seed for random number generation or random key for future seeding
+			Returns:
+				key (key): Random key
+			'''
+
+			if seed is None:
+				bounds = [0,2**32]
+				seed = orng.randint(*bounds)
+
+			orng.seed(seed)
+			
+			key = seed
+
+			return key
 
 		def split(self,shape=None,seed=None):
 			self.init(seed)
@@ -4022,22 +4061,23 @@ def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,
 	else:
 		return rand(shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
 
-def grouper(data,by=None,filter=None,apply=None,agg=None,**kwargs):
+def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 	'''
 	Filter,Group,Apply,Aggregate Functions of Groups of data
 	Args:
 		data (dataframe): Data to apply functions
 		by (iterable[str]): Attributes of data to group
-		filter (bool): Filter or mask of data to apply
+		filter (callable): Filter to apply to data
 		apply (callable): Function to apply to each group of data
 		agg (callable): Function to aggregate groups of data
+		index (bool): Reset indices of data
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		data (dataframe): Data with Filter,Group,Apply,Aggregate
 	'''
 
 	if filter is not None:
-		data = data[filter]
+		data = filter(data)
 
 	dtype = {attr: data[attr].dtype for attr in data}
 
@@ -4045,21 +4085,39 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,**kwargs):
 		options = dict(as_index=False,dropna=False)
 		data = data.groupby(by=by,**options)
 
-	if apply is not None and by is not None:
+	if apply is not None and by is not None and agg is not None:
+		options = dict()
+		data = data.apply(apply,**options)
+
 		options = dict(drop=True)
-		data = data.apply(apply).reset_index(**options)
+		data = data.reset_index(**options)
 
 		options = dict(as_index=False,dropna=False)
 		data = data.groupby(by=by,**options)
-	elif apply is not None:
-		options = dict(drop=True)
-		data = data.apply(apply).reset_index(**options)
 
+	elif apply is not None and by is not None:
+		options = dict()
+		data = data.apply(apply,**options)
+
+		options = dict(drop=True)
+		data = data.reset_index(**options)
+
+	elif apply is not None:
+		options = dict()
+		data = data.apply(apply)
+	
 	if agg is not None and by is not None:
 		options = dict(level=0,axis=1)
 		data = data.agg(agg).astype(dtype)
 		try:
 			data = data.droplevel(**options)
+		except:
+			pass
+
+	if index:
+		options = dict(drop=True)
+		try:
+			data = data.reset_index(**options)
 		except:
 			pass
 
