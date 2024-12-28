@@ -36,8 +36,6 @@ class RNG(onp.random.RandomState):
 
 orng = RNG()
 
-
-
 _partial = partial
 partial = lambda func,*args,**kwargs: wraps(func)(_partial(func,*args,**kwargs))
 
@@ -2877,8 +2875,8 @@ if backend in ['jax']:
 		if seed is None:
 			bounds = [0,2**32]
 			seed = orng.randint(*bounds)
-		else:
-			orng.seed(seed)
+
+		orng.seed(seed)
 		
 		key = rng.key(seed)
 

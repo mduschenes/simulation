@@ -26,6 +26,7 @@ from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import maximum,minimum,abs,sort,log
 from src.utils import grouper,conditions
+from src.utils import orng as rng
 from src.utils import arrays,scalars,nonzero,delim
 
 from src.iterables import permuter,setter,getter
@@ -63,7 +64,10 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 		options = dict(seed=seed)
 		key = seeded(**options)
 
-		options = dict(frac=1)
+		options = dict(drop=True)
+		data = data.reset_index(**options)
+
+		options = dict(frac=1,random_state=rng)
 		data = data.sample(**options)
 
 		options = dict(drop=True)

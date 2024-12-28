@@ -8652,7 +8652,7 @@
 	"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
-				"w": 40,
+				"w": 48,
 				"h": 12
 			},
 			"subplots_adjust": {},
@@ -8838,7 +8838,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "2%",
-				"pad": -0.025,
+				"pad": -0.035,
 				"share":true,
 				"scinotation": {
 					"scilimits": [
@@ -8977,6 +8977,29 @@
 				]
 				}
 			],
+			"set_yticklabels": [
+				{
+				"labels": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]			
+				},
+				{
+				"obj":"twinx",
+				"labels": [
+					1e-15,
+					1e-12,
+					1e-9,
+					1e-6,
+					1e-03,
+					1.0
+				]
+				}
+			],			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 2}
@@ -9013,6 +9036,10 @@
 				}
 				}
 			],
+			"yaxis.set_tick_params":{
+				"obj":"twinx",
+				"labelsize":30
+			},			
 			"tick_params": [
 				{
 					"axis": "y",
@@ -9097,10 +9124,10 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					0.6,
-					0.925
+					-1.95,
+					0.875
 				],
-				"ncol": 2,
+				"ncol": 1,
 				"keep": "middle",
 				"merge": true,
 				"set_zorder": {
@@ -9129,8 +9156,10 @@
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
+					"set_ylabel.twinx": "right",
 					"set_yticks": true,
 					"set_yticklabels": "left",
+					"set_yticklabels.twinx": "right",
 					"set_colorbar": "right"
 				}
 			}
@@ -9139,7 +9168,7 @@
 	"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
-				"w": 40,
+				"w": 48,
 				"h": 12
 			},
 			"subplots_adjust": {},
@@ -9198,7 +9227,7 @@
 					"marker": "o",
 					"markeredgecolor": "k",
 					"markeredgewidth": 2,					
-					"markersize": 12,
+					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
 					"elinewidth": 4,
@@ -9276,7 +9305,7 @@
 					"marker": "^",
 					"markeredgecolor": "k",
 					"markeredgewidth": 2,					
-					"markersize": 12,
+					"markersize": 10,
 					"linestyle": "-",
 					"linewidth": 6,
 					"elinewidth": 4,
@@ -9325,7 +9354,7 @@
 				"alpha": 1,
 				"segments": 100,
 				"size": "2%",
-				"pad": -0.025,
+				"pad": -0.035,
 				"share":true,
 				"scinotation": {
 					"scilimits": [
@@ -9464,6 +9493,29 @@
 				]
 				}
 			],
+			"set_yticklabels": [
+				{
+				"labels": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]			
+				},
+				{
+				"obj":"twinx",
+				"labels": [
+					1e-15,
+					1e-12,
+					1e-9,
+					1e-6,
+					1e-03,
+					1.0
+				]
+				}
+			],			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 2}
@@ -9500,6 +9552,10 @@
 				}
 				}
 			],
+			"yaxis.set_tick_params":{
+				"obj":"twinx",
+				"labelsize":30
+			},			
 			"tick_params": [
 				{
 					"axis": "y",
@@ -9554,9 +9610,15 @@
 					"width": 0.5
 				}				
 			],
-			"set_aspect": {
+			"set_aspect": [
+				{
 				"aspect": "auto"
-			},
+				},
+				{
+				"obj":"twinx",
+				"aspect": "auto"
+				}
+			],
 			"grid": [
 				{
 				"visible": true,
@@ -9578,10 +9640,10 @@
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": [
-					0.1,
-					0.925
+					-1.95,
+					0.875
 				],
-				"ncol": 2,
+				"ncol": 1,
 				"keep": "middle",
 				"merge": true,
 				"set_zorder": {
@@ -9610,8 +9672,10 @@
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
+					"set_ylabel.twinx": "right",
 					"set_yticks": true,
 					"set_yticklabels": "left",
+					"set_yticklabels.twinx": "right",
 					"set_colorbar": "right"
 				}
 			}

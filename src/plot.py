@@ -40,6 +40,7 @@ VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
+CHILDREN = ['twin']
 OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
@@ -57,6 +58,7 @@ PATHS = {
 
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nan = np.nan
+delimiter='.'
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
 	'''
@@ -747,10 +749,10 @@ def get_obj(obj,attr=None):
 
 	if attr is None:
 		instance = obj
-	elif attr in ['twin%s'%(axes) for axes in AXES]:
+	elif attr in ['%s%s'%(children,axes) for children in CHILDREN for axes in AXES]:
 		instance = None
 		axes = attr[-1]
-		siblings = getattr(obj,"get_shared_%s_axes"%(axes))().get_siblings(obj)
+		siblings = getattr(obj,'get_shared_%s_axes'%(axes))().get_siblings(obj)
 		for sibling in siblings:
 			if sibling.bbox.bounds == obj.bbox.bounds and sibling is not obj:
 				instance = sibling
@@ -960,7 +962,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		return
 
-	def attr_texify(string,attr,kwarg,texify=None,**kwargs):
+	def attr_texify(string,attr,kwarg,obj=None,texify=None,**kwargs):
 		def _texify(string):
 
 			string = str(string)
@@ -1022,7 +1024,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		return string
 
 
-	def attr_share(value,attr,kwarg,share,**kwargs):
+	def attr_share(value,attr,kwarg,obj=None,share=None,**kwargs):
 		attrs = {
 			**{'set_%s'%(key):['%s'%(label)]
 				for axes in AXES 
@@ -1035,9 +1037,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'suptitle':['t'],
 				'annotate':['s'],
 				'set_colorbar':['value','values'],
-				"tick_params":["axis","which","length","width"],
+				'tick_params':['axis','which','length','width'],
 				'legend':['handles','labels','title','set_title']
 				},
+			}
+
+		attrs = {delimiter.join([kwarg,*children]):[
+			delimiter.join([prop,*child]) 
+			for prop in attrs[kwarg]
+			for child in [[]]
+			] 
+			for kwarg in attrs 
+			for children in [[],*(['%s%s'%(children,axes)] for children in CHILDREN for axes in AXES)]
 			}
 
 		def returns(value,attr,kwarg):
@@ -1051,10 +1062,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			else:
 				return None			
 
+		if obj is not None:
+			attr = delimiter.join([attr,obj])
+
 		if ((attr in attrs) and (kwarg not in attrs[attr])):
 			return value
 
-		if ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str,list,tuple))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
+		if share is None:
+			return value
+		elif ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str,list,tuple))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
 
 			if isinstance(share[attr],dict):
 				share = share[attr][kwarg]
@@ -1116,8 +1132,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwarg = ['call']
 
 
-			attribute = kwargs[attr].pop('obj',None)
+			attribute = kwargs[attr].get('obj')
 			obj = get_obj(obj,attribute)
+
+			nullkwargs.extend(['obj'])
 
 			if attr in ['legend']:
 
@@ -1340,7 +1358,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					funcs['handles']['in_layout'] = func	
 
 					def func(attr,obj):
-						return "left"
+						return 'left'
 					funcs['labels']['ha'] = func																
 					
 					def func(attr,obj):
@@ -1428,7 +1446,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					funcs['handles']['in_layout'] = func	
 
 					def func(attr,obj):
-						return "right"
+						return 'right'
 					funcs['labels']['ha'] = func																
 					
 					def func(attr,obj):
@@ -1822,12 +1840,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						else:
 							return "${x:g}$".format(x=x)
 
-				formatters = {"LogFormatterCustom":LogFormatterCustom}
+				formatters = {'LogFormatterCustom':LogFormatterCustom}
 
-				axes = attr.split('.')[0].replace('axis','')
-				which = attr.split('.')[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
+				axes = attr.split(delimiter)[0].replace('axis','')
+				which = attr.split(delimiter)[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
 				formatter = attr.split('_')[-1]
 				for k in kwargs[attr]:
+					if k in nullkwargs:
+						continue
 					for a in kwargs[attr][k]:
 						options = {i:kwargs[attr][k][a].pop(i,default)
 							for i,default in {'scilimits':[0,1]}.items()}
@@ -1888,17 +1908,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					subprop = 'MaxNLocator'
 					getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,prop),subprop)(**kwargs[attr]))
+							getattr(getattr(matplotlib,prop),subprop)(**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs}))
 
 				except Exception as exception:
 					a = 'LogLocator'
 					getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,prop),subprop)(**kwargs[attr]))
+							getattr(getattr(matplotlib,prop),subprop)(**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs}))
 				call = False
 
 			# elif attr in ['%saxis.offsetText.set_fontsize'%(axes) for axes in AXES]:
-			# 	axes = attr.split('.')[0].replace('axis','')
-			# 	getattr(getattr(getattr(obj,'%saxis'%(axes)),'offsetText'),'set_fontsize')(**kwargs[attr])
+			# 	axes = attr.split(delimiter)[0].replace('axis','')
+			# 	getattr(getattr(getattr(obj,'%saxis'%(axes)),'offsetText'),'set_fontsize')(**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs})
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
@@ -1953,7 +1973,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						prop = 'set_%slabel'%(axes)
 						subprop = '%slabel'%(axes)
 						if prop in kwargs[attr]:
-							kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop)
+							kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop,**kwargs[attr])
 
 					if N > 1:
 
@@ -1984,7 +2004,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 							_obj = obj
 							
-							for _kwarg in kwarg.split('.'):
+							for _kwarg in kwarg.split(delimiter):
 								try:
 									_obj = getattr(_obj,_kwarg)
 								except Exception as exception:
@@ -2020,7 +2040,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['close']:
 				try:
-					plt.close(obj,**kwargs[attr])
+					plt.close(obj,**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs})
 				except:
 					plt.close(obj)
 				call = False
@@ -2126,7 +2146,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			_obj = obj
-			for a in attr_.split('.'):
+			for a in attr_.split(delimiter):
 				try:
 					_obj = getattr(_obj,a)
 				except:
@@ -2157,12 +2177,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 		logger.log(debug,'%r'%(traceback.format_exc()))
 			for k in _kwds:
 				_attr_ = _attr
-				for a in k.split('.')[:-1]:
+				for a in k.split(delimiter)[:-1]:
 					try:
 						_attr_ = getattr(_attr_,a)()
 					except:
 						_attr_ = getattr(_attr_,a)
-				a = k.split('.')[-1]
+				a = k.split(delimiter)[-1]
 
 				try:
 					getattr(_attr_,a)(**_kwds[k])
@@ -2232,10 +2252,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						'legend': {'handles':True,'labels':True}
 						}.get(attr,{}))
 			kwarg[attr].update(updates)
+			obj = kwarg[attr].get('obj')
 			kwargs = {
 				**kwarg,
 				attr: {
-					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
+					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,obj,**kwargs),attr,k,obj,**kwargs) for k in kwarg[attr]},
 					},
 				(attr,*index):settings[attr],
 				}
