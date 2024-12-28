@@ -28,7 +28,7 @@
 
 # Variables
 export JOB_SETTINGS=${1:-${JOB_SETTINGS:-settings.json}}
-export JOB_ENV=${2-${JOB_ENV:-env}}
+export JOB_ENV=${2:-${JOB_ENV:-env}}
 export JOB_CMD=${3:-${JOB_CMD:-${HOME}/code/tensor/build/main.py}}
 
 # Environment

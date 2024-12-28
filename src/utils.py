@@ -163,9 +163,6 @@ elif backend in ['numpy']:
 	import pandas as pd
 	import scipy.special as spsp
 
-	import quimb as qu
-	import quimb.tensor as qtn
-
 	mapper = map
 
 	rng = RNG()
@@ -327,8 +324,8 @@ elif backend in ['numpy']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,)
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices = (qtn.MatrixProductState,)	
+	tensors = ()
+	matrices = ()	
 
 	iterables = (*arrays,list,tuple,set)
 	nulls = (Null,)
@@ -2533,298 +2530,299 @@ class toffoli(array):
 
 
 
+if backend in ['jax','jax.autograd','autograd']:
 
-class tensor(qtn.Tensor):
-	'''
-	tensor class
-	Args:
-		args (iterable): Tensor arguments
-		kwargs (dict): Tensor keyword arguments
-	Returns:
-		self (object): class instance
-	'''
-	def __new__(cls,*args,**kwargs):
-		return qtn.Tensor(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
-
-
-class tensornetwork(qtn.TensorNetwork):
-	'''
-	tensornetwork class
-	Args:
-		args (iterable): Tensor arguments
-		kwargs (dict): Tensor keyword arguments
-	Returns:
-		self (object): class instance
-	'''
-	def __new__(cls,*args,**kwargs):
-		return qtn.TensorNetwork(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
+	class tensor(qtn.Tensor):
+		'''
+		tensor class
+		Args:
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Tensor(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
 
 
-class mps(qtn.MatrixProductState):
-	'''
-	matrix product state class
-	Args:
-		data (iterable,int,str,callable,array,tensor,object): Tensor data
-		args (iterable): Tensor arguments
-		kwargs (dict): Tensor keyword arguments
-	Returns:
-		self (object): class instance
-	'''
-	def __new__(cls,data,*args,**kwargs):
-
-		if isinstance(data,tensors):
-			self = data
-		elif isinstance(data,arrays):
-			kwargs.update(dict(arrays=data))
-			self = qtn.MPS_product_state(*args,**kwargs)
-		elif isinstance(data,iterables):
-			kwargs.update(dict(arrays=asarray(data)))
-			self = qtn.MPS_product_state(*args,**kwargs)
-		elif isinstance(data,str):
-			kwargs.update(dict(binary=data))
-			self = qtn.MPS_computational_state(*args,**kwargs)
-		elif isinstance(data,integers):
-			kwargs.update(dict(L=data))
-			self = qtn.MPS_rand_state(*args,**kwargs)
-		elif callable(data):
-			kwargs.update(dict(fill_fn=data))
-			self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
-		else:
-			self = qtn.MatrixProductState(data,*args,**kwargs)
-		return self
-		# return super().__init__(cls,*args,**kwargs)
+	class tensornetwork(qtn.TensorNetwork):
+		'''
+		tensornetwork class
+		Args:
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.TensorNetwork(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
 
 
-class gate(qtn.Gate):
-	'''
-	gate class
-	Args:
-		args (iterable): Gate arguments
-		kwargs (dict): Gate keyword arguments
-	Returns:
-		out (array): array
-	'''
-	def __new__(cls,*args,**kwargs):
-		return qtn.Gate(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
+	class mps(qtn.MatrixProductState):
+		'''
+		matrix product state class
+		Args:
+			data (iterable,int,str,callable,array,tensor,object): Tensor data
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,data,*args,**kwargs):
+
+			if isinstance(data,tensors):
+				self = data
+			elif isinstance(data,arrays):
+				kwargs.update(dict(arrays=data))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,iterables):
+				kwargs.update(dict(arrays=asarray(data)))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,str):
+				kwargs.update(dict(binary=data))
+				self = qtn.MPS_computational_state(*args,**kwargs)
+			elif isinstance(data,integers):
+				kwargs.update(dict(L=data))
+				self = qtn.MPS_rand_state(*args,**kwargs)
+			elif callable(data):
+				kwargs.update(dict(fill_fn=data))
+				self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
+			else:
+				self = qtn.MatrixProductState(data,*args,**kwargs)
+			return self
+			# return super().__init__(cls,*args,**kwargs)
+
+
+	class gate(qtn.Gate):
+		'''
+		gate class
+		Args:
+			args (iterable): Gate arguments
+			kwargs (dict): Gate keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Gate(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
 
 
 
-def contract(obj,where=None,**kwargs):
-	'''
-	Contract object
-	Args:
-		obj (tensor): object
-		where (int,str,iterable[int,str]): where not to contract
-		kwargs (dict): Additional keyword arguments for data
-	Returns:
-		obj (object): Contraction of object
-	'''
+	def contract(obj,where=None,**kwargs):
+		'''
+		Contract object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
 
-	options = dict(output_inds=where) 
+		options = dict(output_inds=where) 
 
-	obj = obj.contract(**{**kwargs,**options})
+		obj = obj.contract(**{**kwargs,**options})
 
-	return obj
-
-
-def reduce(obj,where=None,**kwargs):
-	'''
-	Reduce object
-	Args:
-		obj (tensor): object
-		where (int,str,iterable[int,str]): where not to contract
-		kwargs (dict): Additional keyword arguments for data
-	Returns:
-		obj (object): Contraction of object
-	'''
-
-	obj = contract(obj)
-
-	where = getattr(obj,'inds',getattr(obj,'sites',None))
-
-	if where is None:
 		return obj
 
-	for i in where:
-		options = dict(ind=i) 
-		obj = obj.sum_reduce(**{**kwargs,**options})
 
-	return obj
+	def reduce(obj,where=None,**kwargs):
+		'''
+		Reduce object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
 
+		obj = contract(obj)
 
-def fuse(obj,where=None,**kwargs):
-	'''
-	Fuse object
-	Args:
-		obj (tensor): object
-		where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
-		kwargs (dict): Additional keyword arguments for data
-	Returns:
-		obj (object): Fused object
-	'''
+		where = getattr(obj,'inds',getattr(obj,'sites',None))
 
-	options = dict(fuse_map=where) 
+		if where is None:
+			return obj
 
-	obj = obj.fuse(**{**kwargs,**options})
+		for i in where:
+			options = dict(ind=i) 
+			obj = obj.sum_reduce(**{**kwargs,**options})
 
-	return obj
-
-
-def representation(obj,to=True,contraction=None,func=None,**kwargs):
-	'''
-	Get data of object
-	Args:
-		obj (tensor): object
-		to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
-		contraction (bool): Contract data
-		func (callable): Wrapper function for data with signature func(obj)
-		kwargs (dict): Additional keyword arguments for data
-	Returns:
-		obj (object): data of object
-	'''
-
-	if not isinstance(obj,tensors):
-		return obj
-	
-	if contraction:
-		obj = contract(obj,**kwargs)
-
-	if not isinstance(obj,tensors):
 		return obj
 
-	if to in ['array']:
-		obj,structure = qtn.pack(obj)
-		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
 
-	elif to in ['tensor']:
-		axes = tuple(i 
-			for i in sorted(set((i 
-			for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
-			for string in tuple(sorted(set(i[0] 
-			for i in obj.inds)))) if i))) 
-			)
-		where = tuple(j for i in axes for j in i)
-		arguments = tuple(axes)
-		keywords = dict()
-		obj = contract(obj,where=where,**kwargs)
-		obj = obj.to_dense(*arguments,**keywords)
+	def fuse(obj,where=None,**kwargs):
+		'''
+		Fuse object
+		Args:
+			obj (tensor): object
+			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Fused object
+		'''
 
-	elif to in ['data']:
-		obj,structure = qtn.pack(obj)
+		options = dict(fuse_map=where) 
 
-	elif to in ['structure']:
-		data,obj = qtn.pack(obj)
+		obj = obj.fuse(**{**kwargs,**options})
 
-	elif to:
-		obj,structure = qtn.pack(obj)
-		obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-	
-	if func is not None:
-		obj = func(obj)
-
-	return obj
+		return obj
 
 
-class context(object):
-	'''
-	Update object attributes within context with key
-	Args:
-		key (object): Key to update attributes
-		objs (iterable[object]): Objects with attributes to update
-		formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
-	'''
-	def __init__(self,*objs,key=None,formats=None):
+	def representation(obj,to=True,contraction=None,func=None,**kwargs):
+		'''
+		Get data of object
+		Args:
+			obj (tensor): object
+			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
+			contraction (bool): Contract data
+			func (callable): Wrapper function for data with signature func(obj)
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): data of object
+		'''
 
-		if formats is None:
-			formats = ['inds','tags']
-		elif isinstance(formats,str):
-			formats = [formats]
-		if not isinstance(formats,dict):
-			formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-				for attr in formats}
-		else:
-			if key is None:
+		if not isinstance(obj,tensors):
+			return obj
+		
+		if contraction:
+			obj = contract(obj,**kwargs)
+
+		if not isinstance(obj,tensors):
+			return obj
+
+		if to in ['array']:
+			obj,structure = qtn.pack(obj)
+			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+
+		elif to in ['tensor']:
+			axes = tuple(i 
+				for i in sorted(set((i 
+				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
+				for string in tuple(sorted(set(i[0] 
+				for i in obj.inds)))) if i))) 
+				)
+			where = tuple(j for i in axes for j in i)
+			arguments = tuple(axes)
+			keywords = dict()
+			obj = contract(obj,where=where,**kwargs)
+			obj = obj.to_dense(*arguments,**keywords)
+
+		elif to in ['data']:
+			obj,structure = qtn.pack(obj)
+
+		elif to in ['structure']:
+			data,obj = qtn.pack(obj)
+
+		elif to:
+			obj,structure = qtn.pack(obj)
+			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+		
+		if func is not None:
+			obj = func(obj)
+
+		return obj
+
+
+	class context(object):
+		'''
+		Update object attributes within context with key
+		Args:
+			key (object): Key to update attributes
+			objs (iterable[object]): Objects with attributes to update
+			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+		'''
+		def __init__(self,*objs,key=None,formats=None):
+
+			if formats is None:
+				formats = ['inds','tags']
+			elif isinstance(formats,str):
+				formats = [formats]
+			if not isinstance(formats,dict):
 				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					if not isinstance(formats[attr],iterables) else 
-					[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
 					for attr in formats}
-			elif isinstance(key,iterables):
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					if not isinstance(formats[attr],iterables) else 
-					[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
-					for attr in formats}		
 			else:
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					if not isinstance(formats[attr],iterables) else 
-					[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-					for attr in formats}					
+				if key is None:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}
+				elif isinstance(key,iterables):
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}		
+				else:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}					
 
-		attributes = [attr for attr in formats]
-		formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-		
-		def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-			obj = objs[i]
-			if key is None:
-				attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-			elif isinstance(key,iterables):
-				attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-			else:
-				attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
-			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			attributes = [attr for attr in formats]
+			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+			
+			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+			
+			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+
+			self.key = key
+			self.objs = objs
+			self.formats = formats
+			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+			self.funcs = [{attr: func for attr in attributes} for obj in objs]
+			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+			self.args = tuple()
+			self.kwargs = dict(inplace=True)
+
+			return
+
+		def __enter__(self):
+			for i in range(len(self)):
+				for attr in self.funcs[i]:
+					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+
+		def __exit__(self, type, value, traceback):
+			for i in range(len(self)):
+				for attr in self._funcs[i]:
+					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
 			return
 		
-		def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-			obj = objs[i]
-			if key is None:
-				attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-			elif isinstance(key,iterables):
-				attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+		def __len__(self):
+			return len(self.objs)
+
+		@classmethod
+		def attributes(cls,obj,attr,attrs=None,**kwargs):
+			if attrs is None:
+				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+				return wrappers[attr](getattr(obj,attributes[attr]))
 			else:
-				attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
-			self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-			return
-
-		self.key = key
-		self.objs = objs
-		self.formats = formats
-		self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
-		self.funcs = [{attr: func for attr in attributes} for obj in objs]
-		self._funcs = [{attr: _func for attr in attributes} for obj in objs]
-		self.args = tuple()
-		self.kwargs = dict(inplace=True)
-
-		return
-
-	def __enter__(self):
-		for i in range(len(self)):
-			for attr in self.funcs[i]:
-				self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-		return
-
-	def __exit__(self, type, value, traceback):
-		for i in range(len(self)):
-			for attr in self._funcs[i]:
-				self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-		return
-	
-	def __len__(self):
-		return len(self.objs)
-
-	@classmethod
-	def attributes(cls,obj,attr,attrs=None,**kwargs):
-		if attrs is None:
-			attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
-			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
-			return wrappers[attr](getattr(obj,attributes[attr]))
-		else:
-			attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
-			wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
-			wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-			return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
 
 
 

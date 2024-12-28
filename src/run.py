@@ -14,104 +14,67 @@ from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split,environ
 from src.call import launch,call,command
 
-def allowed(index,value,values):
+def allow(value,values,settings):
 	'''
-	Check if value is allowed as per index
+	Check if value is allowed as per values
 	Args:
-		index (dict): Dictionary of allowed integer indices or values of the form {attr: index/value (int,iterable[int]/dict,iterable[dict])}
 		value (dict): Dictionary of possible value of the form {attr: value (dict)}
 		values (dict): Dictionary of all values of the form {attr: values}
+		settings (dict,str): settings		
 	Returns:
 		boolean (bool) : Boolean if value is allowed
 	'''
 
-	# TODO: Allow certain permutations of values, and retain index for folders
+	# TODO: Allow certain permutations of values
 
 	boolean = True
 
 	return boolean
 
-	for attr in index:
-		if index[attr] is None:
-			index[attr] = [index[attr]]
-		elif isinstance(index[attr],int):
-			if index[attr] < 0:
-				index[attr] += len(values[attr])
-			index[attr] = [index[attr]]
-		elif isinstance(index[attr],dict):
-			index[attr] = [index[attr]]
-		for subindex in index[attr]:
-			if subindex is None:
-				boolean &= True
-			elif isinstance(subindex,int):
-				boolean &= is_equal(value[attr][key],value[attr])
-			elif isinstance(subindex,dict):
-				boolean &= all(is_equal(value[attr][key],subindex[key]) for key in subindex)
 
-	return boolean
-
-def setup(settings):
+def permute(settings):
 	'''
-	Setup settings
+	Get permutations of settings
 	Args:
 		settings (dict,str): settings
 	Returns:
-		jobs (dict): Job submission dictionary
+		permutations (iterable[dict]): Permutations of settings
 	'''
-
-	# Default settings
-	path = 'config/settings.json'
-
-	# Load default settings
-	default = {}
-	if settings is None:
-		defaults = path
-		settings = default
-	elif isinstance(settings,str):
-		defaults = settings
-		settings = load(settings,default=default)
-	else:
-		settings = default
-
-	setter(settings,load(path,default=default),default=False)
-
-	# Load default hyperparameters
-	default = copy(settings)
-	hyperparameters = settings['hyperparameters'] if settings.get('hyperparameters') is not None else default
-
-	if hyperparameters is None:
-		hyperparameters = default
-	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters,default=default)
-	else:
-		hyperparameters = default
-
-	default = {}
-	setter(hyperparameters,load(path,default=default),default=False)
-
-	# Get permutations of hyperparameters
+	
 	permutations = settings['permutations'].get('permutations')
+	
 	groups = settings['permutations'].get('groups')
 	filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
 	func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
+	
 	permutations = permuter(permutations,groups=groups,filters=filters,func=func)
 
-	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
+	return permutations
+
+
+def spawn(settings):
+	'''
+	Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+	Args:
+		settings (dict,str): settings
+	Returns:
+		seed (int): Seed
+		seeds (iterable[dict]): All permutation of seed instances
+		seedlings (dict[iterable]): All possible sets of seeds
+	'''
+
+	# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
 	seed = settings['seed'].get('seed')
 	size = settings['seed'].get('size')
 	groups = settings['seed'].get('groups')
 
-	# Find keys of seeds in hyperparameters
+	# Find keys of seeds in settings
 	items = ['seed']
 	types = (list,dict,)
 	exclude = ['seed','seed.seed','system.seed',
-	*[delim.join(['permutations','permutations',*attr.split(delim)]) for permutation in permutations for attr in permutation 
-	if ((attr.split(delim)[-1] == 'seed' and permutation[attr] is not None) or 
-		True
-	    # (permutation[attr] is not None and isinstance(permutation[attr],dict) and 'seed' in permutation[attr])
-	    )]
-	]
-	seedlings = search(hyperparameters,items=items,returns=True,types=types)
+		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim)],
+		]
+	seedlings = search(settings,items=items,returns=True,types=types)
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
@@ -144,64 +107,115 @@ def setup(settings):
 		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
 		seeds = permuter(seedlings,groups=groups)
 	else:
+		seeds = seeder(seed=seed,data=True)
+		seedlings = {seedling: seeds[i] for i,seedling in enumerate(seedlings)}
 		seeds = [{}]
 
-	other = [{'system.key':None,'system.instance':None,'system.instances':None,'system.seed':seed,'system.seeding':seed}]
+	return seed,seeds,seedlings
 
-	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
-	values = {'permutations':permutations,'seed':seeds,'other':other}
 
-	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
+def formatter(key,shape,value,settings,default):
+	'''
+	Format key for permutation instances
+	Args:
+		key (int,iterable[int]): Index of instance
+		shape (int,iterable[int]): Shape of permutations
+		value (dict,iterable[dict]): Permutation instance
+		settings (dict,str): Settings
+		default (str): Default string for key
+	Returns:
+		key (str): Formatted key string for permutation instance
+	'''
+	key = key if not isinstance(key,int) else [key]
+	shape = shape if not isinstance(shape,int) else [shape]
 
-	def formatter(instance,value,values,default):
-		if any(len(values[k])>1 for k in values):
-			string = delim.join([
-				*([default] if default is not None else []),
-				*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])
-		else:
-			string = default
+	if any(i>1 for i in shape):
+		string = delim.join([
+			*([str(default)] if default is not None else []),
+			*[str(key[i]) for i in range(len(key)) if shape[i]>1]
+			])
+	else:
+		string = default
 
-		return string
+	return string
+
+
+def setup(settings):
+	'''
+	Setup settings
+	Args:
+		settings (dict,str): settings
+	Returns:
+		jobs (dict): Job submission dictionary
+	'''
+
+	# Default settings
+	path = 'config/settings.json'
+
+	# Load default settings
+	default = {}
+	if settings is None:
+		defaults = path
+		settings = default
+	elif isinstance(settings,str):
+		defaults = settings
+		settings = load(settings,default=default)
+	else:
+		settings = default
+
+	setter(settings,load(path,default=default),default=False)
+
+
+	# Get permutations of settings
+	permutations = permute(settings)
 
 	keys = {}
 
-	for instance,value in enumerate(value for value in itertools.product(*(
-		zip(range(len(values[attr])),values[attr]) for attr in values)
-		)):
+	for instance,permutation in enumerate(permutations):
 
-		if not allowed(
-			{attr: index[attr] for attr in index},
-			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
-			{attr: values[attr] for attr in index},
-			):
+		if not allow(permutation,permutations,settings):
 			continue
 
-		key = formatter(instance,value,values,default=getter(hyperparameters,'system.key',delimiter=delim))
-		indices = [v[0] for v in value]
-		value = [v[1] for v in value]
-		keys[key] = {}
-		for setting in value:
-			for attr in setting:
+		# Update settings with permutation
+		setting = copy(settings)
+		boolean = lambda attr,permutation: attr.split(delim)[0] in ['seed']
+		setter(setting,{attr: permutation[attr] for attr in permutation if boolean(attr,permutation)},delimiter=delim,copy=True)
 
-				keys[key][attr] = setting[attr]
+		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+		seed,seeds,seedlings = spawn(setting)
 
-				if attr in ['system.key']:
-					keys[key][attr] = key
-				elif attr in ['system.instance']:
-					keys[key][attr] = int(key.split(delim)[-1]) if key is not None else None					
-				elif attr in ['system.instances']:
-					keys[key][attr] = {seedling: seedlings[seedling].index(keys[key][seedling]) for seedling in seedlings}
+		# Get shape and default key of permutations
+		shape = (len(permutations),len(seeds))
+		default = getter(setting,'system.key',delimiter=delim)
 
+		# Get all allowed enumerated keys and seeds for permutations and seedlings of settings
+		for index,seedling in enumerate(seeds):
 
+			key = (instance,index)
+			value = (permutation,seedling)
+
+			key = formatter(key,shape,value,setting,default)
+
+			options = {
+				'system.key':key,
+				'system.instance':index if key is not None else None,
+				'system.instances':{seedling: index for seedling in seedlings},
+				'system.seed':seed,
+				'system.seeding':seed
+				}
+
+			keys[key] = {}
+
+			for value in [permutation,seedling,options]:
+				for attr in value:
+					keys[key][attr] = value[attr]
+
+	
 	# Set settings with key and seed instances
 	settings = {key: copy(settings) for key in keys}
 
-	# Set hyperparameters with key and seed instances
-	hyperparameters = {key: copy(hyperparameters) for key in keys}
-
 	for key in keys:
 		setter(settings[key],keys[key],delimiter=delim,copy=True)
-		setter(hyperparameters[key],keys[key],delimiter=delim,copy=True)
 
 	# Set job
 	jobs = {}
@@ -228,9 +242,9 @@ def setup(settings):
 					value = {
 						**{job[attr][path]: None
 							for path in job[attr]},
-						**{job[attr][path]: hyperparameters[key] 
+						**{job[attr][path]: settings[key] 
 							for path in ['settings'] if path in job[attr]},
-						**{job[attr][path]: hyperparameters[key].get(path,{}) 
+						**{job[attr][path]: settings[key].get(path,{}) 
 							for path in ['plot','process'] if path in job[attr]},
 						}
 				elif attr in ['patterns']:
@@ -278,7 +292,7 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=None,v
 	'''
 	
 	device = None if device is None else device
-	job = 'submit.slurm' if job is None else job
+	job = 'run.slurm' if job is None else job
 	settings = join(settings,abspath=True)
 	cmd = funcpath(run) if cmd is None else cmd
 	path = join(path,abspath=True)	

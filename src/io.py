@@ -487,7 +487,7 @@ def basename(path,**kwargs):
 	Returns:
 		file (str): Base filename
 	'''	
-	return os.path.basename(os.path.splitext(path)[0])
+	return os.path.basename(path)
 
 
 def basedir(path,**kwargs):

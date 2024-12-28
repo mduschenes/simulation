@@ -1207,17 +1207,17 @@ def init(key,
 
 			attr = 'file'
 			value = task[attr]		
-			value = join(value,root=task['cwd'])
+			value = join(value,root=task['cwd'],abspath=True)
 			task[attr] = value	
 
 			attr = 'source'
 			value = task[attr]		
-			value = join(task[attr],root=task['pwd'])
+			value = join(task[attr],root=task['pwd'],abspath=True)
 			task[attr] = value
 
 			attr = 'destination'
 			value = task[attr]		
-			value = join(job,root=task['path'])
+			value = join(job,root=task['path'],abspath=True)
 			task[attr] = value			
 
 			attr = 'resume'
