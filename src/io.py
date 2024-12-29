@@ -100,7 +100,6 @@ def contains(string,pattern):
 def exists(path):
 	'''
 	Check if path exists
-	Make path
 	Args:
 		path (str): path
 	Returns:
@@ -118,7 +117,6 @@ def exists(path):
 def dirname(path,abspath=False,delimiter='.'):
 	'''
 	Return directory name of path
-	Make path
 	Args:
 		path (str): path
 		abspath (bool): Return absolute path of directory

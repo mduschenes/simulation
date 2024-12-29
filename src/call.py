@@ -514,7 +514,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 		verbose (int,str,bool): Verbosity
 	'''
 
-	exe = ['echo']
+	exe = ['touch']
 	flags = []
 	cmd = ''.join([subarg for arg in args for subarg in arg])
 	options = []
@@ -1005,7 +1005,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		if isinstance(data,dict) and execute:
 			data,source,destination = load(source),copy(data),destination
 			setter(source,data,default=False)
-			dump(source,destination)					
+			dump(source,destination)
 		else:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)
 

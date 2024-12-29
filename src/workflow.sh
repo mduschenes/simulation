@@ -264,11 +264,11 @@ function queue(){
 	fi
 
 
-	script="postprocess.slurm"
-	exe="postprocess.sh"
-	pattern="#SBATCH --dependency="
-	options=
-	delimiter=,
+		script="postprocess.slurm"
+		exe="postprocess.sh"
+		pattern="#SBATCH --dependency="
+		options=
+		delimiter=,
 
 	file=${script}
 

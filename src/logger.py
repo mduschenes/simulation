@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime,shutil,traceback
-from time import time as timer
-from functools import partial
+import os,sys,datetime,shutil
 import atexit
 
 # Logging

@@ -110,7 +110,7 @@ def workflow(settings,data,*args,**kwargs):
 
 	settings,data = setup(settings,data,*args,**kwargs)
 
-	if settings.boolean.dump:
+	if settings.boolean.load:
 		data = load(settings.system.path,default=data)
 
 	if settings.boolean.model:
