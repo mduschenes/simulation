@@ -292,7 +292,7 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,
 	'''
 	
 	device = None if device is None else device
-	job = 'run.slurm' if job is None else job
+	job = 'job.slurm' if job is None else job
 	settings = join(settings,abspath=True)
 	cmd = funcpath(run) if cmd is None else cmd
 	path = join(path,abspath=True)	
@@ -303,7 +303,7 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,
 	if device is not None:
 
 		args = {
-			"JOB_SETTINGS":settings,
+			"JOB_ARGS":settings,
 			"JOB_ENV":env,
 			"JOB_CMD":cmd,
 			}

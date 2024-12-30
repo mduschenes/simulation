@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,argparse,subprocess,itertools,json
+import os,sys,argparse,subprocess,shlex,itertools,json
 
 integers = (int,)
 floats = (float,)
@@ -20,6 +20,8 @@ class Dict(dict):
 		for arg in args:
 			if isinstance(arg,dict):
 				kwargs.update(arg)
+			elif isinstance(arg,iterables) and all(isinstance(i,iterables) and len(i)==2 for i in arg):
+				kwargs.update(dict(arg))
 
 		for key in kwargs:
 			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
@@ -62,7 +64,7 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 
 		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
-			args = [' '.join(args)] if shell else args
+			args = [' '.join(args)] if shell else [j for i in args for j in shlex.split(i)]
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 			except (OSError,FileNotFoundError) as exception:
@@ -70,6 +72,13 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 				logger(exception,verbose=verbose)
 			return result
 
+		def process(obj):
+			parse = lambda string: os.path.expandvars(os.path.expanduser(string)).replace('~',os.environ['HOME'])
+			if isinstance(obj,str):
+				obj = parse(obj)
+			elif isinstance(obj,iterables):
+				obj = [parse(i) if isinstance(i,str) else [parse(j) for j in i] for i in obj]
+			return obj
 
 		def wrap(stdout,stderr,returncode):
 			stdout = '\n'.join(stdout)
@@ -93,7 +102,6 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 		outputs = [outputs]*len(args) if outputs is None or isinstance(outputs,str) else outputs
 		errors = [errors]*len(args) if errors is None or isinstance(errors,str) else errors
 
-
 		for arg,input,output,error in zip(args,inputs,outputs,errors):
 			if isinstance(output,str):
 				mkdir(output)
@@ -103,6 +111,8 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
 			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stderr
+
+			arg = process(arg)
 
 			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 
@@ -149,8 +159,13 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 
 	def parser(*args,env=None,verbose=None):
 
-		args = [((str(arg) if arg is not None else '') if isinstance(arg,scalars) else 
-	 		    [(str(subarg) if subarg is not None else '') for subarg in arg]) for arg in args]
+		args = [(str(arg) if (isinstance(arg,scalars) or isinstance(arg,str) and not arg.count(symbol)) else 
+	 		    [str(subarg) for subarg in (arg if not isinstance(arg,scalars) else arg.split(symbol)) if subarg is not None]) 
+				for arg in args if arg is not None]
+
+
+		delimiter = '|'
+		symbols = ['|']
 
 		pipe = any(not isinstance(arg,scalars) for arg in args)
 
@@ -159,8 +174,37 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 		else:
 			args = [[str(arg) for arg in args]]
 
+		arguments = []
+		for arg in args:
+			argument = []
+			for subarg in arg:
+				if subarg is None:
+					pass
+				elif isinstance(subarg,str):
+					for symbol in symbols:
+						subarg = subarg.replace(symbol,delimiter)
+					if subarg in [delimiter]:
+						argument.append(delimiter)
+					elif subarg.count(delimiter):
+						argument.extend([j for i in subarg.split(delimiter) for j in [i,delimiter]])
+					else:
+						argument.append(subarg)
+				else:
+					argument.append(subarg)
+
+			arg = [[]]
+			for subarg in argument:
+				if subarg not in [delimiter]:
+					arg[-1].append(subarg)
+				else:
+					arg.append([])
+
+			arguments.extend([[i.strip() for i in subarg] for subarg in arg if len(subarg)])
+
+		args = arguments
+
 		cmd = ' | '.join([
-			' '.join([subarg if ' ' not in subarg else '"%s"'%(subarg) for subarg in arg])
+			' '.join([str(subarg) for subarg in arg])
 			for arg in args])
 
 		inputs = []
@@ -437,7 +481,6 @@ class cd(object):
 		os.chdir(self.cwd)
 		return
 
-
 def cwd(*args,**kwargs):
 	'''
 	Get current directory
@@ -449,8 +492,6 @@ def cwd(*args,**kwargs):
 	'''
 	path = os.getcwd()
 	return path
-
-
 
 def environ():
 	'''
@@ -474,7 +515,7 @@ def mkdir(path,execute=None,verbose=None):
 
 	args = ['mkdir','-p',path]
 
-	if not exists(path):
+	if path is not None and not exists(path):
 		result = call(*args,execute=execute,verbose=verbose)
 
 
@@ -712,23 +753,64 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		return copier(default,copy=copy)
 
 
+def workflow(func,settings,*args,**kwargs):
+	'''
+	Workflow
+	Args:
+		func (callable): function with signature func(name,task,data,settings,*args,**kwargs)
+		settings (dict): settings
+		args (iterable): Positional arguments
+		kwargs (dict): Keyword arguments
+	Returns:
+		data (dict): data
+	'''	
+
+	strings = ['key','value']
+
+	tasks = {attr:
+		[Dict(zip(strings,data)) for data in zip(*(getattr(settings.workflow.settings[attr],string) for string in strings))]
+		for attr in settings.workflow.settings if all(isinstance(getattr(settings.workflow.settings[attr],string),iterables) for string in strings)}
+	variables = {attr:
+		{string:getattr(settings.workflow.settings[attr],string) for string in strings}
+		for attr in settings.workflow.settings if not all(isinstance(getattr(settings.workflow.settings[attr],string),iterables) for string in strings)}
+	names = settings.workflow.path.name if isinstance(settings.workflow.path.name,iterables) else [settings.workflow.path.name]
+
+	data = {}
+
+	for index,task in enumerate(permuter(tasks)):
+
+		for name in names:
+
+			name = name.format(**{attr:task[attr].key for attr in task})
+
+			try:
+				value = func(name,task,data,settings,*args,**kwargs)
+			except:
+				continue
+
+			data[name] = value
+
+	return data
 
 def setup(settings,*args,**kwargs):
 	'''
 	Setup
 	Args:
 		settings (dict): settings
+		args (iterable): Positional arguments
+		kwargs (dict): Keyword arguments
+	Returns:
+		data (dict): data		
 	'''
 
-	options = settings.workflow.options
+	def func(name,task,data,settings,*args,**kwargs):
+		
+		data = None
 
-	permutations = {attr:settings.workflow.settings[attr].string for attr in settings.workflow.settings}
-
-	for index,permutation in enumerate(permuter(permutations)):
-
-		name = settings.workflow.path.format.format(**permutation)
-
-		for host in settings.workflow.hosts:
+		options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
+		
+		hosts = settings.workflow.host if isinstance(settings.workflow.host,iterables) else [settings.workflow.host]
+		for host in hosts:
 			path = join(settings.workflow.path.cwd.format(host=host),name)
 			if exists(path):
 				break
@@ -736,57 +818,104 @@ def setup(settings,*args,**kwargs):
 				host = None
 
 		if host is None:
-			continue
+			raise
 
 		path = join(settings.workflow.path.path,name)
 		if not exists(path):
 			mkdir(path,**options)
+			data = True
 
 		path = join(settings.workflow.path.path,name,host)
 		if not exists(path):
 			touch(path,**options)
+			data = True
 
 		for path in settings.workflow.path.data:
 			source = join(settings.workflow.path.cwd.format(host=host),name,path)
 			destination = join(settings.workflow.path.path,name,path)
 			if exists(source) and not exists(destination):
 				cp(source,destination,**options)
+				data = True
 
 		for path in settings.workflow.path.settings:
 			source = join(settings.workflow.path.cwd.format(host=host),name,path)
 			destination = join(settings.workflow.path.path,name,path)
 			if exists(source) and not exists(destination):
 				cp(source,destination,**options)
+				data = True
 
-	return
+		if data is not None:
+			logger(**options)
+
+		return data
+
+	data = workflow(func,settings,*args,**kwargs)
+
+	return data
 
 
-def submit(settings,*args,**kwargs):
+def job(settings,*args,**kwargs):
 	'''
-	Submit
+	job
 	Args:
 		settings (dict): settings
+	Returns:
+		data (dict): data		
 	'''
 
-	options = settings.workflow.options
+	def func(name,task,data,settings,*args,**kwargs):
+	
+		data = None
 
-	permutations = {attr:settings.workflow.settings[attr].string for attr in settings.workflow.settings}
+		options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
+		
+		logger("Job: %r"%(name),**options)
 
-	for index,permutation in enumerate(permuter(permutations)):
+		# args = ['ls ${HOME}/scratch | grep scaling | sed \"s%scaling%new%g\"']
 
-		name = settings.workflow.path.format.format(**permutation)
+		# # args = ['ls ~/scratch | grep scaling','|','sed \"s%scaling%new%g\"']
 
-		for host in settings.workflow.hosts:
-			path = join(settings.workflow.path.cwd.format(host=host),name)
-			if exists(path):
-				break
-			else:
-				host = None
+		# data = call(*args,execute=True)
 
-		if host is None:
-			continue
+		print(data)
 
-		logger(name,host,**options)
+		return
+
+		# if [[ ! -d ${path}/${name} ]]
+		# then
+
+		# 	for pattern in $(split "${delimiter}" ${paths})
+		# 	do
+		# 		echo sed -i "s%\"${pattern}\"[^:]*:.*[^,]\(,*\)%\"${pattern}\":[\"${path}/${name}\"]\1%g" ${config}
+		# 	done
+
+		# 	for i in ${!names[@]}
+		# 	do
+		# 		for pattern in $(split "${delimiter}" ${patterns[${names[$i]}]})
+		# 		do
+		# 			echo sed -i "s%\"${pattern}\"[^:]*:.*[^,]\(,*\)%\"${pattern}\":[${setting[$i]}]\1%g" ${config}
+		# 		done
+		# 	done
+		# fi
+
+		# if [[ -d ${path}/${name} ]] && [[ -z "$(squeue --format="%.100j" -u ${USER} | tr " " | grep ${name})" ]]
+		# then
+		# 	echo Running Job: ${name}
+		# 	break	
+		# elif [[ -d ${path}/${name} ]]
+		# then
+		# 	echo Existing Job: ${name}
+		# 	echo queue ${path}/${name}
+		# 	break	
+		# elif [[ ! -d ${path}/${name} ]]
+		# then
+		# 	echo New Job: ${name}
+		# 	echo ${env[@]} ${exe} ${flags[@]} ${config}
+		# 	break
+		# else
+		# 	continue
+		# fi
+
 
 		# Check Running Job
 		# pass all
@@ -811,12 +940,42 @@ def submit(settings,*args,**kwargs):
 		# lower: main.py/run.py : cp settings.json cwd/ , touch submit.std* , touch job.sh , job.slurm , id.std*
 		# higher: workflow.py : review
 
+		return data
+
+	data = workflow(func,settings,*args,**kwargs)
 
 	return
 
-def main(settings,*args,**kwargs):
+def queue(settings,*args,**kwargs):
+	'''
+	Queue
+	Args:
+		settings (dict): settings
+	Returns:
+		data (dict): data		
+	'''
 
-	def config(settings):
+	options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
+
+	return
+
+
+def cleanup(settings,*args,**kwargs):
+	'''
+	Cleanup
+	Args:
+		settings (dict): settings
+	Returns:
+		data (dict): data		
+	'''
+
+	options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
+
+	return
+
+def main(settings,*args,func=None,**kwargs):
+
+	def config(settings,func=None):
 		
 		options=dict(wrapper=Dict)
 		try:
@@ -824,18 +983,19 @@ def main(settings,*args,**kwargs):
 		except:
 			settings = None
 
-		options = dict(setup=setup,submit=submit)
+		options = dict(setup=setup,job=job,queue=queue,cleanup=cleanup)
 		try:
-			function = options.get(settings.workflow.function)
+			func = settings.workflow.func if func is None or func not in options else func
+			func = options.get(func)
 		except:
-			function = None
+			func = None
 
-		return function,settings
+		return func,settings
 
-	function,settings = config(settings)
+	func,settings = config(settings,func)
 
 	try:
-		function(settings,*args,**kwargs)
+		func(settings,*args,**kwargs)
 	except:
 		pass
 
@@ -849,9 +1009,28 @@ if __name__ == '__main__':
 			'type':str,
 			'default':None,
 			'nargs':'?'
+		},	
+		'--func':{
+			'help':'Function',
+			'type':str,
+			'default':"setup",
+			'nargs':'?'
+		},	
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
 		},										
 		}		
 
-	args = argparser(arguments)
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}	
+
+	args = argparser(arguments,wrappers)
 
 	main(*args,**args)

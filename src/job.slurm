@@ -27,7 +27,7 @@
 
 
 # Variables
-export JOB_SETTINGS=${1:-${JOB_SETTINGS:-settings.json}}
+export JOB_ARGS=(${1:-${JOB_ARGS:-settings.json}})
 export JOB_ENV=${2:-${JOB_ENV:-env}}
 export JOB_CMD=${3:-${JOB_CMD:-${HOME}/code/tensor/build/main.py}}
 
@@ -37,33 +37,10 @@ conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
-CMD=()
-CMD+=(${JOB_CMD} ${JOB_SETTINGS})
-
 EXE=()
-EXE+=(${CMD[@]})
+EXE+=(${JOB_CMD})
+EXE+=(${JOB_ARGS[@]})
 
 # Run
 echo $(pwd) ${EXE[@]}
 ${EXE[@]}
-
-# Status
-# squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-# sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
-
-# Queue
-# trap 'QUEUE' SIGUSRSIG
-
-# Cleanup
-FILE=${SLURM_JOB_NAME}.${SLURM_JOB_ID}.stdout
-if [[ ! -s ${FILE} ]]
-then
-	rm -rf ${FILE}
-fi 
-
-FILE=${SLURM_JOB_NAME}.${SLURM_JOB_ID}.stderr
-if [[ ! -s ${FILE} ]]
-then
-	rm -rf ${FILE}
-fi
