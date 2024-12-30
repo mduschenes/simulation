@@ -56,13 +56,13 @@ scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 # trap 'QUEUE' SIGUSRSIG
 
 # Cleanup
-FILE=${SLURM_JOB_NAME}.stdout
+FILE=${SLURM_JOB_NAME}.${SLURM_JOB_ID}.stdout
 if [[ ! -s ${FILE} ]]
 then
 	rm -rf ${FILE}
 fi 
 
-FILE=${SLURM_JOB_NAME}.stderr
+FILE=${SLURM_JOB_NAME}.${SLURM_JOB_ID}.stderr
 if [[ ! -s ${FILE} ]]
 then
 	rm -rf ${FILE}

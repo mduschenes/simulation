@@ -338,7 +338,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 	msg = '%s : $> %s'%(path,cmd) if path is not None else '$> %s'%(cmd)
 	logger.log(verbose,msg)
 
-	if file:
+	if execute > 0 and file:
 		with cd(path):
 			cmd = [*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],cmd]
 			touch(file,cmd,mod=True,env=env,execute=True,verbose=False)
@@ -369,7 +369,8 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	if not exists(source):
 		return
 
-	mkdir(destination)
+	if execute:
+		mkdir(destination)
 
 	exe = ['cp']
 	flags = ['-rf']
@@ -1002,12 +1003,19 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		destination = join(path,root=cwd)
 
 		# Update and Dump files
-		if isinstance(data,dict) and execute:
+		if execute and isinstance(data,dict):
 			data,source,destination = load(source),copy(data),destination
 			setter(source,data,default=False)
 			dump(source,destination)
-		else:
+
+			source = source
+			destination = join(cwd,abspath=True)
+			if not exists(destination):
+				dump(source,destination)
+
+		elif execute:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)
+
 
 	return
 
@@ -1129,7 +1137,7 @@ def init(key,
 		keys=None,
 		name=None,jobs=None,args=None,paths=None,patterns=None,dependencies=None,
 		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
-		env=None,process=None,processes=None,device=None,execute=None,verbose=None):
+		env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 		'''
 		Process job commands as tasks to command line
 		Args:
@@ -1455,7 +1463,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	return results
 
 
-def launch(jobs={},wrapper=None):
+def launch(jobs={},wrapper=None,execute=False,verbose=None):
 	'''
 	Submit jobs as job commands as tasks to command line through submit(**job) for each job in jobs
 	Args:
@@ -1477,6 +1485,8 @@ def launch(jobs={},wrapper=None):
 			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 			verbose (int,str,bool): Verbosity
 		wrapper (callable): Wrapper for results for subsequent jobs with signature wrapper(name,jobs,results). Defaults to updating dependencies with results.
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
 	Returns:
 		results (iterable[str]): Return of commands for each job
 	'''
@@ -1494,7 +1504,9 @@ def launch(jobs={},wrapper=None):
 
 		wrapper(name,jobs,results)
 
-		result = submit(**jobs[name])
+		options = {key:value for key,value in dict(execute=execute,verbose=verbose).items() if value is not None}
+
+		result = submit(**{**jobs[name],**options})
 
 		results[name] = result
 

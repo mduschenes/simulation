@@ -788,6 +788,30 @@ def submit(settings,*args,**kwargs):
 
 		logger(name,host,**options)
 
+		# Check Running Job
+		# pass all
+
+		# Check Completed Job
+		# cp submit* to cwd/name
+		# Cleanup (rm i/ *.std{out,err} (no errors), tar)
+
+		# Check New Job
+		# submit main.py / run.py job with main.py or workflow.slurm < cmd
+
+		# Decide which workflow tasks may be on login vs. compute nodes
+		# i.e) cleanup - separate cleanup .slurm script necessary
+		# coordination of job id's to make cleanup a dependency of postprocess etc?
+
+		# Check consistent between setup and submit to pull/push files 
+		# and not overwrite or copy wrong files
+
+		# Run test workflow on vector with slurm.json workflow push and pull on local to scratch/test
+
+		# Decide what is handled by 
+		# lower: main.py/run.py : cp settings.json cwd/ , touch submit.std* , touch job.sh , job.slurm , id.std*
+		# higher: workflow.py : review
+
+
 	return
 
 def main(settings,*args,**kwargs):

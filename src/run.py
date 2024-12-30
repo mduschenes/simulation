@@ -275,7 +275,7 @@ def setup(settings):
 
 
 
-def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=None,verbose=None):
+def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,verbose=None):
 	'''
 	Run simulations
 	Args:
@@ -327,7 +327,7 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=None,v
 
 		jobs = setup(settings)
 
-		results = launch(jobs)
+		results = launch(jobs,execute=execute,verbose=verbose)
 
 	return results
 
@@ -391,7 +391,6 @@ if __name__ == '__main__':
 		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
 		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
 		}
-
 
 	args = argparser(arguments,wrappers)
 

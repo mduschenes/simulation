@@ -59,8 +59,8 @@
 		"state.ndim":[2],
 		"state.parameters":[null],
 
-		"jobs.job.cwd":["scratch/povm/test"],
-		"jobs.postprocess.cwd":["scratch/povm/test"],
+		"jobs.job.cwd":["scratch/test"],
+		"jobs.postprocess.cwd":["scratch/test"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/src/config"],
