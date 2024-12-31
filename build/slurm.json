@@ -334,46 +334,34 @@
 		"pwd":null,
 		"name":["scaling.M.{M}.N.{N}.noise.{noise}.seed.{seed}"],
 		"data":["data.tmp.hdf5"],
-		"settings":["settings.json"],
-		"status":{
-			"user":"$USER",
-			"job":"{name}.[0-9]*.[0-9]*.stderr",
-			"postprocess":"{name}.[0-9]*.stderr"
-		},
-		"job":{
-			"job":{
-				"job":"job.slurm",
-				"script":"job.sh",
-				"pattern":"#SBATCH --array=",
-				"options":["%100"],
-				"delimiter":",",
-				"dependency":null
-			},
-			"postprocess":{
-				"job":"postprocess.slurm",
-				"script":"postprocess.sh",
-				"pattern":"#SBATCH --dependency=",
-				"options":[],
-				"delimiter":",",
-				"dependency":"job"
-			}		
-		}
+		"settings":["settings.json"]
 	},
 	"job":{
 		"job":{
+			"job":{
+				"job":"job.slurm",
+				"exe":"job.sh",
+				"device":"slurm",
+				"options":{"array":"{job}%100"}
+			},
+			"postprocess":{
+				"job":"postprocess.slurm",
+				"exe":"postprocess.sh",
+				"device":"slurm",
+				"options":{"dependency":"{job}"}
+			}	
+		},
+		"submit":{
 			"exe":"main.py",
 			"args":[],
 			"kwargs":{"--device":"slurm","--path":"~/scratch","--job":"job.slurm","--dry-run":null},
 			"path":null,
 			"env":{"NUMPY_BACKEND":"numpy"}
-			},
-		"queue":{
-			"exe":"job.sh",
-			"args":[],
-			"kwargs":{},
-			"path":true,			
-			"env":{}
-			}			
+		},
+		"kwargs":{
+			"user":"$USER",
+			"error":"{name}.[0-9]*.[0-9]*.stderr"
+		}
 	},
 	"host":["vector","graham","cedar","beluga"],
 	"settings":{

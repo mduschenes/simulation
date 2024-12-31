@@ -32,6 +32,23 @@ class Dict(dict):
 		self.__dict__ = self
 		return
 
+class Popen(object):
+	'''
+	Null Popen class
+	'''
+	def __init__(self,*args,stdin=None,stdout=None,stderr=None,env=None,**kwargs):
+		self.args = args
+		self.env = env
+		self.stdout = stdout
+		self.stderr = stderr
+		self.returncode = None
+		return
+
+	def wait(self,*args,**kwargs):
+		returncode = self.returncode
+		return returncode
+
+
 def logger(*args,verbose=None,**kwargs):
 	'''
 	logger
@@ -44,12 +61,13 @@ def logger(*args,verbose=None,**kwargs):
 		print(*args)
 	return
 
-def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,execute=False,verbose=None):
+def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> args
 	Args:
 		args (iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value], nested iterables are piped		
 		path (str): Path to call from
+		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,verbose=None)
 		env (dict[str,str]): Environmental variables for args		
 		stdin (file): Stdinput stream to command
 		stdout (file): Stdoutput to command
@@ -154,9 +172,10 @@ def call(*args,path=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,
 
 		return stdout,stderr,returncode
 
-	def wrapper(stdout,stderr,returncode,env=None,shell=None,verbose=None):
-		result = stdout
-		return result
+	if not callable(wrapper):
+		def wrapper(stdout,stderr,returncode,env=None,shell=None,verbose=None):
+			result = stdout
+			return result
 
 	def parser(*args,env=None,verbose=None):
 
@@ -563,15 +582,15 @@ def cp(source,destination,execute=None,verbose=None):
 
 def nonempty(path):
 	'''
-	Check if path is empty
+	Check if path is non-empty
 	Args:
 		path (str): path
 	Return:
-		boolean (bool): Path is empty
+		boolean (bool): Path is non-empty
 	'''
 
 	try:
-		boolean = bool(os.stat("file").st_size)
+		boolean = bool(os.stat(path).st_size)
 	except:
 		boolean = False
 
@@ -772,6 +791,140 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		return copier(default,copy=copy)
 
 
+class Job(object):
+	'''
+	Job class
+	Args:
+		path (str): path to job
+	'''
+	def __init__(self,path=None,**kwargs):
+		self.path = path
+		self.kwargs = kwargs
+		return
+
+	def script(self,path,options,device=None,mode='write',**kwargs):
+		'''
+		Setup job script
+		Args:
+			path (str): path to job script
+			options (dict): Options for job script
+			device (str): Name of device to submit to
+			mode (str): type of setup of script, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+		'''
+
+		def strings(device,**kwargs):
+			wrapper = lambda string: str(string) if string is not None else ''
+			default = {
+				'instruction':'.*',
+				'key':'.*',
+				'value':'.*',
+			}
+
+			if device in ['pc']:
+				default['instruction'] = ''
+			elif device in ['slurm']:
+				default['instruction'] = '#SBATCH --'
+			else:
+				default['instruction'] = ''
+			
+			kwargs.update({kwarg: kwargs.get(kwarg,default[kwarg]) for kwarg in default})
+			
+			for kwarg in kwargs:
+				kwargs[kwarg] = wrapper(kwargs[kwarg])
+			
+			string = '{instruction}{key}={value}'.format(**kwargs)
+
+			return string
+
+		if path is None or options is None:
+			return
+
+		for key in options:
+
+			value = options[key]
+
+			if key in ['dependency']:
+				value = kwargs.get('dependency')
+				if value is None:
+					value is None
+				elif all(i is None for i in value):
+					value = None
+				else:
+					value = options[key]
+					value = '%s:%s'%(
+						':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else value if isinstance(value,str) else'',
+						','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
+							(kwargs.get('dependencies') is not None)) else ''
+						)
+			else:
+				value = value
+
+			data = {}
+
+			opts = dict(execute=True,verbose=False)
+
+			if mode in ['w','write']:
+			
+				cmd = 'sed -i "/{string}/d" {path}'
+				string = strings(**{**kwargs,**dict(key=key,value=value)})
+				wrapper = lambda stdout,stderr: str(stdout)
+				cmd = cmd.format(path=path,string=string,**data)
+				data['option'] = call(cmd,wrapper=wrapper,**opts)
+
+				cmd = 'sed -i {line}i {string} {path}'
+				string = strings(**{**kwargs,**dict(key=key,value=value)})
+				wrapper = lambda stdout,stderr: str(stdout)
+				cmd = cmd.format(path=path,string=string,**data)
+				data['option'] = call(cmd,wrapper=wrapper,**opts)
+
+			elif mode in ['a','append']:
+				
+				cmd = 'grep -n {string} {path} | tail -1 | cut -f1 -d:'
+				string = strings(**{**kwargs,**dict(key=key,value=value)})
+				wrapper = lambda stdout,stderr: (int(stdout)+1 if stdout else str(stdout))
+				cmd = cmd.format(path=path,string=string,**data)
+				data['line'] = call(cmd,wrapper=wrapper,**opts)
+
+				if data.get('line'):
+					cmd = 'sed -i "s%^{string}%#{string}%g {path}'
+					string = strings(**{**kwargs,**dict(key=key,value=value)})
+					wrapper = lambda stdout,stderr: str(stdout)
+					cmd = cmd.format(path=path,string=string,**data)
+					data['comment'] = call(cmd,wrapper=wrapper,**opts)
+
+					cmd = 'sed -i {line}i {string} {path}'
+					string = strings(**{**kwargs,**dict(key=key,value=value)})
+					wrapper = lambda stdout,stderr: str(stdout)
+					cmd = cmd.format(path=path,string=string,**data)
+					data['option'] = call(cmd,wrapper=wrapper,**opts)
+				else:
+					cmd = 'sed -i {line}i {string} {path}'
+					string = strings(**{**kwargs,**dict(key=key,value=value)})
+					wrapper = lambda stdout,stderr: str(stdout)
+					cmd = cmd.format(path=path,string=string,**data)
+					data['option'] = call(cmd,wrapper=wrapper,**opts)
+
+		return
+
+
+	def status(self,**kwargs):
+
+		def parse(string,formats):
+			while any('{%s}'%(attr) in string for attr in formats if isinstance(formats)):
+				string = string.format(**formats)
+			return string
+		
+		status = dict(
+			run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
+			error='find {path} -maxdepth 1 -mindepth 1 -type f -name "{error}" | sort -n | tail -1',
+		)
+		kwargs.update(dict(path=self.path,**self.kwargs))
+
+		statuses
+
+
+
+
 def workflow(func,settings,*args,**kwargs):
 	'''
 	Workflow
@@ -908,24 +1061,27 @@ def job(settings,*args,**kwargs):
 		Returns:
 			status (object): status of task
 		'''
+
+
 		status = None
 
 		options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
 
+		names = [name,*data]
 		path = join(settings.workflow.path.cwd,name)
+		formats = {name: dict(name=name,path=path,**settings.workflow.status) for name in names}
+		opts = {name: dict(execute=True,verbose=False) for name in names}
 
-		cmd = dict(
+		statuses = dict(
 			run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-			err='find {path} -maxdepth 1 -mindepth 1 -type f -name "{job}" | sort -n | tail -1',
+			error='find {path} -maxdepth 1 -mindepth 1 -type f -name "{error}" | sort -n | tail -1',
 		)
-		formats = {name: dict(name=name,path=path,**settings.workflow.path.status) for name in [*data,name]}
-		opts = dict(execute=True,verbose=False)
+		status = {name: {attr: parse(statuses[attr],formats[name]) for attr in statuses} for name in names}
+		statuses = {name: Dict({attr: (lambda name=name,attr=attr,statuses=statuses:call(statuses[name][attr],**opts[name])) for attr in statuses[name]}) for name in statuses}
 
-		cmd = {name: Dict({string:cmd[string].format(**formats[name]).format(**formats[name]) for string in cmd}) for name in formats}
-
-		status = any(data[name] for name in data) or any(call(cmd[name].run,**opts) for name in cmd) 
+		status = any(data[name] for name in data) or any(statuses[name].run() for name in statuses) 
 		if status:
-			status = call(cmd[name].run,**opts)
+			status = statuses[name].run()
 			if status:
 				logger("Running Job: %s"%(name),**options)
 				status = False
@@ -933,11 +1089,27 @@ def job(settings,*args,**kwargs):
 				logger("Queued Job: %s"%(name),**options)
 				status = False
 		else:			
-			status = call(cmd[name].err,**opts)
-			if status and not nonempty(status):
+			status = statuses[name].err()
+			if status and nonempty(status):
 				logger("Error Job: %s"%(name),**options)
+
+				# submit 
+				cmd='{env} {exe} {kwargs} {args}'
+				formats[name] = {
+					**formats[name],
+					**dict(
+						
+						)
+				}
+				opts[name] = {
+					**opts[name],
+					**dict(
+						path=settings.workflow.job.job.path if settings.workflow.job.job.path is not True else path
+						)
+					}
+
 				status = True
-			elif status and nonempty(status):
+			elif status and not nonempty(status):
 				logger("Complete Job: %s"%(name),**options)
 				status = False
 			else:
@@ -967,7 +1139,7 @@ def job(settings,*args,**kwargs):
 
 		# 	for i in ${!names[@]}
 		# 	do
-		# 		for pattern in $(split "${delimiter}" ${patterns[${names[$i]}]})
+		# 		for pattern in $(split "${delimiter}" ${options[${names[$i]}]})
 		# 		do
 		# 			echo sed -i "s%\"${pattern}\"[^:]*:.*[^,]\(,*\)%\"${pattern}\":[${setting[$i]}]\1%g" ${config}
 		# 		done
