@@ -339,20 +339,24 @@
 	"job":{
 		"job":{
 			"job":{
-				"job":"job.slurm",
+				"path":"job.slurm",
 				"exe":"job.sh",
 				"device":"slurm",
+				"mode":"append",
+				"dependency":null,
 				"options":{"array":"{job}%100"}
 			},
 			"postprocess":{
-				"job":"postprocess.slurm",
+				"path":"postprocess.slurm",
 				"exe":"postprocess.sh",
 				"device":"slurm",
+				"mode":"append",
+				"dependency":"job",
 				"options":{"dependency":"{job}"}
 			}	
 		},
 		"submit":{
-			"exe":"main.py",
+			"path":"main.py",
 			"args":[],
 			"kwargs":{"--device":"slurm","--path":"~/scratch","--job":"job.slurm","--dry-run":null},
 			"path":null,

@@ -796,21 +796,133 @@ class Job(object):
 	Job class
 	Args:
 		path (str): path to job
+		exe (str): path of executable to submit job
+		mode (str): type of setup of job, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+		options (dict[str,str]): options for job
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to call commands
+		verbose (int,str,bool): Verbosity
 	'''
-	def __init__(self,path=None,**kwargs):
-		self.path = path
-		self.kwargs = kwargs
+	def __init__(self,path=None,exe=None,mode=None,options=None,device=None,execute=False,verbose=None):
+		self.path = None if path is None else path
+		self exe = None if exe is None else exe
+		self.mode = None if mode is None else mode
+		self.options = {} if options is None else options
+		self.execute = False if execute is None else execute
+		self.verbose = None if verbose is None else verbose
+
+		self.instructions = {'pc':'export','slurm':'#SBATCH --',None:''}
+		self.modes = {'r':'r','read':'r','w':'w','write':'w','a':'a','append':'a'}
+
 		return
 
-	def script(self,path,options,device=None,mode='write',**kwargs):
+	def load(self,path=None,mode=None,wrapper=None):
 		'''
-		Setup job script
+		Load job
 		Args:
-			path (str): path to job script
-			options (dict): Options for job script
-			device (str): Name of device to submit to
-			mode (str): type of setup of script, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+			path (str): path to job
+			mode (str): type of setup of, allowed strings in 'r','read'
+			wrapper (callable): Callable for data with signature wrapper(data)
+		Returns:
+			data (iterable[str]): job data
 		'''
+		path = self.path if path is None else path
+		data = None
+		mode = self.modes.get('read')
+		
+		if path is not None:
+			with open(path,mode) as obj:
+				data = obj.readlines()
+		
+		if callable(wrapper):
+			data = wrapper(data)
+		
+		return data
+
+	def dump(self,path=None,data=None,mode=None,wrapper=None):
+		'''
+		Load job
+		Args:
+			path (str): path to job
+			data (dict[int,str],iterable[str]): job data
+			mode (str,dict[int,str]): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+			wrapper (callable): Callable for data with signature wrapper(data)
+		'''
+		path = self.path if path is None else path
+		mode = self.mode if mode is None else mode
+	
+		if callable(wrapper):
+			data = wrapper(data)
+
+		lines = self.load(path,wrapper=list)
+		if data is None:
+			pass
+		elif isinstance(data,dict):
+			mode = {index:mode for index in data} if not isinstance(mode,dict) else mode
+			for index in sorted(data,reverse=True):
+				if mode.get(index) is None or self.modes.get(mode.get(index)) in ['a']:
+					lines.insert(index,data[index])
+				elif self.modes.get(mode.get(index)) in ['w']:
+					lines[index] = data[index]
+		else:
+			mode = [mode for string in data] if not isinstance(mode,iterables) else mode
+			for index,string in enumerate(data):
+				if mode[index] is None or self.modes.get(mode[index]) in ['a']:
+					lines.insert(index,string)
+				elif self.modes.get(mode[index]) in ['w']:
+					lines[index] = string
+		data = lines
+
+		mode = self.modes.get('write')
+		if path is not None and data is not None:
+			with open(path,mode) as obj:
+				obj.writelines(data)
+
+		return
+
+	def setup(self,path=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+		'''
+		Setup job
+		Args:
+			path (str): path to job
+			mode (str): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		'''
+
+		path = self.path if path is None else path
+		mode = self.mode if mode is None else mode
+		options = {**self.options,**options} if isinstance(options,dict) else {**self.options}
+		device = self.device if device is None else device
+		execute = self.execute if execute is None else execute
+		verboes = self.verbose if verbose is None else verbose
+
+		instruction = self.instructions.get(device)
+
+		def wrapper(data):
+			data = {index: {key:value for key,value in zip(strings[0::2],strings[1::2])}
+				for index,string in enumerate(data) if data.startswith(instruction)
+				for strings in [string.replace(instruction,'').split('=')]}
+			return data
+
+		data = self.load(path,wrapper=wrapper)
+
+		print(data)
+		exit()
+
+		def wrapper(data):
+			data = {index: ''.join(['{instruction}{key}={value}'.format(instruction=instruction,key=key,value=value)
+							for key,value in data[index].items()])
+					for index in data}
+			return data
+
+		self.dump(path,data,wrapper=wrapper)
+
+		print(data)
+		exit()
 
 		def strings(device,**kwargs):
 			wrapper = lambda string: str(string) if string is not None else ''
@@ -839,6 +951,9 @@ class Job(object):
 		if path is None or options is None:
 			return
 
+		if isinstance(options,dict) and isinstance(data,dict):
+			options.update(data)
+
 		for key in options:
 
 			value = options[key]
@@ -859,50 +974,9 @@ class Job(object):
 			else:
 				value = value
 
+			options[key] = data
+
 			data = {}
-
-			opts = dict(execute=True,verbose=False)
-
-			if mode in ['w','write']:
-			
-				cmd = 'sed -i "/{string}/d" {path}'
-				string = strings(**{**kwargs,**dict(key=key,value=value)})
-				wrapper = lambda stdout,stderr: str(stdout)
-				cmd = cmd.format(path=path,string=string,**data)
-				data['option'] = call(cmd,wrapper=wrapper,**opts)
-
-				cmd = 'sed -i {line}i {string} {path}'
-				string = strings(**{**kwargs,**dict(key=key,value=value)})
-				wrapper = lambda stdout,stderr: str(stdout)
-				cmd = cmd.format(path=path,string=string,**data)
-				data['option'] = call(cmd,wrapper=wrapper,**opts)
-
-			elif mode in ['a','append']:
-				
-				cmd = 'grep -n {string} {path} | tail -1 | cut -f1 -d:'
-				string = strings(**{**kwargs,**dict(key=key,value=value)})
-				wrapper = lambda stdout,stderr: (int(stdout)+1 if stdout else str(stdout))
-				cmd = cmd.format(path=path,string=string,**data)
-				data['line'] = call(cmd,wrapper=wrapper,**opts)
-
-				if data.get('line'):
-					cmd = 'sed -i "s%^{string}%#{string}%g {path}'
-					string = strings(**{**kwargs,**dict(key=key,value=value)})
-					wrapper = lambda stdout,stderr: str(stdout)
-					cmd = cmd.format(path=path,string=string,**data)
-					data['comment'] = call(cmd,wrapper=wrapper,**opts)
-
-					cmd = 'sed -i {line}i {string} {path}'
-					string = strings(**{**kwargs,**dict(key=key,value=value)})
-					wrapper = lambda stdout,stderr: str(stdout)
-					cmd = cmd.format(path=path,string=string,**data)
-					data['option'] = call(cmd,wrapper=wrapper,**opts)
-				else:
-					cmd = 'sed -i {line}i {string} {path}'
-					string = strings(**{**kwargs,**dict(key=key,value=value)})
-					wrapper = lambda stdout,stderr: str(stdout)
-					cmd = cmd.format(path=path,string=string,**data)
-					data['option'] = call(cmd,wrapper=wrapper,**opts)
 
 		return
 
