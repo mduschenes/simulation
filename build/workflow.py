@@ -796,16 +796,16 @@ class Job(object):
 	Job class
 	Args:
 		path (str): path to job
-		exe (str): path of executable to submit job
+		file (str): path of executable to submit job
 		mode (str): type of setup of job, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 		options (dict[str,str]): options for job
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 	'''
-	def __init__(self,path=None,exe=None,mode=None,options=None,device=None,execute=False,verbose=None):
+	def __init__(self,path=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None):
 		self.path = None if path is None else path
-		self exe = None if exe is None else exe
+		self file = None if file is None else file
 		self.mode = None if mode is None else mode
 		self.options = {} if options is None else options
 		self.execute = False if execute is None else execute
@@ -982,6 +982,9 @@ class Job(object):
 
 
 	def status(self,**kwargs):
+		'''
+		Status of job
+		'''
 
 		def parse(string,formats):
 			while any('{%s}'%(attr) in string for attr in formats if isinstance(formats)):
@@ -995,6 +998,118 @@ class Job(object):
 		kwargs.update(dict(path=self.path,**self.kwargs))
 
 		statuses
+
+	def __call__(self,args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,device=None,execute=False,verbose=None):
+		'''
+		Call job
+		Args:
+			args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value]
+			kwargs (dict): Keyword arguments for args
+			exe (str,iterable[str]): Executable for args
+			flags (str,iterable[str]): Flags for args
+			cmd (str,iterable[str]): Command for args
+			options (str,iterable[str]): Options for args
+			env (dict[str,str]): Environmental variables for args
+			device (str): Name of device to submit to
+			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+			verbose (int,str,bool): Verbosity
+		Returns:
+			args (iterable[str]): Command arguments
+			env (dict[str,str]): Environment for command
+		'''
+
+		if isinstance(args,dict):
+			args = {arg: 
+					([(str(args[arg]) if args[arg] is not None else '')] if isinstance(args[arg],scalars) else 
+					 [((str(subarg) if subarg is not None else '') if isinstance(subarg,scalars) else 
+					  ' '.join([(str(subsubarg) if subsubarg is not None else '') for subsubarg in subarg])) for subarg in args[arg]]) 
+					for arg in args}
+		else:
+			args = {None:[((str(arg) if arg is not None else '') if isinstance(arg,scalars) else 
+						  [(str(subarg) if subarg is not None else '') for subarg in arg]) for arg in args]}
+
+
+		exe = [] if exe is None else [exe] if isinstance(exe,str) else [*exe]
+		flags = [] if flags is None else [flags] if isinstance(flags,str) else [*flags]
+		cmd = [] if cmd is None else [cmd] if isinstance(cmd,str) else [*cmd]
+		options = [] if options is None else [options] if isinstance(options,str) else [*options]
+		env = {} if env is None else {} if not isinstance(env,dict) else env
+		kwargs = {} if kwargs is None else {} if not isinstance(kwargs,dict) else kwargs
+
+		if device in ['pc']:
+			exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
+			flags = [*flags]
+			cmd = [*cmd]
+			options = [*options]		
+			env = {
+				**{
+					**({
+						'SLURM_JOB_NAME':kwargs.get('key'),
+						'SLURM_JOB_ID':kwargs.get('key'),
+						'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+						'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+						'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+						'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
+						'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+						'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+						} if len(kwargs) else {}
+						),
+					**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
+				},
+				**env			
+			}
+
+		elif device in ['slurm']:
+			exe,flags,cmd,options,env = (
+				['sbatch'],
+				[
+				*flags,
+				*(['-J',basedir(kwargs.get('cwd'))] if len(kwargs) else []),
+				*(['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))] if len(args) else []),
+				],
+				['<'],
+				[*exe,*cmd,*options],
+				{
+				**{
+					**({
+						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					} if len(kwargs) else {}),
+					},
+				**env
+				}
+				)
+
+		else:
+			exe = [*exe]
+			flags = [*flags]
+			cmd = [*cmd]
+			options = [*[subarg for arg in args for subarg in args[arg]],*options]
+			env = {
+				**{
+					**({
+						'SLURM_JOB_NAME':kwargs.get('key'),
+						'SLURM_JOB_ID':kwargs.get('key'),
+						'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+						'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+						'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+						'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
+						'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+						'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
+					} if len(kwargs) else {}),
+				},
+				**env,			
+			}
+
+		args = [*exe,*flags,*cmd,*options]
+
+		env = {str(var): str(env[var]) if env[var] is not None else '' for var in env}
+
+		return args,env
 
 
 

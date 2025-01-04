@@ -340,15 +340,24 @@
 		"job":{
 			"job":{
 				"path":"job.slurm",
-				"exe":"job.sh",
+				"file":"job.sh",
 				"device":"slurm",
 				"mode":"append",
 				"dependency":null,
+				"options":{}
+			},
+			"error":{
+				"path":"job.slurm",
+				"file":"job.sh",
+				"device":"slurm",
+				"mode":"append",
+				"args":[],
+				"kwargs":{"dependency":null},
 				"options":{"array":"{job}%100"}
 			},
 			"postprocess":{
 				"path":"postprocess.slurm",
-				"exe":"postprocess.sh",
+				"file":"postprocess.sh",
 				"device":"slurm",
 				"mode":"append",
 				"dependency":"job",
