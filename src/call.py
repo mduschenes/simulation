@@ -80,7 +80,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 
 	processes = -1 if processes is None else processes
 
-	if device in ['pc']:
+	if device in ['local']:
 		exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
 		flags = [*flags]
 		cmd = [*cmd]
@@ -848,7 +848,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	patterns = {str(pattern): str(patterns[pattern]) if patterns[pattern] is not None else None for pattern in patterns}
 	kwargs = {} if not isinstance(kwargs,dict) else kwargs
 
-	if device in ['pc']:
+	if device in ['local']:
 		default = '#SBATCH'
 		def string(**kwargs):
 			wrapper(kwargs)
@@ -1056,7 +1056,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	pattern = 'job-name'
 	path = list(set((join(j,root=i) for i,j in zip(pwd,jobs))))
 	kwargs = {'prefix':'.*','default':'','pattern':pattern,'value':r'\(.*\)','postfix':''}
-	if device in ['pc']:
+	if device in ['local']:
 		kwargs.update({'default':'#SBATCH'})
 	elif device in ['slurm']:
 		kwargs.update({'default':'#SBATCH'})

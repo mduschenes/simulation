@@ -65,8 +65,8 @@
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/src/config"],
 
-		"jobs.job.device":["pc"],
-		"jobs.postprocess.device":["pc"],
+		"jobs.job.device":["local"],
+		"jobs.postprocess.device":["local"],
 		"jobs.job.process":["series"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
@@ -198,7 +198,7 @@
 		"file":"job.sh",	
 		"process":null,
 		"processes":null,
-		"device":"pc",
+		"device":"local",
 		"execute":1,
 		"verbose":"info"
 		},
@@ -229,7 +229,7 @@
 		"pause":1,	
 		"file":"postprocess.sh",
 		"processes":null,
-		"device":"pc",
+		"device":"local",
 		"execute":1,
 		"process":null,
 		"verbose":true

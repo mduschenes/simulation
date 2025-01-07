@@ -3532,7 +3532,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Quantum Discord} ~~ \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}$"
+				"ylabel": "$\\textrm{Quantum Discord} ~~ \\abs{\\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -7869,7 +7869,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Max Quantum Discord} ~~ \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}$"
+				"ylabel": "$\\textrm{Max Quantum Discord} ~~ \\abs{\\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
@@ -11783,7 +11783,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Max Quantum Discord} ~~ \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}$"
+				"ylabel": "$\\textrm{Max Quantum Discord} ~~ \\abs{\\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Noise Scale} ~~ \\gamma$"

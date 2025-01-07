@@ -1,14 +1,21 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,argparse,subprocess,shlex,itertools,json
+import os,sys,argparse,subprocess,shlex,itertools,json,io,re,signal
 
 integers = (int,)
 floats = (float,)
 scalars = (*integers,*floats,str,type(None),)
 iterables = (list,tuple,set,)
+streams = (io.RawIOBase,)
 delimiter = '.'
 ifs = ' '
+
+
+class Null(object):
+	pass
+null = Null()
+nulls = (Null,)
 
 class Dict(dict):
 	'''
@@ -48,7 +55,6 @@ class Popen(object):
 		returncode = self.returncode
 		return returncode
 
-
 def logger(*args,verbose=None,**kwargs):
 	'''
 	logger
@@ -61,25 +67,67 @@ def logger(*args,verbose=None,**kwargs):
 		print(*args)
 	return
 
-def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,execute=False,verbose=None):
+class TimeoutError(Exception):
+	pass
+
+class timeout:
+
+	def __init__(self,time=None,message=None,default=None):
+		self.time = time if time is not None else 1e-3
+		self.message = message if message is not None else None
+		self.default = default
+		self.signal = signal.SIGALRM
+		self.type = signal.ITIMER_REAL
+		self.error = TimeoutError
+		self.alarm = 0
+		return
+
+	def handler(self, signum, frame):
+		raise self.error(self.message) if self.message else self.error
+	def start(self):
+		signal.signal(self.signal,self.handler)
+		signal.setitimer(self.type,self.time)
+		return
+	def stop(self):
+		signal.setitimer(self.type,self.alarm)
+		return
+	
+	def __enter__(self):
+		self.start()
+	def __exit__(self,type,value,traceback):
+		self.stop()
+
+	def __call__(self,func):
+		def wrapper(*args, **kwargs):
+			self.start()
+			try:
+				result = func(*args, **kwargs)
+			finally:
+				result = self.default
+				self.stop()
+			return result
+		return wrapper
+
+def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,time=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> args
 	Args:
 		args (iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value], nested iterables are piped		
 		path (str): Path to call from
-		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,verbose=None)
+		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None)
 		env (dict[str,str]): Environmental variables for args		
 		stdin (file): Stdinput stream to command
 		stdout (file): Stdoutput to command
 		stderr (file): Stderr to command
 		shell (bool) : Use shell subprocess
+		time (int): Timeout		
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 	Returns:
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,outputs=None,errors=None,env=None,shell=None,verbose=None):
+	def caller(args,inputs=None,outputs=None,errors=None,env=None,shell=None,time=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
@@ -135,35 +183,44 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 
-			if stdin is not None:
+			if isinstance(stdin,streams):
 				stdin.close()
-			if isinstance(output,str):
+			if isinstance(stdout,streams):
 				stdout.close()
-			if isinstance(error,str):
+			if isinstance(error,streams):
 				stderr.close()
 
 			stdin = result.stdout
-
 
 		stdout,stderr,returncode = [],[],result.returncode
 		
 		if result.stdout is not None:
 			try:
-				for line in result.stdout:
-					stdout.append(parse(line))			
-					logger(stdout[-1],verbose=verbose)
+				with timeout(time=time):
+					for line in result.stdout:
+						stdout.append(parse(line))			
+						logger(stdout[-1],verbose=verbose)
+			except TimeoutError:
+				pass
 			except:
-				stdout.append(parse(result.stdout))
-				logger(stdout[-1],verbose=verbose)
+				with timeout(time=time):
+					stdout.append(parse(result.stdout))
+					logger(stdout[-1],verbose=verbose)
 		
-		returncode = result.wait()
+		try:
+			returncode = timeout(time=time,default=-1)(result.wait)()
+		except TimeoutError:
+			returncode = -1
 
 		if result.stderr is not None:
 			try:
-				for line in result.stderr:	
-					stderr.append(parse(line))
-					if returncode is not None:
-						logger(stderr[-1],verbose=verbose)
+				with timeout(time=time):
+					for line in result.stderr:	
+						stderr.append(parse(line))
+						if returncode is not None:
+							logger(stderr[-1],verbose=verbose)
+			except TimeoutError:
+				pass
 			except:
 				stderr.append(parse(result.stderr))
 				logger(stderr[-1],verbose=verbose)
@@ -173,14 +230,14 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		return stdout,stderr,returncode
 
 	if not callable(wrapper):
-		def wrapper(stdout,stderr,returncode,env=None,shell=None,verbose=None):
+		def wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None):
 			result = stdout
 			return result
 
 	def parser(*args,env=None,verbose=None):
 
 		args = [(str(arg) if (isinstance(arg,scalars) or isinstance(arg,str) and not arg.count(symbol)) else 
-	 		    [str(subarg) for subarg in (arg if not isinstance(arg,scalars) else arg.split(symbol)) if subarg is not None]) 
+				[str(subarg) for subarg in (arg if not isinstance(arg,scalars) else arg.split(symbol)) if subarg is not None]) 
 				for arg in args if arg is not None]
 
 		pipe = any(not isinstance(arg,scalars) for arg in args)
@@ -264,7 +321,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 	if execute:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,shell=shell,verbose=verbose),env=env,shell=shell,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,shell=shell,time=time,verbose=verbose),env=env,shell=shell,time=time,verbose=verbose)
 
 	return result
 
@@ -398,12 +455,14 @@ class argparser(argparse.ArgumentParser):
 	def values(self):
 		return self.kwargs.values()
 
-def join(*paths,ext=None):
+def join(*paths,ext=None,root=None,abspath=None):
 	'''
 	Join paths
 	Args:
 		paths (str): path
 		ext (str): join ext
+		root (str): Root path to insert at beginning of path if path does not already start with root
+		abspath (bool): Return absolute path
 	Returns:
 		path (str): Joined path
 	'''
@@ -412,22 +471,48 @@ def join(*paths,ext=None):
 		path = path if ext is None else delimiter.join([path,ext])
 	except:
 		path = None
+
+	if path is not None and root is not None:
+		if not dirname(path,abspath=True).startswith(dirname(root,abspath=True)):
+			paths = [root,path]
+			paths = [path for path in paths if path not in ['',None]]
+			path = os.path.join(*paths)
+	elif path is None and root is not None:
+		path = root
+
+	if path is not None:
+		path = os.path.expandvars(os.path.expanduser(path))
+	if path is not None and abspath:
+		path = os.path.abspath(path)
+
 	return path
 
-def split(path,ext=None):
+def split(path,ext=None,root=None,abspath=None):
 	'''
 	Split paths
 	Args:
 		path (str): path
 		ext (bool): split ext
+		root (str): Root path to insert at beginning of path if path does not already start with root		
+		abspath (bool): Return absolute path	
 	Returns:
 		paths (iterable[str]): Split paths
 	'''
+
+	if abspath:
+		path = os.path.abspath(path)
+
 	try:
-		paths = path.split(os.sep) if path is not NOne else None
+		paths = path.split(os.sep) if path is not None else None
 		paths = paths if not ext else [*paths[:-1],delimiter.join(paths[-1].split(delimiter)[:-1]),delimiter.join(paths[-1].split(delimiter)[-1:])] if path is not None else None
 	except:
 		paths = None
+
+	if root is not None:
+		root = split(root,abspath=abspath)
+		while root[-1] != paths[0]:
+			root,paths = root[:-1],[root[-1],*paths]
+
 	return paths
 
 def merge(*paths,string=None):
@@ -461,6 +546,62 @@ def exists(path):
 		exists = False
 
 	return exists
+
+
+def dirname(path,abspath=False,delimiter=delimiter):
+	'''
+	Return directory name of path
+	Args:
+		path (str): path
+		abspath (bool): Return absolute path of directory
+		delimiter (str): Delimiter to separate file name from extension		
+	Returns:
+		path (str): Directory name of path
+	'''
+
+	# TODO: Include all extensions / find method of determining if path is directory or file
+
+	exts = [
+		'py','ipynb',
+		'tmp',
+		'cpp','o','out','err','obj',
+		'csv','txt',
+		'npy','npz',
+		'pickle','pkl',
+		'json',
+		'hdf5','h5','ckpt',
+		'sh',
+		'git',
+		'pdf','mk',
+		'tex','sty','aux','auxlock','bbl','bib','blg','snm','toc','nav','tikz',
+		'docx','xlsx','pptx','doc','xls','ppt',
+		'slurm','lsf',
+		'ini','config',
+		'mplstyle',
+		'conf','log',
+		'stdout','stderr'
+		]
+
+	if path is None:
+		directory = path
+		return directory
+
+	file,ext = os.path.splitext(path)
+	ext = delimiter.join(ext.split(delimiter)[1:])
+	directory = os.path.dirname(path)
+
+	if directory in ['']:
+		if ext not in exts:
+			directory = path
+	elif ext not in exts:
+		directory = path
+	directory = os.path.expandvars(os.path.expanduser(directory))
+	if abspath:
+		directory = os.path.abspath(os.path.expandvars(os.path.expanduser(directory)))
+
+	path = directory
+
+	return path
 
 def echo(*strings,execute=None,verbose=None):
 	'''
@@ -646,6 +787,33 @@ def dump(path,data,wrapper=None,verbose=None):
 		pass
 	return
 
+
+def parse(string,formats):
+	'''
+	Format string '...{key}...' -> '...{key}...'.format(key=value)
+	Args:
+		string (str): String to format '...{key}...'
+		formats (dict[str,str]): Format strings {key}:value
+	Returns:
+		string (str): Formatted string
+	'''
+	template = '{%s}'
+	preprocess = {'{{':'#{{','}}':'#}}'}
+	postprocess = {'#{':'{{','#}':'}}'}
+	replacements = {'{{':'{','}}':'}','\\\\':"\\"}
+	while any(template%(attr) in string for attr in formats if isinstance(formats[attr],str)):
+		for replacement in preprocess:
+			string = string.replace(replacement,preprocess[replacement])
+
+		string = string.format(**formats)
+
+		for replacement in postprocess:
+			string = string.replace(replacement,postprocess[replacement])
+	else:
+		for replacement in replacements:
+			string = string.replace(replacement,replacements[replacement])
+	return string
+
 def permuter(iterable,repeat=None):
 	'''
 	Get product of permutations of iterable
@@ -795,96 +963,60 @@ class Job(object):
 	'''
 	Job class
 	Args:
+		name (str): name of job
 		path (str): path to job
-		file (str): path of executable to submit job
+		data (str): path of job script
+		file (str): path of job executable
 		mode (str): type of setup of job, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 		options (dict[str,str]): options for job
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
+		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,path=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None):
+	def __init__(self,name=None,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+		
+		self.name = None if name is None else name
 		self.path = None if path is None else path
-		self file = None if file is None else file
+		self.file = None if file is None else file
 		self.mode = None if mode is None else mode
 		self.options = {} if options is None else options
+		self.device = None if device is None else device
 		self.execute = False if execute is None else execute
 		self.verbose = None if verbose is None else verbose
 
-		self.instructions = {'pc':'export','slurm':'#SBATCH --',None:''}
+		self.kwargs = kwargs
+
+		self.devices = {'local':'local','slurm':'slurm'}
+		self.instructions = {'local':'export','slurm':'#SBATCH --',None:''}
 		self.modes = {'r':'r','read':'r','w':'w','write':'w','a':'a','append':'a'}
+		self.errors = {'run':1,'error':-1,'done':0}
+
+		self.init()
 
 		return
 
-	def load(self,path=None,mode=None,wrapper=None):
+	def init(self,*args,**kwargs):
 		'''
-		Load job
+		Initialize job
 		Args:
-			path (str): path to job
-			mode (str): type of setup of, allowed strings in 'r','read'
-			wrapper (callable): Callable for data with signature wrapper(data)
-		Returns:
-			data (iterable[str]): job data
+			args (iterable): Positional arguments
+			kwargs (dict): Keyword arguments
 		'''
-		path = self.path if path is None else path
-		data = None
-		mode = self.modes.get('read')
-		
-		if path is not None:
-			with open(path,mode) as obj:
-				data = obj.readlines()
-		
-		if callable(wrapper):
-			data = wrapper(data)
-		
-		return data
 
-	def dump(self,path=None,data=None,mode=None,wrapper=None):
-		'''
-		Load job
-		Args:
-			path (str): path to job
-			data (dict[int,str],iterable[str]): job data
-			mode (str,dict[int,str]): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
-			wrapper (callable): Callable for data with signature wrapper(data)
-		'''
-		path = self.path if path is None else path
-		mode = self.mode if mode is None else mode
-	
-		if callable(wrapper):
-			data = wrapper(data)
 
-		lines = self.load(path,wrapper=list)
-		if data is None:
-			pass
-		elif isinstance(data,dict):
-			mode = {index:mode for index in data} if not isinstance(mode,dict) else mode
-			for index in sorted(data,reverse=True):
-				if mode.get(index) is None or self.modes.get(mode.get(index)) in ['a']:
-					lines.insert(index,data[index])
-				elif self.modes.get(mode.get(index)) in ['w']:
-					lines[index] = data[index]
-		else:
-			mode = [mode for string in data] if not isinstance(mode,iterables) else mode
-			for index,string in enumerate(data):
-				if mode[index] is None or self.modes.get(mode[index]) in ['a']:
-					lines.insert(index,string)
-				elif self.modes.get(mode[index]) in ['w']:
-					lines[index] = string
-		data = lines
-
-		mode = self.modes.get('write')
-		if path is not None and data is not None:
-			with open(path,mode) as obj:
-				obj.writelines(data)
+		if self.device not in self.devices:
+			raise NotImplementedError("%s device Not Implemented"%(self.device))
 
 		return
 
-	def setup(self,path=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def setup(self,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
 		'''
 		Setup job
 		Args:
 			path (str): path to job
+			data (str): path of job script
+			file (str): path of job executable			
 			mode (str): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
@@ -894,11 +1026,16 @@ class Job(object):
 		'''
 
 		path = self.path if path is None else path
+		data = self.data if data is None else data
+		file = self.file if file is None else file
 		mode = self.mode if mode is None else mode
 		options = {**self.options,**options} if isinstance(options,dict) else {**self.options}
 		device = self.device if device is None else device
 		execute = self.execute if execute is None else execute
 		verboes = self.verbose if verbose is None else verbose
+
+
+		path = join(data,root=path)
 
 		instruction = self.instructions.get(device)
 
@@ -910,9 +1047,6 @@ class Job(object):
 
 		data = self.load(path,wrapper=wrapper)
 
-		print(data)
-		exit()
-
 		def wrapper(data):
 			data = {index: ''.join(['{instruction}{key}={value}'.format(instruction=instruction,key=key,value=value)
 							for key,value in data[index].items()])
@@ -920,9 +1054,6 @@ class Job(object):
 			return data
 
 		self.dump(path,data,wrapper=wrapper)
-
-		print(data)
-		exit()
 
 		def strings(device,**kwargs):
 			wrapper = lambda string: str(string) if string is not None else ''
@@ -932,7 +1063,7 @@ class Job(object):
 				'value':'.*',
 			}
 
-			if device in ['pc']:
+			if device in ['local']:
 				default['instruction'] = ''
 			elif device in ['slurm']:
 				default['instruction'] = '#SBATCH --'
@@ -980,25 +1111,60 @@ class Job(object):
 
 		return
 
-
 	def status(self,**kwargs):
 		'''
 		Status of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			status (str): Status of job
 		'''
 
-		def parse(string,formats):
-			while any('{%s}'%(attr) in string for attr in formats if isinstance(formats)):
-				string = string.format(**formats)
-			return string
-		
-		status = dict(
-			run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-			error='find {path} -maxdepth 1 -mindepth 1 -type f -name "{error}" | sort -n | tail -1',
-		)
-		kwargs.update(dict(path=self.path,**self.kwargs))
+		kwargs = {**self.kwargs,**kwargs}
 
-		statuses
+		kwargs = {
+			**kwargs,
+			# **{attr:join(kwargs.get(attr),root=self.path) for attr in ['error']},
+			**dict(name=self.name,path=self.path),
+			}
 
+		device = self.device
+		options = dict(execute=True,verbose=False)
+
+		if device in ['local']:
+			status = dict()
+		elif device in ['slurm']:
+			status = dict(
+				run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
+				error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\1:"',
+			)
+		else:
+			status = dict()
+
+		status = {attr: parse(status[attr],kwargs) for attr in status}
+
+		print(status)
+
+		status = {attr: call(status[attr],**options) for attr in status}
+		print(status)
+		print('-----')
+
+		return status
+
+	# def setup(self,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	# 	'''
+	# 	Call job
+	# 	Args:
+	# 		path (str): path to job
+	# 		data (str): path of job script
+	# 		file (str): path of job executable			
+	# 		mode (str): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+	# 		options (dict[str,str]): options for job
+	# 		device (str): Name of device to submit to
+	# 		execute (boolean,int): Boolean whether to call commands
+	# 		verbose (int,str,bool): Verbosity
+	# 		kwargs (dict): Keyword arguments
+	# 	'''
 	def __call__(self,args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,device=None,execute=False,verbose=None):
 		'''
 		Call job
@@ -1036,7 +1202,7 @@ class Job(object):
 		env = {} if env is None else {} if not isinstance(env,dict) else env
 		kwargs = {} if kwargs is None else {} if not isinstance(kwargs,dict) else kwargs
 
-		if device in ['pc']:
+		if device in ['local']:
 			exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
 			flags = [*flags]
 			cmd = [*cmd]
@@ -1112,6 +1278,79 @@ class Job(object):
 		return args,env
 
 
+	def load(self,path=None,mode=None,wrapper=None):
+		'''
+		Load job
+		Args:
+			path (str): path to job
+			mode (str): type of setup of, allowed strings in 'r','read'
+			wrapper (callable): Callable for data with signature wrapper(data)
+		Returns:
+			data (iterable[str]): job data
+		'''
+		path = self.path if path is None else path
+		data = None
+		mode = self.modes.get('read')
+		
+		if path is not None:
+			with open(path,mode) as obj:
+				data = obj.readlines()
+		
+		if callable(wrapper):
+			data = wrapper(data)
+		
+		return data
+
+	def __str__(self):
+		if isinstance(self.name,str):
+			string = self.name
+		else:
+			string = self.__class__.__name__
+		return string
+
+	def __repr__(self):
+		return self.__str__()
+
+	def dump(self,path=None,data=None,mode=None,wrapper=None):
+		'''
+		Load job
+		Args:
+			path (str): path to job
+			data (dict[int,str],iterable[str]): job data
+			mode (str,dict[int,str]): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
+			wrapper (callable): Callable for data with signature wrapper(data)
+		'''
+		path = self.path if path is None else path
+		mode = self.mode if mode is None else mode
+	
+		if callable(wrapper):
+			data = wrapper(data)
+
+		lines = self.load(path,wrapper=list)
+		if data is None:
+			pass
+		elif isinstance(data,dict):
+			mode = {index:mode for index in data} if not isinstance(mode,dict) else mode
+			for index in sorted(data,reverse=True):
+				if mode.get(index) is None or self.modes.get(mode.get(index)) in ['a']:
+					lines.insert(index,data[index])
+				elif self.modes.get(mode.get(index)) in ['w']:
+					lines[index] = data[index]
+		else:
+			mode = [mode for string in data] if not isinstance(mode,iterables) else mode
+			for index,string in enumerate(data):
+				if mode[index] is None or self.modes.get(mode[index]) in ['a']:
+					lines.insert(index,string)
+				elif self.modes.get(mode[index]) in ['w']:
+					lines[index] = string
+		data = lines
+
+		mode = self.modes.get('write')
+		if path is not None and data is not None:
+			with open(path,mode) as obj:
+				obj.writelines(data)
+
+		return
 
 
 def workflow(func,settings,*args,**kwargs):
@@ -1251,108 +1490,60 @@ def job(settings,*args,**kwargs):
 			status (object): status of task
 		'''
 
-
 		status = None
 
+		path = join(name,root=settings.workflow.path.cwd)
+		opts = settings.workflow.job.job.job.args
+		options = {
+			**{attr:settings.workflow.job.job.job[attr] for attr in settings.workflow.job.job.job if attr not in ['args','kwargs']},
+			**settings.workflow.job.job.job.kwargs,
+			**dict(name=name,path=path)
+			}
+
+
+		job = Job(*opts,**options)
+
+		def boolean(jobs,errors,args,kwargs):
+			boolean = {name: jobs[name].status(*args,**kwargs) for name in jobs}
+			boolean = Dict(
+				{status: [name for name in boolean in boolean[name] in [status]]
+				for status in errors}
+				)
+			return boolean
+
+
+		jobs = {**data,name:job}
+
+		keywords = dict(
+			jobs = jobs,
+			errors = job.errors,
+			args = (*settings.workflow.job.args,*args),
+			kwargs = {**settings.workflow.job.kwargs,**kwargs},
+			)
 		options = {**settings.workflow.options,**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in settings.workflow.options}}
 
-		names = [name,*data]
-		path = join(settings.workflow.path.cwd,name)
-		formats = {name: dict(name=name,path=path,**settings.workflow.status) for name in names}
-		opts = {name: dict(execute=True,verbose=False) for name in names}
+		status = boolean(**keywords)
 
-		statuses = dict(
-			run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-			error='find {path} -maxdepth 1 -mindepth 1 -type f -name "{error}" | sort -n | tail -1',
-		)
-		status = {name: {attr: parse(statuses[attr],formats[name]) for attr in statuses} for name in names}
-		statuses = {name: Dict({attr: (lambda name=name,attr=attr,statuses=statuses:call(statuses[name][attr],**opts[name])) for attr in statuses[name]}) for name in statuses}
+		while not status.run:
+			if status.error:
+				for name in status.error:
+					logger("Error Job: %s"%(name),**options)
+					# Resubmit error job
+			if not any(name in [*status.error,*status.done]):
+				logger("Queue Job: %s"%(name),**options)
+				# Submit new job
+			elif not any(name in [*status.done]):
+				logger("Done Job: %s"%(name),**options)
+				# Clean up done job
+			status = boolean(**keywords)
+		else:
+			if status.run:
+				for name in status.run:
+					logger("Running Job: %s"%(name),**options)
 
-		status = any(data[name] for name in data) or any(statuses[name].run() for name in statuses) 
-		if status:
-			status = statuses[name].run()
-			if status:
-				logger("Running Job: %s"%(name),**options)
-				status = False
-			else:
-				logger("Queued Job: %s"%(name),**options)
-				status = False
-		else:			
-			status = statuses[name].err()
-			if status and nonempty(status):
-				logger("Error Job: %s"%(name),**options)
-
-				# submit 
-				cmd='{env} {exe} {kwargs} {args}'
-				formats[name] = {
-					**formats[name],
-					**dict(
-						
-						)
-				}
-				opts[name] = {
-					**opts[name],
-					**dict(
-						path=settings.workflow.job.job.path if settings.workflow.job.job.path is not True else path
-						)
-					}
-
-				status = True
-			elif status and not nonempty(status):
-				logger("Complete Job: %s"%(name),**options)
-				status = False
-			else:
-				logger("New Job: %s"%(name),**options)
-				status = True
-
+		status = job
+		
 		return status
-		# if [[ -d ${path}/${name} ]] && [[ -z "$(squeue --format="%.100j" -u ${USER} | tr " " | grep ${name})" ]]
-		# then
-		# 	echo Running Job: ${name}
-		# 	break	
-
-
-		# args = ['ls ${HOME}/scratch | grep scaling | sed \"s%scaling%new%g\"']
-
-		# # args = ['ls ~/scratch | grep scaling','|','sed \"s%scaling%new%g\"']
-
-		# data = call(*args,execute=True)
-
-		# if [[ ! -d ${path}/${name} ]]
-		# then
-
-		# 	for pattern in $(split "${delimiter}" ${paths})
-		# 	do
-		# 		echo sed -i "s%\"${pattern}\"[^:]*:.*[^,]\(,*\)%\"${pattern}\":[\"${path}/${name}\"]\1%g" ${config}
-		# 	done
-
-		# 	for i in ${!names[@]}
-		# 	do
-		# 		for pattern in $(split "${delimiter}" ${options[${names[$i]}]})
-		# 		do
-		# 			echo sed -i "s%\"${pattern}\"[^:]*:.*[^,]\(,*\)%\"${pattern}\":[${setting[$i]}]\1%g" ${config}
-		# 		done
-		# 	done
-		# fi
-
-		# if [[ -d ${path}/${name} ]] && [[ -z "$(squeue --format="%.100j" -u ${USER} | tr " " | grep ${name})" ]]
-		# then
-		# 	echo Running Job: ${name}
-		# 	break	
-		# elif [[ -d ${path}/${name} ]]
-		# then
-		# 	echo Existing Job: ${name}
-		# 	echo queue ${path}/${name}
-		# 	break	
-		# elif [[ ! -d ${path}/${name} ]]
-		# then
-		# 	echo New Job: ${name}
-		# 	echo ${env[@]} ${exe} ${flags[@]} ${config}
-		# 	break
-		# else
-		# 	continue
-		# fi
-
 
 		# Check Running Job
 		# pass all

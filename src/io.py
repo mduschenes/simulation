@@ -31,6 +31,8 @@ logger = Logger()
 info = 100	
 debug = int(os.environ.get("PY_DEBUG",0))
 
+delimiter = '.'
+
 class cd(object):
 	'''
 	Class to safely change paths and return to previous path
@@ -114,7 +116,7 @@ def exists(path):
 	return exists
 
 
-def dirname(path,abspath=False,delimiter='.'):
+def dirname(path,abspath=False,delimiter=delimiter):
 	'''
 	Return directory name of path
 	Args:
@@ -122,7 +124,7 @@ def dirname(path,abspath=False,delimiter='.'):
 		abspath (bool): Return absolute path of directory
 		delimiter (str): Delimiter to separate file name from extension		
 	Returns:
-		directory (bool): Directory name of path
+		path (str): Directory name of path
 	'''
 
 	# TODO: Include all extensions / find method of determining if path is directory or file
@@ -165,7 +167,9 @@ def dirname(path,abspath=False,delimiter='.'):
 	if abspath:
 		directory = os.path.abspath(os.path.expandvars(os.path.expanduser(directory)))
 
-	return directory
+	path = directory
+
+	return path
 
 def relpath(path,relative=None,**kwargs):
 	'''
@@ -231,7 +235,7 @@ def cp(source,destination):
 
 	return
 
-def split(path,directory=False,file=False,ext=False,directory_file_ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
+def split(path,directory=False,file=False,ext=False,directory_file_ext=False,directory_file=False,file_ext=False,abspath=None,delimiter=delimiter):
 	'''
 	Split path into directory,file,ext
 	Args:
@@ -285,15 +289,15 @@ def split(path,directory=False,file=False,ext=False,directory_file_ext=False,dir
 	
 	return returnargs(paths)
 
-def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
+def join(*paths,ext=None,root=None,abspath=False,delimiter=delimiter):
 	'''
 	Join paths into path, with optional extension
 	Args:
 		paths (iterable[str]): Paths to join
 		ext (str): Extension to add to path
-		abspath (bool): Return absolute joined path
-		delimiter (str): Delimiter to separate file name from extension
 		root (str): Root path to insert at beginning of path if path does not already start with root
+		abspath (bool): Return absolute path
+		delimiter (str): Delimiter to separate file name from extension
 	Returns:
 		paths (str): Joined path
 	'''	
@@ -442,7 +446,7 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 
 	return path
 
-def edit(path,directory=None,file=None,ext=None,delimiter='.'):
+def edit(path,directory=None,file=None,ext=None,delimiter=delimiter):
 	'''
 	Edit directory,file,ext of path
 	Args:
@@ -741,7 +745,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -951,13 +955,13 @@ def _load(obj,wr,ext,**kwargs):
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
+		obj,module = delimiter.join(obj.split(delimiter)[:-1]),obj.split(delimiter)[-1]
 
-		path = os.path.basename(obj).strip('.')
+		path = os.path.basename(obj).strip(delimiter)
 		data = getattr(importlib.import_module(path),module)
 
 		try:
-			path = os.path.basename(obj).strip('.')
+			path = os.path.basename(obj).strip(delimiter)
 			data = getattr(importlib.import_module(path),module)
 		except (SyntaxError,) as exception:
 			logger.log(info,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
@@ -1002,7 +1006,7 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1156,7 +1160,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 
 	return
 
-def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
 	'''
 	Append objects to path
 	Args:
@@ -1213,7 +1217,7 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	return
 
 
-def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
 	'''
 	Convert objects to path
 	Args:
@@ -1271,7 +1275,7 @@ def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	return
 
 
-def merge(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+def merge(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
 	'''
 	Merge objects to path
 	Args:
