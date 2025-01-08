@@ -184,9 +184,7 @@ def test_null(*args,**kwargs):
 				"lattice":"square",
 				"architecture":"array",
 				"configuration":{
-					"key":[lambda value,iterable: (
-						value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-						)],
+					"key":["src.functions.key"],
 					"sort":None,
 					"reverse":False
 					}
@@ -1979,7 +1977,7 @@ def test_module(*args,**kwargs):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[3],"module.measure.operator":["pauli"],
+		"module.N":[4],"module.M":[3],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
 		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],
@@ -1989,6 +1987,18 @@ def test_calculate(*args,**kwargs):
 		"module.measure.options":[{"cyclic":False}],
 		"module.measure.architecture":["tensor","array"],
 		}	
+
+	# kwargs = {
+	# 	"module.N":[8],"module.M":[10],
+	# 	"model.N":[8],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+	# 	"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[135792468],
+	# 	"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],
+	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+	# 	"module.measure.D":[2],"module.measure.operator":["pauli"],
+	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
+	# 	"module.measure.options":[{"cyclic":False}],
+	# 	"module.measure.architecture":["tensor"],
+	# 	}	
 
 	groups = None
 	filters = None
@@ -2016,12 +2026,10 @@ def test_calculate(*args,**kwargs):
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],
-					)],
+				"key":["src.functions.key"],
 				"sort":None,
 				"reverse":False
-				}			
+				}
 		},
 		"model":{
 			"data":{
@@ -2031,7 +2039,7 @@ def test_calculate(*args,**kwargs):
 				# },
 				"unitary":{
 					"operator":"haar","site":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":123
+					"parameters":None,"variable":False,"ndim":2,"seed":13579
 				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
@@ -2050,9 +2058,7 @@ def test_calculate(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-					)],
+				"key":["src.functions.key"],
 				"sort":None,
 				"reverse":False
 				}
@@ -2158,6 +2164,7 @@ def test_calculate(*args,**kwargs):
 
 		# Verbose
 		model.info(verbose=verbose)
+		module.info(verbose=verbose)
 
 		# State
 		parameters = module.parameters()

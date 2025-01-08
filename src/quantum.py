@@ -1333,19 +1333,21 @@ class Measure(System):
 
 		return data
 
-	def eig(self,parameters=None,state=None,where=None,**kwargs):
+	def eig(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Eigenvalues for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): Eigenvalues, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if isinstance(state,arrays):
 
@@ -1379,19 +1381,21 @@ class Measure(System):
 
 		return data
 
-	def svd(self,parameters=None,state=None,where=None,**kwargs):
+	def svd(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Singular values for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): Singular values, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if isinstance(state,arrays):
 
@@ -1421,38 +1425,41 @@ class Measure(System):
 
 		return data
 
-	def rank(self,parameters=None,state=None,where=None,eps=None,**kwargs):
+	def rank(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Rank for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
-			eps (float): precision of function
+			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array): data
 		'''
-
-		func = lambda data: nonzero(real(data)/maximum(abs(real(data))),eps=eps)
+		
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(nonzero(real(data)/maximum(abs(real(data))),**kwargs))
 
 		data = func(state)
 
 		return data		
 
-	def entropy(self,parameters=None,state=None,where=None,**kwargs):
+	def entropy(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (array,Probability,MPS): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if isinstance(state,arrays):
 
@@ -1490,19 +1497,21 @@ class Measure(System):
 
 		return data
 
-	def trace(self,parameters=None,state=None,where=None,**kwargs):
+	def trace(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Trace for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -1545,19 +1554,21 @@ class Measure(System):
 
 		return data
 
-	def measure(self,parameters=None,state=None,where=None,**kwargs):
+	def measure(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Measure probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (dict[int,int]): indices and values of measured probability
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -1602,7 +1613,7 @@ class Measure(System):
 
 		return data
 
-	def square(self,parameters=None,state=None,other=None,where=None,**kwargs):
+	def square(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
 		Trace of Square for POVM probability measure with respect to other POVM
 		Args:
@@ -1610,12 +1621,14 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function				
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1658,19 +1671,21 @@ class Measure(System):
 
 		return data
 
-	def vectorize(self,parameters=None,state=None,where=None,**kwargs):
+	def vectorize(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Partial Trace of Vectorized Operator for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function				
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1723,7 +1738,7 @@ class Measure(System):
 
 		return data
 
-	def infidelity(self,parameters=None,state=None,other=None,where=None,**kwargs):
+	def infidelity(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
 		Infidelity for POVM probability measure with respect to other POVM
 		Args:
@@ -1731,6 +1746,7 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1739,13 +1755,13 @@ class Measure(System):
 		attr = 'infidelity_classical'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def infidelity_quantum(self,parameters=None,state=None,other=None,where=None,**kwargs):
+	def infidelity_quantum(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
 		Infidelity (Quantum) for POVM probability measure with respect to other POVM
 		Args:
@@ -1753,12 +1769,14 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function		
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data) 
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1768,6 +1786,7 @@ class Measure(System):
 			
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+
 			data = addition(sqrt(abs(data)))
 
 		elif self.architecture in ['tensor']:
@@ -1782,7 +1801,7 @@ class Measure(System):
 
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
-			
+
 			data = addition(sqrt(abs(data)))
 
 			# data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
@@ -1791,7 +1810,7 @@ class Measure(System):
 
 		return data		
 
-	def infidelity_classical(self,parameters=None,state=None,other=None,where=None,**kwargs):
+	def infidelity_classical(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
 		Infidelity (Classical) for POVM probability measure with respect to other POVM
 		Args:
@@ -1799,12 +1818,14 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function		
+			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data) 
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1835,7 +1856,7 @@ class Measure(System):
 
 		return data
 
-	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,**kwargs):
+	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
 		Infidelity (pure) for POVM probability measure with respect to other POVM
 		Args:
@@ -1843,12 +1864,14 @@ class Measure(System):
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function				
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - sqrt(abs(real(data)))
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1872,13 +1895,14 @@ class Measure(System):
 
 		return data
 
-	def norm(self,parameters=None,state=None,where=None,**kwargs):
+	def norm(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function		
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1887,26 +1911,28 @@ class Measure(System):
 		attr = 'norm_classical'
 	
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def norm_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def norm_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function		
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data) 
-		
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
@@ -1933,20 +1959,22 @@ class Measure(System):
 
 		return data
 
-	def norm_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def norm_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function					
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data) 
-		
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
@@ -1973,19 +2001,21 @@ class Measure(System):
 
 		return data
 
-	def norm_pure(self,parameters=None,state=None,where=None,**kwargs):
+	def norm_pure(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Norm (pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function			
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - sqrt(abs(real(data)))
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2014,13 +2044,14 @@ class Measure(System):
 		return data
 
 
-	def entanglement(self,parameters=None,state=None,where=None,**kwargs):
+	def entanglement(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -2029,25 +2060,27 @@ class Measure(System):
 		attr = 'entanglement_classical'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def entanglement_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def entanglement_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)/log(self.D**L)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data)/log(self.D**L))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2061,6 +2094,7 @@ class Measure(System):
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
 			data = self.eig(parameters=parameters,state=state,where=where,hermitian=self.hermitian,**kwargs)
+			data = data[data>=0]/addition(data[data>=0])
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2085,6 +2119,7 @@ class Measure(System):
 			state = representation(state,**{**options,**kwargs})
 
 			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+			data = data[data>=0]/addition(data[data>=0])
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2092,19 +2127,21 @@ class Measure(System):
 
 		return data	
 
-	def entanglement_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def entanglement_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)/log(self.K**L)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data)/log(self.K**L))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2134,19 +2171,21 @@ class Measure(System):
 
 		return data	
 
-	def entanglement_renyi(self,parameters=None,state=None,where=None,**kwargs):
+	def entanglement_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2182,13 +2221,14 @@ class Measure(System):
 
 		return data
 
-	def entangling(self,parameters=None,state=None,where=None,**kwargs):
+	def entangling(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -2197,25 +2237,27 @@ class Measure(System):
 		attr = 'entangling_renyi'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def entangling_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def entangling_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/log(self.D**L)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func((1/2)*real(data)/log(self.D**L))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2241,6 +2283,7 @@ class Measure(System):
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
 			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = data[data>=0]/addition(data[data>=0])
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2275,6 +2318,7 @@ class Measure(System):
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
 			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = data[data>=0]/addition(data[data>=0])
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2282,19 +2326,21 @@ class Measure(System):
 
 		return data	
 
-	def entangling_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def entangling_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: (1/2)*real(data)/log(self.K**L)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func((1/2)*real(data)/log(self.K**L))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2344,19 +2390,21 @@ class Measure(System):
 
 		return data	
 
-	def entangling_renyi(self,parameters=None,state=None,where=None,**kwargs):
+	def entangling_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: 1 - real(data)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))		
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2415,13 +2463,14 @@ class Measure(System):
 
 		return data
 
-	def mutual(self,parameters=None,state=None,where=None,**kwargs):
+	def mutual(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Mutual Information for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -2430,25 +2479,27 @@ class Measure(System):
 		attr = 'mutual_renyi'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def mutual_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def mutual_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Mutual Information (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/log(self.D**N)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data)/log(self.D**N))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2502,19 +2553,21 @@ class Measure(System):
 
 		return data	
 
-	def mutual_measure(self,parameters=None,state=None,where=None,**kwargs):
+	def mutual_measure(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Mutual Information (Measure) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 		
-		func = lambda data: real(data)/log(self.D**N)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data)/log(self.D**N))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2543,6 +2596,7 @@ class Measure(System):
 				tmp /= norm
 
 				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
+				tmp = tmp[tmp>=0]/addition(tmp[tmp>=0])
 
 				index = tuple(i for i in range(N) if i not in where)
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
@@ -2584,6 +2638,7 @@ class Measure(System):
 				tmp /= norm
 
 				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
+				tmp = tmp[tmp>=0]/addition(tmp[tmp>=0])
 
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
@@ -2593,19 +2648,21 @@ class Measure(System):
 
 		return data			
 
-	def mutual_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def mutual_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Mutual Information (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)/log(self.K**N)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data)/log(self.K**N))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2659,19 +2716,21 @@ class Measure(System):
 
 		return data	
 
-	def mutual_renyi(self,parameters=None,state=None,where=None,**kwargs):
+	def mutual_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Mutual Information (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: (1/2)*real(data)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func((1/2)*real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2725,13 +2784,14 @@ class Measure(System):
 
 		return data
 
-	def discord(self,parameters=None,state=None,where=None,**kwargs):
+	def discord(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Discord for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -2740,25 +2800,27 @@ class Measure(System):
 		attr = 'discord_quantum'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def discord_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def discord_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Discord (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2772,19 +2834,21 @@ class Measure(System):
 
 		return data	
 
-	def discord_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def discord_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Discord (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2798,19 +2862,21 @@ class Measure(System):
 
 		return data	
 
-	def discord_renyi(self,parameters=None,state=None,where=None,**kwargs):
+	def discord_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Discord (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
-		
-		func = lambda data: real(data)
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2824,13 +2890,14 @@ class Measure(System):
 
 		return data
 
-	def spectrum(self,parameters=None,state=None,where=None,**kwargs):
+	def spectrum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Spectrum for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (int,iterable[int]): indices of function				
+			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -2839,25 +2906,27 @@ class Measure(System):
 		attr = 'spectrum_classical'
 		
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def spectrum_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def spectrum_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Spectrum (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data					
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 
-		func = lambda data: real(data)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2902,19 +2971,21 @@ class Measure(System):
 
 		return data
 
-	def spectrum_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def spectrum_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Spectrum (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 
-		func = lambda data: real(data)
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
@@ -2946,19 +3017,21 @@ class Measure(System):
 
 		return data	
 
-	def rank_quantum(self,parameters=None,state=None,where=None,**kwargs):
+	def rank_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Rank (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data						
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -2976,19 +3049,21 @@ class Measure(System):
 
 		return data
 
-	def rank_classical(self,parameters=None,state=None,where=None,**kwargs):
+	def rank_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Rank (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (int,iterable[int]): indices of function
+			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
 		'''
 
-		func = lambda data: data
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -7207,6 +7282,9 @@ class Module(System):
 				substring = str(self)
 			elif attr in ['model']:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
+			elif attr in ['measure']:
+				substring = getattrs(self,attr,delimiter=delim,default=None).info(verbose=verbose)
+				continue
 			else:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
 
