@@ -130,6 +130,9 @@ def func_line_err(data):
 def func_objective(data):
 	return abs(data['objective'])
 
+def func_mutual_measure(data):
+	return np.array(data['mutual.quantum']) - np.array(data['discord.quantum'])
+
 def func_infidelity(data):
 	return 1 - abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
 

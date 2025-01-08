@@ -564,9 +564,16 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 		norm (callable): Normalization function, with signature norm(value)
 	'''
 
+	separator = '_'
+
 	if isinstance(value,str):
 		value,color,values,colors,norm = None,None,None,None,None
 		return value,color,values,colors,norm
+
+	if isinstance(color,str) and is_float(color.split(separator)[-1]):
+		value = float(color.split(separator)[-1]) if isinstance(value,scalars) else [float(color.split(separator)[-1])]
+		values = [0,1]
+		color = separator.join(color.split(separator)[:-1])
 
 	if value is None:
 		value = values
@@ -2129,6 +2136,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwds[values] = kwds[value]
 						elif kwds.get(value) is not None and kwds.get(values) is not None:
 							pass
+
 						value,color,values,colors,norm = set_color(**kwds)
 
 						value = color
