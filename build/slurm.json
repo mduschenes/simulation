@@ -339,6 +339,8 @@
 	"job":{
 		"job":{
 			"job":{
+				"name":null,
+				"identity":null,
 				"path":null,
 				"data":"job.slurm",
 				"file":"job.sh",
@@ -349,6 +351,8 @@
 				"options":{"job-name":"{name}","mem":"128G","parsable":null}
 			},
 			"dependency":{
+				"name":null,
+				"identity":null,				
 				"path":null,
 				"data":"postprocess.slurm",
 				"file":"postprocess.sh",
@@ -367,8 +371,7 @@
 		"args":[],
 		"kwargs":{
 			"user":"$USER",
-			"error":"{name}.[0-9]*.[0-9]*.stderr",
-			"pattern":".*/{name}.\\([0-9]*\\).\\([0-9]\\).stderr"
+			"start":"now-7days"
 		}
 	},
 	"host":["vector","graham","cedar","beluga"],

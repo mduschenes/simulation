@@ -73,7 +73,7 @@ class TimeoutError(Exception):
 class timeout:
 
 	def __init__(self,time=None,message=None,default=None):
-		self.time = time if time is not None else 1e-3
+		self.time = time if time is not None else 1e-1
 		self.message = message if message is not None else None
 		self.default = default
 		self.signal = signal.SIGALRM
@@ -964,6 +964,7 @@ class Job(object):
 	Job class
 	Args:
 		name (str): name of job
+		identity (int): identity of job
 		path (str): path to job
 		data (str): path of job script
 		file (str): path of job executable
@@ -974,9 +975,10 @@ class Job(object):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def __init__(self,name=None,identity=None,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
 		
 		self.name = None if name is None else name
+		self.identity = None if identity is None else identity
 		self.path = None if path is None else path
 		self.file = None if file is None else file
 		self.mode = None if mode is None else mode
@@ -988,9 +990,9 @@ class Job(object):
 		self.kwargs = kwargs
 
 		self.devices = {'local':'local','slurm':'slurm'}
-		self.instructions = {'local':'export','slurm':'#SBATCH --',None:''}
 		self.modes = {'r':'r','read':'r','w':'w','write':'w','a':'a','append':'a'}
 		self.errors = {'run':1,'error':-1,'done':0}
+		self.instructions = {'local':'export','slurm':'#SBATCH --',None:''}
 
 		self.init()
 
@@ -1132,20 +1134,42 @@ class Job(object):
 		options = dict(execute=True,verbose=False)
 
 		if device in ['local']:
+			state = dict()
 			status = dict()
 		elif device in ['slurm']:
+			# Options --batch-script
+			states = dict(
+				run = ['PENDING','RUNNING','SUSPENDED'],
+				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
+				done = ['COMPLETED'],
+				)
 			status = dict(
-				run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-				error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\1:"',
+				# run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
+				error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
+				error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
+				done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
 			)
 		else:
+			state = dict()			
 			status = dict()
 
-		status = {attr: parse(status[attr],kwargs) for attr in status}
+		for attr in status:
+			string = status[attr]
+			if attr in ['run']:
+				formats = {**kwargs}
+				string = parse(string,formats)
+				string = call(string,**options)
+			elif attr in ['error']:
+				formats = {**kwargs,**dict(format="[0-9]*.[0-9]*",n='1')}
+				string = parse(status[attr],formats)
+				string = call(string,**options)
+			elif attr in ['run']:
+				formats = {**kwargs,**dict(n='1')}
+				string = parse(status[attr],formats)
+				string = call(string,**options)
 
-		print(status)
+			status[attr] = string
 
-		status = {attr: call(status[attr],**options) for attr in status}
 		print(status)
 		print('-----')
 
