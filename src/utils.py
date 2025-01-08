@@ -6299,6 +6299,22 @@ def nonzero(a,axis=None,eps=None):
 	n = np.count_nonzero(abs(a)>=eps,axis=axis)
 	return n
 
+
+def nonnegative(a,eps=None,normalize=True):
+	'''
+	Return non-negative elements of array, with eps tolerance
+	Args:
+		a (array): Array of elements
+		eps (scalar): Epsilon tolerance, defaults to 0
+		normalize (bool,str): normalize array
+	Returns:
+		a (array): Array of non-negative elements
+	'''
+	eps = 0 if eps is None else eps
+	a = a[a>=eps]
+	a = a/addition(a) if normalize else a
+	return a
+
 def _len_(obj):
 	'''
 	Get length of object
