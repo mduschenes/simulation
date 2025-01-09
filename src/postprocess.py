@@ -26,10 +26,6 @@ from src.io import load,dump,join,split,glob,cd,cwd,exists,dirname
 
 from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
-from src.quantum import Hamiltonian
-
-
-
 defaults = {
 'None.eigenvalues': {
 	"fig":{
@@ -880,8 +876,10 @@ def postprocess(path,**kwargs):
 					if hyperparameters is None:
 						continue
 
+					model = None
+
 					hyperparameters['sys']['path']['data']['log'] = None
-					U = Hamiltonian(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+					U = model(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 					U.load()
 
 					func = U.__func__
