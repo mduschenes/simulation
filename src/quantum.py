@@ -2093,7 +2093,7 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,where=where,func=nonnegative,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,hermitian=self.hermitian,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2117,7 +2117,7 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,func=nonnegative,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2280,7 +2280,7 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			data = self.eig(parameters=parameters,state=data,func=nonnegative,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2314,7 +2314,7 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			data = self.eig(parameters=parameters,state=data,func=nonnegative,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2591,7 +2591,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,func=nonnegative,hermitian=self.hermitian,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
@@ -2632,7 +2632,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,func=nonnegative,hermitian=self.hermitian,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
 
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
