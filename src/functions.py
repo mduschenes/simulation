@@ -158,21 +158,23 @@ def func_ylabel(data,metadata):
 def func_spectrum(data,attr=None):
 	if attr not in data:
 		raise ValueError("Incorrect attribute %s"%(attr))
-		return 
-	out = np.array(list(data[attr]))
-	nan = is_nan(out)
-	out = np.array([*sort(abs(out[~nan]))[::-1],*out[nan]])/maximum(out[~nan])
-	out = to_tuple([out]) if len(out) != len(data[attr]) else to_tuple(out)
+		return
+	n = len(data[attr]) 
+	out = [np.array(list(i)) for i in data[attr]]
+	nan = [is_nan(out[i]) for i in range(n)]
+	out = [np.array([*sort((out[i][~nan[i]]))[::-1],*out[i][nan[i]]])/maximum(abs(out[i][~nan[i]])) for i in range(n)]
+	out = [to_tuple(out[i]) for i in range(n)]
 	return out
 
 def func_spectrum_rank(data,attr=None):
 	if attr not in data:
 		raise ValueError("Incorrect attribute %s"%(attr))
 		return 	
-	out = np.array(list(data[attr]))
-	nan = is_nan(out)
-	out = sort(abs(out[~nan]))/maximum(out[~nan])
-	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
+	n = len(data[attr]) 
+	out = [np.array(list(i)) for i in data[attr]]
+	nan = [is_nan(out[i]) for i in range(n)]
+	out = [sort(abs(out[i][~nan[i]]))/maximum(abs(out[i][~nan[i]])) for i in range(n)]
+	out = [asscalar(nonzero(out[i])) for i in range(n)]
 	return out
 
 

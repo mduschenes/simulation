@@ -1347,13 +1347,13 @@ class Measure(System):
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(data)
+		func = lambda data,func=func: func(sort(data)[::-1])
 
 		if isinstance(state,arrays):
 
 			where = tuple(where) if where is not None else None
 
-			data = eig(state,**kwargs)[::-1]
+			data = eig(state,**kwargs)
 
 		elif isinstance(state,matrices):
 
@@ -1465,7 +1465,7 @@ class Measure(System):
 
 			data = state
 
-			data = abs(data)
+			data = sort(abs(data))[::-1]
 
 			options = Dictionary(**{**dict(eps=None),**kwargs})
 			size = nonzero(data,eps=options.eps)
@@ -1785,7 +1785,7 @@ class Measure(System):
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
 
 			data = addition(sqrt(abs(data)))
 
@@ -1800,12 +1800,10 @@ class Measure(System):
 			other = representation(other,**{**options,**kwargs})
 
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
 
 			data = addition(sqrt(abs(data)))
 
-			# data = trace(sqrtm(dot(state,other),hermitian=self.hermitian))
-		
 		data = func(data)
 
 		return data		
@@ -2093,7 +2091,7 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,where=where,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2117,7 +2115,7 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2280,7 +2278,7 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2314,7 +2312,7 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2350,7 +2348,7 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
-			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2378,7 +2376,7 @@ class Measure(System):
 			options = dict()
 			data /= contract(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
-			data = self.eig(parameters=parameters,state=data,hermitian=self.hermitian,**kwargs)
+			data = self.eig(parameters=parameters,state=data,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
@@ -2591,7 +2589,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
@@ -2632,7 +2630,7 @@ class Measure(System):
 
 				tmp /= norm
 
-				tmp = self.eig(parameters=parameters,state=tmp,hermitian=self.hermitian,**kwargs)
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
 				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
 
@@ -2935,9 +2933,7 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
-
-			data = sqrt(data)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
@@ -2957,9 +2953,7 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,hermitian=self.hermitian,**kwargs)
-
-			data = sqrt(data)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
 
 		data = func(data)
 

@@ -48,7 +48,7 @@ def test_basis(*args,**kwargs):
 	ndim = 2
 	shape = [D**L]*(K if ndim is None else ndim)
 	operator="zero.depolarize.X"
-	key = 123
+	key = 123456789
 	delim = "."
 	dtype = "complex"
 
@@ -111,7 +111,7 @@ def test_component(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"site":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}				
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
@@ -120,7 +120,7 @@ def test_component(*args,**kwargs):
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -169,11 +169,11 @@ def test_null(*args,**kwargs):
 				"data":{
 					"two":{
 						"operator":"haar","site":"<ij>","string":"two",
-						"parameters":None,"variable":False,"ndim":2,"seed":123
+						"parameters":None,"variable":False,"ndim":2,"seed":123456789
 					},
 					"one":{
 						"operator":"haar","site":"ij","string":"one",
-						"parameters":None,"variable":False,"ndim":2,"seed":123
+						"parameters":None,"variable":False,"ndim":2,"seed":123456789
 					}															
 				},
 				"N":1,
@@ -192,7 +192,7 @@ def test_null(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"site":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}				
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
@@ -201,7 +201,7 @@ def test_null(*args,**kwargs):
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -275,7 +275,7 @@ def test_operator(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"site":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}				
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":None	,
@@ -284,7 +284,7 @@ def test_operator(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":None}
+				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -581,7 +581,7 @@ def test_copy(*args,**kwargs):
 			"backend":None,
 			"architecture":None,
 			"base":None,
-			"seed":123,
+			"seed":123456789,
 			"key":None,
 			"instance":None,
 			"cwd":"data",
@@ -905,7 +905,7 @@ def test_tensorproduct(*args,**kwargs):
 			},
 			"N":4,"D":2,"ndim":2,"local":True,
 			"system":{
-				"seed":12345,"dtype":"complex",
+				"seed":12345678945,"dtype":"complex",
 				"architecture":None,"configuration":{"key":["site"]},
 				}
 		},	
@@ -916,7 +916,7 @@ def test_tensorproduct(*args,**kwargs):
 			"string":"psi",
 			"parameters":None,
 			"D":2,"ndim":2,"local":True,"variable":False,
-			"system":{"seed":12345,"dtype":"complex","architecture":None}
+			"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 			},
 		"operator": {
 			"operator":["CNOT"],"site":None,"string":"cnot",
@@ -1004,7 +1004,7 @@ def test_tensorproduct(*args,**kwargs):
 		"string":"psi",
 		"parameters":None,
 		"D":2,"ndim":2,"local":True,"variable":False,
-		"system":{"seed":12345,"dtype":"complex","architecture":None}
+		"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 		})
 
 	cls = load(settings.cls.state)
@@ -1074,7 +1074,7 @@ def test_random(*args,**kwargs):
 			"parameters":None,
 			"N":3,"D":2,"ndim":2,
 			"local":True,"variable":False,
-			"seed":123,"dtype":"complex"
+			"seed":123456789,"dtype":"complex"
 			},
 		"operator": {
 			"data":None,
@@ -1084,7 +1084,7 @@ def test_random(*args,**kwargs):
 			"parameters":None,
 			"N":3,"D":2,"ndim":2,
 			"local":True,"variable":False,
-			"seed":123,"dtype":"complex"
+			"seed":123456789,"dtype":"complex"
 		}
 	})
 
@@ -1096,7 +1096,7 @@ def test_random(*args,**kwargs):
 
 	parameters = operator.parameters()
 	state = tensorprod([operator.basis.get(operator.default)(**operator)]*operator.N)
-	kwargs = Dictionary(seed=seeder(123456789))
+	kwargs = Dictionary(seed=seeder(123456789456789))
 
 	obj = Dictionary()
 
@@ -1123,7 +1123,7 @@ def test_random(*args,**kwargs):
 	state.info(**options)
 
 	parameters = state.parameters()
-	kwargs = Dictionary(seed=seeder(123))
+	kwargs = Dictionary(seed=seeder(123456789))
 
 	obj = Dictionary()
 
@@ -1207,7 +1207,7 @@ def test_layout(*args,**kwargs):
 			},
 			"N":6,"D":2,"ndim":2,"local":True,
 			"system":{
-				"seed":12345,"dtype":"complex",
+				"seed":12345678945,"dtype":"complex",
 				"architecture":None,"configuration":{
 					"key":[lambda value,iterable: (
 						# [tuple(j) for i in [*range(0,value.N,2),*range(1,value.N,2)] for j in [[i,i+1],[i],[i+1]]].index(tuple(value.site))
@@ -1225,7 +1225,7 @@ def test_layout(*args,**kwargs):
 			"string":"psi",
 			"parameters":None,
 			"D":6,"ndim":2,"local":True,"variable":False,
-			"system":{"seed":12345,"dtype":"complex","architecture":None}
+			"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 			}
 	})
 
@@ -1285,7 +1285,7 @@ def test_measure(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":4,"ndim":1,
-				"system":{"seed":12345,"dtype":"complex","architecture":"array"}
+				"system":{"seed":12345678945,"dtype":"complex","architecture":"array"}
 				}
 			})
 
@@ -1407,7 +1407,7 @@ def test_namespace(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"ndim":2,
-				"seed":123,
+				"seed":123456789,
 				"architecture":"array"
 				},
 			"label": {
@@ -1416,7 +1416,7 @@ def test_namespace(*args,**kwargs):
 				"string":"U",
 				"parameters":0.5,
 				"ndim":2,
-				"seed":123
+				"seed":123456789
 				},
 			"measure":{
 				"operator":"pauli",
@@ -1429,7 +1429,7 @@ def test_namespace(*args,**kwargs):
 				"backend":None,
 				"architecture":None,
 				"base":None,
-				"seed":123,
+				"seed":123456789,
 				"key":None,
 				"instance":None,
 				"cwd":"data",
@@ -1667,19 +1667,19 @@ def test_module(*args,**kwargs):
 			"data":{
 				# "local":{
 				# 	"operator":"haar","site":"i","string":"local",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
 					"operator":"haar","site":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":123
+					"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				},				
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				},	
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
-				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123
+				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
 				# },												
 			},
 			"N":4,
@@ -1722,7 +1722,7 @@ def test_module(*args,**kwargs):
 			"backend":None,
 			"architecture":None,
 			"base":None,
-			"seed":123,
+			"seed":123456789,
 			"key":None,
 			"instance":None,
 			"cwd":"data",
@@ -1977,11 +1977,11 @@ def test_module(*args,**kwargs):
 def test_calculate(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[3],
-		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"module.N":[4],"module.M":[3],"module.seed":[123456789],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
 		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
-		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],"model.data.unitary.seed":[123456789],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"model.data.noise.seed":[None],
 		"module.measure.D":[2],"module.measure.operator":["pauli"],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
 		"module.measure.options":[{"cyclic":False}],
@@ -1989,15 +1989,15 @@ def test_calculate(*args,**kwargs):
 		}	
 
 	# kwargs = {
-	# 	"module.N":[8],"module.M":[10],
-	# 	"model.N":[8],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
-	# 	"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[135792468],
+	# 	"module.N":[8],"module.M":[10],"module.seed":[123456789],
+	# 	"model.N":[8],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
+	# 	"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
 	# 	"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],
 	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 	# 	"module.measure.D":[2],"module.measure.operator":["pauli"],
 	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
 	# 	"module.measure.options":[{"cyclic":False}],
-	# 	"module.measure.architecture":["tensor"],
+	# 	"module.measure.architecture":["tensor"]
 	# 	}	
 
 	groups = None
@@ -2035,7 +2035,7 @@ def test_calculate(*args,**kwargs):
 			"data":{
 				# "local":{
 				# 	"operator":"haar","site":"i","string":"local",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
 					"operator":"haar","site":"||ij||","string":"unitary",
@@ -2043,11 +2043,11 @@ def test_calculate(*args,**kwargs):
 				},	
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
-					"parameters":1e-3,"variable":False,"ndim":3,"seed":123
+					"parameters":1e-3,"variable":False,"ndim":3,"seed":123456789
 				},								
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
-				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123
+				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
 				# },												
 			},
 			"N":4,
@@ -2088,7 +2088,7 @@ def test_calculate(*args,**kwargs):
 			"backend":None,
 			"architecture":None,
 			"base":None,
-			"seed":123,
+			"seed":123456789,
 			"key":None,
 			"instance":None,
 			"cwd":"data",
