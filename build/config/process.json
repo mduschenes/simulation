@@ -29,6 +29,7 @@
 		"M.discord.quantum.noise.parameters.N": 1,
 		"M.discord.classical.noise.parameters.N": 1,
 		"M.discord.renyi.noise.parameters.N": 1,
+		"M.discord.mutual.measure.quantum.noise.parameters.N": 1,
 		"noise.parameters.entangling.quantum.max_bond.N": 1,
 		"noise.parameters.entangling.renyi.max_bond.N": 1,
 		"noise.parameters.mutual.quantum.max_bond.N": 1,
@@ -52,10 +53,11 @@
 		"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N": 1,
 		"max_bond.M.quantum.noise.parameters.N": 1,
 		"max_bond.M.renyi.noise.parameters.N": 1,
-		"None.spectrum.quantum.M.noise.parameters":1,
-		"None.spectrum.classical.M.noise.parameters":1,
-		"None.spectrum.quantum.classical.M.noise.parameters":1
-	},
+		"M.spectrum.quantum.M.noise.parameters.N":1,
+		"None.spectrum.quantum.M.noise.parameters": 1,
+		"None.spectrum.classical.M.noise.parameters": 1,
+		"None.spectrum.quantum.classical.M.noise.parameters": 1
+	},        
 	"configuration": [
 		[
 			[
@@ -77,7 +79,8 @@
 				"M.mutual.renyi.noise.parameters.N",
 				"M.discord.quantum.noise.parameters.N",
 				"M.discord.classical.noise.parameters.N",
-				"M.discord.renyi.noise.parameters.N"
+				"M.discord.renyi.noise.parameters.N",
+				"M.discord.mutual.measure.quantum.noise.parameters.N"
 			],
 			[
 				{
@@ -121,6 +124,61 @@
 						"fig.set_size_inches": {
 							"w": 40,
 							"h": 30
+						}
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+						"max_bond": null
+					}
+				}
+			]
+		],
+		[
+			[
+				"M.spectrum.quantum.M.noise.parameters.N"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+						"N": null
+					},
+					"kwargs": {
+						"ax.set_title.y": null,
+						"ax.errorbar.label.labels.max_bond": null,
+						"ax.set_title.size": 36,
+						"ax.set_ylabel.size": 36,
+						"ax.set_xlabel.size": 36,
+						"ax.set_ylabel.y": 1.1,
+						"ax.set_yticklabels": null,
+						"ax.set_xticklabels": null,
+						"ax.tick_params.left": true,
+						"ax.tick_params.bottom": true,
+						"ax.set_colorbar.set_label.size": 36,
+						"ax.set_colorbar.fraction": 0.15,
+						"ax.set_colorbar.shrink": 1,
+						"ax.set_colorbar.aspect": 40,
+						"ax.set_colorbar.ax.tick_params.labelsize": 36,
+						"ax.legend.loc": [
+							1.5,
+							5.75
+						],
+						"ax.legend.title_fontsize": 36,
+						"ax.legend.fontsize": 36,
+						"ax.legend.prop.size": 36,
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_ylabel": "middle_left",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_colorbar": "bottom_right",
+						"style.share.ax.legend": "bottom_right",
+						"fig.subplots_adjust.hspace": 0.2,
+						"fig.set_size_inches": {
+							"w": 50,
+							"h": 50
 						}
 					}
 				},

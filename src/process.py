@@ -1385,17 +1385,6 @@ def apply(keys,data,plots,processes,verbose=None):
 			'mean_bootstrap':mean_bootstrap,'std_bootstrap':std_bootstrap,'sem_bootstrap':sem_bootstrap,
 			}
 
-		attributes = list(set((
-			*[attr for attr in data],
-			*[attr for attr in analyses if any(i in attr for i in data)],
-			*[attr for attr in wrappers if attr in data or attr in analyses]
-			)))
-
-		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
-			key,value = name,None
-			setter(plots,{key:value},delimiter=delim,default=True)
-			continue
-
 		if not funcs:
 			funcs = {stat:None}
 		
@@ -1489,6 +1478,7 @@ def apply(keys,data,plots,processes,verbose=None):
 					wrappers[attr].pop(func)
 					continue
 
+
 		tmp = {}
 
 		for attr in wrappers:
@@ -1503,6 +1493,20 @@ def apply(keys,data,plots,processes,verbose=None):
 					data[attr] = wrappers[attr][func](data)
 				except:
 					pass
+
+
+
+		attributes = list(set((
+			*[attr for attr in data],
+			*[attr for attr in analyses if any(i in attr for i in data)],
+			*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
+			)))
+
+		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
+			key,value = name,None
+			setter(plots,{key:value},delimiter=delim,default=True)
+			continue
+
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]

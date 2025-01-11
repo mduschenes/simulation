@@ -1038,6 +1038,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for key,label in [('%slabel'%(axes),'%slabel'%(axes)),
 								  ('%sticks'%(axes),'ticks'),
 								  ('%sticklabels'%(axes),'labels')]},
+			**{'%saxis.%s'%(axes,key):['labelsize']
+				for axes in AXES
+				for key in ['set_tick_params']
+				},
+			**{'%saxis.set_%s_%s'%(axes,which,formatter):['ticker'] 
+				for axes in AXES for which in WHICH for formatter in FORMATTER
+				},
 			**{k:[OTHER] for k in PLOTS},	
 			**{
 				'set_title':['label'],
@@ -1058,7 +1065,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			for children in [[],*(['%s%s'%(children,axes)] for children in CHILDREN for axes in AXES)]
 			}
 
-		def returns(value,attr,kwarg):
+		def returns(value,attr,kwarg,obj):
 			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
 				if kwarg in ['labels']:
 					return []
@@ -1083,19 +1090,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				share = share[attr][kwarg]
 			else:
 				share = share[attr]
+
 			if ((share is None) or 
 				(not all([(k in kwargs and kwargs[k] is not None) 
 					for k in ['layout']]))):
 				return value
 			if isinstance(share,bool) and (not share) and (share is not None):
-				return returns(value,attr,kwarg)
+				return returns(value,attr,kwarg,obj)
 			elif isinstance(share,bool) and share:
 				_position_ = _position(kwargs['layout']) 
 				position = _position(kwargs['layout'])
 				if all([((_position_[i] is None) or (position[i]==_position_[i])) for i in range(LAYOUTDIM)]):
 					return value
 				else:
-					return returns(value,attr,kwarg)
+					return returns(value,attr,kwarg,obj)
 			elif (isinstance(share,str) and share in _positions()) or isinstance(share,(list,tuple)):
 				_position_ = _positions(kwargs['layout']).get(share,share) if isinstance(share,str) else share
 				position = _position(kwargs['layout'])
@@ -1103,12 +1111,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if any(all(pos[i] is None or pos[i] == position[i] for i in range(LAYOUTDIM)) for pos in _position_):
 					return value
 				else:
-					return returns(value,attr,kwarg)
+					return returns(value,attr,kwarg,obj)
 			else:
 				if value == share:
 					return value
 				else:
-					return returns(value,attr,kwarg)
+					return returns(value,attr,kwarg,obj)
 		else:
 			return value
 		return
@@ -1853,7 +1861,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				which = attr.split(delimiter)[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
 				formatter = attr.split('_')[-1]
 				for k in kwargs[attr]:
-					if k in nullkwargs:
+					if k in nullkwargs or kwargs[attr].get(k) is None:
 						continue
 					for a in kwargs[attr][k]:
 						options = {i:kwargs[attr][k][a].pop(i,default)
@@ -1972,7 +1980,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
 					share = kwargs[attr].get('share')
 
-					options = {option:kwargs[attr].get(option) for option in ['fraction','shrink','aspect','pad'] if option in kwargs[attr]}
+					options = {option:kwargs[attr].get(option) for option in ['fraction','shrink','aspect','pad','anchor','panchor'] if option in kwargs[attr]}
+
+					for option in options:
+						if options.get(option) is None:
+							continue
+						if option in ['anchor','panchor']:
+							options[option] = tuple(options[option])
 
 					nullkwargs.extend(options)
 
@@ -1987,12 +2001,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
 
 						if share:
+							options = dict(options)
 							cax,options = matplotlib.colorbar.make_axes([ax for ax in obj.get_figure().axes],**options)
 						else:
-							pos = obj.get_position()
-							divider = make_axes_locatable(obj)
-							cax,options = divider.append_axes(position,size=sizing,pad=padding),dict()
-						
+							options = dict(size=sizing,pad=padding)
+							cax,options = make_axes_locatable(obj).append_axes(position,**options),dict()
+
+							# pos = obj.get_position()						
 							# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
 							# cax = plt.add_axes()
 							# cax.set_position(pos)
@@ -2042,7 +2057,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					call = True
 				else:
 					call = False
-
 				call = call and (len(obj.get_figure().axes)>0)
 
 			elif attr in ['close']:
@@ -2065,6 +2079,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			except:
 				_kwargs_ = copy(kwargs[attr])
 
+			for _attr,_props in {
+				**{'%saxis.%s'%(axes,key):['labelsize']
+				for axes in AXES
+				for key in ['set_tick_params']},
+				}.items():
+				for _prop in _props:
+					if attr in [_attr] and _prop in _kwargs_:
+						if _kwargs_.get(_prop) is None:
+							_kwargs_.pop(_prop)
+
+				if all(kwarg in nullkwargs for kwarg in _kwargs_):
+					call = False
+
 			for kwarg in _kwargs_:
 				if kwarg in ['linestyle']:
 					if not isinstance(_kwargs_[kwarg],str):
@@ -2072,7 +2099,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for kwarg in nullkwargs:
 				_kwargs_.pop(kwarg,None)
-
 
 			if not call:	
 		

@@ -57,7 +57,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -361,7 +370,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -674,7 +692,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -987,7 +1014,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -1293,7 +1329,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -1599,7 +1644,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -1905,7 +1959,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -2211,7 +2274,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -2483,7 +2555,8 @@
 							"max_bond": null
 						},
 						"wrapper": {
-							"mutual.measure": null,
+							"mutual.measure": null,							
+							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
@@ -2517,7 +2590,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -2823,7 +2905,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -3129,7 +3220,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -3435,7 +3535,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -3580,6 +3689,26 @@
 					1
 				]
 			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 5.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},
 			"yaxis.set_major_formatter": {
 				"ticker": {}
 			},
@@ -3676,6 +3805,538 @@
 			}
 		}
 	},
+	"M.discord.mutual.measure.quantum.noise.parameters.N": {
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "M",
+					"y": "discord.quantum",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond": null,
+							"cyclic": null,
+							"noise.parameters": [1e-18]
+						},
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"discord.quantum": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr",
+							"y": null,
+							"yerr": null							
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"label":"Discord %s",
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X"
+						]
+					},
+					"marker": "o",					
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 16,
+					"linestyle": "-",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"color":"viridis_0.25",					
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor":"viridis_0.25"
+				},
+				{
+					"x": "M",
+					"y": "mutual.quantum",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond": null,
+							"cyclic": null,
+							"noise.parameters": [1e-18]
+						},
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"discord.quantum": null,
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr",
+							"y": null,
+							"yerr": null							
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"label":"Mutual %s",							
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X"
+						]
+					},
+					"marker": "^",					
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"color":"viridis_0.5",
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor":"viridis_0.25"
+				},
+				{
+					"x": "M",
+					"y": "mutual.quantum",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond": null,
+							"cyclic": null,
+							"noise.parameters": [1e-18]
+						},
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"mutual.quantum": "src.functions.func_mutual_measure",
+							"y": "src.functions.func_y",
+							"yerr": "src.functions.func_yerr",
+							"y": null,
+							"yerr": null							
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"label":"Mutual %s",													
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X"
+						]
+					},
+					"marker": "s",
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": "--",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"color":"viridis_0.75",					
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor":"viridis_0.25"
+				}								
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel": "$\\textrm{Quantum Discord} ~~ \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma} - \\mathcal{I}_{\\rho_{\\chi}}^{\\Gamma,\\Pi}$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Depth} ~~ M$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "linear"
+			},
+			"set_xlim": {
+				"xmin": -5,
+				"xmax": 55
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xticks": {
+				"ticks": [
+					0,
+					10,
+					20,
+					30,
+					40,
+					50
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 5.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -5.1,
+				"ymax": 3.1
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					2,
+					0,
+					-2,
+					-4
+				]
+			},			
+			"yaxis.set_major_formatter": {
+				"ticker": {}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"ncol": 1,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": {
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
 	"M.discord.classical.noise.parameters.N": {
 		"fig": {
 			"set_size_inches": {
@@ -3741,7 +4402,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -4047,7 +4717,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -4353,7 +5032,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -4666,7 +5354,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -4979,7 +5676,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -5285,7 +5991,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -5570,7 +6285,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -5881,7 +6596,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6192,7 +6907,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6499,7 +7214,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -6810,13 +7525,14 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
 						},
 						"wrapper": {
 							"mutual.measure": null,
+							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
@@ -7121,7 +7837,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.classical"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7432,7 +8148,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7743,7 +8459,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -7920,6 +8636,26 @@
 					1
 				]
 			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 5.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 2}
@@ -8054,7 +8790,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.classical"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8365,7 +9101,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8676,7 +9412,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -8753,7 +9489,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9158,8 +9894,12 @@
 					"set_ylabel": "left",
 					"set_ylabel.twinx": "right",
 					"set_yticks": true,
+					"set_yticks.twinx": true,
 					"set_yticklabels": "left",
 					"set_yticklabels.twinx": "right",
+					"yaxis.set_tick_params.twinx":"right",					
+					"yaxis.set_major_formatter.twinx": "right",
+					"yaxis.set_minor_formatter.twinx":"right",
 					"set_colorbar": "right"
 				}
 			}
@@ -9192,7 +9932,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9269,7 +10009,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"infidelity.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -9674,8 +10414,12 @@
 					"set_ylabel": "left",
 					"set_ylabel.twinx": "right",
 					"set_yticks": true,
+					"set_yticks.twinx": true,
 					"set_yticklabels": "left",
 					"set_yticklabels.twinx": "right",
+					"yaxis.set_tick_params.twinx":"right",					
+					"yaxis.set_major_formatter.twinx": "right",
+					"yaxis.set_minor_formatter.twinx":"right",
 					"set_colorbar": "right"
 				}
 			}
@@ -9725,7 +10469,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10045,7 +10789,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10365,7 +11109,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10685,13 +11429,14 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
 						},
 						"wrapper": {
 							"mutual.measure": null,
+							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
@@ -11005,7 +11750,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.classical"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11325,7 +12070,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11645,7 +12390,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11831,6 +12576,26 @@
 					1
 				]
 			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 5.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}
@@ -11965,7 +12730,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.classical"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12285,7 +13050,7 @@
 							"max_bond": null
 						},
 						"analysis": {
-							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.renyi"]}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12605,7 +13370,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -12916,7 +13681,7 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
 						},	                        						
 						"labels": {
 							"max_bond": null
@@ -13265,7 +14030,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -13590,7 +14364,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"markeredgecolor": "k",
@@ -14125,7 +14908,7 @@
 							"rank.quantum":{"src.functions.func_spectrum_rank":{"attr":"spectrum.quantum"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},	   
 						"scinotation": {
 							"scilimits": [
@@ -14167,7 +14950,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"linestyle": "-",
@@ -14215,7 +15007,7 @@
 							"rank.classical":{"src.functions.func_spectrum_rank":{"attr":"spectrum.classical"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":null,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -14257,7 +15049,16 @@
 							"h",
 							"H",
 							"D",
-							"X"
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
 						]
 					},
 					"linestyle": "--",
@@ -14417,6 +15218,7 @@
 			},
 			"set_ylim":{"ymin":1e-17,"ymax":1e1},
 			"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+
 			"set_yscale": {
 				"value": "symlog",
 				"linthresh":1e-12,
@@ -14429,6 +15231,7 @@
 					1e-10,1e-8,1e-6,1e-4,1e-2,1e0
 					]
 			},
+
 			"yaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {}
@@ -14573,7 +15376,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": [2,4,8,16],
+							"M": null,
 							"max_bond":null,							
 							"cyclic": null,
 							"noise.parameters": [1e-4],
@@ -14888,7 +15691,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": [2,4,8,16],
+							"M": null,
 							"max_bond":null,							
 							"cyclic": null,
 							"noise.parameters": [1e-4],
@@ -15178,6 +15981,384 @@
 				}
 			}
 		}
-	
-	}	
+	},
+	"M.spectrum.quantum.M.noise.parameters.N":{
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "M",
+					"y": "spectrum.quantum",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond":null,
+							"cyclic": null,
+							"noise.parameters": null
+						},
+						"wrapper":{
+							"spectrum.quantum":{"src.functions.func_spectrum_sign":{"attr":"spectrum.quantum","eps":-1e-14}}
+						},
+						"analysis": {
+						},	   
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":{"M":null,"max_bond":null},
+							"exclude":{"M":null,"cyclic":null}
+						},
+						"slice": [
+							0,
+							2000,
+							null
+						]
+					},
+					"alpha": {
+						"@max_bond@": [
+							0.2,
+							0.3,
+							0.4,
+							0.5,
+							0.6,
+							0.7,
+							0.8,
+							0.9,
+							1
+						]
+					},
+					"alpha":0.8,
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
+						]
+					},
+					"markersize":10,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"ticklabels": [
+						1e-18,
+						0.001,
+						0.01,
+						0.05,
+						0.1
+					],					
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			}, 
+			"set_title": {
+				"label": "N"
+			},			          
+			"set_ylabel": {
+				"ylabel": "\\textrm{Ratio of } \\mp \\textrm{Eigenvalues of } \\rho_{\\chi} ~~ $\\abs{{\\sum_{\\lambda < 0}\\lambda}~/~{\\sum_{\\lambda \\geq 0}\\lambda}}$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Depth} ~~ M$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xnbins": {
+				"nbins": 7
+			},
+			"set_xlim":{"xmin":-50,"xmax":300},
+			"set_xticks":{"ticks":[0,50,100,150,200,250,300]},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-25,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+
+			"set_xnbins": {
+				"nbins": 4
+			},
+			"set_xlim":{"xmin":0,"xmax":5},
+			"set_xticks":{"ticks":[1,2,3,4]},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-5,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1,1e0]},
+
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xlim":{"xmin":-10,"xmax":270},
+			"set_xticks":{"ticks":[0,50,100,150,200,250]},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-9,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0]},
+
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xlim":{"xmin":-5,"xmax":55},
+			"set_xticks":{"ticks":[0,5,10,15,20,25,30,35,40,45,50]},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-17,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-7,"ymax":1e1},
+			"set_yticks":{
+				"ticks":[
+					1e-6,1e-4,1e-2,1e0
+					]
+			},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {}
+				}
+			},
+			"yaxis.set_minor_locator": {
+				"ticker": {
+					"LogLocator": {
+						"base": 10.0,
+						"subs": [
+							0.2,
+							0.3,
+							0.4,
+							0.5,
+							0.6,
+							0.7,
+							0.8,
+							0.9
+						],
+						"numticks": 100
+					}
+				}
+			},
+			"yaxis.set_minor_locator":null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 0,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"ncol": 1,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": {
+						"title": "bottom_right",
+						"handles": "bottom_right",
+						"labels": "bottom_right"
+					},
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_xticklabels": true,
+					"set_yticklabels": true,
+					"set_colorbar": "right"
+				}
+			}
+		}
+	}
 }

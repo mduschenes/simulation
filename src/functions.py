@@ -163,10 +163,10 @@ def func_spectrum(data,attr=None):
 	out = [np.array(list(i)) for i in data[attr]]
 	nan = [is_nan(out[i]) for i in range(n)]
 	out = [np.array([*sort((out[i][~nan[i]]))[::-1],*out[i][nan[i]]])/maximum(abs(out[i][~nan[i]])) for i in range(n)]
-	out = [to_tuple(out[i]) for i in range(n)]
+	out = to_tuple(out)
 	return out
 
-def func_spectrum_rank(data,attr=None):
+def func_spectrum_rank(data,attr=None,eps=None):
 	if attr not in data:
 		raise ValueError("Incorrect attribute %s"%(attr))
 		return 	
@@ -174,9 +174,18 @@ def func_spectrum_rank(data,attr=None):
 	out = [np.array(list(i)) for i in data[attr]]
 	nan = [is_nan(out[i]) for i in range(n)]
 	out = [sort(abs(out[i][~nan[i]]))/maximum(abs(out[i][~nan[i]])) for i in range(n)]
-	out = [asscalar(nonzero(out[i])) for i in range(n)]
+	out = [asscalar(nonzero(out[i],eps=eps)) for i in range(n)]
+	out = out[0] if n == 1 else out
 	return out
 
+def func_spectrum_sign(data,attr=None,eps=None):
+	if attr not in data:
+		raise ValueError("Incorrect attribute %s"%(attr))
+		return
+	eps = 1e-16 if eps is None else eps
+	out = [np.array(list(i)) for i in data[attr]]
+	out = [abs(addition(i[i<eps])/addition(i[i>=eps])) for i in out]
+	return out
 
 
 def func_MN(data):
