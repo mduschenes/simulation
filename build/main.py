@@ -9,6 +9,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+os.environ['NUMPY_BACKEND'] = os.environ.get('NUMPY_BACKEND','numpy')
+
 from src.utils import argparser
 from src.run import run
 
@@ -30,7 +32,7 @@ if __name__ == '__main__':
 		'--device':{
 			'help':'Device',
 			'type':str,
-			'default':None,
+			'default':"slurm",
 			'nargs':'?'
 		},
 		'--job':{
@@ -48,7 +50,7 @@ if __name__ == '__main__':
 		'--path':{
 			'help':'Path',
 			'type':str,
-			'default':None,
+			'default':"scratch",
 			'nargs':'?'
 		},
 		'--env':{
