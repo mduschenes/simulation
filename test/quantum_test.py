@@ -1982,7 +1982,7 @@ def test_calculate(*args,**kwargs):
 		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
 		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],"model.data.unitary.seed":[123456789],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"model.data.noise.seed":[None],
-		"module.measure.D":[2],"module.measure.operator":["pauli"],
+		"module.measure.D":[2],"module.measure.operator":["povm"],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
 		"module.measure.options":[{"cyclic":False}],
 		"module.measure.architecture":["tensor","array"],
@@ -2020,7 +2020,7 @@ def test_calculate(*args,**kwargs):
 			"string":"module",
 			"measure":{
 				"operator":"pauli",
-				"D":2,"dtype":"complex",
+				"D":2,"dtype":"complex","seed":13579,
 				"architecture":"tensor",
 				"options":{"cyclic":False},
 				},	

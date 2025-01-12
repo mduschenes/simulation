@@ -715,6 +715,27 @@ class Basis(Dict):
 
 	@classmethod
 	@System.decorator
+	def povm(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+		
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+
+		arguments = (*args,)
+		keywords = {**kwargs,**dict(shape=kwargs.shape if isinstance(kwargs.shape,iterables) and len(kwargs.shape) == 2 else kwargs.shape*2 if isinstance(kwargs.shape,iterables) else (kwargs.shape,)*2 if isinstance(kwargs.shape,integers) else (kwargs.D,)*2,)}
+
+		data = 'unitary'
+		unitary = getattr(cls,data)(*arguments,**keywords)
+
+		data = 'pauli'
+		data = getattr(cls,data)(*args,**kwargs)
+
+		data = array([dot(unitary,dot(i,dagger(unitary))) for i in data])
+		
+		return data
+
+	@classmethod
+	@System.decorator
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 	
@@ -836,7 +857,7 @@ class Measure(System):
 		string = self.string if string is None else string
 
 		operator = data if operator is None and isinstance(data,str) else operator if data is None else operator
-		options = dict(D=self.D,dtype=self.dtype)
+		options = dict(D=self.D,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
 
 		basis = getattr(Basis,operator)(**options)
 
@@ -4430,7 +4451,7 @@ class Object(System):
 
 		basis = 'pauli' if basis is None else basis
 
-		options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system)
+		options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
 
 		basis = Basis.basis(basis,**options) if basis is not None else None
 
@@ -6977,7 +6998,6 @@ class Module(System):
 		self.model = model
 		self.state = state
 		self.parameters = parameters
-
 
 		# Measure
 		cls = Measure
