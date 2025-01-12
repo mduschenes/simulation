@@ -860,54 +860,66 @@ class Measure(System):
 		operator = data if operator is None and isinstance(data,str) else operator if data is None else operator
 		options = dict(D=self.D,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
 
-		basis = getattr(Basis,operator)(**options)
+		invariant = operator is None or isinstance(operator,str)
+		N = len(operator) if not invariant else self.N if self.N is not None else None
+		dtype = self.dtype
 
-		K = len(basis)
-		shape = [min(i.shape[axis] for i in basis) for axis in range(min(len(i.shape) for i in basis))]
+		where = range(N) if N is not None else None
+		pointer = min(where) if where is not None else 0 if N is not None else None
+
+		basis = [getattr(Basis,operator)(**options)]*N if invariant else [getattr(Basis,operator[i])(**options) for i in where]
+		inverse = [inv(einsum('uij,vji->uv',basis[pointer],basis[pointer]))]*N if invariant else [inv(einsum('uij,vji->uv',basis[i],basis[i])) for i in where]
+
+		K = max(len(basis[i]) for i in where)
+		shape = [min(data.shape[axis] for i in where for data in basis[i]) for axis in range(min(len(data.shape) for i in where for data in basis[i]))]
 		size = prod(shape)
 		ndim = len(shape)
-		dtype = basis.dtype
+		dtype = dtype
 
-		inverse = inv(einsum('uij,vji->uv',basis,basis))
-		identity = Basis.identity(D=K,dtype=dtype)
-		ones = array([1 for i in range(K)],dtype=dtype)
-		zeros = array([0 for i in range(K)],dtype=dtype)
-		pointer = None
+		identity = [Basis.identity(D=K,dtype=dtype)]*N
+		ones = [array([1 for i in range(K)],dtype=dtype)]*N
+		zeros = [array([0 for i in range(K)],dtype=dtype)]*N
+		pointer = pointer if pointer is not None else None
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			cls = array
+			
 			kwargs = dict(dtype=dtype)
 
-			basis = array(basis,**kwargs)
-			inverse = array(inverse,**kwargs)
-			identity = array(identity,**kwargs)
-			ones = array(ones,**kwargs)
-			zeros = array(zeros,**kwargs)
-			pointer = 0
+			basis = [cls(basis[pointer],**kwargs)]*N if invariant else [cls(basis[i],**kwargs) for i in where]
+			inverse = [cls(inverse[pointer],**kwargs)]*N if invariant else [cls(inverse[i],**kwargs) for i in where]
+			
+			identity = [cls(identity[pointer],**kwargs)]*N if invariant else [cls(identity[i],**kwargs) for i in where]
+			ones = [cls(ones[pointer],**kwargs)]*N if invariant else [cls(ones[i],**kwargs) for i in where]
+			zeros = [cls(zeros[pointer],**kwargs)]*N if invariant else [cls(zeros[i],**kwargs) for i in where]
+			pointer = pointer
 
 		elif self.architecture in ['tensor']:
+			cls = tensor
+
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
-			basis = tensor(basis,**kwargs)
+			basis = [cls(basis[pointer],**kwargs)]*N if invariant else [cls(basis[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			inverse = tensor(inverse,**kwargs)
+			inverse = [cls(inverse[pointer],**kwargs)]*N if invariant else [cls(inverse[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			identity = tensor(identity,**kwargs)
+			identity = [cls(identity[pointer],**kwargs)]*N if invariant else [cls(identity[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
-			ones = tensor(ones,**kwargs)
+			ones = [cls(ones[pointer],**kwargs)]*N if invariant else [cls(ones[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
-			zeros = tensor(zeros,**kwargs)			
-			
-			pointer = 0
+			zeros = [cls(zeros[pointer],**kwargs)]*N if invariant else [cls(zeros[i],**kwargs) for i in where]
 
-		basis = [basis]*self.N if isinstance(basis,objects) else basis
-		inverse = [inverse]*self.N if isinstance(inverse,objects) else inverse
-		identity = [identity]*self.N if isinstance(identity,objects) else identity
-		ones = [ones]*self.N if isinstance(ones,objects) else ones
-		zeros = [zeros]*self.N if isinstance(zeros,objects) else zeros
-		pointer = pointer if pointer is not None else 0 if self.N is not None else None
+			pointer = pointer
+
+		basis = [basis]*N if isinstance(basis,objects) else basis
+		inverse = [inverse]*N if isinstance(inverse,objects) else inverse
+		identity = [identity]*N if isinstance(identity,objects) else identity
+		ones = [ones]*N if isinstance(ones,objects) else ones
+		zeros = [zeros]*N if isinstance(zeros,objects) else zeros
+		pointer = pointer if pointer is not None else 0 if N is not None else None
 
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
