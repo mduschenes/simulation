@@ -118,7 +118,7 @@
 	"d":1,
 	"seed":null,
 	"string":"module",
-	"measure":{"string":"povm","operator":"pauli","D":2,"architecture":"tensor","options":{"cyclic":false}},
+	"measure":{"string":"povm","operator":"pauli","D":2,"seed":null,"architecture":"tensor","options":{"cyclic":false}},
 	"configuration":{},
 	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
 },
