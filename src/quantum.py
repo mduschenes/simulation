@@ -790,7 +790,7 @@ class Measure(System):
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		basis=None,inverse=None,identity=None,ones=None,zeros=None,pointer=None,
-		parameters=None,variable=None,constant=None,hermitian=None,unitary=None,
+		parameters=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
 
@@ -858,17 +858,20 @@ class Measure(System):
 		string = self.string if string is None else string
 
 		operator = data if operator is None and isinstance(data,str) else operator if data is None else operator
-		options = dict(D=self.D,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
-
-		invariant = operator is None or isinstance(operator,str)
+		invariant = isinstance(operator,str)
+		symmetry = self.symmetry is None
 		N = len(operator) if not invariant else self.N if self.N is not None else None
 		dtype = self.dtype
 
 		where = range(N) if N is not None else None
 		pointer = min(where) if where is not None else 0 if N is not None else None
 
-		basis = [getattr(Basis,operator)(**options)]*N if invariant else [getattr(Basis,operator[i])(**options) for i in where]
-		inverse = [inv(einsum('uij,vji->uv',basis[pointer],basis[pointer]))]*N if invariant else [inv(einsum('uij,vji->uv',basis[i],basis[i])) for i in where]
+		operator = [operator for i in where] if invariant else [operator[i] for i in where]
+		seed = [seeder(self.seed)]*N if symmetry else seeder(self.seed,size=N)
+		options = [dict(D=self.D,dtype=self.dtype,seed=seed[i],system=self.system) for i in where]
+
+		basis = [getattr(Basis,operator[pointer])(**options[pointer])]*N if symmetry and invariant else [getattr(Basis,operator[i])(**options[i]) for i in where]
+		inverse = [inv(einsum('uij,vji->uv',basis[pointer],basis[pointer]))]*N if symmetry else [inv(einsum('uij,vji->uv',basis[i],basis[i])) for i in where]
 
 		K = max(len(basis[i]) for i in where)
 		shape = [min(data.shape[axis] for i in where for data in basis[i]) for axis in range(min(len(data.shape) for i in where for data in basis[i]))]
@@ -886,31 +889,31 @@ class Measure(System):
 			
 			kwargs = dict(dtype=dtype)
 
-			basis = [cls(basis[pointer],**kwargs)]*N if invariant else [cls(basis[i],**kwargs) for i in where]
-			inverse = [cls(inverse[pointer],**kwargs)]*N if invariant else [cls(inverse[i],**kwargs) for i in where]
+			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
+			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 			
-			identity = [cls(identity[pointer],**kwargs)]*N if invariant else [cls(identity[i],**kwargs) for i in where]
-			ones = [cls(ones[pointer],**kwargs)]*N if invariant else [cls(ones[i],**kwargs) for i in where]
-			zeros = [cls(zeros[pointer],**kwargs)]*N if invariant else [cls(zeros[i],**kwargs) for i in where]
+			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
+			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
+			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 			pointer = pointer
 
 		elif self.architecture in ['tensor']:
 			cls = tensor
 
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
-			basis = [cls(basis[pointer],**kwargs)]*N if invariant else [cls(basis[i],**kwargs) for i in where]
+			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			inverse = [cls(inverse[pointer],**kwargs)]*N if invariant else [cls(inverse[i],**kwargs) for i in where]
+			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			identity = [cls(identity[pointer],**kwargs)]*N if invariant else [cls(identity[i],**kwargs) for i in where]
+			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
-			ones = [cls(ones[pointer],**kwargs)]*N if invariant else [cls(ones[i],**kwargs) for i in where]
+			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
-			zeros = [cls(zeros[pointer],**kwargs)]*N if invariant else [cls(zeros[i],**kwargs) for i in where]
+			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 			pointer = pointer
 
@@ -921,12 +924,15 @@ class Measure(System):
 		zeros = [zeros]*N if isinstance(zeros,objects) else zeros
 		pointer = pointer if pointer is not None else 0 if N is not None else None
 
+
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
 			constant = False
+			symmetry = None
 		else:
 			variable = False
 			constant = True
+			symmetry = None
 
 		hermitian = True
 		unitary = False
@@ -948,6 +954,7 @@ class Measure(System):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -1191,10 +1198,11 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			
+			where = tuple(where) if where is not None else range(N)
+
 			if N:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in range(N)])],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in range(N)])],dtype=self.dtype)
+				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 			else:
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
@@ -2133,6 +2141,8 @@ class Measure(System):
 			L = N - len(where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
 
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
@@ -3550,7 +3560,7 @@ class Object(System):
 	defaults = dict(			
 		data=None,operator=None,site=None,string=None,system=None,
 		state=None,parameters=None,conj=False,
-		local=None,locality=None,number=None,variable=None,constant=None,hermitian=None,unitary=None,
+		local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,
 		space=None,time=None,lattice=None,
@@ -3595,6 +3605,7 @@ class Object(System):
 		
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
+		symmetry = self.symmetry if self.symmetry is not None else None
 		hermitian = self.hermitian
 		unitary = self.unitary
 
@@ -3722,6 +3733,7 @@ class Object(System):
 		
 		variable = variable
 		constant = constant
+		symmetry = symmetry
 		hermitian = hermitian
 		unitary = unitary
 
@@ -3788,6 +3800,7 @@ class Object(System):
 		
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -3895,6 +3908,7 @@ class Object(System):
 
 		variable =  self.variable
 		constant =  self.constant
+		symmetry =  self.symmetry
 		hermitian =  self.hermitian
 		unitary =  self.unitary
 
@@ -3922,6 +3936,7 @@ class Object(System):
 
 		self.variable =  variable
 		self.constant =  constant
+		self.symmetry =  symmetry
 		self.hermitian =  hermitian
 		self.unitary =  unitary
 
@@ -4355,6 +4370,7 @@ class Object(System):
 			number = self.number
 			variable = self.variable
 			constant = self.constant
+			symmetry = self.symmetry
 			
 			N = self.N*other
 			D = self.D
@@ -4401,6 +4417,7 @@ class Object(System):
 			number = max((self.number,other.number))
 			variable = all((self.variable,other.variable))
 			constant = all((self.constant,other.constant))
+			symmetry = self.symmetry
 			
 			N = max(self.N,other.N) if (len(support) == 0) else (self.N + other.N)
 			D = max(self.D,other.D)
@@ -4434,7 +4451,7 @@ class Object(System):
 			**{attr: getattr(self,attr) for attr in self if not callable(getattr(self,attr))},
 			**dict(
 				data=data,operator=operator,site=site,string=string,
-				local=local,locality=locality,number=number,variable=variable,constant=constant,
+				local=local,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
 				N=N,D=D,shape=shape,size=size,ndim=ndim,
 				state=state,parameters=parameters,conj=conj
 				)
@@ -4575,7 +4592,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','site','locality','local','variable','constant']:
+		for attr in ['operator','site','locality','local','variable','constant','symmetry']:
 		
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -4885,6 +4902,7 @@ class Data(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
+		symmetry = None
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -4913,6 +4931,7 @@ class Data(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5002,6 +5021,7 @@ class Gate(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
+		symmetry = None		
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -5030,6 +5050,7 @@ class Gate(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5117,6 +5138,7 @@ class Pauli(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = False
+		symmetry = None		
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -5172,6 +5194,7 @@ class Pauli(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5296,6 +5319,7 @@ class Haar(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
+		symmetry = None
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -5324,6 +5348,7 @@ class Haar(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5452,6 +5477,7 @@ class Noise(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
+		symmetry = None		
 
 		if self.state is None or self.state() is None:
 			hermitian = False
@@ -5479,6 +5505,7 @@ class Noise(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -5619,6 +5646,7 @@ class State(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
+		symmetry = None		
 
 		if self.ndim is None:
 			hermitian = True
@@ -5647,6 +5675,7 @@ class State(Object):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -6611,6 +6640,7 @@ class Objects(Object):
 
 		variable = any(data[i].variable for i in data) if data is not None else False
 		constant = all(data[i].constant for i in data) if data is not None else False
+		symmetry = [data[i].symmetry for i in data if data[i].symmetry is not None][0] if data is not None and any(data[i].symmetry for i in data) else None
 
 		if state is None:
 			hermitian = all(data[i].hermitian for i in data if boolean(i,data))
@@ -6642,6 +6672,7 @@ class Objects(Object):
 		self.number = number
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -6936,7 +6967,7 @@ class Module(System):
 		model=None,
 		N=None,M=None,D=None,d=None,
 		state=None,parameters=None,
-		variable=None,constant=None,hermitian=None,unitary=None,
+		variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		data=None,measure=None,callback=None,
 		func=None,gradient=None,
 		system=None,
@@ -7102,15 +7133,18 @@ class Module(System):
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
 			constant = False
+			symmetry = None
 		else:
 			variable = False
 			constant = True
+			symmetry = None
 
 		hermitian = True
 		unitary = False
 		
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -7433,6 +7467,7 @@ class Label(Operator):
 
 		variable = self.variable
 		constant = self.constant
+		symmetry = self.symmetry
 
 		if self.state is None or self.state() is None:
 			hermitian = self.hermitian
@@ -7447,6 +7482,7 @@ class Label(Operator):
 
 		self.variable = variable
 		self.constant = constant
+		self.symmetry = symmetry
 		self.hermitian = hermitian
 		self.unitary = unitary
 
