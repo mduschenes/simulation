@@ -773,6 +773,7 @@ class Basis(Dict):
 
 class Measure(System):
 
+	N = None
 	D = None
 
 	basis = None
@@ -788,7 +789,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,identity=None,ones=None,zeros=None,
+		basis=None,inverse=None,identity=None,ones=None,zeros=None,pointer=None,
 		parameters=None,variable=None,constant=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -871,6 +872,7 @@ class Measure(System):
 		identity = Basis.identity(D=K,dtype=dtype)
 		ones = array([1 for i in range(K)],dtype=dtype)
 		zeros = array([0 for i in range(K)],dtype=dtype)
+		pointer = None
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			kwargs = dict(dtype=dtype)
@@ -880,6 +882,7 @@ class Measure(System):
 			identity = array(identity,**kwargs)
 			ones = array(ones,**kwargs)
 			zeros = array(zeros,**kwargs)
+			pointer = 0
 
 		elif self.architecture in ['tensor']:
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
@@ -896,6 +899,15 @@ class Measure(System):
 
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
 			zeros = tensor(zeros,**kwargs)			
+			
+			pointer = 0
+
+		basis = [basis]*self.N if isinstance(basis,objects) else basis
+		inverse = [inverse]*self.N if isinstance(inverse,objects) else inverse
+		identity = [identity]*self.N if isinstance(identity,objects) else identity
+		ones = [ones]*self.N if isinstance(ones,objects) else ones
+		zeros = [zeros]*self.N if isinstance(zeros,objects) else zeros
+		pointer = pointer if pointer is not None else 0 if self.N is not None else None
 
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
@@ -915,6 +927,7 @@ class Measure(System):
 		self.identity = identity
 		self.ones = ones
 		self.zeros = zeros
+		self.pointer = pointer
 
 		self.shape = shape
 		self.size = size
@@ -928,10 +941,10 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			subscripts = '...u,uv,vij->...ij'
-			shapes = ((self.K,),self.inverse.shape,self.basis.shape)
+			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
 			einsummation = einsum(subscripts,*shapes)
 			def func(parameters=None,state=None,**kwargs):
-				return einsummation(state,self.inverse,self.basis)
+				return einsummation(state,self.inverse[self.pointer],self.basis[self.pointer])
 
 			def gradient(parameters=None,state=None,**kwargs):
 				return 0
@@ -940,8 +953,8 @@ class Measure(System):
 			def func(parameters=None,state=None,**kwargs):
 				N = state.L
 				for i in range(N):
-					with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
-						state &= self.inverse & self.basis
+					with context(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
+						state &= self.inverse[i] & self.basis[i]
 				return state
 
 			def gradient(parameters=None,state=None,**kwargs):
@@ -972,7 +985,7 @@ class Measure(System):
 		return self.func(parameters=parameters,state=state,**kwargs)
 
 	def __len__(self):
-		return self.basis.shape[0]
+		return self.basis[self.pointer].shape[0]
 
 	def __str__(self):
 		if isinstance(self.string,str):
@@ -1107,10 +1120,10 @@ class Measure(System):
 				data = state[i] if not callable(state[i]) else state[i]()
 
 				subscripts = 'uij,...ji->...u'
-				shapes = (self.basis.shape,data.shape)
+				shapes = (self.basis[i].shape,data.shape)
 				einsummation = einsum(subscripts,*shapes)
 
-				data = einsummation(self.basis,data)
+				data = einsummation(self.basis[i],data)
 
 				state[i] = data
 
@@ -1128,8 +1141,8 @@ class Measure(System):
 
 					data = tensor(data=data,inds=inds,tags=tags)
 
-					with context(data,self.basis,key=i):
-						data &= self.basis
+					with context(data,self.basis[i],key=i):
+						data &= self.basis[i]
 
 					data = representation(data,contraction=True)
 
@@ -1168,11 +1181,11 @@ class Measure(System):
 			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			
 			if N:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*N)],dtype=self.dtype)
+				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in range(N)])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in range(N)])],dtype=self.dtype)
 			else:
-				basis = self.basis
-				inverse = self.inverse
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
 
 			subscripts = 'u...,uv,vij->ij...'
 			shapes = (state.shape,inverse.shape,basis.shape)
@@ -1202,7 +1215,7 @@ class Measure(System):
 			# 	*[tuple(j) for i in range(N) for j in [(4*i,),(4*i,4*i+1,),(4*i+1,4*i+2,4*i+3,)]],
 			# 	tuple(j for i in range(N) for j in [4*i+2,4*i+3]),
 			# 	]
-			# shapes = [j for i in range(N) for j in [(state.shape[ndim*i],),self.inverse.shape,self.basis.shape]]
+			# shapes = [j for i in range(N) for j in [(state.shape[ndim*i],),self.inverse[self.pointer].shape,self.basis[self.pointer].shape]]
 			
 			# subscripts = [
 			# 	*(i for i in range(N*ndim)),
@@ -1211,7 +1224,7 @@ class Measure(System):
 
 			# einsummation = einsum(subscripts,*shapes)
 
-			# operands = [j for i in range(N) for j in [state[i] if not callable(state[i]) else state[i](),self.inverse,self.basis]]
+			# operands = [j for i in range(N) for j in [state[i] if not callable(state[i]) else state[i](),self.inverse[self.pointer],self.basis[self.pointer]]]
 
 			# state = einsummation(*operands)
 
@@ -1225,8 +1238,8 @@ class Measure(System):
 			where = tuple(where) if where is not None else range(N)
 
 			for i in where:
-				with context(self.basis,self.inverse,key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
-					state &= self.inverse & self.basis
+				with context(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
+					state &= self.inverse[i] & self.basis[i]
 
 
 		return state
@@ -1255,11 +1268,11 @@ class Measure(System):
 			ndim = 1
 
 			if L:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 			else:
-				basis = self.basis
-				inverse = self.inverse
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
 			
 
 			if model is not None and where:
@@ -1282,8 +1295,8 @@ class Measure(System):
 
 			else:
 
-				basis = self.basis
-				inverse = self.inverse
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
 				
 				where = tuple(where) if where is not None else None
 				options = options if options is not None else dict()
@@ -1298,11 +1311,11 @@ class Measure(System):
 			ndim = 1
 
 			if N:
-				basis = array([tensorprod(i) for i in permutations(*[representation(self.basis)]*N)],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[representation(self.inverse)]*N)],dtype=self.dtype)
+				basis = array([tensorprod(i) for i in permutations(*[representation(self.basis[i]) for i in where])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[representation(self.inverse[i]) for i in where])],dtype=self.dtype)
 			else:
-				basis = representation(self.basis)
-				inverse = representation(self.inverse)
+				basis = representation(self.basis[self.pointer])
+				inverse = representation(self.inverse[self.pointer])
 
 			if model is not None and where:
 			
@@ -1318,8 +1331,8 @@ class Measure(System):
 		
 			else:
 				
-				basis = self.basis
-				inverse = self.inverse
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
 				
 				where = tuple(where) if where is not None else None
 				options = options if options is not None else dict()
@@ -1568,8 +1581,8 @@ class Measure(System):
 			L = N - len(where)
 
 			for i in where:
-				with context(self.ones,key=i):
-					data &= self.ones
+				with context(self.ones[i],key=i):
+					data &= self.ones[i]
 
 		data = func(data)
 
@@ -1625,10 +1638,10 @@ class Measure(System):
 			L = N - len(where)
 
 			for i in where:
-				self.zeros.modify(data=array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
-				with context(self.zeros,key=i):
-					data &= self.zeros
-				self.zeros.modify(data=array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+				self.zeros[i].modify(data=array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+				with context(self.zeros[i],key=i):
+					data &= self.zeros[i]
+				self.zeros[i].modify(data=array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
 
 		data = func(data)
 
@@ -1659,7 +1672,7 @@ class Measure(System):
 			where = tuple(where) if where is not None else range(N)
 			L = N - len(where)
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
 			subscripts = '...u,uv,...v->...'
 			shapes = (state.shape,inverse.shape,other.shape)
@@ -1679,8 +1692,8 @@ class Measure(System):
 			L = N - len(where)
 
 			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
+				with context(self.inverse[i],key=i):
+					state &= self.inverse[i]
 
 			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
@@ -1724,7 +1737,7 @@ class Measure(System):
 				transformation=True,
 				) if where is not None else None
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*(N-L))],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
 			data = shuffle(data,**options)
 
@@ -1746,8 +1759,8 @@ class Measure(System):
 			L = N - len(where)
 
 			for i in where:
-				with context(self.inverse,key=i):
-					state &= self.inverse
+				with context(self.inverse[i],key=i):
+					state &= self.inverse[i]
 
 			with context(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
 
@@ -2286,8 +2299,8 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			basis = array([tensorprod(i) for i in permutations(*[self.basis]*L)],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+			basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
 			basis = reshape(basis,shape=(self.K**L,-1))
 
@@ -2316,10 +2329,10 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in where)
 
 			for i in where:
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
-					data &= self.inverse & self.basis
-				with context(self.inverse,self.basis,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
-					data &= self.inverse & self.basis.conj()
+				with context(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
+					data &= self.inverse[i] & self.basis[i]
+				with context(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
+					data &= self.inverse[i] & self.basis[i].conj()
 
 			options = dict()
 			data = contract(data,**options)
@@ -2431,7 +2444,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			inverse = array([tensorprod(i) for i in permutations(*[self.inverse]*L)],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
 			subscripts = 'uv,up,vs,sp->'
 			shapes = (data.shape,inverse.shape,inverse.shape,data.shape)
@@ -2461,10 +2474,10 @@ class Measure(System):
 			with context(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
 
 				for i in where:
-					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
-						data &= self.inverse
-					with context(self.inverse,key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
-						other &= self.inverse
+					with context(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+						data &= self.inverse[i]
+					with context(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
+						other &= self.inverse[i]
 
 				data &= other
 
