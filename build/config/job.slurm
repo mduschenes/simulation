@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --account=def-raymond
+##SBATCH --account=mduschenes
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
-##SBATCH --partition=cpu
+#SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
 #SBATCH --nodes=1
@@ -97,9 +97,8 @@ export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
 module purge &>/dev/null 2>&1
-# module load python cuda cudnn
 # conda activate ${JOB_ENV} &>/dev/null 2>&1
-source ${HOME}/envs/${JOB_ENV}/bin/activate &>/dev/null 2>&1
+source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
 if ([ ! -z ${JOB_SRC} ] && [ ! -z ${JOB_CMD} ])
