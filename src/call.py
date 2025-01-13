@@ -199,15 +199,11 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
 			args = [' '.join(args)] if shell else args
-			print(args)
-			print(stdin)
-			print(stdout)
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 			except (OSError,FileNotFoundError) as exception:
 				result = Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 				logger.log(verbose,exception)
-			print('result',result)
 			return result
 
 
@@ -527,18 +523,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 	args = []
 	shell = False
 
-	print(args)
-	print(exe)
-	print(flags)
-	print(cmd)
-	print(options)
-	print(env)
-	print(path)
-
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	print(stdout)
-	exit()
 
 	chmod(path,mod=mod,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
