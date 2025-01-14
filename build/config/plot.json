@@ -3505,6 +3505,9 @@
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
+						"analysis":{
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3842,6 +3845,9 @@
 							"y": null,
 							"yerr": null							
 						},
+						"analysis":{
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+						},						
 						"scinotation": {
 							"scilimits": [
 								0,

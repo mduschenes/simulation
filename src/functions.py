@@ -48,7 +48,7 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
-def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,**kwargs):
+def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,sort=None,**kwargs):
 
 	independent = [independent] if isinstance(independent,str) else independent
 	dependent = [dependent] if isinstance(dependent,str) else dependent
@@ -58,7 +58,17 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	if seed is not None:
 		options = dict(seed=seed)
-		key = seeded(**options)
+		seeded(**options)
+
+	if func is None:
+		func = 'mean'
+	if sort is None:
+		sort = 'idxmax'
+
+	if isinstance(func,str):
+		pass
+	if isinstance(sort,str):
+		sort = lambda data,sort=sort: getattr(data.abs(),sort)()
 
 	def split(data):
 		options = dict(seed=seed)
@@ -79,13 +89,13 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	def agg(data):
 		by = independent
-		agg = {**{attr:'first' for attr in data},**{attr:'mean' for attr in dependent}}
+		agg = {**{attr:'first' for attr in data},**{attr:func for attr in dependent}}
 		options = dict(by=by,agg=agg)
 		data = grouper(data,**options)
 		return data
 
 	def mask(data):
-		booleans = {attr:lambda data,attr=attr:(data[attr].index == data[attr].abs().idxmax()) for attr in dependent}
+		booleans = {attr:lambda data,attr=attr:(data[attr].index == sort(data[attr])) for attr in dependent}
 		boolean = conditions([booleans[attr](data) for attr in booleans],op='and')
 		data = data[boolean]
 		return data
