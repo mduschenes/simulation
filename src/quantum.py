@@ -1404,7 +1404,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		where = where if where is not None else None 
+		where = where if where is not None and L else None 
 
 		if isinstance(state,arrays):
 
@@ -1461,7 +1461,7 @@ class Measure(System):
 
 		if isinstance(state,arrays):
 
-			where = tuple(where) if where is not None else None
+			where = tuple(where) if where is not None and L else None
 			
 			data = svd(state,**kwargs) if where is not None else array([])
 

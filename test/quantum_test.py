@@ -2308,6 +2308,6 @@ if __name__ == "__main__":
 	# test_metric(*args,**args)
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
-	test_grad(*args,**args)
-	test_module(*args,**args)
+	# test_grad(*args,**args)
+	# test_module(*args,**args)
 	test_calculate(*args,**args)
