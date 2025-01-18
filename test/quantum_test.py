@@ -1275,6 +1275,7 @@ def test_measure(*args,**kwargs):
 				"data":None,
 				"operator":"pauli",
 				"string":"povm",
+				"N":3,
 				"D":2,
 				"dtype":"complex"
 			},
@@ -1625,7 +1626,7 @@ def test_module(*args,**kwargs):
 		"module.N":[2],"module.M":[5],"module.measure.operator":["pauli"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
+		"measure.N":[2],"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
 
 	groups = None
@@ -2220,7 +2221,7 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = 1/2
+				where = 0.5
 
 			elif attr in [
 				'measure',
@@ -2307,6 +2308,6 @@ if __name__ == "__main__":
 	# test_metric(*args,**args)
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
-	# test_grad(*args,**args)
-	# test_module(*args,**args)
+	test_grad(*args,**args)
+	test_module(*args,**args)
 	test_calculate(*args,**args)

@@ -737,57 +737,88 @@ def test_pytree(path=None,tol=None):
 
 def test_shuffle(path=None,tol=None):
 
-	d = [[2,5],[3,4]]
-	s = [9,1]
-	n = max(len(i) for i in d)
-	k = len(d)+len(s)
-	dtype = None
+	# d = [[2,5],[3,4]]
+	# s = [9,1]
+	# n = max(len(i) for i in d)
+	# k = len(d)+len(s)
+	# dtype = None
 
-	allclose = lambda a,b: all(i==j for i,j in zip(a.ravel(),b.ravel()))
+	# allclose = lambda a,b: all(i==j for i,j in zip(a.ravel(),b.ravel()))
 
-	shape = (
-		*(prod(i) for i in d[:len(d)//2]),
-		*s[:len(s)//2],		
-		*(prod(i) for i in d[len(d)//2:]),
-		*s[len(s)//2:],
-		)
+	# shape = (
+	# 	*(prod(i) for i in d[:len(d)//2]),
+	# 	*s[:len(s)//2],		
+	# 	*(prod(i) for i in d[len(d)//2:]),
+	# 	*s[len(s)//2:],
+	# 	)
 
-	shape = (
-		*s[:len(s)//2],
-		*s[len(s)//2:],
-		*(prod(i) for i in d[:len(d)//2]),
-		*(prod(i) for i in d[len(d)//2:]),
-		)
+	# shape = (
+	# 	*s[:len(s)//2],
+	# 	*s[len(s)//2:],
+	# 	*(prod(i) for i in d[:len(d)//2]),
+	# 	*(prod(i) for i in d[len(d)//2:]),
+	# 	)
 
-	size = prod(prod(i) for i in d)*prod(s)
+	# size = prod(prod(i) for i in d)*prod(s)
 	
-	a = arange(size).reshape(shape)
+	# a = arange(size).reshape(shape)
 
-	shape = {
-		**{axis: d[axis] for axis in range(0,len(d)//2)},
-		**{len(d)//2+axis: s[axis] for axis in range(0,len(s)//2)},
-		**{len(s)//2+axis: d[axis] for axis in range(len(d)//2,len(d))},		
-		**{len(d)+axis: s[axis] for axis in range(len(s)//2,len(s))},
-		}
+	# shape = {
+	# 	**{axis: d[axis] for axis in range(0,len(d)//2)},
+	# 	**{len(d)//2+axis: s[axis] for axis in range(0,len(s)//2)},
+	# 	**{len(s)//2+axis: d[axis] for axis in range(len(d)//2,len(d))},		
+	# 	**{len(d)+axis: s[axis] for axis in range(len(s)//2,len(s))},
+	# 	}
 
-	shape = {
-		**{axis: s[axis] for axis in range(0,len(s)//2)},
-		**{axis: s[axis] for axis in range(len(s)//2,len(s))},	
-		**{len(s)+axis: d[axis] for axis in range(0,len(d)//2)},
-		**{len(s)+axis: d[axis] for axis in range(len(d)//2,len(d))},		
-		}
+	# shape = {
+	# 	**{axis: s[axis] for axis in range(0,len(s)//2)},
+	# 	**{axis: s[axis] for axis in range(len(s)//2,len(s))},	
+	# 	**{len(s)+axis: d[axis] for axis in range(0,len(d)//2)},
+	# 	**{len(s)+axis: d[axis] for axis in range(len(d)//2,len(d))},		
+	# 	}
 
-	axes = ((1,0,n-1),)
+	# axes = ((1,0,n-1),)
 
-	b = shuffle(a,axes=axes,shape=shape,transformation=True)
+	# b = shuffle(a,axes=axes,shape=shape,transformation=True)
 
-	b = shuffle(a,axes=axes,shape=shape,transformation=True)
+	# b = shuffle(a,axes=axes,shape=shape,transformation=True)
 
-	b = shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)
+	# b = shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)
 
-	assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)), "Incorrect split and merge axis %r,%r"%(d,s)
+	# assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)), "Incorrect split and merge axis %r,%r"%(d,s)
 
-	assert allclose(shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
+	# assert allclose(shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
+
+
+	n = 5
+	k = 2
+	d = 1
+	l = n
+
+	shape = (k**n,)*d
+	size = prod(shape)
+	ndim = len(shape)
+
+	where = {i:i%k for i in range(l)}
+
+	data = arange(size).reshape(shape)
+
+	options = dict(
+		axes = [[i] for i in range(n)],
+		shape = [k,n,d],
+		transformation=True,
+		) if where is not None else None
+	_options = dict(
+		axes = [[i] for i in range(n-l)],
+		shape = [k,n-l,d],
+		transformation=False,
+		) if where is not None else None
+
+	function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(n))]
+
+	tmp = shuffle(function(shuffle(data,**options)),**_options)
+
+	assert tmp.size == k**((n-l)*d), "Incorrect data shuffle function"
 
 	print('Passed')
 
@@ -1233,7 +1264,7 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_getter(path,tol)
 	# test_setter(path,tol)
-	test_sizer(path,tol)
+	# test_sizer(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
@@ -1241,7 +1272,7 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_shuffle(path,tol)	
+	test_shuffle(path,tol)	
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)

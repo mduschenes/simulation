@@ -19,7 +19,7 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,differen
 from src.utils import real,imag,abs,abs2,mod,sqr,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,matrices,nulls,integers,floats,iterables,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,matrices,nulls,integers,floats,iterables,dicts,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -33,7 +33,7 @@ from src.optimize import Objective,Metric
 
 delim = '.'
 separ = '_'
-objects = (*arrays,*tensors)
+objects = (*arrays,*tensors,*matrices)
 
 class Basis(Dict):
 	'''
@@ -860,7 +860,7 @@ class Measure(System):
 		operator = data if operator is None and isinstance(data,str) else operator if data is None else operator
 		invariant = isinstance(operator,str)
 		symmetry = self.symmetry is None
-		N = len(operator) if not invariant else self.N if self.N is not None else None
+		N = min((i for i in (self.N,len(operator) if not invariant else self.N if self.N is not None else None) if i is not None),default=None)
 		dtype = self.dtype
 
 		where = range(N) if N is not None else None
@@ -936,6 +936,8 @@ class Measure(System):
 
 		hermitian = True
 		unitary = False
+
+		self.N = N
 
 		self.operator = operator
 		self.string = string
@@ -1079,7 +1081,6 @@ class Measure(System):
 
 		return
 
-
 	def transform(self,parameters=None,state=None,model=None,where=None,transformation=None,**kwargs):
 		'''
 		Probability for POVM probability measure
@@ -1087,7 +1088,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
 			kwargs (dict): Additional class keyword arguments
 		Returns:
@@ -1112,7 +1113,6 @@ class Measure(System):
 		else:
 		
 			return state		
-
 
 	def probability(self,parameters=None,state=None,**kwargs):
 		'''
@@ -1152,7 +1152,9 @@ class Measure(System):
 			
 			if not isinstance(state,tensors):
 				
-				for i in range(len(state)):
+				N = len(state)
+
+				for i in range(N):
 
 					data = state[i] if not callable(state[i]) else state[i]()
 					inds = (*self.indices[::-1],)
@@ -1177,14 +1179,13 @@ class Measure(System):
 
 		return state
 
-
 	def amplitude(self,parameters=None,state=None,where=None,**kwargs):
 		'''
 		Amplitude for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function			
+			where (float,int,iterable[int]): indices of function			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
@@ -1195,12 +1196,12 @@ class Measure(System):
 		if state is None:
 			return state
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(where) if where is not None else range(N)
-
-			if N:
+			if L:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
 				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 			else:
@@ -1213,49 +1214,9 @@ class Measure(System):
 			
 			state = einsummation(state,inverse,basis)
 
-			# N = int(round(log(state.size)/log(self.K)/state.ndim))
-			# K = self.K
-			# D = self.D
-			# ndim = state.ndim
-
-			# options = dict(
-			# 		axes=[[i] for i in range(N)],
-			# 		shape=[K,N,ndim],
-			# 		transformation=True
-			# 		)
-			# _options = dict(
-			# 		axes=[[i] for i in range(N)],
-			# 		shape=[D,N,2],
-			# 		transformation=False
-			# 		)
-
-			# state = shuffle(state,**options)
-			
-			# subscripts = [
-			# 	*[tuple(j) for i in range(N) for j in [(4*i,),(4*i,4*i+1,),(4*i+1,4*i+2,4*i+3,)]],
-			# 	tuple(j for i in range(N) for j in [4*i+2,4*i+3]),
-			# 	]
-			# shapes = [j for i in range(N) for j in [(state.shape[ndim*i],),self.inverse[self.pointer].shape,self.basis[self.pointer].shape]]
-			
-			# subscripts = [
-			# 	*(i for i in range(N*ndim)),
-			# 	*(i+N*ndim for i in range(K))
-			# ]
-
-			# einsummation = einsum(subscripts,*shapes)
-
-			# operands = [j for i in range(N) for j in [state[i] if not callable(state[i]) else state[i](),self.inverse[self.pointer],self.basis[self.pointer]]]
-
-			# state = einsummation(*operands)
-
-			# state = shuffle(state,**options)
-
 		elif self.architecture in ['tensor']:
 
 			state = state.copy()
-
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
 
 			for i in where:
 				with context(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
@@ -1271,7 +1232,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			options (dict): Operator keyword options			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1280,10 +1241,11 @@ class Measure(System):
 
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		
+		default = tuple()
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
-			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
-			L = len(where) if where is not None else None
 			K = self.K
 			ndim = 1
 
@@ -1301,13 +1263,12 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
 				einsummation = einsum(subscripts,*shapes)
 				
-				opts = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False) if where is not None else None
-				_opts = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False) if where is not None else None
+				opts = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False)
+				_opts = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False)
 				
 				shuffler = shuffle(**opts) if where is not None else lambda state:state
 				_shuffler = shuffle(**_opts) if where is not None else lambda state:state
 			
-				where = tuple(where) if where is not None else None		
 				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
@@ -1318,7 +1279,6 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 				
-				where = tuple(where) if where is not None else None
 				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
@@ -1326,11 +1286,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			N = len(where) if where is not None else None
 			K = self.K
 			ndim = 1
 
-			if N:
+			if L:
 				basis = array([tensorprod(i) for i in permutations(*[representation(self.basis[i]) for i in where])],dtype=self.dtype)
 				inverse = array([tensorprod(i) for i in permutations(*[representation(self.inverse[i]) for i in where])],dtype=self.dtype)
 			else:
@@ -1343,7 +1302,6 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
 				einsummation = einsum(subscripts,*shapes)
 
-				where = tuple(where) if where is not None else None
 				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
@@ -1354,7 +1312,6 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 				
-				where = tuple(where) if where is not None else None
 				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
@@ -1387,13 +1344,54 @@ class Measure(System):
 
 		return data
 
+	def where(self,parameters=None,state=None,where=None,func=None,**kwargs):
+		'''
+		Indices of function
+		Args:
+			parameters (array): parameters of class
+			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (float,int,iterable[int]): indices of function
+			func (callable): function to apply to data		
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			where (iterable[int],dict[int,int]): indices of function
+			L (int): size of indices
+			N (int): size of state
+		'''
+
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
+		elif self.architecture in ['tensor']:
+			N = state.L if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
+		else:
+			N = None
+
+		where = func(N) if callable(func) and where is None else func if where is None else where
+
+		if where is None:
+			where = None
+		elif isinstance(where,integers):
+			where = tuple(range(where))
+		elif isinstance(where,floats):
+			where = tuple(range(int(where*N)))
+		elif isinstance(where,dicts):
+			where = dict(where)
+		elif isinstance(where,iterables):
+			where = tuple(where)
+		else:
+			where = tuple(range(N))
+
+		L = len(where) if where is not None else None
+
+		return where,L,N
+
 	def eig(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Eigenvalues for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1403,17 +1401,22 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(sort(data)[::-1])
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
+		where = where if where is not None else None 
+
 		if isinstance(state,arrays):
 
 			where = tuple(where) if where is not None else None
 
-			data = eig(state,**kwargs)
+			data = eig(state,**kwargs) if where is not None else array([])
 
 		elif isinstance(state,matrices):
 
-			where = max(where) if where is not None else None
+			where = min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else None
 
-			data = state.singular_values(where)
+			data = state.singular_values(where) if where is not None else array([])
 
 			data = sqr(data)
 
@@ -1421,7 +1424,7 @@ class Measure(System):
 			
 			where = tuple(self.ind.format(i) for i in where) if where is not None else None
 
-			data = state.singular_values(where)
+			data = state.singular_values(where) if where is not None else array([])
 
 			data = sqr(data)
 
@@ -1441,7 +1444,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1451,23 +1454,28 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
+		default = tuple()
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
+		where = where if where is not None else None 
+
 		if isinstance(state,arrays):
 
 			where = tuple(where) if where is not None else None
-
-			data = svd(state,**kwargs)
+			
+			data = svd(state,**kwargs) if where is not None else array([])
 
 		elif isinstance(state,matrices):
 
-			where = ((min(where)-1) if min(where) > 0 else (max(where)+1)) if where is not None else None
-
-			data = state.singular_values(where)
+			where = min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None and (L) and (N-L) else None
+			
+			data = state.singular_values(where) if where is not None else array([])
 
 		elif isinstance(state,tensors):
 			
 			where = tuple(self.ind.format(i) for i in where) if where is not None else None
-
-			data = state.singular_values(where)
+			
+			data = state.singular_values(where) if where is not None else array([])
 
 		else:
 
@@ -1485,7 +1493,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1494,6 +1502,9 @@ class Measure(System):
 		
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(nonzero(real(data)/maximum(abs(real(data))),**kwargs))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		data = func(state)
 
@@ -1505,7 +1516,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1514,6 +1525,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if isinstance(state,arrays):
 
@@ -1531,7 +1545,7 @@ class Measure(System):
 
 		elif isinstance(state,matrices):
 
-			where = max(where) if where is not None else None
+			where = min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else None
 
 			data = state.entropy(where)
 
@@ -1557,7 +1571,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1567,26 +1581,26 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
+		default = tuple()
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			data = state
 
-			N = int(round(log(data.size)/log(self.K)/data.ndim))
 			K = self.K
 			ndim = data.ndim
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			options = dict(
 				axes = [[i] for i in range(N)],
 				shape = [K,N,ndim],
 				transformation=True,
-				) if where is not None else None
+				)
 			_options = dict(
-				axes = [[i] for i in range(L)],
-				shape = [K,L,ndim],
+				axes = [[i] for i in range(N-L)],
+				shape = [K,N-L,ndim],
 				transformation=False,
-				) if where is not None else None
+				)
 
 			function = lambda data: addition(data,axis=where)
 
@@ -1595,10 +1609,6 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 			
 			data = state.copy()
-
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			for i in where:
 				with context(self.ones[i],key=i):
@@ -1624,26 +1634,26 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
+		default = dict()
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			data = state
 
-			N = int(round(log(data.size)/log(self.K)/data.ndim))
 			K = self.K
 			ndim = data.ndim
-			where = dict(where) if where is not None else dict()
-			L = N - len(where)
 
 			options = dict(
 				axes = [[i] for i in range(N)],
 				shape = [K,N,ndim],
 				transformation=True,
-				) if where is not None else None
+				)
 			_options = dict(
-				axes = [[i] for i in range(L)],
-				shape = [K,L,ndim],
+				axes = [[i] for i in range(N-L)],
+				shape = [K,N-L,ndim],
 				transformation=False,
-				) if where is not None else None
+				)
 
 			function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(N))]
 
@@ -1652,10 +1662,6 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 			
 			data = state.copy()
-
-			N = state.L
-			where = dict(where) if where is not None else dict()
-			L = N - len(where)
 
 			for i in where:
 				self.zeros[i].modify(data=array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
@@ -1674,7 +1680,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1684,13 +1690,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			other = state if other is None else other
-
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
@@ -1706,10 +1711,6 @@ class Measure(System):
 
 			state = state.copy()
 			other = other.copy()
-
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			for i in where:
 				with context(self.inverse[i],key=i):
@@ -1731,7 +1732,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1741,27 +1742,27 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
 			data = state
 
-			N = int(round(log(data.size)/log(self.K)/data.ndim))
 			K = self.K
 			ndim = data.ndim
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			options = dict(
 				axes = [[i for i in range(N) if i not in where],[i for i in range(N) if i in where]],
 				shape = [K,N,ndim],
 				transformation=True,
-				) if where is not None else None
+				)
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
 			data = shuffle(data,**options)
 
-			data = reshape(data,shape=(1,*data.shape)) if not L else data
+			data = reshape(data,shape=(1,*data.shape)) if not (N-L) else data
 
 			subscripts = 'us,sp,vp->uv'
 			shapes = (data.shape,inverse.shape,data.shape)
@@ -1773,10 +1774,6 @@ class Measure(System):
 	
 			state = state.copy()
 			other = state.copy()
-
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			for i in where:
 				with context(self.inverse[i],key=i):
@@ -1799,7 +1796,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1822,7 +1819,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function		
+			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1831,6 +1828,9 @@ class Measure(System):
 		
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1869,7 +1869,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function		
+			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1878,6 +1878,9 @@ class Measure(System):
 		
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1915,7 +1918,7 @@ class Measure(System):
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1924,6 +1927,9 @@ class Measure(System):
 		
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -1953,7 +1959,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function		
+			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1975,7 +1981,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function		
+			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -1985,11 +1991,10 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -1997,10 +2002,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
-
 			options = dict(contraction=True)
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -2017,7 +2018,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function					
+			where (float,int,iterable[int]): indices of function					
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2027,21 +2028,16 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
+		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
-		
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 		
 			options = dict(contraction=True)
 
@@ -2059,7 +2055,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function			
+			where (float,int,iterable[int]): indices of function			
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2069,21 +2065,16 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
-
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
-
-			N = state.L
-			where = tuple(where) if where is not None else range(N)
-			L = N - len(where)
 
 			options = dict(contraction=True)
 	
@@ -2102,7 +2093,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2124,7 +2115,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2134,11 +2125,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.D**L))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2157,9 +2149,7 @@ class Measure(System):
 		
 			state = state.copy()
 
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2185,7 +2175,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2195,11 +2185,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.K**L))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2209,9 +2200,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2229,7 +2218,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2239,11 +2228,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2255,9 +2245,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 	
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2279,7 +2267,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2301,7 +2289,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2311,11 +2299,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func((1/2)*real(data)/log(self.D**L))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2342,9 +2331,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2382,7 +2369,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2392,11 +2379,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func((1/2)*real(data)/log(self.K**L))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2412,9 +2400,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2446,7 +2432,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2456,11 +2442,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))		
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2480,9 +2467,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where) if N is not None and where is not None else None
+			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2519,7 +2504,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2541,7 +2526,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2551,52 +2536,47 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.D**N))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data -= tmp
 
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=index,**kwargs)*log(self.D**S)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data -= tmp
 
 		data = func(data)
@@ -2609,7 +2589,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2619,17 +2599,18 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.D**N))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
+			where = tuple(i for i in range(N) if i in where)
 			tmp = state
-			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=index,**kwargs)*log(self.D**L)
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,**kwargs)*log(self.D**L)
+
+			where = tuple(i for i in range(N) if i not in where)
 
 			for index in permutations(*[range(self.K)]*(N-L)):
 
@@ -2656,15 +2637,13 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
+			index = tuple(i for i in range(N) if i in where)
 			tmp = state
 			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=index,**kwargs)*log(self.D**L)
+
+			where = tuple(i for i in range(N) if i not in where)
 
 			for index in permutations(*[range(self.K)]*(N-L)):
 
@@ -2702,7 +2681,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2712,52 +2691,47 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.K**N))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data -= tmp
 
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=index,**kwargs)*log(self.K**S)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data -= tmp
 
 		data = func(data)
@@ -2770,7 +2744,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2780,52 +2754,47 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func((1/2)*real(data))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data -= tmp
 		
 			data = asscalar(data)
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
-
 			data = 0
 
-			index = tuple(i for i in range(N) if i not in where)
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data += tmp
 
-			index = tuple(i for i in range(N) if i in where)
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data += tmp
 
-			index = tuple(i for i in range(N))
-			S = len(index)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=index,**kwargs)
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data -= tmp
 
 		data = func(data)
@@ -2838,7 +2807,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2860,7 +2829,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2869,6 +2838,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2888,7 +2860,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2897,6 +2869,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2916,7 +2891,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2925,6 +2900,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
@@ -2944,7 +2922,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function				
+			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2966,7 +2944,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data					
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -2976,11 +2954,12 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 			
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2989,15 +2968,15 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			where = tuple(i for i in range(N) if i in where)
+
+			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
 			state = state.copy()
 
-			N = state.L
-			where = tuple(i for i in range(N) if i not in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = N - len(where)
+			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3009,7 +2988,9 @@ class Measure(System):
 			options = dict(to=self.architecture,contraction=True)
 			state = representation(state,**{**options,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			where = tuple(i for i in range(N) if i in where)
+
+			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 		data = func(data)
 
@@ -3021,7 +3002,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -3031,30 +3012,26 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data))
 
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 		
-			N = int(round(log(state.size)/log(self.K)/state.ndim))
 			K = self.K
 			ndim = state.ndim
-			where = tuple(i for i in range(N) if i in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = len(where)
 
 			options = dict(
 				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
 				shape = [K,N,ndim],
 				transformation=True,
-				) if where is not None else None
+				)
 
 			state = shuffle(state,**options)
 
-			data = self.svd(parameters=parameters,state=state,**kwargs)
+			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
 		
-			N = state.L
-			where = tuple(i for i in range(N) if i in (where if where is not None and not isinstance(where,integers) and not isinstance(where,floats) else range(where) if isinstance(where,integers) else range(int(where*N)) if isinstance(where,floats) else range(N) if where is not None else range(N)))
-			L = len(where)
-
 			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
 
 		data = func(data)
@@ -3067,7 +3044,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data						
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -3076,6 +3053,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -3099,7 +3079,7 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
@@ -3108,6 +3088,9 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
 
@@ -3211,7 +3194,7 @@ class MPS(mps):
 			parameters (array): parameters
 			state (obj): state
 			data (obj): data for operator
-			where (int,iterable[int]): indices of function
+			where (float,int,iterable[int]): indices of function
 		Returns:
 			data (object): data
 		'''
@@ -3867,23 +3850,23 @@ class Object(System):
 		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
 			defaults = dict()
 			parameters = parameters if parameters is not None else self.parameters
-			keywords = dict(data=parameters) if not isinstance(parameters,dict) else parameters
+			keywords = dict(data=parameters) if not isinstance(parameters,dicts) else parameters
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
-			setter(keywords,dict(self.parameters if isinstance(self.parameters,dict) else {}),delimiter=delim,default=False)
-			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dict) and attr not in self.parameters)},delimiter=delim,default=True)
+			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
+			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dicts) and attr not in self.parameters)},delimiter=delim,default=True)
 			
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
 			defaults = dict()
 			parameters = parameters if parameters is not None else parameters			
-			keywords = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			keywords = parameters if isinstance(parameters,dicts) else dict(data=parameters) if parameters is not None else dict()
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
-			setter(keywords,dict(self.parameters if isinstance(self.parameters,dict) else {}),delimiter=delim,default=False)
+			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
 			self.parameters.init(**keywords)
 
 		else:
@@ -4192,7 +4175,7 @@ class Object(System):
 
 		if space is None:
 			space = dict(space=space)
-		elif not isinstance(space,dict):
+		elif not isinstance(space,dicts):
 			space = dict(space=space)
 		else:
 			space = dict(**space)
@@ -4232,7 +4215,7 @@ class Object(System):
 
 		if time is None:
 			time = dict(time=time)
-		elif not isinstance(time,dict):
+		elif not isinstance(time,dicts):
 			time = dict(time=time)
 		else:
 			time = dict(**time)
@@ -4270,7 +4253,7 @@ class Object(System):
 
 		if lattice is None:
 			lattice = dict(lattice=lattice)
-		elif not isinstance(lattice,dict):
+		elif not isinstance(lattice,dicts):
 			lattice = dict(lattice=lattice)
 		else:
 			lattice = dict(**lattice)
@@ -5928,7 +5911,7 @@ class Objects(Object):
 			data = {}
 		elif data is False:
 			data = {i: None for i in self.data}
-		elif isinstance(data,dict):
+		elif isinstance(data,dicts):
 			data = {i: data[i] for i in data if i in self.data}
 
 		for i in data:
@@ -5940,7 +5923,7 @@ class Objects(Object):
 				self.data[i] = data[i]
 			elif isinstance(data[i],type(self.data[i])):
 				self.data[i] = data[i]
-			elif isinstance(data[i],dict):
+			elif isinstance(data[i],dicts):
 				self.data[i].init(**data[i])
 			else:
 				self.data[i].init(data=data[i])
@@ -5986,7 +5969,7 @@ class Objects(Object):
 				for i in self.data 
 				if ((self.data[i] is not None) and 
 					(not self.data[i].null()))
-				} if parameters is None else parameters if not isinstance(parameters,dict) else None,
+				} if parameters is None else parameters if not isinstance(parameters,dicts) else None,
 			system=self.system
 		)
 
@@ -7057,8 +7040,8 @@ class Module(System):
 
 		# Measure
 		cls = Measure
-		measure = self.measure if isinstance(self.measure,dict) else {}
-		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if hasattr(self,attr)},**measure,**dict(system=self.system)}
+		measure = self.measure if isinstance(self.measure,dicts) else {}
+		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dicts) else {}) if hasattr(self,attr)},**measure,**dict(system=self.system)}
 		measure = cls(**measure)
 
 		self.measure = measure
@@ -7198,7 +7181,7 @@ class Module(System):
 
 		cls = Object
 
-		status = model is not None and isinstance(model,dict) and not isinstance(model,cls) and all(isinstance(instance,cls) for index in model for instance in model[index])
+		status = model is not None and isinstance(model,dicts) and not isinstance(model,cls) and all(isinstance(instance,cls) for index in model for instance in model[index])
 
 		return status
 
@@ -7225,13 +7208,13 @@ class Module(System):
 			cls = Object
 			if isinstance(model,cls) and isinstance(model.data,Dictionary):
 				model = {index:[model.data[key]] for index,key in enumerate(model.data)}
-			elif isinstance(model,cls) and not isinstance(model.data,dict):
+			elif isinstance(model,cls) and not isinstance(model.data,dicts):
 				model = {None:[model]}
-			elif isinstance(model,dict) and all(isinstance(model[key],cls) for key in model):
+			elif isinstance(model,dicts) and all(isinstance(model[key],cls) for key in model):
 				model = {index:[model[key]] for index,key in enumerate(model)}
 			elif isinstance(model,iterables) and all(isinstance(instance,cls) for instance in model):
 				model = {index:[instance] for index,instance in enumerate(model)}
-			elif isinstance(model,dict) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
+			elif isinstance(model,dicts) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
 				model = {index:[instance for instance in model[key]] for index,key in enumerate(model)}
 		
 			else:
@@ -7438,7 +7421,7 @@ class Module(System):
 
 		if lattice is None:
 			lattice = dict(lattice=lattice)
-		elif not isinstance(lattice,dict):
+		elif not isinstance(lattice,dicts):
 			lattice = dict(lattice=lattice)
 		else:
 			lattice = dict(**lattice)

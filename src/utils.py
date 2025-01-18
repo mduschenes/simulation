@@ -266,7 +266,8 @@ if backend in ['jax','jax.autograd']:
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 	matrices = (qtn.MatrixProductState,)
 
-	iterables = (*arrays,list,tuple,set)
+	iterables = (*arrays,list,tuple,set,range)
+	dicts = (dict,)	
 	nulls = (Null,)
 	delim = '.'
 	separ = '_'
@@ -296,7 +297,8 @@ elif backend in ['autograd']:
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 	matrices = (qtn.MatrixProductState,)	
 
-	iterables = (*arrays,list,tuple,set)
+	iterables = (*arrays,list,tuple,set,range)
+	dicts = (dict,)	
 	nulls = (Null,)
 	delim = '.'
 	separ = '_'	
@@ -325,7 +327,8 @@ elif backend in ['numpy']:
 	tensors = ()
 	matrices = ()	
 
-	iterables = (*arrays,list,tuple,set)
+	iterables = (*arrays,list,tuple,set,range)
+	dicts = (dict,)
 	nulls = (Null,)
 	delim = '.'
 	separ = '_'	
