@@ -4600,7 +4600,7 @@ class Object(System):
 					continue
 
 				string = []
-				for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
+				for subattr in [None,'operator','variable','method','indices','local','site','shape','parameters']:
 				
 					obj = subattr
 					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):

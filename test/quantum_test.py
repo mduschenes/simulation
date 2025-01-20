@@ -1623,10 +1623,10 @@ def test_grad(path,tol):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[5],"module.measure.operator":["pauli"],
-		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
+		"module.N":[4],"module.M":[5],"module.measure.operator":["pauli"],
+		"model.N":[4],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[2],"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
+		"measure.N":[4],"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
 		}	
 
 	groups = None
@@ -1677,7 +1677,15 @@ def test_module(*args,**kwargs):
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},	
+				},
+				"unitary":{
+					"operator":["X","X"],"site":"||ij||","string":"unitary",
+					"parameters":"random","variable":False,"ndim":2,"seed":123456789
+				},				
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				},					
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
@@ -1941,6 +1949,9 @@ def test_module(*args,**kwargs):
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
+
+		module.info(verbose=True)
+		model.info(verbose=True)
 
 		parameters = module.parameters()
 		state = module.state()
@@ -2309,5 +2320,5 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
-	test_calculate(*args,**args)
+	test_module(*args,**args)
+	# test_calculate(*args,**args)
