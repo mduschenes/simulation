@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,ones,zeros,bound,gradient_bound
 from src.utils import concatenate,addition,prod
-from src.utils import initialize,slicing,datatype,to_index,to_position
+from src.utils import random,initialize,seeder,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
@@ -28,7 +28,7 @@ class Parameter(System):
 	defaults = dict(
 		data=None,string=None,parameters=None,
 		shape=None,size=None,ndim=None,dtype=None,			
-		variable=None,local=None,method=None,group=None,
+		variable=None,constant=None,local=None,method=None,group=None,
 		seed=None,random=None,bounds=None,axis=None,
 		indices=None,func=None,gradient=None,constraint=None,wrapper=None,
 		args=None,kwargs=None
@@ -45,7 +45,8 @@ class Parameter(System):
 			size (int): size of parameters
 			ndim (int): ndim of parameters
 			dtype (datatype): datatype of parameters
-			variable (bool): parameter is variable or constant
+			variable (bool): parameter is variable
+			constant (bool): parameter is constant
 			local (bool,dict[iterable,bool]): locality of parameter
 			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
 			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping			
@@ -86,7 +87,7 @@ class Parameter(System):
 		'''
 	
 		if parameters is not None:
-			return self.func(parameters)
+			return self.func(parameters,*args,**kwargs)
 		else:
 			return self.data
 
@@ -106,14 +107,15 @@ class Parameter(System):
 		else:
 			return 0
 
-	def init(self,data=None,parameters=None,indices=None,variable=None,**kwargs):
+	def init(self,data=None,parameters=None,indices=None,variable=None,constant=None,**kwargs):
 		'''
 		Initialize class data
 		Args:
 			data (array): Data of class, if None, shape must be not None to initialize data
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
-			variable (bool): Parameter is variable or constant
+			variable (bool): parameter is variable
+			constant (bool): parameter is constant			
 			kwargs (dict): Additional class keyword arguments
 		'''
 
@@ -121,6 +123,7 @@ class Parameter(System):
 		self.data = data if data is not None else self.data if self.data is not None else self.parameters if self.parameters is not None else None
 		self.indices = indices if indices is not None else self.indices
 		self.variable = variable if variable is not None else self.variable
+		self.constant = constant if constant is not None else self.constant
 
 		if self.parameters is None:
 			if parameters is None:
@@ -149,8 +152,7 @@ class Parameter(System):
 			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
 				setattr(self,kwarg,kwargs[kwarg])		
 
-
-		self.data = initialize(**self)
+		self.data = self.generate(**self,init=True)
 
 		self.shape = getattr(self.data,'shape',self.shape) if self.data is not None else self.shape
 		self.size = getattr(self.data,'size',self.size) if self.data is not None else self.size
@@ -190,91 +192,186 @@ class Parameter(System):
 		self.kwargs.update(dict(
 			indices = self.indices,
 			parameters = prod((self.parameters[i] for i in self.parameters if self.parameters[i] is not None)) if isinstance(self.parameters,dict) else self.parameters,
-			))
-
+			shape = self.shape if self.shape is not None else (),
+			random = self.random if self.random is not None else 'uniform',
+			key = self.key if self.key is not None else None,
+			seed = seeder(self.seed) if self.seed is not None else seeder(self.seed),
+			dtype = self.dtype if self.dtype is not None else None,
+			))			
 
 		if self.variable:
 			if self.indices is None and self.parameters is None:
 				
-				def func(parameters,*args,**kwargs):
-					return parameters
-				
-				def gradient(parameters,*args,**kwargs):
-					return 1
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return parameters
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1
 
 			elif self.indices is None and self.parameters is not None:
 				
-				def func(parameters,*args,**kwargs):
-					return self.kwargs.parameters*parameters
-				
-				def gradient(parameters,*args,**kwargs):
-					return self.kwargs.parameters
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*parameters
+					
+					def gradient(parameters,*args,**kwargs):
+						return self.kwargs.parameters
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return self.kwargs.parameters
 
 			elif self.indices is not None and self.parameters is None:
 				
-				def func(parameters,*args,**kwargs):
-					return parameters[self.indices]
-				
-				def gradient(parameters,*args,**kwargs):
-					return 1
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return parameters[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1						
 
 			elif self.indices is not None and self.parameters is not None:
-				
-				def func(parameters,*args,**kwargs):
-					return self.kwargs.parameters*parameters[self.indices]
-				
-				def gradient(parameters,*args,**kwargs):
-					return self.kwargs.parameters
+
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*parameters[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return self.kwargs.parameters
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return self.kwargs.parameters
 			
 			else:
-				def func(parameters,*args,**kwargs):
-					return parameters
-				
-				def gradient(parameters,*args,**kwargs):
-					return 1
+
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return parameters
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return 1						
 		else:
+
 			if self.indices is None and self.parameters is None:
 				
-				def func(parameters,*args,**kwargs):
-					return self.data
-				
-				def gradient(parameters,*args,**kwargs):
-					return 0
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.data
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0
+
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})
+
+					def gradient(parameters,*args,**kwargs):
+						return 0
 
 			elif self.indices is None and self.parameters is not None:
-				def func(parameters,*args,**kwargs):
-					return self.kwargs.parameters*self.data
 				
-				def gradient(parameters,*args,**kwargs):
-					return 0
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.data
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0						
 
 			elif self.indices is not None and self.parameters is None:
 				
-				def func(parameters,*args,**kwargs):
-					return self.data[self.indices]
-				
-				def gradient(parameters,*args,**kwargs):
-					return 0
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.data[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0						
 
 			elif self.indices is not None and self.parameters is not None:
 				
-				def func(parameters,*args,**kwargs):
-					return self.kwargs.parameters*self.data[self.indices]
-				
-				def gradient(parameters,*args,**kwargs):
-					return 0
-			
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.data[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs.parameters*self.generate(*args,**{**self.kwargs,**kwargs})[self.indices]
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0			
+
 			else:
-				def func(parameters,*args,**kwargs):
-					return self.data
-				
-				def gradient(parameters,*args,**kwargs):
-					return 0							
+			
+				if self.constant is None or self.constant:
+					def func(parameters,*args,**kwargs):
+						return self.data
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0
+				else:
+					def func(parameters,*args,**kwargs):
+						return self.generate(*args,**{**self.kwargs,**kwargs})
+					
+					def gradient(parameters,*args,**kwargs):
+						return 0				
 
 		self.func = func
 		self.gradient = gradient
 
 		return
+
+	def generate(self,init=None,**kwargs):
+		'''
+		Generate class data
+		Args:
+			init (bool): Initialize data
+			kwargs (dict): Keyword arguments for class data
+		Returns:
+			data (object): Class data
+		'''
+		if init:
+			data = initialize(**kwargs)
+		else:
+			data = random(**kwargs)
+
+		return data
 
 	def __str__(self):
 		if self.string is None:
@@ -290,6 +387,7 @@ class Parameters(System):
 	data = {}
 	indices = {}
 	variable = None
+	constant = None
 	parameters = None
 	shape = None
 	size = None
@@ -315,7 +413,8 @@ class Parameters(System):
 				size (int): size of parameters
 				ndim (int): ndim of parameters
 				dtype (datatype): datatype of parameters
-				variable (bool): parameter is variable or constant
+				variable (bool): parameter is variable
+				constant (bool): parameter is constant
 				local (bool,dict[iterable,bool]): locality of parameter
 				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping			
@@ -384,7 +483,7 @@ class Parameters(System):
 				**data[parameter],
 				}
 
-			data[parameter].data = initialize(**kwargs)
+			data[parameter].data = self.parameters[parameter].generate(**kwargs,init=True)
 
 		data = {parameter: data[parameter] for parameter in data}
 
@@ -427,14 +526,15 @@ class Parameters(System):
 		return
 
 
-	def init(self,data=None,parameters=None,indices=None,variable=None,**kwargs):
+	def init(self,data=None,parameters=None,indices=None,variable=None,constant=None,**kwargs):
 		'''
 		Initialize class data
 		Args:
 			data (array): Data of class, if None, shape must be not None to initialize data
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
-			variable (bool): Parameter is variable or constant
+			variable (bool): parameter is variable
+			constant (bool): parameter is constant			
 			kwargs (dict): Additional class keyword arguments
 		'''
 	
@@ -442,11 +542,13 @@ class Parameters(System):
 		parameters = self.parameters if parameters is not None else parameters
 		indices = self.indices if indices is not None else indices
 		variable = self.variable if variable is not None else variable
+		constant = self.constant if constant is not None else constant
 
 		self.data = data
 		self.parameters = parameters
 		self.indices = indices
 		self.variable = variable
+		self.constant = constant
 
 		for kwarg in kwargs:
 			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
@@ -454,6 +556,21 @@ class Parameters(System):
 
 		return
 
+	def generate(self,init=None,**kwargs):
+		'''
+		Generate class data
+		Args:
+			init (bool): Initialize data
+			kwargs (dict): Keyword arguments for class data
+		Returns:
+			data (object): Class data
+		'''
+		if init:
+			data = initialize(**kwargs)
+		else:
+			data = random(**kwargs)
+
+		return data
 
 	def __call__(self,parameters=None,*args,**kwargs):
 		'''

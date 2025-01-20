@@ -3852,7 +3852,7 @@ class Object(System):
 			parameters = parameters if parameters is not None else self.parameters
 			keywords = dict(data=parameters) if not isinstance(parameters,dicts) else parameters
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
-			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(keywords,dict(string=self.string,variable=self.variable,constant=self.constant,system=self.system),delimiter=delim,default=True)
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
 			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dicts) and attr not in self.parameters)},delimiter=delim,default=True)
@@ -3864,9 +3864,10 @@ class Object(System):
 			parameters = parameters if parameters is not None else parameters			
 			keywords = parameters if isinstance(parameters,dicts) else dict(data=parameters) if parameters is not None else dict()
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
-			setter(keywords,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(keywords,dict(string=self.string,variable=self.variable,constant=self.constant,system=self.system),delimiter=delim,default=False)
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
+			
 			self.parameters.init(**keywords)
 
 		else:
@@ -5120,7 +5121,7 @@ class Pauli(Object):
 
 
 		variable = self.variable if self.variable is not None else None
-		constant = False
+		constant = self.constant if self.constant is not None else None
 		symmetry = None		
 
 		if self.state is None or self.state() is None:
@@ -5142,22 +5143,22 @@ class Pauli(Object):
 		if self.parameters() is not None:
 
 			def func(parameters=None,state=None,**kwargs):
-				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 			
 			def gradient(parameters=None,state=None,**kwargs):
-				grad = self.parameters.grad(parameters)
-				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				grad = self.parameters.grad(parameters,**kwargs)
+				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
 		
 			def func(parameters=None,state=None,**kwargs):
-				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 			def gradient(parameters=None,state=None,**kwargs):
-				parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 
@@ -6012,7 +6013,7 @@ class Objects(Object):
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(kwargs[i].seed)
+				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
@@ -6032,7 +6033,7 @@ class Objects(Object):
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(kwargs[i].seed)	
+				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
@@ -6853,7 +6854,7 @@ class Operators(Objects):
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(kwargs[i].seed)
+				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
@@ -6873,7 +6874,7 @@ class Operators(Objects):
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(shape[1]):
-				kwargs[i].seed = seeder(kwargs[i].seed)
+				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
@@ -7142,7 +7143,7 @@ class Module(System):
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
 			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
 			for i in range(len(self.data)):
-				kwargs[i].seed = seeder(kwargs[i].seed)
+				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=len(self.data))[i]
 			for l in range(self.M):
 				for i,data in enumerate(self.data):
 					state = data(parameters=parameters,state=state,**kwargs[i])

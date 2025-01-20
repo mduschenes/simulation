@@ -1678,14 +1678,14 @@ def test_module(*args,**kwargs):
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				},
-				"unitary":{
-					"operator":["X","X"],"site":"||ij||","string":"unitary",
-					"parameters":"random","variable":False,"ndim":2,"seed":123456789
-				},				
-				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},					
+				# "unitary":{
+				# 	"operator":["X","X"],"site":"||ij||","string":"unitary",
+				# 	"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
+				# },				
+				# "noise":{
+				# 	"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				# },					
 				# "xx":{
 				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
@@ -1769,7 +1769,6 @@ def test_module(*args,**kwargs):
 			print()
 			print()
 
-
 		# State
 		state = load(settings.cls.state)
 		settings.state = [
@@ -1825,7 +1824,6 @@ def test_module(*args,**kwargs):
 		measure = load(settings.cls.measure)		
 		measure = measure(**{**settings.measure,**dict(system=system)})
 
-
 		# Probability
 		parameters = measure.parameters()
 		state = [i for i in objs]
@@ -1868,8 +1866,9 @@ def test_module(*args,**kwargs):
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
-		print(parse(tmp))
-		print(parse(_tmp))
+		if verbose:
+			print(parse(tmp))
+			print(parse(_tmp))
 
 		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
 
@@ -1878,7 +1877,6 @@ def test_module(*args,**kwargs):
 		state = obj
 
 		model.init(state=state)
-
 
 		parameters = model.parameters()
 		state = [i for i in objs]
@@ -1890,6 +1888,7 @@ def test_module(*args,**kwargs):
 
 		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
+
 		key = "operator"
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
@@ -1900,7 +1899,6 @@ def test_module(*args,**kwargs):
 
 		if verbose:
 			print(measure.architecture,parse(value))
-
 
 		parameters = model.parameters()
 		state = [i for i in objs]
@@ -1927,8 +1925,9 @@ def test_module(*args,**kwargs):
 		else:
 			tmp = array(tmp)
 
-		print(parse(tmp))
-		print(parse(_tmp))
+		if verbose:
+			print(parse(tmp))
+			print(parse(_tmp))
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
@@ -1957,6 +1956,7 @@ def test_module(*args,**kwargs):
 		state = module.state()
 		kwargs = dict()
 
+
 		state = module(parameters,state)
 
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
@@ -1971,11 +1971,14 @@ def test_module(*args,**kwargs):
 		
 		tmp = value
 		
+
+
 		model.init(state=module.state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=model.state())
 
-		print(parse(tmp))
-		print(parse(_tmp))
+		if verbose:
+			print(parse(tmp))
+			print(parse(_tmp))
 
 		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
@@ -2270,6 +2273,194 @@ def test_calculate(*args,**kwargs):
 	return
 
 
+def test_parameters(*args,**kwargs):
+
+	kwargs = {
+		"module.N":[4],"module.M":[3],"module.measure.operator":["pauli"],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"measure.N":[4],"measure.D":[2],"measure.operator":["pauli"],
+		"measure.architecture":["tensor","array"],
+		}	
+
+	groups = None
+	filters = None
+	func = None
+
+	data = {}
+	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
+
+		settings = Dict({
+		"cls":{
+			"module":"src.quantum.Module",
+			"measure":"src.quantum.Measure",
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State",
+			"callback":"src.quantum.Callback"
+			},
+		"module":{
+			"N":3,
+			"M":1,
+			"string":"module",
+			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
+			"options":{"contract":False,"max_bond":None,"cutoff":0},
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],
+					)],
+				"sort":None,
+				"reverse":False
+				}			
+		},
+		"measure":{
+			"operator":"pauli",
+			"D":2,"dtype":"complex",
+			"architecture":"tensor",
+			"options":{"cyclic":False},
+		},		
+		"model":{
+			"data":{
+				# "local":{
+				# 	"operator":"haar","site":"i","string":"local",
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
+				# },
+				"unitary":{
+					"operator":"haar","site":"||ij||","string":"unitary",
+					"parameters":None,"variable":False,"ndim":2,"seed":123456789
+				},				
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				},
+				"unitary":{
+					"operator":["X","X"],"site":"||ij||","string":"unitary",
+					"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
+				},				
+				"noise":{
+					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				},					
+				# "xx":{
+				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
+				# },												
+			},
+			"N":4,
+			"D":2,
+			"local":True,
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square",
+			"architecture":"array",
+			"configuration":{
+				"key":[lambda value,iterable: (
+					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					)],
+				"sort":None,
+				"reverse":False
+				}
+			},
+		"state": {
+			"operator":"haar",
+			"site":None,
+			"string":"psi",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"local":False
+			},
+		"callback":{
+			"attributes":{
+				"N":"N","M":"N","d":"d","D":"state.D",
+				"noise.parameters":"noise.parameters",
+				"objective":"objective",
+				"operator":"measure.operator"
+				},
+			"options":{"contract":False,"max_bond":None,"cutoff":0}
+		},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123456789,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":False
+			}
+		})
+
+
+		verbose = True
+		precision = 8
+
+		parse = lambda data: data.round(precision)
+
+		data[index] = {}
+
+		# Settings
+		setter(settings,kwargs,delimiter=delim,default="replace")
+		system = settings.system
+
+
+		# Callback
+		callback = load(settings.cls.callback)
+		callback = callback(**{**settings.callback,**dict(system=system)})
+
+		# Module
+		module = load(settings.cls.module)
+		model = load(settings.cls.model)		
+		state = load(settings.cls.state)		
+		callback = load(settings.cls.callback)		
+		system = settings.system
+
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**settings.state,**dict(system=system)})
+		callback = callback(**{**settings.callback,**dict(system=system)})
+	
+		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
+
+		module.info(verbose=verbose)
+		model.info(verbose=verbose)
+
+		parameters = module.parameters()
+		state = module.state()
+		kwargs = dict()
+
+		state = module(parameters,state)
+
+		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
+	
+		key = 'data'
+		if isinstance(state,tensors):
+			value = representation(state,to=module.measure.architecture,contraction=True)
+		else:
+			value = array(value)
+
+
+		data[index][key] = value
+
+
+		if verbose:
+			print(value)
+			print()
+
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
+
+	print("Passed")
+
+	return
+
+
+
 def test_function(*args,**kwargs):
 	D = [2]
 	N = [2,4,8,16]
@@ -2320,5 +2511,6 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
-	# test_calculate(*args,**args)
+	# test_module(*args,**args)
+	test_calculate(*args,**args)
+	# test_parameters(*args,**args)

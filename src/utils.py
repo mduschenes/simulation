@@ -3383,7 +3383,7 @@ if backend in ['jax']:
 		return out
 
 
-	def random(shape=(),random='uniform',seed=None,key=None,dtype=None):
+	def random(shape=(),random='uniform',seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -3392,6 +3392,7 @@ if backend in ['jax']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
 		'''	
@@ -3401,7 +3402,7 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape),dtype=dtype)
 
-	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None):
+	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random integer array
 		Args:
@@ -3409,7 +3410,8 @@ if backend in ['jax']:
 			bounds (iterable): Bounds on array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
 		Returns:
 			out (array): Random array
 		'''	
@@ -3419,7 +3421,7 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
 
-	def haar(shape=(),seed=None,key=None,dtype=None):
+	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
 		Args:
@@ -3427,6 +3429,7 @@ if backend in ['jax']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random			
 		Returns:
 			out (array): Random array
 		'''	
@@ -3711,7 +3714,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return out
 
 
-	def random(shape=(),random='uniform',seed=None,key=None,dtype=None):
+	def random(shape=(),random='uniform',seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -3719,7 +3722,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
 		Returns:
 			out (array): Random array
 		'''	
@@ -3729,7 +3733,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return astype(generator(size=shape),dtype=dtype)
 
-	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None):
+	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random integer array
 		Args:
@@ -3737,7 +3741,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			bounds (iterable): Bounds on array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
 		Returns:
 			out (array): Random array
 		'''	
@@ -3747,14 +3752,15 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return astype(generator(*bounds,size=shape),dtype=dtype)
 
-	def haar(shape=(),seed=None,key=None,dtype=None):
+	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
 		Args:
 			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array	
+			kwargs (dict): Additional keyword arguments for random				
 		Returns:
 			out (array): Random array
 		'''	
