@@ -194,7 +194,6 @@ class Parameter(System):
 			parameters = prod((self.parameters[i] for i in self.parameters if self.parameters[i] is not None)) if isinstance(self.parameters,dict) else self.parameters,
 			shape = self.shape if self.shape is not None else (),
 			random = self.random if self.random is not None else 'uniform',
-			key = self.key if self.key is not None else None,
 			seed = seeder(self.seed) if self.seed is not None else seeder(self.seed),
 			dtype = self.dtype if self.dtype is not None else None,
 			))			
