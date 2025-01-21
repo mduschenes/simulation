@@ -1541,6 +1541,8 @@ class Measure(System):
 
 			data = data[indices]
 
+			data /= addition(data)
+
 			data = -addition(data*log(data))
 
 		elif isinstance(state,matrices):
@@ -6011,18 +6013,19 @@ class Objects(Object):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			size = shape[1]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
-			for i in range(shape[1]):
-				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
+			for i in range(size):
+				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
+					out = self.data[i%size](parameters=parameters[i//size],state=out,**kwargs[i%size])
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
+					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
@@ -6031,29 +6034,30 @@ class Objects(Object):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			size = shape[1]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
-			for i in range(shape[1]):
-				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
+			for i in range(size):
+				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
-					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
+					out = self.data[i%size].grad(parameters=parameters[i//size],state=out,**kwargs[i%size])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)					
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
 			else:
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
-					out = self.data[i%shape[1]].grad(parameters=parameters,state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
+					out = self.data[i%size].grad(parameters=parameters,state=out,**kwargs[i%size])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)			
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)			
 			return grad
 	
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -6852,18 +6856,19 @@ class Operators(Objects):
 			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
+			size = shape[1]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
-			for i in range(shape[1]):
-				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
+			for i in range(size):
+				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
+					out = self.data[i%size](parameters=parameters[i//size],state=out,**kwargs[i%size])
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
-					out = self.data[i%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)
+					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
@@ -6872,29 +6877,30 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
+			size = shape[1]
 			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
-			for i in range(shape[1]):
-				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=shape[1])[i]
+			for i in range(size):
+				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
-					out = self.data[i%shape[1]].grad(parameters=parameters[i//shape[1]],state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
+					out = self.data[i%size].grad(parameters=parameters[i//size],state=out,**kwargs[i%size])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters[j//shape[1]],state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)					
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
 			else:
 				for i in indexes:
 					out = state
 					for j in (j for j in indices if j<i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
-					out = self.data[i%shape[1]].grad(parameters=parameters,state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
+					out = self.data[i%size].grad(parameters=parameters,state=out,**kwargs[i%size])
 					for j in (j for j in indices if j>i):
-						out = self.data[j%shape[1]](parameters=parameters,state=out,**kwargs[i%shape[1]])
+						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%shape[1]].seed = rng.split(kwargs[i%shape[1]].seed)			
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)			
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -7141,9 +7147,10 @@ class Module(System):
 		def func(parameters,state,options=options,**kwargs):
 			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
+			size = len(self.data)
 			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
-			for i in range(len(self.data)):
-				kwargs[i].seed = seeder(seed=kwargs[i].seed)#,size=len(self.data))[i]
+			for i in range(size):
+				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			for l in range(self.M):
 				for i,data in enumerate(self.data):
 					state = data(parameters=parameters,state=state,**kwargs[i])
