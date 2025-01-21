@@ -207,9 +207,9 @@ def func_spectrum_sign(data,attr=None,eps=None):
 	eps = 1e-16 if eps is None else eps
 	def func(data):
 		data = np.array(list(data))
-		data = abs(addition(i[i<eps])/addition(i[i>=eps]))
+		data = abs(addition(data[data<eps])/addition(data[data>=eps]))
 		return data
-	data = [func(i) for i in data[attr]]
+	data = np.array([func(i) for i in data[attr]])
 	return data
 
 

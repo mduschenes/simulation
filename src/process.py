@@ -1290,7 +1290,7 @@ def apply(keys,data,plots,processes,verbose=None):
 
 	def mean_obj(obj,*args,**kwargs):
 		try:
-			assert (len(set(len(i) for i in obj))==1)
+			assert all(not(i,iterables) for i in obj) or (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.mean(axis=0))
 		except:
@@ -1299,7 +1299,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		return obj
 	def std_obj(obj,*args,**kwargs):
 		try:
-			assert (len(set(len(i) for i in obj))==1)
+			assert any(not(i,iterables) for i in obj) or (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		except:
@@ -1308,7 +1308,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		return obj
 	def sem_obj(obj,*args,**kwargs):
 		try:
-			assert (len(set(len(i) for i in obj))==1)
+			assert any(not(i,iterables) for i in obj) or (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		except:
