@@ -1290,6 +1290,7 @@ def apply(keys,data,plots,processes,verbose=None):
 
 	def mean_obj(obj,*args,**kwargs):
 		try:
+			assert (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.mean(axis=0))
 		except:
@@ -1298,6 +1299,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		return obj
 	def std_obj(obj,*args,**kwargs):
 		try:
+			assert (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		except:
@@ -1306,6 +1308,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		return obj
 	def sem_obj(obj,*args,**kwargs):
 		try:
+			assert (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
 			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		except:
@@ -1477,7 +1480,6 @@ def apply(keys,data,plots,processes,verbose=None):
 				except:
 					wrappers[attr].pop(func)
 					continue
-
 
 		tmp = {}
 
@@ -2172,7 +2174,7 @@ def plotter(plots,processes,verbose=None):
 					def func(data,plots,tmp=tmp,function=function):
 						try:
 							return function(data,plots)
-						except Exception as exception:
+						except:
 							return tmp
 
 					value = getter(plots[instance][key],attr,delimiter=delim)

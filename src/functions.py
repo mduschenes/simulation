@@ -118,6 +118,12 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 		
 		data = mask(agg(data))
 
+	def func(data):
+		try:
+			return len(data)
+		except:
+			return data
+
 	return data
 
 def func_y(data):
@@ -169,27 +175,29 @@ def func_spectrum(data,attr=None):
 	if attr not in data:
 		raise ValueError("Incorrect attribute %s"%(attr))
 		return
-	data = data[attr]
-	n = len(data) 
-	data = [np.array(list(i)) for i in data]
-	data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/maximum(abs(data[i][~is_nan(data[i])])) for i in range(n)]
+	def func(data):
+		data = sorted(data,reverse=True)/max(abs(i) for i in data)
+		# data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/maximum(abs(data[i][~is_nan(data[i])])) for i in range(n)]
+		return data
+	data = (func(i) for i in data[attr])
 	data = to_tuple(data)
 	return data
 
 def func_spectrum_rank(data,attr=None,eps=None):
 	if attr not in data:
 		raise ValueError("Incorrect attribute %s"%(attr))
-		return 
-	data = data[attr]
-	n = len(data) 
-	data = [np.array(list(i)) for i in data]
-	data = [asscalar(
-		nonzero(
-			sort(
-				abs(data[i][~is_nan(data[i])])/maximum(abs(data[i][~is_nan(data[i])]))
-			),eps=eps))
-		for i in range(n)]
-	data = data[0] if n == 1 else data
+		return
+	def func(data):
+		data = np.array(list(data))
+		data = asscalar(
+			nonzero(
+				sort(
+					abs(data[~is_nan(data)])/maximum(abs(data[~is_nan(data)]))
+				),eps=eps)
+			)
+		return data
+	data = [func(i) for i in data[attr]]
+	data = data[0] if len(data) == 1 else data
 	return data
 
 def func_spectrum_sign(data,attr=None,eps=None):
@@ -197,9 +205,11 @@ def func_spectrum_sign(data,attr=None,eps=None):
 		raise ValueError("Incorrect attribute %s"%(attr))
 		return
 	eps = 1e-16 if eps is None else eps
-	data = data[attr]
-	data = [np.array(list(i)) for i in data]
-	data = [abs(addition(i[i<eps])/addition(i[i>=eps])) for i in data]
+	def func(data):
+		data = np.array(list(data))
+		data = abs(addition(i[i<eps])/addition(i[i>=eps]))
+		return data
+	data = [func(i) for i in data[attr]]
 	return data
 
 
