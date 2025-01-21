@@ -4693,9 +4693,15 @@ class Object(System):
 					if self.parameters is None or self.parameters() is None or not self.parameters.variable:
 						substring = self.parameters()
 					else:
-						substring = (self.parameters(parameters) for parameters in (
-								self.parameters(self.parameters()) if self.parameters().size>1
-								else (self.parameters(self.parameters()),))) 
+						try:
+							substring = (self.parameters(parameters) for parameters in (
+									self.parameters(self.parameters()) if self.parameters().size>1
+									else (self.parameters(self.parameters()),))) 
+						except:
+							if self.parameters.indices is not None:
+								substring = (self.parameters({self.parameters.indices:self.parameters()}),)
+							else:
+								substring = self.parameters(self.parameters())
 						substring = array([i for i in substring if i is not None])
 						if substring.size:
 							substring = norm(substring)/sqrt(substring.size)
@@ -6999,6 +7005,11 @@ class Module(System):
 		# Set parameters
 		parameters = self.parameters if parameters is None else parameters
 		if parameters is None or not callable(parameters):
+			try:
+				parameters = self.model.parameters
+			except:
+				parameters = parameters
+		if parameters is None or not callable(parameters):
 			def parameters(parameters=parameters):
 				return parameters
 		
@@ -7149,11 +7160,12 @@ class Module(System):
 			state = self.measure.transform(parameters=parameters,state=state,**kwargs)
 			size = len(self.data)
 			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
+			parameters = [parameters]*self.M if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			for l in range(self.M):
 				for i,data in enumerate(self.data):
-					state = data(parameters=parameters,state=state,**kwargs[i])
+					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 			return state
 

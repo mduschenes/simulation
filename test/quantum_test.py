@@ -2306,9 +2306,7 @@ def test_parameters(*args,**kwargs):
 			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
 			"options":{"contract":False,"max_bond":None,"cutoff":0},
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],
-					)],
+				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
 				"sort":None,
 				"reverse":False
 				}			
@@ -2325,26 +2323,34 @@ def test_parameters(*args,**kwargs):
 				# 	"operator":"haar","site":"i","string":"local",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
-				"unitary":{
-					"operator":"haar","site":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				},				
+				# "unitary":{
+				# 	"operator":"haar","site":"||ij||","string":"unitary",
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
+				# },				
+				# "noise":{
+				# 	"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				# },
+				"xx":{
+					"operator":["X","X"],"site":">ij<","string":"xx",
+					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				},	
+				"yy":{
+					"operator":["Y","Y"],"site":">ij<","string":"yy",
+					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				},	
+				"zz":{
+					"operator":["Z","Z"],"site":">ij<","string":"zz",
+					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				},											
+				"z":{
+					"operator":["Z"],"site":"i","string":"z",
+					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				},								
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"operator":["depolarize"],"site":"i","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},
-				"unitary":{
-					"operator":["X","X"],"site":"||ij||","string":"unitary",
-					"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
-				},				
-				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},					
-				# "xx":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
-				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
-				# },												
+				},									
 			},
 			"N":4,
 			"D":2,
@@ -2354,9 +2360,7 @@ def test_parameters(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-					)],
+				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
 				"sort":None,
 				"reverse":False
 				}
@@ -2425,7 +2429,8 @@ def test_parameters(*args,**kwargs):
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**settings.state,**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
-	
+
+
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
 		module.info(verbose=verbose)
@@ -2434,6 +2439,7 @@ def test_parameters(*args,**kwargs):
 		parameters = module.parameters()
 		state = module.state()
 		kwargs = dict()
+
 
 		state = module(parameters,state)
 
@@ -2512,6 +2518,6 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	# test_parameters(*args,**args)
+	test_parameters(*args,**args)

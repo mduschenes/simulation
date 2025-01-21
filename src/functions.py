@@ -557,6 +557,11 @@ def state(*args,**kwargs):
 def key(value,iterable):
 	return (value.site[0]%2,value.site[0],-value.locality)
 
+def layout_unitary_brickwork(value,iterable):
+	return (value.site[0]%2,value.site[0],-value.locality)
+
+def layout_hamiltonian_nearest_neighbour(value,iterable):
+	return (-value.locality,sum(ord(i) for i in value.string),value.site[0],1-value.variable)
 
 def key_test(value,iterable):
 	return (value.site[0],-value.locality)

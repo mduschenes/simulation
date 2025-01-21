@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vfunc,copy,switch,array,arange,empty,ones,zeros,bound,gradient_bound
 from src.utils import concatenate,addition,prod
-from src.utils import random,initialize,seeder,slicing,datatype,to_index,to_position
+from src.utils import random,initialize,seeder,slicing,reshape,datatype,to_index,to_position
 from src.utils import pi,itg,arrays,scalars,iterables,integers,floats,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
@@ -490,7 +490,7 @@ class Parameters(System):
 		variable = all(data[parameter].variable for parameter in data) if data is not None and len(data) else None
 		parameters = array([data[parameter].data for parameter in data]) if data is not None else None
 
-		parameters = (parameters.reshape(len(data)) if parameters.ndim == 1 else parameters.transpose()) if parameters is not None else None
+		parameters = (reshape(parameters,shape=len(data)) if parameters.ndim == 1 else parameters.transpose()) if parameters is not None else None
 
 		shape = parameters.shape if parameters is not None else None
 		size = parameters.size if parameters is not None else None
@@ -584,7 +584,7 @@ class Parameters(System):
 		if parameters is None:
 			return self.parameters
 		else:
-			return parameters.reshape(self.shape)
+			return reshape(parameters,shape=self.shape)
 
 	def grad(self,parameters=None,*args,**kwargs):
 		'''
