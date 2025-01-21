@@ -480,8 +480,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		'''
 		Zip keys of dictionary of list, and values of dictionary as list
 		'''
-		dictionary = {key:value for key in dictionary if value is not None}
-		keys, values = zip(*dictionary.items())
+		keys, values = zip(*((key,value) for key,value in dictionary.items() if value is not None))
 		return keys,values
 
 	def permute(dictionaries): 
