@@ -3,6 +3,8 @@
 # Import python modules
 import os,sys,argparse,subprocess,shlex,itertools,json,io,re,signal
 
+from src.logger import Logger
+
 integers = (int,)
 floats = (float,)
 scalars = (*integers,*floats,str,type(None),)
@@ -10,6 +12,10 @@ iterables = (list,tuple,set,)
 streams = (io.RawIOBase,)
 delimiter = '.'
 ifs = ' '
+
+logger = Logger()
+info = 100
+debug = 0
 
 
 class Null(object):
@@ -54,18 +60,6 @@ class Popen(object):
 	def wait(self,*args,**kwargs):
 		returncode = self.returncode
 		return returncode
-
-def logger(*args,verbose=None,**kwargs):
-	'''
-	logger
-	Args:
-		args (iterable): Positional arguments for logger
-		kwargs (dict): Keyword arguments for logger
-		verbose (int,str,bool): Verbosity
-	'''
-	if verbose:
-		print(*args)
-	return
 
 class TimeoutError(Exception):
 	pass
@@ -316,7 +310,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 	outputs = stdout
 	errors = stderr
 
-	msg = '%s : %s'%(path,cmd) if path is not None else '%s'%(cmd)
+	msg = '{path} : {cmd}'.format(path=path,cmd=cmd) if path is not None else '{cmd}'.format(cmd=cmd)
 	logger(msg,verbose=verbose)
 
 	if execute:
@@ -375,12 +369,12 @@ class argparser(argparse.ArgumentParser):
 			arguments = [arguments]
 		if not isinstance(arguments,dict):
 			arguments = {
-				'--%s'%(argument.replace('--','')):{**default(argument)}
+				'--{argument}'.format(argument=argument.replace('--','')):{**default(argument)}
 				for argument in arguments
 			}
 		else:
 			arguments = {
-				'--%s'%(argument.replace('--','')):{
+				'--{argument}'.format(argument=argument.replace('--','')):{
 					**default(argument),
 					**(arguments[argument] if isinstance(arguments[argument],dict) else 
 					   dict(default=arguments[argument]))
@@ -396,7 +390,7 @@ class argparser(argparse.ArgumentParser):
 		for i,argument in enumerate(arguments):
 
 
-			name = '%s'%(argument.replace('--',''))
+			name = '{name}'.format(name=argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
 
 			if options.get('action') is None:
@@ -413,7 +407,7 @@ class argparser(argparse.ArgumentParser):
 				names = [name]
 				self.add_argument(*names,**options)
 
-			name = '--%s'%(argument.replace('--',''))
+			name = '--{argument}'.format(argument=argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
 			
 			for null in nulls:
@@ -529,6 +523,42 @@ def merge(*paths,string=None):
 
 	return path
 
+def contains(string,pattern):
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.'}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+	
+	boolean = bool(re.search(pattern,string))
+
+	return boolean
+
+def substitute(string,patterns):
+	'''
+	Substitute pattern in string
+	Args:
+		string (str): String to search
+		patterns (dict[str,str]): Patterns to replace
+	Returns:
+		string (string): Substituted string
+	'''
+	replacements = {'\\':'\\\\','.':'\\.'}
+	
+	for pattern in patterns:
+		strings = patterns[pattern]
+		for replacement in replacements:
+			pattern = pattern.replace(replacement,replacements[replacement])
+		string = re.sub(pattern,strings,string)
+
+	return string
+
 def exists(path):
 	'''
 	Check if path exists
@@ -538,15 +568,12 @@ def exists(path):
 		exists (bool): Path exists
 	'''
 
-	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
-
 	try:
 		exists = os.path.exists(path)
 	except:
 		exists = False
 
 	return exists
-
 
 def dirname(path,abspath=False,delimiter=delimiter):
 	'''
@@ -738,6 +765,30 @@ def nonempty(path):
 	return boolean
 
 
+def basename(path,**kwargs):
+	'''
+	Get base file name from path
+	Args:
+		path (str): Path
+		kwargs (dict): Additional path keyword arguments
+	Returns:
+		file (str): Base filename
+	'''	
+	return os.path.basename(path)
+
+
+def basedir(path,**kwargs):
+	'''
+	Get base path name from path
+	Args:
+		path (str): Path
+		kwargs (dict): Additional path keyword arguments
+	Returns:
+		file (str): Base filename
+	'''	
+	return basename(dirname(path))
+
+
 def load(path,default=None,wrapper=None,verbose=None):
 	'''
 	Load data from path
@@ -749,7 +800,7 @@ def load(path,default=None,wrapper=None,verbose=None):
 	Returns:
 		data (object): data
 	'''
-	logger('Load: %s'%(path),verbose=verbose)
+	logger('Load: {path}'.format(path=path),verbose=verbose)
 	try:
 		with open(path,'r') as file:
 			data = json.load(file)
@@ -773,7 +824,7 @@ def dump(path,data,wrapper=None,verbose=None):
 	Returns:
 		data (object): data
 	'''	
-	logger('Dump: %s'%(path),verbose=verbose)
+	logger('Dump: {path}'.format(path=path),verbose=verbose)
 	if wrapper is not None:
 		try:
 			data = wrapper(data)
@@ -964,35 +1015,37 @@ class Job(object):
 	Job class
 	Args:
 		name (str): name of job
+		options (dict[str,str]): options for job
+		device (str): Name of device to submit to
 		identity (int): identity of job
+		parents (iterable[Job]): parents of job
+		children (iterable[Job]): children of job
 		path (str): path to job
 		data (str): path of job script
 		file (str): path of job executable
-		mode (str): type of setup of job, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
-		options (dict[str,str]): options for job
-		device (str): Name of device to submit to
+		env (dict[str,str]): environmental variables for job
+		logger (str): Name of logger
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,identity=None,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,parents=None,identity=None,children=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
 		
 		self.name = None if name is None else name
-		self.identity = None if identity is None else identity
-		self.path = None if path is None else path
-		self.file = None if file is None else file
-		self.mode = None if mode is None else mode
 		self.options = {} if options is None else options
 		self.device = None if device is None else device
+		self.identity = None if identity is None else identity
+		self.parents = [] if parents is None else parents
+		self.children = [] if children is None else children
+		self.path = None if path is None else path
+		self.data = None if data is None else data
+		self.file = None if file is None else file
+		self.env  = {} if env is None else env
+		self.logger = None if logger is None else None
 		self.execute = False if execute is None else execute
 		self.verbose = None if verbose is None else verbose
 
 		self.kwargs = kwargs
-
-		self.devices = {'local':'local','slurm':'slurm'}
-		self.modes = {'r':'r','read':'r','w':'w','write':'w','a':'a','append':'a'}
-		self.errors = {'run':1,'error':-1,'done':0}
-		self.instructions = {'local':'export','slurm':'#SBATCH --',None:''}
 
 		self.init()
 
@@ -1006,20 +1059,22 @@ class Job(object):
 			kwargs (dict): Keyword arguments
 		'''
 
+		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
+		self.identity = None if self.identity is None else self.identity
+		self.parents = [] if self.parents is None else [self.parents] if not isinstance(self.parents,iterables) else self.parents
+		self.children = [] if self.children is None else [self.children] if not isinstance(self.children,iterables) else self.children
+		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
 
-		if self.device not in self.devices:
-			raise NotImplementedError("%s device Not Implemented"%(self.device))
+		self.errors = {'run':1,'error':-1,'done':0}
+
+		self.set()
 
 		return
 
-	def setup(self,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def setup(self,options=None,device=None,execute=False,verbose=None,**kwargs):
 		'''
 		Setup job
 		Args:
-			path (str): path to job
-			data (str): path of job script
-			file (str): path of job executable			
-			mode (str): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
 			execute (boolean,int): Boolean whether to call commands
@@ -1027,89 +1082,14 @@ class Job(object):
 			kwargs (dict): Keyword arguments
 		'''
 
-		path = self.path if path is None else path
-		data = self.data if data is None else data
-		file = self.file if file is None else file
-		mode = self.mode if mode is None else mode
-		options = {**self.options,**options} if isinstance(options,dict) else {**self.options}
-		device = self.device if device is None else device
-		execute = self.execute if execute is None else execute
-		verboes = self.verbose if verbose is None else verbose
+		options = options if isinstance(options,dict) else self.options
+		device = device if device is not None else self.device
 
+		self.device = device
 
-		path = join(data,root=path)
-
-		instruction = self.instructions.get(device)
-
-		def wrapper(data):
-			data = {index: {key:value for key,value in zip(strings[0::2],strings[1::2])}
-				for index,string in enumerate(data) if data.startswith(instruction)
-				for strings in [string.replace(instruction,'').split('=')]}
-			return data
-
-		data = self.load(path,wrapper=wrapper)
-
-		def wrapper(data):
-			data = {index: ''.join(['{instruction}{key}={value}'.format(instruction=instruction,key=key,value=value)
-							for key,value in data[index].items()])
-					for index in data}
-			return data
-
-		self.dump(path,data,wrapper=wrapper)
-
-		def strings(device,**kwargs):
-			wrapper = lambda string: str(string) if string is not None else ''
-			default = {
-				'instruction':'.*',
-				'key':'.*',
-				'value':'.*',
-			}
-
-			if device in ['local']:
-				default['instruction'] = ''
-			elif device in ['slurm']:
-				default['instruction'] = '#SBATCH --'
-			else:
-				default['instruction'] = ''
-			
-			kwargs.update({kwarg: kwargs.get(kwarg,default[kwarg]) for kwarg in default})
-			
-			for kwarg in kwargs:
-				kwargs[kwarg] = wrapper(kwargs[kwarg])
-			
-			string = '{instruction}{key}={value}'.format(**kwargs)
-
-			return string
-
-		if path is None or options is None:
-			return
-
-		if isinstance(options,dict) and isinstance(data,dict):
-			options.update(data)
-
-		for key in options:
-
-			value = options[key]
-
-			if key in ['dependency']:
-				value = kwargs.get('dependency')
-				if value is None:
-					value is None
-				elif all(i is None for i in value):
-					value = None
-				else:
-					value = options[key]
-					value = '%s:%s'%(
-						':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else value if isinstance(value,str) else'',
-						','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
-							(kwargs.get('dependencies') is not None)) else ''
-						)
-			else:
-				value = value
-
-			options[key] = data
-
-			data = {}
+		# Update options and job script
+		path = join(self.data,root=self.path)
+		self.update(options,path=path)
 
 		return
 
@@ -1138,16 +1118,16 @@ class Job(object):
 			status = dict()
 		elif device in ['slurm']:
 			# Options --batch-script
-			states = dict(
+			state = dict(
 				run = ['PENDING','RUNNING','SUSPENDED'],
 				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
 				done = ['COMPLETED'],
 				)
 			status = dict(
 				# run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-				error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
-				error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
-				done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
+				# error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
+				# error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
+				# done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
 			)
 		else:
 			state = dict()			
@@ -1170,19 +1150,190 @@ class Job(object):
 
 			status[attr] = string
 
-		print(status)
-		print('-----')
-
 		return status
 
-	# def setup(self,path=None,data=None,file=None,mode=None,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def set(self,options=None):
+		'''
+		Set class options
+		Args:
+			options (dict): Class options
+		'''
+		
+		options = self.options if options is None else options
+		
+		defaults = self.defaults
+
+		for option in list(options):
+			if option in list(defaults):
+				if callable(defaults[option]):
+					try:
+						self.options[option] = defaults[option](option,options={**self.options,**options})
+					except Exception as exception:
+						if option in self.options:
+							self.options.pop(option)					
+				else:
+					self.options[option] = options.get(option,self.options.get(option))
+			else:
+				self.options[option] = options.get(option,self.options.get(option))
+		
+		for option in list(defaults):
+			if callable(defaults[option]):
+				try:
+					self.options[option] = defaults[option](option,options={**self.options,**options})
+				except:
+					if option in self.options:
+						self.options.pop(option)	
+			else:
+				self.options[option] = self.options.get(option,defaults[option])
+				
+		self.options = {option: self.options[option] 
+			for option in sorted(self.options,key=(lambda option:
+				list(self.patterns).index(option) if option in self.patterns else 
+				len(self.patterns)+list(self.options).index(option)))
+			}
+		
+		return
+	
+	def get(self):
+		'''
+		Get class options
+		Returns:
+			options (dict): Class options
+		'''
+		self.set()
+		return self.options
+
+	def update(self,options=None,path=None):
+		'''
+		Update class options
+		Args:
+			options (dict): Class options
+			path (str): Path to options
+		'''		
+
+		if path is None:
+			return
+
+
+		self.set(options)
+
+		options = self.load(path)
+
+		options = {option:options[option] for option in options if option not in [*self.options.keys(),*self.patterns.keys(),*self.patterns.values()]}
+
+		self.set(options)
+
+		options = self.get()
+
+		self.dump(path,options)
+
+		return
+
+	def instructions(self,string=None,pattern=None):
+		'''
+		Filter instruction strings
+		Args:
+			string (str): string to filter
+			pattern (str): replacement pattern for instructions
+		Returns:
+			instructions (bool,str): instruction pattern if string is None else whether string is an instruction if pattern is None else string instruction replaced by pattern
+		'''
+
+		if self.device in ['local']:
+			instructions = 'export '
+		elif self.device in ['slurm']:
+			instructions = '#SBATCH --'
+		else:
+			instructions = ''
+		
+		if string is None:
+			instructions = '%s'%(instructions)
+		elif pattern is None:
+			instructions = '^[^#]*%s'%(instructions)
+			instructions = contains(string,instructions)
+		else:
+			instructions = '%s'%(instructions)
+			instructions = substitute(string,{instructions:pattern})
+
+		return instructions
+
+	@property
+	def defaults(self):
+
+		if self.device in ['local']:
+
+			defaults = {}
+
+		elif self.device in ['slurm']:
+
+			defaults = {}
+
+			def func(option,options):
+				data = self.name
+				return data
+			option = 'name'
+			defaults[option] = func
+
+			def func(option,options):
+				assert options.get(option) is not None or self.parents
+				data = '{key}:{value}'.format(
+						key=':'.join(options.get(option).split(':')[:-1]) 
+							if isinstance(options.get(option),str) and options.get(option).count(':') > 0 
+							else options.get(option) if isinstance(options.get(option),str) 
+							else'',
+						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.parents])
+					)
+				return data
+			option = 'dependency'
+			defaults[option] = func
+
+			def func(option,options):
+				data = options.get(option)
+				if data is None:
+					data = '%x.%A.stdout'
+				if 'array' in options:
+					data = '%x.%A.%a.stdout'
+				else:
+					data = '%x.%A.stdout'
+				return data				
+			option = 'output'
+			defaults[option] = func
+
+			def func(option,options):
+				data = options.get(option)
+				if data is None:
+					data = '%x.%A.stderr'
+				if 'array' in options:
+					data = '%x.%A.%a.stderr'
+				else:
+					data = '%x.%A.stderr'
+				return data				
+			option = 'error'			
+			defaults[option] = func
+
+		else:
+			
+			defaults = {}
+
+		return defaults
+
+	@property
+	def patterns(self):
+		if self.device in ['local']:
+			patterns = {}
+		elif self.device in ['slurm']:
+			patterns = {'name':'job-name'}
+		else:
+			patterns = {}
+		return patterns
+
+	# def setup(self,path=None,data=None,file=None,options=None,device=None,execute=False,verbose=None,**kwargs):
 	# 	'''
 	# 	Call job
 	# 	Args:
 	# 		path (str): path to job
 	# 		data (str): path of job script
 	# 		file (str): path of job executable			
-	# 		mode (str): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 	# 		options (dict[str,str]): options for job
 	# 		device (str): Name of device to submit to
 	# 		execute (boolean,int): Boolean whether to call commands
@@ -1301,30 +1452,6 @@ class Job(object):
 
 		return args,env
 
-
-	def load(self,path=None,mode=None,wrapper=None):
-		'''
-		Load job
-		Args:
-			path (str): path to job
-			mode (str): type of setup of, allowed strings in 'r','read'
-			wrapper (callable): Callable for data with signature wrapper(data)
-		Returns:
-			data (iterable[str]): job data
-		'''
-		path = self.path if path is None else path
-		data = None
-		mode = self.modes.get('read')
-		
-		if path is not None:
-			with open(path,mode) as obj:
-				data = obj.readlines()
-		
-		if callable(wrapper):
-			data = wrapper(data)
-		
-		return data
-
 	def __str__(self):
 		if isinstance(self.name,str):
 			string = self.name
@@ -1335,46 +1462,230 @@ class Job(object):
 	def __repr__(self):
 		return self.__str__()
 
-	def dump(self,path=None,data=None,mode=None,wrapper=None):
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str,bool): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return
+		msg += '\n'
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,display=None,ignore=None,verbose=None,**kwargs):
+		'''
+		Log class information
+		Args:
+			display (str,iterable[str]): Show attributes
+			ignore (str,iterable[str]): Do not show attributes
+			verbose (bool,int,str): Verbosity of message	
+			kwargs (dict): Additional logging keyword arguments						
+		'''	
+
+		attrs = ['name','identity','path','data','file','device','options']
+
+		msg = []
+
+		for attr in attrs:
+			if not hasattr(self,attr):
+				continue
+			msg.append('%s : %r'%(attr,getattr(self,attr)))
+		
+
+		msg = [i if isinstance(i,str) else str(i) for i in msg]
+
+		msg = '\n'.join(msg)
+
+		self.log(msg,verbose=verbose)
+
+		return
+
+	def load(self,path=None,wrapper=None):
+		'''
+		Load job
+		Args:
+			path (str): path to job
+			wrapper (callable): Callable for data with signature wrapper(data)
+		Returns:
+			data (iterable[str]): job data
+		'''
+		path = join(self.data,root=self.path) if path is None else path
+		data = None
+		mode = 'r'
+
+		if wrapper is True:
+			def wrapper(data):
+				return data
+		elif not callable(wrapper):
+			wrapper = None
+
+		def parse(data):
+			data = data.strip()
+			return data
+
+		if path is not None:
+			if self.device in ['local']:
+
+				if not callable(wrapper):
+					def wrapper(data):
+						data = {
+							key:value
+							for index,string in enumerate(data)
+							if self.instructions(string)
+							for strings in [self.instructions(string,'').split('=')]
+							for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
+							}
+						return data
+
+				with open(path,mode) as obj:
+					data = [parse(i) for i in obj.readlines()]
+		
+			elif self.device in ['slurm']:
+			
+				if not callable(wrapper):
+					def wrapper(data):
+						data = {
+							key:value
+							for index,string in enumerate(data)
+							if self.instructions(string)
+							for strings in [self.instructions(string,'').split('=')]
+							for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
+							}
+						return data		
+
+				with open(path,mode) as obj:
+					data = [parse(i) for i in obj.readlines()]		
+			else:
+
+				if not callable(wrapper):
+					def wrapper(data):
+						data = []
+						return data
+
+				with open(path,mode) as obj:
+					data = [parse(i) for i in obj.readlines()]		
+
+		if callable(wrapper):
+			data = wrapper(data)
+		
+		return data
+
+	def dump(self,path=None,data=None,wrapper=None):
 		'''
 		Load job
 		Args:
 			path (str): path to job
 			data (dict[int,str],iterable[str]): job data
-			mode (str,dict[int,str]): type of setup of, allowed strings in 'w','write' (overwrite) and 'a','append' (append)
 			wrapper (callable): Callable for data with signature wrapper(data)
 		'''
-		path = self.path if path is None else path
-		mode = self.mode if mode is None else mode
-	
+		path = join(self.data,root=self.path) if path is None else path
+		data = None if data is None else data
+		mode = 'w'
+
+		lines = self.load(path,wrapper=True)
+
+		if data is None:
+			return
+
+		if self.device in ['local']:
+			
+			if not callable(wrapper):
+		
+				def wrapper(data):
+
+					string = '{instructions}'.format(instructions=self.instructions())
+					count = max((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+					
+					if count is None:
+						count = len(lines)
+
+					for option in data:
+
+						key = self.patterns.get(option,option)
+						value = data[option]
+
+						string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+
+						index = min((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+
+						if value is None:
+							string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+						else:
+							string = '{instructions}{key}={value}'.format(instructions=self.instructions(),key=key,value=value)
+
+						if index is None:
+							count += 1
+							index = count
+							lines.insert(index,string)
+						else:
+							lines[index] = string
+					
+					data = lines
+
+					return data			
+		
+		elif self.device in ['slurm']:
+		
+			if not callable(wrapper):
+
+				def wrapper(data):
+
+					string = '{instructions}'.format(instructions=self.instructions())
+					count = max((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+					
+					if count is None:
+						count = len(lines)
+
+					for option in data:
+
+						key = self.patterns.get(option,option)
+						value = data[option]
+
+						string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+
+						index = min((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+
+						if value is None:
+							string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+						else:
+							string = '{instructions}{key}={value}'.format(instructions=self.instructions(),key=key,value=value)
+
+						if index is None:
+							count += 1
+							index = count
+							lines.insert(index,string)
+						else:
+							lines[index] = string
+					
+					data = lines
+
+					return data		
+
+		else:
+
+			if not callable(wrapper):
+		
+				def wrapper(data):
+					return data		
+
+
 		if callable(wrapper):
 			data = wrapper(data)
 
-		lines = self.load(path,wrapper=list)
-		if data is None:
-			pass
-		elif isinstance(data,dict):
-			mode = {index:mode for index in data} if not isinstance(mode,dict) else mode
-			for index in sorted(data,reverse=True):
-				if mode.get(index) is None or self.modes.get(mode.get(index)) in ['a']:
-					lines.insert(index,data[index])
-				elif self.modes.get(mode.get(index)) in ['w']:
-					lines[index] = data[index]
-		else:
-			mode = [mode for string in data] if not isinstance(mode,iterables) else mode
-			for index,string in enumerate(data):
-				if mode[index] is None or self.modes.get(mode[index]) in ['a']:
-					lines.insert(index,string)
-				elif self.modes.get(mode[index]) in ['w']:
-					lines[index] = string
-		data = lines
+		data = ['{line}\n'.format(line=line) for line in data]
 
-		mode = self.modes.get('write')
 		if path is not None and data is not None:
 			with open(path,mode) as obj:
 				obj.writelines(data)
 
 		return
+
 
 
 def workflow(func,settings,*args,**kwargs):
@@ -1551,19 +1862,19 @@ def job(settings,*args,**kwargs):
 		while not status.run:
 			if status.error:
 				for name in status.error:
-					logger("Error Job: %s"%(name),**options)
+					logger("Error Job: {name}".format(name=name),**options)
 					# Resubmit error job
 			if not any(name in [*status.error,*status.done]):
-				logger("Queue Job: %s"%(name),**options)
+				logger("Queue Job: {name}".format(name=name),**options)
 				# Submit new job
 			elif not any(name in [*status.done]):
-				logger("Done Job: %s"%(name),**options)
+				logger("Done Job: {name}".format(name=name),**options)
 				# Clean up done job
 			status = boolean(**keywords)
 		else:
 			if status.run:
 				for name in status.run:
-					logger("Running Job: %s"%(name),**options)
+					logger("Running Job: {name}".format(name=name),**options)
 
 		status = job
 		

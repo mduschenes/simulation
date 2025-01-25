@@ -24,9 +24,6 @@
 **/data.hdf5*
 **/mnt
 **/*test.json
-setup/requirements.txt.*.*
-test/config/settings.*.json
-docs/site
 
 build/config/test.slurm
 build/settings.tmp.json
@@ -36,4 +33,11 @@ build/tmp
 build/data
 build/data/**/data*.hdf5
 build/data/**/data*.json
+
 test/examples
+test/config/settings.*.json
+test/job
+
+setup/requirements.txt.*.*
+
+docs/site

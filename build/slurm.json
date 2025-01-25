@@ -350,7 +350,7 @@
 				"kwargs":{"dependency":null},				
 				"options":{"job-name":"{name}","mem":"128G","parsable":null}
 			},
-			"dependency":{
+			"postprocess":{
 				"name":null,
 				"identity":null,				
 				"path":null,
