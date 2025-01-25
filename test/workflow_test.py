@@ -20,10 +20,9 @@ def test_job(*args,**kwargs):
 	kwargs = dict(
 		name='job',
 		identity=None,
-		parents=[123],
-		children=[],
+		jobs=[123],
 		path='./job',
-		data='job.slurm',
+		data={'config/job.slurm':'job.slurm'},
 		file='job.sh',
 		options={
 			'account':'mduschenes',
@@ -35,6 +34,7 @@ def test_job(*args,**kwargs):
 			'dependency':'afterany:',
 			'output':'%x.%A.stdout',
 			'error':'%x.%A.stderr',
+			'get-user-env':False,
 			'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 			},
 		device='slurm',

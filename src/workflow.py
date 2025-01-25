@@ -88,6 +88,7 @@ class timeout:
 	
 	def __enter__(self):
 		self.start()
+	
 	def __exit__(self,type,value,traceback):
 		self.stop()
 
@@ -1018,10 +1019,9 @@ class Job(object):
 		options (dict[str,str]): options for job
 		device (str): Name of device to submit to
 		identity (int): identity of job
-		parents (iterable[Job]): parents of job
-		children (iterable[Job]): children of job
+		jobs (iterable[Job]): related jobs of job
 		path (str): path to job
-		data (str): path of job script
+		data (str,dict[str,str]): path of job script
 		file (str): path of job executable
 		env (dict[str,str]): environmental variables for job
 		logger (str): Name of logger
@@ -1029,14 +1029,13 @@ class Job(object):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,parents=None,identity=None,children=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
 		
 		self.name = None if name is None else name
 		self.options = {} if options is None else options
 		self.device = None if device is None else device
 		self.identity = None if identity is None else identity
-		self.parents = [] if parents is None else parents
-		self.children = [] if children is None else children
+		self.jobs = [] if jobs is None else jobs
 		self.path = None if path is None else path
 		self.data = None if data is None else data
 		self.file = None if file is None else file
@@ -1061,11 +1060,9 @@ class Job(object):
 
 		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
 		self.identity = None if self.identity is None else self.identity
-		self.parents = [] if self.parents is None else [self.parents] if not isinstance(self.parents,iterables) else self.parents
-		self.children = [] if self.children is None else [self.children] if not isinstance(self.children,iterables) else self.children
+		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
+		self.data = {path:join(self.data[path],root=self.path) for path in self.data} if isinstance(self.data,dict) else {self.data:join(self.data,root=self.path)}
 		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
-
-		self.errors = {'run':1,'error':-1,'done':0}
 
 		self.set()
 
@@ -1082,13 +1079,15 @@ class Job(object):
 			kwargs (dict): Keyword arguments
 		'''
 
+		self.init()
+
 		options = options if isinstance(options,dict) else self.options
 		device = device if device is not None else self.device
 
 		self.device = device
 
 		# Update options and job script
-		path = join(self.data,root=self.path)
+		path = self.data
 		self.update(options,path=path)
 
 		return
@@ -1101,6 +1100,8 @@ class Job(object):
 		Returns:
 			status (str): Status of job
 		'''
+
+		return None
 
 		kwargs = {**self.kwargs,**kwargs}
 
@@ -1208,18 +1209,14 @@ class Job(object):
 		Update class options
 		Args:
 			options (dict): Class options
-			path (str): Path to options
+			path (str,dict[str,str]): Path to options
 		'''		
-
-		if path is None:
-			return
-
 
 		self.set(options)
 
 		options = self.load(path)
 
-		options = {option:options[option] for option in options if option not in [*self.options.keys(),*self.patterns.keys(),*self.patterns.values()]}
+		options = {option:options[option] for option in options if option not in self.keywords}
 
 		self.set(options)
 
@@ -1275,13 +1272,13 @@ class Job(object):
 			defaults[option] = func
 
 			def func(option,options):
-				assert options.get(option) is not None or self.parents
+				assert options.get(option) is not None or self.jobs
 				data = '{key}:{value}'.format(
 						key=':'.join(options.get(option).split(':')[:-1]) 
 							if isinstance(options.get(option),str) and options.get(option).count(':') > 0 
 							else options.get(option) if isinstance(options.get(option),str) 
 							else'',
-						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.parents])
+						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs])
 					)
 				return data
 			option = 'dependency'
@@ -1326,6 +1323,27 @@ class Job(object):
 		else:
 			patterns = {}
 		return patterns
+
+	@property
+	def keywords(self):
+		keywords = (*self.options.keys(),*self.patterns.keys(),*self.patterns.values())
+		return keywords
+
+	@property
+	def errors(self):
+		errors = Dict(run=1,error=-1,done=0)
+		return errors
+
+	@property
+	def delimiters(self):
+		if self.device in ['local']:
+			delimiters = Dict(separator='=',comment='#')
+		elif self.device in ['slurm']:
+			delimiters = Dict(separator='=',comment='#')
+		else:
+			delimiters = Dict(separator='=',comment='#')
+		return delimiters
+	
 
 	# def setup(self,path=None,data=None,file=None,options=None,device=None,execute=False,verbose=None,**kwargs):
 	# 	'''
@@ -1488,16 +1506,22 @@ class Job(object):
 			kwargs (dict): Additional logging keyword arguments						
 		'''	
 
-		attrs = ['name','identity','path','data','file','device','options']
+		attrs = ['name','identity','path','data','file','device','options','status']
 
 		msg = []
 
 		for attr in attrs:
 			if not hasattr(self,attr):
 				continue
-			msg.append('%s : %r'%(attr,getattr(self,attr)))
+			if attr in ['options']:
+				string = '%s :\n\t%s'%(attr,'\n\t'.join(['%s : %r'%(kwarg,getattr(self,attr)[kwarg]) for kwarg in getattr(self,attr)]))
+			elif callable(getattr(self,attr)):
+				string = '%s : %r'%(attr,getattr(self,attr)())
+			else:
+				string = '%s : %r'%(attr,getattr(self,attr))
+			
+			msg.append(string)
 		
-
 		msg = [i if isinstance(i,str) else str(i) for i in msg]
 
 		msg = '\n'.join(msg)
@@ -1510,13 +1534,15 @@ class Job(object):
 		'''
 		Load job
 		Args:
-			path (str): path to job
+			path (str,dict[str,str]): path to job
 			wrapper (callable): Callable for data with signature wrapper(data)
 		Returns:
 			data (iterable[str]): job data
 		'''
-		path = join(self.data,root=self.path) if path is None else path
+
+		paths = {path:join(path,root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
 		data = None
+		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'r'
 
 		if wrapper is True:
@@ -1526,50 +1552,71 @@ class Job(object):
 			wrapper = None
 
 		def parse(data):
-			data = data.strip()
+			replacements = {'\n':''}
+			for replacement in replacements:
+				data = data.replace(replacement,replacements[replacement])
 			return data
 
-		if path is not None:
-			if self.device in ['local']:
+		if self.device in ['local']:
 
-				if not callable(wrapper):
-					def wrapper(data):
-						data = {
-							key:value
-							for index,string in enumerate(data)
-							if self.instructions(string)
-							for strings in [self.instructions(string,'').split('=')]
-							for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
-							}
-						return data
-
-				with open(path,mode) as obj:
-					data = [parse(i) for i in obj.readlines()]
-		
-			elif self.device in ['slurm']:
+			if not callable(wrapper):
+				def wrapper(data):
+					data = {
+						key:value
+						for index,string in enumerate(data)
+						if self.instructions(string)
+						for strings in [i for i in (
+							separator.join(self.instructions(string,'').split(separator)[:1]),
+							separator.join(self.instructions(string,'').split(separator)[1:])) if i]		
+						for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
+						}
+					return data
 			
-				if not callable(wrapper):
-					def wrapper(data):
-						data = {
-							key:value
-							for index,string in enumerate(data)
-							if self.instructions(string)
-							for strings in [self.instructions(string,'').split('=')]
-							for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
-							}
-						return data		
+			try:
+				data = [] if data is None else data
+				for path in paths:
+					with open(path,mode) as obj:
+						data.extend((parse(i) for i in obj.readlines()))
+			except:
+				data = None
 
-				with open(path,mode) as obj:
-					data = [parse(i) for i in obj.readlines()]		
-			else:
+		elif self.device in ['slurm']:
+		
+			if not callable(wrapper):
+				def wrapper(data):
+					data = {
+						key:value
+						for index,string in enumerate(data)
+						if self.instructions(string)
+						for strings in [[i for i in (
+							separator.join(self.instructions(string,'').split(separator)[:1]),
+							separator.join(self.instructions(string,'').split(separator)[1:])) if i]]
+						for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
+						}
+					return data		
 
-				if not callable(wrapper):
-					def wrapper(data):
-						data = []
-						return data
+			try:
+				data = [] if data is None else data
+				for path in paths:
+					with open(path,mode) as obj:
+						data.extend((parse(i) for i in obj.readlines()))
+			except:
+				data = None
 
-				with open(path,mode) as obj:
-					data = [parse(i) for i in obj.readlines()]		
+		else:
+
+			if not callable(wrapper):
+				def wrapper(data):
+					data = []
+					return data
+
+			try:
+				data = [] if data is None else data
+				for path in paths:
+					with open(path,mode) as obj:
+						data.extend((parse(i) for i in obj.readlines()))
+			except:
+				data = None
 
 		if callable(wrapper):
 			data = wrapper(data)
@@ -1578,19 +1625,21 @@ class Job(object):
 
 	def dump(self,path=None,data=None,wrapper=None):
 		'''
-		Load job
+		Dump job
 		Args:
-			path (str): path to job
+			path (str,dict[str,str]): path to job
 			data (dict[int,str],iterable[str]): job data
 			wrapper (callable): Callable for data with signature wrapper(data)
 		'''
-		path = join(self.data,root=self.path) if path is None else path
+
+		paths = {path:join(path,root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
 		data = None if data is None else data
+		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'w'
 
-		lines = self.load(path,wrapper=True)
+		lines = self.load(paths,wrapper=True)
 
-		if data is None:
+		if data is None or lines is None:
 			return
 
 		if self.device in ['local']:
@@ -1612,12 +1661,14 @@ class Job(object):
 
 						string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
 
-						index = min((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+						index = max((index for index,line in enumerate(lines) if contains(line,string)),default=None)
 
-						if value is None:
+						if value is None or value is True:
 							string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+						elif value is False:
+							string = '{comment}{instructions}{key}'.format(instructions=self.instructions(),key=key,separator=separator,comment=comment)
 						else:
-							string = '{instructions}{key}={value}'.format(instructions=self.instructions(),key=key,value=value)
+							string = '{instructions}{key}{separator}{value}'.format(instructions=self.instructions(),key=key,value=value,separator=separator)
 
 						if index is None:
 							count += 1
@@ -1625,7 +1676,7 @@ class Job(object):
 							lines.insert(index,string)
 						else:
 							lines[index] = string
-					
+
 					data = lines
 
 					return data			
@@ -1651,10 +1702,12 @@ class Job(object):
 
 						index = min((index for index,line in enumerate(lines) if contains(line,string)),default=None)
 
-						if value is None:
+						if value is None or value is True:
 							string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
+						elif value is False:
+							string = '{comment}{instructions}{key}'.format(instructions=self.instructions(),key=key,separator=separator,comment=comment)
 						else:
-							string = '{instructions}{key}={value}'.format(instructions=self.instructions(),key=key,value=value)
+							string = '{instructions}{key}{separator}{value}'.format(instructions=self.instructions(),key=key,value=value,separator=separator)
 
 						if index is None:
 							count += 1
@@ -1662,7 +1715,7 @@ class Job(object):
 							lines.insert(index,string)
 						else:
 							lines[index] = string
-					
+
 					data = lines
 
 					return data		
@@ -1680,9 +1733,12 @@ class Job(object):
 
 		data = ['{line}\n'.format(line=line) for line in data]
 
-		if path is not None and data is not None:
-			with open(path,mode) as obj:
-				obj.writelines(data)
+		try:
+			for path in paths:
+				with open(paths[path],mode) as obj:
+					obj.writelines(data)
+		except:
+			pass
 
 		return
 
