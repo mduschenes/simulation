@@ -22,9 +22,9 @@ def test_job(*args,**kwargs):
 		identity=None,
 		jobs=[123],
 		path='./job',
-		data={'config/job.slurm':'job.slurm'},
+		data={'./config/job.slurm':'job.slurm'},
 		file='job.sh',
-		env=dict(user='$USER'),
+		env={},
 		options={
 			'account':'mduschenes',
 			'partition':'cpu',
@@ -50,13 +50,15 @@ def test_job(*args,**kwargs):
 
 	job.setup()
 
+	identity = job.submit()
+
 	status = job.status()
 
 	for state in status:
 		print(state)
 		for attr in status[state]:
 			print('\t',attr,status[state][attr])
-	print(job.identity)
+	print(identity,job.identity)
 
 	return
 

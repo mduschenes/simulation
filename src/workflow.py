@@ -996,8 +996,8 @@ class Job(object):
 		path (str): path to job
 		data (str,dict[str,str]): path of job script
 		file (str): path of job executable
-		env (dict[str,str]): environmental variables for job
 		logger (str): Name of logger
+		env (dict[str,str]): environmental variables for job
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
@@ -1023,6 +1023,34 @@ class Job(object):
 
 		return
 
+	def __call__(self,options=None,device=None,env=None,execute=False,verbose=None):
+		'''
+		Call job
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			env (dict[str,str]): environmental variables for job
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (identity): Identity of job
+		'''
+
+		identity = self.submit(options=options,device=device,env=env,execute=execute,verbose=verbose)
+
+		return identity
+
+	def __str__(self):
+		if isinstance(self.name,str):
+			string = self.name
+		else:
+			string = self.__class__.__name__
+		return string
+
+	def __repr__(self):
+		return self.__str__()
+
 	def init(self,*args,**kwargs):
 		'''
 		Initialize job
@@ -1030,6 +1058,10 @@ class Job(object):
 			args (iterable): Positional arguments
 			kwargs (dict): Keyword arguments
 		'''
+
+		for attr in kwargs:
+			if hasattr(self,attr):
+				setattr(self,attr,kwargs[attr])
 
 		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
 		self.identity = None if self.identity is None else self.identity
@@ -1041,33 +1073,112 @@ class Job(object):
 
 		return
 
-	def setup(self,options=None,device=None,execute=False,verbose=None,**kwargs):
+	def setup(self,options=None,device=None,**kwargs):
 		'''
 		Setup job
 		Args:
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
-			execute (boolean,int): Boolean whether to call commands
-			verbose (int,str,bool): Verbosity
 			kwargs (dict): Keyword arguments
+		Returns:
+			status (dict): Status of job
 		'''
 
-		# Init options
-		self.init()
-
-		options = options if isinstance(options,dict) else self.options
 		device = device if device is not None else self.device
+		options = options if isinstance(options,dict) else self.options
+		path = self.data
 
-		self.device = device
+		# Init attributes
+		self.init(device=device)
+
+		# Update options
+		self.update(options,path=path)
 
 		# Get status
 		status = self.status()
 
-		# Update options
-		path = self.data
-		self.update(options,path=path)
+		return status
 
-		return
+	def submit(self,options=None,device=None,env=None,execute=False,verbose=None,**kwargs):
+		'''
+		Submit job
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			env (dict[str,str]): environmental variables for job
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (int): Identity of job
+		'''
+
+		paths = {path:join(self.data[path],root=self.path) for path in self.data}
+
+		env = {**self.env,**env} if env is not None else self.env
+
+		status = self.setup(options=options,device=device)
+
+		keys = self.keys(**kwargs)
+
+		options = dict(
+			wrapper=self.wrapper,
+			execute=execute,
+			verbose=verbose
+			)
+
+		for path in paths:
+				
+			path = paths[path]
+
+			if self.device in ['local']:
+				string = '{cmd}{flags}{exe}{path}'.format(
+					cmd='',
+					flags=' '.join('{key}={value}'.format(key=key,value=env[key]) for key in env),
+					exe=' ./' if not path.startswith('/') else ' ',
+					path=path
+					)
+				def wrapper(string):
+					try:
+						string = int(string[-1])
+					except:
+						string = None
+					return string
+
+			elif self.device in ['slurm']:
+
+				string = '{cmd}{flags}{exe}{path}'.format(
+					cmd='sbatch ',
+					flags='--export={env}'.format(env=','.join('{key}={value}'.format(key=key,value=env[key]) for key in env)) if env else '',
+					exe=' < ',
+					path=path
+					)
+				def wrapper(string):
+					try:
+						string = int(string[-1])
+					except:
+						string = None
+					return string
+			else:
+				string = None
+				def wrapper(string):
+					try:
+						string = int(string[-1])
+					except:
+						string = None
+					return string
+		
+			string = self.parse(string,keys)
+			
+			string = call(string,**options)			
+
+			identity = wrapper(string)
+
+		self.identity = identity
+
+		return identity
+
+
 
 	def identification(self,**kwargs):
 		'''
@@ -1119,7 +1230,6 @@ class Job(object):
 			execute=True,
 			verbose=False
 			)
-
 		status = None
 
 		if self.device in ['local']:
@@ -1176,6 +1286,7 @@ class Job(object):
 				return string
 
 		string = self.parse(string,keys)
+		
 		string = call(string,**options)
 
 		stats = wrapper(string)
@@ -1421,11 +1532,11 @@ class Job(object):
 	@property
 	def delimiters(self):
 		if self.device in ['local']:
-			delimiters = Dict(separator='=',comment='#')
+			delimiters = Dict(delimiter=',',separator='=',range='%',comment='#')
 		elif self.device in ['slurm']:
-			delimiters = Dict(separator='=',comment='#')
+			delimiters = Dict(delimiter=',',separator='=',range='%',comment='#')
 		else:
-			delimiters = Dict(separator='=',comment='#')
+			delimiters = Dict(delimiter=',',separator='=',range='%',comment='#')
 		return delimiters
 	
 	@classmethod
@@ -1476,143 +1587,6 @@ class Job(object):
 		result = [wrapper(i) for i in stdout.split(delimiter)]
 
 		return result
-
-
-	# def setup(self,path=None,data=None,file=None,options=None,device=None,execute=False,verbose=None,**kwargs):
-	# 	'''
-	# 	Call job
-	# 	Args:
-	# 		path (str): path to job
-	# 		data (str): path of job script
-	# 		file (str): path of job executable			
-	# 		options (dict[str,str]): options for job
-	# 		device (str): Name of device to submit to
-	# 		execute (boolean,int): Boolean whether to call commands
-	# 		verbose (int,str,bool): Verbosity
-	# 		kwargs (dict): Keyword arguments
-	# 	'''
-	def __call__(self,args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,device=None,execute=False,verbose=None):
-		'''
-		Call job
-		Args:
-			args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value]
-			kwargs (dict): Keyword arguments for args
-			exe (str,iterable[str]): Executable for args
-			flags (str,iterable[str]): Flags for args
-			cmd (str,iterable[str]): Command for args
-			options (str,iterable[str]): Options for args
-			env (dict[str,str]): Environmental variables for args
-			device (str): Name of device to submit to
-			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
-			verbose (int,str,bool): Verbosity
-		Returns:
-			args (iterable[str]): Command arguments
-			env (dict[str,str]): Environment for command
-		'''
-
-		if isinstance(args,dict):
-			args = {arg: 
-					([(str(args[arg]) if args[arg] is not None else '')] if isinstance(args[arg],scalars) else 
-					 [((str(subarg) if subarg is not None else '') if isinstance(subarg,scalars) else 
-					  ' '.join([(str(subsubarg) if subsubarg is not None else '') for subsubarg in subarg])) for subarg in args[arg]]) 
-					for arg in args}
-		else:
-			args = {None:[((str(arg) if arg is not None else '') if isinstance(arg,scalars) else 
-						  [(str(subarg) if subarg is not None else '') for subarg in arg]) for arg in args]}
-
-
-		exe = [] if exe is None else [exe] if isinstance(exe,str) else [*exe]
-		flags = [] if flags is None else [flags] if isinstance(flags,str) else [*flags]
-		cmd = [] if cmd is None else [cmd] if isinstance(cmd,str) else [*cmd]
-		options = [] if options is None else [options] if isinstance(options,str) else [*options]
-		env = {} if env is None else {} if not isinstance(env,dict) else env
-		kwargs = {} if kwargs is None else {} if not isinstance(kwargs,dict) else kwargs
-
-		if self.device in ['local']:
-			exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
-			flags = [*flags]
-			cmd = [*cmd]
-			options = [*options]		
-			env = {
-				**{
-					**({
-						'SLURM_JOB_NAME':kwargs.get('key'),
-						'SLURM_JOB_ID':kwargs.get('key'),
-						'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-						'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
-						'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
-						'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
-						'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
-						'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
-						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
-						} if len(kwargs) else {}
-						),
-					**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
-				},
-				**env			
-			}
-
-		elif self.device in ['slurm']:
-			exe,flags,cmd,options,env = (
-				['sbatch'],
-				[
-				*flags,
-				*(['-J',basedir(kwargs.get('cwd'))] if len(kwargs) else []),
-				*(['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))] if len(args) else []),
-				],
-				['<'],
-				[*exe,*cmd,*options],
-				{
-				**{
-					**({
-						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
-					} if len(kwargs) else {}),
-					},
-				**env
-				}
-				)
-
-		else:
-			exe = [*exe]
-			flags = [*flags]
-			cmd = [*cmd]
-			options = [*[subarg for arg in args for subarg in args[arg]],*options]
-			env = {
-				**{
-					**({
-						'SLURM_JOB_NAME':kwargs.get('key'),
-						'SLURM_JOB_ID':kwargs.get('key'),
-						'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-						'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
-						'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
-						'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
-						'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
-						'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
-						'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-						'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
-					} if len(kwargs) else {}),
-				},
-				**env,			
-			}
-
-		args = [*exe,*flags,*cmd,*options]
-
-		env = {str(var): str(env[var]) if env[var] is not None else '' for var in env}
-
-		return args,env
-
-	def __str__(self):
-		if isinstance(self.name,str):
-			string = self.name
-		else:
-			string = self.__class__.__name__
-		return string
-
-	def __repr__(self):
-		return self.__str__()
-
 
 	def log(self,msg,verbose=None):
 		'''
@@ -1697,7 +1671,7 @@ class Job(object):
 			data (iterable[str]): job data
 		'''
 
-		paths = {path:join(path,root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
+		paths = {path:join(self.data[path],root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
 		data = None
 		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'r'
@@ -1789,7 +1763,7 @@ class Job(object):
 			wrapper (callable): Callable for data with signature wrapper(data)
 		'''
 
-		paths = {path:join(path,root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
+		paths = {path:join(self.data[path],root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
 		data = None if data is None else data
 		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'w'
