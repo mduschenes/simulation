@@ -483,7 +483,7 @@ class Basis(Dict):
 	@System.decorator
 	def H(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		data = array([[1,1],[1,-1]],dtype=kwargs.dtype)
+		data = (1/sqrt(2))*array([[1,1],[1,-1]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod

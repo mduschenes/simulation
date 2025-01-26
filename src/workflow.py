@@ -1079,6 +1079,7 @@ class Job(object):
 			kwargs (dict): Keyword arguments
 		'''
 
+		# Init options
 		self.init()
 
 		options = options if isinstance(options,dict) else self.options
@@ -1086,7 +1087,10 @@ class Job(object):
 
 		self.device = device
 
-		# Update options and job script
+		# Get status
+		status = self.status()
+
+		# Update options
 		path = self.data
 		self.update(options,path=path)
 
@@ -1101,39 +1105,19 @@ class Job(object):
 			status (str): Status of job
 		'''
 
-		return None
-
-		kwargs = {**self.kwargs,**kwargs}
-
-		kwargs = {
-			**kwargs,
-			# **{attr:join(kwargs.get(attr),root=self.path) for attr in ['error']},
-			**dict(name=self.name,path=self.path),
-			}
-
+		path = self.path
+		states = self.states
 		device = self.device
 		options = dict(execute=True,verbose=False)
 
-		if device in ['local']:
-			state = dict()
-			status = dict()
-		elif device in ['slurm']:
-			# Options --batch-script
-			state = dict(
-				run = ['PENDING','RUNNING','SUSPENDED'],
-				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
-				done = ['COMPLETED'],
-				)
-			status = dict(
-				# run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-				# error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
-				# error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
-				# done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
-			)
-		else:
-			state = dict()			
-			status = dict()
+		status = None
 
+		commands = Dict(
+			# run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
+			# error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
+			# error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
+			# done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
+		)
 		for attr in status:
 			string = status[attr]
 			if attr in ['run']:
@@ -1335,6 +1319,20 @@ class Job(object):
 		return errors
 
 	@property
+	def states(self):
+		if device in ['local']:
+			states = Dict()
+		elif device in ['slurm']:
+			states = Dict(
+				run = ['PENDING','RUNNING','SUSPENDED'],
+				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
+				done = ['COMPLETED'],
+				)
+		else:
+			states = Dict()			
+		return states
+
+	@property
 	def delimiters(self):
 		if self.device in ['local']:
 			delimiters = Dict(separator='=',comment='#')
@@ -1511,14 +1509,17 @@ class Job(object):
 		msg = []
 
 		for attr in attrs:
-			if not hasattr(self,attr):
+			value = getattr(self,attr,None)
+			if value is None:
 				continue
-			if attr in ['options']:
-				string = '%s :\n\t%s'%(attr,'\n\t'.join(['%s : %r'%(kwarg,getattr(self,attr)[kwarg]) for kwarg in getattr(self,attr)]))
-			elif callable(getattr(self,attr)):
-				string = '%s : %r'%(attr,getattr(self,attr)())
+			if callable(value):
+				string = '%s : %r'%(attr,value())
+			elif isinstance(value,dict):
+				string = '%s :%s%s'%(attr,
+					'\n\t' if len(value)>1 else ' ',
+					('\n\t' if len(value)>1 else ' ').join(['%s %s %r'%(kwarg,':' if len(value)>1 else '->',value[kwarg]) for kwarg in value]))
 			else:
-				string = '%s : %r'%(attr,getattr(self,attr))
+				string = '%s : %r'%(attr,value)
 			
 			msg.append(string)
 		
