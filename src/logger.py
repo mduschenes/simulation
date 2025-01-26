@@ -199,6 +199,12 @@ class Logger(object):
 
 		return
 	
+	def __call__(self,msg=None,verbose=None,**kwargs):
+		'''		
+		Call logger
+		'''
+		return self.log(verbose=verbose,msg=msg)
+
 	def log(self,verbose=None,msg=None):
 		'''
 		Log messages

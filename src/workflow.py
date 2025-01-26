@@ -835,36 +835,9 @@ def dump(path,data,wrapper=None,verbose=None):
 		with open(path,'w') as file:
 			data = json.dump(data,file)
 	except:
-		logger(exception,verbose=verbose)
 		pass
 	return
 
-
-def parse(string,formats):
-	'''
-	Format string '...{key}...' -> '...{key}...'.format(key=value)
-	Args:
-		string (str): String to format '...{key}...'
-		formats (dict[str,str]): Format strings {key}:value
-	Returns:
-		string (str): Formatted string
-	'''
-	template = '{%s}'
-	preprocess = {'{{':'#{{','}}':'#}}'}
-	postprocess = {'#{':'{{','#}':'}}'}
-	replacements = {'{{':'{','}}':'}','\\\\':"\\"}
-	while any(template%(attr) in string for attr in formats if isinstance(formats[attr],str)):
-		for replacement in preprocess:
-			string = string.replace(replacement,preprocess[replacement])
-
-		string = string.format(**formats)
-
-		for replacement in postprocess:
-			string = string.replace(replacement,postprocess[replacement])
-	else:
-		for replacement in replacements:
-			string = string.replace(replacement,replacements[replacement])
-	return string
 
 def permuter(iterable,repeat=None):
 	'''
@@ -875,7 +848,7 @@ def permuter(iterable,repeat=None):
 		iterable (generator[tuple],generator[dict]): Generator of tuples of all permutations of iterable
 	'''
 	
-	if all(isinstance(i,int) for i in iterable):
+	if isinstance(iterable,iterables) and all(isinstance(i,int) for i in iterable):
 		iterable = [range(i) for i in iterable]
 
 	repeat = 1 if repeat is None else repeat
@@ -1096,44 +1069,139 @@ class Job(object):
 
 		return
 
+	def identification(self,**kwargs):
+		'''
+		Identity of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (int): identity of job
+		'''
+
+		def wrapper(stats):
+			identity = max(job.identity for job in stats) if stats else None
+			return identity
+
+		if self.identity is not None:
+			identity = self.identity
+			return identity
+
+		if self.device in ['local']:
+			defaults = dict()
+		elif self.device in ['slurm']:
+			defaults = dict(format='jobid')
+		else:
+			defaults = dict()
+
+		kwargs.update(defaults)
+
+		stats = self.stats(**kwargs)
+
+		identity = wrapper(stats)
+
+		self.identity = identity
+
+		return identity
+
+	def stats(self,**kwargs):
+		'''
+		Stats of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			status (iterable[dict]): stats of job
+		'''
+
+		keys = self.keys(**kwargs)
+
+		options = dict(
+			wrapper=self.wrapper,
+			execute=True,
+			verbose=False
+			)
+
+		status = None
+
+		if self.device in ['local']:
+			string = None
+			def wrapper(string):
+				return string
+		elif self.device in ['slurm']:
+			if self.identity is None:
+				string = 'sacct --noheader --user {user} --format {format}'
+				string = "cat job/slurm.txt | grep {name}"
+			elif self.identity is not None:
+				string = 'sacct --noheader --user {user} --jobs {identity} --format {format}'
+				string = "cat job/slurm.txt | grep {name} | grep {identity}"
+			def wrapper(string):
+				funcs = dict(
+					jobid = lambda index,string: dict(
+						identity = int(string[index].split(splitter)[0]),
+						index = (
+							[i for i in range(*(int(j)+i
+								for i,j in enumerate(string[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(parser))))] 
+							if string[index].count(splitter) and parser in string[index] 
+							else int(string[index].split(splitter)[-1]) if string[index].count(splitter) 
+							else None)
+						),
+					jobname = lambda index,string: dict(
+						name = str(string[index])
+						),
+					state = lambda index,string: dict(
+						state = str(string[index])						
+						)
+					)
+
+				separator,delimiter,splitter,parser = '%',',','_','-'
+				funcs = {attr:funcs[attr] for attr in funcs if attr in [i.split(separator)[0] for i in keys.format.split(delimiter)]}
+				
+				if not any(i for i in string):
+					string = []
+				else:
+					for i in range(len(string)-1,-1,-1):
+						strings = Dict()
+						for index,attr in enumerate(funcs):
+							strings.update(funcs[attr](index,string[i]))
+						string[i] = strings
+						if any(isinstance(string[i][attr],iterables) for attr in string[i]):
+							string.extend((
+								Dict({**{attr:string[i][attr] for attr in string[i] if not isinstance(string[i][attr],iterables)},**attrs})
+								for attrs in permuter({attr:string[i][attr] for attr in string[i] if isinstance(string[i][attr],iterables)})
+								))
+							string.pop(i)
+				return string			
+		else:
+			string = None
+			def wrapper(string):
+				return string
+
+		string = self.parse(string,keys)
+		string = call(string,**options)
+
+		stats = wrapper(string)
+
+		return stats
+
 	def status(self,**kwargs):
 		'''
 		Status of job
 		Args:
 			kwargs (dict): Keyword arguments
 		Returns:
-			status (str): Status of job
+			status (dict): Status of job
 		'''
 
-		path = self.path
-		states = self.states
-		device = self.device
-		options = dict(execute=True,verbose=False)
+		identity = self.identification(**kwargs)
 
-		status = None
+		stats = self.stats(**kwargs)
 
-		commands = Dict(
-			# run='squeue --format="%.100j" -u {user} | tr -d " " | grep {name}',
-			# error = 'sacct --user {user} --noheader --format jobid,jobname%100,submit,start,end,state --start {start} | grep {name} | awk -F' ' -v OFS=' ' '$1 ~ /[0-9]*_[0-9]*/ {sub(/_.*/, "", $1)} 1' | sort -u -k1',
-			# error='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}" | sed "s:{pattern}:\\{n}:"',
-			# done='find {path} -maxdepth 1 -mindepth 1 -type f -size +0 -name "{error}" | sort -n | tail -1 | awk "{{print $NF}}"',
-		)
-		for attr in status:
-			string = status[attr]
-			if attr in ['run']:
-				formats = {**kwargs}
-				string = parse(string,formats)
-				string = call(string,**options)
-			elif attr in ['error']:
-				formats = {**kwargs,**dict(format="[0-9]*.[0-9]*",n='1')}
-				string = parse(status[attr],formats)
-				string = call(string,**options)
-			elif attr in ['run']:
-				formats = {**kwargs,**dict(n='1')}
-				string = parse(status[attr],formats)
-				string = call(string,**options)
-
-			status[attr] = string
+		status = Dict()
+		for state in self.states:
+			status[state] = Dict()
+			for attr in self.states[state]:
+				jobs =  [job.index if job.index is not None else job.identity for job in stats if job.state == attr]
+				if jobs:
+					status[state][attr] = jobs
 
 		return status
 
@@ -1238,6 +1306,29 @@ class Job(object):
 
 		return instructions
 
+	def keys(self,**kwargs):
+		
+		if self.device in ['local']:
+			defaults = dict()
+		elif self.device in ['slurm']:
+			defaults = dict(
+				name=self.name,
+				identity=self.identity,
+				path=self.path,
+				user='$USER',
+				format='jobid%100,jobname%100,state%100',
+				time="now-7days"
+			)
+		else:
+			defaults = dict()			
+
+		keys = Dict()
+		keys.update(self.env)
+		keys.update(defaults)
+		keys.update(kwargs)		
+
+		return keys
+
 	@property
 	def defaults(self):
 
@@ -1314,15 +1405,10 @@ class Job(object):
 		return keywords
 
 	@property
-	def errors(self):
-		errors = Dict(run=1,error=-1,done=0)
-		return errors
-
-	@property
 	def states(self):
-		if device in ['local']:
+		if self.device in ['local']:
 			states = Dict()
-		elif device in ['slurm']:
+		elif self.device in ['slurm']:
 			states = Dict(
 				run = ['PENDING','RUNNING','SUSPENDED'],
 				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
@@ -1342,6 +1428,55 @@ class Job(object):
 			delimiters = Dict(separator='=',comment='#')
 		return delimiters
 	
+	@classmethod
+	def parse(cls,string,variables):
+		'''
+		Format string '...{key}...' -> '...{key}...'.format(key=value)
+		Args:
+			string (str): String to format '...{key}...'
+			variables (dict[str,str]): Format strings {key}:value
+		Returns:
+			string (str): Formatted string
+		'''
+		template = '{%s}'
+		preprocess = {'{{':'#{{','}}':'#}}'}
+		postprocess = {'#{':'{{','#}':'}}'}
+		replacements = {'{{':'{','}}':'}','\\\\':"\\"}
+		while any(template%(attr) in string for attr in variables if variables[attr] is not None):
+			for replacement in preprocess:
+				string = string.replace(replacement,preprocess[replacement])
+
+			string = string.format(**variables)
+
+			for replacement in postprocess:
+				string = string.replace(replacement,postprocess[replacement])
+		else:
+			for replacement in replacements:
+				string = string.replace(replacement,replacements[replacement])
+		return string
+
+	@classmethod
+	def wrapper(cls,stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None):
+		def wrapper(string):
+			delimiter = ' '
+			types = (int,str)
+			if string.count(delimiter) > 1:
+				string = [i.strip() for i in string.split(delimiter) if i]
+			else:
+				for type in types:
+					try:
+						string = type(string)
+						break
+					except:
+						pass
+			return string
+
+		delimiter = '\n'
+
+		result = [wrapper(i) for i in stdout.split(delimiter)]
+
+		return result
+
 
 	# def setup(self,path=None,data=None,file=None,options=None,device=None,execute=False,verbose=None,**kwargs):
 	# 	'''
@@ -1393,7 +1528,7 @@ class Job(object):
 		env = {} if env is None else {} if not isinstance(env,dict) else env
 		kwargs = {} if kwargs is None else {} if not isinstance(kwargs,dict) else kwargs
 
-		if device in ['local']:
+		if self.device in ['local']:
 			exe = [*['%s%s'%('./' if not e.startswith('/') else '',e) for e in exe[:1]],*exe[1:]]
 			flags = [*flags]
 			cmd = [*cmd]
@@ -1418,7 +1553,7 @@ class Job(object):
 				**env			
 			}
 
-		elif device in ['slurm']:
+		elif self.device in ['slurm']:
 			exe,flags,cmd,options,env = (
 				['sbatch'],
 				[
@@ -1504,16 +1639,36 @@ class Job(object):
 			kwargs (dict): Additional logging keyword arguments						
 		'''	
 
-		attrs = ['name','identity','path','data','file','device','options','status']
-
 		msg = []
 
+		options = dict(
+			align=kwargs.get('align','<'),
+			space=kwargs.get('space',1),
+			width=kwargs.get('width',2)
+			)
+	
+		precision = kwargs.get('precision',8)
+
+		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
+
+		display = None if display is None else [display] if isinstance(display,str) else display
+		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
+
+		attrs = ['name','identity','path','data','file','device','options']
+
 		for attr in attrs:
+
 			value = getattr(self,attr,None)
-			if value is None:
+			string = None
+
+			if (display is not None and attr not in display) or (ignore is not None and attr in ignore) or (value is None):
 				continue
+
 			if callable(value):
-				string = '%s : %r'%(attr,value())
+				try:
+					string = '%s : %r'%(attr,value())
+				except:
+					string = None
 			elif isinstance(value,dict):
 				string = '%s :%s%s'%(attr,
 					'\n\t' if len(value)>1 else ' ',
@@ -1521,7 +1676,8 @@ class Job(object):
 			else:
 				string = '%s : %r'%(attr,value)
 			
-			msg.append(string)
+			if string is not None:
+				msg.append(string)
 		
 		msg = [i if isinstance(i,str) else str(i) for i in msg]
 

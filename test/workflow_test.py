@@ -24,6 +24,7 @@ def test_job(*args,**kwargs):
 		path='./job',
 		data={'config/job.slurm':'job.slurm'},
 		file='job.sh',
+		env=dict(user='$USER'),
 		options={
 			'account':'mduschenes',
 			'partition':'cpu',
@@ -42,11 +43,20 @@ def test_job(*args,**kwargs):
 		**kwargs
 		)
 
+
 	job = Job(*args,**kwargs)
 
 	job.info(verbose=verbose)
 
 	job.setup()
+
+	status = job.status()
+
+	for state in status:
+		print(state)
+		for attr in status[state]:
+			print('\t',attr,status[state][attr])
+	print(job.identity)
 
 	return
 
