@@ -2353,7 +2353,7 @@ def test_parameters(*args,**kwargs):
 				},											
 				"x":{
 					"operator":["X"],"site":"i","string":"x",
-					"parameters":0.25,"variable":False,"constant":None,"ndim":2,"seed":123456789
+					"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},												
 				"noise":{
 					"operator":["depolarize"],"site":"i","string":"noise",
