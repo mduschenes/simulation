@@ -2331,22 +2331,30 @@ def test_parameters(*args,**kwargs):
 				# 	"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				# },
-				"xx":{
-					"operator":["X","X"],"site":">ij<","string":"xx",
-					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				},	
-				"yy":{
-					"operator":["Y","Y"],"site":">ij<","string":"yy",
-					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				},	
-				"zz":{
-					"operator":["Z","Z"],"site":">ij<","string":"zz",
-					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				# "xx":{
+				# 	"operator":["X","X"],"site":">ij<","string":"xx",
+				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				# },	
+				# "yy":{
+				# 	"operator":["Y","Y"],"site":">ij<","string":"yy",
+				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				# },	
+				# "zz":{
+				# 	"operator":["Z","Z"],"site":">ij<","string":"zz",
+				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				# },											
+				# "z":{
+				# 	"operator":["Z"],"site":"i","string":"z",
+				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				# },
+				"cnot":{
+					"operator":["CNOT"],"site":">ij<","string":"cnot",
+					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},											
-				"z":{
-					"operator":["Z"],"site":"i","string":"z",
-					"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				},								
+				"x":{
+					"operator":["X"],"site":"i","string":"x",
+					"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},												
 				"noise":{
 					"operator":["depolarize"],"site":"i","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789

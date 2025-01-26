@@ -4612,7 +4612,13 @@ class Object(System):
 					if subattr is None:
 						subattr = 'data.mean'
 						if self.parameters is None or self.parameters() is None or not self.data[attr].parameters.variable:
-							substring = self.data[attr].parameters()
+							try:
+								substring = self.data[attr].parameters(self.data[attr].parameters())
+							except:
+								if self.parameters.indices is not None:
+									substring = (self.data[attr].parameters({self.data[attr].parameters.indices:self.data[attr].parameters()}),)
+								else:
+									substring = self.data[attr].parameters(self.data[attr].parameters())
 						else:
 							substring = (self.data[attr].parameters(parameters) for parameters in (
 								self.parameters(self.parameters()) if self.parameters.size>1
@@ -4696,7 +4702,7 @@ class Object(System):
 						try:
 							substring = (self.parameters(parameters) for parameters in (
 									self.parameters(self.parameters()) if self.parameters().size>1
-									else (self.parameters(self.parameters()),))) 
+									else (self.parameters(self.parameters()),)))
 						except:
 							if self.parameters.indices is not None:
 								substring = (self.parameters({self.parameters.indices:self.parameters()}),)
