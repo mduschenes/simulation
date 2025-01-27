@@ -1071,7 +1071,7 @@ class Job(object):
 		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
 		self.identity = None if self.identity is None else self.identity
 		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-		self.data = {path:join(self.data[path],root=self.path) for path in self.data} if isinstance(self.data,dict) else {self.data:join(self.data,root=self.path)}
+		self.data = {self.data:self.data} if not isinstance(self,data,dict) else self.data
 		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
 
 		self.set()
@@ -1085,13 +1085,11 @@ class Job(object):
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
 			kwargs (dict): Keyword arguments
-		Returns:
-			status (dict): Status of job
 		'''
 
 		device = device if device is not None else self.device
 		options = options if isinstance(options,dict) else self.options
-		path = self.data
+		path = self.path
 
 		# Init attributes
 		self.init(device=device)
@@ -1099,10 +1097,7 @@ class Job(object):
 		# Update options
 		self.update(options,path=path)
 
-		# Get status
-		status = self.status()
-
-		return status
+		return
 
 	def submit(self,options=None,device=None,env=None,execute=False,verbose=None,**kwargs):
 		'''
@@ -1118,7 +1113,7 @@ class Job(object):
 			identity (int): Identity of job
 		'''
 
-		paths = {path:join(self.data[path],root=self.path) for path in self.data}
+		paths = {data:data for data in self.data}
 
 		env = {**self.env,**env} if env is not None else self.env
 
@@ -1128,6 +1123,7 @@ class Job(object):
 
 		options = dict(
 			wrapper=self.wrapper,
+			path=self.path,
 			execute=execute,
 			verbose=verbose
 			)
@@ -1185,8 +1181,6 @@ class Job(object):
 
 		return identity
 
-
-
 	def identification(self,**kwargs):
 		'''
 		Identity of job
@@ -1227,7 +1221,7 @@ class Job(object):
 		Args:
 			kwargs (dict): Keyword arguments
 		Returns:
-			status (iterable[dict]): stats of job
+			stats (iterable[dict]): stats of job
 		'''
 
 		keys = self.keys(**kwargs)
@@ -1320,7 +1314,7 @@ class Job(object):
 		for state in self.states:
 			status[state] = Dict()
 			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
-				jobs =  list(set(job.index if job.index is not None else job.identity for job in stats if job.state == attr))
+				jobs =  list(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr))
 				if jobs:
 					status[state][attr] = jobs
 
@@ -1328,7 +1322,7 @@ class Job(object):
 
 	def set(self,options=None):
 		'''
-		Set class options
+		Set job options
 		Args:
 			options (dict): Class options
 		'''
@@ -1370,7 +1364,7 @@ class Job(object):
 	
 	def get(self):
 		'''
-		Get class options
+		Get job options
 		Returns:
 			options (dict): Class options
 		'''
@@ -1379,7 +1373,7 @@ class Job(object):
 
 	def update(self,options=None,path=None):
 		'''
-		Update class options
+		Update job options
 		Args:
 			options (dict): Class options
 			path (str,dict[str,str]): Path to options
@@ -1683,17 +1677,18 @@ class Job(object):
 
 		return
 
-	def load(self,path=None,wrapper=None):
+	def load(self,path=None,data=None,wrapper=None):
 		'''
 		Load job
 		Args:
 			path (str,dict[str,str]): path to job
+			data (iterable[str]): default data
 			wrapper (callable): Callable for data with signature wrapper(data)
 		Returns:
 			data (iterable[str]): job data
 		'''
 
-		paths = {path:join(self.data[path],root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
+		paths = {data:join(self.data[data],root=self.path) for data in self.data} if path is None else {data:join(self.data[data],root=path) for data in self.data} if not isinstance(path,dict) else path
 		data = None
 		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'r'
@@ -1785,7 +1780,7 @@ class Job(object):
 			wrapper (callable): Callable for data with signature wrapper(data)
 		'''
 
-		paths = {path:join(self.data[path],root=self.path) for path in self.data} if path is None else {path:path} if not isinstance(path,dict) else path
+		paths = {data:join(self.data[data],root=self.path) for data in self.data} if path is None else {data:join(self.data[data],root=path) for data in self.data} if not isinstance(path,dict) else path
 		data = None if data is None else data
 		separator,comment = self.delimiters.separator,self.delimiters.comment
 		mode = 'w'
@@ -1892,6 +1887,210 @@ class Job(object):
 					obj.writelines(data)
 		except:
 			pass
+
+		return
+
+
+class Task(Job):
+	'''
+	Task class
+	Args:
+		name (str): name of task
+		options (dict[str,str]): options for task
+		device (str): Name of device to submit to
+		identity (int): identity of task
+		jobs (iterable[Job]): related jobs of task
+		path (str): path to task
+		data (str,dict[str,str]): path of task script
+		file (str): path of task executable
+		logger (str): Name of logger
+		env (dict[str,str]): environmental variables for task
+		execute (boolean,int): Boolean whether to call commands
+		verbose (int,str,bool): Verbosity
+		kwargs (dict): Keyword arguments		
+	'''
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
+	
+		super().__init__(name=name,options=options,device=device,identity=identity,path=path,data=data,file=file,env=env,execute=execute,verbose=verbose,**kwargs)
+
+		return
+
+	def __call__(self,options=None,device=None,env=None,execute=False,verbose=None):
+		'''
+		Call task
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			env (dict[str,str]): environmental variables for job
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (identity): Identity of job
+		'''
+
+		identity = self.submit(options=options,device=device,env=env,execute=execute,verbose=verbose)
+
+		return identity
+
+	def __str__(self):
+		if isinstance(self.name,str):
+			string = self.name
+		else:
+			string = self.__class__.__name__
+		return string
+
+	def __repr__(self):
+		return self.__str__()
+
+	def init(self,*args,**kwargs):
+		'''
+		Initialize task
+		Args:
+			args (iterable): Positional arguments
+			kwargs (dict): Keyword arguments
+		'''
+
+		for attr in kwargs:
+			if hasattr(self,attr):
+				setattr(self,attr,kwargs[attr])
+
+		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
+		self.identity = None if self.identity is None or self.jobs is None else [job.identity for job in self.jobs]
+		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
+		self.data = {self.data:self.data} if not isinstance(self,data,dict) else self.data
+		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
+
+		self.set()
+
+		return
+
+	def setup(self,options=None,device=None,**kwargs):
+		'''
+		Setup task
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			kwargs (dict): Keyword arguments
+		'''
+
+		device = device if device is not None else self.device
+		options = options if isinstance(options,dict) else self.options
+		path = self.path
+
+		# Init attributes
+		self.init(device=device)
+
+		# Update options
+		self.update(options,path=path)
+
+		return
+
+	def submit(self,options=None,device=None,env=None,execute=False,verbose=None,**kwargs):
+		'''
+		Submit task
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			env (dict[str,str]): environmental variables for job
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (iterable[int]): Identity of job
+		'''
+
+		identity = []
+
+		for job in self.jobs:
+			identity.append(job.submit(options=None,device=None,env=None,execute=False,verbose=None,**kwargs))
+
+		return identity
+
+	def identification(self,**kwargs):
+		'''
+		Identity of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (iterable[int]): identity of job
+		'''
+
+		identity = []
+
+		for job in self.jobs:
+			identity.append(job.identification(**kwargs))
+
+		return identity
+
+	def stats(self,**kwargs):
+		'''
+		Stats of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			stats (iterable[dict]): stats of job
+		'''
+
+		stats = []
+
+		for job in self.jobs:
+			stats.extend(job.stats(**kwargs))
+
+		return stats
+
+	def status(self,**kwargs):
+		'''
+		Status of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			status (dict): Status of task
+		'''
+
+		status = super(self.__class__,self).status(**kwargs)
+
+		return status
+
+	def set(self,options=None):
+		'''
+		Set task options
+		Args:
+			options (dict): Class options
+		'''
+
+		kwargs = dict(options=options)
+		super(self.__class__,self).set(**kwargs)
+
+		for job in self.jobs:
+			kwargs = dict(options={**job.options,**self.options})
+			job.set(**kwargs)
+
+		return
+		
+	def get(self):
+		'''
+		Get task options
+		Returns:
+			options (dict): Class options
+		'''
+		self.set()
+		return self.options
+
+	def update(self,options=None,path=None):
+		'''
+		Update task options
+		Args:
+			options (dict): Class options
+			path (str,dict[str,str]): Path to options
+		'''		
+
+		kwargs = dict(options=options,path=path)
+		super(self.__class__,self).set(**kwargs)
+
+		for job in self.jobs:
+			kwargs = dict(options={**job.options,**self.options},path=job.path)
+			job.update(**kwargs)
 
 		return
 
