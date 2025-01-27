@@ -20,6 +20,7 @@ def test_job(*args,**kwargs):
 	kwargs = dict(
 		name='job',
 		identity=None,
+		device='slurm',		
 		jobs=[123],
 		path='./job',
 		data={'./config/job.slurm':'job.slurm'},
@@ -38,7 +39,6 @@ def test_job(*args,**kwargs):
 			'get-user-env':False,
 			'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 			},
-		device='slurm',
 		execute=True,verbose=True,
 		**kwargs
 		)

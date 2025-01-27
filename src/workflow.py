@@ -143,9 +143,9 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 			return obj
 
 		def wrap(stdout,stderr,returncode):
-			stdout = '\n'.join(stdout)
-			stderr = '\n'.join(stderr)
-			returncode =  returncode
+			stdout = '\n'.join(stdout) if stdout is not None else stdout
+			stderr = '\n'.join(stderr) if stderr is not None else stderr
+			returncode =  returncode if returncode is not None else returncode
 			return stdout,stderr,returncode
 
 		def parse(obj):
@@ -187,7 +187,11 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 			stdin = result.stdout
 
-		stdout,stderr,returncode = [],[],result.returncode
+		if not any((args,inputs,outputs,errors)):
+			result = Popen()
+			stdout,stderr,returncode = None,None,None
+		else:
+			stdout,stderr,returncode = [],[],result.returncode
 		
 		if result.stdout is not None:
 			try:
@@ -219,6 +223,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 			except:
 				stderr.append(parse(result.stderr))
 				logger(stderr[-1],verbose=verbose)
+
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
@@ -1172,7 +1177,9 @@ class Job(object):
 			
 			string = call(string,**options)			
 
-			identity = wrapper(string)
+			string = wrapper(string) 
+
+			identity = string if string is not None else self.identity
 
 		self.identity = identity
 
@@ -1189,10 +1196,6 @@ class Job(object):
 			identity (int): identity of job
 		'''
 
-		def wrapper(stats):
-			identity = max(job.identity for job in stats) if stats else None
-			return identity
-
 		if self.identity is not None:
 			identity = self.identity
 			return identity
@@ -1203,6 +1206,10 @@ class Job(object):
 			defaults = dict(format='jobid')
 		else:
 			defaults = dict()
+
+		def wrapper(stats):
+			identity = max(job.identity for job in stats) if stats else None
+			return identity
 
 		kwargs.update(defaults)
 
@@ -1235,7 +1242,7 @@ class Job(object):
 		if self.device in ['local']:
 			string = None
 			def wrapper(string):
-				return string
+				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
 		elif self.device in ['slurm']:
 			if self.identity is None:
 				string = 'sacct --noheader --user {user} --format {format}'
@@ -1248,8 +1255,11 @@ class Job(object):
 					jobid = lambda index,string: dict(
 						identity = int(string[index].split(splitter)[0]),
 						index = (
-							[i for i in range(*(int(j)+i
-								for i,j in enumerate(string[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(parser))))] 
+							[j
+								for i in string[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(delimiter)
+								if i
+								for j in ([int(i)] if not i.count(parser) else range(*(int(j)+k for k,j in enumerate(i.split(parser)))))
+							] 
 							if string[index].count(splitter) and parser in string[index] 
 							else int(string[index].split(splitter)[-1]) if string[index].count(splitter) 
 							else None)
@@ -1283,7 +1293,7 @@ class Job(object):
 		else:
 			string = None
 			def wrapper(string):
-				return string
+				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
 
 		string = self.parse(string,keys)
 		
@@ -1309,8 +1319,8 @@ class Job(object):
 		status = Dict()
 		for state in self.states:
 			status[state] = Dict()
-			for attr in self.states[state]:
-				jobs =  [job.index if job.index is not None else job.identity for job in stats if job.state == attr]
+			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
+				jobs =  list(set(job.index if job.index is not None else job.identity for job in stats if job.state == attr))
 				if jobs:
 					status[state][attr] = jobs
 
@@ -1518,7 +1528,11 @@ class Job(object):
 	@property
 	def states(self):
 		if self.device in ['local']:
-			states = Dict()
+			states = Dict(
+				run = 'run',
+				error = 'error',
+				done = 'done',
+				)
 		elif self.device in ['slurm']:
 			states = Dict(
 				run = ['PENDING','RUNNING','SUSPENDED'],
@@ -1526,7 +1540,11 @@ class Job(object):
 				done = ['COMPLETED'],
 				)
 		else:
-			states = Dict()			
+			states = Dict(
+				run = 'run',
+				error = 'error',
+				done = 'done',
+				)		
 		return states
 
 	@property
@@ -1549,6 +1567,10 @@ class Job(object):
 		Returns:
 			string (str): Formatted string
 		'''
+
+		if string is None:
+			return string
+
 		template = '{%s}'
 		preprocess = {'{{':'#{{','}}':'#}}'}
 		postprocess = {'#{':'{{','#}':'}}'}
@@ -1563,7 +1585,7 @@ class Job(object):
 				string = string.replace(replacement,postprocess[replacement])
 		else:
 			for replacement in replacements:
-				string = string.replace(replacement,replacements[replacement])
+					string = string.replace(replacement,replacements[replacement])
 		return string
 
 	@classmethod
@@ -1584,7 +1606,7 @@ class Job(object):
 
 		delimiter = '\n'
 
-		result = [wrapper(i) for i in stdout.split(delimiter)]
+		result = [wrapper(i) for i in stdout.split(delimiter)] if stdout is not None else None
 
 		return result
 
@@ -1696,13 +1718,13 @@ class Job(object):
 						key:value
 						for index,string in enumerate(data)
 						if self.instructions(string)
-						for strings in [i for i in (
+						for strings in [[i for i in (
 							separator.join(self.instructions(string,'').split(separator)[:1]),
-							separator.join(self.instructions(string,'').split(separator)[1:])) if i]		
+							separator.join(self.instructions(string,'').split(separator)[1:])) if i]]
 						for key,value in (zip(strings[0::2],strings[1::2]) if len(strings)>1 else ((*strings,None),))
 						}
-					return data
-			
+					return data		
+
 			try:
 				data = [] if data is None else data
 				for path in paths:
@@ -1776,7 +1798,7 @@ class Job(object):
 		if self.device in ['local']:
 			
 			if not callable(wrapper):
-		
+
 				def wrapper(data):
 
 					string = '{instructions}'.format(instructions=self.instructions())
@@ -1792,7 +1814,7 @@ class Job(object):
 
 						string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
 
-						index = max((index for index,line in enumerate(lines) if contains(line,string)),default=None)
+						index = min((index for index,line in enumerate(lines) if contains(line,string)),default=None)
 
 						if value is None or value is True:
 							string = '{instructions}{key}'.format(instructions=self.instructions(),key=key)
