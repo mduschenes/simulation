@@ -11,6 +11,41 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.workflow import Job,Task
+from src.workflow import call,scalars,iterables
+
+
+def test_call(*args,**kwargs):
+
+	path = 'text.tmp'
+	string = 'Test Call\nHello World'
+
+	kwargs = dict(
+		path=None,wrapper=None,env=None,
+		stdin=None,stdout=None,stderr=None,shell=None,time=None,
+		execute=True,verbose=True
+		)
+
+	args = [f'echo {string} > {path}']
+	result = call(*args,**kwargs)
+	print('-----\n%s'%(result))
+
+	args = [f'xargs echo | sed "s/World/Python/g" < {path}']
+	result = call(*args,**kwargs)
+	print('-----\n%s'%(result))
+
+	args = [f'sed -i "s/l/L/g" {path}']
+	result = call(*args,**kwargs)
+	print('-----\n%s'%(result))
+
+	args = [f'cat {path}']
+	result = call(*args,**kwargs)
+	print('-----\n%s'%(result))
+
+	args = [f'rm -rfv {path}']
+	result = call(*args,**kwargs)
+	print('-----\n%s'%(result))
+
+	return
 
 def test_job(*args,**kwargs):
 
@@ -152,5 +187,6 @@ if __name__ == '__main__':
 	args = tuple()
 	kwargs = dict()
 
+	test_call(*args,**kwargs)
 	# test_job(*args,**kwargs)
-	test_task(*args,**kwargs)
+	# test_task(*args,**kwargs)

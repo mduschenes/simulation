@@ -12,6 +12,7 @@ iterables = (list,tuple,set,)
 streams = (io.RawIOBase,)
 delimiter = '.'
 ifs = ' '
+pipe = '|'
 
 logger = Logger()
 info = 100
@@ -107,7 +108,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 	'''
 	Submit call to command line of the form $> args
 	Args:
-		args (iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value], nested iterables are piped		
+		args (iterable[str]): Arguments to pass to command line
 		path (str): Path to call from
 		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None)
 		env (dict[str,str]): Environmental variables for args		
@@ -122,11 +123,11 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,outputs=None,errors=None,env=None,shell=None,time=None,verbose=None):
+	def caller(args,stdin=None,stdout=None,stderr=None,env=None,shell=None,time=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
-			args = [ifs.join(args)] if shell else [j for i in args for j in shlex.split(i)]
+			args = [ifs.join(args)] if shell else shlex.split(args)
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 			except (OSError,FileNotFoundError) as exception:
@@ -155,14 +156,16 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 				obj = str(obj)
 			return obj
 
-		stdin = None if inputs is None else inputs if isinstance(inputs,str) else inputs.pop(0) if len(inputs)>len(args) else None
-		stdout = subprocess.PIPE if outputs is None else subprocess.PIPE
-		stderr = subprocess.PIPE if errors is None else subprocess.PIPE
+		stdpipe = subprocess.PIPE
+
+		stdin = None if stdin is None else stdin
+		stdout = stdpipe if stdout is None else stdout
+		stderr = stdpipe if stderr is None else stderr
 		returncode = None
 
-		inputs = [inputs]*len(args) if inputs is None or isinstance(inputs,str) else inputs
-		outputs = [outputs]*len(args) if outputs is None or isinstance(outputs,str) else outputs
-		errors = [errors]*len(args) if errors is None or isinstance(errors,str) else errors
+		inputs = [stdin,*[None]*(len(args)-1)]
+		outputs = [*[stdpipe]*(len(args)-1),stdout]
+		errors = [*[stdpipe]*(len(args)-1),stderr]
 
 		for arg,input,output,error in zip(args,inputs,outputs,errors):
 			if isinstance(output,str):
@@ -187,7 +190,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 			stdin = result.stdout
 
-		if not any((args,inputs,outputs,errors)):
+		if not args:
 			result = Popen()
 			stdout,stderr,returncode = None,None,None
 		else:
@@ -234,94 +237,67 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 			result = stdout
 			return result
 
-	def parser(*args,env=None,verbose=None):
+	def parser(*args,stdin=None,stdout=None,stderr=None):
 
-		args = [(str(arg) if (isinstance(arg,scalars) or isinstance(arg,str) and not arg.count(symbol)) else 
-				[str(subarg) for subarg in (arg if not isinstance(arg,scalars) else arg.split(symbol)) if subarg is not None]) 
-				for arg in args if arg is not None]
+		if all(arg is None for arg in args):
+			args,stdin,stdout,stderr = None,stdin,stdout,stderr
+			return args,stdin,stdout,stderr
 
-		pipe = any(not isinstance(arg,scalars) for arg in args)
+		args = pipe.join([str(arg) for arg in args if arg]) 
 
-		if pipe:
-			args = [[str(subarg) for subarg in arg] if not isinstance(arg,scalars) else [arg] for arg in args]
-		else:
-			args = [[str(arg) for arg in args]]
+		symbols = ['>','<']
 
+		for symbol in symbols:
+			if not args.count(symbol):
+				continue
+			
+			index = args.index(symbol)
 
-		pipe = '|'
-		symbols = ['|']
-
-		arguments = []
-		for arg in args:
-			argument = []
-			for subarg in arg:
-				if subarg is None:
-					pass
-				elif isinstance(subarg,str):
-					for symbol in symbols:
-						subarg = subarg.replace(symbol,pipe)
-					if subarg in [pipe]:
-						argument.append(pipe)
-					elif subarg.count(pipe):
-						argument.extend([j for i in subarg.split(pipe) for j in [i,pipe]])
-					else:
-						argument.append(subarg)
-				else:
-					argument.append(subarg)
-
-			arg = [[]]
-			for subarg in argument:
-				if subarg not in [pipe]:
-					arg[-1].append(subarg)
-				else:
-					arg.append([])
-
-			arguments.extend([[i.strip() for i in subarg] for subarg in arg if len(subarg)])
-
-		args = arguments
-
-		cmd = ' | '.join([
-			ifs.join([str(subarg) for subarg in arg])
-			for arg in args])
-
-		inputs = []
-		symbols = ['<']
-
-		for arg in args:
-
-			for symbol in symbols:
-				redirect = symbol in arg
-				if redirect:
-					break
-
-			if redirect:
-				index = arg.index(symbol)
-				input = ifs.join(arg[index+1:])
-				subarg = arg[:index]
+			if symbol in ['>']:
+				args,stdin,stdout,stderr = args[:index],stdin,args[index+1:],stderr
+			elif symbol in ['<']:
+				args,stdin,stdout,stderr = args[:index],args[index+1:],stdout,stderr
 			else:
-				index = None
-				input = None
-				subarg = arg[:]
+				args,stdin,stdout,stderr = args,stdin,stdout,stderr
 
-			args[args.index(arg)] = subarg
-			inputs.append(input)
+			break
 
-		return inputs,args,cmd,env
+		args = args.strip() if isinstance(args,str) else args
+		stdin = stdin.strip() if isinstance(stdin,str) else stdin
+		stdout = stdout.strip() if isinstance(stdout,str) else stdout
+		stderr = stderr.strip() if isinstance(stderr,str) else stderr
 
+		assert not any(args.count(symbol) for symbol in symbols)
 
-	inputs,args,cmd,env = parser(*args,env=env,verbose=verbose)
+		args = [arg.strip() for arg in args.split(pipe) if arg]
+
+		return args,stdin,stdout,stderr
+
+	args,stdin,stdout,stderr = parser(*args,stdin=stdin,stdout=stdout,stderr=stderr)
 	result = None
 
-	inputs = [stdin,*inputs]
-	outputs = stdout
-	errors = stderr
+	if verbose:
+		formats = dict(
+			path='{path}{space}$> '.format(path=path if path else '',space=' ' if path else ''),
+			args=(' {pipe} '.format(pipe=pipe)).join([arg.replace('\n','\\n') for arg in args]),
+			stdin=stdin,stdout=stdout
+			)
+		if isinstance(stdin,str) and isinstance(stdout,str):
+			msg = '{path}{args} < {stdin} > {stdout}'
+		elif isinstance(stdin,str):
+			msg = '{path}{args} < {stdin}'
+		elif isinstance(stdout,str):
+			msg = '{path}{args} > {stdout}'
+		else:
+			msg = '{path}{args}'
 
-	msg = '{path} : {cmd}'.format(path=path,cmd=cmd) if path is not None else '{cmd}'.format(cmd=cmd)
-	logger(msg,verbose=verbose)
+		msg = msg.format(**formats)
+
+		logger(msg,verbose=verbose)
 
 	if execute:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,shell=shell,time=time,verbose=verbose),env=env,shell=shell,time=time,verbose=verbose)
+			result = wrapper(*caller(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell,time=time,verbose=verbose),env=env,shell=shell,time=time,verbose=verbose)
 
 	return result
 
@@ -1123,7 +1099,7 @@ class Job(object):
 			identity (int): Identity of job
 		'''
 
-		paths = {data:data for data in self.data}
+		paths = {data:self.data[data] for data in self.data}
 
 		env = {**self.env,**env} if env is not None else self.env
 
@@ -1134,8 +1110,8 @@ class Job(object):
 		options = dict(
 			wrapper=self.wrapper,
 			path=self.path,
-			execute=execute,
-			verbose=verbose
+			execute=execute if execute is not None else self.execute,
+			verbose=verbose if verbose is not None else self.verbose
 			)
 
 		for path in paths:
