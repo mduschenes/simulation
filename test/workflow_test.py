@@ -39,8 +39,7 @@ def test_job(*args,**kwargs):
 			'get-user-env':False,
 			'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 			},
-		execute=True,verbose=True,
-		**kwargs
+		execute=True,verbose=True
 		)
 
 
@@ -94,14 +93,12 @@ def test_task(*args,**kwargs):
 				'get-user-env':False,
 				'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 				},
-			execute=True,verbose=True,
-			**kwargs
+			execute=True,verbose=True
 			)
 
 		job = Job(*args,**kwargs)
 
 		jobs.append(job)
-
 
 	args = tuple()
 	kwargs = dict(
@@ -126,8 +123,7 @@ def test_task(*args,**kwargs):
 			'get-user-env':False,
 			'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 			},
-		execute=True,verbose=True,
-		**kwargs
+		execute=True,verbose=True
 		)
 
 
@@ -136,6 +132,8 @@ def test_task(*args,**kwargs):
 	task.info(verbose=verbose)
 
 	task.setup()
+
+	print(task.identity)
 
 	identity = task.submit()
 

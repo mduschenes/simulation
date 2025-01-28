@@ -1069,10 +1069,20 @@ class Job(object):
 				setattr(self,attr,kwargs[attr])
 
 		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
-		self.identity = None if self.identity is None else self.identity
-		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-		self.data = {self.data:self.data} if not isinstance(self,data,dict) else self.data
+		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
 		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
+
+		if self.jobs is None:
+			self.jobs = []
+		elif not isinstance(self.jobs,iterables):
+			self.jobs = [self.jobs]
+		else:
+			self.jobs = [*self.jobs]
+
+		cls = int
+		self.jobs = [job if not isinstance(job,cls) else cls(job) for job in self.jobs]
+
+		self.identity = None if self.identity is None else self.identity
 
 		self.set()
 
@@ -1175,9 +1185,14 @@ class Job(object):
 
 			string = wrapper(string) 
 
+			import numpy as np
+			string = np.random.randint(0,10000)
+
 			identity = string if string is not None else self.identity
 
-		self.identity = identity
+		self.identity = identity if identity is not None else self.identity
+
+		identity = self.identity
 
 		return identity
 
@@ -1212,6 +1227,8 @@ class Job(object):
 		identity = wrapper(stats)
 
 		self.identity = identity
+
+		identity = self.identity
 
 		return identity
 
@@ -1314,7 +1331,8 @@ class Job(object):
 		for state in self.states:
 			status[state] = Dict()
 			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
-				jobs =  list(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr))
+				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
+							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
 				if jobs:
 					status[state][attr] = jobs
 
@@ -1377,7 +1395,7 @@ class Job(object):
 		Args:
 			options (dict): Class options
 			path (str,dict[str,str]): Path to options
-		'''		
+		'''	
 
 		self.set(options)
 
@@ -1644,7 +1662,7 @@ class Job(object):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		attrs = ['name','identity','path','data','file','device','options']
+		attrs = ['name','identity','jobs','path','data','file','device','options']
 
 		for attr in attrs:
 
@@ -1911,7 +1929,7 @@ class Task(Job):
 	'''
 	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
 	
-		super().__init__(name=name,options=options,device=device,identity=identity,path=path,data=data,file=file,env=env,execute=execute,verbose=verbose,**kwargs)
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,execute=execute,verbose=verbose,**kwargs)
 
 		return
 
@@ -1956,10 +1974,22 @@ class Task(Job):
 				setattr(self,attr,kwargs[attr])
 
 		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
-		self.identity = None if self.identity is None or self.jobs is None else [job.identity for job in self.jobs]
-		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-		self.data = {self.data:self.data} if not isinstance(self,data,dict) else self.data
+		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
 		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
+
+		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
+
+		if self.jobs is None:
+			self.jobs = []
+		elif not isinstance(self.jobs,iterables):
+			self.jobs = [self.jobs]
+		else:
+			self.jobs = [*self.jobs]
+
+		cls = Job
+		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
+
+		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
 
 		self.set()
 
@@ -2000,10 +2030,10 @@ class Task(Job):
 			identity (iterable[int]): Identity of job
 		'''
 
-		identity = []
-
 		for job in self.jobs:
-			identity.append(job.submit(options=None,device=None,env=None,execute=False,verbose=None,**kwargs))
+			identity = job.submit(options=None,device=None,env=None,execute=False,verbose=None,**kwargs)
+
+		identity = self.identification(**kwargs)
 
 		return identity
 
@@ -2020,6 +2050,10 @@ class Task(Job):
 
 		for job in self.jobs:
 			identity.append(job.identification(**kwargs))
+
+		self.identity = identity if any(i is not None for i in identity) else self.identity
+
+		identity = self.identity
 
 		return identity
 
@@ -2048,7 +2082,7 @@ class Task(Job):
 			status (dict): Status of task
 		'''
 
-		status = super(self.__class__,self).status(**kwargs)
+		status = super().status(**kwargs)
 
 		return status
 
@@ -2060,7 +2094,7 @@ class Task(Job):
 		'''
 
 		kwargs = dict(options=options)
-		super(self.__class__,self).set(**kwargs)
+		super().set(**kwargs)
 
 		for job in self.jobs:
 			kwargs = dict(options={**job.options,**self.options})
@@ -2086,7 +2120,7 @@ class Task(Job):
 		'''		
 
 		kwargs = dict(options=options,path=path)
-		super(self.__class__,self).set(**kwargs)
+		super().update(**kwargs)
 
 		for job in self.jobs:
 			kwargs = dict(options={**job.options,**self.options},path=job.path)
