@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,argparse,subprocess,shlex,itertools,json,io,re,signal
+import os,sys,argparse,subprocess,shlex,itertools,json,io,re,signal,errno,time as timer
 
 from src.logger import Logger
 
@@ -15,7 +15,7 @@ ifs = ' '
 pipe = '|'
 
 logger = Logger()
-info = 100
+info = 20
 debug = 0
 
 
@@ -65,33 +65,51 @@ class Popen(object):
 class TimeoutError(Exception):
 	pass
 
-class timeout:
+class timeout(object):
+	'''
+	Timeout class for function
+	Args: 
+		time (int,float,bool): timeout time in seconds, or boolean for infinite time
+		message (str): message once timeout
+		default (object): Default return of function if timeout
+	'''
 
 	def __init__(self,time=None,message=None,default=None):
-		self.time = time if time is not None else 1e-1
-		self.message = message if message is not None else None
+		self.time = time if (time is True or time is False) else float(time) if time is not None else 1e-1
+		self.message = message if message is not None else 'Hi'
 		self.default = default
 		self.signal = signal.SIGALRM
-		self.type = signal.ITIMER_REAL
 		self.error = TimeoutError
 		self.alarm = 0
 		return
 
+	def timer(self,time):
+		signal.alarm(int(time))
+		# signal.setitimer(signal.ITIMER_REAL,time)
+		return
 	def handler(self, signum, frame):
 		raise self.error(self.message) if self.message else self.error
+
 	def start(self):
+		if self.time is True or self.time is False:
+			return
 		signal.signal(self.signal,self.handler)
-		signal.setitimer(self.type,self.time)
+		self.timer(self.time)
 		return
 	def stop(self):
-		signal.setitimer(self.type,self.alarm)
+		if self.time is True or self.time is False:
+			return		
+		self.timer(self.alarm)
 		return
 	
 	def __enter__(self):
 		self.start()
-	
+		return
+
 	def __exit__(self,type,value,traceback):
 		self.stop()
+		print('stopped')
+		return
 
 	def __call__(self,func):
 		def wrapper(*args, **kwargs):
@@ -99,14 +117,28 @@ class timeout:
 			try:
 				result = func(*args, **kwargs)
 			finally:
-				result = self.default
 				self.stop()
 			return result
 		return wrapper
 
-def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,time=None,execute=False,verbose=None):
+
+def sleep(time):
 	'''
-	Submit call to command line of the form $> args
+	Sleep process
+	Args:
+		time (int,float): Time to sleep in seconds
+	'''
+	if time is None:
+		return
+	try:
+		timer.sleep(time)
+	except:
+		pass
+	return
+
+def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,time=None,execute=None,verbose=None):
+	'''
+	Submit call to command line of the form args
 	Args:
 		args (iterable[str]): Arguments to pass to command line
 		path (str): Path to call from
@@ -116,7 +148,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		stdout (file): Stdoutput to command
 		stderr (file): Stderr to command
 		shell (bool) : Use shell subprocess
-		time (int): Timeout		
+		time (int,float): Timeout duration in seconds
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 	Returns:
@@ -136,7 +168,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 			return result
 
 		def process(obj):
-			parse = lambda string: os.path.expandvars(os.path.expanduser(string)).replace('~',os.environ['HOME'])
+			parse = lambda obj: os.path.expandvars(os.path.expanduser(obj)).replace('~',os.environ['HOME'])
 			if isinstance(obj,str):
 				obj = parse(obj)
 			elif isinstance(obj,iterables):
@@ -159,23 +191,23 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		stdpipe = subprocess.PIPE
 
 		stdin = None if stdin is None else stdin
-		stdout = stdpipe if stdout is None else stdout
-		stderr = stdpipe if stderr is None else stderr
+		stdout = stdout if stdout is None else stdout
+		stderr = stderr
 		returncode = None
 
 		inputs = [stdin,*[None]*(len(args)-1)]
-		outputs = [*[stdpipe]*(len(args)-1),stdout]
-		errors = [*[stdpipe]*(len(args)-1),stderr]
+		outputs = [*[stdpipe]*(len(args)-1),stdout if stdout is not None else stdpipe]
+		errors = [*[stdpipe]*(len(args)-1),stderr if stderr is not None else stdpipe]
 
-		for arg,input,output,error in zip(args,inputs,outputs,errors):
+		for index,(arg,input,output,error) in enumerate(zip(args,inputs,outputs,errors)):
 			if isinstance(output,str):
 				mkdir(output)
 			if isinstance(error,str):
 				mkdir(error)
 
 			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
-			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
-			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stderr
+			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stderr
+			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stdpipe
 
 			arg = process(arg)
 
@@ -190,6 +222,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 			stdin = result.stdout
 
+
 		if not args:
 			result = Popen()
 			stdout,stderr,returncode = None,None,None
@@ -198,37 +231,39 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		
 		if result.stdout is not None:
 			try:
-				with timeout(time=time):
-					for line in result.stdout:
-						stdout.append(parse(line))			
-						logger(stdout[-1],verbose=verbose)
-			except TimeoutError:
-				pass
-			except:
-				with timeout(time=time):
-					stdout.append(parse(result.stdout))
+				for line in result.stdout:
+					stdout.append(parse(line))		
 					logger(stdout[-1],verbose=verbose)
+			except TimeoutError as exception:
+				pass
+			except Exception as exception:
+				stdout.append(parse(result.stdout))
+				logger(stdout[-1],verbose=verbose)
 		
+
 		try:
-			returncode = timeout(time=time,default=-1)(result.wait)()
+			returncode = result.wait()
 		except TimeoutError:
 			returncode = -1
+		
+		if result.stdout is not None:
+			result.stdout.flush()
 
 		if result.stderr is not None:
 			try:
-				with timeout(time=time):
-					for line in result.stderr:	
-						stderr.append(parse(line))
-						if returncode is not None:
-							logger(stderr[-1],verbose=verbose)
+				for line in result.stderr:	
+					stderr.append(parse(line))
+					if returncode is not None:
+						logger(stderr[-1],verbose=verbose)
 			except TimeoutError:
 				pass
 			except:
 				stderr.append(parse(result.stderr))
 				logger(stderr[-1],verbose=verbose)
 
-
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
+
+		sleep(time)
 
 		return stdout,stderr,returncode
 
@@ -278,7 +313,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 
 	if verbose:
 		formats = dict(
-			path='{path}{space}$> '.format(path=path if path else '',space=' ' if path else ''),
+			path='{path}{space}'.format(path='{path}'.format(path=path) if path else '',space='$> ' if path else ' '),
 			args=(' {pipe} '.format(pipe=pipe)).join([arg.replace('\n','\\n') for arg in args]),
 			stdin=stdin,stdout=stdout
 			)
@@ -634,6 +669,7 @@ class cd(object):
 		path (str): Path to change to
 	'''
 	def __init__(self,path):
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
 		mkdir(path)
 		self.path = path
 		return
@@ -641,9 +677,8 @@ class cd(object):
 	def __enter__(self):
 		self.cwd = cwd()
 		try:
-			path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
-			os.chdir(path)
-		except:
+			os.chdir(self.path)
+		except Exception as exception:
 			pass
 		return
 
@@ -681,13 +716,10 @@ def mkdir(path,execute=None,verbose=None):
 		verbose (int,str,bool): verbosity
 	'''
 
-	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
+	path = dirname(path)
 
-	args = ['mkdir','-p',path]
-
-	if path is not None and not exists(path):
-		result = call(*args,execute=execute,verbose=verbose)
-
+	if path not in ['',None] and not exists(path):
+		os.makedirs(path)
 
 	return
 
@@ -973,17 +1005,18 @@ class Job(object):
 		options (dict[str,str]): options for job
 		device (str): Name of device to submit to
 		identity (int): identity of job
-		jobs (iterable[Job]): related jobs of job
+		jobs (iterable[Job,str,int]): related jobs of job
 		path (str): path to job
 		data (str,dict[str,str]): path of job script
 		file (str): path of job executable
 		logger (str): Name of logger
 		env (dict[str,str]): environmental variables for job
+		time (int,float): Timeout duration in seconds
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 		
 		self.name = None if name is None else name
 		self.options = {} if options is None else options
@@ -995,6 +1028,7 @@ class Job(object):
 		self.file = None if file is None else file
 		self.env  = {} if env is None else env
 		self.logger = None if logger is None else None
+		self.time = None if time is None else None
 		self.execute = False if execute is None else execute
 		self.verbose = None if verbose is None else verbose
 
@@ -1004,13 +1038,14 @@ class Job(object):
 
 		return
 
-	def __call__(self,options=None,device=None,env=None,execute=False,verbose=None):
+	def __call__(self,options=None,device=None,env=None,time=None,execute=None,verbose=None):
 		'''
 		Call job
 		Args:
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
 			env (dict[str,str]): environmental variables for job
+			time (int,float): Timeout duration in seconds
 			execute (boolean,int): Boolean whether to call commands
 			verbose (int,str,bool): Verbosity
 			kwargs (dict): Keyword arguments
@@ -1052,11 +1087,9 @@ class Job(object):
 			self.jobs = []
 		elif not isinstance(self.jobs,iterables):
 			self.jobs = [self.jobs]
-		else:
-			self.jobs = [*self.jobs]
 
-		cls = int
-		self.jobs = [job if not isinstance(job,cls) else cls(job) for job in self.jobs]
+		cls = Job
+		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
 
 		self.identity = None if self.identity is None else self.identity
 
@@ -1085,7 +1118,7 @@ class Job(object):
 
 		return
 
-	def submit(self,options=None,device=None,env=None,execute=False,verbose=None,**kwargs):
+	def submit(self,options=None,device=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 		'''
 		Submit job
 		Args:
@@ -1093,6 +1126,7 @@ class Job(object):
 			device (str): Name of device to submit to
 			env (dict[str,str]): environmental variables for job
 			execute (boolean,int): Boolean whether to call commands
+			time (int,float): Timeout duration in seconds
 			verbose (int,str,bool): Verbosity
 			kwargs (dict): Keyword arguments
 		Returns:
@@ -1108,8 +1142,9 @@ class Job(object):
 		keys = self.keys(**kwargs)
 
 		options = dict(
-			wrapper=self.wrapper,
 			path=self.path,
+			wrapper=self.wrapper,
+			time=time if time is not None else self.time if self.time and self.time <=1 else None,
 			execute=execute if execute is not None else self.execute,
 			verbose=verbose if verbose is not None else self.verbose
 			)
@@ -1119,52 +1154,49 @@ class Job(object):
 			path = paths[path]
 
 			if self.device in ['local']:
-				string = '{cmd}{flags}{exe}{path}'.format(
+				args = '{cmd}{flags}{exe}{path}'.format(
 					cmd='',
 					flags=' '.join('{key}={value}'.format(key=key,value=env[key]) for key in env),
 					exe=' ./' if not path.startswith('/') else ' ',
 					path=path
 					)
-				def wrapper(string):
+				def wrapper(data):
 					try:
-						string = int(string[-1])
+						data = int(data[-1])
 					except:
-						string = None
-					return string
+						data = None
+					return data
 
 			elif self.device in ['slurm']:
 
-				string = '{cmd}{flags}{exe}{path}'.format(
+				args = '{cmd}{flags}{exe}{path}'.format(
 					cmd='sbatch ',
 					flags='--export={env}'.format(env=','.join('{key}={value}'.format(key=key,value=env[key]) for key in env)) if env else '',
 					exe=' < ',
 					path=path
 					)
-				def wrapper(string):
+				def wrapper(data):
 					try:
-						string = int(string[-1])
+						data = int(data[-1])
 					except:
-						string = None
-					return string
+						data = None
+					return data
 			else:
-				string = None
-				def wrapper(string):
+				args = None
+				def wrapper(data):
 					try:
-						string = int(string[-1])
+						data = int(data[-1])
 					except:
-						string = None
-					return string
+						data = None
+					return data
 		
-			string = self.parse(string,keys)
+			args = self.parse(args,keys)
 			
-			string = call(string,**options)			
+			data = call(args,**options)			
 
-			string = wrapper(string) 
+			data = wrapper(data) 
 
-			import numpy as np
-			string = np.random.randint(0,10000)
-
-			identity = string if string is not None else self.identity
+			identity = data if data is not None else self.identity
 
 		self.identity = identity if identity is not None else self.identity
 
@@ -1220,73 +1252,113 @@ class Job(object):
 		keys = self.keys(**kwargs)
 
 		options = dict(
+			path=self.path,
+			time=self.time if self.time and self.time <=1 else 1,
 			wrapper=self.wrapper,
-			execute=True,
-			verbose=False
+			execute=self.execute,
+			verbose=self.verbose
 			)
+		
 		status = None
 
 		if self.device in ['local']:
-			string = None
-			def wrapper(string):
+			args = None
+			def wrapper(data):
 				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
 		elif self.device in ['slurm']:
 			if self.identity is None:
-				string = 'sacct --noheader --user {user} --format {format}'
-				string = "cat job/slurm.txt | grep {name}"
+				args = 'sacct --noheader --allocations --user={user} --format={format} --name={name} --start={history}'
+				# args = "cat job/slurm.txt | grep {name}"
 			elif self.identity is not None:
-				string = 'sacct --noheader --user {user} --jobs {identity} --format {format}'
-				string = "cat job/slurm.txt | grep {name} | grep {identity}"
-			def wrapper(string):
-				funcs = dict(
-					jobid = lambda index,string: dict(
-						identity = int(string[index].split(splitter)[0]),
-						index = (
-							[j
-								for i in string[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(delimiter)
+				args = 'sacct --noheader --allocations --user={user} --jobs={identity} --name={name} --format={format} --start={history}'
+				# args = "cat job/slurm.txt | grep {name} | grep {identity}"
+			def wrapper(data):
+
+				if data is None:
+					return data
+
+				funcs = dict()
+
+				func = 'jobid'
+				def function(index,data,attrs):
+
+					if data[index].split(splitter)[0].isdigit():
+						value = int(data[index].split(splitter)[0])
+						attrs['identity'] = value
+					
+					if data[index].count(splitter):
+						if (parser not in data[index]) and (delimiter not in data[index]):
+							value = data[index].split(splitter)[-1].replace('[','').replace(']','')
+							value = int(value) if value.isdigit() else False
+						else:
+							value = [j
+								for i in data[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(delimiter)
 								if i
-								for j in ([int(i)] if not i.count(parser) else range(*(int(j)+k for k,j in enumerate(i.split(parser)))))
-							] 
-							if string[index].count(splitter) and parser in string[index] 
-							else int(string[index].split(splitter)[-1]) if string[index].count(splitter) 
-							else None)
-						),
-					jobname = lambda index,string: dict(
-						name = str(string[index])
-						),
-					state = lambda index,string: dict(
-						state = str(string[index])						
-						)
-					)
+								for j in ([int(i) if i.isdigit() else False] if not i.count(parser) else (range(*(int(j)+k for k,j in enumerate(i.split(parser)))) if all(j.isdigit() for j in i.split(parser)) else [False]))
+								]
+							value = value if value and all(i is not None for i in value) else None
+						attrs['index'] = value
+
+					if isinstance(attrs['index'],iterables) and any(i is False for i in attrs['index']) or attrs['index'] is False:
+						attrs.update({attr:None for attr in attrs})
+
+					return
+				funcs[func] = function
+
+				func = 'jobname'
+				def function(index,data,attrs):
+					attrs.update(dict(name=str(data[index])))
+					return
+				funcs[func] = function
+
+				func = 'state'
+				def function(index,data,attrs):
+					attrs.update(dict(state=str(data[index])))
+					return
+				funcs[func] = function
 
 				separator,delimiter,splitter,parser = '%',',','_','-'
-				funcs = {attr:funcs[attr] for attr in funcs if attr in [i.split(separator)[0] for i in keys.format.split(delimiter)]}
 				
-				if not any(i for i in string):
-					string = []
+				if not any(i for i in data):
+					data = []
 				else:
-					for i in range(len(string)-1,-1,-1):
-						strings = Dict()
+					for i in range(len(data)-1,-1,-1):
+						attrs = Dict()
 						for index,attr in enumerate(funcs):
-							strings.update(funcs[attr](index,string[i]))
-						string[i] = strings
-						if any(isinstance(string[i][attr],iterables) for attr in string[i]):
-							string.extend((
-								Dict({**{attr:string[i][attr] for attr in string[i] if not isinstance(string[i][attr],iterables)},**attrs})
-								for attrs in permuter({attr:string[i][attr] for attr in string[i] if isinstance(string[i][attr],iterables)})
+							funcs[attr](index,data[i],attrs)
+						data[i] = attrs
+						if not data[i] or all(data[i][attr] is None for attr in data[i]):
+							data.pop(i)
+						elif data[i].identity is None:
+							data.pop(i)
+						elif any(isinstance(data[i][attr],iterables) for attr in data[i]):
+							data.extend((
+								Dict({**{attr:data[i][attr] for attr in data[i] if not isinstance(data[i][attr],iterables)},**attrs})
+								for attrs in permuter({attr:data[i][attr] for attr in data[i] if isinstance(data[i][attr],iterables)})
 								))
-							string.pop(i)
-				return string			
+							data.pop(i)
+				
+				boolean = lambda data,obj=max(i.identity for i in data) if data else None:data.identity==obj
+				
+				data = [i for i in data if boolean(i)]
+				
+				return data		
 		else:
-			string = None
-			def wrapper(string):
+			args = None
+			def wrapper(data):
 				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
 
-		string = self.parse(string,keys)
-		
-		string = call(string,**options)
+		args = self.parse(args,keys)
+		data = None
+		time,timeout = 0,10
+		timeout = 
 
-		stats = wrapper(string)
+		while data is None and time < timeout:
+			data = call(args,**options)
+			data = wrapper(data)
+			time += 1
+
+		stats = data
 
 		return stats
 
@@ -1416,7 +1488,7 @@ class Job(object):
 		return instructions
 
 	def keys(self,**kwargs):
-		
+
 		if self.device in ['local']:
 			defaults = dict()
 		elif self.device in ['slurm']:
@@ -1425,8 +1497,8 @@ class Job(object):
 				identity=self.identity,
 				path=self.path,
 				user='$USER',
-				format='jobid%100,jobname%100,state%100',
-				time="now-7days"
+				format='jobid,jobname,state',
+				history="now-1hour"
 			)
 		else:
 			defaults = dict()			
@@ -1434,7 +1506,8 @@ class Job(object):
 		keys = Dict()
 		keys.update(self.env)
 		keys.update(defaults)
-		keys.update(kwargs)		
+		keys.update(self.kwargs)
+		keys.update(kwargs)	
 
 		return keys
 
@@ -1462,8 +1535,8 @@ class Job(object):
 							if isinstance(options.get(option),str) and options.get(option).count(':') > 0 
 							else options.get(option) if isinstance(options.get(option),str) 
 							else'',
-						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs])
-					)
+						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs if isinstance(job,(self.__class__,int))])
+					) if self.jobs and any(isinstance(job,(self.__class__,int)) for job in self.jobs) else False
 				return data
 			option = 'dependency'
 			defaults[option] = func
@@ -1594,7 +1667,7 @@ class Job(object):
 
 		delimiter = '\n'
 
-		result = [wrapper(i) for i in stdout.split(delimiter)] if stdout is not None else None
+		result = [wrapper(i) for i in stdout.split(delimiter) if i] if stdout and any(stdout.split(delimiter)) is not None else None
 
 		return result
 
@@ -1877,7 +1950,13 @@ class Job(object):
 
 		try:
 			for path in paths:
-				with open(paths[path],mode) as obj:
+
+				path = paths[path]
+				
+				if not exists(dirname(path)):
+					mkdir(dirname(path))
+
+				with open(path,mode) as obj:
 					obj.writelines(data)
 		except:
 			pass
@@ -1893,29 +1972,31 @@ class Task(Job):
 		options (dict[str,str]): options for task
 		device (str): Name of device to submit to
 		identity (int): identity of task
-		jobs (iterable[Job]): related jobs of task
+		jobs (iterable[Job,dict]): related jobs of task
 		path (str): path to task
 		data (str,dict[str,str]): path of task script
 		file (str): path of task executable
 		logger (str): Name of logger
 		env (dict[str,str]): environmental variables for task
+		time (int,float): Timeout duration in seconds		
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,execute=False,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 	
-		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,execute=execute,verbose=verbose,**kwargs)
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
 
 		return
 
-	def __call__(self,options=None,device=None,env=None,execute=False,verbose=None):
+	def __call__(self,options=None,device=None,env=None,time=None,execute=None,verbose=None):
 		'''
 		Call task
 		Args:
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
 			env (dict[str,str]): environmental variables for job
+			time (int,float): Timeout duration in seconds
 			execute (boolean,int): Boolean whether to call commands
 			verbose (int,str,bool): Verbosity
 			kwargs (dict): Keyword arguments
@@ -1923,7 +2004,7 @@ class Task(Job):
 			identity (identity): Identity of job
 		'''
 
-		identity = self.submit(options=options,device=device,env=env,execute=execute,verbose=verbose)
+		identity = self.submit(options=options,device=device,env=env,time=time,execute=execute,verbose=verbose)
 
 		return identity
 
@@ -1959,13 +2040,28 @@ class Task(Job):
 			self.jobs = []
 		elif not isinstance(self.jobs,iterables):
 			self.jobs = [self.jobs]
-		else:
-			self.jobs = [*self.jobs]
 
 		cls = Job
 		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
 
 		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
+
+		for job in self.jobs:
+			keywords = dict(
+				jobs=[
+					*[i for i in self.jobs if any(
+						(isinstance(j,cls) and j in self.jobs) or 
+						(isinstance(j,str) and i.name==j) or
+						(isinstance(i,int) and i.identity==j)
+						for j in job.jobs)
+						],
+					*[i for i in job.jobs if (
+						(isinstance(i,cls) and i not in self.jobs)
+						)
+						],
+					]
+				)
+			job.init(**keywords)
 
 		self.set()
 
@@ -1992,13 +2088,14 @@ class Task(Job):
 
 		return
 
-	def submit(self,options=None,device=None,env=None,execute=False,verbose=None,**kwargs):
+	def submit(self,options=None,device=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 		'''
 		Submit task
 		Args:
 			options (dict[str,str]): options for job
 			device (str): Name of device to submit to
 			env (dict[str,str]): environmental variables for job
+			time (int,float): Timeout duration in seconds
 			execute (boolean,int): Boolean whether to call commands
 			verbose (int,str,bool): Verbosity
 			kwargs (dict): Keyword arguments
@@ -2007,9 +2104,14 @@ class Task(Job):
 		'''
 
 		for job in self.jobs:
-			identity = job.submit(options=None,device=None,env=None,execute=False,verbose=None,**kwargs)
+			keywords = dict(options=options,device=device,env=env,execute=execute,verbose=verbose,**kwargs)
+			identity = job.submit(**keywords)
+
 
 		identity = self.identification(**kwargs)
+
+		print(self.identity)
+		exit()
 
 		return identity
 
@@ -2025,7 +2127,8 @@ class Task(Job):
 		identity = []
 
 		for job in self.jobs:
-			identity.append(job.identification(**kwargs))
+			keywords = dict(**kwargs)
+			identity.append(job.identification(**keywords))
 
 		self.identity = identity if any(i is not None for i in identity) else self.identity
 
@@ -2045,7 +2148,8 @@ class Task(Job):
 		stats = []
 
 		for job in self.jobs:
-			stats.extend(job.stats(**kwargs))
+			keywords = dict(**kwargs)
+			stats.extend(job.stats(**keywords))
 
 		return stats
 
@@ -2069,12 +2173,12 @@ class Task(Job):
 			options (dict): Class options
 		'''
 
-		kwargs = dict(options=options)
-		super().set(**kwargs)
+		keywords = dict(options=options)
+		super().set(**keywords)
 
 		for job in self.jobs:
-			kwargs = dict(options={**job.options,**self.options})
-			job.set(**kwargs)
+			keywords = dict(options={**job.options,**self.options})
+			job.set(**keywords)
 
 		return
 		
@@ -2095,12 +2199,12 @@ class Task(Job):
 			path (str,dict[str,str]): Path to options
 		'''		
 
-		kwargs = dict(options=options,path=path)
-		super().update(**kwargs)
+		keywords = dict(options=options,path=path)
+		super().update(**keywords)
 
 		for job in self.jobs:
-			kwargs = dict(options={**job.options,**self.options},path=job.path)
-			job.update(**kwargs)
+			keywords = dict(options={**job.options,**self.options},path=job.path)
+			job.update(**keywords)
 
 		return
 
