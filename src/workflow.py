@@ -62,9 +62,6 @@ class Popen(object):
 		returncode = self.returncode
 		return returncode
 
-class TimeoutError(Exception):
-	pass
-
 class timeout(object):
 	'''
 	Timeout class for function
@@ -76,20 +73,17 @@ class timeout(object):
 
 	def __init__(self,time=None,message=None,default=None):
 		self.time = time if (time is True or time is False) else float(time) if time is not None else 1e-1
-		self.message = message if message is not None else 'Hi'
+		self.message = message if message is not None else None
 		self.default = default
 		self.signal = signal.SIGALRM
-		self.error = TimeoutError
 		self.alarm = 0
 		return
 
 	def timer(self,time):
-		signal.alarm(int(time))
-		# signal.setitimer(signal.ITIMER_REAL,time)
+		signal.setitimer(signal.ITIMER_REAL,time)
 		return
 	def handler(self, signum, frame):
 		raise self.error(self.message) if self.message else self.error
-
 	def start(self):
 		if self.time is True or self.time is False:
 			return
@@ -108,7 +102,6 @@ class timeout(object):
 
 	def __exit__(self,type,value,traceback):
 		self.stop()
-		print('stopped')
 		return
 
 	def __call__(self,func):
@@ -120,6 +113,9 @@ class timeout(object):
 				self.stop()
 			return result
 		return wrapper
+
+	class error(Exception):
+		pass
 
 
 def sleep(time):
@@ -142,7 +138,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 	Args:
 		args (iterable[str]): Arguments to pass to command line
 		path (str): Path to call from
-		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None)
+		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,msg=None,time=None,execute=None,verbose=None)
 		env (dict[str,str]): Environmental variables for args		
 		stdin (file): Stdinput stream to command
 		stdout (file): Stdoutput to command
@@ -155,7 +151,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		result (object): Return of commands
 	'''
 
-	def caller(args,stdin=None,stdout=None,stderr=None,env=None,shell=None,time=None,verbose=None):
+	def caller(args,stdin=None,stdout=None,stderr=None,env=None,shell=None,time=None,msg=None,execute=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
@@ -234,16 +230,14 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 				for line in result.stdout:
 					stdout.append(parse(line))		
 					logger(stdout[-1],verbose=verbose)
-			except TimeoutError as exception:
-				pass
-			except Exception as exception:
+			except:
 				stdout.append(parse(result.stdout))
 				logger(stdout[-1],verbose=verbose)
 		
 
 		try:
 			returncode = result.wait()
-		except TimeoutError:
+		except:
 			returncode = -1
 		
 		if result.stdout is not None:
@@ -254,12 +248,10 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 				for line in result.stderr:	
 					stderr.append(parse(line))
 					if returncode is not None:
-						logger(stderr[-1],verbose=verbose)
-			except TimeoutError:
-				pass
+						logger('{msg}\n{line}'.format(msg=msg,line=stderr[-1]),verbose=True)
 			except:
 				stderr.append(parse(result.stderr))
-				logger(stderr[-1],verbose=verbose)
+				logger('{msg}\n{line}'.format(msg=msg,line=stderr[-1]),verbose=True)
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
@@ -268,7 +260,7 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		return stdout,stderr,returncode
 
 	if not callable(wrapper):
-		def wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None):
+		def wrapper(stdout,stderr,returncode,env=None,shell=None,time=None,msg=None,execute=None,verbose=None):
 			result = stdout
 			return result
 
@@ -311,28 +303,27 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 	args,stdin,stdout,stderr = parser(*args,stdin=stdin,stdout=stdout,stderr=stderr)
 	result = None
 
-	if verbose:
-		formats = dict(
-			path='{path}{space}'.format(path='{path}'.format(path=path) if path else '',space='$> ' if path else ' '),
-			args=(' {pipe} '.format(pipe=pipe)).join([arg.replace('\n','\\n') for arg in args]),
-			stdin=stdin,stdout=stdout
-			)
-		if isinstance(stdin,str) and isinstance(stdout,str):
-			msg = '{path}{args} < {stdin} > {stdout}'
-		elif isinstance(stdin,str):
-			msg = '{path}{args} < {stdin}'
-		elif isinstance(stdout,str):
-			msg = '{path}{args} > {stdout}'
-		else:
-			msg = '{path}{args}'
+	formats = dict(
+		path='{path}{space}'.format(path='{path}'.format(path=path) if path else '',space='$> ' if path else ' '),
+		args=(' {pipe} '.format(pipe=pipe)).join([arg.replace('\n','\\n') for arg in args]),
+		stdin=stdin,stdout=stdout
+		)
+	if isinstance(stdin,str) and isinstance(stdout,str):
+		msg = '{path}{args} < {stdin} > {stdout}'
+	elif isinstance(stdin,str):
+		msg = '{path}{args} < {stdin}'
+	elif isinstance(stdout,str):
+		msg = '{path}{args} > {stdout}'
+	else:
+		msg = '{path}{args}'
 
-		msg = msg.format(**formats)
+	msg = msg.format(**formats)
 
-		logger(msg,verbose=verbose)
+	logger(msg,verbose=verbose)
 
 	if execute:
 		with cd(path):
-			result = wrapper(*caller(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell,time=time,verbose=verbose),env=env,shell=shell,time=time,verbose=verbose)
+			result = wrapper(*caller(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell,msg=msg,time=time,verbose=verbose),env=env,shell=shell,msg=msg,time=time,verbose=verbose)
 
 	return result
 
@@ -678,7 +669,7 @@ class cd(object):
 		self.cwd = cwd()
 		try:
 			os.chdir(self.path)
-		except Exception as exception:
+		except:
 			pass
 		return
 
@@ -1028,7 +1019,7 @@ class Job(object):
 		self.file = None if file is None else file
 		self.env  = {} if env is None else env
 		self.logger = None if logger is None else None
-		self.time = None if time is None else None
+		self.time = None if time is None else time
 		self.execute = False if execute is None else execute
 		self.verbose = None if verbose is None else verbose
 
@@ -1053,7 +1044,7 @@ class Job(object):
 			identity (identity): Identity of job
 		'''
 
-		identity = self.submit(options=options,device=device,env=env,execute=execute,verbose=verbose)
+		identity = self.submit(options=options,device=device,env=env,time=time,execute=execute,verbose=verbose)
 
 		return identity
 
@@ -1253,7 +1244,7 @@ class Job(object):
 
 		options = dict(
 			path=self.path,
-			time=self.time if self.time and self.time <=1 else 1,
+			time=self.time if self.time and self.time <=1 else None,
 			wrapper=self.wrapper,
 			execute=self.execute,
 			verbose=self.verbose
@@ -1282,11 +1273,15 @@ class Job(object):
 				func = 'jobid'
 				def function(index,data,attrs):
 
-					if data[index].split(splitter)[0].isdigit():
+					if isinstance(data,int):
+						attrs['identity'] = data
+					elif data[index].split(splitter)[0].isdigit():
 						value = int(data[index].split(splitter)[0])
 						attrs['identity'] = value
 					
-					if data[index].count(splitter):
+					if isinstance(data,int):
+						attrs['index'] = None
+					elif data[index].count(splitter):
 						if (parser not in data[index]) and (delimiter not in data[index]):
 							value = data[index].split(splitter)[-1].replace('[','').replace(']','')
 							value = int(value) if value.isdigit() else False
@@ -1307,13 +1302,13 @@ class Job(object):
 
 				func = 'jobname'
 				def function(index,data,attrs):
-					attrs.update(dict(name=str(data[index])))
+					attrs.update(dict(name=str(data[index]) if not isinstance(data,int) else None))
 					return
 				funcs[func] = function
 
 				func = 'state'
 				def function(index,data,attrs):
-					attrs.update(dict(state=str(data[index])))
+					attrs.update(dict(state=str(data[index]) if not isinstance(data,int) else None))
 					return
 				funcs[func] = function
 
@@ -1350,13 +1345,14 @@ class Job(object):
 
 		args = self.parse(args,keys)
 		data = None
-		time,timeout = 0,10
-		timeout = 
+		time,timeout = 0,self.time if self.time else 0
 
-		while data is None and time < timeout:
+		while data is None and time <= timeout:
 			data = call(args,**options)
 			data = wrapper(data)
 			time += 1
+		else:
+			data = []
 
 		stats = data
 
@@ -1402,7 +1398,7 @@ class Job(object):
 				if callable(defaults[option]):
 					try:
 						self.options[option] = defaults[option](option,options={**self.options,**options})
-					except Exception as exception:
+					except:
 						if option in self.options:
 							self.options.pop(option)					
 				else:
@@ -1529,14 +1525,17 @@ class Job(object):
 			defaults[option] = func
 
 			def func(option,options):
-				assert options.get(option) is not None or self.jobs
-				data = '{key}:{value}'.format(
-						key=':'.join(options.get(option).split(':')[:-1]) 
-							if isinstance(options.get(option),str) and options.get(option).count(':') > 0 
-							else options.get(option) if isinstance(options.get(option),str) 
-							else'',
-						value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs if isinstance(job,(self.__class__,int))])
-					) if self.jobs and any(isinstance(job,(self.__class__,int)) for job in self.jobs) else False
+				if not self.jobs or not any((isinstance(job,self.__class__) and job.identity is not None) or (isinstance(job,int) and job is not None) for job in self.jobs):
+					data = False
+				else:
+					data = options.get(option) if options.get(option) else 'afterany:'
+					data = '{key}:{value}'.format(
+							key=':'.join(data.split(':')[:-1]) 
+								if isinstance(data,str) and data.count(':') > 0 
+								else data if isinstance(data,str) 
+								else'',
+							value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs if (isinstance(job,self.__class__) and job.identity is not None) or (isinstance(job,int) and job is not None)])
+						)
 				return data
 			option = 'dependency'
 			defaults[option] = func
@@ -1650,7 +1649,7 @@ class Job(object):
 		return string
 
 	@classmethod
-	def wrapper(cls,stdout,stderr,returncode,env=None,shell=None,time=None,verbose=None):
+	def wrapper(cls,stdout,stderr,returncode,env=None,shell=None,time=None,msg=None,execute=None,verbose=None):
 		def wrapper(string):
 			delimiter = ' '
 			types = (int,str)
@@ -1729,14 +1728,15 @@ class Job(object):
 			elif isinstance(value,dict):
 				string = '%s :%s%s'%(attr,
 					'\n\t' if len(value)>1 else ' ',
-					('\n\t' if len(value)>1 else ' ').join(['%s %s %r'%(kwarg,':' if len(value)>1 else '->',value[kwarg]) for kwarg in value]))
+					('\n\t' if len(value)>1 else ' ').join(['%s %s %r'%(kwarg,':',value[kwarg])
+						for kwarg in value if value[kwarg] is not None and value[kwarg] is not False])) if any(value[kwarg] for kwarg in value) else None
 			else:
-				string = '%s : %r'%(attr,value)
+				string = '%s : %r'%(attr,value) 
 			
 			if string is not None:
 				msg.append(string)
 		
-		msg = [i if isinstance(i,str) else str(i) for i in msg]
+		msg = [i if isinstance(i,str) else str(i) for i in msg if i is not None]
 
 		msg = '\n'.join(msg)
 
@@ -2050,7 +2050,7 @@ class Task(Job):
 			keywords = dict(
 				jobs=[
 					*[i for i in self.jobs if any(
-						(isinstance(j,cls) and j in self.jobs) or 
+						(isinstance(j,cls) and i==j) or 
 						(isinstance(j,str) and i.name==j) or
 						(isinstance(i,int) and i.identity==j)
 						for j in job.jobs)
@@ -2059,7 +2059,8 @@ class Task(Job):
 						(isinstance(i,cls) and i not in self.jobs)
 						)
 						],
-					]
+					],
+				execute = self.execute
 				)
 			job.init(**keywords)
 
@@ -2104,14 +2105,10 @@ class Task(Job):
 		'''
 
 		for job in self.jobs:
-			keywords = dict(options=options,device=device,env=env,execute=execute,verbose=verbose,**kwargs)
+			keywords = dict(options=options,device=device,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
 			identity = job.submit(**keywords)
 
-
 		identity = self.identification(**kwargs)
-
-		print(self.identity)
-		exit()
 
 		return identity
 
@@ -2208,7 +2205,12 @@ class Task(Job):
 
 		return
 
+	@property
+	def defaults(self):
 
+		defaults = {}
+
+		return defaults
 
 def workflow(func,settings,*args,**kwargs):
 	'''

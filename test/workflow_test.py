@@ -142,14 +142,22 @@ def test_parse(*args,**kwargs):
 
 
 def test_timeout(*args,**kwargs):
-	time = 3
+
+	def func(i):
+		i = sum(range(i))
+		return
+
+	time = 1
 	pause = 0.5
 	i = 1
-	with timeout(time=time):
-		while i:
-			sleep(pause)
-			print('Sleeping',i)
-			i += 1
+	try:
+		with timeout(time=time):
+			while i:
+				func(i)
+				i += 1
+	except timeout.error:
+		print('Timed Out')
+		pass
 
 	return
 
@@ -289,7 +297,7 @@ def test_task(*args,**kwargs):
 				'get-user-env':False,
 				'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 				},
-			execute=True,verbose=True
+			time=1e6,execute=True,verbose=False
 			)
 
 		# job = Job(*args,**kwargs)
@@ -310,7 +318,7 @@ def test_task(*args,**kwargs):
 		env={},
 		options={
 			},
-		execute=True,verbose=True
+		execute=True,verbose=False
 		)
 
 
@@ -319,8 +327,6 @@ def test_task(*args,**kwargs):
 	task.info(verbose=verbose)
 
 	task.setup()
-
-	print(task.identity)
 
 	identity = task.submit()
 
@@ -340,8 +346,8 @@ if __name__ == '__main__':
 	kwargs = dict()
 
 	# test_call(*args,**kwargs)
-	test_timeout(*args,**kwargs)
+	# test_timeout(*args,**kwargs)
 	# test_parse(*args,**kwargs)
 	# test_submit(*args,**kwargs)
 	# test_job(*args,**kwargs)
-	# test_task(*args,**kwargs)
+	test_task(*args,**kwargs)
