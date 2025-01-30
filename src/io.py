@@ -759,7 +759,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,verbose=False
 	Returns:
 		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
-	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
@@ -951,7 +951,7 @@ def _load(obj,wr,ext,**kwargs):
 	'''	
 	wrappers = kwargs.pop('wrapper',None)
 
-	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
@@ -981,8 +981,8 @@ def _load(obj,wr,ext,**kwargs):
 		data = np.load(obj,**{'allow_pickle':True,**kwargs})
 	elif ext in ['csv']:
 		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
-	elif ext in ['txt']:
-		data = np.loadtxt(obj,**{'delimiter':',',**kwargs})
+	elif ext in ['txt','sh']:
+		data = obj.readlines()
 	elif ext in ['pickle','pkl']:
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
@@ -1121,7 +1121,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 
 	wrappers = kwargs.pop('wrapper',None)
 
-	exts = ['npy','npz','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
+	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
 	assert ext in exts, "Cannot dump extension %s"%(ext)
 
 	if ext in ['npy']:
@@ -1135,8 +1135,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 			np.savez(obj,data)
 	elif ext in ['csv']:
 		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
-	elif ext in ['txt']:
-		np.savetxt(obj,data,**{'delimiter':',','fmt':'%.20f',**kwargs})
+	elif ext in ['txt','sh']:
+		obj.dumplines(data)
 	elif ext in ['pickle','pkl']:		
 		pickleable(data,callables=kwargs.pop('callables',True))
 		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
@@ -1173,7 +1173,7 @@ def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwa
 		kwargs (dict): Additional appending keyword arguments
 	'''
 
-	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
 
 	if isinstance(path,str):
 		paths = [path]
@@ -1230,7 +1230,7 @@ def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kw
 		kwargs (dict): Additional appending keyword arguments
 	'''
 
-	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
 
 	if isinstance(data,str):
 		datas = [data]
