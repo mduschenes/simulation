@@ -46,6 +46,12 @@ class Dict(dict):
 		self.__dict__ = self
 		return
 
+	def __hash__(self):
+		return hash(tuple((attr,getattr(self,attr)) for attr in self))
+
+	def __eq__(self,other):
+		return hash(self) == hash(other)
+
 class Popen(object):
 	'''
 	Null Popen class
@@ -72,7 +78,7 @@ class timeout(object):
 	'''
 
 	def __init__(self,time=None,message=None,default=None):
-		self.time = time if (time is True or time is False) else float(time) if time is not None else 1e-1
+		self.time = time if (time is True or time is False) else float(time) if time is not None else self.timeout
 		self.message = message if message is not None else None
 		self.default = default
 		self.signal = signal.SIGALRM
@@ -114,8 +120,15 @@ class timeout(object):
 			return result
 		return wrapper
 
+	@classmethod
+	@property
+	def timeout(cls):
+		time = 1e-1
+		return time
+
 	class error(Exception):
 		pass
+
 
 
 def sleep(time):
@@ -132,12 +145,13 @@ def sleep(time):
 		pass
 	return
 
-def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,time=None,execute=None,verbose=None):
+def call(*args,path=None,file=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=None,shell=None,time=None,execute=None,verbose=None):
 	'''
 	Submit call to command line of the form args
 	Args:
 		args (iterable[str]): Arguments to pass to command line
 		path (str): Path to call from
+		file (str): Write command to file
 		wrapper (callable): Wrapper for output, with signature wrapper(stdout,stderr,returncode,env=None,shell=None,msg=None,time=None,execute=None,verbose=None)
 		env (dict[str,str]): Environmental variables for args		
 		stdin (file): Stdinput stream to command
@@ -195,11 +209,16 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 		outputs = [*[stdpipe]*(len(args)-1),stdout if stdout is not None else stdpipe]
 		errors = [*[stdpipe]*(len(args)-1),stderr if stderr is not None else stdpipe]
 
+		options = dict(
+			execute=True,
+			verbose=False
+			)
+
 		for index,(arg,input,output,error) in enumerate(zip(args,inputs,outputs,errors)):
 			if isinstance(output,str):
-				mkdir(output)
+				mkdir(output,**options)
 			if isinstance(error,str):
-				mkdir(error)
+				mkdir(error,**options)
 
 			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stderr
@@ -304,25 +323,40 @@ def call(*args,path=None,wrapper=None,env=None,stdin=None,stdout=None,stderr=Non
 	result = None
 
 	formats = dict(
-		path='{path}{space}'.format(path='{path}'.format(path=path) if path else '',space='$> ' if path else ' '),
+		path='',
 		args=(' {pipe} '.format(pipe=pipe)).join([arg.replace('\n','\\n') for arg in args]),
 		stdin=stdin,stdout=stdout
 		)
 	if isinstance(stdin,str) and isinstance(stdout,str):
-		msg = '{path}{args} < {stdin} > {stdout}'
+		string = '{path}{args} < {stdin} > {stdout}'
 	elif isinstance(stdin,str):
-		msg = '{path}{args} < {stdin}'
+		string = '{path}{args} < {stdin}'
 	elif isinstance(stdout,str):
-		msg = '{path}{args} > {stdout}'
+		string = '{path}{args} > {stdout}'
 	else:
-		msg = '{path}{args}'
+		string = '{path}{args}'
 
-	msg = msg.format(**formats)
+	if verbose:
+		msg = string.format(**{**formats,**dict(path='{path}{space}'.format(path='{path}'.format(path=path) if path else '',space='$> ' if path else ifs))})
+		logger(msg,verbose=verbose)
 
-	logger(msg,verbose=verbose)
+	if file:
+		with cd(path):
+			data = [
+				*['#!/bin/bash\n'],
+				*['export {key}={value}\n'.format(key=key,value=env[key]) for key in (env if env is not None else {})],
+				*[string.format(**formats)]
+				]
+			options = dict(execute=True,verbose=False)
+			write(file,data,**options)
+
+			data = 'chmod +x {file}'.format(file=file)
+			options = dict(execute=True,verbose=False)
+			call(data,**options)
 
 	if execute:
 		with cd(path):
+			msg = string.format(**formats)
 			result = wrapper(*caller(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell,msg=msg,time=time,verbose=verbose),env=env,shell=shell,msg=msg,time=time,verbose=verbose)
 
 	return result
@@ -661,7 +695,11 @@ class cd(object):
 	'''
 	def __init__(self,path):
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
-		mkdir(path)
+		options = dict(
+			execute=True,
+			verbose=False
+			)
+		mkdir(path,**options)
 		self.path = path
 		return
 
@@ -706,11 +744,40 @@ def mkdir(path,execute=None,verbose=None):
 		execute (boolean,int): Boolean whether to call commands
 		verbose (int,str,bool): verbosity
 	'''
+	
+	if not execute:
+		return
 
 	path = dirname(path)
 
+	logger('mkdir {path}'.format(path=path),verbose=verbose)
+
 	if path not in ['',None] and not exists(path):
 		os.makedirs(path)
+
+	return
+
+def rm(path,execute=None,verbose=None):
+	'''
+	Remove path
+	Args:
+		path (str): path
+		execute (boolean,int): Boolean whether to call commands
+		verbose (int,str,bool): verbosity		
+	'''
+
+	if not execute:
+		return
+
+	logger('rm {path}'.format(path=path),verbose=verbose)
+
+	try:
+		os.remove(path)
+	except Exception as exception:
+		try:
+			os.rmdir(path)
+		except Exception as exception:
+			pass
 
 	return
 
@@ -794,21 +861,22 @@ def basedir(path,**kwargs):
 	return basename(dirname(path))
 
 
-def load(path,default=None,wrapper=None,verbose=None):
+def load(path,default=None,wrapper=None,execute=None,verbose=None):
 	'''
 	Load data from path
 	Args:
 		path (str): path
 		default (object): default data
 		wrapper (callable): wrapper to load data with signature wrapper(data)
+		execute (boolean,int): Boolean whether to call commands		
 		verbose (int,str,bool): Verbosity
 	Returns:
 		data (object): data
 	'''
 	logger('Load: {path}'.format(path=path),verbose=verbose)
 	try:
-		with open(path,'r') as file:
-			data = json.load(file)
+		with open(path,'r') as obj:
+			data = json.load(obj)
 	except:
 		data = default
 	if wrapper is not None:
@@ -818,13 +886,14 @@ def load(path,default=None,wrapper=None,verbose=None):
 			pass
 	return data
 
-def dump(path,data,wrapper=None,verbose=None):
+def dump(path,data,wrapper=None,execute=None,verbose=None):
 	'''
 	Dump data to path
 	Args:
 		path (str): path
 		data (object): data
 		wrapper (callable): wrapper to load data with signature wrapper(data)
+		execute (boolean,int): Boolean whether to call commands		
 		verbose (int,str,bool): Verbosity
 	Returns:
 		data (object): data
@@ -836,8 +905,59 @@ def dump(path,data,wrapper=None,verbose=None):
 		except:
 			pass	
 	try:
-		with open(path,'w') as file:
-			data = json.dump(data,file)
+		with open(path,'w') as obj:
+			json.dump(data,obj)
+	except:
+		pass
+	return
+
+
+def read(path,default=None,wrapper=None,execute=None,verbose=None):
+	'''
+	Load data from path
+	Args:
+		path (str): path
+		default (object): default data
+		wrapper (callable): wrapper to load data with signature wrapper(data)
+		execute (boolean,int): Boolean whether to call commands		
+		verbose (int,str,bool): Verbosity
+	Returns:
+		data (object): data
+	'''
+	logger('Load: {path}'.format(path=path),verbose=verbose)
+	try:
+		with open(path,'r') as obj:
+			data = obj.readlines()
+	except:
+		data = default
+	if wrapper is not None:
+		try:
+			data = wrapper(data)
+		except:
+			pass
+	return data
+
+def write(path,data,wrapper=None,execute=None,verbose=None):
+	'''
+	Dump data to path
+	Args:
+		path (str): path
+		data (object): data
+		wrapper (callable): wrapper to load data with signature wrapper(data)
+		execute (boolean,int): Boolean whether to call commands		
+		verbose (int,str,bool): Verbosity
+	Returns:
+		data (object): data
+	'''	
+	logger('Dump: {path}'.format(path=path),verbose=verbose)
+	if wrapper is not None:
+		try:
+			data = wrapper(data)
+		except:
+			pass	
+	try:
+		with open(path,'w') as obj:
+			obj.writelines(data)
 	except:
 		pass
 	return
@@ -1130,11 +1250,13 @@ class Job(object):
 
 		status = self.setup(options=options,device=device)
 
-		keys = self.keys(**kwargs)
+		keys = self.keys
 
 		options = dict(
 			path=self.path,
 			wrapper=self.wrapper,
+			file=self.file,
+			env=env,
 			time=time if time is not None else self.time if self.time and self.time <=1 else None,
 			execute=execute if execute is not None else self.execute,
 			verbose=verbose if verbose is not None else self.verbose
@@ -1147,10 +1269,11 @@ class Job(object):
 			if self.device in ['local']:
 				args = '{cmd}{flags}{exe}{path}'.format(
 					cmd='',
-					flags=' '.join('{key}={value}'.format(key=key,value=env[key]) for key in env),
-					exe=' ./' if not path.startswith('/') else ' ',
+					flags=ifs.join('{key}={value}'.format(key=key,value=env[key]) for key in env),
+					exe=' ./' if not path.startswith('/') else ifs,
 					path=path
 					)
+				env.clear()
 				def wrapper(data):
 					try:
 						data = int(data[-1])
@@ -1162,10 +1285,11 @@ class Job(object):
 
 				args = '{cmd}{flags}{exe}{path}'.format(
 					cmd='sbatch ',
-					flags='--export={env}'.format(env=','.join('{key}={value}'.format(key=key,value=env[key]) for key in env)) if env else '',
+					flags='--export={env}'.format(env=','.join(('{key}={value}' if not env[key].count(ifs) else '{key}="{value}"').format(key=key,value=env[key]) for key in env)) if env else '',
 					exe=' < ',
 					path=path
 					)
+				env.clear()
 				def wrapper(data):
 					try:
 						data = int(data[-1])
@@ -1174,6 +1298,7 @@ class Job(object):
 					return data
 			else:
 				args = None
+				env.clear()				
 				def wrapper(data):
 					try:
 						data = int(data[-1])
@@ -1182,7 +1307,7 @@ class Job(object):
 					return data
 		
 			args = self.parse(args,keys)
-			
+				
 			data = call(args,**options)			
 
 			data = wrapper(data) 
@@ -1194,6 +1319,207 @@ class Job(object):
 		identity = self.identity
 
 		return identity
+
+	def cleanup(self,**kwargs):
+		'''
+		Cleanup job
+		Args:
+			kwargs (dict): Keyword arguments
+		'''
+
+		options = dict(
+			execute=self.execute,
+			verbose=self.verbose
+			)
+		options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+
+		if self.device in ['local']:
+		
+			paths,keys = [],[]
+		
+		elif self.device in ['slurm']:
+			paths = [self.options.get(attr) for attr in ['stdout','stderr'] if attr in self.options]
+
+			attr = 'parallel'
+			if self.options.get(attr):
+				keys = Dict(
+					name=self.name,
+					identity=self.identity,
+					index=self.index(self.options[attr])[-1]
+					)
+			else:
+				keys = Dict(
+					name=self.name,
+					identity=self.identity,
+					index=None
+					)
+
+			paths = [path.replace('%x','{name}').replace('%A','{identity}').replace('%a','{index}') for path in paths]
+
+		else:
+			
+			paths,keys = [],[]
+
+		if isinstance(keys.index,iterables):
+			keys = [{**keys,**dict(index=index)} for index in keys.index]
+		else:
+			keys = [keys]
+
+		paths = [
+			*[join(self.parse(path,key),root=self.path) for path in paths for key in keys]
+			]
+
+		for path in paths:
+			rm(path,**options)
+
+		return
+
+	def stats(self,**kwargs):
+		'''
+		Stats of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			stats (iterable[dict]): stats of job
+		'''
+
+		keys = self.keys
+
+		options = dict(
+			path=self.path,
+			time=self.time if self.time and self.time <=1 else timeout.timeout,
+			wrapper=self.wrapper,
+			execute=True,
+			verbose=self.verbose
+			)
+		
+		status = None
+
+		if self.device in ['local']:
+			args = None
+			def wrapper(data):
+				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
+		elif self.device in ['slurm']:
+			if self.identity is None:
+				args = 'sacct --noheader --allocations --user={user} --format={format} --name={name} --start={history}'
+				# args = "cat job/slurm.txt | grep {name}"
+			elif self.identity is not None:
+				args = 'sacct --noheader --allocations --user={user} --jobs={identity} --name={name} --format={format} --start={history}'
+				# args = "cat job/slurm.txt | grep {name} | grep {identity}"
+			def wrapper(data):
+
+				if data is None:
+					return data
+
+				funcs = dict()
+
+				func = 'jobid'
+				def function(data,attrs):
+					identity,index = self.index(data)
+					attrs.update(dict(identity=identity,index=index))
+					if identity is None:
+						attrs.update({attr:None for attr in attrs})
+					return
+				funcs[func] = function
+
+				func = 'jobname'
+				def function(data,attrs):
+					name = str(data) if not isinstance(data,int) else None
+					attrs.update(dict(name=name))
+					return
+				funcs[func] = function
+
+				func = 'state'
+				def function(data,attrs):
+					state = str(data) if not isinstance(data,int) else None
+					attrs.update(dict(state=state))
+					return
+				funcs[func] = function
+
+				if not any(i for i in data):
+					data = []
+				else:
+					for i in range(len(data)-1,-1,-1):
+						data[i] = data[i] if not isinstance(data[i],int) else [data[i]]*len(funcs)
+						attrs = Dict()
+						for index,attr in enumerate(funcs):
+							funcs[attr](data[i][index],attrs)
+						data[i] = attrs
+						if not data[i] or all(data[i][attr] is None for attr in data[i]):
+							data.pop(i)
+						elif data[i].identity is None:
+							data.pop(i)
+						elif any(isinstance(data[i][attr],iterables) for attr in data[i]):
+							data.extend((
+								Dict({**{attr:data[i][attr] for attr in data[i] if not isinstance(data[i][attr],iterables)},**attrs})
+								for attrs in permuter({attr:data[i][attr] for attr in data[i] if isinstance(data[i][attr],iterables)})
+								))
+							data.pop(i)
+				
+				boolean = lambda data,obj=max(i.identity for i in data) if data else None:data.identity==obj
+				
+				data = list(set(i for i in data if boolean(i)))
+				
+				return data		
+		else:
+			args = None
+			def wrapper(data):
+				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
+
+		args = self.parse(args,keys)
+		data = None
+		time,times = 0,self.time if self.time else 100
+
+		while data is None and time < times:
+			data = call(args,**options)
+			data = wrapper(data)
+			time += 1
+
+		stats = data if data is not None else []
+
+		return stats
+
+	def status(self,**kwargs):
+		'''
+		Status of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			status (dict): Status of job
+		'''
+
+		identity = self.identification(**kwargs)
+
+		stats = self.stats(**kwargs)
+
+		status = Dict()
+		for state in self.states:
+			status[state] = Dict()
+			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
+				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
+							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
+				if jobs:
+					status[state][attr] = jobs
+
+		return status
+
+	@property
+	def state(self):
+		'''
+		State of job
+		Returns:
+			state (str): State of job
+		'''
+
+		status = self.status()
+
+		for state in self.states:
+			if any(status[state]):
+				break
+			else:
+				state = None
+		
+		return state
 
 	def identification(self,**kwargs):
 		'''
@@ -1230,157 +1556,6 @@ class Job(object):
 		identity = self.identity
 
 		return identity
-
-	def stats(self,**kwargs):
-		'''
-		Stats of job
-		Args:
-			kwargs (dict): Keyword arguments
-		Returns:
-			stats (iterable[dict]): stats of job
-		'''
-
-		keys = self.keys(**kwargs)
-
-		options = dict(
-			path=self.path,
-			time=self.time if self.time and self.time <=1 else None,
-			wrapper=self.wrapper,
-			execute=self.execute,
-			verbose=self.verbose
-			)
-		
-		status = None
-
-		if self.device in ['local']:
-			args = None
-			def wrapper(data):
-				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
-		elif self.device in ['slurm']:
-			if self.identity is None:
-				args = 'sacct --noheader --allocations --user={user} --format={format} --name={name} --start={history}'
-				# args = "cat job/slurm.txt | grep {name}"
-			elif self.identity is not None:
-				args = 'sacct --noheader --allocations --user={user} --jobs={identity} --name={name} --format={format} --start={history}'
-				# args = "cat job/slurm.txt | grep {name} | grep {identity}"
-			def wrapper(data):
-
-				if data is None:
-					return data
-
-				funcs = dict()
-
-				func = 'jobid'
-				def function(index,data,attrs):
-
-					if isinstance(data,int):
-						attrs['identity'] = data
-					elif data[index].split(splitter)[0].isdigit():
-						value = int(data[index].split(splitter)[0])
-						attrs['identity'] = value
-					
-					if isinstance(data,int):
-						attrs['index'] = None
-					elif data[index].count(splitter):
-						if (parser not in data[index]) and (delimiter not in data[index]):
-							value = data[index].split(splitter)[-1].replace('[','').replace(']','')
-							value = int(value) if value.isdigit() else False
-						else:
-							value = [j
-								for i in data[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(delimiter)
-								if i
-								for j in ([int(i) if i.isdigit() else False] if not i.count(parser) else (range(*(int(j)+k for k,j in enumerate(i.split(parser)))) if all(j.isdigit() for j in i.split(parser)) else [False]))
-								]
-							value = value if value and all(i is not None for i in value) else None
-						attrs['index'] = value
-
-					if isinstance(attrs['index'],iterables) and any(i is False for i in attrs['index']) or attrs['index'] is False:
-						attrs.update({attr:None for attr in attrs})
-
-					return
-				funcs[func] = function
-
-				func = 'jobname'
-				def function(index,data,attrs):
-					attrs.update(dict(name=str(data[index]) if not isinstance(data,int) else None))
-					return
-				funcs[func] = function
-
-				func = 'state'
-				def function(index,data,attrs):
-					attrs.update(dict(state=str(data[index]) if not isinstance(data,int) else None))
-					return
-				funcs[func] = function
-
-				separator,delimiter,splitter,parser = '%',',','_','-'
-				
-				if not any(i for i in data):
-					data = []
-				else:
-					for i in range(len(data)-1,-1,-1):
-						attrs = Dict()
-						for index,attr in enumerate(funcs):
-							funcs[attr](index,data[i],attrs)
-						data[i] = attrs
-						if not data[i] or all(data[i][attr] is None for attr in data[i]):
-							data.pop(i)
-						elif data[i].identity is None:
-							data.pop(i)
-						elif any(isinstance(data[i][attr],iterables) for attr in data[i]):
-							data.extend((
-								Dict({**{attr:data[i][attr] for attr in data[i] if not isinstance(data[i][attr],iterables)},**attrs})
-								for attrs in permuter({attr:data[i][attr] for attr in data[i] if isinstance(data[i][attr],iterables)})
-								))
-							data.pop(i)
-				
-				boolean = lambda data,obj=max(i.identity for i in data) if data else None:data.identity==obj
-				
-				data = [i for i in data if boolean(i)]
-				
-				return data		
-		else:
-			args = None
-			def wrapper(data):
-				return [Dict(identity=self.identity,index=None,name=self.name,state=self.states.done)]
-
-		args = self.parse(args,keys)
-		data = None
-		time,timeout = 0,self.time if self.time else 0
-
-		while data is None and time <= timeout:
-			data = call(args,**options)
-			data = wrapper(data)
-			time += 1
-		else:
-			data = []
-
-		stats = data
-
-		return stats
-
-	def status(self,**kwargs):
-		'''
-		Status of job
-		Args:
-			kwargs (dict): Keyword arguments
-		Returns:
-			status (dict): Status of job
-		'''
-
-		identity = self.identification(**kwargs)
-
-		stats = self.stats(**kwargs)
-
-		status = Dict()
-		for state in self.states:
-			status[state] = Dict()
-			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
-				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
-							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
-				if jobs:
-					status[state][attr] = jobs
-
-		return status
 
 	def set(self,options=None):
 		'''
@@ -1483,7 +1658,8 @@ class Job(object):
 
 		return instructions
 
-	def keys(self,**kwargs):
+	@property
+	def keys(self):
 
 		if self.device in ['local']:
 			defaults = dict()
@@ -1493,7 +1669,7 @@ class Job(object):
 				identity=self.identity,
 				path=self.path,
 				user='$USER',
-				format='jobid,jobname,state',
+				format='jobid%100,jobname%100,state%100',
 				history="now-1hour"
 			)
 		else:
@@ -1503,7 +1679,6 @@ class Job(object):
 		keys.update(self.env)
 		keys.update(defaults)
 		keys.update(self.kwargs)
-		keys.update(kwargs)	
 
 		return keys
 
@@ -1537,32 +1712,25 @@ class Job(object):
 							value=','.join([str(job.identity if isinstance(job,self.__class__) else job) for job in self.jobs if (isinstance(job,self.__class__) and job.identity is not None) or (isinstance(job,int) and job is not None)])
 						)
 				return data
-			option = 'dependency'
+			option = 'jobs'
 			defaults[option] = func
 
 			def func(option,options):
 				data = options.get(option)
+				ext = {'stdout':'stdout','stderr':'stderr'}.get(option,'log')
 				if data is None:
-					data = '%x.%A.stdout'
-				if 'array' in options:
-					data = '%x.%A.%a.stdout'
+					data = f'%x.%A.{ext}'
+				if any(attr in options for attrs in ['parallel'] for attr in [attrs,self.patterns.get(attrs,attrs)]):
+					data = f'%x.%A.%a.{ext}'
 				else:
-					data = '%x.%A.stdout'
+					data = f'%x.%A.{ext}'
 				return data				
-			option = 'output'
+			option = 'stdout'
 			defaults[option] = func
 
-			def func(option,options):
-				data = options.get(option)
-				if data is None:
-					data = '%x.%A.stderr'
-				if 'array' in options:
-					data = '%x.%A.%a.stderr'
-				else:
-					data = '%x.%A.stderr'
-				return data				
-			option = 'error'			
+			option = 'stderr'
 			defaults[option] = func
+
 
 		else:
 			
@@ -1575,7 +1743,7 @@ class Job(object):
 		if self.device in ['local']:
 			patterns = {}
 		elif self.device in ['slurm']:
-			patterns = {'name':'job-name'}
+			patterns = {'name':'job-name','jobs':'dependency','parallel':'array','stdout':'output','stderr':'error'}
 		else:
 			patterns = {}
 		return patterns
@@ -1589,21 +1757,21 @@ class Job(object):
 	def states(self):
 		if self.device in ['local']:
 			states = Dict(
-				run = 'run',
 				error = 'error',
 				done = 'done',
+				run = 'run',
 				)
 		elif self.device in ['slurm']:
 			states = Dict(
-				run = ['PENDING','RUNNING','SUSPENDED'],
 				error = ['BOOT_FAIL','CANCELLED','DEADLINE','FAILED','NODE_FAIL','OUT_OF_MEMORY','PREEMPTED','TIMEOUT'],
 				done = ['COMPLETED'],
+				run = ['PENDING','RUNNING','SUSPENDED'],
 				)
 		else:
 			states = Dict(
-				run = 'run',
 				error = 'error',
 				done = 'done',
+				run = 'run',
 				)		
 		return states
 
@@ -1617,8 +1785,7 @@ class Job(object):
 			delimiters = Dict(delimiter=',',separator='=',range='%',comment='#')
 		return delimiters
 	
-	@classmethod
-	def parse(cls,string,variables):
+	def parse(self,string,variables):
 		'''
 		Format string '...{key}...' -> '...{key}...'.format(key=value)
 		Args:
@@ -1648,10 +1815,12 @@ class Job(object):
 					string = string.replace(replacement,replacements[replacement])
 		return string
 
-	@classmethod
-	def wrapper(cls,stdout,stderr,returncode,env=None,shell=None,time=None,msg=None,execute=None,verbose=None):
+	def wrapper(self,stdout,stderr,returncode,env=None,shell=None,time=None,msg=None,execute=None,verbose=None):
+		'''
+		Parse call result
+		'''
 		def wrapper(string):
-			delimiter = ' '
+			delimiter = ifs
 			types = (int,str)
 			if string.count(delimiter) > 1:
 				string = [i.strip() for i in string.split(delimiter) if i]
@@ -1669,6 +1838,66 @@ class Job(object):
 		result = [wrapper(i) for i in stdout.split(delimiter) if i] if stdout and any(stdout.split(delimiter)) is not None else None
 
 		return result
+
+	def index(self,data):
+		'''
+		Parse job index
+		Args:
+			data (int,str): call result
+		Returns:
+			identity (int): job identity
+			index (int,iterable[int]): job index or indices
+		'''
+
+		if self.device in ['local']:
+		
+			identity,index = None,None
+
+		elif self.device in ['slurm']:
+
+			separator,delimiter,splitter,parser,colon = '%',',','_','-',':'
+
+			if data is None:
+				value = None
+			elif isinstance(data,int):
+				value = data
+			elif data.isdigit():
+				value = int(data)
+			elif data.count(splitter) and data.split(splitter)[0].isdigit():
+				value = int(data.split(splitter)[0])
+			else:
+				value = None
+			identity = value
+			
+			if data is None:
+				value = None
+			elif isinstance(data,int):
+				value = None
+			elif not data.isdigit():
+				value = data.split(splitter)[-1].replace('[','').replace(']','').split(colon)[0].split(separator)[0]
+				if (parser not in value) and (delimiter not in value):
+					value = int(value) if value.isdigit() else False
+				else:
+					value = value.split(delimiter)
+					value = [j
+						for i in value
+						if i
+						for j in ([int(i) if i.isdigit() else False] if not i.count(parser) else (range(*(int(j)+k for k,j in enumerate(i.split(parser)))) if all(j.isdigit() for j in i.split(parser)) else [False]))
+						]
+					value = value if value and all(i is not None for i in value) else None
+			else:
+				value = None	
+			index = value
+
+			if index is False or (isinstance(index,iterables) and any(i is False for i in index)):
+				identity,index = None,None
+
+		else:
+
+			identity,index = None,None
+
+		return identity,index
+
 
 	def log(self,msg,verbose=None):
 		'''
@@ -1727,8 +1956,8 @@ class Job(object):
 					string = None
 			elif isinstance(value,dict):
 				string = '%s :%s%s'%(attr,
-					'\n\t' if len(value)>1 else ' ',
-					('\n\t' if len(value)>1 else ' ').join(['%s %s %r'%(kwarg,':',value[kwarg])
+					'\n\t' if len(value)>1 else ifs,
+					('\n\t' if len(value)>1 else ifs).join(['%s %s %r'%(kwarg,':',value[kwarg])
 						for kwarg in value if value[kwarg] is not None and value[kwarg] is not False])) if any(value[kwarg] for kwarg in value) else None
 			else:
 				string = '%s : %r'%(attr,value) 
@@ -1758,7 +1987,10 @@ class Job(object):
 		paths = {data:join(self.data[data],root=self.path) for data in self.data} if path is None else {data:join(self.data[data],root=path) for data in self.data} if not isinstance(path,dict) else path
 		data = None
 		separator,comment = self.delimiters.separator,self.delimiters.comment
-		mode = 'r'
+		options = dict(
+			execute=True,
+			verbose=False
+			)
 
 		if wrapper is True:
 			def wrapper(data):
@@ -1790,8 +2022,7 @@ class Job(object):
 			try:
 				data = [] if data is None else data
 				for path in paths:
-					with open(path,mode) as obj:
-						data.extend((parse(i) for i in obj.readlines()))
+					data.extend((parse(i) for i in read(path)))
 			except:
 				data = None
 
@@ -1813,8 +2044,7 @@ class Job(object):
 			try:
 				data = [] if data is None else data
 				for path in paths:
-					with open(path,mode) as obj:
-						data.extend((parse(i) for i in obj.readlines()))
+					data.extend((parse(i) for i in read(path)))
 			except:
 				data = None
 
@@ -1828,8 +2058,7 @@ class Job(object):
 			try:
 				data = [] if data is None else data
 				for path in paths:
-					with open(path,mode) as obj:
-						data.extend((parse(i) for i in obj.readlines()))
+					data.extend((parse(i) for i in read(path)))
 			except:
 				data = None
 
@@ -1850,7 +2079,10 @@ class Job(object):
 		paths = {data:join(self.data[data],root=self.path) for data in self.data} if path is None else {data:join(self.data[data],root=path) for data in self.data} if not isinstance(path,dict) else path
 		data = None if data is None else data
 		separator,comment = self.delimiters.separator,self.delimiters.comment
-		mode = 'w'
+		options = dict(
+			execute=True,
+			verbose=False
+			)
 
 		lines = self.load(paths,wrapper=True)
 
@@ -1954,10 +2186,10 @@ class Job(object):
 				path = paths[path]
 				
 				if not exists(dirname(path)):
-					mkdir(dirname(path))
+					mkdir(dirname(path),**options)
 
-				with open(path,mode) as obj:
-					obj.writelines(data)
+				write(path,data)
+
 		except:
 			pass
 
@@ -2112,6 +2344,36 @@ class Task(Job):
 
 		return identity
 
+	def cleanup(self,**kwargs):
+		'''
+		Cleanup job
+		Args:
+			kwargs (dict): Keyword arguments
+		'''
+
+		for job in self.jobs:
+			keywords = dict(**kwargs)
+			job.cleanup(**keywords)
+
+		return
+
+	def stats(self,**kwargs):
+		'''
+		Stats of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			stats (iterable[dict]): stats of job
+		'''
+
+		stats = []
+
+		for job in self.jobs:
+			keywords = dict(**kwargs)
+			stats.extend(job.stats(**keywords))
+
+		return stats
+
 	def identification(self,**kwargs):
 		'''
 		Identity of task
@@ -2132,36 +2394,6 @@ class Task(Job):
 		identity = self.identity
 
 		return identity
-
-	def stats(self,**kwargs):
-		'''
-		Stats of task
-		Args:
-			kwargs (dict): Keyword arguments
-		Returns:
-			stats (iterable[dict]): stats of job
-		'''
-
-		stats = []
-
-		for job in self.jobs:
-			keywords = dict(**kwargs)
-			stats.extend(job.stats(**keywords))
-
-		return stats
-
-	def status(self,**kwargs):
-		'''
-		Status of task
-		Args:
-			kwargs (dict): Keyword arguments
-		Returns:
-			status (dict): Status of task
-		'''
-
-		status = super().status(**kwargs)
-
-		return status
 
 	def set(self,options=None):
 		'''

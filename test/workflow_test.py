@@ -50,92 +50,40 @@ def test_call(*args,**kwargs):
 def test_parse(*args,**kwargs):
 
 	def wrapper(data):
-
-		if data is None:
-			return data
-
-		funcs = dict()
-
-		func = 'jobid'
-		def function(index,data,attrs):
-
-			if data[index].split(splitter)[0].isdigit():
-				value = int(data[index].split(splitter)[0])
-				attrs['identity'] = value
-			
-			if data[index].count(splitter):
-				if (parser not in data[index]) and (delimiter not in data[index]):
-					value = data[index].split(splitter)[-1].replace('[','').replace(']','')
-					value = int(value) if value.isdigit() else False
-				else:
-					value = [j
-						for i in data[index].split(splitter)[-1].replace('[','').replace(']','').split(separator)[0].split(delimiter)
-						if i
-						for j in ([int(i) if i.isdigit() else False] if not i.count(parser) else (range(*(int(j)+k for k,j in enumerate(i.split(parser)))) if all(j.isdigit() for j in i.split(parser)) else [False]))
-						]
-					value = value if value and all(i is not None for i in value) else None
-				attrs['index'] = value
-
-			if isinstance(attrs['index'],iterables) and any(i is False for i in attrs['index']) or attrs['index'] is False:
-				attrs.update({attr:None for attr in attrs})
-
-			return
-		funcs[func] = function
-
-		func = 'jobname'
-		def function(index,data,attrs):
-			attrs.update(dict(name=str(data[index])))
-			return
-		funcs[func] = function
-
-		func = 'state'
-		def function(index,data,attrs):
-			attrs.update(dict(state=str(data[index])))
-			return
-		funcs[func] = function
-
-		separator,delimiter,splitter,parser = '%',',','_','-'
-		
-		if not any(i for i in data):
-			data = []
-		else:
-			for i in range(len(data)-1,-1,-1):
-				attrs = Dict()
-				for index,attr in enumerate(funcs):
-					funcs[attr](index,data[i],attrs)
-				data[i] = attrs
-				if not data[i] or all(data[i][attr] is None for attr in data[i]):
-					data.pop(i)
-				elif data[i].identity is None:
-					data.pop(i)
-				elif any(isinstance(data[i][attr],iterables) for attr in data[i]):
-					data.extend((
-						Dict({**{attr:data[i][attr] for attr in data[i] if not isinstance(data[i][attr],iterables)},**attrs})
-						for attrs in permuter({attr:data[i][attr] for attr in data[i] if isinstance(data[i][attr],iterables)})
-						))
-					data.pop(i)
-		
-		boolean = lambda data,obj=max(i.identity for i in data) if data else None:data.identity==obj
-		
-		data = [i for i in data if boolean(i)]
-		
-		return data
+		job = Job(device='slurm')
+		return job.index(data)
 
 	def equal(x,y):
-		return all(i[attr]==j[attr] for i,j in zip(x,y) for attr in ['identity','name','index','state'])
+		return all(i==j for i,j in zip(x,y))
 
-	data = [['123_[2-3,5,9-10]','job','run']]
-	true = [{'identity': 123, 'name': 'job', 'state': 'run', 'index': 2}, {'identity': 123, 'name': 'job', 'state': 'run', 'index': 3}, {'identity': 123, 'name': 'job', 'state': 'run', 'index': 5}, {'identity': 123, 'name': 'job', 'state': 'run', 'index': 9}, {'identity': 123, 'name': 'job', 'state': 'run', 'index': 10}]
-
+	data = None
+	true = (None,None)
 	data = wrapper(data)
-
+	assert equal(data,true)
+	
+	data = 123
+	true = (123,None)
+	data = wrapper(data)
 	assert equal(data,true)
 
-	data = [['123_[2-3,5+,9-10]','job','run']]
-	true = []
-
+	data = '2'
+	true = (2,None)
 	data = wrapper(data)
+	assert equal(data,true)
 
+	data = '0,3-4:1%100'
+	true = (None,[0,3,4])
+	data = wrapper(data)
+	assert equal(data,true)
+
+	data = '123_[2-3,5,9-11]'
+	true = (123,[2,3,5,9,10,11])
+	data = wrapper(data)
+	assert equal(data,true)
+
+	data = '123_[2-3,5+,9-11]'
+	true = (None,None)
+	data = wrapper(data)
 	assert equal(data,true)
 
 	return
@@ -237,14 +185,14 @@ def test_job(*args,**kwargs):
 			'time':'1:00:00',
 			'mem':'1G',
 			'cpus-per-task':1,
-			'array':'0,3-4:1%100',
-			'dependency':'afterany:',
-			'output':'%x.%A.stdout',
-			'error':'%x.%A.stderr',
+			'parallel':'0,3-4:1%100',
+			'jobs':'afterany:',
+			'stdout':'%x.%A.stdout',
+			'stderr':'%x.%A.stderr',
 			'get-user-env':False,
 			'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 			},
-		time=None,execute=True,verbose=False
+		execute=True,verbose=False
 		)
 
 
@@ -262,7 +210,12 @@ def test_job(*args,**kwargs):
 		print(state)
 		for attr in status[state]:
 			print('\t',attr,status[state][attr])
-	print(identity,job.identity,job.jobs)
+	print(job.identity,job.jobs)
+	print('---------')
+
+	sleep(10)
+	job.cleanup(verbose=True)
+	print('---------')
 
 	return
 
@@ -271,7 +224,24 @@ def test_task(*args,**kwargs):
 
 	verbose = True
 
+	def status(task):
+
+		print('Status',task.state)
+		status = task.status()
+
+		for state in status:
+			print(state)
+			for attr in status[state]:
+				print('\t',attr,status[state][attr])
+		print(identity,task.identity)
+		task.cleanup()
+		print('State',task.state)
+		print('---------')
+
+		return
+
 	n = 3
+	s = 3
 	jobs = []
 
 	for i in range(n):
@@ -284,20 +254,20 @@ def test_task(*args,**kwargs):
 			path='./job/{i}'.format(i=i),
 			data={'./job/job.slurm':'job.slurm'},
 			file='job.sh',
-			env={},
+			env={'TEST_ARGS':"Hello World"},
 			options={
 				'partition':'cpu',
 				'time':'1:00:00',
 				'mem':'1G',
 				'cpus-per-task':1,
-				'array':'0,3-4:1%100',
-				'dependency':'afterany:',
-				'output':'%x.%A.stdout',
-				'error':'%x.%A.stderr',
+				'parallel':'0,3-4:1%100',
+				'jobs':'afterany:',
+				'stdout':'%x.%A.stdout',
+				'stderr':'%x.%A.stderr',
 				'get-user-env':False,
 				'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
 				},
-			time=1e6,execute=True,verbose=False
+			execute=True,verbose=False
 			)
 
 		# job = Job(*args,**kwargs)
@@ -330,13 +300,12 @@ def test_task(*args,**kwargs):
 
 	identity = task.submit()
 
-	status = task.status()
+	for i in range(s):
+		status(task)
 
-	for state in status:
-		print(state)
-		for attr in status[state]:
-			print('\t',attr,status[state][attr])
-	print(identity,task.identity)
+	sleep(25)
+	task.cleanup(verbose=True)
+	print('---------')
 
 	return
 
