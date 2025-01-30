@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,argparse,subprocess,shlex,itertools,json,io,re,signal,errno,time as timer
+from copy import deepcopy as copy
 
 from src.logger import Logger
 
@@ -963,42 +964,221 @@ def write(path,data,wrapper=None,execute=None,verbose=None):
 	return
 
 
-def permuter(iterable,repeat=None):
+def permutations(*iterables,repeat=None):
 	'''
-	Get product of permutations of iterable
+	Get product of permutations of iterables
 	Args:
-		iterable (iterable[iterable],iterable[int],dict): Iterables to permute, or iterable of int to get all permutations of range(int) or dict of iterables
+		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
 	Returns:
-		iterable (generator[tuple],generator[dict]): Generator of tuples of all permutations of iterable
+		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
 	'''
 	
-	if isinstance(iterable,iterables) and all(isinstance(i,int) for i in iterable):
-		iterable = [range(i) for i in iterable]
-
-	repeat = 1 if repeat is None else repeat
+	if all(isinstance(i,integers) for i in iterables):
+		iterables = (range(i) for i in iterables)
 	
-	if isinstance(iterable,iterables):
-		return itertools.product(*(i for i in iterable),repeat=repeat)
-	else:
-		return (dict(zip(iterable,value)) for value in itertools.product(*(iterable[i] for i in iterable),repeat=repeat))
+	if repeat is None:
+		repeat = 1
 
-def copier(obj,copy):
+	return itertools.product(*iterables,repeat=repeat)
+
+def permuter(dictionary,groups=None,filters=None,func=None,ordered=True):
 	'''
-	Copy object based on copy
+	Get all combinations of values of dictionary of lists
 
 	Args:
-		obj (object): object to be copied
-		copy (bool): boolean or None whether to copy value
+		dictionary (dict): dictionary of keys with lists of values to be combined in all combinations across lists
+		groups (list,None): List of lists of groups of keys that should not have their values permuted in all combinations, 
+			but should be combined in sequence key wise. 
+			For example groups = [[key0,key1]], where 
+			dictionary[key0] = [value_00,value_01,value_02],
+			dictionary[key1] = [value_10,value_11,value_12], 
+			then the permuted dictionary will have key0 and key1 keys with only pairwise values of 
+			[{key0:value_00,key1:value_10},{key0:value_01,key1:value_11},{key0:value_02,key1:value_12}].
+		filters (callable): Function with signature filters(dictionaries) -> dictionaries to parse allowed dictionaries
+		func (callable): Function with signature func(dictionaries) to modify dictionaries in place
+		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
 	Returns:
-		Copy of value
+		dictionaries (iterable[dict]) : Iterable of dictionaries with all combinations of lists of values in dictionary
+	'''		
+	def indexer(keys,values,groups):
+		'''
+		Get lists of values for each group of keys in groups
+		'''
+		groups = copy([group for group in groups if any(key in keys for key in group)]) if groups is not None else []
+		inds = [[keys.index(key) for key in group if key in keys] for group in groups]		
+		N = len(groups)
+		groups.extend([[key] for key in keys if all([key not in group for group in groups])])
+		inds.extend([[keys.index(key) for key in group if key in keys] for group in groups[N:]])
+		values = [[values[j] for j in i] for i in inds]
+		return groups,values
+
+	def zipper(keys,values): 
+		'''
+		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
+		'''
+		return [{key:copy(iterable) for key,iterable in zip(keys,value)} for value in zip(*values)]
+
+	def unzipper(dictionary):
+		'''
+		Zip keys of dictionary of list, and values of dictionary as list
+		'''
+		keys, values = zip(*((key,value) for key,value in dictionary.items() if value is not None))
+		return keys,values
+
+	def permute(dictionaries): 
+		'''
+		Get all list of dictionaries of all permutations of sub-dictionaries
+		'''
+		return ({key:dictionary[key] for dictionary in dicts for key in dictionary} for dicts in permutations(*dictionaries))
+
+	def retriever(keys,values,groups):
+		'''
+		Get values of permuted nested dictionaries in values.
+		Recurse permute until values are lists and not dictionaries.
+		'''
+		keys,values = list(keys),list(values)
+		for i,(key,value) in enumerate(zip(keys,values)):
+			if isinstance(value,dict):
+				if isinstance(groups,dict):
+					group = groups.get(key,group)
+				else:
+					group = groups
+				values[i] = permuter(value,groups=group) 
+		return keys,values
+
+
+	if dictionary in [None,{}]:
+		return [{}]
+
+	# Get list of all keys from dictionary, and list of lists of values for each key
+	keys,values = unzipper(dictionary)
+
+
+	# Get values of permuted nested dictionaries in values
+	keys,values = retriever(keys,values,groups)
+
+	# Retain ordering of keys in dictionary
+	keys_ordered = keys
+	
+	# Get groups of keys based on groups and get lists of values for each group
+	keys,values = indexer(keys,values,groups)
+
+	# Zip keys with lists of lists in values into list of dictionaries
+	dictionaries = [zipper(key,value) for key,value in zip(keys,values)]
+
+	# Get all permutations of list of dictionaries into one list of dictionaries with all keys
+	dictionaries = permute(dictionaries)
+
+	# Filter allowed dictionaries
+	dictionaries = filters(dictionaries) if filters is not None else dictionaries
+
+	# Retain original ordering of keys if ordered is True
+	dictionaries = list(dictionaries)
+	if ordered:
+		for i in range(len(dictionaries)):
+			dictionaries[i] = {key: dictionaries[i][key] for key in keys_ordered}
+
+	# Modify allowed dictionaries
+	if func is not None:
+		func(dictionaries)
+
+	return dictionaries
+
+
+def seeder(seed=None,size=None,data=None,**kwargs):
 	'''
+	Generate prng key
+	Args:
+		seed (int,array,Key): Seed for random number generation or random key for future seeding
+		size(bool,int): Number of splits of random key
+		data (bool): Return key data
+		kwargs (dict): Additional keyword arguments for seeding
+	Returns:
+		key (key,list[key]): Random key
+	'''	
 
-	if copy:
-		return deepcopy(obj)
+	# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+	if seed is None or isinstance(seed,integers):
+		seed = [seed]
 	else:
-		return obj
+		seed = [*seed]
 
-def setter(iterable,keys,delimiter=None,default=None,copy=False):
+	if size:
+		key = [*seed]*size
+	else:
+		key = seed
+
+	if data:
+		key = [*key]
+
+	return key
+
+def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exceptions=()):
+	'''
+	Search of iterable, returning keys and indices of keys
+	Args:
+		iterable (iterable): Nested iterable
+		index (iterable[int,str]): Index of key
+		shape (iterable[int]): Shape of iterable
+		returns (bool,str): Returns of search, 
+			None returns item, True returns index,shape,item, False returns None, 
+			allowed strings (.delimited) for combinations of ['index','shape','item']
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	Yields:
+		index (iterable[int,str]): Index of item
+		shape (iterable[iterable[int]]): Shape of iterable at index
+		item (iterable): Iterable key
+	'''
+	def returner(index,shape,item,returns=None):
+		if returns is None:
+			yield item
+		elif returns is True:
+			yield (index,shape,item)
+		elif returns is False:
+			return None
+		elif returns in ['index']:
+			yield index
+		elif returns in ['shape']:
+			yield shape
+		elif returns in ['item']:
+			yield item
+		elif returns in ['index.shape']:
+			yield (index,shape)
+		elif returns in ['index.item']:
+			yield (index,item)
+		elif returns in ['shape.item']:
+			yield (shape,item)
+		elif returns in ['index.shape.item']:
+			yield (index,shape,item)
+
+	dictionaries = (dict,)
+	items = [items] if (items is not None) and isinstance(items,scalars) else items
+	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and all(item in iterable for item in items)):
+		
+		if items:
+			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
+				return
+			elif isinstance(iterable,dictionaries):
+				item = [iterable[item] for item in items]
+			else:
+				item = items
+		else:
+			item = iterable
+
+		yield from returner(index,shape,item,returns=returns)
+
+
+	if (isinstance(iterable,types)) and (not isinstance(iterable,exceptions)):
+		for i,item in enumerate(iterable):
+			if isinstance(iterable,dictionaries):
+				i,item = item,iterable[item]
+			size = len(iterable)					
+			yield from search(item,index=[*index,i],shape=[*shape,size],
+				returns=returns,items=items,types=types,exceptions=exceptions)
+
+def setter(iterable,keys,delimiter=None,default=None):
 	'''
 	Set nested value in iterable with nested keys
 	Args:
@@ -1006,7 +1186,6 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 		keys (dict,tuple): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	'''
 
 	types = (dict,)
@@ -1053,23 +1232,23 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 
 		if index in iterable:
 			if not isinstance(other,nulls):
-				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
+				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default)
 			else:
 				if isinstance(keys[key],types) and isinstance(iterable[index],types) and default not in ['replace']:
-					setter(iterable[index],keys[key],delimiter=delimiter,default=default,copy=copy)
+					setter(iterable[index],keys[key],delimiter=delimiter,default=default)
 				else:
-					iterable[index] = copier(func(index,key,iterable,keys),copy=copy)
+					iterable[index] = func(index,key,iterable,keys)
 
 		else:
 			if not isinstance(other,nulls):
 				iterable[index] = {}
-				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
+				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default)
 			else:
-				iterable[index] = copier(func(index,key,iterable,keys),copy=copy)
+				iterable[index] = func(index,key,iterable,keys)
 
 	return
 
-def getter(iterable,keys,delimiter=None,default=None,copy=False):
+def getter(iterable,keys,delimiter=None,default=None):
 	'''
 	Get nested value in iterable with nested keys
 	Args:
@@ -1077,13 +1256,12 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		keys (str,dict,tuple,list): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	'''
 
 	types = (dict,)
 
 	if (not isinstance(iterable,types)) or (not isinstance(keys,(str,tuple,list))):
-		return copier(iterable,copy=copy)
+		return iterable
 
 	key = keys
 
@@ -1101,11 +1279,11 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 
 	if index in iterable:
 		if not isinstance(other,nulls):
-			return getter(iterable[index],other,delimiter=delimiter,default=default,copy=copy)
+			return getter(iterable[index],other,delimiter=delimiter,default=default)
 		else:
-			return copier(iterable[index],copy=copy)
+			return iterable[index]
 	else:
-		return copier(default,copy=copy)
+		return default
 
 
 class Job(object):
@@ -2221,35 +2399,6 @@ class Task(Job):
 
 		return
 
-	def __call__(self,options=None,device=None,env=None,time=None,execute=None,verbose=None):
-		'''
-		Call task
-		Args:
-			options (dict[str,str]): options for job
-			device (str): Name of device to submit to
-			env (dict[str,str]): environmental variables for job
-			time (int,float): Timeout duration in seconds
-			execute (boolean,int): Boolean whether to call commands
-			verbose (int,str,bool): Verbosity
-			kwargs (dict): Keyword arguments
-		Returns:
-			identity (identity): Identity of job
-		'''
-
-		identity = self.submit(options=options,device=device,env=env,time=time,execute=execute,verbose=verbose)
-
-		return identity
-
-	def __str__(self):
-		if isinstance(self.name,str):
-			string = self.name
-		else:
-			string = self.__class__.__name__
-		return string
-
-	def __repr__(self):
-		return self.__str__()
-
 	def init(self,*args,**kwargs):
 		'''
 		Initialize task
@@ -2297,27 +2446,6 @@ class Task(Job):
 			job.init(**keywords)
 
 		self.set()
-
-		return
-
-	def setup(self,options=None,device=None,**kwargs):
-		'''
-		Setup task
-		Args:
-			options (dict[str,str]): options for job
-			device (str): Name of device to submit to
-			kwargs (dict): Keyword arguments
-		'''
-
-		device = device if device is not None else self.device
-		options = options if isinstance(options,dict) else self.options
-		path = self.path
-
-		# Init attributes
-		self.init(device=device)
-
-		# Update options
-		self.update(options,path=path)
 
 		return
 
@@ -2443,6 +2571,438 @@ class Task(Job):
 		defaults = {}
 
 		return defaults
+
+
+class Work(Task):
+	'''
+	Work class
+	Args:
+		settings (str,dict): settings
+		pool (int): Number of jobs per task		
+		name (str): name of work
+		options (dict[str,str]): options for work
+		device (str): Name of device to submit to
+		identity (int): identity of work
+		jobs (iterable[Job,dict]): related jobs of work
+		path (str): path to work
+		data (str,dict[str,str]): path of work script
+		file (str): path of work executable
+		logger (str): Name of logger
+		env (dict[str,str]): environmental variables for work
+		time (int,float): Timeout duration in seconds		
+		execute (boolean,int): Boolean whether to call commands
+		verbose (int,str,bool): Verbosity
+		kwargs (dict): Keyword arguments		
+	'''
+	def __init__(self,settings=None,pool=None,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	
+		self.settings = settings
+		self.pool = pool
+
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+
+		return
+
+	def init(self,*args,**kwargs):
+		'''
+		Initialize task
+		Args:
+			args (iterable): Positional arguments
+			kwargs (dict): Keyword arguments
+		'''
+
+		for attr in kwargs:
+			if hasattr(self,attr):
+				setattr(self,attr,kwargs[attr])
+
+		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
+		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
+		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
+
+		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
+
+		if self.jobs is None:
+			self.jobs = []
+		elif not isinstance(self.jobs,iterables):
+			self.jobs = [self.jobs]
+
+
+		# Get settings
+		settings = self.settings if self.settings is not None else None
+		pool = self.pool if self.pool is not None else 1
+		options = self.options
+
+		default = {}
+		if settings is None:
+			settings = default
+		elif isinstance(settings,str):
+			settings = load(settings,default=default)
+		elif isinstance(settings,dict):
+			settings = {**settings}
+
+
+		# Get permutations of settings
+		size = 0
+		permutations = self.permute(settings)
+		for permutation in permutations:
+
+			# Update settings with permutation
+			setting = copy(settings)
+			boolean = lambda attr,permutation: attr.split(delimiter)[0] in ['seed']
+			setter(setting,{attr: permutation[attr] for attr in permutation if boolean(attr,permutation)},delimiter=delimiter)
+
+			# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+			seed,seeds,seedlings = self.spawn(setting)
+
+			# Get shape and default key of permutations
+			size += len(seeds)
+
+		print(size)
+
+		if size > 1:
+			min = 0
+			max = size//pool + (size%pool>0) - 1
+			step = 1
+			slice = pool
+			count = (max - min + 1)//step
+			
+		else:
+			slice = None
+			min = None
+			max = None
+			step = None
+			count = None
+
+		env = {
+			'SLURM_ARRAY_TASK_MIN':min,
+			'SLURM_ARRAY_TASK_MAX':max,
+			'SLURM_ARRAY_TASK_STEP':step,
+			'SLURM_ARRAY_TASK_COUNT':count,
+			'SLURM_ARRAY_TASK_SLICE':slice,
+			'SLURM_ARRAY_TASK_SIZE':size,
+		}
+
+
+		options.update(dict(
+			parallel='{start}-{stop}:{step}%{number}'.format(start=0,stop=count,step=step,number=options.get('parallel','100').split('%')[-1])
+			)
+		)
+
+		print(env)
+		print(options)
+
+		exit()
+
+
+		cls = Job
+		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
+
+		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
+
+		for job in self.jobs:
+			keywords = dict(
+				jobs=[
+					*[i for i in self.jobs if any(
+						(isinstance(j,cls) and i==j) or 
+						(isinstance(j,str) and i.name==j) or
+						(isinstance(i,int) and i.identity==j)
+						for j in job.jobs)
+						],
+					*[i for i in job.jobs if (
+						(isinstance(i,cls) and i not in self.jobs)
+						)
+						],
+					],
+				execute = self.execute
+				)
+			job.init(**keywords)
+
+		self.set()
+
+		return
+
+	@classmethod
+	def permute(cls,settings):
+		'''
+		Get permutations of settings
+		Args:
+			settings (dict,str): settings
+		Returns:
+			permutations (iterable[dict]): Permutations of settings
+		'''
+		
+		default = {}
+		if settings is None:
+			settings = default
+		elif isinstance(settings,str):
+			settings = load(settings,default)
+		elif isinstance(settings,dict):
+			settings = {**settings}
+
+		permutations = settings['permutations'].get('permutations')
+		
+		groups = settings['permutations'].get('groups')
+		filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
+		func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
+		
+		permutations = permuter(permutations,groups=groups,filters=filters,func=func)
+
+		return permutations
+
+	@classmethod
+	def spawn(cls,settings):
+		'''
+		Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+		Args:
+			settings (dict,str): settings
+		Returns:
+			seed (int): Seed
+			seeds (iterable[dict]): All permutation of seed instances
+			seedlings (dict[iterable]): All possible sets of seeds
+		'''
+
+		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+		seed = settings['seed'].get('seed')
+		size = settings['seed'].get('size')
+		groups = settings['seed'].get('groups')
+
+		# Find keys of seeds in settings
+		items = ['seed']
+		types = (list,dict,)
+		exclude = ['seed','seed.seed','system.seed',
+			*[delimiter.join(['permutations','permutations',*attr.split(delimiter)]) for attr in getter(settings,'permutations.permutations',delimiter=delimiter)],
+			]
+		seedlings = search(settings,items=items,returns=True,types=types)
+
+		seedlings = {delimiter.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
+		seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
+		count = max(1,len(seedlings))
+
+		if isinstance(size,int):
+			size = [size]*count
+			groups = [[i for i in seedlings]]
+		elif isinstance(size,dict):
+			size = [size.get(seedling,1) for seedling in seedlings]
+			groups = groups		
+		elif size is None:
+			size = [1]*count
+			groups = [[i for i in seedlings]]	
+		elif len(size) == 1:
+			size = [*size]*count
+			groups = groups
+		elif len(size) == count:
+			size = [i for i in size]
+			groups = groups
+		else:
+			size = [1]*count
+			groups = [[i for i in seedlings]]
+
+		shape = (*size,)
+		size = sum(size)
+
+		if size:
+			seeds = seeder(seed=seed,size=size,data=True)
+			seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
+			seeds = permuter(seedlings,groups=groups)
+		else:
+			seeds = seeder(seed=seed,data=True)
+			seedlings = {seedling: seeds[i] for i,seedling in enumerate(seedlings)}
+			seeds = [{}]
+
+		return seed,seeds,seedlings
+
+
+class Tasks(Task):
+	'''
+	Tasks class
+	Args:
+		name (str): name of tasks
+		options (dict[str,str]): options for tasks
+		device (str): Name of device to submit to
+		identity (int): identity of tasks
+		jobs (iterable[Job,dict]): related jobs of tasks
+		path (str): path to tasks
+		data (str,dict[str,str]): path of tasks script
+		file (str): path of tasks executable
+		logger (str): Name of logger
+		env (dict[str,str]): environmental variables for tasks
+		time (int,float): Timeout duration in seconds		
+		execute (boolean,int): Boolean whether to call commands
+		verbose (int,str,bool): Verbosity
+		kwargs (dict): Keyword arguments		
+	'''
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+
+		return
+
+	def init(self,*args,**kwargs):
+		'''
+		Initialize task
+		Args:
+			args (iterable): Positional arguments
+			kwargs (dict): Keyword arguments
+		'''
+
+		for attr in kwargs:
+			if hasattr(self,attr):
+				setattr(self,attr,kwargs[attr])
+
+		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
+		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
+		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
+
+		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
+
+		if self.jobs is None:
+			self.jobs = []
+		elif not isinstance(self.jobs,iterables):
+			self.jobs = [self.jobs]
+
+		cls = Job
+		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
+
+		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
+
+		for job in self.jobs:
+			keywords = dict(
+				jobs=[
+					*[i for i in self.jobs if any(
+						(isinstance(j,cls) and i==j) or 
+						(isinstance(j,str) and i.name==j) or
+						(isinstance(i,int) and i.identity==j)
+						for j in job.jobs)
+						],
+					*[i for i in job.jobs if (
+						(isinstance(i,cls) and i not in self.jobs)
+						)
+						],
+					],
+				execute = self.execute
+				)
+			job.init(**keywords)
+
+		self.set()
+
+		return
+
+	def submit(self,options=None,device=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+		'''
+		Submit task
+		Args:
+			options (dict[str,str]): options for job
+			device (str): Name of device to submit to
+			env (dict[str,str]): environmental variables for job
+			time (int,float): Timeout duration in seconds
+			execute (boolean,int): Boolean whether to call commands
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (iterable[int]): Identity of job
+		'''
+
+		for job in self.jobs:
+			keywords = dict(options=options,device=device,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+			identity = job.submit(**keywords)
+
+		identity = self.identification(**kwargs)
+
+		return identity
+
+	def cleanup(self,**kwargs):
+		'''
+		Cleanup job
+		Args:
+			kwargs (dict): Keyword arguments
+		'''
+
+		for job in self.jobs:
+			keywords = dict(**kwargs)
+			job.cleanup(**keywords)
+
+		return
+
+	def stats(self,**kwargs):
+		'''
+		Stats of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			stats (iterable[dict]): stats of job
+		'''
+
+		stats = []
+
+		for job in self.jobs:
+			keywords = dict(**kwargs)
+			stats.extend(job.stats(**keywords))
+
+		return stats
+
+	@property
+	def state(self):
+		'''
+		State of job
+		Returns:
+			state (str): State of job
+		'''
+
+		status = self.status()
+
+		for state in self.states:
+			if any(status[state]):
+				break
+			else:
+				state = None
+		
+		return state
+
+	def status(self,**kwargs):
+		'''
+		Status of job
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			status (dict): Status of job
+		'''
+
+		identity = self.identification(**kwargs)
+
+		stats = self.stats(**kwargs)
+
+		status = Dict()
+		for state in self.states:
+			status[state] = Dict()
+			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
+				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
+							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
+				if jobs:
+					status[state][attr] = jobs
+
+		return status
+
+	def identification(self,**kwargs):
+		'''
+		Identity of task
+		Args:
+			kwargs (dict): Keyword arguments
+		Returns:
+			identity (iterable[int]): identity of job
+		'''
+
+		identity = []
+
+		for job in self.jobs:
+			keywords = dict(**kwargs)
+			identity.append(job.identification(**keywords))
+
+		self.identity = identity if any(i is not None for i in identity) else self.identity
+
+		identity = self.identity
+
+		return identity
+
 
 def workflow(func,settings,*args,**kwargs):
 	'''

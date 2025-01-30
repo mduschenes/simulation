@@ -10,7 +10,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.workflow import Job,Task,Dict
+from src.workflow import Job,Task,Work,Tasks
 from src.workflow import call,timeout,permuter,sleep,scalars,iterables
 
 
@@ -50,7 +50,8 @@ def test_call(*args,**kwargs):
 def test_parse(*args,**kwargs):
 
 	def wrapper(data):
-		job = Job(device='slurm')
+		cls = Job
+		job = cls(device='slurm')
 		return job.index(data)
 
 	def equal(x,y):
@@ -196,7 +197,8 @@ def test_job(*args,**kwargs):
 		)
 
 
-	job = Job(*args,**kwargs)
+	cls = Job
+	job = cls(*args,**kwargs)
 
 	job.info(verbose=verbose)
 
@@ -270,9 +272,8 @@ def test_task(*args,**kwargs):
 			execute=True,verbose=False
 			)
 
-		# job = Job(*args,**kwargs)
-
-		job = kwargs
+		cls = dict
+		job = cls(*args,**kwargs)
 
 		jobs.append(job)
 
@@ -291,8 +292,8 @@ def test_task(*args,**kwargs):
 		execute=True,verbose=False
 		)
 
-
-	task = Task(*args,**kwargs)
+	cls = Task
+	task = cls(*args,**kwargs)
 
 	task.info(verbose=verbose)
 
@@ -309,6 +310,176 @@ def test_task(*args,**kwargs):
 
 	return
 
+
+def test_work(*args,**kwargs):
+
+	verbose = True
+
+	def status(task):
+
+		print('Status',task.state)
+		status = task.status()
+
+		for state in status:
+			print(state)
+			for attr in status[state]:
+				print('\t',attr,status[state][attr])
+		print(identity,task.identity)
+		task.cleanup()
+		print('State',task.state)
+		print('---------')
+
+		return
+
+	s = 3
+	jobs = []
+
+	args = tuple()
+	kwargs = dict(
+		settings='./job/settings.json',
+		pool=10,
+		name='task',
+		identity=None,
+		device='slurm',		
+		jobs=jobs,
+		path='./job',
+		data={'./job/job.slurm':'job.slurm'},
+		file='job.sh',
+		env={},
+		options={
+			},
+		execute=True,verbose=False
+		)
+
+	cls = Work
+	task = cls(*args,**kwargs)
+
+	task.info(verbose=verbose)
+
+	task.setup()
+
+	identity = task.submit()
+
+	for i in range(s):
+		status(task)
+
+	sleep(25)
+	task.cleanup(verbose=True)
+	print('---------')
+
+	return
+
+
+def test_tasks(*args,**kwargs):
+
+	verbose = True
+
+	def status(task):
+
+		print('Status',task.state)
+		status = task.status()
+
+		for state in status:
+			print(state)
+			for attr in status[state]:
+				print('\t',attr,status[state][attr])
+		print(identity,task.identity)
+		task.cleanup()
+		print('State',task.state)
+		print('---------')
+
+		return
+
+	t,n = 4,3
+	s = 3
+	tasks = []
+	jobs = []
+
+	for l in range(t):
+		for i in range(n):
+			args = tuple()
+			kwargs = dict(
+				name='job.{l}.{i}'.format(i=i,l=l),
+				identity=None,
+				device='slurm',		
+				jobs=['job.{l}.{i}'.format(i=i-1,l=l)] if i>0 else [],
+				path='./job/{l}'.format(i=i,l=l),
+				data={'./job/job.slurm':'job.slurm'},
+				file='job.sh',
+				env={'TEST_ARGS':"Hello World"},
+				options={
+					'partition':'cpu',
+					'time':'1:00:00',
+					'mem':'1G',
+					'cpus-per-task':1,
+					'parallel':'0,3-4:1%100',
+					'jobs':'afterany:',
+					'stdout':'%x.%A.stdout',
+					'stderr':'%x.%A.stderr',
+					'get-user-env':False,
+					'export':'JOB_CMD=main.py,JOB_ARGS=settings.json',
+					},
+				execute=True,verbose=False
+				)
+
+			cls = dict
+			job = cls(*args,**kwargs)
+
+			jobs.append(job)
+
+		args = tuple()
+		kwargs = dict(
+			name='job',
+			identity=None,
+			device='slurm',		
+			jobs=jobs,
+			path='./job',
+			data={'./job/job.slurm':'job.slurm'},
+			file='job.sh',
+			env={},
+			options={
+				},
+			execute=True,verbose=False
+			)
+
+		cls = Task
+		task = cls(*args,**kwargs)
+
+		tasks.append(task)
+
+	args = tuple()
+	kwargs = dict(
+		name='job',
+		identity=None,
+		device='slurm',		
+		jobs=tasks,
+		path='./job',
+		data={'./job/job.slurm':'job.slurm'},
+		file='job.sh',
+		env={},
+		options={
+			},
+		execute=True,verbose=False
+		)
+
+	cls = Tasks
+	tasks = cls(*args,**kwargs)
+
+	tasks.info(verbose=verbose)
+
+	tasks.setup()
+
+	identity = tasks.submit()
+
+	for i in range(s):
+		status(tasks)
+
+	sleep(25)
+	tasks.cleanup(verbose=True)
+	print('---------')
+
+	return
+
 if __name__ == '__main__':
 
 	args = tuple()
@@ -319,4 +490,6 @@ if __name__ == '__main__':
 	# test_parse(*args,**kwargs)
 	# test_submit(*args,**kwargs)
 	# test_job(*args,**kwargs)
-	test_task(*args,**kwargs)
+	# test_task(*args,**kwargs)
+	test_work(*args,**kwargs)
+	# test_tasks(*args,**kwargs)
