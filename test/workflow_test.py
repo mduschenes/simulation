@@ -11,8 +11,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.workflow import Job,Task,Work,Tasks
-from src.workflow import call,timeout,permuter,sleep,scalars,iterables
+from src.settings import Settings
 
+from src.workflow import call,timeout,permuter,getter,setter,sleep,scalars,iterables,delimiter
 
 def test_call(*args,**kwargs):
 
@@ -89,7 +90,6 @@ def test_parse(*args,**kwargs):
 
 	return
 
-
 def test_timeout(*args,**kwargs):
 
 	def func(i):
@@ -109,6 +109,39 @@ def test_timeout(*args,**kwargs):
 		pass
 
 	return
+
+def test_settings(*args,**kwargs):
+
+	args = tuple()
+	kwargs = dict(
+		settings={'./job/settings.json':'settings.json'},
+		path='./job',
+		index=-1,
+		logger=None,env=None,time=None,
+		execute=None,verbose=True
+		)
+
+	cls = Settings
+
+	settings = cls(*args,**kwargs)
+
+	settings.info()
+
+	index = settings.index
+	data = settings[index]
+	print(index)
+	for key in [*settings.keys,*settings.defaults]:
+		print(key,getter(data,key))
+	print()
+
+	for index,data in enumerate(settings):
+		print(index)
+		for key in [*settings.keys,*settings.defaults]:
+			print(key,getter(data,key))
+		print()
+
+	return
+
 
 def test_submit(*args,**kwargs):
 
@@ -488,8 +521,9 @@ if __name__ == '__main__':
 	# test_call(*args,**kwargs)
 	# test_timeout(*args,**kwargs)
 	# test_parse(*args,**kwargs)
+	test_settings(*args,**kwargs)
 	# test_submit(*args,**kwargs)
 	# test_job(*args,**kwargs)
 	# test_task(*args,**kwargs)
-	test_work(*args,**kwargs)
+	# test_work(*args,**kwargs)
 	# test_tasks(*args,**kwargs)

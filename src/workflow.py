@@ -16,7 +16,7 @@ ifs = ' '
 pipe = '|'
 
 logger = Logger()
-info = 20
+info = 100
 debug = 0
 
 
@@ -874,7 +874,9 @@ def load(path,default=None,wrapper=None,execute=None,verbose=None):
 	Returns:
 		data (object): data
 	'''
+	
 	logger('Load: {path}'.format(path=path),verbose=verbose)
+	
 	try:
 		with open(path,'r') as obj:
 			data = json.load(obj)
@@ -885,6 +887,7 @@ def load(path,default=None,wrapper=None,execute=None,verbose=None):
 			data = wrapper(data)
 		except:
 			pass
+	
 	return data
 
 def dump(path,data,wrapper=None,execute=None,verbose=None):
@@ -896,10 +899,10 @@ def dump(path,data,wrapper=None,execute=None,verbose=None):
 		wrapper (callable): wrapper to load data with signature wrapper(data)
 		execute (boolean,int): Boolean whether to call commands		
 		verbose (int,str,bool): Verbosity
-	Returns:
-		data (object): data
 	'''	
+	
 	logger('Dump: {path}'.format(path=path),verbose=verbose)
+	
 	if wrapper is not None:
 		try:
 			data = wrapper(data)
@@ -910,6 +913,7 @@ def dump(path,data,wrapper=None,execute=None,verbose=None):
 			json.dump(data,obj)
 	except:
 		pass
+	
 	return
 
 
@@ -925,7 +929,9 @@ def read(path,default=None,wrapper=None,execute=None,verbose=None):
 	Returns:
 		data (object): data
 	'''
+	
 	logger('Load: {path}'.format(path=path),verbose=verbose)
+	
 	try:
 		with open(path,'r') as obj:
 			data = obj.readlines()
@@ -936,6 +942,7 @@ def read(path,default=None,wrapper=None,execute=None,verbose=None):
 			data = wrapper(data)
 		except:
 			pass
+	
 	return data
 
 def write(path,data,wrapper=None,execute=None,verbose=None):
@@ -950,7 +957,9 @@ def write(path,data,wrapper=None,execute=None,verbose=None):
 	Returns:
 		data (object): data
 	'''	
+	
 	logger('Dump: {path}'.format(path=path),verbose=verbose)
+	
 	if wrapper is not None:
 		try:
 			data = wrapper(data)
@@ -959,6 +968,7 @@ def write(path,data,wrapper=None,execute=None,verbose=None):
 	try:
 		with open(path,'w') as obj:
 			obj.writelines(data)
+	
 	except:
 		pass
 	return
@@ -1178,14 +1188,14 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 			yield from search(item,index=[*index,i],shape=[*shape,size],
 				returns=returns,items=items,types=types,exceptions=exceptions)
 
-def setter(iterable,keys,delimiter=None,default=None):
+def setter(iterable,keys,delimiter=delimiter,default=None):
 	'''
 	Set nested value in iterable with nested keys
 	Args:
 		iterable (dict): dictionary to be set in-place with value
 		keys (dict,tuple): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
-		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
+		default (callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 	'''
 
 	types = (dict,)
@@ -1248,14 +1258,14 @@ def setter(iterable,keys,delimiter=None,default=None):
 
 	return
 
-def getter(iterable,keys,delimiter=None,default=None):
+def getter(iterable,keys,delimiter=delimiter,default=None):
 	'''
 	Get nested value in iterable with nested keys
 	Args:
 		iterable (dict): dictionary to get with keys
 		keys (str,dict,tuple,list): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
-		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
+		default (callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 	'''
 
 	types = (dict,)
@@ -1305,7 +1315,7 @@ class Job(object):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,logger=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 		
 		self.name = None if name is None else name
 		self.options = {} if options is None else options
@@ -1315,8 +1325,8 @@ class Job(object):
 		self.path = None if path is None else path
 		self.data = None if data is None else data
 		self.file = None if file is None else file
+		self.logger = None if logger is None else logger
 		self.env  = {} if env is None else env
-		self.logger = None if logger is None else None
 		self.time = None if time is None else time
 		self.execute = False if execute is None else execute
 		self.verbose = None if verbose is None else verbose
@@ -2393,9 +2403,9 @@ class Task(Job):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,logger=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 	
-		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,logger=logger,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
 
 		return
 
@@ -2407,24 +2417,11 @@ class Task(Job):
 			kwargs (dict): Keyword arguments
 		'''
 
-		for attr in kwargs:
-			if hasattr(self,attr):
-				setattr(self,attr,kwargs[attr])
-
-		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
-		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
-		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
-
-		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-
-		if self.jobs is None:
-			self.jobs = []
-		elif not isinstance(self.jobs,iterables):
-			self.jobs = [self.jobs]
+		super().init(*args,**kwargs)
 
 		cls = Job
 		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
-
+		
 		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
 
 		for job in self.jobs:
@@ -2594,12 +2591,12 @@ class Work(Task):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,settings=None,pool=None,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	def __init__(self,settings=None,pool=None,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,logger=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 	
 		self.settings = settings
 		self.pool = pool
 
-		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,logger=logger,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
 
 		return
 
@@ -2611,20 +2608,7 @@ class Work(Task):
 			kwargs (dict): Keyword arguments
 		'''
 
-		for attr in kwargs:
-			if hasattr(self,attr):
-				setattr(self,attr,kwargs[attr])
-
-		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
-		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
-		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
-
-		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-
-		if self.jobs is None:
-			self.jobs = []
-		elif not isinstance(self.jobs,iterables):
-			self.jobs = [self.jobs]
+		super().init(*args,**kwargs)
 
 
 		# Get settings
@@ -2674,6 +2658,10 @@ class Work(Task):
 			count = None
 
 		env = {
+			'SLURM_JOB_NAME':self.name,
+			'SLURM_JOB_ID':self.identity,
+			'SLURM_ARRAY_JOB_ID':self.identity,
+			'SLURM_ARRAY_TASK_ID':None,
 			'SLURM_ARRAY_TASK_MIN':min,
 			'SLURM_ARRAY_TASK_MAX':max,
 			'SLURM_ARRAY_TASK_STEP':step,
@@ -2684,7 +2672,7 @@ class Work(Task):
 
 
 		options.update(dict(
-			parallel='{start}-{stop}:{step}%{number}'.format(start=0,stop=count,step=step,number=options.get('parallel','100').split('%')[-1])
+			parallel='{start}-{stop}:{step}%{number}'.format(start=0,stop=count-1,step=step,number=options.get('parallel','100').split('%')[-1])
 			)
 		)
 
@@ -2721,95 +2709,7 @@ class Work(Task):
 
 		return
 
-	@classmethod
-	def permute(cls,settings):
-		'''
-		Get permutations of settings
-		Args:
-			settings (dict,str): settings
-		Returns:
-			permutations (iterable[dict]): Permutations of settings
-		'''
-		
-		default = {}
-		if settings is None:
-			settings = default
-		elif isinstance(settings,str):
-			settings = load(settings,default)
-		elif isinstance(settings,dict):
-			settings = {**settings}
 
-		permutations = settings['permutations'].get('permutations')
-		
-		groups = settings['permutations'].get('groups')
-		filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
-		func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
-		
-		permutations = permuter(permutations,groups=groups,filters=filters,func=func)
-
-		return permutations
-
-	@classmethod
-	def spawn(cls,settings):
-		'''
-		Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
-		Args:
-			settings (dict,str): settings
-		Returns:
-			seed (int): Seed
-			seeds (iterable[dict]): All permutation of seed instances
-			seedlings (dict[iterable]): All possible sets of seeds
-		'''
-
-		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
-		seed = settings['seed'].get('seed')
-		size = settings['seed'].get('size')
-		groups = settings['seed'].get('groups')
-
-		# Find keys of seeds in settings
-		items = ['seed']
-		types = (list,dict,)
-		exclude = ['seed','seed.seed','system.seed',
-			*[delimiter.join(['permutations','permutations',*attr.split(delimiter)]) for attr in getter(settings,'permutations.permutations',delimiter=delimiter)],
-			]
-		seedlings = search(settings,items=items,returns=True,types=types)
-
-		seedlings = {delimiter.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
-		seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
-		count = max(1,len(seedlings))
-
-		if isinstance(size,int):
-			size = [size]*count
-			groups = [[i for i in seedlings]]
-		elif isinstance(size,dict):
-			size = [size.get(seedling,1) for seedling in seedlings]
-			groups = groups		
-		elif size is None:
-			size = [1]*count
-			groups = [[i for i in seedlings]]	
-		elif len(size) == 1:
-			size = [*size]*count
-			groups = groups
-		elif len(size) == count:
-			size = [i for i in size]
-			groups = groups
-		else:
-			size = [1]*count
-			groups = [[i for i in seedlings]]
-
-		shape = (*size,)
-		size = sum(size)
-
-		if size:
-			seeds = seeder(seed=seed,size=size,data=True)
-			seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
-			seeds = permuter(seedlings,groups=groups)
-		else:
-			seeds = seeder(seed=seed,data=True)
-			seedlings = {seedling: seeds[i] for i,seedling in enumerate(seedlings)}
-			seeds = [{}]
-
-		return seed,seeds,seedlings
 
 
 class Tasks(Task):
@@ -2831,9 +2731,9 @@ class Tasks(Task):
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Keyword arguments		
 	'''
-	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,env=None,time=None,execute=None,verbose=None,**kwargs):
+	def __init__(self,name=None,options=None,device=None,identity=None,jobs=None,path=None,data=None,file=None,logger=None,env=None,time=None,execute=None,verbose=None,**kwargs):
 	
-		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
+		super().__init__(name=name,options=options,device=device,identity=identity,jobs=jobs,path=path,data=data,file=file,logger=logger,env=env,time=time,execute=execute,verbose=verbose,**kwargs)
 
 		return
 
@@ -2845,45 +2745,7 @@ class Tasks(Task):
 			kwargs (dict): Keyword arguments
 		'''
 
-		for attr in kwargs:
-			if hasattr(self,attr):
-				setattr(self,attr,kwargs[attr])
-
-		self.name = basedir(self.path) if self.name is None and self.path is not None else __name__ if self.name is None else self.name
-		self.data = {self.data:self.data} if not isinstance(self.data,dict) else self.data
-		self.logger = Logger(self.logger) if not isinstance(self.logger,Logger) else self.logger
-
-		self.jobs = [] if self.jobs is None else [self.jobs] if not isinstance(self.jobs,iterables) else self.jobs
-
-		if self.jobs is None:
-			self.jobs = []
-		elif not isinstance(self.jobs,iterables):
-			self.jobs = [self.jobs]
-
-		cls = Job
-		self.jobs = [job if not isinstance(job,dict) else cls(**job) for job in self.jobs]
-
-		self.identity = [job.identity for job in self.jobs] if self.identity is None else self.identity
-
-		for job in self.jobs:
-			keywords = dict(
-				jobs=[
-					*[i for i in self.jobs if any(
-						(isinstance(j,cls) and i==j) or 
-						(isinstance(j,str) and i.name==j) or
-						(isinstance(i,int) and i.identity==j)
-						for j in job.jobs)
-						],
-					*[i for i in job.jobs if (
-						(isinstance(i,cls) and i not in self.jobs)
-						)
-						],
-					],
-				execute = self.execute
-				)
-			job.init(**keywords)
-
-		self.set()
+		super().init(*args,**kwargs)
 
 		return
 
