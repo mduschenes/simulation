@@ -2475,6 +2475,26 @@ def test_parameters(*args,**kwargs):
 	return
 
 
+def test_tensor(*args,**kwargs):
+
+	from src.utils import mps
+	from src.quantum import MPS as mps
+	
+	N = 5
+	D = 2**2
+	data = 'zero'
+
+	args = tuple()
+	kwargs = dict(
+		data=data,N=N,D=D
+		)
+	data = mps(*args,**kwargs)
+
+	print(data)
+
+	return
+
+
 
 def test_function(*args,**kwargs):
 	D = [2]
@@ -2528,4 +2548,5 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	test_parameters(*args,**args)
+	# test_parameters(*args,**args)
+	test_tensor(*args,**args)
