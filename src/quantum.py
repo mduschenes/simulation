@@ -6965,6 +6965,10 @@ class Module(System):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
+	N = None
+	D = None
+	d = None
+
 	defaults = dict(
 		model=None,
 		N=None,M=None,D=None,d=None,
