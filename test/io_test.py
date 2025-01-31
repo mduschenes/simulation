@@ -13,8 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,allclose,scalars
-from src.io import load,dump,join,split,edit,dirname,exists,glob
-from src.call import rm
+from src.io import load,dump,join,split,edit,dirname,exists,glob,rm
 
 # Logging
 # from src.utils import logconfig
@@ -250,9 +249,36 @@ def test_glob(path=None,**kwargs):
 	return
 
 
+def test_lock(*args,**kwargs):
+
+	key = str(args[0]) if args else '3'
+	value = [1,2,3]
+
+	path = './job/data.hdf5'
+	kwargs = dict(
+		default = {},
+		lock = False
+		)
+
+	data = load(path,**kwargs)
+
+	data.update({key:value})
+
+	print(data)
+
+	dump(data,path,**kwargs)
+
+	if key == '3':
+		rm(path)
+
+	return
+
+
+
 if __name__ == '__main__':
 	# test_load()
 	# test_dump()
 	# test_importlib()
-	test_glob()
+	# test_glob()
+	test_lock(*sys.argv[1:])
 

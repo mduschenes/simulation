@@ -5,6 +5,7 @@ import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 import glob as globber
 from braceexpand import braceexpand
+from filelock import SoftFileLock as FileLock
 import importlib
 import json,pickle,h5py
 import numpy as np
@@ -32,6 +33,28 @@ info = 100
 debug = int(os.environ.get("PY_DEBUG",0))
 
 delimiter = '.'
+
+class Lock(object):
+	
+	ext = 'lock'
+	
+	def __new__(cls,lock,path,*args,**kwargs):
+		if not lock or not path:
+			self = super().__new__(cls,*args,**kwargs)
+		else:
+			path = delimiter.join([path,cls.ext])
+			self = 	FileLock(path,*args,**kwargs)
+		return self
+	def __init__(self,*args,**kwargs):
+		return
+	def __enter__(self):
+		return
+	def __exit__(self,etype, value, traceback):
+		return
+	def acquire(self,*args,**kwargs):
+		return
+	def release(self,*args,**kwargs):
+		return
 
 class cd(object):
 	'''
@@ -745,7 +768,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -754,6 +777,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,verbose=False
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		lock (bool): Lock file when loading
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -799,19 +823,20 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,verbose=False
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 
-		for wr in wrs:
-			try:
-				datum = _load(path,wr=wr,ext=ext,**kwargs)
-				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
-				logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+		with Lock(lock=lock,path=path):
+			for wr in wrs:
 				try:
-					with open(path,wr) as obj:
-						datum = _load(obj,wr=wr,ext=ext,**kwargs)
-						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+					datum = _load(path,wr=wr,ext=ext,**kwargs)
+					break
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-					pass
+					try:
+						with open(path,wr) as obj:
+							datum = _load(obj,wr=wr,ext=ext,**kwargs)
+							break
+					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+						pass
 
 		data[name] = datum
 
@@ -1006,7 +1031,7 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1015,6 +1040,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,verbose=False,**kwarg
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		lock (bool): Lock file when loading
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
@@ -1088,19 +1114,21 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,verbose=False,**kwarg
 		for wrapper in wrappers:
 			data = wrapper(data)
 
-		for wr in wrs:	
-			try:
-				_dump(data,path,wr=wr,ext=ext,**kwargs)
-				break
-			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-				logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+		with Lock(lock=lock,path=path):
+
+			for wr in wrs:	
 				try:
-					with open(path,wr) as obj:
-						_dump(data,obj,wr=wr,ext=ext,**kwargs)
+					_dump(data,path,wr=wr,ext=ext,**kwargs)
 					break
 				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-					pass
+					try:
+						with open(path,wr) as obj:
+							_dump(data,obj,wr=wr,ext=ext,**kwargs)
+						break
+					except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+						pass
 		
 		logger.log(info*verbose,'Dump : %s'%(relpath(paths[name])))
 
