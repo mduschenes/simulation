@@ -251,13 +251,13 @@ def test_glob(path=None,**kwargs):
 
 def test_lock(*args,**kwargs):
 
-	key = str(args[0]) if args else '3'
+	key = str(args[0]) if args and args[0].isdigit() else None
 	value = [1,2,3]
 
 	path = './job/data.hdf5'
 	kwargs = dict(
 		default = {},
-		lock = False
+		lock = True
 		)
 
 	data = load(path,**kwargs)
@@ -268,9 +268,10 @@ def test_lock(*args,**kwargs):
 
 	dump(data,path,**kwargs)
 
-	if key == '3':
+	if key == None:
 		rm(path)
 
+	# rm job/data.hdf5* -rf && parallel ./io_test.py ::: $(seq 1 10)
 	return
 
 
