@@ -7,6 +7,7 @@ pytables
 matplotlib
 pytest
 typing
+lockfile
 natsort
 braceexpand
 joblib

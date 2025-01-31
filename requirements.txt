@@ -7,7 +7,9 @@ pytables
 matplotlib
 pytest
 typing
+lockfile
 natsort
+braceexpand
 joblib
 parallel
 jax
