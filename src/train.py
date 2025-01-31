@@ -72,7 +72,7 @@ def call(settings,*args,**kwargs):
 		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 
-		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
+		module = module(**{**settings.module,**namespace(module,model),**dict(model=model,state=state,callback=callback,system=system)})
 
 		module.init()
 
