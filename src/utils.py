@@ -3914,6 +3914,111 @@ def lstsq(x,y):
 	return out
 
 
+def nndsvd(a,u,v,rank=None,eps=None):
+
+	slices = slice(None)
+	
+	def true(z_positive,x_positive,y_positive,z_negative,x_negative,y_negative):
+		return z_positive,x_positive,y_positive
+
+	def false(z_positive,x_positive,y_positive,z_negative,x_negative,y_negative):
+		return z_negative,x_negative,y_negative  
+
+	def func(i,x):
+		s,u,v = x
+
+		z,x,y = s[i],u[slices,i],v[i,slices]
+
+		x_positive,y_positive = absolute(maximums(x,0)),absolute(maximums(y,0))
+		x_negative,y_negative = absolute(minimums(x,0)),absolute(minimums(y,0))
+		x_positive_norm,y_positive_norm = norm(x_positive),norm(y_positive)
+		x_negative_norm,y_negative_norm = norm(x_negative),norm(y_negative)
+
+		z_positive,z_negative = z*x_positive_norm*y_positive_norm,z*x_negative_norm*y_negative_norm
+
+		x_positive,y_positive = x_positive/x_positive_norm,y_positive/y_positive_norm
+		x_negative,y_negative = x_negative/x_negative_norm,y_negative/y_negative_norm
+
+		z,x,y = cond(z_positive>z_negative,true,false,z_positive,x_positive,y_positive,z_negative,x_negative,y_negative)
+
+		s,u,v = inplace(s,i,1),inplace(u,(slices,i),sqrt(z)*x),inplace(v,(i,slices),sqrt(z)*y)
+		
+		x = s,u,v
+
+		return x
+
+	rank = min(a.shape) if rank is None else rank        
+	u,s,v = svd(a)
+
+	start,end,x = 0,rank,(s,u,v)
+	x = forloop(start,end,func,x)
+	s,u,v = x
+	
+	return s,u,v
+
+def nmfd(u,v,rank=None):
+	rank = min(a.shape) if rank is None else rank            
+	x,y = add(u,0),add(v,1)
+	s,u,v = x*y,u*1/x,transpose(transpose(v)*1/y)
+	return s,u,v
+
+def nmf(a,u=None,v=None,rank=None,eps=None):
+	
+	def init(a,u=None,v=None,rank=None,eps=None):
+		
+		a = a/addition(a)
+		
+		if u is None or v is None:
+			s,u,v = nndsvd(a,u=u,v=v,rank=rank,eps=eps)
+		else:
+			s,u,v = ones(rank),u,v
+		
+		return a,s,u,v
+	
+	def run(a,u=None,v=None,rank=None,eps=None):
+		if isinstance(eps,int):
+			func = update
+			start,end,func,x = 0,eps,func,(a,u,v)
+			x = forloop(start,end,func,x)
+			a,u,v = x
+		elif isinstance(eps,float):
+			cond = lambda x,a=a,eps=eps: error(x,a) > eps
+			cond,func,x = cond,update,(a,u,v)
+			x = whileloop(cond,func,x)
+			a,u,v = x           
+			
+		s,u,v = nmfd(u,v,rank=rank)
+		
+		return a,s,u,v
+   
+	def update(i,x):
+		a,u,v = x
+		
+		u,v = (
+			(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
+			(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
+		)
+
+		x = a,u,v
+		return x
+	
+	def error(x,a):
+		b,u,v = x
+		return norm(a-dot(u,v))
+	
+	rank = min(a.shape) if rank is None else rank        
+	eps = 1e-8 if eps is None else eps
+
+	a,s,u,v = init(a,u=u,v=v,rank=rank,eps=eps)
+	a,s,u,v = run(a,u=u,v=v,rank=rank,eps=eps)
+	
+	return a,s,u,v
+	
+def nvd(a,**kwargs):
+	a,s,u,v = nmf(a,**kwargs)
+	return dot(u*s,v)
+
+
 @jit
 def inv(a):
 	'''
@@ -7880,19 +7985,19 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 		transformation: (s,xyz,uvw) ->
 			split.func-> (xyz,uvw,s)
 			split.reshape-> (x,y,z,u,v,w,s)
-		 	split.transpose-> (x,u,y,v,z,w,s)
-		 	group.func-> (x,u,y,v,z,w,s)
-		 	group.transpose-> (z,x,w,u,y,v,s)
-		 	group.reshape-> (zx,wu,y,v,s)
+			split.transpose-> (x,u,y,v,z,w,s)
+			group.func-> (x,u,y,v,z,w,s)
+			group.transpose-> (z,x,w,u,y,v,s)
+			group.reshape-> (zx,wu,y,v,s)
 
 		~transformation: (zx,wu,y,v,s) ->
 			group.reshape-> (z,x,w,u,y,v,s)
-		 	group.transpose-> (x,u,y,v,z,w,s)
-		 	group.func-> (x,u,y,v,z,w,s)
-		 	split.transpose-> (x,y,z,u,v,w,s)
-		 	split.reshape-> (xyz,uvw,s)
+			group.transpose-> (x,u,y,v,z,w,s)
+			group.func-> (x,u,y,v,z,w,s)
+			split.transpose-> (x,y,z,u,v,w,s)
+			split.reshape-> (xyz,uvw,s)
 			split.func-> (s,xyz,uvw)
-				 					 	
+										
 
 	Args:
 		a (array): array to reshape into subspaces
@@ -7938,7 +8043,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			shape = {axis: [d]*n for axis in range(ndim)}
 
 		shape,shapes = ({axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)},
-					    {axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)})
+						{axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)})
 
 		ndim = len(shape)
 		ndims = len(shapes)
@@ -7948,7 +8053,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 		sort = [*[axis for axis in shape],*[axis for axis in shapes]]
 
 		shape,shapes = ({i: shape[axis] for i,axis in enumerate(shape)},
-					    {ndim+i: shapes[axis] for i,axis in enumerate(shapes)})
+						{ndim+i: shapes[axis] for i,axis in enumerate(shapes)})
 
 		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
 		axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
