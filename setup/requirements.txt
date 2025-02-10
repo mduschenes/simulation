@@ -14,6 +14,7 @@ joblib
 parallel
 jax
 jaxlib
+jaxopt
 absl-py
 pyaml
 autograd

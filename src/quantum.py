@@ -1299,7 +1299,7 @@ class Measure(System):
 			if model is not None and where:
 			
 				subscripts = 'uij,wji,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape,inverse[-1:])
+				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				options = options if options is not None else dict()

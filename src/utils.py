@@ -60,6 +60,7 @@ if backend in ['jax','jax.autograd']:
 		'JAX_DISABLE_JIT':False,
 		'JAX_PLATFORMS':'',
 		'JAX_PLATFORM_NAME':'',
+		'JAX_ENABLE_X64':True,
 		'TF_CPP_MIN_LOG_LEVEL':5,
 		'JAX_TRACEBACK_FILTERING':'off',
 		# "XLA_FLAGS":(
