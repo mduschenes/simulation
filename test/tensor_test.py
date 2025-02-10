@@ -686,13 +686,11 @@ class Basis(object):
 		if isinstance(state,dict):
 			N = len(state)
 			shape = [state[i].shape[-1] for i in state]
-			subscripts = f'{characters[N:2*N]}{characters[:N]},{characters[:N]}->{characters[N:2*N]}'
-			print(subscripts)
-			print(data.shape)
+			subscripts = ','.join(characters[:N])
+			subscripts = f'{characters[N:2*N]}{characters[:N]},{subscripts}->{characters[N:2*N]}'
 			data = cls.shuffle(data,shape,**kwargs)
-			print(data.shape)
 			state = state
-			data = einsum(subscripts,data,state)
+			data = einsum(subscripts,data,*(state[i] for i in state))
 		elif state.ndim == 1:
 			if data.ndim == 2:
 				data = einsum('ij,j->i',data,state)
@@ -708,6 +706,83 @@ class Basis(object):
 		else:
 			raise NotImplementedError(f"Not Implemented {state}")			
 		return data
+
+
+def test_shuffle(*args,**kwargs):
+
+	basis = Basis()
+
+	D = 2
+	N = 2
+	d = 2
+	shape = [D]*N
+	state = arange(D**N)
+	data = reshape(arange(D**(d*N)),(D**N,)*d)
+
+	assert allclose(data,basis.shuffle(basis.shuffle(data,shape,transform=True),shape,transform=False))
+
+	subscripts = 'ij,j->i'
+	out = einsum(subscripts,data,state)
+	
+	state = basis.shuffle(state,shape)
+	data = basis.shuffle(data,shape)
+
+	subscripts = f'{characters[N:2*N]}{characters[:N]},{characters[:N]}->{characters[N:2*N]}'
+	_out = basis.shuffle(einsum(subscripts,data,state),shape,transform=False)
+
+	assert allclose(out,_out)
+
+	return
+
+
+def test_mps(*args,**kwargs):
+
+	def initialize(D,N,state=None,data=None,**kwargs):
+
+		basis = Basis()
+
+		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
+		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
+		state = {i:basis.transform(state[i],D=D,**kwargs) for i in state}
+
+		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
+		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),**kwargs: basis.contract(state,data=data,**kwargs) for i in data}
+		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),**kwargs):basis.contract(state,data=data,**kwargs) for i in data}
+
+		for i in data:
+			print(i)
+			obj = {k:state[k] for k in i}
+			obj = data[i](obj)
+
+			print(obj)
+
+		return state,data
+
+	def function(data,func,*args,**kwargs):
+		time = timer.time()
+
+		data = func(data,**options)
+	
+		time = timer.time() - time
+
+		return
+
+	N = 2
+	D = 2
+	seed = 123
+	dtype = 'complex'
+
+	kwargs = dict(
+		D=D,N=N,
+		state={i:'state' for i in range(N)},
+		data={i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1},
+		seed=seed,
+		dtype=dtype,		
+	)
+
+	state,data = initialize(**kwargs)
+
+	return
 
 def test_nmf(*args,**kwargs):
 
@@ -778,90 +853,11 @@ def test_nmf(*args,**kwargs):
 	return
 
 
-def test_shuffle(*args,**kwargs):
-
-	basis = Basis()
-
-	D = 2
-	N = 2
-	d = 2
-	shape = [D]*N
-	state = arange(D**N)
-	data = reshape(arange(D**(d*N)),(D**N,)*d)
-
-	assert allclose(data,basis.shuffle(basis.shuffle(data,shape,transform=True),shape,transform=False))
-
-	subscripts = 'ij,j->i'
-	out = einsum(subscripts,data,state)
-	
-	state = basis.shuffle(state,shape)
-	data = basis.shuffle(data,shape)
-
-	subscripts = f'{characters[N:2*N]}{characters[:N]},{characters[:N]}->{characters[N:2*N]}'
-	_out = basis.shuffle(einsum(subscripts,data,state),shape,transform=False)
-
-	assert allclose(out,_out)
-
-	return
-
-
-def test_mps(*args,**kwargs):
-
-	def initialize(D,N,state=None,data=None,**kwargs):
-
-		basis = Basis()
-
-		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
-		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
-		state = {i:basis.transform(state[i],D=D,**kwargs) for i in state}
-
-		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),**kwargs: basis.contract(state,data,**kwargs) for i in data}
-		data = {i:basis.transform(data[i],D=D,N=len(i),**kwargs) for i in data}
-
-		for i in data:
-			print(i)
-			obj = {k:state[k] for k in i}
-			obj = basis.contract(obj,data[i],**kwargs)
-
-			print(obj)
-
-		return state,data
-
-	def function(data,func,*args,**kwargs):
-		time = timer.time()
-
-		data = func(data,**options)
-	
-		time = timer.time() - time
-
-		print(kwargs)
-		print('%0.4f    %0.5e'%(time,error))
-
-		return
-
-	N = 2
-	D = 2
-	seed = 123
-	dtype = 'complex'
-
-	kwargs = dict(
-		D=D,N=N,
-		state={i:'state' for i in range(N)},
-		data={i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1},
-		seed=seed,
-		dtype=dtype,		
-	)
-
-	state,data = initialize(**kwargs)
-
-	return
-
 if __name__ == "__main__":
 
 	args = tuple()
 	kwargs = dict()
 
-	# test_nmf(*args,**kwargs)
 	# test_shuffle(*args,**kwargs)
 	test_mps(*args,**kwargs)
+	# test_nmf(*args,**kwargs)
