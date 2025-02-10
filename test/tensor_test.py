@@ -257,6 +257,9 @@ def epsilon(dtype=float,eps=None):
 
 	return eps
 
+def allclose(a,b):
+	return np.allclose(a,b)
+
 def nndsvd(a,u,v,rank=None,**kwargs):
 
 	def true(z_plus,x_plus,y_plus,z_minus,x_minus,y_minus):
@@ -665,12 +668,17 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def shuffle(cls,data,shape,**kwargs):
-		n,d = len(shape),data.ndim
-		shape = [*shape]*d
-		axes = [i*d+j for i in range(n) for j in range(d)]
-		print(shape,axes)
-		data = transpose(reshape(data,shape),axes)
+	def shuffle(cls,data,shape,transform=True,**kwargs):
+		if transform:
+			n,d = len(shape),data.ndim
+			shape = [*shape]*d
+			axes = [i*d+j for i in range(n) for j in range(d)]
+			data = transpose(reshape(data,shape),axes)
+		else:
+			n,d = len(shape),data.ndim//len(shape)
+			shape = [prod(shape)]*d
+			axes = [i*d+j for i in range(n) for j in range(d)]
+			data = reshape(transpose(data,axes),shape)
 		return data
 
 	@classmethod
@@ -770,22 +778,38 @@ def test_nmf(*args,**kwargs):
 	return
 
 
+def test_shuffle(*args,**kwargs):
+
+	basis = Basis()
+
+	D = 2
+	N = 2
+	d = 2
+	shape = [D]*N
+	state = arange(D**N)
+	data = reshape(arange(D**(d*N)),(D**N,)*d)
+
+	assert allclose(data,basis.shuffle(basis.shuffle(data,shape,transform=True),shape,transform=False))
+
+	subscripts = 'ij,j->i'
+	out = einsum(subscripts,data,state)
+	
+	state = basis.shuffle(state,shape)
+	data = basis.shuffle(data,shape)
+
+	subscripts = f'{characters[N:2*N]}{characters[:N]},{characters[:N]}->{characters[N:2*N]}'
+	_out = basis.shuffle(einsum(subscripts,data,state),shape,transform=False)
+
+	assert allclose(out,_out)
+
+	return
+
 
 def test_mps(*args,**kwargs):
 
 	def initialize(D,N,state=None,data=None,**kwargs):
 
 		basis = Basis()
-
-		D = 2
-		N = 2
-		d = 2
-		data = reshape(arange(D**(d*N)),(D**N,)*d)
-		shape = [D]*N
-		print(data)
-		data = basis.shuffle(data,shape)
-		print(data.shape)		
-		exit()
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
 		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
@@ -839,4 +863,5 @@ if __name__ == "__main__":
 	kwargs = dict()
 
 	# test_nmf(*args,**kwargs)
+	# test_shuffle(*args,**kwargs)
 	test_mps(*args,**kwargs)
