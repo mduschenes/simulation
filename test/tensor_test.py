@@ -682,15 +682,17 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def contract(cls,state,data,**kwargs):
+	def contract(cls,state,data,where=None,**kwargs):
 		if isinstance(state,dict):
 			N = len(state)
-			shape = [state[i].shape[-1] for i in state]
-			subscripts = ','.join(characters[:N])
-			subscripts = f'{characters[N:2*N]}{characters[:N]},{subscripts}->{characters[N:2*N]}'
-			data = cls.shuffle(data,shape,**kwargs)
-			state = state
-			data = einsum(subscripts,data,*(state[i] for i in state))
+			where = state if where is None else where
+			shape = [state[i].shape[0] for i in where]
+			subscripts = '%s%s,%s->%s'%(characters[N:2*N],characters[:N],','.join(characters[:N]),characters[N:2*N])
+
+			data = einsum(subscripts,cls.shuffle(data,shape,**kwargs),*(state[i] for i in where))
+
+			exit()
+
 		elif state.ndim == 1:
 			if data.ndim == 2:
 				data = einsum('ij,j->i',data,state)
@@ -746,15 +748,11 @@ def test_mps(*args,**kwargs):
 		state = {i:basis.transform(state[i],D=D,**kwargs) for i in state}
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),**kwargs: basis.contract(state,data=data,**kwargs) for i in data}
-		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),**kwargs):basis.contract(state,data=data,**kwargs) for i in data}
+		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
 
 		for i in data:
-			print(i)
-			obj = {k:state[k] for k in i}
-			obj = data[i](obj)
-
-			print(obj)
+			state = data[i](state)
 
 		return state,data
 
