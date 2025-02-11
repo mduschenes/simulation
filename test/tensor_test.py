@@ -108,6 +108,12 @@ def zeros(*args,**kwargs):
 def arange(*args,**kwargs):
 	return np.arange(*args,**kwargs)
 
+def eye(*args,**kwargs):
+	return np.eye(*args,**kwargs)
+
+def identity(*args,**kwargs):
+	return np.eye(*args,**kwargs)
+
 def rand(*args,**kwargs):
 	return jax.random.uniform(**kwargs)
 
@@ -152,13 +158,13 @@ def svds(a,**kwargs):
 
 	u,s,v = svd(a,**kwargs)
 
+	# signs = sign(u[:,argmax(s)])
 	slices = slice(None)
 	k = argmax(absolute(u), axis=0)
 	shift = arange(u.shape[1])
 	indices = k + shift * u.shape[0]
 	signs = sign(take(ravel(u.T), indices, axis=0))
-	u = u*signs[None,slices]
-	v = v*signs[slices,None]
+	u,v = (u*signs),(v.T*signs).T
 
 	return u,s,v
 
@@ -616,6 +622,11 @@ class Basis(object):
 		return data
 
 	@classmethod
+	def identity(cls,D,seed=None,dtype=None,**kwargs):
+		data = identity(D,dtype=dtype)
+		return data
+
+	@classmethod
 	def I(cls,D,seed=None,dtype=None,**kwargs):
 		data = array([[1,0],[0,1]],dtype=dtype)
 		return data
@@ -706,8 +717,12 @@ class Basis(object):
 						for index,i in enumerate(where)
 						)),
 					)
-				shape = [data[i].shape[0] for i in data]				
-				data = reshape(einsum(subscripts,*(data[i] for i in data)),shape)
+				shape = [data[i].shape[0] for i in data]	
+				print({i:data[i].shape for i in data})			
+				print(subscripts,shape,einsum(subscripts,*(data[i] for i in data)).shape)
+				print(einsum(subscripts,*(data[i] for i in data)).real.round(8))
+				exit()
+				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))
 				return data
 	
 		if N:
@@ -797,7 +812,9 @@ class Basis(object):
 		shape = [prod(shapes[i]) for i in shapes]
 		data = reshape(transpose(data,axes),shape)
 
-		u,s,v = svd(data,**options)
+		tmp = data
+
+		u,s,v = svds(data,**options)
 
 		u,v,s = (u*sqrt(s)),(v.T*sqrt(s)).T,len(s)
 		data = {list(where)[0]: u, **{i:None for i in list(where)[1:-1]}, list(where)[-1]: v}
@@ -807,9 +824,13 @@ class Basis(object):
 			**{i:(*shapes[i],) for i in list(where)[1:-1]},
 			**{i:(*shapes[i][:-1],s,*shapes[i][-1:]) for i in list(where)[-1:]}
 			}
-
-
+		print({i:data[i].shape for i in data})
+		print(shapes)
 		data = {i:reshape(data[i],shapes[i]) for i in where}
+		print({i:data[i].real.round(8) for i in data})
+		print(tmp.real.round(8))
+		print(reshape(einsum('iuv,jvw->ijuw',*(data[i] for i in data)),(4,4,-1)).real.round(8))
+		exit()
 
 		return data
 
@@ -901,6 +922,15 @@ def test_mps(*args,**kwargs):
 		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
 		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
 
+		# for i in data:
+		# 	print(i)
+		# 	print({j:state[j].real.round(8) for j in i})
+		# 	state = data[i](state)
+		# 	print({j:state[j].real.round(8) for j in i})
+		# 	exit()
+		# 	# print(i,allclose(state,data[i](state)))
+		# exit()
+
 		return state,data
 
 	@timer
@@ -922,11 +952,11 @@ def test_mps(*args,**kwargs):
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
 		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
-		state = {i:basis.transform(state[i],D=D,where=i,**kwargs) for i in state}
+		state = tensorprod([basis.transform(state[i],D=D,where=i,**kwargs) for i in state])
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
 		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
-		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=tensorprod([*[basis.identity(**{**kwargs,**dict(D=D**2)})]*(min(i)),data,*[basis.identity(**{**kwargs,**dict(D=D**2)})]*(N-max(i)-1)]),where=where,**kwargs) for i in data}
 
 		return state,data
 
@@ -948,8 +978,8 @@ def test_mps(*args,**kwargs):
 	seed = 123
 	dtype = 'complex'
 
-	state = {i:'state' for i in range(N)}
-	data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	state = {i:'zero' for i in range(N)}
+	data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
@@ -966,15 +996,13 @@ def test_mps(*args,**kwargs):
 
 	data = Basis().transform(data,transform=False,**kwargs)
 
-	exit()
-
-	_state = {i:'state' for i in range(N)}
-	_data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	_state = {i:'zero' for i in range(N)}
+	_data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
-		architecture='tensor',
-		options=dict(full_matrices=False,compute_uv=True),
+		architecture='array',
+		options=dict(full_matrices=True,compute_uv=True),
 		seed=seed,
 		dtype=dtype,		
 	)	
@@ -983,9 +1011,12 @@ def test_mps(*args,**kwargs):
 
 	_data = _func(_state,_data,**_kwargs)
 
-
+	print(data.real.round(8))
+	print(_data.real.round(8))
 
 	assert allclose(data,_data)
+
+	print('Passed')
 
 	return
 
