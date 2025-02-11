@@ -36,7 +36,7 @@ import numpy as onp
 from math import prod
 from functools import partial
 import itertools
-import time as timer
+import time as timing
 
 from jaxopt import BlockCoordinateDescent,objective,prox
 
@@ -51,6 +51,19 @@ integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 scalars = (*integers,*floats,str,type(None))
 arrays = (np.ndarray,onp.ndarray)
+
+def timer(func):
+	def function(*args,**kwargs):
+		
+		time = timing.time()
+
+		data = func(*args,**kwargs)
+	
+		time = timing.time() - time
+
+		return data
+	
+	return function
 
 def inplace(obj,index,item,op='set'):
 	obj = getattr(obj.at[index],op)(item)
@@ -543,6 +556,20 @@ def _nvd(a,options=None,**kwargs):
 
 class Basis(object):
 
+	basis = None
+	D = None
+	seed = None
+	dtype = None
+	kwargs = None
+
+	def __init__(self,basis=None,D=None,seed=None,dtype=None,**kwargs):
+		self.basis = basis
+		self.D = D
+		self.seed = seed
+		self.dtype = dtype
+		self.kwargs = kwargs
+		return
+
 	@classmethod
 	def state(cls,D,seed=None,dtype=None,**kwargs):
 		data = haar(
@@ -563,6 +590,21 @@ class Basis(object):
 	@classmethod
 	def povm(cls,D,seed=None,dtype=None,**kwargs):
 
+		if cls.basis is None:
+			func = cls.pauli
+		if callable(cls.basis):
+			func = cls.basis			
+		elif isinstance(cls.basis,str):
+			func = getattr(cls,cls.basis)
+		else:
+			func = cls.pauli
+
+		data = func(D=D,seed=seed,dtype=dtype,**kwargs)
+
+		return data
+
+	@classmethod
+	def pauli(cls,D,seed=None,dtype=None,**kwargs):
 		data = (1/(D**2-1))*array([
 				cls.zero(D,seed=seed,dtype=dtype),
 				cls.plus(D,seed=seed,dtype=dtype),
@@ -651,6 +693,23 @@ class Basis(object):
 
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
 
+		if transform:
+			if isinstance(data,dict):
+				pass
+		else:
+			if isinstance(data,dict):
+				N = len(data)
+				where = range(N) if where is None else where
+				subscripts = '%s'%(
+					','.join((
+						''.join((characters[index],characters[N+index],characters[N+index+1]))
+						for index,i in enumerate(where)
+						)),
+					)
+				shape = [data[i].shape[0] for i in data]				
+				data = reshape(einsum(subscripts,*(data[i] for i in data)),shape)
+				return data
+	
 		if N:
 			basis = tensorprod([basis]*N)
 			inverse = tensorprod([inverse]*N)
@@ -658,43 +717,100 @@ class Basis(object):
 		if transform:
 			if callable(data):
 				data = einsum('uij,wji,wv->uv',basis,data(basis),inverse)				
-			else:
+			elif isinstance(data,arrays):
 				data = einsum('uij,ji->u',basis,data)
+
 		else:
 			if callable(data):
 				raise NotImplementedError(f"Not Implemented {data}")			
-			else:
+			elif isinstance(data,arrays):
 				data = einsum('uij,wji,wv->uv',basis,data,inverse)
-
+		
 		if architecture is None:
 			data = data
 		elif architecture in ['array']:
 			data = array(data)
 		elif architecture in ['tensor']:
-			if data.ndim == 1:
-				if where is True:
-					data = reshape(data,(-1,1))
-				else:
+			if transform:
+				if data.ndim == 1:
 					data = reshape(data,(-1,1,1))
-			elif data.ndim > 1:
-				data = data
+				elif data.ndim > 1:
+					data = data
 		else:
 			data = data
 
 		return data
 
 	@classmethod
-	def shuffle(cls,data,shape,transform=True,**kwargs):
+	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
 		if transform:
 			n,d = len(shape),data.ndim
+			where = range(n) if where is None else where
 			shape = [*shape]*d
-			axes = [i*d+j for i in range(n) for j in range(d)]
+			axes = [i*d+j for i in where for j in range(d)]
 			data = transpose(reshape(data,shape),axes)
 		else:
 			n,d = len(shape),data.ndim//len(shape)
+			where = range(n) if where is None else where			
 			shape = [prod(shape)]*d
-			axes = [i*d+j for i in range(n) for j in range(d)]
+			axes = [i*d+j for i in where for j in range(d)]
 			data = reshape(transpose(data,axes),shape)
+		return data
+
+
+	@classmethod
+	def boundary(cls,data,where=None,transform=True,**kwargs):
+		
+		where = data if where is None else where
+		boundary = [list(data)[0],list(data)[-1]] 
+		
+		for i in where:
+			if i not in boundary:
+				continue
+			elif i == boundary[0]:
+				if transform:
+					data[i] = reshape(data[i],(*data[i].shape[:-1],1,*data[i].shape[-1:]))
+				else:
+					data[i] = reshape(data[i],(*data[i].shape[:-2],*data[i].shape[-1:]))
+			elif i == boundary[-1]:
+				if transform:
+					data[i] = reshape(data[i],(*data[i].shape[:-1],*data[i].shape[-1:],1))
+				else:
+					data[i] = reshape(data[i],(*data[i].shape[:-2],*data[i].shape[-2:-1]))
+		
+		return data
+
+	@classmethod
+	def split(cls,data,where=None,options=None,**kwargs):
+
+		N = data.ndim - 2
+		where = range(N) if where is None else where
+		options = dict() if options is None else options
+		
+		shapes = {
+			**{i:(data.shape[0],data.shape[N],) for i in list(where)[:1]},
+			**{i:(data.shape[i],) for i in list(where)[1:-1]},
+			**{i:(data.shape[N-1],data.shape[N+1]) for i in list(where)[-1:]}
+			}
+
+		axes = [0,N,*range(1,N-1),N-1,N+1]
+		shape = [prod(shapes[i]) for i in shapes]
+		data = reshape(transpose(data,axes),shape)
+
+		u,s,v = svd(data,**options)
+
+		u,v,s = (u*sqrt(s)),(v.T*sqrt(s)).T,len(s)
+		data = {list(where)[0]: u, **{i:None for i in list(where)[1:-1]}, list(where)[-1]: v}
+
+		shapes = {
+			**{i:(*shapes[i][:-1],*shapes[i][-1:],s) for i in list(where)[:1]},
+			**{i:(*shapes[i],) for i in list(where)[1:-1]},
+			**{i:(*shapes[i][:-1],s,*shapes[i][-1:]) for i in list(where)[-1:]}
+			}
+
+
+		data = {i:reshape(data[i],shapes[i]) for i in where}
+
 		return data
 
 	@classmethod
@@ -702,40 +818,27 @@ class Basis(object):
 
 		if isinstance(state,dict):
 
-			where = (1,2)
-
 			where = state if where is None else where
 			N = len(where)
-			boundaries = [list(state)[0],list(state)[-1]] 
-			boundary = any(i==boundaries[0] for i in where),any(i==boundaries[-1] for i in where)
-			boundary = 1 if all(boundary) or len(state) < 2 else 0 if boundary[0] else -1 if boundary[-1] else None
+
 			shape = [state[i].shape[0] for i in where]
 			subscripts = '%s%s,%s->%s%s'%(
 				characters[N:2*N],
 				characters[:N],
 				','.join((
-					''.join((characters[index],characters[2*N+index+1])) if i == boundaries[0] else
-					''.join((characters[index],characters[2*N+index])) if i == boundaries[-1] else
 					''.join((characters[index],characters[2*N+index],characters[2*N+index+1]))
 					for index,i in enumerate(where)
 					)),
 				characters[N:2*N],
-				''.join((characters[2*N] if boundary in [-1,None] else '',characters[3*N] if boundary in [0,None] else ''))
+				''.join((characters[2*N],characters[3*N]))
 				)
 
-			data = einsum(subscripts,cls.shuffle(data,shape,**kwargs),*(state[i] for i in where))
+			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			if boundary == 0:
-				data = reshape(data,(*data.shape[:-1],1,data.shape[-1]))
-			elif boundary == 1:
-				data = reshape(data,(*data.shape,1,1))
-			elif boundary == -1:
-				data = reshape(data,(*data.shape[:-1],data.shape[-1],1))
-
-			# data = cls.split(data,shape,**kwargs)
+			data = cls.split(data,where=where,**kwargs)
 
 			for i in where:
-				state[i] = state[i]
+				state[i] = data[i]
 
 			data = state
 
@@ -786,50 +889,103 @@ def test_shuffle(*args,**kwargs):
 
 def test_mps(*args,**kwargs):
 
-	def initialize(D,N,state=None,data=None,**kwargs):
+	def initialize(state=None,data=None,D=None,N=None,**kwargs):
 
 		basis = Basis()
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
 		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
-		state = {i:basis.transform(state[i],D=D,where=i in [0,N-1],**kwargs) for i in state}
-
+		state = {i:basis.transform(state[i],D=D,where=i,**kwargs) for i in state}
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
 		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
 		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
 
+		return state,data
+
+	@timer
+	def func(state,data,M=None,**kwargs):
+
+		times = range(1 if M is None else M)
 		where = data
 
-		for i in where:
-			state = data[i](state)
+		for k in times:
+			for i in where:
+				state = data[i](state,**kwargs)
+
+		return state
+
+
+	def _initialize(state=None,data=None,D=None,N=None,**kwargs):
+
+		basis = Basis()
+
+		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
+		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
+		state = {i:basis.transform(state[i],D=D,where=i,**kwargs) for i in state}
+
+		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
+		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
 
 		return state,data
 
-	def function(data,func,*args,**kwargs):
-		time = timer.time()
+	@timer
+	def _func(state,data,M=None,**kwargs):
 
-		data = func(data,**options)
-	
-		time = timer.time() - time
+		times = range(1 if M is None else M)
+		where = data
 
-		return
+		for k in times:
+			for i in where:
+				state = data[i](state,**kwargs)
+
+		return state
 
 	N = 4
 	D = 2
+	M = 1
 	seed = 123
 	dtype = 'complex'
 
+	state = {i:'state' for i in range(N)}
+	data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+
 	kwargs = dict(
-		D=D,N=N,
-		state={i:'state' for i in range(N)},
-		data={i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1},
+		D=D,N=N,M=M,
 		architecture='tensor',
+		options=dict(full_matrices=False,compute_uv=True),
 		seed=seed,
 		dtype=dtype,		
 	)
 
-	state,data = initialize(**kwargs)
+	state,data = initialize(state=state,data=data,**kwargs)
+
+	data = func(state,data,**kwargs)
+
+
+	data = Basis().transform(data,transform=False,**kwargs)
+
+	exit()
+
+	_state = {i:'state' for i in range(N)}
+	_data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+
+	_kwargs = dict(
+		D=D,N=N,M=M,
+		architecture='tensor',
+		options=dict(full_matrices=False,compute_uv=True),
+		seed=seed,
+		dtype=dtype,		
+	)	
+
+	_state,_data = _initialize(state=_state,data=_data,**_kwargs)
+
+	_data = _func(_state,_data,**_kwargs)
+
+
+
+	assert allclose(data,_data)
 
 	return
 
@@ -845,11 +1001,11 @@ def test_nmf(*args,**kwargs):
 		return data
 
 	def function(a,func,*args,**kwargs):
-		time = timer.time()
+		time = timing.time()
 
 		b = func(a,**options)
 	
-		time = timer.time() - time
+		time = timing.time() - time
 
 		error = abs(norm(a-b)/norm(a))
 
