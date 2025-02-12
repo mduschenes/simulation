@@ -2478,18 +2478,41 @@ def test_parameters(*args,**kwargs):
 def test_tensor(*args,**kwargs):
 
 	from src.utils import mps
+	from src.utils import array,allclose
 	from src.quantum import MPS as mps
+	from src.quantum import Basis as basis
+
+	def representation(data):
+		return data.to_dense().ravel()
 	
-	N = 5
-	D = 2**2
-	data = 'zero'
+	N = 4
+	Q = 2
+	D = Q**2
+	where = [1,2]
+	L = len(where)
+	to = 'tensor'
+	state = array([[1/(D*N)]*D]*N)
+	data = 'identity'
 
 	args = tuple()
 	kwargs = dict(
-		data=data,N=N,D=D
+		N=N,D=D
 		)
-	data = mps(*args,**kwargs)
+	state = mps(state,*args,**kwargs)
 
+	args = tuple()
+	kwargs = dict(
+		D=D**L
+		)
+	data = getattr(basis,data)(*args,**kwargs)
+
+	_state = state.gate(data,where=where)
+
+	print(representation(state).sum())
+	print(representation(_state).sum())
+
+	print(where)
+	print(representation(state).shape)
 	print(data)
 
 	return

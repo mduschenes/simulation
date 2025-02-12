@@ -3,6 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
+from copy import deepcopy as copy
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -148,11 +149,11 @@ def seeder(seed,size=None):
 		key = jax.random.split(key,num=size)
 	return key
 
-def qr(a,**kwargs):
-	return np.linalg.qr(a)
+def qr(a,mode='reduced',**kwargs):
+	return np.linalg.qr(a,mode=mode)
 
-def svd(a,**kwargs):
-	return np.linalg.svd(a,**kwargs)
+def svd(a,full_matrices=False,compute_uv=True,hermitian=False,**kwargs):
+	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 def svds(a,**kwargs):
 
@@ -560,20 +561,48 @@ def _nvd(a,options=None,**kwargs):
 	u,v,n = _nmf(**kwargs)._fit_transform(a)
 	return dot(u,v)
 
+class Dict(dict):
+	'''
+	Dictionary subclass with dictionary elements explicitly accessible as class attributes
+	Args:
+		args (dict): Dictionary elements
+		kwargs (dict): Dictionary elements
+	'''
+	def __init__(self,*args,**kwargs):
+		for arg in args:
+			if isinstance(arg,dict):
+				kwargs.update(arg)
+			elif isinstance(arg,iterables) and all(isinstance(i,iterables) and len(i)==2 for i in arg):
+				kwargs.update(dict(arg))
+
+		for key in kwargs:
+			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dict) else kwargs[key]
+
+		super().__init__(*args,**kwargs)
+		self.__dict__ = self
+		return
+
+	def __hash__(self):
+		return hash(tuple((attr,getattr(self,attr)) for attr in self))
+
+	def __eq__(self,other):
+		return hash(self) == hash(other)
+
 class Basis(object):
 
 	basis = None
 	D = None
+	architecture = None
 	seed = None
 	dtype = None
 	kwargs = None
 
-	def __init__(self,basis=None,D=None,seed=None,dtype=None,**kwargs):
-		self.basis = basis
-		self.D = D
-		self.seed = seed
-		self.dtype = dtype
-		self.kwargs = kwargs
+	def __init__(self,**kwargs):
+
+		for kwarg in kwargs:
+			setattr(self,kwarg,kwargs[kwarg])
+
 		return
 
 	@classmethod
@@ -698,7 +727,7 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def transform(cls,data,D,N=None,where=None,architecture=None,transform=True,**kwargs):
+	def transform(cls,data,D,N=None,where=None,transform=True,**kwargs):
 		
 		basis = cls.povm(D,**kwargs)
 
@@ -718,10 +747,6 @@ class Basis(object):
 						)),
 					)
 				shape = [data[i].shape[0] for i in data]	
-				print({i:data[i].shape for i in data})			
-				print(subscripts,shape,einsum(subscripts,*(data[i] for i in data)).shape)
-				print(einsum(subscripts,*(data[i] for i in data)).real.round(8))
-				exit()
 				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))
 				return data
 	
@@ -741,19 +766,6 @@ class Basis(object):
 			elif isinstance(data,arrays):
 				data = einsum('uij,wji,wv->uv',basis,data,inverse)
 		
-		if architecture is None:
-			data = data
-		elif architecture in ['array']:
-			data = array(data)
-		elif architecture in ['tensor']:
-			if transform:
-				if data.ndim == 1:
-					data = reshape(data,(-1,1,1))
-				elif data.ndim > 1:
-					data = data
-		else:
-			data = data
-
 		return data
 
 	@classmethod
@@ -771,7 +783,6 @@ class Basis(object):
 			axes = [i*d+j for i in where for j in range(d)]
 			data = reshape(transpose(data,axes),shape)
 		return data
-
 
 	@classmethod
 	def boundary(cls,data,where=None,transform=True,**kwargs):
@@ -795,47 +806,112 @@ class Basis(object):
 		
 		return data
 
+
 	@classmethod
-	def split(cls,data,where=None,options=None,**kwargs):
-
-		N = data.ndim - 2
-		where = range(N) if where is None else where
-		options = dict() if options is None else options
+	def update(cls,data,where=None,options=None,**kwargs):
 		
-		shapes = {
-			**{i:(data.shape[0],data.shape[N],) for i in list(where)[:1]},
-			**{i:(data.shape[i],) for i in list(where)[1:-1]},
-			**{i:(data.shape[N-1],data.shape[N+1]) for i in list(where)[-1:]}
-			}
+		options = dict() if options is None else options
 
-		axes = [0,N,*range(1,N-1),N-1,N+1]
-		shape = [prod(shapes[i]) for i in shapes]
-		data = reshape(transpose(data,axes),shape)
+		if isinstance(data,dict):
 
-		tmp = data
+			N = len(data)
+			where = (N,N) if where is None else (where,where) if isinstance(where,int) else where
 
-		u,s,v = svds(data,**options)
+			scheme = options.get('scheme')
 
-		u,v,s = (u*sqrt(s)),(v.T*sqrt(s)).T,len(s)
-		data = {list(where)[0]: u, **{i:None for i in list(where)[1:-1]}, list(where)[-1]: v}
+			for i in data:
 
-		shapes = {
-			**{i:(*shapes[i][:-1],*shapes[i][-1:],s) for i in list(where)[:1]},
-			**{i:(*shapes[i],) for i in list(where)[1:-1]},
-			**{i:(*shapes[i][:-1],s,*shapes[i][-1:]) for i in list(where)[-1:]}
-			}
-		print({i:data[i].shape for i in data})
-		print(shapes)
-		data = {i:reshape(data[i],shapes[i]) for i in where}
-		print({i:data[i].real.round(8) for i in data})
-		print(tmp.real.round(8))
-		print(reshape(einsum('iuv,jvw->ijuw',*(data[i] for i in data)),(4,4,-1)).real.round(8))
-		exit()
+				if data[i].ndim == 1:
+					axes = [0,1,2]
+					shape = [*data[i].shape,1,1]
+					data[i] = transpose(reshape(data[i],shape),axes)
+
+			for i in (*range(0,min(where),1),*range(N-1,max(where)-1,-1)):
+
+				a = data[i]
+
+				if scheme is None or scheme in ['svd']:
+					
+					axes = [0,1,2]
+					shape = [data[i].shape[0]*data[i].shape[1],data[i].shape[2]]
+					a = reshape(transpose(a,axes),shape)
+
+					u,s,v = svd(a,**options)
+
+					u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+
+
+					if i <= min(where):
+
+						u,v,s = u,(v.T*s).T,len(s)
+
+						axes = [0,1]
+						shape = [data[i].shape[0],data[i].shape[1],s]
+						a = reshape(transpose(u,axes),shape)
+						
+						data[i] = a
+
+						if i < (N-1):
+							data[i+1] = einsum('ij,ujk->uik',v,data[i+1])
+
+					elif i >= max(where):
+
+						u,v,s = u*s,v,len(s)
+
+
+						axes = [0,1]
+						shape = [data[i].shape[0],data[i].shape[1],s]
+						a = reshape(transpose(v,axes),shape)
+						
+						data[i] = a
+
+						if i > 0:
+							data[i-1] = einsum('ij,ujk->uik',u,data[i-1])
+
+
+		elif isinstance(data,arrays):
+
+			l = 2
+			where = range(l) if where is None else where
+
+			scheme = options.get('scheme')
+
+			a = data
+
+			if scheme is None or scheme in ['svd']:
+			
+				axes = [0,2,1,3]
+				shape = [data.shape[0]*data.shape[2],data.shape[1]*data.shape[3]]
+				a = reshape(transpose(a,axes),shape)
+
+				u,s,v = svd(a,**options)
+
+				u,v,s = cls.normalize(data=(u,v,s),where=where,options=options,**kwargs)
+
+				axes = [[0,1,2],[0,1,2]]
+				shape = [[data.shape[0],data.shape[2],s],[data.shape[1],s,data.shape[3]]]
+				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
+
+				data = a
 
 		return data
 
 	@classmethod
-	def contract(cls,state,data,where=None,**kwargs):
+	def normalize(cls,data,where=None,options=None,**kwargs):
+
+		options = dict() if options is None else options
+		scheme = options.get('scheme')
+
+		if scheme is None or scheme in ['svd']:
+			
+			u,v,s = data
+
+			data = u,v,s
+
+		return data
+
+	@classmethod
+	def contract(cls,state,data,where=None,options=None,**kwargs):
 
 		if isinstance(state,dict):
 
@@ -854,9 +930,11 @@ class Basis(object):
 				''.join((characters[2*N],characters[3*N]))
 				)
 
+			state = cls.update(state,where=where,options=options,**kwargs)
+
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			data = cls.split(data,where=where,**kwargs)
+			data = cls.update(data,where=where,options=options,**kwargs)
 
 			for i in where:
 				state[i] = data[i]
@@ -922,24 +1000,15 @@ def test_mps(*args,**kwargs):
 		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
 		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
 
-		# for i in data:
-		# 	print(i)
-		# 	print({j:state[j].real.round(8) for j in i})
-		# 	state = data[i](state)
-		# 	print({j:state[j].real.round(8) for j in i})
-		# 	exit()
-		# 	# print(i,allclose(state,data[i](state)))
-		# exit()
-
 		return state,data
 
 	@timer
 	def func(state,data,M=None,**kwargs):
 
-		times = range(1 if M is None else M)
+		iterations = range(1 if M is None else M)
 		where = data
 
-		for k in times:
+		for k in iterations:
 			for i in where:
 				state = data[i](state,**kwargs)
 
@@ -963,10 +1032,10 @@ def test_mps(*args,**kwargs):
 	@timer
 	def _func(state,data,M=None,**kwargs):
 
-		times = range(1 if M is None else M)
+		iterations = range(1 if M is None else M)
 		where = data
 
-		for k in times:
+		for k in iterations:
 			for i in where:
 				state = data[i](state,**kwargs)
 
@@ -983,18 +1052,33 @@ def test_mps(*args,**kwargs):
 
 	kwargs = dict(
 		D=D,N=N,M=M,
-		architecture='tensor',
-		options=dict(full_matrices=False,compute_uv=True),
+		architecture='tensor',		
+		options=dict(scheme='svd',full_matrices=False,compute_uv=True),
 		seed=seed,
 		dtype=dtype,		
 	)
 
 	state,data = initialize(state=state,data=data,**kwargs)
 
+	_state = copy(state)
+
 	data = func(state,data,**kwargs)
 
-
 	data = Basis().transform(data,transform=False,**kwargs)
+	_data = Basis().transform(_state,transform=False,**kwargs)
+
+
+	parse = lambda data,p=8: data.real.round(p)
+	norm = lambda data,p=1: (data**p).sum().real
+	objs = [data,_data]
+
+	for obj in objs:
+		print(parse(obj),norm(obj,1),norm(obj,2))
+
+	assert allclose(data,_data)
+
+	exit()
+
 
 	_state = {i:'zero' for i in range(N)}
 	_data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
@@ -1002,7 +1086,7 @@ def test_mps(*args,**kwargs):
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='array',
-		options=dict(full_matrices=True,compute_uv=True),
+		options=dict(scheme='svd',full_matrices=False,compute_uv=True),
 		seed=seed,
 		dtype=dtype,		
 	)	
