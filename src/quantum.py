@@ -1305,7 +1305,9 @@ class Measure(System):
 				options = options if options is not None else dict()
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
-					print(options,where)
+					print(options,where,basis.shape)
+					print(model(parameters,basis,**kwargs))
+					exit()
 					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
 		
 			else:
@@ -7125,6 +7127,7 @@ class Module(System):
 			keywords = {model:dict(
 				state=state @ locality,
 				site=[where.index(i) for i in model.site],
+				samples=measure.K**locality,
 				verbose=False,
 				) for model in self.model[index]}
 
