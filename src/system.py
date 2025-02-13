@@ -44,6 +44,7 @@ class System(Dictionary):
 		backend (str): backend for class
 		architecture (str): architecture for class
 		configuration (object): configuration for class
+		samples (int,iterable[int]): samples for class
 		base (str): base for class
 		unit (int,float): units of values
 		options (dict): options for system
@@ -61,6 +62,7 @@ class System(Dictionary):
 			'backend':None,
 			'architecture':None,
 			'configuration':None,
+			'samples':None,
 			'base':None,
 			'unit':None,
 			'options':None,			

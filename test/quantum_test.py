@@ -1671,9 +1671,13 @@ def test_module(*args,**kwargs):
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
-					"operator":"haar","site":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				},				
+					"operator":["X","Z"],"site":"||ij||","string":"unitary",
+					"parameters":0.25,"variable":True,"constant":None,"ndim":2,"seed":123456789
+				},
+				# "unitary":{
+				# 	"operator":"haar","site":"||ij||","string":"unitary",
+				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
+				# },				
 				"noise":{
 					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
@@ -1980,8 +1984,8 @@ def test_module(*args,**kwargs):
 			print(parse(tmp))
 			print(parse(_tmp))
 
-		print('Make Seeding Constant in func() to compare Module <-> Model')
-		# assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
+		# print('Make Seeding Constant in func() to compare Module <-> Model')
+		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
@@ -2282,6 +2286,7 @@ def test_parameters(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.N":[4],"measure.D":[2],"measure.operator":["pauli"],
 		"measure.architecture":["tensor","array"],
+		"measure.architecture":["tensor"],
 		}	
 
 	groups = None
@@ -2304,7 +2309,7 @@ def test_parameters(*args,**kwargs):
 			"M":1,
 			"string":"module",
 			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":False,"max_bond":None,"cutoff":0},
+			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
 			"configuration":{
 				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
 				"sort":None,
@@ -2347,18 +2352,22 @@ def test_parameters(*args,**kwargs):
 				# 	"operator":["Z"],"site":"i","string":"z",
 				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				# },
-				"cnot":{
-					"operator":["CNOT"],"site":">ij<","string":"cnot",
+				# "cnot":{
+				# 	"operator":["CNOT"],"site":">ij<","string":"cnot",
+				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },											
+				# "x":{
+				# 	"operator":["X"],"site":"i","string":"x",
+				# 	"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },												
+				# "noise":{
+				# 	"operator":["depolarize","depolarize"],"site":"i<j","string":"noise",
+				# 	"parameters":0,"variable":False,"ndim":3,"seed":123456789
+				# },
+				"i":{
+					"operator":["I","I"],"site":">ij<","string":"i",
 					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},											
-				"x":{
-					"operator":["X"],"site":"i","string":"x",
-					"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},												
-				"noise":{
-					"operator":["depolarize"],"site":"i","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},									
 			},
 			"N":4,
 			"D":2,
@@ -2374,7 +2383,7 @@ def test_parameters(*args,**kwargs):
 				}
 			},
 		"state": {
-			"operator":"haar",
+			"operator":"zero",
 			"site":None,
 			"string":"psi",
 			"parameters":None,
@@ -2448,9 +2457,19 @@ def test_parameters(*args,**kwargs):
 		state = module.state()
 		kwargs = dict()
 
+		tmp = module.measure.transform(parameters=parameters,state=[state]*module.N,**kwargs)
+
+		print('------------------')
 
 		state = module(parameters,state)
 
+		print('------------------')
+
+		_tmp = state
+		
+		print(tmp.to_dense().sum(),_tmp.to_dense().sum())
+		print(allclose(tmp.to_dense(),_tmp.to_dense()))
+		exit()
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
 		key = 'data'
@@ -2464,7 +2483,7 @@ def test_parameters(*args,**kwargs):
 
 
 		if verbose:
-			print(value)
+			print(value.round(8))
 			print()
 
 
@@ -2571,5 +2590,5 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	# test_parameters(*args,**args)
-	test_tensor(*args,**args)
+	test_parameters(*args,**args)
+	# test_tensor(*args,**args)

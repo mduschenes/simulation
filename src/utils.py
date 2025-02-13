@@ -4324,13 +4324,14 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None,**kwargs):
+def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
 		data (array,tensor): data
 		state (array,tensor): state
 		where (int,str,iterable[int,str]): indices of contraction
+		samples (int,iterable[int]): samples of state		
 		kwargs (dict): Additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,where=where)
@@ -4351,6 +4352,8 @@ def contraction(data=None,state=None,where=None,**kwargs):
 	else:
 		wrapper = None
 
+	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
+	string = characters[:len(samples)] if samples is not None else ''
 
 	if data is None:
 
@@ -4366,7 +4369,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return data
 	
-			elif state.ndim == 2:
+			elif state.ndim > 1:
 				
 				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return data
@@ -4397,7 +4400,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
@@ -4421,7 +4424,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
@@ -4437,16 +4440,17 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 
 				if where is None:
-					subscripts = 'ij,jk->ik'
-					shapes = (data.shape,state.shape)
+					subscripts = f'ij,{string}jk->{string}ik'
+					shapes = (data.shape,(*samples,*state.shape))
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(data,state)
 
 				else:
-					subscripts = 'ij,jk...->ik...'
-					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						
+					subscripts = f'ij,{string}jk...->{string}ik...'
+					shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 					einsummation = einsum(subscripts,*shapes)
 					
 					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4461,15 +4465,15 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				if state.ndim == 1:
 					
 					if where is None:
-						subscripts = 'ij,j->i'
-						shapes = (data.shape,state.shape)
+						subscripts = f'ij,{string}j->{string}i'
+						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsum(subscripts,*shapes)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
 					else:
-						subscripts = 'ij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						subscripts = f'ij,{string}j...->{string}i...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 						einsummation = einsum(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4479,17 +4483,17 @@ def contraction(data=None,state=None,where=None,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state)))
 
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 				
 					if where is None:
-						subscripts = 'ij,jk,lk->il'
-						shapes = (data.shape,state.shape,data.shape)
+						subscripts = f'ij,{string}jk,lk->{string}il'
+						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state,conjugate(data))
 					else:
-						subscripts = 'ij,jk...,lk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						subscripts = f'ij,{string}jk...,lk->{string}il...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4510,16 +4514,16 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 				
 				if where is None:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
+					subscripts = f'uij,{string}j...->{string}i...'
+					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
 
 				else:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
+					subscripts = f'uij,{string}j...->{string}i...'
+					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsum(subscripts,*shapes)
 			
 					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4534,15 +4538,15 @@ def contraction(data=None,state=None,where=None,**kwargs):
 				if state.ndim == 1:
 					
 					if where is None:
-						subscripts = 'uij,j->i'
-						shapes = (data.shape,state.shape)
+						subscripts = f'uij,{string}j->{string}i'
+						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsum(subscripts,*shapes)
 					
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
 					else:
-						subscripts = 'uij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						subscripts = f'uij,{string}j...->{string}i...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 						einsummation = einsum(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4552,19 +4556,19 @@ def contraction(data=None,state=None,where=None,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state)))
 
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 
 					if where is None:					
-						subscripts = 'uij,jk,ulk->il'
-						shapes = (data.shape,state.shape,data.shape)
+						subscripts = f'uij,{string}jk,ulk->{string}il'
+						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state,conjugate(data))
 
 					else:
-						subscripts = 'uij,jk...,ulk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						subscripts = f'uij,{string}jk...,ulk->{string}il...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4588,7 +4592,7 @@ def contraction(data=None,state=None,where=None,**kwargs):
 
 			if state.ndim == 1:
 				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-			elif state.ndim == 2:
+			elif state.ndim > 1:
 				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif isinstance(state,tensors):
@@ -4601,13 +4605,14 @@ def contraction(data=None,state=None,where=None,**kwargs):
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None,**kwargs):
+def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
 		data (array,tensor): data
 		state (array,tensor): state
 		where (int,str,iterable[int,str]): indices of contraction
+		samples (int,iterable[int]): samples of state
 		kwargs (dict): Additional keyword arguments for contraction		
 	Returns:
 		func (callable): contracted data and state with signature func(grad,data,state,where=where)
@@ -4628,6 +4633,9 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 	else:
 		wrapper = None
 
+	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
+	string = characters[:len(samples)] if samples is not None else ''
+
 	if data is None:
 		
 		if state is None:
@@ -4642,7 +4650,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 
-			elif state.ndim == 2:
+			elif state.ndim > 1:
 				
 				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
@@ -4671,7 +4679,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
@@ -4694,7 +4702,7 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
@@ -4710,16 +4718,16 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 
 				if where is None:
-					subscripts = 'ij,jk->ik'
-					shapes = (data.shape,state.shape)
+					subscripts = f'ij,{string}jk->{string}ik'
+					shapes = (data.shape,(*samples,*state.shape))
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(grad,state)
 
 				else:
-					subscripts = 'ij,jk...->ik...'
-					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+					subscripts = f'ij,{string}jk...->{string}ik...'
+					shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 					einsummation = einsum(subscripts,*shapes)
 					
 					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4733,16 +4741,16 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				if state.ndim == 1:
 
 					if where is None:
-						subscripts = 'ij,j->i'
-						shapes = (data.shape,state.shape)
+						subscripts = f'ij,{string}j->{string}i'
+						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsum(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
 
 					else:
-						subscripts = 'ij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						subscripts = f'ij,{string}j...->{string}i...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 						einsummation = einsum(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4752,11 +4760,11 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					if where is None:
-						subscripts = 'ij,jk,lk->il'
-						shapes = (data.shape,state.shape,data.shape)
+						subscripts = f'ij,{string}jk,lk->{string}il'
+						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
@@ -4764,8 +4772,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 							return out + dagger(out)
 
 					else:
-						subscripts = 'ij,jk...,lk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						subscripts = f'ij,{string}jk...,lk->{string}il...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4786,16 +4794,16 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				state = data
 
 				if where is None:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
+					subscripts = f'uij,{string}j...->{string}i...'
+					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsum(subscripts,*shapes)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
 
 				else:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
+					subscripts = f'uij,{string}j...->{string}i...'
+					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsum(subscripts,*shapes)
 
 					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4810,16 +4818,16 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 				if state.ndim == 1:
 					
 					if where is None:
-						subscripts = 'uij,j->i'
-						shapes = (data.shape,state.shape)
+						subscripts = f'uij,{string}j->{string}i'
+						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsum(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
 
 					else:
-						subscripts = 'uij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
+						subscripts = f'uij,{string}j...->{string}i...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 						einsummation = einsum(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
@@ -4828,11 +4836,11 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
-				elif state.ndim == 2:
+				elif state.ndim > 1:
 					
 					if where is None:
-						subscripts = 'uij,jk,ulk->il'
-						shapes = (data.shape,state.shape,data.shape)
+						subscripts = f'uij,{string}jk,ulk->{string}il'
+						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
@@ -4840,8 +4848,8 @@ def gradient_contraction(data=None,state=None,where=None,**kwargs):
 							return out + dagger(out)
 
 					else:
-						subscripts = 'uij,jk...,ulk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
+						subscripts = f'uij,{string}jk...,ulk->{string}il...'
+						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
 						einsummation = einsum(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
