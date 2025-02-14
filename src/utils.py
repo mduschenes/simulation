@@ -3880,6 +3880,33 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
+
+def svds(a,full_matrices=True,compute_uv=False,hermitian=False):
+	'''
+	Compute singular values of an array
+	Args:
+		a (array): Array to compute eigenvalues of shape (...,n,n)
+		full_matrices (bool): Compute full matrices of right,left singular values
+		compute_uv (bool): Compute U,V in addition to singular values
+		hermitian (bool): Whether array is Hermitian				
+	Returns:
+		singular (array): Array of singular values of shape (...,n)
+		rightvectors (array): Array of right singular vectors of shape (...,n,n)
+		leftvectors (array): Array of left singular vectors of shape (...,n,n)
+	'''
+
+	u,s,v = svd(a,**kwargs)
+
+	# signs = sign(u[:,argmax(s)])
+	slices = slice(None)
+	k = argmax(absolute(u), axis=0)
+	shift = arange(u.shape[1])
+	indices = k + shift * u.shape[0]
+	signs = sign(take(ravel(u.T), indices, axis=0))
+	u,v = dotr(u,signs),dotl(v,signs)
+
+	return u,s,v
+
 def qr(a):
 	'''
 	Compute QR decomposition of array
@@ -3891,6 +3918,22 @@ def qr(a):
 	'''
 	return np.linalg.qr(a)
 
+def qrs(a):
+	'''
+	Compute QR decomposition of array
+	Args:
+		a (array): Array to compute QR decomposition of shape (...,n,n)
+	Returns:
+		Q (array): Q factor of shape (...,n,n)
+		R (array): R factor of shape (...,n,n)
+	'''
+	q,r = np.linalg.qr(a)
+
+	s = signs(diag(r))
+	q = dotr(q,conjugate(s))
+	r = dotl(r,s)
+
+	return q,r
 
 def cholesky(a):
 	'''
@@ -5866,7 +5909,6 @@ def outer(a,b):
 	'''	
 	return np.outer(a,dagger(b))
 
-
 @jit
 def multiply(a,b):
 	'''
@@ -5890,7 +5932,6 @@ def divide(a,b):
 		out (array): Elementwise division of arrays
 	'''
 	return np.divide(a,b)
-
 
 @jit
 def multiplication(a):
@@ -5965,6 +6006,29 @@ def product(a):
 		out = 0
 	return out
 
+@jit
+def dotr(a,b):
+	'''
+	multiply array by diagonal vector from right a @ diag(b) == a*b[None,:]
+	Args:
+		a (array): Array to multiply
+		b (array): Array to multiply
+	Returns:
+		out (array): Right multiplication of arrays
+	'''
+	return a*b[None,:]
+
+@jit
+def dotl(a,b):
+	'''
+	multiply array by diagonal vector from left diag(b) @ b == a*b[:,None]
+	Args:
+		a (array): Array to multiply
+		b (array): Array to multiply
+	Returns:
+		out (array): Left multiplication of arrays
+	'''
+	return a*b[:,None]
 
 def where(conditions,x=None,y=None):
 	'''
@@ -6738,6 +6802,28 @@ def dagger(a):
 	'''	
 	return conjugate(transpose(a))
 
+@jit
+def sign(a):
+	'''
+	Calculate sign of array a
+	Args:
+		a (array): Array to compute sign
+	Returns:
+		out (array): Sign of array
+	'''
+	return np.sign(a)
+
+@jit
+def signs(a):
+	'''
+	Calculate sign of array a
+	Args:
+		a (array): Array to compute sign
+	Returns:
+		out (array): Sign of array
+	'''
+	return (a + a==0)/(absolute(a) + a==0)
+
 @partial(jit,static_argnums=(1,))
 def sqrtm(a,hermitian=False):
 	'''
@@ -7132,18 +7218,6 @@ def expmmcn(x,A,I,v,B,C):
 		return einsummation(subscripts,C,B,U,out,conjugate(U),conjugate(B),conjugate(C))
 
 	return forloop(0,m//d,func,v)
-
-
-@jit
-def sign(a):
-	'''
-	Calculate sign of array a
-	Args:
-		a (array): Array to compute sign
-	Returns:
-		out (array): Sign of array
-	'''
-	return np.sign(a)
 
 
 @jit

@@ -152,6 +152,15 @@ def seeder(seed,size=None):
 def qr(a,mode='reduced',**kwargs):
 	return np.linalg.qr(a,mode=mode)
 
+def qrs(a,mode='reduced',**kwargs):
+	q,r = np.linalg.qr(a,mode=mode)
+
+	s = signs(diag(r))
+	q = dotr(q,conjugate(s))
+	r = dotl(r,s)
+
+	return q,r
+
 def svd(a,full_matrices=False,compute_uv=True,hermitian=False,**kwargs):
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
@@ -159,13 +168,13 @@ def svds(a,**kwargs):
 
 	u,s,v = svd(a,**kwargs)
 
-	# signs = sign(u[:,argmax(s)])
+	# s = sign(u[:,argmax(s)])
 	slices = slice(None)
 	k = argmax(absolute(u), axis=0)
 	shift = arange(u.shape[1])
 	indices = k + shift * u.shape[0]
-	signs = sign(take(ravel(u.T), indices, axis=0))
-	u,v = (u*signs),(v.T*signs).T
+	s = sign(take(ravel(u.T), indices, axis=0))
+	u,v = dotr(u,s),dotl(v,s)
 
 	return u,s,v
 
@@ -186,6 +195,12 @@ def std(a,axis=None,ddof=None):
 
 def add(a,axis=None):
 	return a.sum(axis=axis)
+
+def dotr(a,b):
+	return a*b[None,:]
+
+def dotl(a,b):
+	return a*b[:,None]
 
 def shape(a,axis=None):
 	return a.shape
@@ -240,6 +255,10 @@ def take(a,indices,axis):
 
 def sign(a):
 	return np.sign(a)
+
+def signs(a):
+	s = a == 0
+	return (a + s)/(absolute(a) + s)
 
 def maximums(a,b):
 	return np.maximum(a,b)
@@ -407,8 +426,8 @@ def coordinate_descent(a,u,v,rank=None,options=None,**kwargs):
 		# z = dot(u.T,u)
 		# y = -dot(u.T,a)
 		# # w = maximums(absolute(diag(z)),eps)
-		# # z = (z.T/w).T
-		# # y = (y.T/w).T
+		# # z = dotl(z,1/w)
+		# # y = dotl(y,1/w)
 		# x = v,z,y
 		# x = loop(func=function,x=x,**options)
 		# v,z,y = x
@@ -416,8 +435,8 @@ def coordinate_descent(a,u,v,rank=None,options=None,**kwargs):
 		# z = dot(v,v.T)
 		# y = -dot(v,a.T)
 		# # w = maximums(absolute(diag(z)),eps)
-		# # z = (z.T/w).T
-		# # y = (y.T/w).T
+		# # z = dotl(z,1/w)
+		# # y = dotl(y,1/w)
 		# x = u.T,z,y
 		# x = loop(func=function,x=x,**options)
 		# u,z,y = x
@@ -836,14 +855,13 @@ class Basis(object):
 					shape = [data[i].shape[0]*data[i].shape[1],data[i].shape[2]]
 					a = reshape(transpose(a,axes),shape)
 
-					u,s,v = svd(a,**options)
+					if i < min(where):
 
-					u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+						u,s,v = svd(a,**options)
 
+						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
 
-					if i <= min(where):
-
-						u,v,s = u,(v.T*s).T,len(s)
+						u,v,s = u,dotl(v,s),len(s)
 
 						axes = [0,1]
 						shape = [data[i].shape[0],data[i].shape[1],s]
@@ -854,10 +872,13 @@ class Basis(object):
 						if i < (N-1):
 							data[i+1] = einsum('ij,ujk->uik',v,data[i+1])
 
-					elif i >= max(where):
+					elif i > max(where):
+
+						u,s,v = svd(a,**options)
+
+						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
 
 						u,v,s = u*s,v,len(s)
-
 
 						axes = [0,1]
 						shape = [data[i].shape[0],data[i].shape[1],s]
@@ -866,7 +887,54 @@ class Basis(object):
 						data[i] = a
 
 						if i > 0:
-							data[i-1] = einsum('ij,ujk->uik',u,data[i-1])
+							data[i-1] = einsum('jk,uij->uik',u,data[i-1])
+
+
+				elif scheme in ['qr']:
+					
+					if i < min(where):
+
+						axes = [0,1,2]
+						shape = [data[i].shape[0]*data[i].shape[1],data[i].shape[2]]
+						a = reshape(transpose(a,axes),shape)
+
+						u,v = qrs(a,**options)
+
+						s = min(shape[-2:])
+
+						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+
+						axes = [0,1,2]
+						shape = [data[i].shape[0],data[i].shape[1],s]
+						a = transpose(reshape(u,shape),axes)
+						
+						data[i] = a
+
+						if i < (N-1):
+							data[i+1] = einsum('ij,ujk->uik',v,data[i+1])
+
+					elif i > max(where):
+
+						axes = [1,0,2]
+						shape = [data[i].shape[1],data[i].shape[0]*data[i].shape[2]]
+						a = reshape(transpose(a,axes),shape)
+
+						u,v = qrs(dagger(a),**options)
+
+						s = min(shape[-2:])
+
+						u,v = dagger(v),dagger(u)
+
+						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+
+						axes = [1,0,2]
+						shape = [s,data[i].shape[0],data[i].shape[2]]
+						a = transpose(reshape(v,shape),axes)
+						
+						data[i] = a
+
+						if i > 0:
+							data[i-1] = einsum('jk,uij->uik',u,data[i-1])
 
 
 		elif isinstance(data,arrays):
@@ -894,6 +962,24 @@ class Basis(object):
 
 				data = a
 
+			elif scheme in ['qr']:
+			
+				axes = [0,2,1,3]
+				shape = [data.shape[0]*data.shape[2],data.shape[1]*data.shape[3]]
+				a = reshape(transpose(a,axes),shape)
+
+				u,v = qrs(a,**options)
+
+				s = min(shape[-2:])
+
+				u,v,s = cls.normalize(data=(u,v,s),where=where,options=options,**kwargs)
+
+				axes = [[0,1,2],[0,1,2]]
+				shape = [[data.shape[0],data.shape[2],s],[data.shape[1],s,data.shape[3]]]
+				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
+
+				data = a
+
 		return data
 
 	@classmethod
@@ -907,6 +993,12 @@ class Basis(object):
 			u,v,s = data
 
 			data = u,v,s
+
+		elif scheme in ['qr']:
+			
+			q,r,s = data
+
+			data = q,r,s
 
 		return data
 
@@ -929,8 +1021,14 @@ class Basis(object):
 				characters[N:2*N],
 				''.join((characters[2*N],characters[3*N]))
 				)
-
+			
 			state = cls.update(state,where=where,options=options,**kwargs)
+
+        	from math import prod
+			for i in state:
+				print(state[i],state[i].shape)
+			print(prod(state[i].sum() for i in state))
+			exit()
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
@@ -1053,19 +1151,32 @@ def test_mps(*args,**kwargs):
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		options=dict(scheme='svd',full_matrices=False,compute_uv=True),
+		# options=dict(scheme='svd',full_matrices=False,compute_uv=True),
+		options=dict(scheme='qr',mode='reduced'),
 		seed=seed,
 		dtype=dtype,		
 	)
 
 	state,data = initialize(state=state,data=data,**kwargs)
 
-	_state = copy(state)
+	# for i in _state:
+	# 	print(_state[i])
+	# exit()
+
+	# obj = state
+	# print(prod(obj[i].sum() for i in obj))
+	# obj = _state
+	# print(prod(obj[i].sum() for i in obj))
+	# exit()
 
 	data = func(state,data,**kwargs)
 
 	data = Basis().transform(data,transform=False,**kwargs)
-	_data = Basis().transform(_state,transform=False,**kwargs)
+	
+
+	_data = Basis().update(copy(state),**kwargs)
+
+	_data = Basis().transform(_data,transform=False,**kwargs)
 
 
 	parse = lambda data,p=8: data.real.round(p)
@@ -1086,7 +1197,8 @@ def test_mps(*args,**kwargs):
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='array',
-		options=dict(scheme='svd',full_matrices=False,compute_uv=True),
+		# options=dict(scheme='svd',full_matrices=False,compute_uv=True),
+		options=dict(scheme='qr',mode='reduced'),		
 		seed=seed,
 		dtype=dtype,		
 	)	

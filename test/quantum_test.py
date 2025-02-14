@@ -2420,7 +2420,7 @@ def test_parameters(*args,**kwargs):
 		})
 
 
-		verbose = True
+		verbose = False
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -2459,15 +2459,12 @@ def test_parameters(*args,**kwargs):
 
 		tmp = module.measure.transform(parameters=parameters,state=[state]*module.N,**kwargs)
 
-		print('------------------')
-
 		state = module(parameters,state)
-
-		print('------------------')
 
 		_tmp = state
 		
 		print(tmp.to_dense().sum(),_tmp.to_dense().sum())
+		print(tmp.to_dense().ravel().real)
 		print(allclose(tmp.to_dense(),_tmp.to_dense()))
 		exit()
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
@@ -2497,42 +2494,68 @@ def test_parameters(*args,**kwargs):
 def test_tensor(*args,**kwargs):
 
 	from src.utils import mps
-	from src.utils import array,allclose
+	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
 	from src.quantum import MPS as mps
 	from src.quantum import Basis as basis
 
 	def representation(data):
 		return data.to_dense().ravel()
+
+	def tensor(data,k=1):
+		return array([tensorprod(i) for i in permutations(*[data]*k)])
 	
 	N = 4
-	Q = 2
-	D = Q**2
-	where = [1,2]
+	D = 2
+	where = [0,1]
 	L = len(where)
 	to = 'tensor'
-	state = array([[1/(D*N)]*D]*N)
+	seed = 123
+	seed = seeder(seed)
+	dtype = 'complex'
+	options = dict(
+		contract="swap+split",
+		max_bond=D**N,
+		cutoff=0
+		)
+
+	measure = 'pauli'
+	state = 'zero'
 	data = 'identity'
 
 	args = tuple()
 	kwargs = dict(
-		N=N,D=D
+		D=D,shape=(D,)*2,ndim=3,seed=seed,dtype=dtype,
 		)
-	state = mps(state,*args,**kwargs)
+	measure = getattr(basis,measure)(*args,**kwargs)
+	inverse = inv(einsum('uij,vji->uv',measure,measure))
 
 	args = tuple()
 	kwargs = dict(
-		D=D**L
+		D=D,shape=(D,)*2,ndim=2,seed=seed,dtype=dtype,
+		)
+	state = getattr(basis,state)(*args,**kwargs)
+
+	args = tuple()
+	kwargs = dict(
+		D=D**L,shape=(D**L,)*2,ndim=2,seed=seed,dtype=dtype,
 		)
 	data = getattr(basis,data)(*args,**kwargs)
 
-	_state = state.gate(data,where=where)
+	obj = state
 
-	print(representation(state).sum())
-	print(representation(_state).sum())
+	state = [einsum('uij,ji->u',tensor(measure),state)]*N
+	data = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,L)]*2,data,conjugate(data),tensor(inverse,L))
 
-	print(where)
-	print(representation(state).shape)
-	print(data)
+	state = mps(state,*args,**kwargs)
+
+	_state = state.gate(data,where=where,**options)
+
+	tmp = state
+	_tmp = _state
+
+	_state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
+
+	print(representation(tmp).sum(),representation(_tmp).sum(),allclose(_state,tensorprod([obj]*N)))
 
 	return
 
@@ -2590,5 +2613,5 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	test_parameters(*args,**args)
-	# test_tensor(*args,**args)
+	# test_parameters(*args,**args)
+	test_tensor(*args,**args)
