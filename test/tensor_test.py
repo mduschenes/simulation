@@ -790,12 +790,12 @@ class Basis(object):
 				shape = [j for i in data for j in data[i].shape[1:-1]]
 				subscripts = '%s'%(
 					','.join((
-						''.join((characters[N+index],characters[index],characters[N+index+1]))
-						for index,i in enumerate(where)
+						''.join((characters[N+i],characters[i],characters[N+i+1]))
+						for i in range(N)
 						)),
 					)
 				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))								
-				data = cls.transform(data,D=D,N=N,where=where,transform=transform,**kwargs)
+				# data = cls.transform(data,D=D,N=N,where=where,transform=transform,**kwargs)
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
@@ -827,7 +827,14 @@ class Basis(object):
 
 		scheme = options.get('scheme')
 
-		if scheme is None or scheme in ['svd']:
+		if scheme is None:
+			def scheme(a,conj=None,**options):
+				u,s,v = svds(real(a),**options)
+				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
+				u,v = cmplx(u),cmplx(v)
+				s = min(*u.shape,*v.shape)
+				return u,v,s				
+		elif scheme in ['svd']:
 			def scheme(a,conj=None,**options):
 				u,s,v = svds(real(a),**options)
 				u,v = u,dotl(v,s)
@@ -928,16 +935,16 @@ class Basis(object):
 				characters[N:2*N],
 				characters[:N],
 				','.join((
-					''.join((characters[2*N+index],characters[index],characters[2*N+index+1]))
-					for index,i in enumerate(where)
+					''.join((characters[2*N+i],characters[i],characters[2*N+i+1]))
+					for i in range(N)
 					)),
 				characters[2*N],
 				characters[N:2*N],
 				characters[3*N]
 				)
 
-			defaults = dict(scheme='qr',mode='reduced')
-			state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
+			# defaults = dict(scheme='qr',mode='reduced')
+			# state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
@@ -1094,7 +1101,7 @@ def test_mps(*args,**kwargs):
 
 
 
-	state = basis.transform(state,transform=False,**kwargs)
+	state = basis.transform(basis.transform(state,transform=False,**kwargs),transform=False,**kwargs)
 	_state = _state
 
 	assert allclose(state,_state)
@@ -1120,10 +1127,11 @@ def test_mps(*args,**kwargs):
 
 	state = func(state,data,**kwargs)
 
-
+	assert allclose(basis.transform(state,transform=False,**kwargs).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
 
 	state = basis.transform(state,transform=False,**kwargs)
 	_state = basis.transform(_state,transform=False,**kwargs)
+
 
 	assert allclose(state,_state)
 
