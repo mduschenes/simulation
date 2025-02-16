@@ -829,14 +829,14 @@ class Basis(object):
 
 		if scheme is None or scheme in ['svd']:
 			def scheme(a,conj=None,**options):
-				u,s,v = svds(real(a),**options)
+				u,s,v = svds((a),**options)
 				u,v = u,dotl(v,s)
 				u,v = cmplx(u),cmplx(v)
 				s = min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
 			def scheme(a,conj=None,**options):
-				u,v = qrs(real(dagger(a) if conj else a),**options)
+				u,v = qrs((dagger(a) if conj else a),**options)
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
 				u,v = cmplx(u),cmplx(v)				
 				s = min(*u.shape,*v.shape)
