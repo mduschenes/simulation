@@ -943,8 +943,8 @@ class Basis(object):
 				characters[3*N]
 				)
 
-			defaults = dict(scheme='qr',mode='reduced')
-			state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
+			# defaults = dict(scheme='qr',mode='reduced')
+			# state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
