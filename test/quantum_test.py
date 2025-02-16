@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
-from src.utils import shuffle,swap,seeder,rng
+from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -367,7 +367,7 @@ def test_operator(*args,**kwargs):
 
 		if not operator.constant:
 			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
-			        -1j*sin(operator.parameters(operator.parameters()))*_tmp)
+					-1j*sin(operator.parameters(operator.parameters()))*_tmp)
 
 		operator.info(verbose=verbose)
 
@@ -409,7 +409,7 @@ def test_operator(*args,**kwargs):
 
 		if not operator.constant:
 			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
-				        -1j*sin(operator.parameters(operator.parameters()))*_tmp)
+						-1j*sin(operator.parameters(operator.parameters()))*_tmp)
 
 		if operator.ndim == 3:
 			if state is None:
@@ -2506,8 +2506,7 @@ def test_tensor(*args,**kwargs):
 	
 	N = 4
 	D = 2
-	where = [1,2]
-	L = len(where)
+	M = 2*N
 	to = 'tensor'
 	seed = 123
 	seed = seeder(seed)
@@ -2520,7 +2519,7 @@ def test_tensor(*args,**kwargs):
 
 	measure = 'pauli'
 	state = 'state'
-	data = 'unitary'
+	data = {(i,i+1):'unitary' for i in range(N-1)}
 
 	args = tuple()
 	kwargs = dict(
@@ -2535,29 +2534,34 @@ def test_tensor(*args,**kwargs):
 		)
 	state = getattr(basis,state)(*args,**kwargs)
 
-	args = tuple()
-	kwargs = dict(
-		D=D**L,shape=(D**L,)*2,ndim=2,seed=seed,dtype=dtype,
-		)
-	data = getattr(basis,data)(*args,**kwargs)
-
-	obj = state
+	obj = copy(state)
 
 	state = [einsum('uij,ji->u',tensor(measure),state)]*N
-	data = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,L)]*2,data,conjugate(data),tensor(inverse,L))
+
+	for i in data:
+		args = tuple()
+		kwargs = dict(
+			D=D**len(i),shape=(D**len(i),)*2,ndim=2,seed=seed,dtype=dtype,
+			)
+		data[i] = getattr(basis,data[i])(*args,**kwargs)
+
+		data[i] = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,len(i))]*2,data[i],conjugate(data[i]),tensor(inverse,len(i)))
+
 
 	state = mps(state,*args,**kwargs)
 
-	_state = state.gate(data,where=where,**options)
+	tmp = copy(state)
 
-	tmp = state
+	_state = state.copy()
+	for k in range(M):
+		for i in data:
+			_state = _state.gate(data[i],where=i,**options)
+
 	_tmp = _state
-
 
 	print(representation(_state).round(8))
 
 	_state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
-
 
 	print(representation(tmp).sum(),representation(_tmp).sum(),allclose(_state,tensorprod([obj]*N)))
 
@@ -2600,7 +2604,7 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_function(*args,**args)
- 	# test_basis(*args,**args)
+	# test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
 	# test_null(*args,**args)

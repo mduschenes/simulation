@@ -343,7 +343,7 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 	slices = slice(None)
 	eps = epsilon(a.dtype)
 	rank = min(a.shape) if rank is None else rank        
-	u,s,v = svds(a,full_matrices=False,compute_uv=True)
+	u,s,v = svds(a)
 
 	loop = forloop
 	options = dict(start=0,end=rank)
@@ -845,7 +845,7 @@ class Basis(object):
 			def scheme(a,conj=None,**options):
 				u,v = qrs(real(dagger(a) if conj else a),**options)
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
-				u,v = cmplx(u),cmplx(v)				
+				u,v = cmplx(u),cmplx(v)
 				s = min(*u.shape,*v.shape)
 				return u,v,s
 
@@ -913,8 +913,8 @@ class Basis(object):
 
 			u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**options)
 
-			axes = [[0,1,2],[0,1,2]]
-			shape = [[data.shape[0],data.shape[1],s],[s,data.shape[2],data.shape[-1]]]
+			axes = [[0,1,2],[0,2,1]]
+			shape = [[data.shape[0],data.shape[1],s],[s,data.shape[-1],data.shape[2]]]
 
 			a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
@@ -943,12 +943,12 @@ class Basis(object):
 				characters[3*N]
 				)
 
-			# defaults = dict(scheme='qr',mode='reduced')
-			# state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
+			defaults = dict(scheme='qr',mode='reduced')
+			state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			defaults = dict(scheme='svd',full_matrices=False,compute_uv=True)
+			defaults = dict(scheme='svd',full_matrices=False,compute_uv=True,hermitian=False)
 			data = cls.update(data,where=where,options={**options,**defaults},**kwargs)
 
 			for i in where:
@@ -1061,12 +1061,12 @@ def test_mps(*args,**kwargs):
 
 	N = 4
 	D = 2
-	M = 1
+	M = 2*N
 	seed = 123
 	dtype = 'complex'
 
 	state = {i:'state' for i in range(N)}
-	data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	data = {(i,i+1):'unitary' for i in range(N-1)}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
@@ -1084,8 +1084,9 @@ def test_mps(*args,**kwargs):
 
 
 
+
 	_state = {i:'state' for i in range(N)}
-	_data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	_data = {(i,i+1):'unitary' for i in range(N-1)}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
@@ -1100,7 +1101,6 @@ def test_mps(*args,**kwargs):
 	_state = _func(_state,_data,**_kwargs)
 
 
-
 	state = basis.transform(basis.transform(state,transform=False,**kwargs),transform=False,**kwargs)
 	_state = _state
 
@@ -1109,7 +1109,7 @@ def test_mps(*args,**kwargs):
 
 
 	state = {i:'state' for i in range(N)}
-	data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	data = {(i,i+1):'identity' for i in range(N-1)}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
@@ -1127,7 +1127,9 @@ def test_mps(*args,**kwargs):
 
 	state = func(state,data,**kwargs)
 
+
 	assert allclose(basis.transform(state,transform=False,**kwargs).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
+
 
 	state = basis.transform(state,transform=False,**kwargs)
 	_state = basis.transform(_state,transform=False,**kwargs)
