@@ -182,6 +182,22 @@ def svds(a,**kwargs):
 
 	return u,s,v
 
+def eig(a,compute_v=False,hermitian=False,**kwargs):
+	if compute_v:
+		if hermitian:
+			_eig = np.linalg.eigh
+		else:
+			_eig = np.linalg.eig
+	else:
+		if hermitian:
+			_eig = np.linalg.eigvalsh
+		else:
+			_eig = np.linalg.eigvals
+	return _eig(a)
+
+def eigs(a,compute_v=False,hermitian=False,**kwargs):
+	return eig(a,compute_v=compute_v,hermitian=hermitian,**kwargs)
+
 def inv(a):
 	return np.linalg.inv(a)
 
@@ -795,7 +811,6 @@ class Basis(object):
 						)),
 					)
 				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))								
-				# data = cls.transform(data,D=D,N=N,where=where,transform=transform,**kwargs)
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
@@ -818,6 +833,32 @@ class Basis(object):
 			shape = [prod(shape)]*d
 			axes = [i*d+j for i in where for j in range(d)]
 			data = reshape(transpose(data,axes),shape)
+		return data
+
+	@classmethod
+	def spectrum(cls,data,where=None,options=None,**kwargs):
+		if isinstance(data,dict):
+			N = len(data)
+			where = where if isinstance(where,integers) else min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else N//2
+			where = min(N-1,max(0,where-1))
+
+			defaults = dict(scheme='qr',mode='reduced')
+			data = cls.update(data,where=where,options={**options,**defaults},**kwargs)
+
+			data = data[where]
+		
+		options = dict() if options is None else options
+		defaults = dict(scheme=options.get('scheme','singular'),compute_uv=False,hermitian=False)
+
+		axes = [0,1,2]
+		shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]]
+		data = reshape(transpose(data,axes),shape)
+
+		# print(where)
+		# print(data.real.round(8))
+
+		data = cls.scheme(options={**options,**defaults},**kwargs)(data,**{**options,**defaults})
+
 		return data
 
 	@classmethod
@@ -848,7 +889,14 @@ class Basis(object):
 				u,v = cmplx(u),cmplx(v)
 				s = min(*u.shape,*v.shape)
 				return u,v,s
-
+		elif scheme in ['eig']:
+			def scheme(a,conj=None,**options):
+				s = eig(real(a),**options)
+				return s
+		elif scheme in ['singular']:
+			def scheme(a,conj=None,**options):
+				s = svd(real(a),**options)
+				return s
 		return scheme		
 
 	@classmethod
@@ -861,7 +909,7 @@ class Basis(object):
 		if isinstance(data,dict):
 
 			N = len(data)
-			where = (N,N) if where is None else (where,where) if isinstance(where,int) else where
+			where = (N,N) if where is None else (where,where) if isinstance(where,integers) else where
 
 			indices = (*range(0,min(where),1),*range(N-1,max(where)-1,-1))
 
@@ -875,7 +923,7 @@ class Basis(object):
 					shape = [data[i].shape[0]*prod(data[i].shape[1:-1]),data[i].shape[-1]]
 					a = reshape(transpose(a,axes),shape)
 
-					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**options)
+					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**{**options,**defaults})
 
 					axes = [0,1,2]
 					shape = [data[i].shape[0],*data[i].shape[1:-1],s]
@@ -892,7 +940,7 @@ class Basis(object):
 					shape = [data[i].shape[0],prod(data[i].shape[1:-1])*data[i].shape[-1]]
 					a = reshape(transpose(a,axes),shape)
 
-					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,conj=True,**options)
+					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,conj=True,**{**options,**defaults})
 
 					axes = [0,1,2]
 					shape = [s,*data[i].shape[1:-1],data[i].shape[-1]]
@@ -911,7 +959,7 @@ class Basis(object):
 			shape = [data.shape[0]*data.shape[1],data.shape[-1]*data.shape[2]]
 			a = reshape(transpose(a,axes),shape)
 
-			u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**options)
+			u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**{**options,**defaults})
 
 			axes = [[0,1,2],[0,2,1]]
 			shape = [[data.shape[0],data.shape[1],s],[s,data.shape[-1],data.shape[2]]]
@@ -943,12 +991,12 @@ class Basis(object):
 				characters[3*N]
 				)
 
-			# defaults = dict(scheme='qr',mode='reduced')
+			# defaults = dict(scheme=options.get('scheme','qr'),mode='reduced')
 			# state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			defaults = dict(scheme='svd',full_matrices=False,compute_uv=True,hermitian=False)
+			defaults = dict(scheme=options.get('scheme','svd'),full_matrices=False,compute_uv=True,hermitian=False)
 			data = cls.update(data,where=where,options={**options,**defaults},**kwargs)
 
 			for i in where:
@@ -1008,12 +1056,12 @@ def test_mps(*args,**kwargs):
 		basis = Basis()
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
-		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
-		state = {i:basis.transform(state[i],D=D,where=i,**kwargs) for i in state}
+		state = {i:getattr(basis,state[i])(**{**kwargs,**dict(D=D)}) for i in state}
+		state = {i:basis.transform(state[i],where=i,**{**kwargs,**dict(D=D)}) for i in state}
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
-		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i:lambda state,data=getattr(basis,data[i])(**{**kwargs,**dict(D=D**len(i))}),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i: lambda state,data=data[i],where=i,**kwargs:basis.contract(state,data=basis.transform(data,where=where,**{**kwargs,**dict(D=D,N=len(where))}),where=where,**kwargs) for i in data}
 
 		return state,data
 
@@ -1035,11 +1083,11 @@ def test_mps(*args,**kwargs):
 		basis = Basis()
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
-		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
+		state = {i:getattr(basis,state[i])(**{**kwargs,**dict(D=D)}) for i in state}
 		state = tensorprod([state[i] for i in state])
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=tensorprod([*[basis.identity(D=D,**kwargs)]*min(i),getattr(basis,data[i])(D=D**len(i),**kwargs),*[basis.identity(D=D,**kwargs)]*(N-max(i)-1)]),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i:lambda state,data=data[i],where=i,**kwargs: basis.contract(state,data=tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)})]*min(where),getattr(basis,data)(**{**kwargs,**dict(D=D**len(where))}),*[basis.identity(**{**kwargs,**dict(D=D)})]*(N-max(where)-1)]),where=where,**kwargs) for i in data}
 		data = {i:data[i] for i in data}
 
 		return state,data
@@ -1062,7 +1110,8 @@ def test_mps(*args,**kwargs):
 	N = 4
 	D = 2
 	M = 2*N
-	seed = 123
+	L = N//2
+	seed = 123456789
 	dtype = 'complex'
 
 	state = {i:'state' for i in range(N)}
@@ -1071,7 +1120,7 @@ def test_mps(*args,**kwargs):
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		options=dict(scheme='qr'),
+		options=dict(),
 		seed=seed,
 		dtype=dtype,		
 	)
@@ -1083,15 +1132,13 @@ def test_mps(*args,**kwargs):
 	state = func(state,data,**kwargs)
 
 
-
-
 	_state = {i:'state' for i in range(N)}
 	_data = {(i,i+1):'unitary' for i in range(N-1)}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		options=dict(scheme='qr'),
+		options=dict(),
 		seed=seed,
 		dtype=dtype,		
 	)	
@@ -1107,14 +1154,13 @@ def test_mps(*args,**kwargs):
 	assert allclose(state,_state)
 
 
-
 	state = {i:'state' for i in range(N)}
 	data = {(i,i+1):'identity' for i in range(N-1)}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		options=dict(scheme='qr'),
+		options=dict(),
 		seed=seed,
 		dtype=dtype,		
 	)
@@ -1127,6 +1173,9 @@ def test_mps(*args,**kwargs):
 
 	state = func(state,data,**kwargs)
 
+	spectrum = basis.spectrum(state,where=L,**kwargs)
+
+	print(spectrum)
 
 	assert allclose(basis.transform(state,transform=False,**kwargs).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
 

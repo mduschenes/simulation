@@ -2507,8 +2507,9 @@ def test_tensor(*args,**kwargs):
 	N = 4
 	D = 2
 	M = 2*N
+	L = N//2
 	to = 'tensor'
-	seed = 123
+	seed = 123456789
 	seed = seeder(seed)
 	dtype = 'complex'
 	options = dict(
@@ -2559,7 +2560,9 @@ def test_tensor(*args,**kwargs):
 
 	_tmp = _state
 
-	print(representation(_state).round(8))
+
+	print(_state.singular_values(L))
+	print(representation(_state).real.round(8))
 
 	_state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
 
