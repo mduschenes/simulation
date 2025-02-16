@@ -1843,7 +1843,7 @@ def datatype(dtype):
 		dtype (datatype): Underlying datatype
 	'''
 	
-	return real(array([],dtype=dtype)).dtype
+	return np.dtype(dtype).type(0).real.dtype
 
 class Array(onp.ndarray):
 	'''
@@ -3403,6 +3403,25 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape),dtype=dtype)
 
+	def randn(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random gaussian array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.normal
+
+		return astype(generator(key,shape=shape),dtype=dtype)
+
 	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random integer array
@@ -3439,11 +3458,10 @@ if backend in ['jax']:
 
 		kwargs = dict(
 			shape = shape,
-			random = 'normal',
-			dtype = dtype
+			dtype = datatype(dtype)
 		)
 
-		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
+		out = randn(key=real,**kwargs) + 1j*randn(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)
@@ -3714,7 +3732,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return out
 
-
 	def random(shape=(),random='uniform',seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random array
@@ -3733,6 +3750,25 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		generator = getattr(rng,random)
 
 		return astype(generator(size=shape),dtype=dtype)
+
+	def randn(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random gaussian array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.normal
+
+		return astype(generator(key,shape=shape),dtype=dtype)
 
 	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
@@ -3768,13 +3804,13 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		real,imag = seed if key is None else key,seed if key is None else key
 
+
 		kwargs = dict(
 			shape = shape,
-			random = 'normal',
-			dtype = dtype
+			dtype = datatype(dtype)
 		)
 
-		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
+		out = randn(key=real,**kwargs) + 1j*randn(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)

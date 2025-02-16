@@ -43,6 +43,8 @@ from jaxopt import BlockCoordinateDescent,objective,prox
 
 from string import ascii_lowercase as characters
 
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
+
 pi = np.pi
 e = np.exp(1)
 
@@ -52,6 +54,8 @@ integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 scalars = (*integers,*floats,str,type(None))
 arrays = (np.ndarray,onp.ndarray)
+
+rng = jax.random
 
 def timer(func):
 	def function(*args,**kwargs):
@@ -116,13 +120,13 @@ def identity(*args,**kwargs):
 	return np.eye(*args,**kwargs)
 
 def rand(*args,**kwargs):
-	return jax.random.uniform(**kwargs)
+	return rng.uniform(**kwargs)
 
 def randint(*args,**kwargs):
-	return jax.random.randint(**kwargs)
+	return rng.randint(**kwargs)
 
 def randn(*args,**kwargs):
-	return jax.random.normal(**kwargs)
+	return rng.normal(**kwargs)
 
 def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 
@@ -130,7 +134,7 @@ def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 
 	kwargs = dict(
 		shape = shape,
-		dtype = dtype
+		dtype = datatype(dtype)
 	)
 
 	out = randn(key=real,**kwargs) + 1j*randn(key=imag,**kwargs)
@@ -169,12 +173,12 @@ def svds(a,**kwargs):
 	u,s,v = svd(a,**kwargs)
 
 	# s = sign(u[:,argmax(s)])
-	slices = slice(None)
-	k = argmax(absolute(u), axis=0)
-	shift = arange(u.shape[1])
-	indices = k + shift * u.shape[0]
-	s = sign(take(ravel(u.T), indices, axis=0))
-	u,v = dotr(u,s),dotl(v,s)
+	# slices = slice(None)
+	# k = argmax(absolute(u), axis=0)
+	# shift = arange(u.shape[1])
+	# indices = k + shift * u.shape[0]
+	# s = sign(take(ravel(u.T), indices, axis=0))
+	# u,v = dotr(u,s),dotl(v,s)
 
 	return u,s,v
 
@@ -278,8 +282,11 @@ def real(a):
 def imag(a):
 	return a.imag
 
+def cmplx(a):
+	return a + 0*1j
+
 def datatype(dtype):
-	return real(array([],dtype=dtype)).dtype
+	return np.dtype(dtype).type(0).real.dtype
 
 def finfo(dtype=float):
 	return np.finfo(dtype)
@@ -563,7 +570,7 @@ def nmf(a,u=None,v=None,rank=None,options=None,**kwargs):
 	
 def nvd(a,options=None,**kwargs):
 	a,s,u,v = nmf(a,options=options,**kwargs)
-	return dot(u*s,v)
+	return dot(dotr(u,s),v)
 
 def _nvd(a,options=None,**kwargs):
 
@@ -752,39 +759,49 @@ class Basis(object):
 
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
 
-		if transform:
-			if isinstance(data,dict):
-				pass
-		else:
-			if isinstance(data,dict):
-				N = len(data)
-				where = range(N) if where is None else where
-				subscripts = '%s'%(
-					','.join((
-						''.join((characters[index],characters[N+index],characters[N+index+1]))
-						for index,i in enumerate(where)
-						)),
-					)
-				shape = [data[i].shape[0] for i in data]	
-				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))
-				return data
+		N = len(data) if N is None and isinstance(data,dict) else N
 	
+		where = range(N) if where is None and N is not None else where
+
 		if N:
 			basis = tensorprod([basis]*N)
 			inverse = tensorprod([inverse]*N)
 
 		if transform:
 			if callable(data):
-				data = einsum('uij,wji,wv->uv',basis,data(basis),inverse)				
+				data = einsum('uij,wji,wv->uv',basis,data(basis),inverse)		
+			elif isinstance(data,dict):
+				pass
 			elif isinstance(data,arrays):
-				data = einsum('uij,ji->u',basis,data)
+				if data.ndim == 1:
+					raise NotImplementedError(f"Not Implemented {data}")			
+				elif data.ndim > 1:
+					data = einsum('uij,...ji->...u',basis,data)
+
+				if data.ndim == 1:
+					axes = [0,1,2]
+					shape = [1,*data.shape,1]
+					data = transpose(reshape(data,shape),axes)
 
 		else:
 			if callable(data):
-				raise NotImplementedError(f"Not Implemented {data}")			
+				raise NotImplementedError(f"Not Implemented {data}")
+			elif isinstance(data,dict):
+				shape = [j for i in data for j in data[i].shape[1:-1]]
+				subscripts = '%s'%(
+					','.join((
+						''.join((characters[N+index],characters[index],characters[N+index+1]))
+						for index,i in enumerate(where)
+						)),
+					)
+				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))								
 			elif isinstance(data,arrays):
-				data = einsum('uij,wji,wv->uv',basis,data,inverse)
+				if data.ndim == 1:
+					data = einsum('uij,uv,v->ij',basis,inverse,data)				
+				elif data.ndim > 1:
+					data = einsum('uij,wji,wv->uv',basis,data,inverse)
 		
+
 		return data
 
 	@classmethod
@@ -804,201 +821,97 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def boundary(cls,data,where=None,transform=True,**kwargs):
+	def scheme(cls,options=None,**kwargs):
 		
-		where = data if where is None else where
-		boundary = [list(data)[0],list(data)[-1]] 
-		
-		for i in where:
-			if i not in boundary:
-				continue
-			elif i == boundary[0]:
-				if transform:
-					data[i] = reshape(data[i],(*data[i].shape[:-1],1,*data[i].shape[-1:]))
-				else:
-					data[i] = reshape(data[i],(*data[i].shape[:-2],*data[i].shape[-1:]))
-			elif i == boundary[-1]:
-				if transform:
-					data[i] = reshape(data[i],(*data[i].shape[:-1],*data[i].shape[-1:],1))
-				else:
-					data[i] = reshape(data[i],(*data[i].shape[:-2],*data[i].shape[-2:-1]))
-		
-		return data
+		options = dict() if options is None else options
 
+		scheme = options.get('scheme')
+
+		if scheme is None or scheme in ['svd']:
+			def scheme(a,conj=None,**options):
+				u,s,v = svds(real(a),**options)
+				u,v = u,dotl(v,s)
+				u,v = cmplx(u),cmplx(v)
+				s = min(*u.shape,*v.shape)
+				return u,v,s
+		elif scheme in ['qr']:
+			def scheme(a,conj=None,**options):
+				u,v = qrs(real(dagger(a) if conj else a),**options)
+				u,v = (dagger(v),dagger(u)) if conj else (u,v)
+				u,v = cmplx(u),cmplx(v)				
+				s = min(*u.shape,*v.shape)
+				return u,v,s
+
+		return scheme		
 
 	@classmethod
 	def update(cls,data,where=None,options=None,**kwargs):
 		
 		options = dict() if options is None else options
 
+		defaults = dict()
+
 		if isinstance(data,dict):
 
 			N = len(data)
 			where = (N,N) if where is None else (where,where) if isinstance(where,int) else where
 
-			scheme = options.get('scheme')
+			indices = (*range(0,min(where),1),*range(N-1,max(where)-1,-1))
 
-			for i in data:
-
-				if data[i].ndim == 1:
-					axes = [0,1,2]
-					shape = [*data[i].shape,1,1]
-					data[i] = transpose(reshape(data[i],shape),axes)
-
-			for i in (*range(0,min(where),1),*range(N-1,max(where)-1,-1)):
+			for i in indices:
 
 				a = data[i]
 
-				if scheme is None or scheme in ['svd']:
-					
+				if i < min(where):
+
 					axes = [0,1,2]
-					shape = [data[i].shape[0]*data[i].shape[1],data[i].shape[2]]
+					shape = [data[i].shape[0]*prod(data[i].shape[1:-1]),data[i].shape[-1]]
 					a = reshape(transpose(a,axes),shape)
 
-					if i < min(where):
+					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**options)
 
-						u,s,v = svd(a,**options)
+					axes = [0,1,2]
+					shape = [data[i].shape[0],*data[i].shape[1:-1],s]
+					a = transpose(reshape(u,shape),axes)
 
-						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+					data[i] = a
 
-						u,v,s = u,dotl(v,s),len(s)
+					if i < (N-1):
+						data[i+1] = einsum('ij,j...k->i...k',v,data[i+1])
 
-						axes = [0,1]
-						shape = [data[i].shape[0],data[i].shape[1],s]
-						a = reshape(transpose(u,axes),shape)
-						
-						data[i] = a
+				elif i > max(where):
 
-						if i < (N-1):
-							data[i+1] = einsum('ij,ujk->uik',v,data[i+1])
+					axes = [0,1,2]
+					shape = [data[i].shape[0],prod(data[i].shape[1:-1])*data[i].shape[-1]]
+					a = reshape(transpose(a,axes),shape)
 
-					elif i > max(where):
+					u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,conj=True,**options)
 
-						u,s,v = svd(a,**options)
+					axes = [0,1,2]
+					shape = [s,*data[i].shape[1:-1],data[i].shape[-1]]
+					a = transpose(reshape(v,shape),axes)
 
-						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
+					data[i] = a
 
-						u,v,s = u*s,v,len(s)
-
-						axes = [0,1]
-						shape = [data[i].shape[0],data[i].shape[1],s]
-						a = reshape(transpose(v,axes),shape)
-						
-						data[i] = a
-
-						if i > 0:
-							data[i-1] = einsum('jk,uij->uik',u,data[i-1])
-
-
-				elif scheme in ['qr']:
-					
-					if i < min(where):
-
-						axes = [0,1,2]
-						shape = [data[i].shape[0]*data[i].shape[1],data[i].shape[2]]
-						a = reshape(transpose(a,axes),shape)
-
-						u,v = qrs(a,**options)
-
-						s = min(shape[-2:])
-
-						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
-
-						axes = [0,1,2]
-						shape = [data[i].shape[0],data[i].shape[1],s]
-						a = transpose(reshape(u,shape),axes)
-						
-						data[i] = a
-
-						if i < (N-1):
-							data[i+1] = einsum('ij,ujk->uik',v,data[i+1])
-
-					elif i > max(where):
-
-						axes = [1,0,2]
-						shape = [data[i].shape[1],data[i].shape[0]*data[i].shape[2]]
-						a = reshape(transpose(a,axes),shape)
-
-						u,v = qrs(dagger(a),**options)
-
-						s = min(shape[-2:])
-
-						u,v = dagger(v),dagger(u)
-
-						u,v,s = cls.normalize(data=(u,v,s),where=i,options=options,**kwargs)
-
-						axes = [1,0,2]
-						shape = [s,data[i].shape[0],data[i].shape[2]]
-						a = transpose(reshape(v,shape),axes)
-						
-						data[i] = a
-
-						if i > 0:
-							data[i-1] = einsum('jk,uij->uik',u,data[i-1])
-
+					if i > 0:
+						data[i-1] = einsum('jk,i...j->i...k',u,data[i-1])
 
 		elif isinstance(data,arrays):
 
-			l = 2
-			where = range(l) if where is None else where
-
-			scheme = options.get('scheme')
-
 			a = data
+		
+			axes = [0,1,-1,2]
+			shape = [data.shape[0]*data.shape[1],data.shape[-1]*data.shape[2]]
+			a = reshape(transpose(a,axes),shape)
 
-			if scheme is None or scheme in ['svd']:
-			
-				axes = [0,2,1,3]
-				shape = [data.shape[0]*data.shape[2],data.shape[1]*data.shape[3]]
-				a = reshape(transpose(a,axes),shape)
+			u,v,s = cls.scheme(options={**options,**defaults},**kwargs)(a,**options)
 
-				u,s,v = svd(a,**options)
+			axes = [[0,1,2],[0,1,2]]
+			shape = [[data.shape[0],data.shape[1],s],[s,data.shape[2],data.shape[-1]]]
 
-				u,v,s = cls.normalize(data=(u,v,s),where=where,options=options,**kwargs)
+			a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
-				axes = [[0,1,2],[0,1,2]]
-				shape = [[data.shape[0],data.shape[2],s],[data.shape[1],s,data.shape[3]]]
-				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
-
-				data = a
-
-			elif scheme in ['qr']:
-			
-				axes = [0,2,1,3]
-				shape = [data.shape[0]*data.shape[2],data.shape[1]*data.shape[3]]
-				a = reshape(transpose(a,axes),shape)
-
-				u,v = qrs(a,**options)
-
-				s = min(shape[-2:])
-
-				u,v,s = cls.normalize(data=(u,v,s),where=where,options=options,**kwargs)
-
-				axes = [[0,1,2],[0,1,2]]
-				shape = [[data.shape[0],data.shape[2],s],[data.shape[1],s,data.shape[3]]]
-				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
-
-				data = a
-
-		return data
-
-	@classmethod
-	def normalize(cls,data,where=None,options=None,**kwargs):
-
-		options = dict() if options is None else options
-		scheme = options.get('scheme')
-
-		if scheme is None or scheme in ['svd']:
-			
-			u,v,s = data
-
-			data = u,v,s
-
-		elif scheme in ['qr']:
-			
-			q,r,s = data
-
-			data = q,r,s
+			data = a
 
 		return data
 
@@ -1010,29 +923,26 @@ class Basis(object):
 			where = state if where is None else where
 			N = len(where)
 
-			shape = [state[i].shape[0] for i in where]
-			subscripts = '%s%s,%s->%s%s'%(
+			shape = [j for i in where for j in state[i].shape[1:-1]]
+			subscripts = '%s%s,%s->%s%s%s'%(
 				characters[N:2*N],
 				characters[:N],
 				','.join((
-					''.join((characters[index],characters[2*N+index],characters[2*N+index+1]))
+					''.join((characters[2*N+index],characters[index],characters[2*N+index+1]))
 					for index,i in enumerate(where)
 					)),
+				characters[2*N],
 				characters[N:2*N],
-				''.join((characters[2*N],characters[3*N]))
+				characters[3*N]
 				)
-			
-			state = cls.update(state,where=where,options=options,**kwargs)
 
-        	from math import prod
-			for i in state:
-				print(state[i],state[i].shape)
-			print(prod(state[i].sum() for i in state))
-			exit()
+			defaults = dict(scheme='qr')
+			state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			data = cls.update(data,where=where,options=options,**kwargs)
+			defaults = dict(scheme='svd')
+			data = cls.update(data,where=where,options={**options,**defaults},**kwargs)
 
 			for i in where:
 				state[i] = data[i]
@@ -1139,25 +1049,51 @@ def test_mps(*args,**kwargs):
 
 		return state
 
+	parse = lambda data,p=8: data.real.round(p)	
+	norm = lambda data,p=1: (data**p).sum().real
+
 	N = 4
 	D = 2
 	M = 1
 	seed = 123
 	dtype = 'complex'
 
-	state = {i:'zero' for i in range(N)}
+	state = {i:'state' for i in range(N)}
 	data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+	data = {i:'unitary' for i in [(1,2)]}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		# options=dict(scheme='svd',full_matrices=False,compute_uv=True),
-		options=dict(scheme='qr',mode='reduced'),
+		# options=dict(scheme='svd',full_matrices=True,compute_uv=True),
+		options=dict(scheme='qr',mode='reduced',full_matrices=False,compute_uv=True),
 		seed=seed,
 		dtype=dtype,		
 	)
 
+	basis = Basis()
+
 	state,data = initialize(state=state,data=data,**kwargs)
+
+	_state = copy(state)
+
+	state = func(state,data,**kwargs)
+
+	state = basis.transform(state,transform=False,**kwargs)
+	_state = basis.transform(_state,transform=False,**kwargs)
+
+	objs = [state,_state]
+
+	for obj in objs:
+		print(parse(obj))
+		print(norm(obj,1),norm(obj,2))
+
+
+	print(allclose(state,_state))
+
+	exit()
+
+
 
 	# for i in _state:
 	# 	print(_state[i])
@@ -1169,24 +1105,22 @@ def test_mps(*args,**kwargs):
 	# print(prod(obj[i].sum() for i in obj))
 	# exit()
 
-	data = func(state,data,**kwargs)
+	# data = basis.transform(data,transform=False,**kwargs)
 
-	data = Basis().transform(data,transform=False,**kwargs)
+
+	# _data = basis.update(copy(state),**kwargs)
+
+	# _data = basis.transform(_data,transform=False,**kwargs)
+
+	_data = tensorprod([_state[i] for i in _state])
+
 	
-
-	_data = Basis().update(copy(state),**kwargs)
-
-	_data = Basis().transform(_data,transform=False,**kwargs)
-
-
-	parse = lambda data,p=8: data.real.round(p)
-	norm = lambda data,p=1: (data**p).sum().real
 	objs = [data,_data]
 
 	for obj in objs:
 		print(parse(obj),norm(obj,1),norm(obj,2))
 
-	assert allclose(data,_data)
+	print(allclose(data,_data))
 
 	exit()
 
@@ -1197,7 +1131,7 @@ def test_mps(*args,**kwargs):
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='array',
-		# options=dict(scheme='svd',full_matrices=False,compute_uv=True),
+		# options=dict(scheme='svd',full_matrices=True,compute_uv=True),
 		options=dict(scheme='qr',mode='reduced'),		
 		seed=seed,
 		dtype=dtype,		

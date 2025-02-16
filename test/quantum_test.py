@@ -2506,7 +2506,7 @@ def test_tensor(*args,**kwargs):
 	
 	N = 4
 	D = 2
-	where = [0,1]
+	where = [1,2]
 	L = len(where)
 	to = 'tensor'
 	seed = 123
@@ -2519,8 +2519,8 @@ def test_tensor(*args,**kwargs):
 		)
 
 	measure = 'pauli'
-	state = 'zero'
-	data = 'identity'
+	state = 'state'
+	data = 'unitary'
 
 	args = tuple()
 	kwargs = dict(
@@ -2553,7 +2553,11 @@ def test_tensor(*args,**kwargs):
 	tmp = state
 	_tmp = _state
 
+
+	print(representation(_state).round(8))
+
 	_state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
+
 
 	print(representation(tmp).sum(),representation(_tmp).sum(),allclose(_state,tensorprod([obj]*N)))
 
