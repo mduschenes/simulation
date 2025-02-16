@@ -795,13 +795,13 @@ class Basis(object):
 						)),
 					)
 				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))								
+				data = cls.transform(data,D=D,N=N,where=where,transform=transform,**kwargs)
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
 				elif data.ndim > 1:
 					data = einsum('uij,wji,wv->uv',basis,data,inverse)
 		
-
 		return data
 
 	@classmethod
@@ -829,14 +829,14 @@ class Basis(object):
 
 		if scheme is None or scheme in ['svd']:
 			def scheme(a,conj=None,**options):
-				u,s,v = svds((a),**options)
+				u,s,v = svds(real(a),**options)
 				u,v = u,dotl(v,s)
 				u,v = cmplx(u),cmplx(v)
 				s = min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
 			def scheme(a,conj=None,**options):
-				u,v = qrs((dagger(a) if conj else a),**options)
+				u,v = qrs(real(dagger(a) if conj else a),**options)
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
 				u,v = cmplx(u),cmplx(v)				
 				s = min(*u.shape,*v.shape)
@@ -936,12 +936,12 @@ class Basis(object):
 				characters[3*N]
 				)
 
-			defaults = dict(scheme='qr')
+			defaults = dict(scheme='qr',mode='reduced')
 			state = cls.update(state,where=where,options={**options,**defaults},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			defaults = dict(scheme='svd')
+			defaults = dict(scheme='svd',full_matrices=False,compute_uv=True)
 			data = cls.update(data,where=where,options={**options,**defaults},**kwargs)
 
 			for i in where:
@@ -1029,11 +1029,11 @@ def test_mps(*args,**kwargs):
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
 		state = {i:getattr(basis,state[i])(D=D,**kwargs) for i in state}
-		state = tensorprod([basis.transform(state[i],D=D,where=i,**kwargs) for i in state])
+		state = tensorprod([state[i] for i in state])
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=getattr(basis,data[i])(D=D**len(i),**kwargs),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
-		data = {i: lambda state,data=basis.transform(data[i],D=D,N=len(i),where=i,**kwargs),where=i,**kwargs:basis.contract(state,data=tensorprod([*[basis.identity(**{**kwargs,**dict(D=D**2)})]*(min(i)),data,*[basis.identity(**{**kwargs,**dict(D=D**2)})]*(N-max(i)-1)]),where=where,**kwargs) for i in data}
+		data = {i:lambda state,data=tensorprod([*[basis.identity(D=D,**kwargs)]*min(i),getattr(basis,data[i])(D=D**len(i),**kwargs),*[basis.identity(D=D,**kwargs)]*(N-max(i)-1)]),where=range(len(i)),**kwargs: basis.contract(state,data=data,where=where,**kwargs) for i in data}
+		data = {i:data[i] for i in data}
 
 		return state,data
 
@@ -1059,14 +1059,55 @@ def test_mps(*args,**kwargs):
 	dtype = 'complex'
 
 	state = {i:'state' for i in range(N)}
-	data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
-	data = {i:'unitary' for i in [(1,2)]}
+	data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',		
-		# options=dict(scheme='svd',full_matrices=True,compute_uv=True),
-		options=dict(scheme='qr',mode='reduced',full_matrices=False,compute_uv=True),
+		options=dict(scheme='qr'),
+		seed=seed,
+		dtype=dtype,		
+	)
+
+	basis = Basis()
+
+	state,data = initialize(state=state,data=data,**kwargs)
+
+	state = func(state,data,**kwargs)
+
+
+
+	_state = {i:'state' for i in range(N)}
+	_data = {i:'unitary' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+
+	_kwargs = dict(
+		D=D,N=N,M=M,
+		architecture='tensor',		
+		options=dict(scheme='qr'),
+		seed=seed,
+		dtype=dtype,		
+	)	
+
+	_state,_data = _initialize(state=_state,data=_data,**_kwargs)
+
+	_state = _func(_state,_data,**_kwargs)
+
+
+
+	state = basis.transform(state,transform=False,**kwargs)
+	_state = _state
+
+	assert allclose(state,_state)
+
+
+
+	state = {i:'state' for i in range(N)}
+	data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
+
+	kwargs = dict(
+		D=D,N=N,M=M,
+		architecture='tensor',		
+		options=dict(scheme='qr'),
 		seed=seed,
 		dtype=dtype,		
 	)
@@ -1079,72 +1120,13 @@ def test_mps(*args,**kwargs):
 
 	state = func(state,data,**kwargs)
 
+
+
 	state = basis.transform(state,transform=False,**kwargs)
 	_state = basis.transform(_state,transform=False,**kwargs)
 
-	objs = [state,_state]
+	assert allclose(state,_state)
 
-	for obj in objs:
-		print(parse(obj))
-		print(norm(obj,1),norm(obj,2))
-
-
-	print(allclose(state,_state))
-
-	exit()
-
-
-
-	# for i in _state:
-	# 	print(_state[i])
-	# exit()
-
-	# obj = state
-	# print(prod(obj[i].sum() for i in obj))
-	# obj = _state
-	# print(prod(obj[i].sum() for i in obj))
-	# exit()
-
-	# data = basis.transform(data,transform=False,**kwargs)
-
-
-	# _data = basis.update(copy(state),**kwargs)
-
-	# _data = basis.transform(_data,transform=False,**kwargs)
-
-	_data = tensorprod([_state[i] for i in _state])
-
-	
-	objs = [data,_data]
-
-	for obj in objs:
-		print(parse(obj),norm(obj,1),norm(obj,2))
-
-	print(allclose(data,_data))
-
-	exit()
-
-
-	_state = {i:'zero' for i in range(N)}
-	_data = {i:'identity' for i in permutations(*(range(N),)*2) if (i[1]-i[0])==1}
-
-	_kwargs = dict(
-		D=D,N=N,M=M,
-		architecture='array',
-		# options=dict(scheme='svd',full_matrices=True,compute_uv=True),
-		options=dict(scheme='qr',mode='reduced'),		
-		seed=seed,
-		dtype=dtype,		
-	)	
-
-	_state,_data = _initialize(state=_state,data=_data,**_kwargs)
-
-	_data = _func(_state,_data,**_kwargs)
-
-	print(data.real.round(8))
-	print(_data.real.round(8))
-
-	assert allclose(data,_data)
 
 	print('Passed')
 
