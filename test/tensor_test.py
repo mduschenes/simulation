@@ -39,8 +39,6 @@ from functools import partial
 import itertools
 import time as timing
 
-from jaxopt import BlockCoordinateDescent,objective,prox
-
 from string import ascii_lowercase as characters
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -408,6 +406,8 @@ def nmfd(u,v,rank=None,**kwargs):
 	return u,v,s
 
 def coordinate_descent(a,u,v,rank=None,iterations=True,**kwargs):
+
+	# from jaxopt import BlockCoordinateDescent,objective,prox
 
 	# options = dict(
 	# 	fun=kwargs.get('function',objective.least_squares),
