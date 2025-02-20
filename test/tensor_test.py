@@ -52,6 +52,8 @@ integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 scalars = (*integers,*floats,str,type(None))
 arrays = (np.ndarray,onp.ndarray)
+iterables = (*arrays,list,tuple,set,range)
+dicts = (dict,)	
 
 rng = jax.random
 
@@ -82,9 +84,9 @@ def forloop(start,end,func,x):
 	return jax.lax.fori_loop(start,end,func,x)
 
 def whileloop(cond,func,x):
-#     while cond(x):
-#         x = func(x)
-#     return x
+	# while cond(x):
+	# 	x = func(x)
+	# return x
 	return jax.lax.while_loop(cond,func,x)
 
 def permutations(*iterables,repeat=None):
@@ -265,8 +267,14 @@ def norm(a):
 def sqrt(a):
 	return np.sqrt(a)
 
+def sqr(a):
+	return a**2
+
 def absolute(a):
 	return np.abs(a)
+
+def abs2(a):
+	return sqr(absolute(a))
 
 def take(a,indices,axis):
 	return np.take(a,indices,axis)
@@ -405,7 +413,7 @@ def nmfd(u,v,rank=None,**kwargs):
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
 
-def coordinate_descent(a,u,v,rank=None,iterations=True,**kwargs):
+def coordinate_descent(a,u,v,rank=None,**kwargs):
 
 	# from jaxopt import BlockCoordinateDescent,objective,prox
 
@@ -428,21 +436,24 @@ def coordinate_descent(a,u,v,rank=None,iterations=True,**kwargs):
 	def func(i,x):
 		a,u,v,i = x
 
-		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
-
-		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
 
 
-		# z = dot(u.T,u)
-		# y = -dot(u.T,a)
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
-		# v = maximums(v-alpha*(dot(z,v)+y),0)
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
 
-		# z = dot(v,v.T)
-		# y = -dot(v,a.T)
 
-		# u = maximums(u.T-alpha*(dot(z,u.T)+y),0)
-		# u = u.T
+		z = dot(u.T,u)
+		y = -dot(u.T,a)
+		w = maximums(absolute(diag(z)),eps)
+
+		v = maximums(v-dotl(alpha*(dot(z,v)+y),1/w),0)
+
+		z = dot(v,v.T)
+		y = -dot(v,a.T)
+		w = maximums(absolute(diag(z)),eps)
+
+		u = maximums(u.T-dotl(alpha*(dot(z,u.T)+y),1/w),0).T
 
 
 		# z = dot(u.T,u)
@@ -485,22 +496,20 @@ def coordinate_descent(a,u,v,rank=None,iterations=True,**kwargs):
 
 		return x
 
-	if not iterations:
-		func = partial(func,None)
-
 	return func
 
-def multiplicative_update(a,u,v,rank=None,iterations=True,**kwargs):
+def multiplicative_update(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
 
 	@jit
 	def func(i,x):
 		
 		a,u,v,i = x
 		
-		u,v = (
-			(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
-			(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
-		)
+		u *= (dot(a,transpose(v))/dot(u,dot(v,transpose(v))))
+		v *= (dot(transpose(u),a)/dot(dot(transpose(u),u),v))
 
 		i += 1
 
@@ -508,8 +517,53 @@ def multiplicative_update(a,u,v,rank=None,iterations=True,**kwargs):
 
 		return x
 
-	if not iterations:
-		func = partial(func,None)
+	return func
+
+def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+
+
+	@jit
+	def func(i,x):
+		
+		a,u,v,i = x
+
+		z = 1/maximums(eps,sqrt(add(sqr(a-dot(u,v)),0)))
+		
+		u *= (dot(a*z,transpose(v))/dot(u,dot(v*z,transpose(v))))
+		v *= (dot(transpose(u),a*z)/dot(dot(transpose(u),u),v*z))
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+
+
+	@jit
+	def func(i,x):
+		
+		a,u,v,i = x
+
+		z = 1/sqrt(sqr(a-dot(u,v)) + sqr(eps))
+		
+		u *= (a*dot(z,transpose(v))/dot(u,v)*dot(z,transpose(v)))
+		v *= (dot(transpose(u),a)*z/dot(dot(transpose(u),u),v)*z)
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
 
 	return func
 
@@ -521,6 +575,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		
 		if callable(init):
 			pass
+		elif u is not None and v is not None:
+			init = rsvd
 		elif init is None:
 			init = rsvd
 		elif init in ['nndsvd']:
@@ -532,8 +588,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		elif init in ['rsvda']:
 			init = rsvda					
 		elif init in ['random']:		
-			init = rsvd
-		elif u is not None and v is not None:
 			init = rsvd
 		else:
 			init = rsvd
@@ -550,39 +604,47 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		iteration = kwargs.get('iteration')
 		eps = kwargs.get('eps')
 
-		if callable(update):
-			pass
-		elif update is None:
-			update = coordinate_descent
-		elif update in ['cd','coordinate_descent']:
-			update = coordinate_descent
-		elif update in ['mu','multiplicative_update']:
-			update = multiplicative_update
-		else:
-			update = coordinate_descent
+		updates = [[update,iteration,eps]] if not isinstance(update,iterables) else update
 
-		if isinstance(iteration,int) and eps is None:
-			loop = forloop
-			kwargs.update(dict(iterations=True))
-			options = dict(start=0,end=iteration)
-		elif isinstance(iteration,int) and isinstance(eps,float):
-			loop = whileloop
-			kwargs.update(dict(iterations=False))
-			options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
-		else:
-			loop = forloop
-			kwargs.update(dict(iterations=True))
-			options = dict(start=0,end=1)			
+		for update,iteration,eps in updates:
 
-		i = 0
-		func = update(a,u=u,v=v,rank=rank,**{**kwargs,**options})
-		x = (a,u,v,i)
+			string = update
 
-		x = loop(func=func,x=x,**options)
+			if callable(update):
+				pass
+			elif update is None:
+				update = coordinate_descent
+			elif update in ['cd','coordinate_descent']:
+				update = coordinate_descent
+			elif update in ['mu','multiplicative_update']:
+				update = multiplicative_update
+			elif update in ['mru','multiplicative_robust_update']:
+				update = multiplicative_robust_update			
+			elif update in ['m1u','multiplicative_l1_update']:
+				update = multiplicative_l1_update				
+			else:
+				update = coordinate_descent
 
-		a,u,v,i = x
+			i = 0
+			x = (a,u,v,i)
+			func = update(a,u=u,v=v,rank=rank,**kwargs)
 
-		print(i,norm(a-dot(u,v)))
+			if isinstance(iteration,int) and not isinstance(eps,float):
+				loop = forloop
+				options = dict(start=0,end=iteration)
+			elif isinstance(iteration,int) and isinstance(eps,float):
+				loop = whileloop
+				func = partial(func,i)
+				options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
+			else:
+				loop = forloop
+				options = dict(start=0,end=1)			
+
+			x = loop(func=func,x=x,**options)
+
+			a,u,v,i = x
+
+			print(string,i,norm(a-dot(u,v)))
 
 		u,v,s = nmfd(u,v,rank=rank)
 
@@ -629,7 +691,7 @@ def _nmf(a,**kwargs):
 		init='custom' if u is not None and v is not None else kwargs.get('init',kwargs.get('initialize')) if isinstance(kwargs.get('init',kwargs.get('initialize')),str) else 'nndsvda',
 		max_iter=kwargs.get('max_iter',kwargs.get('iteration')) if isinstance(kwargs.get('max_iter',kwargs.get('iteration')),int) else 100,
 		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else epsilon(a.dtype),
-		solver=kwargs.get('solver',kwargs.get('update')) if isinstance(kwargs.get('solver',kwargs.get('update')),str) else 'cd',
+		solver=kwargs.get('solver',kwargs.get('update')) if isinstance(kwargs.get('solver',kwargs.get('update')),str) else kwargs.get('solver',kwargs.get('update'))[0][0] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 'cd',
 		)
 
 	options = dict(
@@ -1312,7 +1374,7 @@ def test_mps(*args,**kwargs):
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
-	# 	parameters=1e-3,
+	# 	parameters=1e-4,
 	# 	architecture='tensor',		
 	# 	options=dict(),
 	# 	seed=seed,
@@ -1349,24 +1411,26 @@ def test_mps(*args,**kwargs):
 
 
 	state = {i:'state' for i in range(N)}
-	data = {**{(i,i+1):'unitary' for i in range(N-1)},**{(i,i+1):['depolarize','depolarize'] for i in range(N-1)}}
+	data = {**{(i,i+1):data for i in range(N-1) for data in ['unitary',['depolarize','depolarize']]}}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',	
-		parameters=1e-3,	
+		parameters=1e-4,	
 		options=dict(
 			scheme='nmf',
 			init='nndsvda',
-			iteration=int(5e6),
+			iteration=int(1e7),
 			eps=2e-13,
-			alpha=10e-1,
-			update='cd'
+			alpha=7e-1,
+			update=[['cd',int(1e5),2e-13],['m1u',int(1e6),2e-13],['cd',int(1e6),2e-13]],
 		),
 		key=seeder(seed),
 		seed=seed,
 		dtype=dtype,		
 	)
+
+	print(kwargs)
 
 	basis = Basis()
 
@@ -1378,12 +1442,12 @@ def test_mps(*args,**kwargs):
 
 
 	_state = {i:'state' for i in range(N)}
-	_data = {**{(i,i+1):'unitary' for i in range(N-1)},**{(i,i+1):['depolarize','depolarize'] for i in range(N-1)}}
+	_data = {**{(i,i+1):data for i in range(N-1) for data in ['unitary',['depolarize','depolarize']]}}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',
-		parameters=1e-3,	
+		parameters=1e-4,	
 		options=dict(
 			scheme='svd',
 		),
