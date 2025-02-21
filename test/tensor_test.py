@@ -567,6 +567,44 @@ def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
 
 	return func
 
+def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+	beta = kwargs.get('beta',2)
+
+	@jit
+	def func(i,x):
+		
+		a,u,v,i = x
+
+		z = dot(u,v)
+
+		jax.debug.print('{z}',z=(z-a))
+		# jax.debug.print('{x}',x=(dot(z**(beta-1),v.T)))
+
+		u *= (a*dot(z**(beta-2),v.T))/(dot(z**(beta-1),v.T))
+
+		v *= dot(u.T,a*(z**(beta-2)))/dot(u.T,z**(beta-1))
+		
+		i += 1
+
+		# def true(*args,**kwargs):
+		# 	exit()
+		# 	return
+		# def false(*args,**kwargs):
+		# 	return
+		jax.debug.print('{z}',z=(i))
+
+		# cond((i>100)*(norm(a-z)>1e-10),true,false)
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+
 def nmf(a,u=None,v=None,rank=None,**kwargs):
 	
 	def initialize(a,u=None,v=None,rank=None,**kwargs):
@@ -622,6 +660,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 				update = multiplicative_robust_update			
 			elif update in ['m1u','multiplicative_l1_update']:
 				update = multiplicative_l1_update				
+			elif update in ['mbu','multiplicative_beta_update']:
+				update = multiplicative_beta_update				
 			else:
 				update = coordinate_descent
 
@@ -644,7 +684,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 			a,u,v,i = x
 
-			print(string,i,norm(a-dot(u,v)))
+			print(string,i,norm(a-dot(u,v))/norm(a))
 
 		u,v,s = nmfd(u,v,rank=rank)
 
@@ -704,7 +744,7 @@ def _nmf(a,**kwargs):
 
 	u,v,i = model(**kwargs)._fit_transform(a,**options)
 
-	print(i,norm(a-dot(u,v)))
+	print(i,norm(a-dot(u,v))/norm(a))
 
 	u,v,s = nmfd(u,v,rank=rank)
 
@@ -1423,7 +1463,7 @@ def test_mps(*args,**kwargs):
 			iteration=int(1e7),
 			eps=2e-13,
 			alpha=7e-1,
-			update=[['cd',int(1e5),2e-13],['m1u',int(1e6),2e-13],['cd',int(1e6),2e-13]],
+			update=[['cd',int(1e6),2e-13],['mbu',100,2e-13],['cd',int(1e6),2e-13]],
 		),
 		key=seeder(seed),
 		seed=seed,
