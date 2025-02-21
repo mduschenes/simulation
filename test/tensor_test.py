@@ -444,18 +444,24 @@ def coordinate_descent(a,u,v,rank=None,**kwargs):
 
 		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
 
+		z = dot(u,v)
+		# alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
 
-		z = dot(u.T,u)
-		y = -dot(u.T,a)
-		w = maximums(absolute(diag(z)),eps)
+		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
 
-		v = maximums(v-dotl(alpha*(dot(z,v)+y),1/w),0)
 
-		z = dot(v,v.T)
-		y = -dot(v,a.T)
-		w = maximums(absolute(diag(z)),eps)
+		# z = dot(u.T,u)
+		# y = -dot(u.T,a)
+		# w = maximums(absolute(diag(z)),eps)
 
-		u = maximums(u.T-dotl(alpha*(dot(z,u.T)+y),1/w),0).T
+		# v = maximums(v-dotl(alpha*(dot(z,v)+y),1/w),eps)
+
+		# z = dot(v,v.T)
+		# y = -dot(v,a.T)
+		# w = maximums(absolute(diag(z)),eps)
+
+		# u = maximums(u.T-dotl(alpha*(dot(z,u.T)+y),1/w),eps).T
 
 
 		# z = dot(u.T,u)
@@ -582,7 +588,7 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 
 		z = dot(u,v)
 
-		jax.debug.print('{i} {z}',z=(z-a),i=i)
+		# jax.debug.print('{i} {z}',z=(z-a),i=i)
 
 		u *= (a*dot(z**(beta-2),v.T))/(dot(z**(beta-1),v.T))
 
@@ -604,6 +610,27 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 	return func
 
 
+def inverse_update(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+
+	@jit
+	def func(x):
+		
+		a,u,v,i = x
+
+		v = maximums(dot(dot(inv(dot(transpose(u),u)),transpose(u)),a),eps)
+		u = maximums(dot(a,dot(transpose(v),inv(dot(u,transpose(u))))),eps)
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+
 def nmf(a,u=None,v=None,rank=None,**kwargs):
 	
 	def initialize(a,u=None,v=None,rank=None,**kwargs):
@@ -612,8 +639,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		
 		if callable(init):
 			pass
-		elif init is None:
-			init = rsvd
 		elif init in ['nndsvd']:
 			init = nndsvd
 		elif init in ['nndsvda']:
@@ -626,6 +651,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			init = rsvd
 		elif u is not None and v is not None:
 			init = rsvd
+		elif init is None:
+			init = rsvd
 		else:
 			init = rsvd
 
@@ -636,6 +663,10 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		return a,u,v,s
 	
 	def run(a,u=None,v=None,rank=None,**kwargs):
+
+		u,v,s = nmfd(u,v,rank=rank)
+
+		return a,u,v,s
 
 		update = kwargs.get('update',None)
 		iteration = kwargs.get('iteration',100)
@@ -660,7 +691,10 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			elif update in ['m1u','multiplicative_l1_update']:
 				update = multiplicative_l1_update				
 			elif update in ['mbu','multiplicative_beta_update']:
-				update = multiplicative_beta_update				
+				update = multiplicative_beta_update			
+			elif update in ['inv','inverse_update']:
+				update = inverse_update
+				iteration = 1
 			else:
 				update = coordinate_descent
 
@@ -675,7 +709,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 			a,u,v,i = x
 
-			# print(string,i,norm(a-dot(u,v))/norm(a))
+			print(string,i,norm(a-dot(u,v))/norm(a))
 
 		u,v,s = nmfd(u,v,rank=rank)
 
@@ -734,8 +768,6 @@ def _nmf(a,**kwargs):
 	a /= constant
 
 	u,v,i = model(**kwargs)._fit_transform(a,**options)
-
-	print(i,norm(a-dot(u,v))/norm(a))
 
 	u,v,s = nmfd(u,v,rank=rank)
 
@@ -985,10 +1017,6 @@ class Basis(object):
 
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
 
-		N = len(data) if N is None and isinstance(data,dict) else N
-	
-		where = range(N) if where is None and N is not None else where
-
 		if N:
 			basis = tensorprod([basis]*N)
 			inverse = tensorprod([inverse]*N)
@@ -1013,14 +1041,34 @@ class Basis(object):
 			if callable(data):
 				raise NotImplementedError(f"Not Implemented {data}")
 			elif isinstance(data,dict):
-				shape = [j for i in data for j in data[i].shape[1:-1]]
-				subscripts = '%s'%(
-					','.join((
-						''.join((characters[N+i],characters[i],characters[N+i+1]))
-						for i in range(N)
-						)),
-					)
-				data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))								
+
+				N = len(data) if N is None else N
+				where = range(N) if where is None and N is not None else where
+
+				if transform is None:
+					shape = [basis.shape[-2+i]**N for i in range(d)]
+					subscripts = '%s,%s'%(
+						','.join((
+							''.join((characters[N+i],characters[i],characters[N+i+1]))
+							for i in range(N)
+							)),
+						','.join((
+							''.join((characters[i],characters[2*N+i],characters[3*N+i]))
+							for i in range(N)
+							)),						
+						)
+					data = reshape(einsum(subscripts,*(data[i] for i in data)),shape)
+				else:
+					shape = [j for i in data for j in data[i].shape[1:-1]]
+					subscripts = '%s'%(
+						','.join((
+							''.join((characters[N+i],characters[i],characters[N+i+1]))
+							for i in range(N)
+							)),
+						)
+					data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))
+
+
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
@@ -1081,38 +1129,37 @@ class Basis(object):
 				defaults = dict(compute_uv=True,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
 				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
-				u,v = cmplx(u),cmplx(v)
-				s = min(*u.shape,*v.shape)
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['svd']:
 			def scheme(a,conj=None,**options):
 				defaults = dict(compute_uv=True,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
 				u,v = u,dotl(v,s)
-				u,v = cmplx(u),cmplx(v)
-				s = min(*u.shape,*v.shape)
+				print((norm(a-dot(u,v))/norm(a)).real,dot(u,v).min(),dot(u,v).max())
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
 			def scheme(a,conj=None,**options):
 				defaults = dict(mode='reduced')
 				u,v = qrs(real(dagger(a) if conj else a),**{**kwargs,**options,**defaults})
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
-				u,v = cmplx(u),cmplx(v)
-				s = min(*u.shape,*v.shape)
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['nmf']:
 			def scheme(a,conj=None,**options):
-				defaults = dict()				
+				defaults = dict()			
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
 				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
-				s = min(*u.shape,*v.shape)
+				print((norm(a-dot(u,v))/norm(a)).real,dot(u,v).min(),dot(u,v).max())
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['_nmf']:
 			def scheme(a,conj=None,**options):
 				defaults = dict()
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults})
 				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
-				s = min(*u.shape,*v.shape)
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['eig']:
 			def scheme(a,conj=None,**options):
@@ -1310,8 +1357,9 @@ def test_mps(*args,**kwargs):
 		basis = Basis()
 
 		def func(state,data=None,where=None,**kwargs):
+			where = [where] if not isinstance(where,iterables) else where
 			state = getattr(basis,state)(**{**kwargs,**dict(D=D)})
-			state = basis.transform(state,where=where,**{**kwargs,**dict(D=D)})
+			state = basis.transform(state,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 			return state
 
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
@@ -1320,10 +1368,11 @@ def test_mps(*args,**kwargs):
 
 		def func(state,data=None,where=None,**kwargs):
 			def func(state=None,data=data,where=where,**kwargs):
+				where = [where] if not isinstance(where,iterables) else where
 				if isinstance(data,str):
-					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where))})
+					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),N=len(where))})
 				else:
-					 data = tensorprod([getattr(basis,data[i])(**{**kwargs,**dict(D=D)}) for i in where])
+					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D)}) for index,i in enumerate(where)])
 				data = basis.contract(state,data,where=where,**kwargs)
 				return data
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
@@ -1331,7 +1380,7 @@ def test_mps(*args,**kwargs):
 			return data
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=data[i],where=range(len(i)),**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
+		data = {i:lambda state,data=data[i],where=i,**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
 
 		return state,data
 
@@ -1365,7 +1414,7 @@ def test_mps(*args,**kwargs):
 				if isinstance(data,str):
 					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where))})
 				else:
-					 data = tensorprod([getattr(basis,data[i])(**{**kwargs,**dict(D=D)}) for i in where])
+					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D)}) for index,i in enumerate(where)])
 				data = tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)})]*min(where),data,*[basis.identity(**{**kwargs,**dict(D=D)})]*(N-max(where)-1)])
 				return data
 			data = func(**kwargs)
@@ -1373,7 +1422,7 @@ def test_mps(*args,**kwargs):
 			return data
 
 		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=data[i],where=range(len(i)),**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
+		data = {i:lambda state,data=data[i],where=i,**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
 
 		return state,data
 
@@ -1397,7 +1446,7 @@ def test_mps(*args,**kwargs):
 	D = 2
 	M = 15
 	L = N//2
-	seed = 123456789
+	seed = 123
 	dtype = 'complex'
 
 	# state = {i:'state' for i in range(N)}
@@ -1405,7 +1454,7 @@ def test_mps(*args,**kwargs):
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
-	# 	parameters=1e-1,
+	# 	parameters=1e-4,
 	# 	architecture='tensor',		
 	# 	options=dict(),
 	# 	seed=seed,
@@ -1435,7 +1484,7 @@ def test_mps(*args,**kwargs):
 	# _state = _func(_state,_data,**_kwargs)
 
 
-	# state = basis.transform(basis.transform(state,transform=False,**kwargs),transform=False,**kwargs)
+	# state = basis.transform(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)}),transform=False,**{**kwargs,**dict(D=D,N=None)})
 	# _state = _state
 
 	# assert allclose(state,_state)
@@ -1447,22 +1496,24 @@ def test_mps(*args,**kwargs):
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',	
-		parameters=1e-1,	
+		parameters=1e-4,	
 		options=dict(
 			scheme='nmf',
-			init='nndsvda',
-			iteration=int(5e5),
+			init='nndsvd',
+			iteration=int(2e5),
 			eps=2e-13,
 			alpha=7e-1,
 			update=[
-				['cd',int(5e5),2e-15],
-				# ['mbu',3,2e-13],['cd',int(1e6),2e-13]
+				['cd',int(1e7),2e-13],
+				# ['mu',3,2e-13],['cd',int(1e6),2e-13]
 				],
 		),
 		key=seeder(seed),
 		seed=seed,
 		dtype=dtype,		
 	)
+
+	print(kwargs)
 
 	basis = Basis()
 
@@ -1473,13 +1524,16 @@ def test_mps(*args,**kwargs):
 	state = func(state,data,**kwargs)
 
 
+	print('------------------')
+
+
 	_state = {i:'state' for i in range(N)}
 	_data = {**{(i,i+1):data for i in range(N-1) for data in ['unitary',['depolarize','depolarize']]}}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',
-		parameters=1e-1,	
+		parameters=1e-4,	
 		options=dict(
 			scheme='svd',
 		),
@@ -1495,11 +1549,15 @@ def test_mps(*args,**kwargs):
 	_state = func(_state,_data,**_kwargs)
 
 
+	print({i:(state[i].shape,_state[i].shape) for i in state})
 
-	state = basis.transform(state,transform=False,**kwargs)
-	_state = basis.transform(_state,transform=False,**kwargs)
+	state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
+	_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
 
-	print(np.sort((state).real.round(8))[-1:-100:-1])
+	tmp = np.sort((state).real)
+	_tmp = np.sort((_state).real)
+	print(array([*tmp[-1:-10:-1],*tmp[:10]]))
+	print(array([*_tmp[-1:-10:-1],*_tmp[:10]]))
 
 	print((absolute(state-_state)**2).sum())
 	print(state.real.sum(),abs(state.real.sum()-1),abs(_state.real.sum()-1))
@@ -1537,11 +1595,11 @@ def test_mps(*args,**kwargs):
 
 	exit()
 
-	assert allclose(basis.transform(state,transform=False,**kwargs).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
+	assert allclose(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)}).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
 
 
-	state = basis.transform(state,transform=False,**kwargs)
-	_state = basis.transform(_state,transform=False,**kwargs)
+	state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
+	_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
 
 
 	assert allclose(state,_state)
