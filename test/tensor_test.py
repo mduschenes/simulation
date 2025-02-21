@@ -341,9 +341,9 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 		return z_minus,x_minus,y_minus  
 
 	@jit
-	def func(i,x):
+	def func(x):
 		
-		u,v,s = x
+		u,v,s,i = x
 
 		z,x,y = s[i],u[slices,i],v[i,slices]
 
@@ -363,7 +363,9 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 
 		u,v,s = inplace(u,(slices,i),sqrt(z)*x),inplace(v,(i,slices),sqrt(z)*y),inplace(s,i,1)
 		
-		x = u,v,s
+		i += 1
+
+		x = u,v,s,i
 
 		return x
 
@@ -372,11 +374,12 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 	rank = min(a.shape) if rank is None else rank        
 	u,s,v = svds(a)
 
-	loop = forloop
-	options = dict(start=0,end=rank)
-	x = (u,v,s)
+	i = 0
+	loop = whileloop
+	options = dict(cond=lambda x: x[-1]<rank)
+	x = (u,v,s,i)
 	x = loop(func=func,x=x,**options)
-	u,v,s = x
+	u,v,s,i = x
 
 	return u,v,s
 
@@ -433,10 +436,9 @@ def coordinate_descent(a,u,v,rank=None,**kwargs):
 	alpha = kwargs.get('alpha',1)
 
 	@jit
-	def func(i,x):
+	def func(x):
+		
 		a,u,v,i = x
-
-
 
 		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
@@ -504,7 +506,7 @@ def multiplicative_update(a,u,v,rank=None,**kwargs):
 	alpha = kwargs.get('alpha',1)
 
 	@jit
-	def func(i,x):
+	def func(x):
 		
 		a,u,v,i = x
 		
@@ -526,7 +528,7 @@ def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
 
 
 	@jit
-	def func(i,x):
+	def func(x):
 		
 		a,u,v,i = x
 
@@ -550,7 +552,7 @@ def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
 
 
 	@jit
-	def func(i,x):
+	def func(x):
 		
 		a,u,v,i = x
 
@@ -574,14 +576,13 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 	beta = kwargs.get('beta',2)
 
 	@jit
-	def func(i,x):
+	def func(x):
 		
 		a,u,v,i = x
 
 		z = dot(u,v)
 
-		jax.debug.print('{z}',z=(z-a))
-		# jax.debug.print('{x}',x=(dot(z**(beta-1),v.T)))
+		jax.debug.print('{i} {z}',z=(z-a),i=i)
 
 		u *= (a*dot(z**(beta-2),v.T))/(dot(z**(beta-1),v.T))
 
@@ -594,8 +595,6 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 		# 	return
 		# def false(*args,**kwargs):
 		# 	return
-		jax.debug.print('{z}',z=(i))
-
 		# cond((i>100)*(norm(a-z)>1e-10),true,false)
 
 		x = a,u,v,i
@@ -613,8 +612,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		
 		if callable(init):
 			pass
-		elif u is not None and v is not None:
-			init = rsvd
 		elif init is None:
 			init = rsvd
 		elif init in ['nndsvd']:
@@ -627,6 +624,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			init = rsvda					
 		elif init in ['random']:		
 			init = rsvd
+		elif u is not None and v is not None:
+			init = rsvd
 		else:
 			init = rsvd
 
@@ -638,9 +637,9 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 	
 	def run(a,u=None,v=None,rank=None,**kwargs):
 
-		update = kwargs.get('update')
-		iteration = kwargs.get('iteration')
-		eps = kwargs.get('eps')
+		update = kwargs.get('update',None)
+		iteration = kwargs.get('iteration',100)
+		eps = kwargs.get('eps',epsilon(a.dtype))
 
 		updates = [[update,iteration,eps]] if not isinstance(update,iterables) else update
 
@@ -669,22 +668,14 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			x = (a,u,v,i)
 			func = update(a,u=u,v=v,rank=rank,**kwargs)
 
-			if isinstance(iteration,int) and not isinstance(eps,float):
-				loop = forloop
-				options = dict(start=0,end=iteration)
-			elif isinstance(iteration,int) and isinstance(eps,float):
-				loop = whileloop
-				func = partial(func,i)
-				options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
-			else:
-				loop = forloop
-				options = dict(start=0,end=1)			
+			loop = whileloop
+			options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
 
 			x = loop(func=func,x=x,**options)
 
 			a,u,v,i = x
 
-			print(string,i,norm(a-dot(u,v))/norm(a))
+			# print(string,i,norm(a-dot(u,v))/norm(a))
 
 		u,v,s = nmfd(u,v,rank=rank)
 
@@ -1404,7 +1395,7 @@ def test_mps(*args,**kwargs):
 
 	N = 8
 	D = 2
-	M = 50
+	M = 15
 	L = N//2
 	seed = 123456789
 	dtype = 'complex'
@@ -1414,7 +1405,7 @@ def test_mps(*args,**kwargs):
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
-	# 	parameters=1e-4,
+	# 	parameters=1e-1,
 	# 	architecture='tensor',		
 	# 	options=dict(),
 	# 	seed=seed,
@@ -1456,21 +1447,22 @@ def test_mps(*args,**kwargs):
 	kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',	
-		parameters=1e-4,	
+		parameters=1e-1,	
 		options=dict(
 			scheme='nmf',
 			init='nndsvda',
-			iteration=int(1e7),
+			iteration=int(5e5),
 			eps=2e-13,
 			alpha=7e-1,
-			update=[['cd',int(1e6),2e-13],['mbu',100,2e-13],['cd',int(1e6),2e-13]],
+			update=[
+				['cd',int(5e5),2e-15],
+				# ['mbu',3,2e-13],['cd',int(1e6),2e-13]
+				],
 		),
 		key=seeder(seed),
 		seed=seed,
 		dtype=dtype,		
 	)
-
-	print(kwargs)
 
 	basis = Basis()
 
@@ -1487,7 +1479,7 @@ def test_mps(*args,**kwargs):
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		architecture='tensor',
-		parameters=1e-4,	
+		parameters=1e-1,	
 		options=dict(
 			scheme='svd',
 		),
