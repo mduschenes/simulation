@@ -641,7 +641,7 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	
 	return data
 
-def dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
+def dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 	'''
 	Dump objects into hdf5
 	Args:
@@ -660,7 +660,7 @@ def dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 
 	return
 
-def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
+def _dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 	'''
 	Dump objects into hdf5
 	Args:

@@ -130,7 +130,7 @@ def load(obj,wr='r',ext='hdf5',**kwargs):
 	return data
 
 
-def dump(obj,path,wr='r',ext='hdf5',**kwargs):
+def dump(obj,path,wr='w',ext='hdf5',**kwargs):
 	'''
 	Dump objects into hdf5
 	Args:
@@ -143,7 +143,7 @@ def dump(obj,path,wr='r',ext='hdf5',**kwargs):
 
 	import h5py
 
-	def dump(obj,path,wr='r',ext='hdf5',**kwargs):
+	def dump(obj,path,wr='w',ext='hdf5',**kwargs):
 		'''
 		Dump objects into hdf5
 		Args:
@@ -176,7 +176,7 @@ def dump(obj,path,wr='r',ext='hdf5',**kwargs):
 
 		return
 
-	if not exists(os.path.dirname(path)):
+	if not os.path.exists(os.path.dirname(path)):
 		os.makedirs(os.path.dirname(path))
 
 	if isinstance(path,str):
@@ -189,7 +189,7 @@ def dump(obj,path,wr='r',ext='hdf5',**kwargs):
 	return
 
 
-def plot(fig=None,ax=None,mplstyle=None,**options):
+def plot(settings={},fig=None,ax=None):
 
 	import matplotlib
 	matplotlib.use('pdf')
@@ -197,9 +197,16 @@ def plot(fig=None,ax=None,mplstyle=None,**options):
 
 	import numpy as np
 
-	mplstyle = kwargs.get('mplstyle','plot.mplstyle')
-	opts = {'instance':['plot','errorbar'],'data':['x','y','xerr','yerr'],'plot':["alpha","marker","markeredgecolor","markeredgewidth","markersize","linestyle","linewidth","elinewidth","capsize","color","ecolor"]}
+	defaults = {'fig':{},'ax':{},'style':{}}
+	options = {'instance':['plot','errorbar'],'obj':{'ax':ax,'fig':fig},'data':['x','y','xerr','yerr'],'plot':["label","alpha","marker","markeredgecolor","markeredgewidth","markersize","linestyle","linewidth","elinewidth","capsize","color","ecolor"]}
+	for key in defaults:
+		if key not in settings:
+			settings[key] = {}
+		settings[key].update({attr: defaults[key][attr] for attr in defaults[key] if attr not in settings})
 
+
+	key = 'style'
+	mplstyle = settings[key].get('mplstyle','plot.mplstyle')
 	with matplotlib.style.context(mplstyle):
 		if fig is None and ax is None:
 			fig,ax = plt.subplots()
@@ -207,38 +214,43 @@ def plot(fig=None,ax=None,mplstyle=None,**options):
 			ax = fig.gca()
 		elif ax is not None:
 			fig = ax.get_figure()
+		options['obj'] = {'ax':ax,'fig':fig}
 
-		objs = ['ax']
-		for obj in objs:
-			if options.get(obj) is None:
+		keys = ['ax']
+		for key in keys:
+			if settings.get(key) is None:
 				continue
-			for attr in options[obj]:
-				if not attr in opts['instance']:
+			for attr in settings[key]:
+				if not attr in options['instance']:
 					continue
-				args = tuple((options[obj][attr][option] for option in opts['data'] if options[obj][attr].get(option) is not None))
-				kwargs = dict({option:options[obj][attr][option] for option in options[obj][attr] if option in opts['plot']})
-				obj = getattr(ax,obj)
+				
+				args = tuple((settings[key][attr][option] for option in options['data'] if settings[key][attr].get(option) is not None))
+				kwargs = dict({option:settings[key][attr][option] for option in settings[key][attr] if option in options['plot']})
+				
+				obj = options['obj'][key]
+				for attr in attr.split('.'):
+					obj = getattr(obj,attr)				
 		
 				obj(*args,**kwargs)
 
-		objs = ['ax','fig']
-		for obj in objs:
-			if options.get(obj) is None:
+		keys = ['ax','fig']
+		for key in keys:
+			if settings.get(key) is None:
 				continue
-			for attr in options[obj]:
-				if attr in opts['instance']:
+			for attr in settings[key]:
+				if attr in options['instance']:
 					continue
 				
 				args = tuple()
-				kwargs = dict(options[obj][attr])
-				obj = ax
-				for attr in option.split('.'):
+				kwargs = dict(settings[key][attr])
+				
+				obj = options['obj'][key]				
+				for attr in attr.split('.'):
 					obj = getattr(obj,attr)
 
-			
 				obj(*args,**kwargs)
 
-	return
+	return fig,ax
 
 def inplace(obj,index,item,op='set'):
 	obj = getattr(obj.at[index],op)(item)
@@ -440,6 +452,12 @@ def sqrt(a):
 def sqr(a):
 	return a**2
 
+def log(a):
+	return np.log(a)
+
+def log10(a):
+	return np.log10(a)
+
 def absolute(a):
 	return np.abs(a)
 
@@ -460,17 +478,23 @@ def reciprocal(a):
 	s = a == 0
 	return (1 - s)/(a + s)
 
-def maximums(a,b):
-	return np.maximum(a,b)
+def maximum(a,axis=None):
+	return np.max(a,axis=axis)
 
-def minimums(a,b):
-	return np.minimum(a,b)
+def minimum(a,axis=None):
+	return np.min(a,axis=axis)
 
 def argmax(a,axis=None):
 	return np.argmax(a,axis=axis)
 
 def argmin(a,axis=None):
 	return np.argmin(a,axis=axis)
+
+def maximums(a,b):
+	return np.maximum(a,b)
+
+def minimums(a,b):
+	return np.minimum(a,b)
 
 def real(a):
 	return a.real
@@ -567,8 +591,8 @@ def rsvd(a,u,v,rank=None,**kwargs):
 	dtype = a.dtype
 	x = sqrt(mean(a)/n)
 	u,v,s = (
-		astype(absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(n,k),dtype=dtype)})),dtype) if u is not None else u,
-		astype(absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(k,m),dtype=dtype)})),dtype) if v is not None else v,
+		astype(absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(n,k),dtype=dtype)})),dtype) if u is None else u,
+		astype(absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(k,m),dtype=dtype)})),dtype) if v is None else v,
 		ones(rank)		
 		)
 	return u,v,s
@@ -596,7 +620,7 @@ def coordinate_descent(a,u,v,rank=None,**kwargs):
 	# 	maxiter=kwargs.get('iteration',1000),
 	# 	tol=kwargs.get('eps',1e-16),
 	# 	)
-	# opts = dict(
+	# options = dict(
 	# 	hyperparams_prox=kwargs.get('constraints',1e-8),
 	# 	)
 
@@ -657,14 +681,14 @@ def coordinate_descent(a,u,v,rank=None,**kwargs):
 		# data = 	optimizer.run(
 		# 	init_params=v,
 		# 	data=(u,a),
-		# 	**opts
+		# 	**options
 		# 	)
 		# v = data.params
 
 		# data = 	optimizer.run(
 		# 	init_params=u.T,
 		# 	data=(v.T,a.T),
-		# 	**opts			
+		# 	**options			
 		# 	)
 		# u = data.params.T
 
@@ -895,22 +919,18 @@ def _nmf(a,**kwargs):
 
 	from sklearn.decomposition import NMF as model
 
-	rank = kwargs.get('rank') if kwargs.get('rank') is not None else min(a.shape)
+	u,v = kwargs.get('W',kwargs.get('u')),kwargs.get('H',kwargs.get('v'))
+	rank = min(kwargs.get('rank') if kwargs.get('rank') is not None else min(a.shape),*a.shape)
 	eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon(a.dtype)
 
-	u,v = kwargs.get('W',kwargs.get('u')),kwargs.get('H',kwargs.get('v'))
-	u,v = real(u) if u is not None else u,real(v) if v is not None else v
-
-	a = real(a)
-
-	a = nparray(inplace(a,a<eps,0))
-	u,v = nparray(u) if u is not None else u,nparray(v) if v is not None else v
+	a = nparray(inplace(real(a),real(a)<eps,0))
+	u,v = nparray(real(u)) if u is not None else u,nparray(real(v)) if v is not None else v
 
 	kwargs = dict(
-		# n_components=kwargs.get('n_components',kwargs.get('rank')) if isinstance(kwargs.get('n_components',kwargs.get('rank')),int) else rank,
-		init='custom' if u is not None and v is not None else kwargs.get('init',kwargs.get('initialize')) if isinstance(kwargs.get('init',kwargs.get('initialize')),str) else 'nndsvda',
-		max_iter=kwargs.get('max_iter',kwargs.get('iteration')) if isinstance(kwargs.get('max_iter',kwargs.get('iteration')),int) else 100,
-		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else epsilon(a.dtype),
+		n_components=rank,
+		init='custom' if u is not None and v is not None and kwargs.get('init',kwargs.get('initialize')) is None else kwargs.get('init',kwargs.get('initialize')) if isinstance(kwargs.get('init',kwargs.get('initialize')),str) else 'nndsvda',
+		max_iter=kwargs.get('max_iter',kwargs.get('iteration')) if isinstance(kwargs.get('max_iter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100,
+		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
 		solver=kwargs.get('solver',kwargs.get('update')) if isinstance(kwargs.get('solver',kwargs.get('update')),str) else kwargs.get('solver',kwargs.get('update'))[0][0] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 'cd',
 		)
 
@@ -918,15 +938,15 @@ def _nmf(a,**kwargs):
 		W=u,H=v
 		)
 
+	func = model(**kwargs)._fit_transform
+
 	constant = add(a)
 
 	a /= constant
 
-	u,v,i = model(**kwargs)._fit_transform(a,**options)
+	u,v,i = func(a,**options)
 
 	u,v,s = nmfd(u,v,rank=rank)
-
-	u,v,s = cmplx(u),cmplx(v),cmplx(s)
 
 	s *= constant
 
@@ -1261,7 +1281,6 @@ class Basis(object):
 		# state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
 		state = state[where]
-		
 
 		axes = [0,1,2]
 		shape = [state.shape[0]*prod(state.shape[1:-1]),state.shape[-1]]
@@ -1597,23 +1616,24 @@ def test_mps(*args,**kwargs):
 
 	parse = lambda data,p=8: data.real.round(p)	
 	norm = lambda data,p=1: (data**p).sum().real
+	boolean = lambda path: os.path.exists(path) or False
 
 	N = 8
 	D = 2
-	M = 15
+	M = 2*N
 	L = N//2
 	K = D**N
+	parameters = 1e-4
 	seed = 123
 	dtype = 'complex'
 	path = 'data/data.hdf5'
 
 	# state = {i:'state' for i in range(N)}
-	# data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary'])}
+	# data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary'])}
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
-	# 	parameters=1e-4,
-	# 	architecture='tensor',		
+	# 	parameters=parameters,
 	# 	options=dict(),
 	# 	seed=seed,
 	# 	dtype=dtype,		
@@ -1627,11 +1647,10 @@ def test_mps(*args,**kwargs):
 
 
 	# _state = {i:'state' for i in range(N)}
-	# _data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary'])}
+	# _data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary'])}
 
 	# _kwargs = dict(
 	# 	D=D,N=N,M=M,
-	# 	architecture='tensor',		
 	# 	options=dict(),
 	# 	seed=seed,
 	# 	dtype=dtype,		
@@ -1647,119 +1666,97 @@ def test_mps(*args,**kwargs):
 
 	# assert allclose(state,_state)
 
-
-	state = {i:'state' for i in range(N)}
-	data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary',['depolarize','depolarize']])}
-
-	kwargs = dict(
-		D=D,N=N,M=M,
-		architecture='tensor',	
-		parameters=1e-4,	
-		options=dict(
-			scheme='nmf',
-			init=None,
-			iteration=int(2e5),
-			eps=2e-13,
-			alpha=7e-1,
-			update=[
-				['cd',int(1e5),1e-14],
-				['mu',int(1e6),1e-14],
-				['cd',int(1e6),1e-14]
-				],
-		),
-		key=seeder(seed),
-		seed=seed,
-		dtype=dtype,		
-	)
-
-	basis = Basis()
-
-	state,data = initialize(state=state,data=data,**kwargs)
-
-	_state = copy(state)
-
-	state = func(state,data,**kwargs)
+	if not boolean(path):
 
 
-
-	_state = {i:'state' for i in range(N)}
-	_data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary',['depolarize','depolarize']])}
-
-	_kwargs = dict(
-		D=D,N=N,M=M,
-		architecture='tensor',
-		parameters=1e-4,	
-		options=dict(
-			scheme='svd',
-		),
-		key=seeder(seed),		
-		seed=seed,
-		dtype=dtype,		
-	)
-
-	basis = Basis()
-
-	_state,_data = initialize(state=_state,data=_data,**_kwargs)
-
-	_state = func(_state,_data,**_kwargs)
+		state = {i:'state' for i in range(N)}
+		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
 
 
-	print({i:(state[i].shape,_state[i].shape) for i in state})
-
-	state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
-	_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
-
-	tmp = np.sort((state).real)
-	_tmp = np.sort((_state).real)
-	print(array([*tmp[-1:-10:-1],*tmp[:10]]))
-	print(array([*_tmp[-1:-10:-1],*_tmp[:10]]))
-
-	print((absolute(state-_state)**2).sum())
-	print(state.real.sum(),abs(state.real.sum()-1),abs(_state.real.sum()-1))
-	exit()
-
-
-	kwargs = dict(
-		D=D,N=N,M=M,
-		architecture='tensor',		
-		options=dict(scheme='spectrum'),
-		key=seeder(seed),		
-		seed=seed,
-		dtype=dtype,		
-	)
-
-	spectrum = basis.spectrum(state,where=L,**kwargs)
-
-
-	_kwargs = dict(
-		D=D,N=N,M=M,
-		architecture='tensor',		
-		options=dict(scheme='_probability'),
-		key=seeder(seed),		
-		seed=seed,
-		dtype=dtype,		
-	)
-
-	_spectrum = basis.spectrum(state,where=L,**_kwargs)
-
-
-	print(spectrum)
-	print(_spectrum)
-
-	data = dict(
-		D=D,N=N,M=M,L=L,K=K,parameters=parameters,seed=seed,
-		**{'spectrum.nmf':spectrum,'spectrum.svd':_spectrum}
+		kwargs = dict(
+			D=D,N=N,M=M,
+			parameters=parameters,	
+			options=dict(
+				scheme='nmf',
+				init='nndsvd',
+				alpha=7e-1,
+				update=[
+					['cd',int(1e2),1e-14],
+					# ['mu',int(1e2),1e-14],
+					# ['cd',int(1e2),1e-14]
+					],
+			),
+			key=seeder(seed),
+			seed=seed,
+			dtype=dtype,		
 		)
 
-	dump(data,path)
+		basis = Basis()
+
+		state,data = initialize(state=state,data=data,**kwargs)
+
+		_state = copy(state)
+
+		state = func(state,data,**kwargs)
+
+
+
+		_state = {i:'state' for i in range(N)}
+		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
+
+		_kwargs = dict(
+			D=D,N=N,M=M,
+			parameters=parameters,	
+			options=dict(
+				scheme='svd',
+			),
+			key=seeder(seed),		
+			seed=seed,
+			dtype=dtype,		
+		)
+
+		basis = Basis()
+
+		_state,_data = initialize(state=_state,data=_data,**_kwargs)
+
+		_state = func(_state,_data,**_kwargs)
+
+
+		spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'probability'})})
+		_spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'spectrum'})})
+
+		spectrum = spectrum/maximum(absolute(spectrum))
+		_spectrum = _spectrum/maximum(absolute(_spectrum))
+
+		state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
+		_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
+
+		tmp = np.sort((state).real)
+		_tmp = np.sort((_state).real)
+		print(array([*tmp[-1:-10:-1],*tmp[:10]]))
+		print(array([*_tmp[-1:-10:-1],*_tmp[:10]]))
+
+		print((absolute(state-_state)**2).sum())
+		print(state.real.sum(),abs(state.real.sum()-1),abs(_state.real.sum()-1))
+
+		data = dict(
+			D=D,N=N,M=M,L=L,K=K,parameters=parameters,seed=seed,
+			**{'spectrum.nmf':spectrum,'spectrum.svd':_spectrum}
+			)
+
+		dump(data,path)
+
+
+	else:
+		data = load(path)
 
 
 	fig,ax = None,None
-	options = [
+	settings = [
 		{
 			"fig": {
 				"set_size_inches": {
-					"w": 32,
+					"w": 24,
 					"h": 16
 				},
 				"subplots_adjust": {},
@@ -1775,31 +1772,58 @@ def test_mps(*args,**kwargs):
 					"x":[*arange(len(data[y]))] if x is None else x,
 					'y':[*data[y]],
 					"label":{'spectrum.nmf':'$\\textrm{NMF}$','spectrum.svd':'$\\textrm{SVD}$'}.get(y),
-					"marker":"o",
 					"alpha":0.8,
+					"marker":"o",
+					"markersize":8,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
 					"color":{'spectrum.nmf':'black','spectrum.svd':'gray'}.get(y),
 					},
 				"set_title": {
-					"label": "$N = {N} , M = {M} , L = {L} , \\chi = {K} , \\gamma = {parameters}$".format(**data)
+					"label": f"$\\textrm{{Haar + Depolarize}} \\quad N = {N} ~,~ M = 2N ~,~ L = N/2 ~,~ D = {D} ~,~ \\chi = D^{{N}} ~,~ \\gamma = 10^{{{int(log10(parameters))}}}$",
+					"pad":20,
 					},
 				"set_ylabel": {
-					"ylabel": "$\\textrm{Eigen/Singular Values of } \\rho_{\\chi} ~~ {\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
+					"ylabel": "$\\textrm{Spectrum} ~~ {\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 				},
 				"set_xlabel": {
 					"xlabel": "$\\textrm{Spectrum Index} ~~ i$"
 				},
 				"set_xscale": {"value": "linear"},
-				"set_xlim":{"xmin":-50,"xmax":300},
-				"set_xticks":{"ticks":[0,50,100,150,200,250,300]},
+				"set_xlim":{"xmin":-15,"xmax":265},
+				"set_xticks":{"ticks":[0,50,100,150,200,250]},
 				"set_yscale": {"value": "log","base": 10},
 				"set_ylim":{"ymin":1e-17,"ymax":1e1},
 				"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+				"set_ylim":{"ymin":1e-7,"ymax":1e1},				
+				"set_yticks":{"ticks":[1e-6,1e-4,1e-2,1e0]},
+				"set_aspect": {
+					"aspect": "auto"
+				},
+				"grid": {
+					"visible": True,
+					"which": "major",
+					"axis": "both"
+				},
+				"legend":{
+					"title":"$\\textrm{Scheme}$",
+					"title_fontsize": 36,
+					"fontsize": 36,
+					"markerscale": 2,
+					"handlelength": 3,
+					"framealpha": 0.8,				
+				},
+			},
+			"style":{
+				"mplstyle": "data/plot.mplstyle"
 			}
 		}
-		for index,(y,x) in enumerate(((None,'spectrum.nmf'),(None,'spectrum.nmf')))
+		for index,(x,y) in enumerate(((None,'spectrum.nmf'),(None,'spectrum.svd')))
 		]
-	for options in index,options in enumerate(options):
-		fig,ax = plot(fig=fig,ax=ax,**options)
+	for index,settings in enumerate(settings):
+		fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 	exit()
 
