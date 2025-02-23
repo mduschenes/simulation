@@ -39,6 +39,7 @@ from functools import partial
 import itertools
 import time as timing
 
+
 from string import ascii_lowercase as characters
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -69,6 +70,175 @@ def timer(func):
 		return data
 	
 	return function
+
+def load(obj,wr='r',ext='hdf5',**kwargs):
+	'''
+	Load objects from path into hdf5
+	Args:
+		obj (str,object): Path or file object to load object
+		wr (str): Read mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	Returns:
+		data (object): Loaded object
+	'''
+
+	import h5py
+
+	def load(obj,wr='r',ext='hdf5',**kwargs):
+		'''
+		Load objects from path into hdf5
+		Args:
+			obj (object): hdf5 object to load object
+			wr (str): Read mode
+			ext (str): Extension type of object
+			kwargs (dict): Additional loading keyword arguments
+		Returns:
+			data (object): Loaded object
+		'''	
+
+		data = {}
+		
+		if isinstance(obj, h5py._hl.group.Group):
+			names = obj
+			for name in names:
+				key = name
+				if isinstance(obj[name], h5py._hl.group.Group):	
+					data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
+				else:
+					data[key] = obj[name][...]
+					if data[key].dtype.kind in ['S','O']:
+						data[key] = data[key].astype(str)
+					
+			names = obj.attrs
+			for name in names:
+				key = name
+				data[key] = obj.attrs[name]
+
+		else:
+			data = obj.value
+		
+		return data
+
+
+	if isinstance(obj,str):
+		with h5py.File(obj,wr) as file:
+			data = load(file,wr=wr,ext=ext,**kwargs)
+	else:
+		file = obj
+		data = load(file,wr=wr,ext=ext,**kwargs)
+	return data
+
+
+def dump(obj,path,wr='r',ext='hdf5',**kwargs):
+	'''
+	Dump objects into hdf5
+	Args:
+		obj (object): Object to dump
+		path (str,object): Path object to dump to
+		wr (str): Write mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	'''		
+
+	import h5py
+
+	def dump(obj,path,wr='r',ext='hdf5',**kwargs):
+		'''
+		Dump objects into hdf5
+		Args:
+			obj (object): object to dump
+			path (object): hdf5 object to dump to
+			wr (str): Write mode
+			ext (str): Extension type of object
+			kwargs (dict): Additional loading keyword arguments
+		'''		
+
+		if isinstance(obj,dict):
+			names = obj
+			for name in names:
+				key = name
+				if isinstance(obj[name],dict):
+					path.create_group(key)
+					dump(obj[name],path[key],wr=wr,ext=ext,**kwargs)
+				elif isinstance(obj[name],scalars):
+					try:
+						path.attrs[key] = obj[name]
+					except TypeError:
+						pass
+				else:
+					try:
+						path[key] = obj[name]
+					except:
+						path[key] = nparray(obj[name],dtype='S')
+		else:
+			path = obj
+
+		return
+
+	if not exists(os.path.dirname(path)):
+		os.makedirs(os.path.dirname(path))
+
+	if isinstance(path,str):
+		with h5py.File(path,wr) as file:
+			dump(obj,file,wr=wr,ext=ext,**kwargs)
+	else:	
+		file = path
+		dump(obj,file,wr=wr,ext=ext,**kwargs)
+
+	return
+
+
+def plot(fig=None,ax=None,mplstyle=None,**options):
+
+	import matplotlib
+	matplotlib.use('pdf')
+	import matplotlib.pyplot as plt
+
+	import numpy as np
+
+	mplstyle = kwargs.get('mplstyle','plot.mplstyle')
+	opts = {'instance':['plot','errorbar'],'data':['x','y','xerr','yerr'],'plot':["alpha","marker","markeredgecolor","markeredgewidth","markersize","linestyle","linewidth","elinewidth","capsize","color","ecolor"]}
+
+	with matplotlib.style.context(mplstyle):
+		if fig is None and ax is None:
+			fig,ax = plt.subplots()
+		elif fig is not None:
+			ax = fig.gca()
+		elif ax is not None:
+			fig = ax.get_figure()
+
+		objs = ['ax']
+		for obj in objs:
+			if options.get(obj) is None:
+				continue
+			for attr in options[obj]:
+				if not attr in opts['instance']:
+					continue
+				args = tuple((options[obj][attr][option] for option in opts['data'] if options[obj][attr].get(option) is not None))
+				kwargs = dict({option:options[obj][attr][option] for option in options[obj][attr] if option in opts['plot']})
+				obj = getattr(ax,obj)
+		
+				obj(*args,**kwargs)
+
+		objs = ['ax','fig']
+		for obj in objs:
+			if options.get(obj) is None:
+				continue
+			for attr in options[obj]:
+				if attr in opts['instance']:
+					continue
+				
+				args = tuple()
+				kwargs = dict(options[obj][attr])
+				obj = ax
+				for attr in option.split('.'):
+					obj = getattr(obj,attr)
+
+			
+				obj(*args,**kwargs)
+
+	return
 
 def inplace(obj,index,item,op='set'):
 	obj = getattr(obj.at[index],op)(item)
@@ -445,7 +615,7 @@ def coordinate_descent(a,u,v,rank=None,**kwargs):
 		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
 
 		z = dot(u,v)
-		# alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
+		alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
 
 		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
 		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
@@ -588,20 +758,11 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 
 		z = dot(u,v)
 
-		# jax.debug.print('{i} {z}',z=(z-a),i=i)
-
 		u *= (a*dot(z**(beta-2),v.T))/(dot(z**(beta-1),v.T))
 
 		v *= dot(u.T,a*(z**(beta-2)))/dot(u.T,z**(beta-1))
 		
 		i += 1
-
-		# def true(*args,**kwargs):
-		# 	exit()
-		# 	return
-		# def false(*args,**kwargs):
-		# 	return
-		# cond((i>100)*(norm(a-z)>1e-10),true,false)
 
 		x = a,u,v,i
 
@@ -664,10 +825,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 	
 	def run(a,u=None,v=None,rank=None,**kwargs):
 
-		u,v,s = nmfd(u,v,rank=rank)
-
-		return a,u,v,s
-
 		update = kwargs.get('update',None)
 		iteration = kwargs.get('iteration',100)
 		eps = kwargs.get('eps',epsilon(a.dtype))
@@ -708,8 +865,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			x = loop(func=func,x=x,**options)
 
 			a,u,v,i = x
-
-			print(string,i,norm(a-dot(u,v))/norm(a))
 
 		u,v,s = nmfd(u,v,rank=rank)
 
@@ -1078,44 +1233,44 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
+	def shuffle(cls,state,shape,where=None,transform=True,**kwargs):
 		if transform:
-			n,d = len(shape),data.ndim
+			n,d = len(shape),state.ndim
 			where = range(n) if where is None else where
 			shape = [*shape]*d
 			axes = [i*d+j for i in where for j in range(d)]
-			data = transpose(reshape(data,shape),axes)
+			state = transpose(reshape(state,shape),axes)
 		else:
-			n,d = len(shape),data.ndim//len(shape)
+			n,d = len(shape),state.ndim//len(shape)
 			where = range(n) if where is None else where			
 			shape = [prod(shape)]*d
 			axes = [i*d+j for i in where for j in range(d)]
-			data = reshape(transpose(data,axes),shape)
-		return data
+			state = reshape(transpose(state,axes),shape)
+		return state
 
 	@classmethod
-	def spectrum(cls,data,where=None,options=None,**kwargs):
+	def spectrum(cls,state,where=None,options=None,**kwargs):
 
-		N = len(data)
+		N = len(state)
 		where = where if isinstance(where,integers) else min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else N//2
 		where = min(N-1,max(0,where-1))
 
 		options = dict() if options is None else options
 
 		# defaults = dict(scheme='qr')
-		# data = cls.update(data,where=where,options={**kwargs,**options,**defaults},**kwargs)
+		# state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
-		data = data[where]
+		state = state[where]
 		
 
 		axes = [0,1,2]
-		shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]]
-		data = reshape(transpose(data,axes),shape)
+		shape = [state.shape[0]*prod(state.shape[1:-1]),state.shape[-1]]
+		state = reshape(transpose(state,axes),shape)
 
 		defaults = dict(scheme=options.get('scheme','spectrum'))
-		data = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(data,**{**kwargs,**options,**defaults})
+		state = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,**{**kwargs,**options,**defaults})
 
-		return data
+		return state
 
 	@classmethod
 	def scheme(cls,options=None,**kwargs):
@@ -1136,7 +1291,6 @@ class Basis(object):
 				defaults = dict(compute_uv=True,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
 				u,v = u,dotl(v,s)
-				print((norm(a-dot(u,v))/norm(a)).real,dot(u,v).min(),dot(u,v).max())
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
@@ -1151,7 +1305,6 @@ class Basis(object):
 				defaults = dict()			
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
 				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
-				print((norm(a-dot(u,v))/norm(a)).real,dot(u,v).min(),dot(u,v).max())
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['_nmf']:
@@ -1189,27 +1342,27 @@ class Basis(object):
 		return scheme		
 
 	@classmethod
-	def update(cls,data,where=None,options=None,**kwargs):
+	def update(cls,state,where=None,options=None,**kwargs):
 		
 		options = dict() if options is None else options
 
 		defaults = dict()
 
-		if isinstance(data,dict):
+		if isinstance(state,dict):
 
-			N = len(data)
+			N = len(state)
 			where = (N,N) if where is None else (where,where) if isinstance(where,integers) else where
 
 			indices = (*range(0,min(where),1),*range(N-1,max(where)-1,-1))
 
 			for i in indices:
 
-				a = data[i]
+				a = state[i]
 
 				if i < min(where):
 
 					axes = [0,1,2]
-					shape = [data[i].shape[0]*prod(data[i].shape[1:-1]),data[i].shape[-1]]
+					shape = [state[i].shape[0]*prod(state[i].shape[1:-1]),state[i].shape[-1]]
 					a = reshape(transpose(a,axes),shape)
 
 					options.update(dict())
@@ -1217,18 +1370,18 @@ class Basis(object):
 					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
 					axes = [0,1,2]
-					shape = [data[i].shape[0],*data[i].shape[1:-1],s]
+					shape = [state[i].shape[0],*state[i].shape[1:-1],s]
 					a = transpose(reshape(u,shape),axes)
 
-					data[i] = a
+					state[i] = a
 
 					if i < (N-1):
-						data[i+1] = einsum('ij,j...k->i...k',v,data[i+1])
+						state[i+1] = einsum('ij,j...k->i...k',v,state[i+1])
 
 				elif i > max(where):
 
 					axes = [0,1,2]
-					shape = [data[i].shape[0],prod(data[i].shape[1:-1])*data[i].shape[-1]]
+					shape = [state[i].shape[0],prod(state[i].shape[1:-1])*state[i].shape[-1]]
 					a = reshape(transpose(a,axes),shape)
 
 					options.update(dict())
@@ -1236,40 +1389,44 @@ class Basis(object):
 					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,conj=True,**{**kwargs,**options,**defaults})
 
 					axes = [0,1,2]
-					shape = [s,*data[i].shape[1:-1],data[i].shape[-1]]
+					shape = [s,*state[i].shape[1:-1],state[i].shape[-1]]
 					a = transpose(reshape(v,shape),axes)
 
-					data[i] = a
+					state[i] = a
 
 					if i > 0:
-						data[i-1] = einsum('jk,i...j->i...k',u,data[i-1])
+						state[i-1] = einsum('jk,i...j->i...k',u,state[i-1])
 
-		elif isinstance(data,arrays):
+		elif isinstance(state,arrays):
 
-			a = data
-		
-			axes = [0,1,-1,2]
-			shape = [data.shape[0]*data.shape[1],data.shape[-1]*data.shape[2]]
-			a = reshape(transpose(a,axes),shape)
+			if len(where) == 2:
 
-			axes = [[0,1,2],[0,2,1]]
+				a = state
+			
+				axes = [0,1,-1,2]
+				shape = [state.shape[0]*state.shape[1],state.shape[-1]*state.shape[2]]
+				a = reshape(transpose(a,axes),shape)
 
-			options.update(
-				dict(
-					u=reshape(transpose(options.get('u'),[0,1,2]),[options.get('u').shape[0]*options.get('u').shape[1],options.get('u').shape[-1]]) if options.get('u') is not None else None,
-					v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
-				)
-				)
-			u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
+				axes = [[0,1,2],[0,2,1]]
 
-			axes = [[0,1,2],[0,2,1]]
-			shape = [[data.shape[0],data.shape[1],s],[s,data.shape[-1],data.shape[2]]]
+				options.update(
+					dict(
+						u=reshape(transpose(options.get('u'),[0,1,2]),[options.get('u').shape[0]*options.get('u').shape[1],options.get('u').shape[-1]]) if options.get('u') is not None else None,
+						v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
+					)
+					)
+				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
-			a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
+				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max())
 
-			data = a
+				axes = [[0,1,2],[0,2,1]]
+				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[-1],state.shape[2]]]
 
-		return data
+				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
+
+				state = a
+
+		return state
 
 	@classmethod
 	def contract(cls,state,data,where=None,options=None,**kwargs):
@@ -1379,8 +1536,8 @@ def test_mps(*args,**kwargs):
 			data = basis.contract(state,data=data,where=where,**kwargs)
 			return data
 
-		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=data[i],where=i,**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
+		data = {index:(data,where) for index,(data,where) in enumerate(('unitary' if data is None else data,(i,j)) for i in range(N) for j in range(N) if i < j)} if not isinstance(data,dicts) else data
+		data = {index:lambda state,data=data,where=where,**kwargs: func(state,data=data,where=where,**kwargs) for index,(data,where) in data.items()}
 
 		return state,data
 
@@ -1388,10 +1545,9 @@ def test_mps(*args,**kwargs):
 	def func(state,data,M=None,**kwargs):
 
 		iterations = range(1 if M is None else M)
-		where = data
 
 		for k in iterations:
-			for i in where:
+			for i in data:
 				state = data[i](state,**kwargs)
 				key,kwargs['key'] = rng.split(kwargs['key'])
 		return state
@@ -1421,8 +1577,8 @@ def test_mps(*args,**kwargs):
 			data = basis.contract(state,data=data,where=where,**kwargs)
 			return data
 
-		data = {i:'unitary' for i in range(N) for j in range(N) if i < j} if data is None else {i:data for i in range(N) for j in range(N) if i < j} if isinstance(data,str) else data
-		data = {i:lambda state,data=data[i],where=i,**kwargs: func(state,data=data,where=where,**kwargs) for i in data}
+		data = {index:(data,where) for index,(data,where) in enumerate(('unitary' if data is None else data,(i,j)) for i in range(N) for j in range(N) if i < j)} if not isinstance(data,dicts) else data
+		data = {index:lambda state,data=data,where=where,**kwargs: func(state,data=data,where=where,**kwargs) for index,(data,where) in data.items()}
 
 		return state,data
 
@@ -1431,11 +1587,11 @@ def test_mps(*args,**kwargs):
 	def _func(state,data,M=None,**kwargs):
 
 		iterations = range(1 if M is None else M)
-		where = data
 
 		for k in iterations:
-			for i in where:
+			for i in data:
 				state = data[i](state,**kwargs)
+				key,kwargs['key'] = rng.split(kwargs['key'])
 
 		return state
 
@@ -1446,11 +1602,13 @@ def test_mps(*args,**kwargs):
 	D = 2
 	M = 15
 	L = N//2
+	K = D**N
 	seed = 123
 	dtype = 'complex'
+	path = 'data/data.hdf5'
 
 	# state = {i:'state' for i in range(N)}
-	# data = {(i,i+1):'unitary' for i in range(N-1)}
+	# data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary'])}
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
@@ -1469,7 +1627,7 @@ def test_mps(*args,**kwargs):
 
 
 	# _state = {i:'state' for i in range(N)}
-	# _data = {(i,i+1):'unitary' for i in range(N-1)}
+	# _data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary'])}
 
 	# _kwargs = dict(
 	# 	D=D,N=N,M=M,
@@ -1491,7 +1649,7 @@ def test_mps(*args,**kwargs):
 
 
 	state = {i:'state' for i in range(N)}
-	data = {**{(i,i+1):data for i in range(N-1) for data in ['unitary',['depolarize','depolarize']]}}
+	data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary',['depolarize','depolarize']])}
 
 	kwargs = dict(
 		D=D,N=N,M=M,
@@ -1499,21 +1657,20 @@ def test_mps(*args,**kwargs):
 		parameters=1e-4,	
 		options=dict(
 			scheme='nmf',
-			init='nndsvd',
+			init=None,
 			iteration=int(2e5),
 			eps=2e-13,
 			alpha=7e-1,
 			update=[
-				['cd',int(1e7),2e-13],
-				# ['mu',3,2e-13],['cd',int(1e6),2e-13]
+				['cd',int(1e5),1e-14],
+				['mu',int(1e6),1e-14],
+				['cd',int(1e6),1e-14]
 				],
 		),
 		key=seeder(seed),
 		seed=seed,
 		dtype=dtype,		
 	)
-
-	print(kwargs)
 
 	basis = Basis()
 
@@ -1524,11 +1681,9 @@ def test_mps(*args,**kwargs):
 	state = func(state,data,**kwargs)
 
 
-	print('------------------')
-
 
 	_state = {i:'state' for i in range(N)}
-	_data = {**{(i,i+1):data for i in range(N-1) for data in ['unitary',['depolarize','depolarize']]}}
+	_data = {index:(data,where) for index,(data,where) in enumerate((data,(i,i+1)) for i in range(N-1) for data in ['unitary',['depolarize','depolarize']])}
 
 	_kwargs = dict(
 		D=D,N=N,M=M,
@@ -1588,10 +1743,63 @@ def test_mps(*args,**kwargs):
 	_spectrum = basis.spectrum(state,where=L,**_kwargs)
 
 
-
 	print(spectrum)
 	print(_spectrum)
 
+	data = dict(
+		D=D,N=N,M=M,L=L,K=K,parameters=parameters,seed=seed,
+		**{'spectrum.nmf':spectrum,'spectrum.svd':_spectrum}
+		)
+
+	dump(data,path)
+
+
+	fig,ax = None,None
+	options = [
+		{
+			"fig": {
+				"set_size_inches": {
+					"w": 32,
+					"h": 16
+				},
+				"subplots_adjust": {},
+				"tight_layout": {},
+				"savefig": {
+					"fname": 'data/plot.pdf',
+					"bbox_inches": "tight",
+					"pad_inches": 0.2
+				}
+			},
+			"ax":{
+				"errorbar":{
+					"x":[*arange(len(data[y]))] if x is None else x,
+					'y':[*data[y]],
+					"label":{'spectrum.nmf':'$\\textrm{NMF}$','spectrum.svd':'$\\textrm{SVD}$'}.get(y),
+					"marker":"o",
+					"alpha":0.8,
+					"color":{'spectrum.nmf':'black','spectrum.svd':'gray'}.get(y),
+					},
+				"set_title": {
+					"label": "$N = {N} , M = {M} , L = {L} , \\chi = {K} , \\gamma = {parameters}$".format(**data)
+					},
+				"set_ylabel": {
+					"ylabel": "$\\textrm{Eigen/Singular Values of } \\rho_{\\chi} ~~ {\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
+				},
+				"set_xlabel": {
+					"xlabel": "$\\textrm{Spectrum Index} ~~ i$"
+				},
+				"set_xscale": {"value": "linear"},
+				"set_xlim":{"xmin":-50,"xmax":300},
+				"set_xticks":{"ticks":[0,50,100,150,200,250,300]},
+				"set_yscale": {"value": "log","base": 10},
+				"set_ylim":{"ymin":1e-17,"ymax":1e1},
+				"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+			}
+		}
+		for index,(y,x) in enumerate(((None,'spectrum.nmf'),(None,'spectrum.nmf')))
+		]
+	for options in index,options in enumerate(options):
+		fig,ax = plot(fig=fig,ax=ax,**options)
 
 	exit()
 
