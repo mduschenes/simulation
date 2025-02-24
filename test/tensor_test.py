@@ -34,13 +34,15 @@ import jax
 from jax import jit,vmap
 import jax.numpy as np
 import numpy as onp
+import opt_einsum
 from math import prod
 from functools import partial
 import itertools
 import time as timing
 
-
 from string import ascii_lowercase as characters
+
+backend = 'jax'
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
@@ -429,6 +431,9 @@ def astype(a,dtype):
 def transpose(a,axes=None):
 	return np.transpose(a,axes=axes)
 
+def squeeze(a,axis=None):
+	return np.squeeze(a,axis=axis)
+
 def conjugate(a):
 	return a.conjugate()
 
@@ -453,8 +458,14 @@ def tensorprod(a):
 		out = kron(out,a[i])
 	return out
 
-def einsum(subscripts,*operands):
-	return np.einsum(subscripts,*operands)
+
+def symbols(index):
+	return opt_einsum.get_symbol(index)
+	# return characters[index]
+
+def einsum(subscripts,*operands,backend=backend):
+	return opt_einsum.contract(subscripts,*operands,backend=backend)
+	# return np.einsum(subscripts,*operands)
 
 def norm(a):
 	return sqrt(dot(*(ravel(a),)*2))
@@ -696,6 +707,196 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 		# 	data=(v.T,a.T),
 		# 	**options			
 		# 	).params.T
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+
+def step_descent(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1e-1)
+	sigma = kwargs.get('sigma',1e-2)
+	iteration = kwargs.get('iteration',int(1e4))
+
+	def function(x):
+
+		u,v,x,y,a,alpha,i = x
+
+		v,y = maximums(y-alpha*(dot(dot(x.T,x),y)-dot(x.T,a)),eps),v
+		u,x = u,x
+		# u,x = maximums(x.T-alpha*(dot(dot(y,y.T),x.T)-dot(y,a.T)),eps).T,u
+
+		alpha *= alpha
+
+		i += 1
+
+		x = u,v,x,y,a,alpha,i
+
+		return x
+
+	def _function(x):
+		u,v,x,y,a,alpha,i = x
+
+		# v,y = maximums(y-alpha*(dot(dot(x.T,x),y)-dot(x.T,a)),eps),v
+		v,y = v,y
+		u,x = maximums(x.T-alpha*(dot(dot(y,y.T),x.T)-dot(y,a.T)),eps).T,u
+
+		alpha *= alpha
+
+		i += 1
+
+		x = u,v,x,y,a,alpha,i
+
+		return x
+
+	def error(u,v,a):
+		return add(sqr(a-dot(u,v)))
+	def _error(u,v,a):
+		return add(sqr(a-dot(u,v)))
+
+	def step(u,v,a,z,alpha):
+		return alpha*einsum('ij,ij',dot(dot(u.T,u),v)-dot(u.T,a),z)
+	def _step(u,v,a,z,alpha):
+		return alpha*einsum('ij,ij',dot(dot(v,v.T),u.T)-dot(v,a.T),z.T)
+
+	def cond(x):
+		u,v,x,y,a,alpha,i = x
+		debug(error=(error(x,y,a)-error(u,v,a)),step=-step(x,y,a,v-y,sigma))
+		return ((i<=1) + ((i<iteration) * ((error(x,y,a)-error(u,v,a)) < -step(x,y,a,v-y,sigma))))
+	def _cond(x):
+		u,v,x,y,a,alpha,i = x
+		# debug(_error=(_error(u,v,a)-_error(x,y,a)),_step=_step(x,y,a,u-x,sigma))
+		debug(error=(_error(x,y,a)-_error(u,v,a)),step=-_step(x,y,a,u-x,sigma))
+		return ((i<=1) + ((i<iteration) * ((_error(x,y,a)-_error(u,v,a)) < -_step(x,y,a,u-x,sigma))))
+
+	loop = whileloop
+
+	options=dict(cond=cond)
+	_options=dict(cond=_cond)
+
+	@jit
+	def func(x):
+		
+		a,u,v,i = x
+
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
+
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
+
+		z = dot(u,v)
+		alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
+
+		j = 0
+		x = u,v,u,v,a,alpha,j
+		x = loop(func=function,x=x,**options)
+		u,v,x,y,a,alpha,j = x
+
+
+
+		k = 0
+		x = u,v,u,v,a,alpha,k
+		x = loop(func=_function,x=x,**_options)
+		u,v,x,y,a,alpha,k = x
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+
+		debug(j=j,k=k)
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+
+def quadratic_programming(a,u,v,rank=None,**kwargs):
+
+	from qpax import solve_qp_primal as optimizer
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+
+	options = dict(
+		solver_tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
+		)
+
+	function = vmap(partial(optimizer,**options),in_axes=(None,1,None,None,None,None),out_axes=1)
+	_function = vmap(partial(optimizer,**options),in_axes=(None,1,None,None,None,None),out_axes=0)
+
+	@jit
+	def func(x):
+		
+		a,u,v,i = x
+
+		z = dot(u,v)
+		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
+
+		u *= alpha
+		v *= alpha
+
+		s = u.shape[-1]
+		G,h,A,b = -identity(s),zeros(s),zeros((0,s)),zeros(0)
+		Q,q,_Q,_q = dot(u.T,u),-dot(u.T,a),dot(v,v.T),-dot(v,a.T)
+
+		# debug(Q=Q,q=q,_Q=_Q,_q=_q)
+
+		v = function(Q,q,G,h,A,b)
+		u = _function(_Q,_q,G,h,A,b)
+
+		# # v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
+
+		# # u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
+
+		# z = dot(u,v)
+		# alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
+def least_squares(a,u,v,rank=None,**kwargs):
+
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+	iteration = 10
+
+	@jit
+	def func(x):
+		
+		a,u,v,i = x
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
+
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
+
+		z = dot(u,v)
+		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
+
+		u *= alpha
+		v *= alpha
+
+		v = minimums(maximums((dot(dot(inv(dot(u.T,u)),u.T),a)),eps),1/eps)
+		u = minimums(maximums((dot(dot(inv(dot(v,v.T)),v),a.T)),eps).T,1/eps)
+
+		u /= alpha
+		v /= alpha
 
 		i += 1
 
@@ -970,7 +1171,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		a = real(a)
 
 		u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
-		
+
 		return a,u,v,s
 	
 	def run(a,u=None,v=None,rank=None,**kwargs):
@@ -990,7 +1191,13 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			elif update in ['gd','gradient_descent']:
 				update = gradient_descent
 			elif update in ['pd','projective_descent']:
-				update = projective_descent						
+				update = projective_descent	
+			elif update in ['sd','step_descent']:
+				update = step_descent	
+			elif update in ['ls','least_squares']:
+				update = least_squares
+			elif update in ['qp','quadratic_programming']:
+				update = quadratic_programming
 			elif update in ['mu','multiplicative_update']:
 				update = multiplicative_update
 			elif update in ['mru','multiplicative_robust_update']:
@@ -1009,7 +1216,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 			i = 0
 			x = (a,u,v,i)
-			func = update(a,u=u,v=v,rank=rank,**kwargs)
+			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**dict(iteration=iteration,eps=eps)})
 
 			loop = whileloop
 			options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
@@ -1338,7 +1545,7 @@ class Basis(object):
 
 		if transform:
 			if callable(data):
-				data = einsum('uij,wji,wv->uv',basis,data(basis,**kwargs),inverse)		
+				data = einsum('uij,wji,wv->uv',basis,vmap(partial(data,**kwargs))(basis),inverse)		
 			elif isinstance(data,dict):
 				pass
 			elif isinstance(data,arrays):
@@ -1361,28 +1568,33 @@ class Basis(object):
 				where = range(N) if where is None and N is not None else where
 
 				if transform is None:
-					shape = [basis.shape[-2+i]**N for i in range(d)]
-					subscripts = '%s,%s'%(
+					axes = [j for i in range(2) for j in [i+2*j for j in range(N)]]
+					shape = [basis.shape[-2+i]**N for i in range(2)]
+					subscripts = '%s,%s,%s'%(
 						','.join((
-							''.join((characters[N+i],characters[i],characters[N+i+1]))
+							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
 							for i in range(N)
 							)),
 						','.join((
-							''.join((characters[i],characters[2*N+i],characters[3*N+i]))
+							''.join((symbols(i),symbols(2*N+1+i)))
+							for i in range(N)
+							)),	
+						','.join((
+							''.join((symbols(2*N+1+i),symbols(3*N+1+i),symbols(4*N+1+i)))
 							for i in range(N)
 							)),						
 						)
-					data = reshape(einsum(subscripts,*(data[i] for i in data)),shape)
+					data = reshape(transpose(squeeze(einsum(subscripts,*(data[i] for i in data),*(inverse,)*N,*(basis,)*N)),axes),shape)
 				else:
+					axes = [j for i in range(N) for j in [sum(len(data[j].shape[1:-1]) for j in range(i))+j for j in range(len(data[i].shape[1:-1]))]]
 					shape = [j for i in data for j in data[i].shape[1:-1]]
 					subscripts = '%s'%(
 						','.join((
-							''.join((characters[N+i],characters[i],characters[N+i+1]))
+							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
 							for i in range(N)
 							)),
 						)
-					data = ravel(reshape(einsum(subscripts,*(data[i] for i in data)),shape))
-
+					data = ravel(transpose(reshape(einsum(subscripts,*(data[i] for i in data)),shape),axes))
 
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
@@ -1393,20 +1605,20 @@ class Basis(object):
 		return data
 
 	@classmethod
-	def shuffle(cls,state,shape,where=None,transform=True,**kwargs):
+	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
 		if transform:
-			n,d = len(shape),state.ndim
+			n,d = len(shape),data.ndim
 			where = range(n) if where is None else where
 			shape = [*shape]*d
 			axes = [i*d+j for i in where for j in range(d)]
-			state = transpose(reshape(state,shape),axes)
+			data = transpose(reshape(data,shape),axes)
 		else:
-			n,d = len(shape),state.ndim//len(shape)
+			n,d = len(shape),data.ndim//len(shape)
 			where = range(n) if where is None else where			
 			shape = [prod(shape)]*d
 			axes = [i*d+j for i in where for j in range(d)]
-			state = reshape(transpose(state,axes),shape)
-		return state
+			data = reshape(transpose(data,axes),shape)
+		return data
 
 	@classmethod
 	def spectrum(cls,state,where=None,options=None,**kwargs):
@@ -1482,11 +1694,15 @@ class Basis(object):
 			def scheme(a,conj=None,**options):
 				defaults = dict(compute_uv=False,hermitian=False)							
 				s = svd(real(a),**{**kwargs,**options,**defaults})
+				print('spectrum',a.shape)
+				print(s)
 				return s
 		elif scheme in ['probability']:
 			def scheme(a,conj=None,**options):
 				defaults = dict()				
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
+				print('probability',a.shape)
+				print(s)
 				return s
 		elif scheme in ['_spectrum']:
 			def scheme(a,conj=None,**options):
@@ -1570,13 +1786,15 @@ class Basis(object):
 
 				options.update(
 					dict(
-						u=reshape(transpose(options.get('u'),[0,1,2]),[options.get('u').shape[0]*options.get('u').shape[1],options.get('u').shape[-1]]) if options.get('u') is not None else None,
-						v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
+						u=None,
+						v=None,
+						# u=reshape(transpose(options.get('u'),[0,1,2]),[options.get('u').shape[0]*options.get('u').shape[1],options.get('u').shape[-1]]) if options.get('u') is not None else None,
+						# v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
 					)
 					)
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
-				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max())
+				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max(),u.shape,v.shape)
 
 				axes = [[0,1,2],[0,2,1]]
 				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[-1],state.shape[2]]]
@@ -1597,15 +1815,15 @@ class Basis(object):
 
 			shape = [j for i in where for j in state[i].shape[1:-1]]
 			subscripts = '%s%s,%s->%s%s%s'%(
-				characters[N:2*N],
-				characters[:N],
+				''.join(symbols(i) for i in range(N,2*N)),
+				''.join(symbols(i) for i in range(N)),
 				','.join((
-					''.join((characters[2*N+i],characters[i],characters[2*N+i+1]))
+					''.join((symbols(2*N+i),symbols(i),symbols(2*N+i+1)))
 					for i in range(N)
 					)),
-				characters[2*N],
-				characters[N:2*N],
-				characters[3*N]
+				symbols(2*N),
+				''.join(symbols(i) for i in range(N,2*N)),
+				symbols(3*N)
 				)
 
 			# defaults = dict(scheme='qr')
@@ -1658,7 +1876,12 @@ def test_shuffle(*args,**kwargs):
 	state = basis.shuffle(state,shape)
 	data = basis.shuffle(data,shape)
 
-	subscripts = f'{characters[N:2*N]}{characters[:N]},{characters[:N]}->{characters[N:2*N]}'
+	subscripts = '%s%s,%s->%s'%(
+		''.join(symbols(i) for i in range(N,2*N)),
+		''.join(symbols(i) for i in range(N)),
+		''.join(symbols(i) for i in range(N)),
+		''.join(symbols(i) for i in range(N,2*N)),
+		)
 	_out = basis.shuffle(einsum(subscripts,data,state),shape,transform=False)
 
 	assert allclose(out,_out)
@@ -1759,9 +1982,9 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 4
+	N = 6
 	D = 2
-	M = 2
+	M = 2*N
 	L = N//2
 	K = D**N
 	parameters = pi/4
@@ -1812,21 +2035,26 @@ def test_mps(*args,**kwargs):
 
 
 		state = {i:'state' for i in range(N)}
-		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['X',['depolarize','depolarize']])}
+		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
 
 
 		kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'X':parameters,'depolarize':noise},
+			parameters={'unitary':parameters,'depolarize':noise},
 			options=dict(
 				scheme='nmf',
 				init='random',
-				iteration=int(1e7),
+				iteration=int(1e5),
 				eps=1e-14,
 				alpha=7e-1,
+				sigma=1e-12,
 				update=[
-					# ['gd',int(1e4),1e-14],
-					['pd',int(1),1e-14],
+					# ['gd',int(1e6),1e-14],
+					# ['sd',int(1e6),1e-14],
+					['qp',int(1),1e-8],
+					# ['pd',int(1),1e-14],
+					# ['gd',int(1e5),1e-14],					
+					# ['ls',int(10),1e-14],					
 					# ['mhu',int(1),1e-14],
 					# ['gd',int(1e4),1e-14],					
 					# ['cd',int(1e6),1e-14],
@@ -1850,11 +2078,11 @@ def test_mps(*args,**kwargs):
 
 
 		_state = {i:'state' for i in range(N)}
-		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['X',['depolarize','depolarize']])}
+		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
 
 		_kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'X':parameters,'depolarize':noise},
+			parameters={'unitary':parameters,'depolarize':noise},
 			options=dict(
 				scheme='svd',
 			),
