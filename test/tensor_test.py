@@ -738,7 +738,7 @@ def conjugate_descent(a,u,v,rank=None,**kwargs):
 	def function(x):
 		z,r,p,a = x
 		q = dot(a,p)
-		alpha = dot(r,r)/dot(p,q)
+		alpha = -dot(r,p)/dot(p,q)
 		z = maximums(z + alpha*p,eps)
 		r = r + alpha*q
 		beta = dot(r,r)/dot(*(r-alpha*q,)*2)
@@ -746,6 +746,8 @@ def conjugate_descent(a,u,v,rank=None,**kwargs):
 		x = z,r,p,a
 		return x
 
+	def init(u,v,a):
+		z = dot(dot(u.T,u),v) - dot(a.T)
 
 	@jit
 	def func(x):
