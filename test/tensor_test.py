@@ -716,6 +716,111 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 
 	return func
 
+def conjugate_descent(a,u,v,rank=None,**kwargs):
+
+	# from jaxopt import BlockCoordinateDescent,objective,prox
+
+	# options = dict(
+	# 	fun=kwargs.get('function',objective.least_squares),
+	# 	block_prox=kwargs.get('constraint',prox.prox_non_negative_ridge),
+	# 	maxiter=kwargs.get('iteration',1000),
+	# 	tol=kwargs.get('eps',1e-16),
+	# 	)
+	# options = dict(
+	# 	hyperparams_prox=kwargs.get('constraints',1e-8),
+	# 	)
+
+	# optimizer = BlockCoordinateDescent(**options)
+	
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+
+	def function(x):
+		z,r,p,a = x
+		q = dot(a,p)
+		alpha = dot(r,r)/dot(p,q)
+		z = maximums(z + alpha*p,eps)
+		r = r + alpha*q
+		beta = dot(r,r)/dot(*(r-alpha*q,)*2)
+		p = -r + beta*p
+		x = z,r,p,a
+		return x
+
+
+	@jit
+	def func(x):
+		
+		a,u,v,i = x
+
+
+
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
+
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
+
+
+
+		z = dot(u,v)
+		alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
+
+		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+
+
+		# z = dot(u.T,u)
+		# y = -dot(u.T,a)
+		# w = maximums(absolute(diag(z)),eps)
+
+		# v = maximums(v-dotl(alpha*(dot(z,v)+y),1/w),eps)
+
+		# z = dot(v,v.T)
+		# y = -dot(v,a.T)
+		# w = maximums(absolute(diag(z)),eps)
+
+		# u = maximums(u.T-dotl(alpha*(dot(z,u.T)+y),1/w),eps).T
+
+
+		# z = dot(u.T,u)
+		# y = -dot(u.T,a)
+		# # w = maximums(absolute(diag(z)),eps)
+		# # z = dotl(z,1/w)
+		# # y = dotl(y,1/w)
+		# x = v,z,y
+		# x = loop(func=function,x=x,**options)
+		# v,z,y = x
+
+		# z = dot(v,v.T)
+		# y = -dot(v,a.T)
+		# # w = maximums(absolute(diag(z)),eps)
+		# # z = dotl(z,1/w)
+		# # y = dotl(y,1/w)
+		# x = u.T,z,y
+		# x = loop(func=function,x=x,**options)
+		# u,z,y = x
+		# u = u.T
+
+
+		# v = 	optimizer.run(
+		# 	init_params=v,
+		# 	data=(u,a),
+		# 	**options
+		# 	).params
+
+		# u = 	optimizer.run(
+		# 	init_params=u.T,
+		# 	data=(v.T,a.T),
+		# 	**options			
+		# 	).params.T
+
+		i += 1
+
+		x = a,u,v,i
+
+		return x
+
+	return func
+
 
 def step_descent(a,u,v,rank=None,**kwargs):
 
@@ -840,6 +945,12 @@ def quadratic_programming(a,u,v,rank=None,**kwargs):
 
 		z = dot(u,v)
 		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
+
+		debug(inv(dot(u.T,u)))
+		debug(-dot(u.T,a))
+		debug(None)
+		debug(inv(dot(v,v.T)))
+		debug(-dot(v,a.T))
 
 		u *= alpha
 		v *= alpha
@@ -1792,6 +1903,7 @@ class Basis(object):
 						# v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
 					)
 					)
+
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
 				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max(),u.shape,v.shape)
@@ -1982,13 +2094,13 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 6
+	N = 2
 	D = 2
-	M = 2*N
+	M = 1
 	L = N//2
 	K = D**N
-	parameters = pi/4
-	noise = 1e-4
+	parameters = pi/2
+	noise = 0
 	seed = 123
 	dtype = 'complex'
 	path = 'data/data.hdf5'
@@ -2043,7 +2155,7 @@ def test_mps(*args,**kwargs):
 			parameters={'unitary':parameters,'depolarize':noise},
 			options=dict(
 				scheme='nmf',
-				init='random',
+				init='nndsvd',
 				iteration=int(1e5),
 				eps=1e-14,
 				alpha=7e-1,
@@ -2075,7 +2187,7 @@ def test_mps(*args,**kwargs):
 
 		state = func(state,data,**kwargs)
 
-
+		exit()
 
 		_state = {i:'state' for i in range(N)}
 		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
@@ -2097,6 +2209,8 @@ def test_mps(*args,**kwargs):
 
 		_state = func(_state,_data,**_kwargs)
 
+		# print(basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)}).round(14))
+		# print(basis.transform(_state,transform=None,**{**_kwargs,**dict(D=D,N=None)}).round(14))
 
 		spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'probability'})})
 		_spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'spectrum'})})
