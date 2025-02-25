@@ -567,7 +567,6 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 	def false(u_plus,v_plus,s_plus,u_minus,v_minus,s_minus):
 		return u_minus,v_minus,s_minus
 
-	@jit
 	def func(u,v,s):
 		
 		u_plus,v_plus = maximums(u,0),maximums(v,0)
@@ -644,13 +643,13 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 
 	# optimizer = BlockCoordinateDescent(**options)
 	
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
@@ -710,7 +709,7 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -718,106 +717,62 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 
 def conjugate_descent(a,u,v,rank=None,**kwargs):
 
-	# from jaxopt import BlockCoordinateDescent,objective,prox
-
-	# options = dict(
-	# 	fun=kwargs.get('function',objective.least_squares),
-	# 	block_prox=kwargs.get('constraint',prox.prox_non_negative_ridge),
-	# 	maxiter=kwargs.get('iteration',1000),
-	# 	tol=kwargs.get('eps',1e-16),
-	# 	)
-	# options = dict(
-	# 	hyperparams_prox=kwargs.get('constraints',1e-8),
-	# 	)
-
-	# optimizer = BlockCoordinateDescent(**options)
-	
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
-	def function(x):
-		z,r,p,a = x
-		q = dot(a,p)
-		alpha = -dot(r,p)/dot(p,q)
-		z = maximums(z + alpha*p,eps)
+	def function(data):
+		x,r,p,b,A,i = data
+		q = dot(A,p)
+		alpha = dot(r,r)/dot(p,q)
+		x = x + alpha*p
 		r = r + alpha*q
 		beta = dot(r,r)/dot(*(r-alpha*q,)*2)
 		p = -r + beta*p
-		x = z,r,p,a
-		return x
+		i += 1
+		data = x,r,p,b,A,i
+		# debug(f=f(x,b,A),x=add(sqr(x)),p=add(sqr(p)),r=add(sqr(r)),alpha=alpha)
+		return data
+
+	def f(x,b,A):
+		return add(sqr(dot(A,x) - b))
+
+	def cond(data):
+		x,r,p,b,A,i = data
+		return ((i<=1) + ((i<iteration) * (f(x,b,A) > eps) * (add(sqr(p))>eps) * (add(sqr(r))>eps)))
 
 	def init(u,v,a):
-		z = dot(dot(u.T,u),v) - dot(a.T)
+		x = v
+		A = dot(u.T,u)
+		b = dot(u.T,a)
+		r = dot(A,x) - b
+		p = -r
+		return x,r,p,b,A
 
-	@jit
+	def loop(x,r,p,b,A):
+		i = 0
+		data = x,r,p,b,A,i
+		func = function
+		options = dict(cond=cond)
+		data = whileloop(func=func,x=data,**options)
+		x,r,p,b,A,i = data
+		return x
+
+	loop = vmap(loop,in_axes=(1,1,1,1,None),out_axes=1)
+
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
+		x,r,p,b,A = init(u,v,a)
+		v = loop(x,r,p,b,A)
 
-
-
-		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
-
-		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
-
-
-
-		z = dot(u,v)
-		alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
-
-		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
-		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
-
-
-		# z = dot(u.T,u)
-		# y = -dot(u.T,a)
-		# w = maximums(absolute(diag(z)),eps)
-
-		# v = maximums(v-dotl(alpha*(dot(z,v)+y),1/w),eps)
-
-		# z = dot(v,v.T)
-		# y = -dot(v,a.T)
-		# w = maximums(absolute(diag(z)),eps)
-
-		# u = maximums(u.T-dotl(alpha*(dot(z,u.T)+y),1/w),eps).T
-
-
-		# z = dot(u.T,u)
-		# y = -dot(u.T,a)
-		# # w = maximums(absolute(diag(z)),eps)
-		# # z = dotl(z,1/w)
-		# # y = dotl(y,1/w)
-		# x = v,z,y
-		# x = loop(func=function,x=x,**options)
-		# v,z,y = x
-
-		# z = dot(v,v.T)
-		# y = -dot(v,a.T)
-		# # w = maximums(absolute(diag(z)),eps)
-		# # z = dotl(z,1/w)
-		# # y = dotl(y,1/w)
-		# x = u.T,z,y
-		# x = loop(func=function,x=x,**options)
-		# u,z,y = x
-		# u = u.T
-
-
-		# v = 	optimizer.run(
-		# 	init_params=v,
-		# 	data=(u,a),
-		# 	**options
-		# 	).params
-
-		# u = 	optimizer.run(
-		# 	init_params=u.T,
-		# 	data=(v.T,a.T),
-		# 	**options			
-		# 	).params.T
+		x,r,p,b,A = init(v.T,u.T,a.T)
+		u = loop(x,r,p,b,A).T
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -826,10 +781,10 @@ def conjugate_descent(a,u,v,rank=None,**kwargs):
 
 def step_descent(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1e-1)
 	sigma = kwargs.get('sigma',1e-2)
-	iteration = kwargs.get('iteration',int(1e4))
 
 	def function(x):
 
@@ -887,10 +842,9 @@ def step_descent(a,u,v,rank=None,**kwargs):
 	options=dict(cond=cond)
 	_options=dict(cond=_cond)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 
 		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
@@ -919,7 +873,7 @@ def step_descent(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -930,20 +884,20 @@ def quadratic_programming(a,u,v,rank=None,**kwargs):
 
 	from qpax import solve_qp_primal as optimizer
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
 	options = dict(
-		solver_tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
+		solver_tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0]['eps'] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
 		)
 
 	function = vmap(partial(optimizer,**options),in_axes=(None,1,None,None,None,None),out_axes=1)
 	_function = vmap(partial(optimizer,**options),in_axes=(None,1,None,None,None,None),out_axes=0)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		z = dot(u,v)
 		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
@@ -978,7 +932,7 @@ def quadratic_programming(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -986,14 +940,13 @@ def quadratic_programming(a,u,v,rank=None,**kwargs):
 
 def least_squares(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
-	iteration = 10
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
@@ -1013,7 +966,7 @@ def least_squares(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1021,6 +974,7 @@ def least_squares(a,u,v,rank=None,**kwargs):
 
 def projective_descent(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
@@ -1041,10 +995,9 @@ def projective_descent(a,u,v,rank=None,**kwargs):
 		return add(sqr(a-dot(u,v)))
 	_function = optimizer(fun=_fun,projection=projection,**options)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		u = function.run(u,v=v,a=a).params
 		v = _function.run(v,u=u,a=a).params
@@ -1061,7 +1014,7 @@ def projective_descent(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1070,20 +1023,20 @@ def projective_descent(a,u,v,rank=None,**kwargs):
 
 def multiplicative_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 		
 		u *= (dot(a,transpose(v))/dot(u,dot(v,transpose(v))))
 		v *= (dot(transpose(u),a)/dot(dot(transpose(u),u),v))
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1091,14 +1044,13 @@ def multiplicative_update(a,u,v,rank=None,**kwargs):
 
 def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
-
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		z = 1/maximums(eps,sqrt(add(sqr(a-dot(u,v)),0)))
 		
@@ -1107,7 +1059,7 @@ def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1115,14 +1067,13 @@ def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
 
 def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
-
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		z = 1/sqrt(sqr(a-dot(u,v)) + sqr(eps))
 		
@@ -1131,7 +1082,7 @@ def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1139,14 +1090,14 @@ def multiplicative_l1_update(a,u,v,rank=None,**kwargs):
 
 def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 	beta = kwargs.get('beta',2)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		z = dot(u,v)
 
@@ -1156,7 +1107,7 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 		
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1165,21 +1116,18 @@ def multiplicative_beta_update(a,u,v,rank=None,**kwargs):
 
 def multiplicative_hierarchical_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
-	iteration = 5
 
-	@jit
 	def func_u(u,v,z,a):
 		debug(u=dot(u,u),v=dot(v,v))
 		return (dot(a,v) - dot(z-outer(u,v),v))/dot(v,v)
 
-	@jit
 	def func_v(u,v,z,a):
 		debug(u=dot(u,u),v=dot(v,v))
 		return (dot(transpose(a),u) - dot(transpose(z-outer(u,v)),u))/dot(u,u)
 
-	@jit
 	def func_uv(u,v,a):
 		z = dot(u,v)
 		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
@@ -1189,10 +1137,9 @@ def multiplicative_hierarchical_update(a,u,v,rank=None,**kwargs):
 	func_u = vmap(func_u,in_axes=(1,0,None,None),out_axes=1)
 	func_v = vmap(func_v,in_axes=(1,0,None,None),out_axes=0)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		debug(dot(*(u[:,i],)*2))
 		debug(dot(*(v[i,:],)*2))
@@ -1229,7 +1176,7 @@ def multiplicative_hierarchical_update(a,u,v,rank=None,**kwargs):
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1237,19 +1184,20 @@ def multiplicative_hierarchical_update(a,u,v,rank=None,**kwargs):
 
 def inverse_update(a,u,v,rank=None,**kwargs):
 
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
 
-	@jit
 	def func(x):
 		
-		a,u,v,i = x
+		u,v,a,i = x
 
 		v = maximums(dot(dot(inv(dot(transpose(u),u)),transpose(u)),a),eps)
 		u = maximums(dot(a,dot(transpose(v),inv(dot(u,transpose(u))))),eps)
 
 		i += 1
 
-		x = a,u,v,i
+		x = u,v,a,i
 
 		return x
 
@@ -1258,7 +1206,7 @@ def inverse_update(a,u,v,rank=None,**kwargs):
 
 def nmf(a,u=None,v=None,rank=None,**kwargs):
 	
-	def initialize(a,u=None,v=None,rank=None,**kwargs):
+	def init(a,u=None,v=None,rank=None,**kwargs):
 
 		init = kwargs.get('init')
 		
@@ -1287,15 +1235,17 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 		return a,u,v,s
 	
-	def run(a,u=None,v=None,rank=None,**kwargs):
+	def call(a,u=None,v=None,rank=None,**kwargs):
 
 		update = kwargs.get('update',None)
 		iteration = kwargs.get('iteration',100)
 		eps = kwargs.get('eps',epsilon(a.dtype))
 
-		updates = [[update,iteration,eps]] if not isinstance(update,iterables) else update
+		updates = [{'update':update,'iteration':iteration,'eps':eps} if isinstance(update,str) else update] if not isinstance(update,iterables) else update
 
-		for update,iteration,eps in updates:
+		for update in updates:
+
+			update,iteration,eps,keywords = update.get('update'),update.get('iteration'),update.get('eps'),update.get('kwargs')
 
 			if callable(update):
 				pass
@@ -1303,6 +1253,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 				update = gradient_descent
 			elif update in ['gd','gradient_descent']:
 				update = gradient_descent
+			elif update in ['cg','conjugate_descent']:
+				update = conjugate_descent				
 			elif update in ['pd','projective_descent']:
 				update = projective_descent	
 			elif update in ['sd','step_descent']:
@@ -1328,22 +1280,24 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 				update = gradient_descent
 
 			i = 0
-			x = (a,u,v,i)
-			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**dict(iteration=iteration,eps=eps)})
+			x = (u,v,a,i)
+			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**keywords,**dict()})
+
 
 			loop = whileloop
-			options = dict(cond=(lambda x,a=a,iteration=iteration,eps=eps: (status(x,a,iteration=iteration,eps=eps))))
+			func = jit(func)
+			options = dict(cond=(lambda x,iteration=iteration,eps=eps: (status(x,iteration=iteration,eps=eps))))
 
 			x = loop(func=func,x=x,**options)
 
-			a,u,v,i = x
+			u,v,a,i = x
 
 		u,v,s = nmfd(u,v,rank=rank)
 
 		return a,u,v,s
    
-	def status(x,a,iteration=None,eps=None):
-		b,u,v,i = x
+	def status(x,iteration=None,eps=None):
+		u,v,a,i = x
 		e = norm(a-dot(u,v))
 		e = (e > eps)*(i < iteration)
 		return e
@@ -1355,8 +1309,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 	a /= constant    
 
-	a,u,v,s = initialize(a,u=u,v=v,rank=rank,**kwargs)
-	a,u,v,s = run(a,u=u,v=v,rank=rank,**kwargs)
+	a,u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
+	a,u,v,s = call(a,u=u,v=v,rank=rank,**kwargs)
 	
 	s *= constant
 
@@ -1369,6 +1323,7 @@ def _nmf(a,**kwargs):
 
 	u,v = kwargs.get('W',kwargs.get('u')),kwargs.get('H',kwargs.get('v'))
 	rank = min(kwargs.get('rank') if kwargs.get('rank') is not None else min(a.shape),*a.shape)
+	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon(a.dtype)
 
 	a = nparray(inplace(real(a),real(a)<eps,0))
@@ -1376,10 +1331,10 @@ def _nmf(a,**kwargs):
 
 	kwargs = dict(
 		n_components=rank,
-		init='custom' if u is not None and v is not None and kwargs.get('init',kwargs.get('initialize')) is None else kwargs.get('init',kwargs.get('initialize')) if isinstance(kwargs.get('init',kwargs.get('initialize')),str) else 'nndsvda',
-		max_iter=kwargs.get('max_iter',kwargs.get('iteration')) if isinstance(kwargs.get('max_iter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100,
-		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
-		solver=kwargs.get('solver',kwargs.get('update')) if isinstance(kwargs.get('solver',kwargs.get('update')),str) else kwargs.get('solver',kwargs.get('update'))[0][0] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 'cd',
+		init='custom' if u is not None and v is not None and kwargs.get('init') is None else kwargs.get('init') if isinstance(kwargs.get('init'),str) else 'nndsvda',
+		max_iter=kwargs.get('max_iter',kwargs.get('iteration')) if isinstance(kwargs.get('max_iter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0]['iteration'] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100,
+		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0]['eps'] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
+		solver=kwargs.get('solver',kwargs.get('update')) if isinstance(kwargs.get('solver',kwargs.get('update')),str) else kwargs.get('solver',kwargs.get('update'))[0]['update'] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 'cd',
 		)
 
 	options = dict(
@@ -1767,7 +1722,7 @@ class Basis(object):
 			def scheme(a,conj=None,**options):
 				defaults = dict(compute_uv=True,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
-				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
+				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['svd']:
@@ -1788,14 +1743,14 @@ class Basis(object):
 			def scheme(a,conj=None,**options):
 				defaults = dict()		
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
-				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
+				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['_nmf']:
 			def scheme(a,conj=None,**options):
 				defaults = dict()
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults})
-				u,v = dotr(u,sqrt(s)),dotl(v,sqrt(s))
+				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['eig']:
@@ -1807,15 +1762,11 @@ class Basis(object):
 			def scheme(a,conj=None,**options):
 				defaults = dict(compute_uv=False,hermitian=False)							
 				s = svd(real(a),**{**kwargs,**options,**defaults})
-				print('spectrum',a.shape)
-				print(s)
 				return s
 		elif scheme in ['probability']:
 			def scheme(a,conj=None,**options):
 				defaults = dict()				
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
-				print('probability',a.shape)
-				print(s)
 				return s
 		elif scheme in ['_spectrum']:
 			def scheme(a,conj=None,**options):
@@ -1890,28 +1841,28 @@ class Basis(object):
 			if len(where) == 2:
 
 				a = state
-			
-				axes = [0,1,-1,2]
-				shape = [state.shape[0]*state.shape[1],state.shape[-1]*state.shape[2]]
+				u,v = None,None #options.get('u'),options.get('v')
+
+				axes = [0,1,2,-1]
+				shape = [state.shape[0]*state.shape[1],state.shape[2]*state.shape[-1]]
 				a = reshape(transpose(a,axes),shape)
 
-				axes = [[0,1,2],[0,2,1]]
+				axes = [[0,1,2] if u is not None else None,[0,1,2] if v is not None else None]
+				shape = [[u.shape[0]*u.shape[1],u.shape[-1]] if u is not None else None,[v.shape[0],v.shape[1]*v.shape[-1]] if v is not None else None]
 
 				options.update(
 					dict(
-						u=None,
-						v=None,
-						# u=reshape(transpose(options.get('u'),[0,1,2]),[options.get('u').shape[0]*options.get('u').shape[1],options.get('u').shape[-1]]) if options.get('u') is not None else None,
-						# v=reshape(transpose(options.get('v'),[0,2,1]),[options.get('v').shape[0],options.get('v').shape[1]*options.get('v').shape[-1]]) if options.get('v') is not None else None
-					)
+						u=reshape(transpose(u,axes[0]),shape[0]) if u is not None else None,
+						v=reshape(transpose(v,axes[1]),shape[1]) if v is not None else None,
+						)
 					)
 
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
 				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max(),u.shape,v.shape)
 
-				axes = [[0,1,2],[0,2,1]]
-				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[-1],state.shape[2]]]
+				axes = [[0,1,2],[0,1,2]]
+				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[2],state.shape[-1]]]
 
 				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
@@ -2018,8 +1969,8 @@ def test_mps(*args,**kwargs):
 		state = {i:'state' for i in range(N)} if state is None else {i:state for i in range(N)} if isinstance(state,str) else state
 		state = {i: func(state=state[i],where=i,**kwargs) for i in state}
 
-
 		def func(state,data=None,where=None,**kwargs):
+			
 			def func(state=None,data=data,where=where,**kwargs):
 				where = [where] if not isinstance(where,iterables) else where
 				if isinstance(data,str):
@@ -2046,6 +1997,7 @@ def test_mps(*args,**kwargs):
 			for i in data:
 				state = data[i](state,**kwargs)
 				key,kwargs['key'] = rng.split(kwargs['key'])
+			print(k,{i:state[i].shape for i in state})
 		return state
 
 
@@ -2061,6 +2013,7 @@ def test_mps(*args,**kwargs):
 		state = tensorprod([func(state=state[i],where=i,**kwargs) for i in state])
 
 		def func(state,data,where=None,**kwargs):
+			
 			@jit
 			def func(state=None,data=data,where=where,**kwargs):
 
@@ -2096,9 +2049,9 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 2
+	N = 8
 	D = 2
-	M = 1
+	M = N//2+1
 	L = N//2
 	K = D**N
 	parameters = pi/2
@@ -2108,7 +2061,7 @@ def test_mps(*args,**kwargs):
 	path = 'data/data.hdf5'
 
 	# state = {i:'state' for i in range(N)}
-	# data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary'])}
+	# data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
@@ -2126,7 +2079,7 @@ def test_mps(*args,**kwargs):
 
 
 	# _state = {i:'state' for i in range(N)}
-	# _data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary'])}
+	# _data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
 
 	# _kwargs = dict(
 	# 	D=D,N=N,M=M,
@@ -2149,31 +2102,32 @@ def test_mps(*args,**kwargs):
 
 
 		state = {i:'state' for i in range(N)}
-		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
+		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
 
 
 		kwargs = dict(
 			D=D,N=N,M=M,
 			parameters={'unitary':parameters,'depolarize':noise},
 			options=dict(
-				scheme='nmf',
+				scheme='_nmf',
 				init='nndsvd',
 				iteration=int(1e5),
 				eps=1e-14,
 				alpha=7e-1,
 				sigma=1e-12,
 				update=[
-					# ['gd',int(1e6),1e-14],
-					# ['sd',int(1e6),1e-14],
-					['qp',int(1),1e-8],
-					# ['pd',int(1),1e-14],
-					# ['gd',int(1e5),1e-14],					
-					# ['ls',int(10),1e-14],					
-					# ['mhu',int(1),1e-14],
-					# ['gd',int(1e4),1e-14],					
-					# ['cd',int(1e6),1e-14],
-					# ['mu',int(1e2),1e-14],
-					# ['cd',int(1e2),1e-14]
+					# {'update':'gd','iteration':int(1e6),'eps':1e-14],
+					# {'update':'cg','iteration':1,'eps':1e-14],
+					# {'update':'sd','iteration':int(1e6),'eps':1e-14],
+					# {'update':'qp','iteration':int(1),'eps':1e-8],
+					# {'update':'pd','iteration':int(1),'eps':1e-14],
+					# {'update':'gd','iteration':int(1e5),'eps':1e-14],					
+					# {'update':'ls','iteration':int(10),'eps':1e-14],					
+					# {'update':'mhu','iteration':int(1),'eps':1e-14],
+					# {'update':'gd','iteration':int(1e4),'eps':1e-14],					
+					# {'update':'cd','iteration':int(1e6),'eps':1e-14],
+					# {'update':'mu','iteration':int(1e2),'eps':1e-14],
+					{'update':'cd','iteration':int(1e6),'eps':1e-14},
 					],
 			),
 			key=seeder(seed),
@@ -2192,7 +2146,7 @@ def test_mps(*args,**kwargs):
 		exit()
 
 		_state = {i:'state' for i in range(N)}
-		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] for data in ['unitary',['depolarize','depolarize']])}
+		_data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
 
 		_kwargs = dict(
 			D=D,N=N,M=M,
@@ -2349,7 +2303,7 @@ def test_nmf(*args,**kwargs):
 
 		u,v,s = func(a,**options)
 
-		b = dot(dotr(u,sqrt(s)),dotl(v,sqrt(s)))
+		b = dot(dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s))))
 
 		time = timing.time() - time
 
