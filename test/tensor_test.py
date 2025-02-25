@@ -33,7 +33,9 @@ warnings.showwarning = warn_with_traceback
 import jax
 from jax import jit,vmap
 import jax.numpy as np
+import jax.scipy as sp
 import numpy as onp
+import scipy as osp
 import opt_einsum
 from math import prod
 from functools import partial
@@ -392,8 +394,21 @@ def eig(a,compute_v=False,hermitian=False,**kwargs):
 def eigs(a,compute_v=False,hermitian=False,**kwargs):
 	return eig(a,compute_v=compute_v,hermitian=hermitian,**kwargs)
 
+def lstsq(a,b):
+	x, resid, rank, s = np.linalg.lstsq(a,b)
+	return x
+
+def solve_ch(a,b):
+	return sp.linalg.cho_solve(sp.linalg.cho_factor(a),b)
+
+def solve_lu(a,b):
+	return sp.linalg.lu_solve(sp.linalg.lu_factor(a),b)
+
 def inv(a):
 	return np.linalg.inv(a)
+
+def condition(a):
+	return np.linalg.cond(a)
 
 def trace(a,**kwargs):
 	return np.trace(a,**kwargs)
@@ -468,7 +483,7 @@ def einsum(subscripts,*operands,backend=backend):
 	# return np.einsum(subscripts,*operands)
 
 def norm(a):
-	return sqrt(dot(*(ravel(a),)*2))
+	return add(sqr(a))
 
 def sqrt(a):
 	return np.sqrt(a)
@@ -602,24 +617,20 @@ def nndsvda(a,u,v,rank=None,**kwargs):
 
 	return u,v,s
 
-def rsvd(a,u,v,rank=None,**kwargs):
+def randd(a,u,v,rank=None,**kwargs):
 	n,m = a.shape
 	k = min(min(n,m),rank)
 	dtype = a.dtype
 	x = sqrt(mean(a)/n)
 	u,v,s = (
-		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(n,k),dtype=dtype)})) if u is None else real(u),
-		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(k,m),dtype=dtype)})) if v is None else real(v),
+		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(n,k),dtype=dtype)})),
+		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(k,m),dtype=dtype)})),
 		ones(rank)		
 		)
 	return u,v,s
 
-def rsvda(a,u,v,rank=None,**kwargs):
-	u,v,s = rsvd(a,u=u,v=v,rank=rank,**kwargs) 
-	
-	x = mean(a)
-	u,v = inplace(u,u==0,x),inplace(v,v==0,x)
-
+def initd(a,u,v,rank=None,**kwargs):
+	u,v,s = real(u),real(v),ones(rank)
 	return u,v,s
 
 def nmfd(u,v,rank=None,**kwargs):
@@ -731,15 +742,15 @@ def conjugate_descent(a,u,v,rank=None,**kwargs):
 		p = -r + beta*p
 		i += 1
 		data = x,r,p,b,A,i
-		# debug(f=f(x,b,A),x=add(sqr(x)),p=add(sqr(p)),r=add(sqr(r)),alpha=alpha)
+		# debug(f=f(x,b,A),x=norm(x),p=norm(p),r=norm(r),alpha=alpha)
 		return data
 
 	def f(x,b,A):
-		return add(sqr(dot(A,x) - b))
+		return norm(dot(A,x) - b)
 
 	def cond(data):
 		x,r,p,b,A,i = data
-		return ((i<=1) + ((i<iteration) * (f(x,b,A) > eps) * (add(sqr(p))>eps) * (add(sqr(r))>eps)))
+		return ((i<=1) + ((i<iteration) * (f(x,b,A) > eps) * (norm(p)>eps) * (norm(r)>eps)))
 
 	def init(u,v,a):
 		x = v
@@ -818,9 +829,9 @@ def step_descent(a,u,v,rank=None,**kwargs):
 		return x
 
 	def error(u,v,a):
-		return add(sqr(a-dot(u,v)))
+		return norm(a-dot(u,v))
 	def _error(u,v,a):
-		return add(sqr(a-dot(u,v)))
+		return norm(a-dot(u,v))
 
 	def step(u,v,a,z,alpha):
 		return alpha*einsum('ij,ij',dot(dot(u.T,u),v)-dot(u.T,a),z)
@@ -943,26 +954,66 @@ def least_squares(a,u,v,rank=None,**kwargs):
 	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
+	gamma = kwargs.get('gamma',1)
+	I = identity(rank)
+
+	@jit
+	def function(data):
+		x,A,b,i = data
+		gamma = 1e-3
+		x = solve_ch(A+gamma*I,b+gamma*x)
+		i += 1
+		data = x,A,b,i
+		return data
+	
+	def cond(data):
+		x,A,b,i = data
+		return (i<iteration)
+
+	def init(u,v,a):
+		x = v
+		A = dot(u.T,u)
+		b = dot(u.T,a)
+		i = 0
+		data = x,A,b,i
+		return data
+
+	loop = whileloop
 
 	def func(x):
 		
 		u,v,a,i = x
 
+		data = init(u,v,a)
+		data = loop(func=function,x=data,cond=cond)
+		x,*data = data
+		v = maximums(x,eps)
+
+		data = init(v.T,u.T,a.T)
+		data = loop(func=function,x=data,cond=cond)
+		x,*data = data
+		u = maximums(x.T,eps)
+
 		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
 		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
 
-		z = dot(u,v)
-		alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
+		# z = dot(u,v)
+		# alpha = sqrt(einsum('ij,ij',a,z)/einsum('ij,ij',z,z))
 
-		u *= alpha
-		v *= alpha
+		# u *= alpha
+		# v *= alpha
 
-		v = minimums(maximums((dot(dot(inv(dot(u.T,u)),u.T),a)),eps),1/eps)
-		u = minimums(maximums((dot(dot(inv(dot(v,v.T)),v),a.T)),eps).T,1/eps)
+		# # for i in range(10):
+		# v = maximums(lstsq(dot(u.T,u)+gamma*conditioner,dot(u.T,a)+gamma*v),eps)
+		# # for i in range(10):
+		# u = maximums(lstsq(dot(v,v.T)+gamma*conditioner,dot(v,a.T)+gamma*u.T),eps).T
 
-		u /= alpha
-		v /= alpha
+		# debug(v=v)
+		# debug(u=u)
+		# debug(None)
+		# u /= alpha
+		# v /= alpha
 
 		i += 1
 
@@ -988,11 +1039,11 @@ def projective_descent(a,u,v,rank=None,**kwargs):
 	from jaxopt.projection import projection_non_negative as projection
 
 	def fun(u,v,a):
-		return add(sqr(a-dot(u,v)))
+		return norm(a-dot(u,v))
 	function = optimizer(fun=fun,projection=projection,**options)
 
 	def _fun(v,u,a):
-		return add(sqr(a-dot(u,v)))
+		return norm(a-dot(u,v))
 	_function = optimizer(fun=_fun,projection=projection,**options)
 
 	def func(x):
@@ -1052,7 +1103,7 @@ def multiplicative_robust_update(a,u,v,rank=None,**kwargs):
 		
 		u,v,a,i = x
 
-		z = 1/maximums(eps,sqrt(add(sqr(a-dot(u,v)),0)))
+		z = 1/maximums(eps,sqrt(norm(a-dot(u,v))))
 		
 		u *= (dot(a*z,transpose(v))/dot(u,dot(v*z,transpose(v))))
 		v *= (dot(transpose(u),a*z)/dot(dot(transpose(u),u),v*z))
@@ -1215,25 +1266,19 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 		elif init in ['nndsvd']:
 			init = nndsvd
 		elif init in ['nndsvda']:
-			init = nndsvda	
-		elif init in ['rsvd']:
-			init = rsvd
-		elif init in ['rsvda']:
-			init = rsvda					
+			init = nndsvda						
 		elif init in ['random']:		
-			init = rsvd
+			init = randd
 		elif u is not None and v is not None:
-			init = rsvd
+			init = initd
 		elif init is None:
-			init = rsvd
+			init = randd
 		else:
-			init = rsvd
-
-		a = real(a)
+			init = randd
 
 		u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
 
-		return a,u,v,s
+		return u,v,s
 	
 	def call(a,u=None,v=None,rank=None,**kwargs):
 
@@ -1245,7 +1290,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 		for update in updates:
 
-			update,iteration,eps,keywords = update.get('update'),update.get('iteration'),update.get('eps'),update.get('kwargs')
+			update,iteration,eps,keywords = update.get('update'),update.get('iteration'),update.get('eps'),update.get('kwargs',{})
 
 			if callable(update):
 				pass
@@ -1294,7 +1339,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 		u,v,s = nmfd(u,v,rank=rank)
 
-		return a,u,v,s
+		return u,v,s
    
 	def status(x,iteration=None,eps=None):
 		u,v,a,i = x
@@ -1309,8 +1354,15 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 	a /= constant    
 
-	a,u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
-	a,u,v,s = call(a,u=u,v=v,rank=rank,**kwargs)
+	u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
+
+	A = dot(u.T,u)
+	b = dot(u.T,a)
+	gamma = kwargs.get('gamma',0)*identity(A.shape[0])
+	print(norm(a-dot(u,v))/norm(a),condition(A))
+	exit()
+
+	# u,v,s = call(a,u=u,v=v,rank=rank,**kwargs)
 	
 	s *= constant
 
@@ -1506,7 +1558,7 @@ class Basis(object):
 
 	@classmethod
 	def identity(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		data = identity(D=D,dtype=dtype)
+		data = identity(D,dtype=dtype)
 		return data
 
 	@classmethod
@@ -1974,9 +2026,9 @@ def test_mps(*args,**kwargs):
 			def func(state=None,data=data,where=where,**kwargs):
 				where = [where] if not isinstance(where,iterables) else where
 				if isinstance(data,str):
-					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters')[data] if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
+					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
-					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters')[data[index]] if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
+					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
 				data = basis.contract(state,data,where=where,**kwargs)
 				return data
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
@@ -2018,9 +2070,9 @@ def test_mps(*args,**kwargs):
 			def func(state=None,data=data,where=where,**kwargs):
 
 				if isinstance(data,str):
-					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters')[data] if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
+					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
-					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters')[data[index]] if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
+					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
 				data = tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)})]*min(where),data,*[basis.identity(**{**kwargs,**dict(D=D)})]*(N-max(where)-1)])
 				return data
 			data = func(**kwargs)
@@ -2054,7 +2106,7 @@ def test_mps(*args,**kwargs):
 	M = N//2+1
 	L = N//2
 	K = D**N
-	parameters = pi/2
+	parameters = 0
 	noise = 0
 	seed = 123
 	dtype = 'complex'
@@ -2101,33 +2153,38 @@ def test_mps(*args,**kwargs):
 	if boolean(path):
 
 
-		state = {i:'state' for i in range(N)}
-		data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
+		state = {i:'state' 
+			for i in range(N)}
+		data = {index:(data,where) 
+			for index,(data,where) in enumerate((data,where) 
+			for i in [*range(0,N-1)] for where in [(i,i+1)] 
+			for data in ['identity'])}
 
 
 		kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'depolarize':noise},
+			parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
 			options=dict(
-				scheme='_nmf',
+				scheme='nmf',
 				init='nndsvd',
-				iteration=int(1e5),
+				iteration=int(100),
 				eps=1e-14,
 				alpha=7e-1,
+				gamma=100,
 				sigma=1e-12,
 				update=[
-					# {'update':'gd','iteration':int(1e6),'eps':1e-14],
-					# {'update':'cg','iteration':1,'eps':1e-14],
-					# {'update':'sd','iteration':int(1e6),'eps':1e-14],
-					# {'update':'qp','iteration':int(1),'eps':1e-8],
-					# {'update':'pd','iteration':int(1),'eps':1e-14],
-					# {'update':'gd','iteration':int(1e5),'eps':1e-14],					
-					# {'update':'ls','iteration':int(10),'eps':1e-14],					
-					# {'update':'mhu','iteration':int(1),'eps':1e-14],
-					# {'update':'gd','iteration':int(1e4),'eps':1e-14],					
-					# {'update':'cd','iteration':int(1e6),'eps':1e-14],
-					# {'update':'mu','iteration':int(1e2),'eps':1e-14],
-					{'update':'cd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'cg','iteration':1,'eps':1e-14},
+					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'qp','iteration':int(1),'eps':1e-8},
+					# {'update':'pd','iteration':int(1),'eps':1e-14},
+					# {'update':'gd','iteration':int(1e5),'eps':1e-14},					
+					{'update':'ls','iteration':int(1e5),'eps':1e-14},					
+					# {'update':'mhu','iteration':int(1),'eps':1e-14},
+					# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'mu','iteration':int(1e2),'eps':1e-14},
+					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
 					],
 			),
 			key=seeder(seed),
