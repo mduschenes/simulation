@@ -588,10 +588,10 @@ def allclose(a,b):
 
 def nndsvd(a,u,v,rank=None,**kwargs):
 
-	# u,s,v = svds(a)
-	# u,v,s = absolute(u),absolute(dotl(v,s)),1
+	u,s,v = svds(a)
+	u,v,s = absolute(u),absolute(dotl(v,s)),1
 
-	# return u,v,s
+	return u,v,s
 
 	if 0:
 		def true(u_plus,v_plus,s_plus,u_minus,v_minus,s_minus):
@@ -969,13 +969,14 @@ def conjugate_gradient(a,u,v,rank=None,**kwargs):
 		maxls=max(1,(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100)/10),
 		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
 		method='hestenes-stiefel',
+		linesearch_init='current',
+		increase_factor=1+1e-3,
+		max_stepsize=2e-1,
+		min_stepsize=1e-6,
 		)
 
-	print(options)
-	exit()
-
 	def fun(x,b,A):
-		return norm(dot(A,maximums(x,eps))-b)
+		return norm(dot(A,x)-b) + x.size - add(sign(x))
 
 	def init(u,v,a):
 		x = v
@@ -993,6 +994,12 @@ def conjugate_gradient(a,u,v,rank=None,**kwargs):
 	def func(x):
 		
 		u,v,a,i = x
+
+		# x,b,A = init(u,v,a)
+		# debug(f=fun(x,b,A))
+
+		# x = u,b,a,i
+		# return x
 
 		v = loop(*init(u,v,a))
 
@@ -2439,16 +2446,16 @@ def test_mps(*args,**kwargs):
 		data = {index:(data,where) 
 			for index,(data,where) in enumerate((data,where) 
 			for i in [*range(0,N-1)] for where in [(i,i+1)] 
-			for data in ['unitary'])}
+			for data in ['X'])}
 
 
 		kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'identity':parameters,'X':pi/2,'depolarize':noise},
+			parameters={'unitary':parameters,'identity':parameters,'X':pi/3,'depolarize':noise},
 			options=dict(
 				scheme='nmf',
-				init='nndsvda',
-				iteration=int(1),
+				init='nndsvd',
+				iteration=int(100),
 				eps=1e-10,
 				alpha=1,
 				beta=5e-1,
@@ -2459,7 +2466,7 @@ def test_mps(*args,**kwargs):
 				update=[
 					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-					{'update':'cg','iteration':int(1),'eps':1e-14},
+					{'update':'cg','iteration':int(100),'eps':1e-14},
 					# {'update':'cp','iteration':int(1e3),'eps':1e-10},
 					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'qp','iteration':int(1),'eps':1e-8},
