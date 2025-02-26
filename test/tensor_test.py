@@ -58,7 +58,7 @@ backend = 'jax'
 
 
 
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32,'complex','complex128',np.complex128]}})
 
 pi = np.pi
 e = np.exp(1)
@@ -192,6 +192,15 @@ def dump(obj,path,wr='w',ext='hdf5',**kwargs):
 						path.attrs[key] = obj[name]
 					except TypeError:
 						pass
+				elif isinstance(obj[name],iterables) and all(isinstance(data,iterables) for data in obj[name]):
+					try:
+						path[key] = obj[name]
+					except:
+						size = max(len(data) for data in obj[name])
+						try:
+							path[key] = type(obj[name])([type(data)([*data,*[nan]*(size-len(data))]) for data in obj[name]])
+						except:
+							path[key] = nparray(obj[name],dtype='S')						
 				else:
 					try:
 						path[key] = obj[name]
@@ -221,15 +230,49 @@ def plot(settings={},fig=None,ax=None):
 	matplotlib.use('pdf')
 	import matplotlib.pyplot as plt
 
-	import numpy as np
+	def children(obj,attr=None):
+		'''
+		Return object relative to to obj
+		Args:
+			obj (object): Object instance
+			attr (str): attribute
+		Returns:
+			instance (object): Object instance
+		'''
+
+		AXES = ['x','y','z']
+		CHILDREN = ['twin']
+
+		if attr is None:
+			instance = obj
+		elif attr in ['%s%s'%(children,axes) for children in CHILDREN for axes in AXES]:
+			instance = None
+			axes = attr[-1]
+			siblings = getattr(obj,'get_shared_%s_axes'%(axes))().get_siblings(obj)
+			for sibling in siblings:
+				if sibling.bbox.bounds == obj.bbox.bounds and sibling is not obj:
+					instance = sibling
+					break
+			if instance is None:
+				instance = getattr(obj,attr)()
+		else:
+			instance = obj
+
+		return instance
+
+
 
 	defaults = {'fig':{},'ax':{},'style':{}}
-	options = {'instance':['plot','errorbar'],'obj':{'ax':ax,'fig':fig},'data':['x','y','xerr','yerr'],'plot':["label","alpha","marker","markeredgecolor","markeredgewidth","markersize","linestyle","linewidth","elinewidth","capsize","color","ecolor"]}
+	options = {'instance':['plot','errorbar'],'obj':{'ax':ax,'fig':fig},'data':['x','y','xerr','yerr'],'plot':["label","alpha","marker","markeredgecolor","markeredgewidth","markersize","linestyle","linewidth","elinewidth","capsize","color","ecolor"],"null":['obj']}
 	for key in defaults:
 		if key not in settings:
 			settings[key] = {}
 		settings[key].update({attr: defaults[key][attr] for attr in defaults[key] if attr not in settings})
 
+	for key in settings:
+		for attr in settings[key]:
+			setting = settings[key][attr]
+			settings[key][attr] = [setting] if not isinstance(setting,list) else [*setting]
 
 	key = 'style'
 	mplstyle = settings[key].get('mplstyle','plot.mplstyle')
@@ -250,14 +293,19 @@ def plot(settings={},fig=None,ax=None):
 				if not attr in options['instance']:
 					continue
 				
-				args = tuple((settings[key][attr][option] for option in options['data'] if settings[key][attr].get(option) is not None))
-				kwargs = dict({option:settings[key][attr][option] for option in settings[key][attr] if option in options['plot']})
-				
-				obj = options['obj'][key]
-				for attr in attr.split('.'):
-					obj = getattr(obj,attr)				
-		
-				obj(*args,**kwargs)
+				for setting in settings[key][attr]:
+
+					if setting is None:
+						continue
+
+					obj = children(options['obj'][key],setting.get('obj'))
+					for attr in attr.split('.'):
+						obj = getattr(obj,attr)				
+							
+					args = tuple((setting[option] for option in options['data'] if setting.get(option) is not None))
+					kwargs = dict({option:setting[option] for option in setting if option in options['plot'] and option not in options['null']})
+					
+					obj(*args,**kwargs)
 
 		keys = ['ax','fig']
 		for key in keys:
@@ -267,14 +315,25 @@ def plot(settings={},fig=None,ax=None):
 				if attr in options['instance']:
 					continue
 				
-				args = tuple()
-				kwargs = dict(settings[key][attr])
-				
-				obj = options['obj'][key]				
-				for attr in attr.split('.'):
-					obj = getattr(obj,attr)
+				for setting in settings[key][attr]:
 
-				obj(*args,**kwargs)
+					if setting is None:
+						continue
+
+					obj = children(options['obj'][key],setting.get('obj'))
+					for attr in attr.split('.'):
+						obj = getattr(obj,attr)
+
+					args = list()
+					kwargs = dict({option:setting[option] for option in setting if option not in options['null']})
+
+					if attr is None:
+						pass
+					elif attr in ['legend']:
+						handles,labels = zip(*[data for ax in children(options['obj'][key],setting.get('obj')).get_figure().axes for data in zip(*getattr(ax,'get_legend_handles_labels')())])
+						args.extend([handles,labels])
+
+					obj(*args,**kwargs)
 
 	return fig,ax
 
@@ -311,6 +370,15 @@ def array(*args,**kwargs):
 
 def nparray(*args,**kwargs):
 	return onp.array(*args,**kwargs)
+
+def asscalar(a,*args,**kwargs):
+	try:
+		return a.item()
+	except (AttributeError,ValueError,TypeError):
+		try:
+			return onp.asscalar(a,*args,**kwargs)
+		except:
+			return a
 
 def ones(*args,**kwargs):
 	return np.ones(*args,**kwargs)
@@ -390,7 +458,7 @@ def svds(a,**kwargs):
 
 	return u,s,v
 
-def eig(a,compute_v=False,hermitian=False,**kwargs):
+def eig(a,compute_v=True,hermitian=False,**kwargs):
 	if compute_v:
 		if hermitian:
 			_eig = np.linalg.eigh
@@ -403,7 +471,7 @@ def eig(a,compute_v=False,hermitian=False,**kwargs):
 			_eig = np.linalg.eigvals
 	return _eig(a)
 
-def eigs(a,compute_v=False,hermitian=False,**kwargs):
+def eigs(a,compute_v=True,hermitian=False,**kwargs):
 	return eig(a,compute_v=compute_v,hermitian=hermitian,**kwargs)
 
 def lstsq(a,b):
@@ -588,10 +656,10 @@ def allclose(a,b):
 
 def nndsvd(a,u,v,rank=None,**kwargs):
 
-	u,s,v = svds(a)
-	u,v,s = absolute(u),absolute(dotl(v,s)),1
+	# u,s,v = svds(a)
+	# u,v,s = absolute(u),absolute(dotl(v,s)),ones(s.shape)
 
-	return u,v,s
+	# return u,v,s
 
 	if 0:
 		def true(u_plus,v_plus,s_plus,u_minus,v_minus,s_minus):
@@ -1191,7 +1259,6 @@ def least_squares(a,u,v,rank=None,**kwargs):
 	gamma = kwargs.get('gamma',1)
 	I = identity(rank)
 
-	@jit
 	def function(data):
 		x,A,b,i = data
 		x = solve_ch(A+gamma*I,b+gamma*x)
@@ -1613,7 +1680,7 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**keywords,**dict()})
 
 			loop = whileloop
-			func = jit(func)
+			func = func
 			options = dict(cond=(lambda x,iteration=iteration,eps=eps: (status(x,iteration=iteration,eps=eps))))
 
 			x = loop(func=func,x=x,**options)
@@ -1638,9 +1705,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 	a /= constant    
 
 	u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
-
-	# print(norm(a-dot(u,v))/norm(a),condition(dot(u.T,u)))
-	# exit()
 
 	u,v,s = call(a,u=u,v=v,rank=rank,**kwargs)
 	
@@ -2199,7 +2263,15 @@ class Basis(object):
 
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
-				print(where,(norm(a-dot(u,v))/norm(a)).real,dot(u,v).real.min(),dot(u,v).real.max(),u.shape,v.shape)
+				variables = kwargs.get('variables')
+				variables['u.condition'].append(condition(dot(u.T,u).real))
+				variables['v.condition'].append(condition(dot(v,v.T).real))
+				variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,compute_uv=False,full_matrices=False,hermitian=True)))
+				variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,compute_uv=False,full_matrices=False,hermitian=True)))
+				variables['uv.error'].append(sqrt(norm(a-dot(u,v))/norm(a)).real)
+
+				parse = lambda obj: asscalar(obj.real)
+				print(where,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
 
 				axes = [[0,1,2],[0,1,2]]
 				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[2],state.shape[-1]]]
@@ -2354,9 +2426,7 @@ def test_mps(*args,**kwargs):
 
 		def func(state,data,where=None,**kwargs):
 			
-			@jit
 			def func(state=None,data=data,where=where,**kwargs):
-
 				if isinstance(data,str):
 					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
@@ -2391,14 +2461,15 @@ def test_mps(*args,**kwargs):
 
 	N = 8
 	D = 2
-	M = N//2+1
+	M = N//2
 	L = N//2
 	K = D**N
 	parameters = pi/10
 	noise = 0
 	seed = 123
 	dtype = 'complex'
-	path = 'data/data.hdf5'
+	path = 'scratch/nmf/data/data.hdf5'
+	file = 'scratch/nmf/data/variables.hdf5'
 
 	# state = {i:'state' for i in range(N)}
 	# data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
@@ -2440,61 +2511,185 @@ def test_mps(*args,**kwargs):
 
 	if boolean(path):
 
+		if not os.path.exists(file):
 
-		state = {i:'state' 
-			for i in range(N)}
-		data = {index:(data,where) 
-			for index,(data,where) in enumerate((data,where) 
-			for i in [*range(0,N-1)] for where in [(i,i+1)] 
-			for data in ['X'])}
+			state = {i:'state' 
+				for i in range(N)}
+			data = {index:(data,where) 
+				for index,(data,where) in enumerate((data,where) 
+				for i in [*range(0,N-1)] for where in [(i,i+1)] 
+				for data in ['X'])}
 
 
-		kwargs = dict(
-			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'identity':parameters,'X':0,'depolarize':noise},
-			options=dict(
-				scheme='nmf',
-				init='nndsvd',
-				iteration=int(1e4),
-				eps=1e-10,
-				alpha=1,
-				beta=5e-1,
-				gamma=1e-10,
-				delta=1,
-				iota=6e-1,
-				sigma=1e-4,
-				update=[
-					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
-					# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-					# {'update':'cg','iteration':int(100),'eps':1e-14},
-					{'update':'cp','iteration':int(1e3),'eps':1e-10},
-					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
-					# {'update':'qp','iteration':int(1),'eps':1e-8},
-					# {'update':'pd','iteration':int(1),'eps':1e-14},
-					# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
-					# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
-					# {'update':'mhu','iteration':int(1),'eps':1e-14},
-					# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
-					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-					# {'update':'mu','iteration':int(1e3),'eps':1e-14},
-					# {'update':'mru','iteration':int(1e4),'eps':1e-14},
-					# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
-					# {'update':'miu','iteration':int(1e4),'eps':1e-14},
-					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-					],
-			),
-			key=seeder(seed),
-			seed=seed,
-			dtype=dtype,		
-		)
+			kwargs = dict(
+				D=D,N=N,M=M,
+				parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+				variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
+				options=dict(
+					scheme='nmf',
+					init='nndsvd',
+					iteration=int(1e1),
+					eps=1e-10,
+					alpha=1,
+					beta=5e-1,
+					gamma=1e-10,
+					delta=1,
+					iota=6e-1,
+					sigma=1e-4,
+					update=[
+						# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+						# {'update':'cg','iteration':int(1e5),'eps':1e-14},
+						# {'update':'cg','iteration':int(100),'eps':1e-14},
+						{'update':'cp','iteration':int(1e1),'eps':1e-10},
+						# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+						# {'update':'qp','iteration':int(1),'eps':1e-8},
+						# {'update':'pd','iteration':int(1),'eps':1e-14},
+						# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
+						# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
+						# {'update':'mhu','iteration':int(1),'eps':1e-14},
+						# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+						# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+						# {'update':'mu','iteration':int(1e3),'eps':1e-14},
+						# {'update':'mru','iteration':int(1e4),'eps':1e-14},
+						# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
+						# {'update':'miu','iteration':int(1e4),'eps':1e-14},
+						# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+						],
+				),
+				key=seeder(seed),
+				seed=seed,
+				dtype=dtype,		
+			)
 
-		basis = Basis()
+			basis = Basis()
 
-		state,data = initialize(state=state,data=data,**kwargs)
+			state,data = initialize(state=state,data=data,**kwargs)
 
-		_state = copy(state)
+			_state = copy(state)
 
-		state = func(state,data,**kwargs)
+			state = func(state,data,**kwargs)
+
+			
+			data = kwargs.get('variables',{})
+
+			dump(data,file)
+		
+		else:
+		
+			data = load(file)
+
+			for variable in data:
+				print(variable)
+				print(data[variable])
+				print()
+
+		# Data
+
+		fig,ax = None,None
+		settings = [
+			{
+				"fig": {
+					"set_size_inches": {
+						"w": 24,
+						"h": 16
+					},
+					"subplots_adjust": {},
+					"tight_layout": {},
+					"savefig": {
+						"fname": 'scratch/nmf/data/variables.pdf',
+						"bbox_inches": "tight",
+						"pad_inches": 0.2
+					}
+				},
+				"ax":{
+					"errorbar":{
+						"x":[*arange(len(data[y]))] if x is None else x,
+						'y':[*data[y]],
+						"label":{'u.condition':'$A=U^TU$','v.condition':'$A=VV^T$','uv.error':"$M \\approx UV$"}.get(y),
+						"alpha":0.8,
+						"marker":{'u.condition':'o','v.condition':'o','uv.error':'^'}.get(y),
+						"markersize":12,
+						"linestyle":{'u.condition':'--','v.condition':'--','uv.error':'-'}.get(y),
+						"linewidth": 5,
+						"elinewidth": 2,
+						"capsize": 3,
+						"color":{'u.condition':'black','v.condition':'gray','uv.error':'mediumslateblue'}.get(y),
+						"obj":{'u.condition':None,'v.condition':None,'uv.error':'twinx'}.get(y),
+						},
+					"set_title": {
+						'uv.error':
+								{
+								"label": f"$\\textrm{{Nearest-Neighbour 1D XX Gates with}} ~ \\theta = \\pi/10^{{%s}} ~,~ N = {N} ~\\textrm{{qubits}} ~,~ L = N/{round(N/M)} ~\\textrm{{layers}}$"%(str(round(log10(pi/parameters))) if round(log10(pi/parameters))>1 else ''),
+								"pad":20,
+								}
+						}.get(y),
+					"set_ylabel": {
+						'v.condition':
+							{
+							"ylabel": "$\\textrm{Condition Number} ~~ \\kappa(A)$",
+							"obj": None
+							},
+						'uv.error':
+							{
+							"ylabel": "$\\textrm{Error} ~~ \\norm{M - UV}_{F}/\\norm{M}_{F}$",
+							"obj": "twinx"
+							}
+						}.get(y),
+					"set_xlabel": {
+						"xlabel": "$\\textrm{Gate Index} ~~ i \\in [L(N-1)]$"
+					},
+					"set_xscale": {"value": "linear"},
+					"set_xlim":{"xmin":-1,"xmax":M*(N-1)+1},
+					"set_xticks":{"ticks":[*range(0,M*(N-1)+M,N-1)]},					
+					"set_xticklabels":{"labels":[f"${i}N$" if i>1 else f"$N$" if i==1 else f"${i}$" for i in range(0,M+1)]},					
+					"set_yscale":{
+						"u.condition":{"value": "log","base": 10,"obj":None},
+						"v.condition":{"value": "log","base": 10,"obj":None},
+						"uv.error":{"value": "log","base": 10,"obj":"twinx"},
+					}.get(y),						
+					"set_ylim":{"ymin":1e-1,"ymax":1e25},
+					"set_yticks":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20,1e24]},
+					"set_ylim":{"ymin":1e-1,"ymax":1e41},
+					"set_yticks":{"ticks":[1e0,1e5,1e10,1e15,1e20,1e25,1e30,1e35,1e40]},	
+					"set_ylim":{
+						"u.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
+						"v.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
+						"uv.error":{"ymin":5.5e-6,"ymax":1.75e0,"obj":"twinx"},
+					}.get(y),
+					"set_yticks":{
+						"u.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
+						"v.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
+						"uv.error":{"ticks":[1e-5,1e-4,1e-3,1e-2,1e-1,1e0],"obj":"twinx"},
+					}.get(y),					
+					"set_aspect": {
+						"aspect": "auto"
+					},
+					"grid": {
+						"visible": True,
+						"which": "major",
+						"axis": "both"
+					},
+					"legend":{
+						"title":"$\\textrm{Matrix}$",
+						"title_fontsize": 36,
+						"fontsize": 36,
+						"markerscale": 1.5,
+						"handlelength": 3,
+						"framealpha": 0.8,				
+						"ncol":3
+						}
+				},
+				"style":{
+					"mplstyle": "scratch/nmf/data/plot.mplstyle"
+				}
+			}
+			for index,(x,y) in enumerate(((None,'u.condition'),(None,'v.condition'),(None,'uv.error')))
+			]
+		for index,settings in enumerate(settings):
+			fig,ax = plot(settings=settings,fig=fig,ax=ax)
+
+
+
 
 		exit()
 
@@ -2561,7 +2756,7 @@ def test_mps(*args,**kwargs):
 				"subplots_adjust": {},
 				"tight_layout": {},
 				"savefig": {
-					"fname": 'data/plot.pdf',
+					"fname": "scratch/nmf/data/plot.pdf",
 					"bbox_inches": "tight",
 					"pad_inches": 0.2
 				}
@@ -2569,8 +2764,8 @@ def test_mps(*args,**kwargs):
 			"ax":{
 				"errorbar":{
 					"x":[*arange(len(data[y]))] if x is None else x,
-					'y':[*data[y]],
-					"label":{'spectrum.nmf':'$\\textrm{NMF}$','spectrum.svd':'$\\textrm{SVD}$'}.get(y),
+					"y":[*data[y]],
+					"label":{"spectrum.nmf":"$\\textrm{NMF}$","spectrum.svd":"$\\textrm{SVD}$"}.get(y),
 					"alpha":0.8,
 					"marker":"o",
 					"markersize":8,
@@ -2578,7 +2773,7 @@ def test_mps(*args,**kwargs):
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
-					"color":{'spectrum.nmf':'black','spectrum.svd':'gray'}.get(y),
+					"color":{"spectrum.nmf":"black","spectrum.svd":"gray"}.get(y),
 					},
 				"set_title": {
 					"label": f"$\\textrm{{Haar + Depolarize}} \\quad N = {N} ~,~ M = 2N ~,~ L = N/2 ~,~ D = {D} ~,~ \\chi = D^{{N}} ~,~ \\gamma = 10^{{{int(log10(noise))}}}$",
@@ -2616,10 +2811,10 @@ def test_mps(*args,**kwargs):
 				},
 			},
 			"style":{
-				"mplstyle": "data/plot.mplstyle"
+				"mplstyle": "scratch/nmf/data/plot.mplstyle"
 			}
 		}
-		for index,(x,y) in enumerate(((None,'spectrum.nmf'),(None,'spectrum.svd')))
+		for index,(x,y) in enumerate(((None,"spectrum.nmf"),(None,"spectrum.svd")))
 		]
 	for index,settings in enumerate(settings):
 		fig,ax = plot(settings=settings,fig=fig,ax=ax)
@@ -2712,7 +2907,7 @@ def test_nmf(*args,**kwargs):
 
 if __name__ == "__main__":
 
-	args = tuple()
+	args = list()
 	kwargs = dict()
 
 	# test_shuffle(*args,**kwargs)
