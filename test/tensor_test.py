@@ -2451,23 +2451,23 @@ def test_mps(*args,**kwargs):
 
 		kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'identity':parameters,'X':pi/3,'depolarize':noise},
+			parameters={'unitary':parameters,'identity':parameters,'X':0,'depolarize':noise},
 			options=dict(
 				scheme='nmf',
 				init='nndsvd',
-				iteration=int(100),
+				iteration=int(1e4),
 				eps=1e-10,
 				alpha=1,
 				beta=5e-1,
-				gamma=1e-3,
+				gamma=1e-10,
 				delta=1,
 				iota=6e-1,
 				sigma=1e-4,
 				update=[
 					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-					{'update':'cg','iteration':int(100),'eps':1e-14},
-					# {'update':'cp','iteration':int(1e3),'eps':1e-10},
+					# {'update':'cg','iteration':int(100),'eps':1e-14},
+					{'update':'cp','iteration':int(1e3),'eps':1e-10},
 					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'qp','iteration':int(1),'eps':1e-8},
 					# {'update':'pd','iteration':int(1),'eps':1e-14},
