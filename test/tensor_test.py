@@ -31,6 +31,16 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 warnings.showwarning = warn_with_traceback
 
 import jax
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'',
+	'jax_platform_name':'',
+	'jax_enable_x64': True,
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
 from jax import jit,vmap
 import jax.numpy as np
 import jax.scipy as sp
@@ -45,6 +55,8 @@ import time as timing
 from string import ascii_lowercase as characters
 
 backend = 'jax'
+
+
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
@@ -576,10 +588,10 @@ def allclose(a,b):
 
 def nndsvd(a,u,v,rank=None,**kwargs):
 
-	u,s,v = svds(a)
-	u,v,s = absolute(u),absolute(dotl(v,s)),1
+	# u,s,v = svds(a)
+	# u,v,s = absolute(u),absolute(dotl(v,s)),1
 
-	return u,v,s
+	# return u,v,s
 
 	if 0:
 		def true(u_plus,v_plus,s_plus,u_minus,v_minus,s_minus):
@@ -855,6 +867,7 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 	beta = kwargs.get('beta',1)
 	gamma = kwargs.get('gamma',1)*identity(min(a.shape))
 	delta = kwargs.get('delta',1)
+	iota = kwargs.get('iota',1)	
 	sigma = kwargs.get('sigma',1)
 
 	def function(data):
@@ -885,7 +898,7 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 
 	def line(data):
 		alpha,*data,i = data
-		alpha *= beta
+		alpha *= iota
 		i += 1
 		data = alpha,*data,i
 		return data
@@ -940,6 +953,69 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 		return x
 
 	return func
+
+
+def conjugate_gradient(a,u,v,rank=None,**kwargs):
+
+	from jaxopt import NonlinearCG as optimizer
+
+	iteration = kwargs.get('iteration',100)
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+	gamma = kwargs.get('gamma',1)*identity(min(a.shape))
+
+	options = dict(
+		maxiter=(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100),
+		maxls=max(1,(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100)/10),
+		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
+		method='hestenes-stiefel',
+		)
+
+	print(options)
+	exit()
+
+	def fun(x,b,A):
+		return norm(dot(A,maximums(x,eps))-b)
+
+	def init(u,v,a):
+		x = v
+		A = dot(u.T,u) + gamma
+		b = dot(u.T,a)
+		data = x,b,A
+		return data
+
+	def loop(*data):
+		data = optimizer(fun=fun,**options).run(*data).params
+		return data
+
+	loop = vmap(loop,in_axes=(1,1,None),out_axes=1)
+
+	def func(x):
+		
+		u,v,a,i = x
+
+		v = loop(*init(u,v,a))
+
+		u = loop(*init(v.T,u.T,a.T)).T
+
+		# # v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
+
+		# # u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),0).T
+
+		# z = dot(u,v)
+		# alpha = einsum('ij,ij',a,z)/einsum('ij,ij',z,z)
+
+		# v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		# u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+
+		i += 1
+
+		x = u,v,a,i
+
+		return x
+
+	return func
+
 
 def step_descent(a,u,v,rank=None,**kwargs):
 
@@ -1175,33 +1251,30 @@ def least_squares(a,u,v,rank=None,**kwargs):
 
 def projective_descent(a,u,v,rank=None,**kwargs):
 
+	from jaxopt import ProjectedGradient as optimizer
+	from jaxopt.projection import projection_non_negative as projection
+
 	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 
 	options = dict(
+		projection=projection,
 		maxiter=(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100),
 		maxls=(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100)/10,
 		tol=kwargs.get('tol',kwargs.get('eps')) if isinstance(kwargs.get('tol',kwargs.get('eps')),float) else kwargs.get('solver',kwargs.get('update'))[0][2] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else epsilon(a.dtype),
 		)
 
-	from jaxopt import ProjectedGradient as optimizer
-	from jaxopt.projection import projection_non_negative as projection
-
-	def fun(u,v,a):
+	def fun(v,u,a):
 		return norm(a-dot(u,v))
-	function = optimizer(fun=fun,projection=projection,**options)
-
-	def _fun(v,u,a):
-		return norm(a-dot(u,v))
-	_function = optimizer(fun=_fun,projection=projection,**options)
+	function = optimizer(fun=fun,**options)
 
 	def func(x):
 		
 		u,v,a,i = x
 
-		u = function.run(u,v=v,a=a).params
-		v = _function.run(v,u=u,a=a).params
+		v = function.run(v,u,a).params
+		u = function.run(u.T,v.T,a.T).params.T
 
 		# # v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),0)
 
@@ -1496,8 +1569,10 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 				update = gradient_descent
 			elif update in ['gd','gradient_descent']:
 				update = gradient_descent
-			elif update in ['cg','conjugate_descent']:
-				update = conjugate_descent				
+			# elif update in ['cg','conjugate_descent']:
+			# 	update = conjugate_descent				
+			elif update in ['cg','conjugate_gradient']:
+				update = conjugate_gradient								
 			elif update in ['pd','projective_descent']:
 				update = projective_descent	
 			elif update in ['cp','conjugate_projection']:
@@ -1529,7 +1604,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			i = 0
 			x = (u,v,a,i)
 			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**keywords,**dict()})
-
 
 			loop = whileloop
 			func = jit(func)
@@ -2313,7 +2387,7 @@ def test_mps(*args,**kwargs):
 	M = N//2+1
 	L = N//2
 	K = D**N
-	parameters = 0
+	parameters = pi/10
 	noise = 0
 	seed = 123
 	dtype = 'complex'
@@ -2370,21 +2444,23 @@ def test_mps(*args,**kwargs):
 
 		kwargs = dict(
 			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+			parameters={'unitary':parameters,'identity':parameters,'X':pi/2,'depolarize':noise},
 			options=dict(
 				scheme='nmf',
-				init='nndsvd',
-				iteration=int(1e4),
-				eps=1e-14,
+				init='nndsvda',
+				iteration=int(1),
+				eps=1e-10,
 				alpha=1,
 				beta=5e-1,
-				gamma=1e-10,
+				gamma=1e-3,
 				delta=1,
+				iota=6e-1,
 				sigma=1e-4,
 				update=[
 					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-					{'update':'cp','iteration':int(1e5),'eps':1e-14},
+					{'update':'cg','iteration':int(1),'eps':1e-14},
+					# {'update':'cp','iteration':int(1e3),'eps':1e-10},
 					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 					# {'update':'qp','iteration':int(1),'eps':1e-8},
 					# {'update':'pd','iteration':int(1),'eps':1e-14},
