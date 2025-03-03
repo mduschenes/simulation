@@ -395,14 +395,14 @@ def eye(*args,**kwargs):
 def identity(*args,**kwargs):
 	return np.eye(*args,**kwargs)
 
-def rand(*args,**kwargs):
-	return rng.uniform(**kwargs)
+def rand(key,shape=(),dtype=None,minval=0,maxval=1,**kwargs):
+	return rng.uniform(key,shape=shape,dtype=dtype,minval=minval,maxval=maxval)
 
-def randint(*args,**kwargs):
-	return rng.randint(**kwargs)
+def randint(key,shape=(),dtype=None,minval=0,maxval=1,**kwargs):
+	return rng.randint(key,shape=shape,dtype=dtype,minval=minval,maxval=maxval)
 
-def randn(*args,**kwargs):
-	return rng.normal(**kwargs)
+def randn(key,shape=(),dtype=None,**kwargs):
+	return rng.normal(key,shape=shape,dtype=dtype)
 
 def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 
@@ -478,6 +478,9 @@ def lstsq(a,b):
 	x, resid, rank, s = np.linalg.lstsq(a,b)
 	return x
 
+def solve(a,b):
+	return sp.linalg.solve(a,b)
+
 def solve_ch(a,b):
 	return sp.linalg.cho_solve(sp.linalg.cho_factor(a),b)
 
@@ -487,7 +490,7 @@ def solve_lu(a,b):
 def inv(a):
 	return np.linalg.inv(a)
 
-def condition(a):
+def condition_number(a):
 	return np.linalg.cond(a)
 
 def trace(a,**kwargs):
@@ -897,7 +900,7 @@ def conjugate_descent(a,u,v,rank=None,**kwargs):
 		b = dot(u.T,a)
 		r = dot(A,x) - b
 		p = -r
-		i = zeros(x.shape[-1])
+		i = zeros(shape=x.shape[-1],dtype=int)
 		data = x,r,p,b,A,i
 		return data
 
@@ -933,10 +936,11 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
 	beta = kwargs.get('beta',1)
-	gamma = kwargs.get('gamma',1)*identity(min(a.shape))
+	gamma = kwargs.get('gamma',1)
 	delta = kwargs.get('delta',1)
 	iota = kwargs.get('iota',1)	
 	sigma = kwargs.get('sigma',1)
+	I = identity(rank)
 
 	def function(data):
 		x,g,r,p,b,A,i = data
@@ -988,12 +992,12 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 
 	def init(u,v,a):
 		x = v
-		A = dot(u.T,u) + gamma
+		A = dot(u.T,u) + gamma*I
 		b = dot(u.T,a)
 		g = f(x,b,A)
 		r = g-g
 		p = -g
-		i = zeros(x.shape[-1])
+		i = zeros(shape=x.shape[-1],dtype=int)
 		data = x,g,r,p,b,A,i
 		return data
 
@@ -1023,6 +1027,123 @@ def conjugate_projection(a,u,v,rank=None,**kwargs):
 	return func
 
 
+def precondition_conjugate(a,u,v,rank=None,**kwargs):
+
+	iteration = kwargs.get('iteration',100)	
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+	beta = kwargs.get('beta',1)
+	gamma = kwargs.get('gamma',1)
+	delta = kwargs.get('delta',1)
+	iota = kwargs.get('iota',1)
+	sigma = kwargs.get('sigma',1)
+	l = kwargs.get('l',rank)
+	I = identity(rank)
+
+	def function(data):
+		x,g,r,p,b,A,i = data
+
+		p = -g + (dot(g,r)*p - dot(g,p)*(r))/maximums(maximums(maximums(1*delta*norm(p)*norm(r),dot(p,r)),norm(g-r)),eps)
+
+		alpha = search((x,p,b,A))
+		
+		y = x + alpha*p
+		s = f(y,b,A)
+		
+		beta = dot(s,y-x)
+
+		x = maximums(x+beta*s,eps)
+
+		g,r = f(x,b,A),g
+		r = g-r
+
+		i += 1
+		
+		data = x,g,r,p,b,A,i
+		# debug(f=norm(f(x,b,A)),x=norm(x),p=norm(p),r=norm(r),alpha=alpha)
+		return data
+
+	def f(x,b,A):
+		return dot(A,x) - b
+
+	def line(data):
+		alpha,*data,i = data
+		alpha *= iota
+		i += 1
+		data = alpha,*data,i
+		return data
+
+	def condition(data):
+		alpha,x,p,b,A,i = data
+		return (i < iteration) + (-dot(f(x+alpha*p,b,A),p) < sigma*alpha*norm(p))
+
+	def search(data):
+		i = 0
+		data = alpha,*data,i
+		data = whileloop(func=line,x=data,cond=condition)
+		parameters,*data = data
+		return parameters
+
+	def cond(data):
+		x,*data,b,A,i = data
+		return ((i<=1) + (i<iteration) * (norm(f(x,b,A)) > eps))
+
+	def init(u,v,a):
+		x = v
+		A = dot(u.T,u)
+		b = dot(u.T,a)
+
+		P = randn(**{**kwargs,**dict(shape=A.shape,dtype=A.dtype)})
+		Q = dot(P,A)
+		P = dot(Q,solve(dot(P.T,Q),Q.T))
+		S,U = eig(P,compute_v=True,hermitian=True)
+		P = (S[-l]+gamma)*dot((U/(S+gamma*I)),U.T) + (I - dot(U,U.T))
+
+
+		debug(k=(condition_number(A),condition_number(dot(P,A))))
+
+
+		A = dot(P,A)
+		b = dot(P,A)
+
+		g = f(x,b,A)
+		r = g-g
+		p = -g
+		i = zeros(shape=x.shape[-1],dtype=int)
+		data = x,g,r,p,b,A,i
+		return data
+
+	def loop(*data):
+		func = function
+		options = dict(cond=cond)
+		data = whileloop(func=func,x=data,**options)
+		x,*data = data
+		return x
+
+	loop = vmap(loop,in_axes=(1,1,1,1,1,None,0),out_axes=1)
+
+	def func(x):
+		
+		u,v,a,i = x
+
+		x,g,r,p,b,A,j = init(u,v,a)
+
+		x = u,v,a,i
+		return x
+
+		v = loop(*init(u,v,a))
+
+		u = loop(*init(v.T,u.T,a.T)).T
+
+		i += 1
+
+		x = u,v,a,i
+
+		return x
+
+	return func
+
+
 def conjugate_gradient(a,u,v,rank=None,**kwargs):
 
 	from jaxopt import NonlinearCG as optimizer
@@ -1030,7 +1151,8 @@ def conjugate_gradient(a,u,v,rank=None,**kwargs):
 	iteration = kwargs.get('iteration',100)
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
-	gamma = kwargs.get('gamma',1)*identity(min(a.shape))
+	gamma = kwargs.get('gamma',1)
+	I = identity(rank)
 
 	options = dict(
 		maxiter=(kwargs.get('maxiter',kwargs.get('iteration')) if isinstance(kwargs.get('maxiter',kwargs.get('iteration')),int) else kwargs.get('solver',kwargs.get('update'))[0][1] if isinstance(kwargs.get('solver',kwargs.get('update')),iterables) else 100),
@@ -1048,7 +1170,7 @@ def conjugate_gradient(a,u,v,rank=None,**kwargs):
 
 	def init(u,v,a):
 		x = v
-		A = dot(u.T,u) + gamma
+		A = dot(u.T,u) + gamma*I
 		b = dot(u.T,a)
 		data = x,b,A
 		return data
@@ -1650,7 +1772,9 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			elif update in ['pd','projective_descent']:
 				update = projective_descent	
 			elif update in ['cp','conjugate_projection']:
-				update = conjugate_projection					
+				update = conjugate_projection	
+			elif update in ['pc','precondition_conjugate']:
+				update = precondition_conjugate									
 			elif update in ['sd','step_descent']:
 				update = step_descent	
 			elif update in ['ls','least_squares']:
@@ -2264,8 +2388,8 @@ class Basis(object):
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
 				variables = kwargs.get('variables')
-				variables['u.condition'].append(condition(dot(u.T,u).real))
-				variables['v.condition'].append(condition(dot(v,v.T).real))
+				variables['u.condition'].append(condition_number(dot(u.T,u).real))
+				variables['v.condition'].append(condition_number(dot(v,v.T).real))
 				variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,compute_uv=False,full_matrices=False,hermitian=True)))
 				variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,compute_uv=False,full_matrices=False,hermitian=True)))
 				variables['uv.error'].append(sqrt(norm(a-dot(u,v))/norm(a)).real)
@@ -2511,7 +2635,7 @@ def test_mps(*args,**kwargs):
 
 	if boolean(path):
 
-		if not os.path.exists(file):
+		if boolean(file):
 
 			state = {i:'state' 
 				for i in range(N)}
@@ -2528,7 +2652,7 @@ def test_mps(*args,**kwargs):
 				options=dict(
 					scheme='nmf',
 					init='nndsvd',
-					iteration=int(1e1),
+					iteration=int(1e3),
 					eps=1e-10,
 					alpha=1,
 					beta=5e-1,
@@ -2540,7 +2664,8 @@ def test_mps(*args,**kwargs):
 						# {'update':'gd','iteration':int(1e6),'eps':1e-14},
 						# {'update':'cg','iteration':int(1e5),'eps':1e-14},
 						# {'update':'cg','iteration':int(100),'eps':1e-14},
-						{'update':'cp','iteration':int(1e1),'eps':1e-10},
+						# {'update':'cp','iteration':int(1e1),'eps':1e-10},
+						{'update':'pc','iteration':int(1e3),'eps':1e-10},
 						# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 						# {'update':'qp','iteration':int(1),'eps':1e-8},
 						# {'update':'pd','iteration':int(1),'eps':1e-14},
@@ -2776,6 +2901,7 @@ def test_mps(*args,**kwargs):
 					"color":{"spectrum.nmf":"black","spectrum.svd":"gray"}.get(y),
 					},
 				"set_title": {
+					"label": f"$\\textrm{{Haar + Depolarize}} \\quad N = {N} ~,~ M = 2N ~,~ L = N/2 ~,~ D = {D} ~,~ \\chi = D^{{N}} ~,~ \\gamma = 10^{{{int(log10(noise))}}}$",
 					"label": f"$\\textrm{{Haar + Depolarize}} \\quad N = {N} ~,~ M = 2N ~,~ L = N/2 ~,~ D = {D} ~,~ \\chi = D^{{N}} ~,~ \\gamma = 10^{{{int(log10(noise))}}}$",
 					"pad":20,
 					},
