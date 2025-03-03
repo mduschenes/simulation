@@ -274,10 +274,18 @@ if backend in ['jax','jax.autograd']:
 	separ = '_'
 
 
-	def disp(*args,**kwargs):
-		with jax.disable_jit():
-			print(*args,**kwargs)
+	def debug(obj=None,**options):
+		if obj is None and options:
+			obj,options = ' '.join([f'{option} = {{{option}}}' for option in options]),options
+		elif obj is None:
+			obj,options = '',options		
+		elif not isinstance(obj,str):
+			obj,options = '{obj}',{**dict(obj=obj),**options}
+		jax.debug.print(obj,**options)
 		return
+		# with jax.disable_jit():
+		# 	print(*args,**kwargs)
+		# return
 
 elif backend in ['autograd']:
 
@@ -304,7 +312,7 @@ elif backend in ['autograd']:
 	delim = '.'
 	separ = '_'	
 
-	def disp(*args,**kwargs):
+	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
 
@@ -334,7 +342,7 @@ elif backend in ['numpy']:
 	delim = '.'
 	separ = '_'	
 
-	def disp(*args,**kwargs):
+	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
 

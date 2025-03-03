@@ -474,23 +474,65 @@ def eig(a,compute_v=True,hermitian=False,**kwargs):
 def eigs(a,compute_v=True,hermitian=False,**kwargs):
 	return eig(a,compute_v=compute_v,hermitian=hermitian,**kwargs)
 
-def lstsq(a,b):
+def chol(a,lower=False,**kwargs):
+	return sp.linalg.cholesky(a,lower=lower)
+
+def lu(a,**kwargs):
+	return sp.linalg.lu(a)
+
+def nystrom(a,z):
+	# method = 'cholesky'
+	# x = dot(a,z)
+	# t = norm(x)
+	# t = 0
+	# x + t*z
+	# x = solve(dot(z.T,x),x.T,method=method,lower=True)
+	# u,s,v = svd(x)
+	# s = maximums(sqr(s)-t,0)
+
+	x = dot(a,z)
+	x = dot(x,dot(inv(dot(z.T,x)),x.T))
+	s,u = eig(x,hermitian=True)
+
+	# x = dot(a,z)
+	# b = dot(u*s,u.T)
+	# c = dot(x,dot(inv(dot(z.T,x)),x.T))
+	# print(b)
+	# print(c)
+	return u,s
+
+def inv(a,**kwargs):
+	return np.linalg.inv(a)
+
+def lstsq(a,b,**kwargs):
 	x, resid, rank, s = np.linalg.lstsq(a,b)
 	return x
 
-def solve(a,b):
+def solve(a,b,method=None,**kwargs):
+	if method is None:
+		return solve_solve(a,b,**kwargs)
+	elif method in ['triangular']:
+		return solve_triangular(a,b,**kwargs)
+	elif method in ['cholesky']:
+		return solve_chol(a,b,**kwargs)	
+	elif method in ['lu']:
+		return solve_lu(a,b,**kwargs)				
+	else:
+		return solve_solve(a,b,**kwargs)		
+
+def solve_solve(a,b,**kwargs):
 	return sp.linalg.solve(a,b)
 
-def solve_ch(a,b):
-	return sp.linalg.cho_solve(sp.linalg.cho_factor(a),b)
+def solve_triangular(a,b,lower=False,**kwargs):
+	return sp.linalg.solve_triangular(a,b,lower=lower)
 
-def solve_lu(a,b):
-	return sp.linalg.lu_solve(sp.linalg.lu_factor(a),b)
+def solve_chol(a,b,lower=False,**kwargs):
+	return sp.linalg.cho_solve(sp.linalg.cho_factor(a,lower=lower),b)
 
-def inv(a):
-	return np.linalg.inv(a)
+def solve_lu(a,b,**kwargs):
+	return sp.linalg.lu_solve(lu(a),b)
 
-def condition_number(a):
+def condition_number(a,**kwargs):
 	return np.linalg.cond(a)
 
 def trace(a,**kwargs):
@@ -556,7 +598,6 @@ def tensorprod(a):
 		out = kron(out,a[i])
 	return out
 
-
 def symbols(index):
 	return opt_einsum.get_symbol(index)
 	# return characters[index]
@@ -567,6 +608,12 @@ def einsum(subscripts,*operands,backend=backend):
 
 def norm(a):
 	return add(sqr(a))
+
+def sqrtm(a):
+	return sp.linalg.sqrtm(a)
+
+def logm(a):
+	return sp.linalg.logm(a)
 
 def sqrt(a):
 	return np.sqrt(a)
@@ -657,7 +704,7 @@ def epsilon(dtype=float,eps=None):
 def allclose(a,b):
 	return np.allclose(a,b)
 
-def nndsvd(a,u,v,rank=None,**kwargs):
+def nndsvd(a,u=None,v=None,rank=None,**kwargs):
 
 	# u,s,v = svds(a)
 	# u,v,s = absolute(u),absolute(dotl(v,s)),ones(s.shape)
@@ -751,7 +798,7 @@ def nndsvd(a,u,v,rank=None,**kwargs):
 
 	return u,v,s
 
-def nndsvda(a,u,v,rank=None,**kwargs):
+def nndsvda(a,u=None,v=None,rank=None,**kwargs):
 	u,v,s = nndsvd(a,u=u,v=v,rank=rank) 
 	
 	x = maximums(mean(a),epsilon(a.dtype))
@@ -759,7 +806,7 @@ def nndsvda(a,u,v,rank=None,**kwargs):
 
 	return u,v,s
 
-def randd(a,u,v,rank=None,**kwargs):
+def randd(a,u=None,v=None,rank=None,**kwargs):
 	n,m = a.shape
 	k = min(min(n,m),rank)
 	dtype = a.dtype
@@ -771,7 +818,7 @@ def randd(a,u,v,rank=None,**kwargs):
 		)
 	return u,v,s
 
-def initd(a,u,v,rank=None,**kwargs):
+def initd(a,u=None,v=None,rank=None,**kwargs):
 	u,v,s = real(u),real(v),ones(rank)
 	return u,v,s
 
@@ -1093,11 +1140,14 @@ def precondition_conjugate(a,u,v,rank=None,**kwargs):
 		A = dot(u.T,u)
 		b = dot(u.T,a)
 
-		P = randn(**{**kwargs,**dict(shape=A.shape,dtype=A.dtype)})
-		Q = dot(P,A)
-		P = dot(Q,solve(dot(P.T,Q),Q.T))
+		P = A
 		S,U = eig(P,compute_v=True,hermitian=True)
-		P = (S[-l]+gamma)*dot((U/(S+gamma*I)),U.T) + (I - dot(U,U.T))
+		P = dot(U[:,:-l]*S[:-l],U[:,:-l].T)
+		# P = randn(**{**kwargs,**dict(shape=A.shape,dtype=A.dtype)})
+		# Q = dot(P,A)
+		# P = dot(Q,solve(dot(P.T,Q),Q.T))
+		# S,U = eig(P,compute_v=True,hermitian=True)
+		# P = (S[-l]+gamma)*dot((U/(S+gamma*I)),U.T) + (I - dot(U,U.T))
 
 
 		debug(k=(condition_number(A),condition_number(dot(P,A))))
@@ -2961,6 +3011,60 @@ def test_mps(*args,**kwargs):
 
 	return
 
+def test_precondition(*args,**kwargs):
+
+	N = 4
+	D = 2
+	d = D**N
+	rank = None
+	seed = 123
+	key = seeder(seed)
+	dtype = 'float'
+	length = D**2
+	shape = (length,length)
+	kwargs = dict(shape=shape,key=key,dtype=dtype)
+	l = length
+	gamma = 1
+	I = identity(length,dtype=dtype)
+
+	M = rand(key=key,shape=shape,dtype=dtype)
+	M /= add(M)
+	U,V,S = nndsvd(M,rank=rank)
+	U,V,S = nmfd(U,V,rank=rank)
+
+	x = V
+	A = dot(U.T,U)
+	b = dot(U.T,M)
+
+
+	P = randn(**{**kwargs,**dict(shape=A.shape,dtype=A.dtype)})
+
+	U,S = nystrom(A,P)
+
+	U = invreg(U,S,gamma)
+	
+
+	print(U)
+	print(S)
+
+	return
+
+	
+	# P = randn(**{**kwargs,**dict(shape=A.shape,dtype=A.dtype)})
+	# Q = dot(P,A)
+	# P = dot(Q,solve(dot(P.T,Q),Q.T))
+	# S,U = eig(P,compute_v=True,hermitian=True)
+	# P = (S[-l]+gamma)*dot((U/(S+gamma*I)),U.T) + (I - dot(U,U.T))
+	# Q = sqrtm(P)
+
+	# P = A
+	# S,U = eig(P,compute_v=True,hermitian=True)
+	# P = dot(U[:,:-l]*S[:-l],U[:,:-l].T)
+
+	debug(k=array((condition_number(A+gamma*I),condition_number(dot(dot(Q,A+gamma*I),Q)))))
+
+	return
+
 def test_nmf(*args,**kwargs):
 
 	def initialize(shape,**kwargs):
@@ -3037,5 +3141,6 @@ if __name__ == "__main__":
 	kwargs = dict()
 
 	# test_shuffle(*args,**kwargs)
-	test_mps(*args,**kwargs)
+	# test_mps(*args,**kwargs)
+	test_precondition(*args,**kwargs)
 	# test_nmf(*args,**kwargs)
