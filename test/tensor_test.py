@@ -448,6 +448,8 @@ def svds(a,**kwargs):
 
 	u,s,v = svd(a,**kwargs)
 
+
+
 	# s = sign(u[:,argmax(s)])
 	# slices = slice(None)
 	# k = argmax(absolute(u), axis=0)
@@ -2206,9 +2208,9 @@ class Basis(object):
 				where = range(N) if where is None and N is not None else where
 
 				if transform is None:
-					axes = [j for i in range(2) for j in [i+2*j for j in range(N)]]
+					axes = [j for i in range(N) for j in [2*i+j for j in range(2)]]
 					shape = [basis.shape[-2+i]**N for i in range(2)]
-					subscripts = '%s,%s,%s'%(
+					subscripts = '%s,%s,%s->%s'%(
 						','.join((
 							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
 							for i in range(N)
@@ -2220,6 +2222,12 @@ class Basis(object):
 						','.join((
 							''.join((symbols(2*N+1+i),symbols(3*N+1+i),symbols(4*N+1+i)))
 							for i in range(N)
+							)),
+						''.join((
+							*(''.join((symbols(3*N+1+i),))
+							for i in range(N)),
+							*(''.join((symbols(4*N+1+i),))
+							for i in range(N)),							
 							)),						
 						)
 					data = reshape(transpose(squeeze(einsum(subscripts,*(data[i] for i in data),*(inverse,)*N,*(basis,)*N)),axes),shape)
@@ -2295,64 +2303,82 @@ class Basis(object):
 		scheme = options.get('scheme')
 
 		if scheme is None:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=True,hermitian=False)
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['svd']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=True,hermitian=False)
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = u,dotl(v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(mode='reduced')
-				u,v = qrs(real(dagger(a) if conj else a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,v = qrs(real(dagger(a) if conj else a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v = u[:,:rank],v[:rank,:]
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['nmf']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
-				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['_nmf']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()
-				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['eig']:
-			def scheme(a,conj=None,**options):
-				defaults = dict(compute_v=False,hermitian=False)							
-				s = eig(real(a),**{**kwargs,**options,**defaults})
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_v=False,hermitian=False)	
+				rank = min(a.shape) if rank is None else rank    
+				s = eig(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				return s
 		elif scheme in ['spectrum']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=False,hermitian=False)							
-				s = svd(real(a),**{**kwargs,**options,**defaults})
+				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
 				return s
 		elif scheme in ['probability']:
-			def scheme(a,conj=None,**options):
+			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()				
-				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults})
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
 				return s
 		elif scheme in ['_spectrum']:
-			def scheme(a,conj=None,**options):
-				defaults = dict(compute_uv=False,hermitian=False)							
-				s = svd(real(a),**{**kwargs,**options,**defaults})
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=False,hermitian=False)	
+				rank = min(a.shape) if rank is None else rank    
+				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
 				return s				
 		elif scheme in ['_probability']:
-			def scheme(a,conj=None,**options):
-				defaults = dict()								
-				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults})
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()						
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
 				return s								
 		return scheme		
 
@@ -2437,22 +2463,43 @@ class Basis(object):
 
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
-				variables = kwargs.get('variables')
-				variables['u.condition'].append(condition_number(dot(u.T,u).real))
-				variables['v.condition'].append(condition_number(dot(v,v.T).real))
-				variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,compute_uv=False,full_matrices=False,hermitian=True)))
-				variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,compute_uv=False,full_matrices=False,hermitian=True)))
-				variables['uv.error'].append(sqrt(norm(a-dot(u,v))/norm(a)).real)
-
-				parse = lambda obj: asscalar(obj.real)
-				print(where,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
-
 				axes = [[0,1,2],[0,1,2]]
 				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[2],state.shape[-1]]]
 
 				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
+				# variables = kwargs.get('variables')
+				# state = kwargs.get('state',options.get('state'))
+				# D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
+				# transform = None
+				# basis = Basis()
+				
+
+
+				# state.update(a)
+				# options = dict(compute_v=False,hermitian=True)
+
+				# spectrum = basis.transform(state,transform=transform,**{**kwargs,**dict(D=D,N=N)})
+
+				# spectrum = eig(spectrum,**options)
+
+				# print(where,spectrum[absolute(spectrum)>1e-12][::-1])
+
+				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
+				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
+				# variables['v.condition'].append(condition_number(dot(v,v.T).real))
+				# variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,**options)))
+				# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
+				# variables['uv.error'].append(sqrt(norm(a-dot(u,v))/norm(a)).real)
+				# variables['uv.spectrum'].append(spectrum)
+				# variables['uv.rank'].append(rank)
+
+				# parse = lambda obj: asscalar(obj.real)
+				# print(where,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
+
+
 				state = a
+
 
 		return state
 
@@ -2477,13 +2524,11 @@ class Basis(object):
 				symbols(3*N)
 				)
 
-			# defaults = dict(scheme='qr')
-			# state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
+			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme='qr')},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			defaults = dict(scheme=options.get('scheme','svd'),u=state[list(where)[0]],v=state[list(where)[-1]])
-			data = cls.update(data,where=where,options={**defaults,**options},**kwargs)
+			data = cls.update(data,where=where,options={**dict(scheme=options.get('scheme','svd'),state=state,u=state[list(where)[0]],v=state[list(where)[-1]]),**options},**kwargs)
 
 			for i in where:
 				state[i] = data[i]
@@ -2633,14 +2678,15 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 8
+	N = 12
 	D = 2
-	M = N//2
+	M = 10
 	L = N//2
-	K = D**N
+	K = D**(N-2)
 	parameters = pi/10
-	noise = 0
-	seed = 123
+	noise = 1e-4
+	rank = D**(N-2)
+	seed = 12345
 	dtype = 'complex'
 	path = 'scratch/nmf/data/data.hdf5'
 	file = 'scratch/nmf/data/variables.hdf5'
@@ -2683,188 +2729,282 @@ def test_mps(*args,**kwargs):
 
 	# assert allclose(state,_state)
 
+	# if boolean(file):
+
+	# 	state = {i:'state' 
+	# 		for i in range(N)}
+	# 	data = {index:(data,where) 
+	# 		for index,(data,where) in enumerate((data,where) 
+	# 		for i in [*range(0,N-1)] for where in [(i,i+1)] 
+	# 		for data in ['X'])}
+
+
+	# 	kwargs = dict(
+	# 		D=D,N=N,M=M,
+	# 		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+	# 		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
+	# 		options=dict(
+	# 			scheme='nmf',
+	# 			init='nndsvd',
+	# 			iteration=int(1e3),
+	# 			eps=1e-10,
+	# 			alpha=1,
+	# 			beta=5e-1,
+	# 			gamma=1e-10,
+	# 			delta=1,
+	# 			iota=6e-1,
+	# 			sigma=1e-4,
+	# 			update=[
+	# 				# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+	# 				# {'update':'cg','iteration':int(1e5),'eps':1e-14},
+	# 				# {'update':'cg','iteration':int(100),'eps':1e-14},
+	# 				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
+	# 				{'update':'pc','iteration':int(1e3),'eps':1e-10},
+	# 				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+	# 				# {'update':'qp','iteration':int(1),'eps':1e-8},
+	# 				# {'update':'pd','iteration':int(1),'eps':1e-14},
+	# 				# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
+	# 				# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
+	# 				# {'update':'mhu','iteration':int(1),'eps':1e-14},
+	# 				# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+	# 				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+	# 				# {'update':'mu','iteration':int(1e3),'eps':1e-14},
+	# 				# {'update':'mru','iteration':int(1e4),'eps':1e-14},
+	# 				# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
+	# 				# {'update':'miu','iteration':int(1e4),'eps':1e-14},
+	# 				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+	# 				],
+	# 		),
+	# 		key=seeder(seed),
+	# 		seed=seed,
+	# 		dtype=dtype,		
+	# 	)
+
+	# 	basis = Basis()
+
+	# 	state,data = initialize(state=state,data=data,**kwargs)
+
+	# 	_state = copy(state)
+
+	# 	state = func(state,data,**kwargs)
+
+		
+	# 	data = kwargs.get('variables',{})
+
+	# 	dump(data,file)
+	
+	# else:
+	
+	# 	data = load(file)
+
+	# 	for variable in data:
+	# 		print(variable)
+	# 		print(data[variable])
+	# 		print()
+
+	# 	# Data
+
+	# 	fig,ax = None,None
+	# 	settings = [
+	# 		{
+	# 			"fig": {
+	# 				"set_size_inches": {
+	# 					"w": 24,
+	# 					"h": 16
+	# 				},
+	# 				"subplots_adjust": {},
+	# 				"tight_layout": {},
+	# 				"savefig": {
+	# 					"fname": 'scratch/nmf/data/variables.pdf',
+	# 					"bbox_inches": "tight",
+	# 					"pad_inches": 0.2
+	# 				}
+	# 			},
+	# 			"ax":{
+	# 				"errorbar":{
+	# 					"x":[*arange(len(data[y]))] if x is None else x,
+	# 					'y':[*data[y]],
+	# 					"label":{'u.condition':'$A=U^TU$','v.condition':'$A=VV^T$','uv.error':"$M \\approx UV$"}.get(y),
+	# 					"alpha":0.8,
+	# 					"marker":{'u.condition':'o','v.condition':'o','uv.error':'^'}.get(y),
+	# 					"markersize":12,
+	# 					"linestyle":{'u.condition':'--','v.condition':'--','uv.error':'-'}.get(y),
+	# 					"linewidth": 5,
+	# 					"elinewidth": 2,
+	# 					"capsize": 3,
+	# 					"color":{'u.condition':'black','v.condition':'gray','uv.error':'mediumslateblue'}.get(y),
+	# 					"obj":{'u.condition':None,'v.condition':None,'uv.error':'twinx'}.get(y),
+	# 					},
+	# 				"set_title": {
+	# 					'uv.error':
+	# 							{
+	# 							"label": f"$\\textrm{{Nearest-Neighbour 1D XX Gates with}} ~ \\theta = \\pi/10^{{%s}} ~,~ N = {N} ~\\textrm{{qubits}} ~,~ L = N/{round(N/M)} ~\\textrm{{layers}}$"%(str(round(log10(pi/parameters))) if round(log10(pi/parameters))>1 else ''),
+	# 							"pad":20,
+	# 							}
+	# 					}.get(y),
+	# 				"set_ylabel": {
+	# 					'v.condition':
+	# 						{
+	# 						"ylabel": "$\\textrm{Condition Number} ~~ \\kappa(A)$",
+	# 						"obj": None
+	# 						},
+	# 					'uv.error':
+	# 						{
+	# 						"ylabel": "$\\textrm{Error} ~~ \\norm{M - UV}_{F}/\\norm{M}_{F}$",
+	# 						"obj": "twinx"
+	# 						}
+	# 					}.get(y),
+	# 				"set_xlabel": {
+	# 					"xlabel": "$\\textrm{Gate Index} ~~ i \\in [L(N-1)]$"
+	# 				},
+	# 				"set_xscale": {"value": "linear"},
+	# 				"set_xlim":{"xmin":-1,"xmax":M*(N-1)+1},
+	# 				"set_xticks":{"ticks":[*range(0,M*(N-1)+M,N-1)]},					
+	# 				"set_xticklabels":{"labels":[f"${i}N$" if i>1 else f"$N$" if i==1 else f"${i}$" for i in range(0,M+1)]},					
+	# 				"set_yscale":{
+	# 					"u.condition":{"value": "log","base": 10,"obj":None},
+	# 					"v.condition":{"value": "log","base": 10,"obj":None},
+	# 					"uv.error":{"value": "log","base": 10,"obj":"twinx"},
+	# 				}.get(y),						
+	# 				"set_ylim":{"ymin":1e-1,"ymax":1e25},
+	# 				"set_yticks":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20,1e24]},
+	# 				"set_ylim":{"ymin":1e-1,"ymax":1e41},
+	# 				"set_yticks":{"ticks":[1e0,1e5,1e10,1e15,1e20,1e25,1e30,1e35,1e40]},	
+	# 				"set_ylim":{
+	# 					"u.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
+	# 					"v.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
+	# 					"uv.error":{"ymin":5.5e-6,"ymax":1.75e0,"obj":"twinx"},
+	# 				}.get(y),
+	# 				"set_yticks":{
+	# 					"u.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
+	# 					"v.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
+	# 					"uv.error":{"ticks":[1e-5,1e-4,1e-3,1e-2,1e-1,1e0],"obj":"twinx"},
+	# 				}.get(y),					
+	# 				"set_aspect": {
+	# 					"aspect": "auto"
+	# 				},
+	# 				"grid": {
+	# 					"visible": True,
+	# 					"which": "major",
+	# 					"axis": "both"
+	# 				},
+	# 				"legend":{
+	# 					"title":"$\\textrm{Matrix}$",
+	# 					"title_fontsize": 36,
+	# 					"fontsize": 36,
+	# 					"markerscale": 1.5,
+	# 					"handlelength": 3,
+	# 					"framealpha": 0.8,				
+	# 					"ncol":3
+	# 					}
+	# 			},
+	# 			"style":{
+	# 				"mplstyle": "scratch/nmf/data/plot.mplstyle"
+	# 			}
+	# 		}
+	# 		for index,(x,y) in enumerate(((None,'u.condition'),(None,'v.condition'),(None,'uv.error')))
+	# 		]
+	# 	for index,settings in enumerate(settings):
+	# 		fig,ax = plot(settings=settings,fig=fig,ax=ax)
+
+
+
 	if boolean(path):
 
-		if boolean(file):
+		state = {i:'state' for i in range(N)}
+		state = {i:'state' 
+			for i in range(N)}
+		data = {index:(data,where) 
+			for index,(data,where) in enumerate((data,where) 
+			for i in [*range(0,N-1)] for where in [(i,i+1)] 
+			for data in ['X','depolarize'])}
 
-			state = {i:'state' 
-				for i in range(N)}
-			data = {index:(data,where) 
-				for index,(data,where) in enumerate((data,where) 
-				for i in [*range(0,N-1)] for where in [(i,i+1)] 
-				for data in ['X'])}
 
+		kwargs = dict(
+			D=D,N=N,M=M,
+			parameters={'unitary':parameters,'depolarize':noise},
+			variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+			options=dict(
+				scheme='svd',
+				rank=rank,
+			),
+			key=seeder(seed),		
+			seed=seed,
+			dtype=dtype,		
+		)
 
-			kwargs = dict(
-				D=D,N=N,M=M,
-				parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
-				variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
-				options=dict(
-					scheme='nmf',
-					init='nndsvd',
-					iteration=int(1e3),
-					eps=1e-10,
-					alpha=1,
-					beta=5e-1,
-					gamma=1e-10,
-					delta=1,
-					iota=6e-1,
-					sigma=1e-4,
-					update=[
-						# {'update':'gd','iteration':int(1e6),'eps':1e-14},
-						# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-						# {'update':'cg','iteration':int(100),'eps':1e-14},
-						# {'update':'cp','iteration':int(1e1),'eps':1e-10},
-						{'update':'pc','iteration':int(1e3),'eps':1e-10},
-						# {'update':'sd','iteration':int(1e6),'eps':1e-14},
-						# {'update':'qp','iteration':int(1),'eps':1e-8},
-						# {'update':'pd','iteration':int(1),'eps':1e-14},
-						# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
-						# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
-						# {'update':'mhu','iteration':int(1),'eps':1e-14},
-						# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
-						# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-						# {'update':'mu','iteration':int(1e3),'eps':1e-14},
-						# {'update':'mru','iteration':int(1e4),'eps':1e-14},
-						# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
-						# {'update':'miu','iteration':int(1e4),'eps':1e-14},
-						# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-						],
-				),
-				key=seeder(seed),
-				seed=seed,
-				dtype=dtype,		
-			)
+		basis = Basis()
 
-			basis = Basis()
+		state,data = initialize(state=state,data=data,**kwargs)
 
-			state,data = initialize(state=state,data=data,**kwargs)
+		state = func(state,data,**kwargs)
 
-			_state = copy(state)
+		exit()
 
-			state = func(state,data,**kwargs)
+		spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'probability'})})		
 
-			
-			data = kwargs.get('variables',{})
-
-			dump(data,file)
-		
-		else:
-		
-			data = load(file)
-
-			for variable in data:
-				print(variable)
-				print(data[variable])
-				print()
-
-		# Data
-
-		fig,ax = None,None
-		settings = [
-			{
-				"fig": {
-					"set_size_inches": {
-						"w": 24,
-						"h": 16
-					},
-					"subplots_adjust": {},
-					"tight_layout": {},
-					"savefig": {
-						"fname": 'scratch/nmf/data/variables.pdf',
-						"bbox_inches": "tight",
-						"pad_inches": 0.2
-					}
-				},
-				"ax":{
-					"errorbar":{
-						"x":[*arange(len(data[y]))] if x is None else x,
-						'y':[*data[y]],
-						"label":{'u.condition':'$A=U^TU$','v.condition':'$A=VV^T$','uv.error':"$M \\approx UV$"}.get(y),
-						"alpha":0.8,
-						"marker":{'u.condition':'o','v.condition':'o','uv.error':'^'}.get(y),
-						"markersize":12,
-						"linestyle":{'u.condition':'--','v.condition':'--','uv.error':'-'}.get(y),
-						"linewidth": 5,
-						"elinewidth": 2,
-						"capsize": 3,
-						"color":{'u.condition':'black','v.condition':'gray','uv.error':'mediumslateblue'}.get(y),
-						"obj":{'u.condition':None,'v.condition':None,'uv.error':'twinx'}.get(y),
-						},
-					"set_title": {
-						'uv.error':
-								{
-								"label": f"$\\textrm{{Nearest-Neighbour 1D XX Gates with}} ~ \\theta = \\pi/10^{{%s}} ~,~ N = {N} ~\\textrm{{qubits}} ~,~ L = N/{round(N/M)} ~\\textrm{{layers}}$"%(str(round(log10(pi/parameters))) if round(log10(pi/parameters))>1 else ''),
-								"pad":20,
-								}
-						}.get(y),
-					"set_ylabel": {
-						'v.condition':
-							{
-							"ylabel": "$\\textrm{Condition Number} ~~ \\kappa(A)$",
-							"obj": None
-							},
-						'uv.error':
-							{
-							"ylabel": "$\\textrm{Error} ~~ \\norm{M - UV}_{F}/\\norm{M}_{F}$",
-							"obj": "twinx"
-							}
-						}.get(y),
-					"set_xlabel": {
-						"xlabel": "$\\textrm{Gate Index} ~~ i \\in [L(N-1)]$"
-					},
-					"set_xscale": {"value": "linear"},
-					"set_xlim":{"xmin":-1,"xmax":M*(N-1)+1},
-					"set_xticks":{"ticks":[*range(0,M*(N-1)+M,N-1)]},					
-					"set_xticklabels":{"labels":[f"${i}N$" if i>1 else f"$N$" if i==1 else f"${i}$" for i in range(0,M+1)]},					
-					"set_yscale":{
-						"u.condition":{"value": "log","base": 10,"obj":None},
-						"v.condition":{"value": "log","base": 10,"obj":None},
-						"uv.error":{"value": "log","base": 10,"obj":"twinx"},
-					}.get(y),						
-					"set_ylim":{"ymin":1e-1,"ymax":1e25},
-					"set_yticks":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20,1e24]},
-					"set_ylim":{"ymin":1e-1,"ymax":1e41},
-					"set_yticks":{"ticks":[1e0,1e5,1e10,1e15,1e20,1e25,1e30,1e35,1e40]},	
-					"set_ylim":{
-						"u.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
-						"v.condition":{"ymin":1e-1,"ymax":1e21,"obj":None},
-						"uv.error":{"ymin":5.5e-6,"ymax":1.75e0,"obj":"twinx"},
-					}.get(y),
-					"set_yticks":{
-						"u.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
-						"v.condition":{"ticks":[1e0,1e4,1e8,1e12,1e16,1e20],"obj":None},
-						"uv.error":{"ticks":[1e-5,1e-4,1e-3,1e-2,1e-1,1e0],"obj":"twinx"},
-					}.get(y),					
-					"set_aspect": {
-						"aspect": "auto"
-					},
-					"grid": {
-						"visible": True,
-						"which": "major",
-						"axis": "both"
-					},
-					"legend":{
-						"title":"$\\textrm{Matrix}$",
-						"title_fontsize": 36,
-						"fontsize": 36,
-						"markerscale": 1.5,
-						"handlelength": 3,
-						"framealpha": 0.8,				
-						"ncol":3
-						}
-				},
-				"style":{
-					"mplstyle": "scratch/nmf/data/plot.mplstyle"
-				}
-			}
-			for index,(x,y) in enumerate(((None,'u.condition'),(None,'v.condition'),(None,'uv.error')))
-			]
-		for index,settings in enumerate(settings):
-			fig,ax = plot(settings=settings,fig=fig,ax=ax)
+		state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
 
 
 
+	if boolean(path):
+
+		state = {i:'state' 
+			for i in range(N)}
+		data = {index:(data,where) 
+			for index,(data,where) in enumerate((data,where) 
+			for i in [*range(0,N-1)] for where in [(i,i+1)] 
+			for data in ['X'])}
+
+
+		kwargs = dict(
+			D=D,N=N,M=M,
+			parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+			variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
+			options=dict(
+				scheme='nmf',
+				init='nndsvd',
+				iteration=int(1e3),
+				eps=1e-10,
+				alpha=1,
+				beta=5e-1,
+				gamma=1e-10,
+				delta=1,
+				iota=6e-1,
+				sigma=1e-4,
+				update=[
+					# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'cg','iteration':int(1e5),'eps':1e-14},
+					# {'update':'cg','iteration':int(100),'eps':1e-14},
+					# {'update':'cp','iteration':int(1e1),'eps':1e-10},
+					{'update':'pc','iteration':int(1e3),'eps':1e-10},
+					# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'qp','iteration':int(1),'eps':1e-8},
+					# {'update':'pd','iteration':int(1),'eps':1e-14},
+					# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
+					# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
+					# {'update':'mhu','iteration':int(1),'eps':1e-14},
+					# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+					# {'update':'mu','iteration':int(1e3),'eps':1e-14},
+					# {'update':'mru','iteration':int(1e4),'eps':1e-14},
+					# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
+					# {'update':'miu','iteration':int(1e4),'eps':1e-14},
+					# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+					],
+			),
+			key=seeder(seed),
+			seed=seed,
+			dtype=dtype,		
+		)
+
+		basis = Basis()
+
+		state,data = initialize(state=state,data=data,**kwargs)
+
+		_state = copy(state)
+
+		state = func(state,data,**kwargs)
 
 		exit()
 
@@ -2914,7 +3054,6 @@ def test_mps(*args,**kwargs):
 			)
 
 		dump(data,path)
-
 
 	else:
 		data = load(path)
@@ -3041,8 +3180,8 @@ def test_precondition(*args,**kwargs):
 
 	U,S = nystrom(A,P)
 
-	U = invreg(U,S,gamma)
-	
+	# U = invreg(U,S,gamma)
+
 
 	print(U)
 	print(S)
@@ -3141,6 +3280,6 @@ if __name__ == "__main__":
 	kwargs = dict()
 
 	# test_shuffle(*args,**kwargs)
-	# test_mps(*args,**kwargs)
-	test_precondition(*args,**kwargs)
+	test_mps(*args,**kwargs)
+	# test_precondition(*args,**kwargs)
 	# test_nmf(*args,**kwargs)
