@@ -917,6 +917,29 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 
 	return func
 
+def riemannian_gradient(a,u,v,rank=None,**kwargs):
+
+	iteration = kwargs.get('iteration',100)	
+	eps = kwargs.get('eps',epsilon(a.dtype))
+	alpha = kwargs.get('alpha',1)
+
+	def func(x):
+		
+		u,v,a,i = x
+
+		
+
+		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
+		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+
+		i += 1
+
+		x = u,v,a,i
+
+		return x
+
+	return func
+
 def conjugate_descent(a,u,v,rank=None,**kwargs):
 
 	iteration = kwargs.get('iteration',100)	
@@ -1817,6 +1840,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 				update = gradient_descent
 			elif update in ['gd','gradient_descent']:
 				update = gradient_descent
+			elif update in ['rg','riemannian_gradient']:
+				update = riemannian_gradient				
 			# elif update in ['cg','conjugate_descent']:
 			# 	update = conjugate_descent				
 			elif update in ['cg','conjugate_gradient']:
@@ -1993,59 +2018,55 @@ class Basis(object):
 
 	@classmethod
 	def dephase(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		if parameters is None:
-			parameters = 0
-		data = array([
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
 			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
 			sqrt(parameters)*cls.Z(D=D,dtype=dtype)
-			],dtype=dtype)
+			],dtype=dtype)]*N)
 		return data
 
 	@classmethod
 	def bitflip(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		if parameters is None:
-			parameters = 0
-		data = array([
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
 			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
 			sqrt(parameters)*cls.X(D=D,dtype=dtype)
-			],dtype=dtype)
+			],dtype=dtype)]*N)
 		return data
 
 	@classmethod
 	def phaseflip(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		if parameters is None:
-			parameters = 0
-		data = array([
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
 			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
 			sqrt(parameters)*cls.Y(D=D,dtype=dtype)
-			],dtype=dtype)
+			],dtype=dtype)]*N)
 		return data
 
 	@classmethod
 	def depolarize(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		if parameters is None:
-			parameters = 0		
-		data = array([
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
 				sqrt(1-(D**2-1)*parameters/(D**2))*cls.I(D=D,dtype=dtype),
 				sqrt(parameters/(D**2))*cls.X(D=D,dtype=dtype),
 				sqrt(parameters/(D**2))*cls.Y(D=D,dtype=dtype),
 				sqrt(parameters/(D**2))*cls.Z(D=D,dtype=dtype)
-				],dtype=dtype)
+				],dtype=dtype)]*N)
 		return data
 
 	@classmethod
 	def amplitude(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		kwargs = Dictionary(**kwargs)
-		if parameters is None:
-			parameters = 0		
-		data = array([
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
 			cls.element(D=D,data='00',dtype=dtype) + 
 				sqrt(1-parameters)*cls.element(D=D,data='11',dtype=dtype),
 			sqrt(parameters)*cls.element(D=D,data='01',dtype=dtype)
-			],dtype=dtype)
+			],dtype=dtype)]*N)
 		return data
 
 	@classmethod
@@ -2060,7 +2081,7 @@ class Basis(object):
 		else:
 			func = cls.pauli
 
-		data = func(parameters=None,D=D,seed=seed,key=key,dtype=dtype,**kwargs)
+		data = func(parameters=parameters,D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 
 		return data
 
@@ -2083,7 +2104,7 @@ class Basis(object):
 
 	@classmethod
 	def I(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		N = int(log(D)/log(2))	
+		N,D = int(log(D)/log(2)),2	
 		data = tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N)
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data
@@ -2091,7 +2112,7 @@ class Basis(object):
 
 	@classmethod
 	def X(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		N = int(log(D)/log(2))
+		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[0,1],[1,0]],dtype=dtype)]*N)
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data
@@ -2099,7 +2120,7 @@ class Basis(object):
 
 	@classmethod
 	def Y(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		N = int(log(D)/log(2))	
+		N,D = int(log(D)/log(2)),2	
 		data = tensorprod([array([[0,-1j],[1j,0]],dtype=dtype)]*N)		
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data		
@@ -2107,7 +2128,7 @@ class Basis(object):
 		
 	@classmethod
 	def Z(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		N = int(log(D)/log(2))	
+		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[1,0],[0,-1]],dtype=dtype)]*N)				
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data		
@@ -2115,12 +2136,20 @@ class Basis(object):
 
 	@classmethod
 	def H(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		data = (1/sqrt(2))*array([[1,1],[1,-1]],dtype=dtype)
+		N,D = int(log(D)/log(2)),2
+		data = tensorprod([(1/sqrt(2))*array([[1,1],[1,-1]],dtype=dtype)]*N)						
 		return data
 
 	@classmethod
 	def S(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		data = array([[1,0,],[0,1j]],dtype=dtype)
+		N,D = int(log(D)/log(2)),2
+		data = tensorprod([array([[1,0],[0,1j]],dtype=dtype)]*N)			
+		return data
+
+	@classmethod
+	def T(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+		N,D = int(log(D)/log(2)),2
+		data = tensorprod([array([[1,0],[0,e**(1j*pi/4)]],dtype=dtype)]*N)		
 		return data
 
 	@classmethod
@@ -2307,7 +2336,7 @@ class Basis(object):
 				defaults = dict(compute_uv=True,hermitian=False)
 				rank = min(a.shape) if rank is None else rank    
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank]/sqrt(add(s[:rank])),v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
@@ -2334,7 +2363,7 @@ class Basis(object):
 				defaults = dict()		
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank]/(add(s[:rank])),v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
@@ -2343,7 +2372,7 @@ class Basis(object):
 				defaults = dict()
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank]/(add(s[:rank])),v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
@@ -2468,22 +2497,28 @@ class Basis(object):
 
 				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
-				# variables = kwargs.get('variables')
-				# state = kwargs.get('state',options.get('state'))
-				# D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
-				# transform = None
-				# basis = Basis()
+				variables = kwargs.get('variables')
+				state = kwargs.get('state',options.get('state'))
+				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
+				transform = None
+				basis = Basis()
 				
 
 
-				# state.update(a)
-				# options = dict(compute_v=False,hermitian=True)
+				state.update(a)
+				options = dict(compute_v=False,hermitian=True)
 
-				# spectrum = basis.transform(state,transform=transform,**{**kwargs,**dict(D=D,N=N)})
+				spectrum = basis.transform(state,transform=transform,**{**kwargs,**dict(D=D,N=N)})
 
-				# spectrum = eig(spectrum,**options)
+				spectrum = eig(spectrum,**options)
+				spectrum = (-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0])).real+0.
+				
+				ratio = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=N)})
+				constant = 1-add(ratio).real+0.
+				ratio = (-add(ratio[ratio<=0])/add(ratio[ratio>0])).real+0.
+				# ratio = (-sum(add(state[i][state[i]<=0]) for i in state)/sum(add(state[i][state[i]>0]) for i in state)).real
 
-				# print(where,spectrum[absolute(spectrum)>1e-12][::-1])
+				print(where,spectrum,ratio,constant)
 
 				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
 				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
@@ -2678,18 +2713,97 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 12
+	N = 8
 	D = 2
-	M = 10
+	M = 2*N
 	L = N//2
 	K = D**(N-2)
-	parameters = pi/10
-	noise = 1e-4
-	rank = D**(N-2)
+	parameters = pi/6
+	noise = 1e-3
+	rank = D**N-0
 	seed = 12345
 	dtype = 'complex'
 	path = 'scratch/nmf/data/data.hdf5'
 	file = 'scratch/nmf/data/variables.hdf5'
+
+
+	state = {i:'zero' 
+		for i in range(N)}
+	data = {index:(data,where) 
+		for index,(data,where) in enumerate((data,where) 
+		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
+		for i in [*range(0,N-1)] for where in [(i,i+1)] 
+		for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
+		# for data in ['CNOT','T','depolarize'])}
+	print(data)
+
+	kwargs = dict(
+		D=D,N=N,M=M,
+		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+		options=dict(
+			scheme='svd',
+			rank=rank,
+		),
+		key=seeder(seed),		
+		seed=seed,
+		dtype=dtype,		
+	)
+
+
+	kwargs = dict(
+		D=D,N=N,M=M,
+		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
+		options=dict(
+			scheme='nmf',
+			init='nndsvd',
+			iteration=int(1e3),
+			eps=1e-10,
+			alpha=1,
+			beta=5e-1,
+			gamma=1e-10,
+			delta=1,
+			iota=6e-1,
+			sigma=1e-4,
+			update=[
+				# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+				# {'update':'cg','iteration':int(1e5),'eps':1e-14},
+				# {'update':'cg','iteration':int(100),'eps':1e-14},
+				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
+				# {'update':'pc','iteration':int(1e3),'eps':1e-10},
+				{'update':'rg','iteration':int(1e3),'eps':1e-10},
+				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+				# {'update':'qp','iteration':int(1),'eps':1e-8},
+				# {'update':'pd','iteration':int(1),'eps':1e-14},
+				# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
+				# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
+				# {'update':'mhu','iteration':int(1),'eps':1e-14},
+				# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+				# {'update':'mu','iteration':int(1e3),'eps':1e-14},
+				# {'update':'mru','iteration':int(1e4),'eps':1e-14},
+				# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
+				# {'update':'miu','iteration':int(1e4),'eps':1e-14},
+				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+				],
+		),
+		key=seeder(seed),
+		seed=seed,
+		dtype=dtype,		
+	)
+
+
+	basis = Basis()
+
+	state,data = initialize(state=state,data=data,**kwargs)
+
+	state = func(state,data,**kwargs)
+
+	exit()
+
+
+
 
 	# state = {i:'state' for i in range(N)}
 	# data = {index:(data,where) for index,(data,where) in enumerate((data,where) for i in [*range(0,N-1)] for where in [(i,i+1)] for data in ['unitary'])}
@@ -2906,44 +3020,6 @@ def test_mps(*args,**kwargs):
 	# 		]
 	# 	for index,settings in enumerate(settings):
 	# 		fig,ax = plot(settings=settings,fig=fig,ax=ax)
-
-
-
-	if boolean(path):
-
-		state = {i:'state' for i in range(N)}
-		state = {i:'state' 
-			for i in range(N)}
-		data = {index:(data,where) 
-			for index,(data,where) in enumerate((data,where) 
-			for i in [*range(0,N-1)] for where in [(i,i+1)] 
-			for data in ['X','depolarize'])}
-
-
-		kwargs = dict(
-			D=D,N=N,M=M,
-			parameters={'unitary':parameters,'depolarize':noise},
-			variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
-			options=dict(
-				scheme='svd',
-				rank=rank,
-			),
-			key=seeder(seed),		
-			seed=seed,
-			dtype=dtype,		
-		)
-
-		basis = Basis()
-
-		state,data = initialize(state=state,data=data,**kwargs)
-
-		state = func(state,data,**kwargs)
-
-		exit()
-
-		spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'probability'})})		
-
-		state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
 
 
 
