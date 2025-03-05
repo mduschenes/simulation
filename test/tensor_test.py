@@ -922,15 +922,19 @@ def riemannian_gradient(a,u,v,rank=None,**kwargs):
 	iteration = kwargs.get('iteration',100)	
 	eps = kwargs.get('eps',epsilon(a.dtype))
 	alpha = kwargs.get('alpha',1)
+	n,m = a.shape
+	In,Im,n1,m1,nm1 = identity(n),identity(m),ones(n),ones(m),outer(ones(n),ones(m))
 
 	def func(x):
 		
 		u,v,a,i = x
 
-		
+		z = dot(u,v)
+		l = z-a
+		e = dot(dot(n1,dot(l,dot(z.T,z))+dot(dot(z,z.T),l)),m1)/(m*dot(n1,dot(dot(z,z.T),n1)) + n*dot(m1,dot(dot(z.T,z),m1)))
+		k = l - e*nm1
 
-		v = maximums(v-alpha*(dot(dot(u.T,u),v)-dot(u.T,a)),eps)
-		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
+		u,v = maximums(dot(In - alpha*dot(k,z.T),u),eps),maximums(dot(v,Im - alpha*dot(z.T,k)),eps)
 
 		i += 1
 
@@ -2304,8 +2308,8 @@ class Basis(object):
 
 		options = dict() if options is None else options
 
-		# defaults = dict(scheme='qr')
-		# state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
+		defaults = dict(scheme='stq')
+		state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
 		# state = state[where]
 
@@ -2336,8 +2340,9 @@ class Basis(object):
 				defaults = dict(compute_uv=True,hermitian=False)
 				rank = min(a.shape) if rank is None else rank    
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank]/sqrt(add(s[:rank])),v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
+				u,v = u,v/add(dot(u,v),0)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['svd']:
@@ -2347,15 +2352,18 @@ class Basis(object):
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = u,dotl(v,s)
+				u,v = u,v/add(dot(u,v),0)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['qr']:
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(mode='reduced')
 				rank = min(a.shape) if rank is None else rank    
-				u,v = qrs(real(dagger(a) if conj else a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				a = dagger(a) if conj else a
+				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,v = u[:,:rank],v[:rank,:]
 				u,v = (dagger(v),dagger(u)) if conj else (u,v)
+				u,v = u,v/add(dot(u,v),0)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 		elif scheme in ['nmf']:
@@ -2363,17 +2371,31 @@ class Basis(object):
 				defaults = dict()		
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank]/(add(s[:rank])),v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
+				s = add(u,0)
+				u,v = dotr(u,1/s),dotl(v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
+		elif scheme in ['stq']:
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()		
+				rank = min(a.shape) if rank is None else rank
+				a = dagger(a) if conj else a
+				s = add(real(a),0)
+				u,v,s = a/s,identity(a.shape[-1],dtype=a.dtype),s
+				u,v = (dagger(v),dagger(u)) if conj else (u,v)			
+				u,v = u,v				
+				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
+				return u,v,s				
 		elif scheme in ['_nmf']:
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank]/(add(s[:rank])),v[:rank,:]
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
+				u,v = u,v/add(dot(u,v),0)				
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s				
 		elif scheme in ['eig']:
@@ -2423,6 +2445,8 @@ class Basis(object):
 			N = len(state)
 			where = (N,N) if where is None else (where,where) if isinstance(where,integers) else where
 
+			indices = range(0,N)
+
 			indices = (*range(0,min(where),1),*range(N-1,max(where)-1,-1))
 
 			for i in indices:
@@ -2437,7 +2461,7 @@ class Basis(object):
 
 					options.update(dict())
 
-					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
+					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,conj=False,**{**kwargs,**options,**defaults})
 
 					axes = [0,1,2]
 					shape = [state[i].shape[0],*state[i].shape[1:-1],s]
@@ -2502,14 +2526,10 @@ class Basis(object):
 				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
 				transform = None
 				basis = Basis()
-				
 
 
-				state.update(a)
 				options = dict(compute_v=False,hermitian=True)
-
 				spectrum = basis.transform(state,transform=transform,**{**kwargs,**dict(D=D,N=N)})
-
 				spectrum = eig(spectrum,**options)
 				spectrum = (-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0])).real+0.
 				
@@ -2517,6 +2537,8 @@ class Basis(object):
 				constant = 1-add(ratio).real+0.
 				ratio = (-add(ratio[ratio<=0])/add(ratio[ratio>0])).real+0.
 				# ratio = (-sum(add(state[i][state[i]<=0]) for i in state)/sum(add(state[i][state[i]>0]) for i in state)).real
+
+				sums = {i:state[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in state}
 
 				print(where,spectrum,ratio,constant)
 
@@ -2559,7 +2581,7 @@ class Basis(object):
 				symbols(3*N)
 				)
 
-			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme='qr')},**kwargs)
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme='stq')},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
@@ -2733,22 +2755,22 @@ def test_mps(*args,**kwargs):
 		for index,(data,where) in enumerate((data,where) 
 		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
 		for i in [*range(0,N-1)] for where in [(i,i+1)] 
-		for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
+		for data in ['unitary','depolarize'])}
+		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
 		# for data in ['CNOT','T','depolarize'])}
-	print(data)
 
-	kwargs = dict(
-		D=D,N=N,M=M,
-		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
-		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
-		options=dict(
-			scheme='svd',
-			rank=rank,
-		),
-		key=seeder(seed),		
-		seed=seed,
-		dtype=dtype,		
-	)
+	# kwargs = dict(
+	# 	D=D,N=N,M=M,
+	# 	parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+	# 	variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+	# 	options=dict(
+	# 		scheme='svd',
+	# 		rank=rank,
+	# 	),
+	# 	key=seeder(seed),		
+	# 	seed=seed,
+	# 	dtype=dtype,		
+	# )
 
 
 	kwargs = dict(
@@ -2758,9 +2780,9 @@ def test_mps(*args,**kwargs):
 		options=dict(
 			scheme='nmf',
 			init='nndsvd',
-			iteration=int(1e3),
+			iteration=int(1e6),
 			eps=1e-10,
-			alpha=1,
+			alpha=1e-4,
 			beta=5e-1,
 			gamma=1e-10,
 			delta=1,
@@ -2772,7 +2794,7 @@ def test_mps(*args,**kwargs):
 				# {'update':'cg','iteration':int(100),'eps':1e-14},
 				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
 				# {'update':'pc','iteration':int(1e3),'eps':1e-10},
-				{'update':'rg','iteration':int(1e3),'eps':1e-10},
+				{'update':'rg','iteration':int(1e7),'eps':1e-10},
 				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 				# {'update':'qp','iteration':int(1),'eps':1e-8},
 				# {'update':'pd','iteration':int(1),'eps':1e-14},
