@@ -611,11 +611,23 @@ def einsum(subscripts,*operands,backend=backend):
 def norm(a):
 	return add(sqr(a))
 
-def sqrtm(a):
-	return sp.linalg.sqrtm(a)
+def expm(a,n=16):
+	return sp.linalg.expm(a,max_squarings=n)
 
 def logm(a):
 	return sp.linalg.logm(a)
+
+def sqrtm(a):
+	return sp.linalg.sqrtm(a)
+
+def exp(a):
+	return np.exp(a)
+
+def log(a):
+	return np.log(a)
+
+def log10(a):
+	return np.log10(a)
 
 def sqrt(a):
 	return np.sqrt(a)
@@ -631,12 +643,6 @@ def cos(a):
 
 def tan(a):
 	return np.tan(a)
-
-def log(a):
-	return np.log(a)
-
-def log10(a):
-	return np.log10(a)
 
 def absolute(a):
 	return np.abs(a)
@@ -925,6 +931,14 @@ def riemannian_gradient(a,u,v,rank=None,**kwargs):
 	n,m = a.shape
 	In,Im,n1,m1,nm1 = identity(n),identity(m),ones(n),ones(m),outer(ones(n),ones(m))
 
+	def update(i,x):
+		t,s,g,h = x
+		t += dot(g,t)/i
+		s += dot(h,s)/i
+		x = t,s,g,h
+		return x
+	loop = forloop
+
 	def func(x):
 		
 		u,v,a,i = x
@@ -933,8 +947,19 @@ def riemannian_gradient(a,u,v,rank=None,**kwargs):
 		l = z-a
 		e = dot(dot(n1,dot(l,dot(z.T,z))+dot(dot(z,z.T),l)),m1)/(m*dot(n1,dot(dot(z,z.T),n1)) + n*dot(m1,dot(dot(z.T,z),m1)))
 		k = l - e*nm1
+		g,h = -alpha*dot(k,z.T),-alpha*dot(z.T,k)
+		
+		t,s = expm(g,iteration),expm(h,iteration)
 
-		u,v = maximums(dot(In - alpha*dot(k,z.T),u),eps),maximums(dot(v,Im - alpha*dot(z.T,k)),eps)
+		# t,s = ones(shape=g.shape,dtype=g.dtype),ones(shape=h.shape,dtype=h.dtype)
+		# x = t,s,g,h
+		# x = loop(func=update,x=x,start=1,end=iteration)
+		# t,s,g,h = x
+
+		u,v = maximums(dot(t,u),eps),maximums(dot(v,s),eps)
+
+		# u,v = dot(In - alpha*dot(k,z.T),u),dot(v,Im - alpha*dot(z.T,k))
+		# u,v = maximums(dot(In - alpha*dot(k,z.T),u),eps),maximums(dot(v,Im - alpha*dot(z.T,k)),eps)
 
 		i += 1
 
@@ -1824,6 +1849,8 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 		u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
 
+		u,v = u,v/add(dot(u,v))
+
 		return u,v,s
 	
 	def call(a,u=None,v=None,rank=None,**kwargs):
@@ -1884,6 +1911,13 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			x = (u,v,a,i)
 			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**keywords,**dict()})
 
+			# print(abs(add(dot(u,v))-1))
+			# x = func(x)
+			# u,v,a,i = x
+			# print(abs(add(dot(u,v))-1))
+			# exit()
+
+
 			loop = whileloop
 			func = func
 			options = dict(cond=(lambda x,iteration=iteration,eps=eps: (status(x,iteration=iteration,eps=eps))))
@@ -1891,8 +1925,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			x = loop(func=func,x=x,**options)
 
 			u,v,a,i = x
-
-		u,v,s = nmfd(u,v,rank=rank)
 
 		return u,v,s
    
@@ -1905,15 +1937,9 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 	rank = min(a.shape) if rank is None else rank    
 
-	constant = add(a)
-
-	a /= constant    
-
 	u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
 
 	u,v,s = call(a,u=u,v=v,rank=rank,**kwargs)
-	
-	s *= constant
 
 	return u,v,s
 	
@@ -1946,13 +1972,7 @@ def _nmf(a,**kwargs):
 
 	constant = add(a)
 
-	a /= constant
-
 	u,v,i = func(a,**options)
-
-	u,v,s = nmfd(u,v,rank=rank)
-
-	s *= constant
 
 	return u,v,s
 	
@@ -2581,14 +2601,16 @@ class Basis(object):
 				symbols(3*N)
 				)
 
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme='stq')},**kwargs)
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
 
 			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
 
-			data = cls.update(data,where=where,options={**dict(scheme=options.get('scheme','svd'),state=state,u=state[list(where)[0]],v=state[list(where)[-1]]),**options},**kwargs)
+			data = cls.update(data,where=where,options={**dict(scheme=options.get('scheme'),state=state,u=state[list(where)[0]],v=state[list(where)[-1]]),**options},**kwargs)
 
 			for i in where:
 				state[i] = data[i]
+
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
 
 			data = state
 
@@ -2780,9 +2802,9 @@ def test_mps(*args,**kwargs):
 		options=dict(
 			scheme='nmf',
 			init='nndsvd',
-			iteration=int(1e6),
+			iteration=int(100),
 			eps=1e-10,
-			alpha=1e-4,
+			alpha=1e-3,
 			beta=5e-1,
 			gamma=1e-10,
 			delta=1,
@@ -2794,7 +2816,7 @@ def test_mps(*args,**kwargs):
 				# {'update':'cg','iteration':int(100),'eps':1e-14},
 				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
 				# {'update':'pc','iteration':int(1e3),'eps':1e-10},
-				{'update':'rg','iteration':int(1e7),'eps':1e-10},
+				{'update':'rg','iteration':int(1e6),'eps':1e-10},
 				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 				# {'update':'qp','iteration':int(1),'eps':1e-8},
 				# {'update':'pd','iteration':int(1),'eps':1e-14},
