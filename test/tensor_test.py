@@ -495,12 +495,6 @@ def nystrom(a,z):
 	x = dot(a,z)
 	x = dot(x,dot(inv(dot(z.T,x)),x.T))
 	s,u = eig(x,hermitian=True)
-
-	# x = dot(a,z)
-	# b = dot(u*s,u.T)
-	# c = dot(x,dot(inv(dot(z.T,x)),x.T))
-	# print(b)
-	# print(c)
 	return u,s
 
 def inv(a,**kwargs):
@@ -582,8 +576,11 @@ def conjugate(a):
 def dagger(a):
 	return conjugate(transpose(a))
 
-def dot(a,b):
-	return np.dot(a,b)
+def dot(a,b,axes=1):
+	return np.tensordot(a,b,axes=axes)
+
+def tensordot(a,b,axes=2):
+	return np.tensordot(a,b,axes=axes)
 
 def inner(a,b):
 	return np.inner(a,b)
@@ -822,18 +819,56 @@ def randd(a,u=None,v=None,rank=None,**kwargs):
 	u,v,s = (
 		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(n,k),dtype=dtype)})),
 		absolute(x*randn(**{**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in ['shape','key','dtype']},**dict(shape=(k,m),dtype=dtype)})),
-		ones(rank)		
+		ones(k,dtype=dtype)		
 		)
 	return u,v,s
 
 def initd(a,u=None,v=None,rank=None,**kwargs):
-	u,v,s = real(u),real(v),ones(rank)
+	n,m = a.shape
+	k = min(min(n,m),rank)
+	dtype = a.dtype
+	u,v,s = real(u),real(v),ones(k,dtype=dtype)
 	return u,v,s
 
 def nmfd(u,v,rank=None,**kwargs):
 	x,y = add(u,0),add(v,1)
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
+
+# def search(parameters,func,grad,search,iteration,eps,bounds,constants,conditions='wolfe',method='zoom'):
+
+# 	def zoom(alpha,beta):
+# 		return
+
+# 	def true(alpha,beta):
+# 		zoom()
+
+# 	def line(data):
+# 		alpha,beta,data,i = data
+# 		alpha = (alpha + bounds[-1])/2
+
+# 		alpha *= iota
+# 		i += 1
+# 		data = alpha,*data,i
+# 		return data
+
+# 	if conditions in ['wolfe']:
+# 		def cond(data):
+# 			alpha,x,p,b,A,i = data
+# 			return (i < iteration) + (-dot(f(x+alpha*p,b,A),p) < sigma*alpha*norm(p))
+
+
+# 	alpha = bounds[0]
+# 	beta = alpha
+
+# 	parameter = bounds[0] + bounds
+# 	def search(data):
+# 		i = 0
+# 		data = alpha,*data,i
+# 		data = whileloop(func=line,x=data,cond=condition)
+# 		parameters,*data = data
+# 		return parameters
+
 
 def gradient_descent(a,u,v,rank=None,**kwargs):
 
@@ -870,6 +905,7 @@ def gradient_descent(a,u,v,rank=None,**kwargs):
 		u = maximums(u.T-alpha*(dot(dot(v,v.T),u.T)-dot(v,a.T)),eps).T
 
 
+		u,v = u,v/add(dot(u,v))
 		# z = dot(u.T,u)
 		# y = -dot(u.T,a)
 		# w = maximums(absolute(diag(z)),eps)
@@ -945,18 +981,24 @@ def riemannian_gradient(a,u,v,rank=None,**kwargs):
 
 		z = dot(u,v)
 		l = z-a
-		e = dot(dot(n1,dot(l,dot(z.T,z))+dot(dot(z,z.T),l)),m1)/(m*dot(n1,dot(dot(z,z.T),n1)) + n*dot(m1,dot(dot(z.T,z),m1)))
+		s,t = dot(z.T,z),dot(z,z.T)
+		e = dot(dot(n1,dot(l,s)+dot(t,l)),m1)/(m*dot(n1,dot(t,n1)) + n*dot(m1,dot(s,m1)))
 		k = l - e*nm1
-		g,h = -alpha*dot(k,z.T),-alpha*dot(z.T,k)
+		g,h = -alpha*dot(dot(k,z.T),u),-alpha*dot(v,dot(z.T,k))
+		u,v = u + g,v + h
 		
-		t,s = expm(g,iteration),expm(h,iteration)
+		# t,s = expm(g,iteration),expm(h,iteration)
+		# u,v = dot(t,u),dot(v,s)
 
 		# t,s = ones(shape=g.shape,dtype=g.dtype),ones(shape=h.shape,dtype=h.dtype)
 		# x = t,s,g,h
 		# x = loop(func=update,x=x,start=1,end=iteration)
 		# t,s,g,h = x
+		# u,v = dot(t,u),dot(v,s)
+		
+		u,v = maximums(u,eps),maximums(v,eps)
 
-		u,v = maximums(dot(t,u),eps),maximums(dot(v,s),eps)
+		u,v = u,v/add(dot(u,v))
 
 		# u,v = dot(In - alpha*dot(k,z.T),u),dot(v,Im - alpha*dot(z.T,k))
 		# u,v = maximums(dot(In - alpha*dot(k,z.T),u),eps),maximums(dot(v,Im - alpha*dot(z.T,k)),eps)
@@ -1270,7 +1312,7 @@ def conjugate_gradient(a,u,v,rank=None,**kwargs):
 		)
 
 	def fun(x,b,A):
-		return norm(dot(A,x)-b) + x.size - add(sign(x))
+		return norm(dot(A,x)-b)
 
 	def init(u,v,a):
 		x = v
@@ -1849,8 +1891,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 
 		u,v,s = init(a,u=u,v=v,rank=rank,**kwargs)
 
-		u,v = u,v/add(dot(u,v))
-
 		return u,v,s
 	
 	def call(a,u=None,v=None,rank=None,**kwargs):
@@ -1910,13 +1950,6 @@ def nmf(a,u=None,v=None,rank=None,**kwargs):
 			i = 0
 			x = (u,v,a,i)
 			func = update(a,u=u,v=v,rank=rank,**{**kwargs,**keywords,**dict()})
-
-			# print(abs(add(dot(u,v))-1))
-			# x = func(x)
-			# u,v,a,i = x
-			# print(abs(add(dot(u,v))-1))
-			# exit()
-
 
 			loop = whileloop
 			func = func
@@ -2285,6 +2318,7 @@ class Basis(object):
 						)
 					data = reshape(transpose(squeeze(einsum(subscripts,*(data[i] for i in data),*(inverse,)*N,*(basis,)*N)),axes),shape)
 				else:
+					# Check
 					axes = [j for i in range(N) for j in [sum(len(data[j].shape[1:-1]) for j in range(i))+j for j in range(len(data[i].shape[1:-1]))]]
 					shape = [j for i in data for j in data[i].shape[1:-1]]
 					subscripts = '%s'%(
@@ -2319,29 +2353,100 @@ class Basis(object):
 			data = reshape(transpose(data,axes),shape)
 		return data
 
+
+	@classmethod
+	def organize(cls,data,shape=None,axes=None,where=None,transform=True,**kwargs):
+		
+		if transform:
+			
+			if isinstance(data,dict):
+				where = data if where is None else where
+				N = len(where)
+
+				shape = [k for i,j in enumerate(data) for k in (data[j].shape[1:-1] if i not in [0,N-1] else [data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]])] if shape is None else shape
+				axes = range(N) if axes is None else axes
+				subscripts = '%s->%s'%(
+					','.join((
+						''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+						for i in range(N)
+						)),
+					','.join((
+						''.join((symbols(i),) if (not boundaries) or (i not in [0,N-1]) else (symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)))
+						for i in range(N)
+						)),
+					)
+				data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+			
+			elif isinstance(data,tuple):
+				raise NotImplementedError(f"Not Implemented {data}")
+			
+			elif isinstance(data,arrays):
+				if data.ndim == 3:
+					if not conj:
+						shape = [data[0]*prod(data[1:-1]),data[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+						data = reshape(transpose(data,axes),shape)
+					else:
+						shape = [data[0],prod(data[1:-1])*data[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+						data = reshape(transpose(data,axes),shape)
+				elif data.ndim == 4:
+					if not conj:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1,2,-1] if axes is None else axes
+						data = reshape(transpose(data,axes),shape)
+					else:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1,2,-1] if axes is None else axes
+						data = reshape(transpose(data,axes),shape)			
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+
+		else:
+
+			if isinstance(data,dict):
+				raise NotImplementedError(f"Not Implemented {data}")
+		
+			elif isinstance(data,tuple):
+				shape = [[data[0].shape[0],data[0].shape[1],1],[1,data[1].shape[2],data[1].shape[-1]]] if shape is None else shape
+				axes = [[0,1,2],[0,1,2]] if axes is None else axes
+				data = tuple((transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)))
+			
+			elif isinstance(data,arrays):
+				if data.ndim == 3:
+					if not conj:
+						shape = [data[0],*data[1:-1],s] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+						a = transpose(reshape(u,shape),axes)
+					else:
+						shape = [s,*data[1:-1],data[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+						a = transpose(reshape(v,shape),axes)
+				elif data.ndim == 4:
+					shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+					axes = [0,1,2,-1] if axes is None else axes
+					data = reshape(transpose(data,axes),shape)
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+
+		return data
+
+
 	@classmethod
 	def spectrum(cls,state,where=None,options=None,**kwargs):
 
 		N = len(state)
 		where = where if isinstance(where,integers) else min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else N//2
 		where = min(N-2,max(0,where-1))
+		where = (where,where+1)
 
 		options = dict() if options is None else options
 
 		defaults = dict(scheme='stq')
 		state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
-		# state = state[where]
-
-		# axes = [0,1,2]
-		# shape = [state.shape[0]*prod(state.shape[1:-1]),state.shape[-1]]
-		# state = reshape(transpose(state,axes),shape)
-
-		state = einsum('iuj,jvk->iuvk',state[where],state[where+1])
-
-		axes = [0,1,2,-1]
-		shape = [state.shape[0]*state.shape[1],state.shape[2]*state.shape[-1]]
-		state = reshape(transpose(state,axes),shape)
+		defaults = dict()
+		state = cls.organize(state,where=where,**{**kwargs,**defaults})
 
 		defaults = dict(scheme=options.get('scheme','spectrum'))
 		state = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,**{**kwargs,**options,**defaults})
@@ -2355,89 +2460,111 @@ class Basis(object):
 
 		scheme = options.get('scheme')
 
-		if scheme is None:
-			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=True,hermitian=False)
-				rank = min(a.shape) if rank is None else rank    
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
-				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
-				u,v = u,v/add(dot(u,v),0)
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
-				return u,v,s				
-		elif scheme in ['svd']:
-			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=True,hermitian=False)
-				rank = min(a.shape) if rank is None else rank    
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
-				u,v = u,dotl(v,s)
-				u,v = u,v/add(dot(u,v),0)
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
-				return u,v,s
-		elif scheme in ['qr']:
-			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(mode='reduced')
-				rank = min(a.shape) if rank is None else rank    
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
 				a = dagger(a) if conj else a
-				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,v = u[:,:rank],v[:rank,:]
-				u,v = (dagger(v),dagger(u)) if conj else (u,v)
-				u,v = u,v/add(dot(u,v),0)
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
-				return u,v,s
-		elif scheme in ['nmf']:
-			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict()		
 				rank = min(a.shape) if rank is None else rank    
-				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
-				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
+				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				s = add(u,0)
 				u,v = dotr(u,1/s),dotl(v,s)
+				u,v = (dagger(v),dagger(u)) if conj else (u,v)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
-		elif scheme in ['stq']:
+			return decorator
+
+		if scheme is None:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=True,hermitian=False)
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v,s = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s))),ones(shape=s.shape,dtype=s.dtype)
+				return u,v,s				
+		elif scheme in ['svd']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=True,hermitian=False)
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v = u,dotl(v,s)
+				return u,v,s
+		elif scheme in ['nmf']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
-				rank = min(a.shape) if rank is None else rank
-				a = dagger(a) if conj else a
-				s = add(real(a),0)
-				u,v,s = a/s,identity(a.shape[-1],dtype=a.dtype),s
-				u,v = (dagger(v),dagger(u)) if conj else (u,v)			
-				u,v = u,v				
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
-				return u,v,s				
+				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
+				return u,v,s
 		elif scheme in ['_nmf']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()
-				rank = min(a.shape) if rank is None else rank    
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s)))
-				u,v = u,v/add(dot(u,v),0)				
+				return u,v,s
+
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				s = add(dot(u,v),0)
+				u,v = u,v/s
+				u,v = (dagger(v),dagger(u)) if conj else (u,v)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
+				return u,v,s
+			return decorator
+
+		if scheme in ['qr']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(mode='reduced')
+				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = ones(shape=min(a.shape),dtype=a.dtype)
 				return u,v,s				
-		elif scheme in ['eig']:
+		elif scheme in ['stq']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()		
+				u,v,s = a,identity(shape=min(a.shape),dtype=a.dtype),ones(shape=min(a.shape),dtype=a.dtype)
+				return u,v,s				
+		
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				s = func(a,rank=rank,conj=conj,**kwargs) 
+				s = s[:rank]
+				return s
+			return decorator
+
+		if scheme in ['eig']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_v=False,hermitian=False)	
 				rank = min(a.shape) if rank is None else rank    
 				s = eig(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				return s
 		elif scheme in ['spectrum']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=False,hermitian=False)							
 				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				s = s[:rank]
 				return s
 		elif scheme in ['probability']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()				
-				rank = min(a.shape) if rank is None else rank    
 				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				s = s[:rank]
 				return s
 		elif scheme in ['_spectrum']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=False,hermitian=False)	
 				rank = min(a.shape) if rank is None else rank    
@@ -2445,12 +2572,14 @@ class Basis(object):
 				s = s[:rank]
 				return s				
 		elif scheme in ['_probability']:
+			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()						
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				s = s[:rank]
 				return s								
+		
 		return scheme		
 
 	@classmethod
@@ -2490,7 +2619,7 @@ class Basis(object):
 					state[i] = a
 
 					if i < (N-1):
-						state[i+1] = einsum('ij,j...k->i...k',v,state[i+1])
+						state[i+1] = dot(v,state[i+1])
 
 				elif i > max(where):
 
@@ -2509,7 +2638,7 @@ class Basis(object):
 					state[i] = a
 
 					if i > 0:
-						state[i-1] = einsum('jk,i...j->i...k',u,state[i-1])
+						state[i-1] = dot(state[i-1],u)
 
 		elif isinstance(state,arrays):
 
@@ -2536,6 +2665,8 @@ class Basis(object):
 
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
 
+				error = (norm(a-dot(u,v))/norm(a)).real
+
 				axes = [[0,1,2],[0,1,2]]
 				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[2],state.shape[-1]]]
 
@@ -2544,23 +2675,19 @@ class Basis(object):
 				variables = kwargs.get('variables')
 				state = kwargs.get('state',options.get('state'))
 				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
-				transform = None
 				basis = Basis()
 
 
 				options = dict(compute_v=False,hermitian=True)
-				spectrum = basis.transform(state,transform=transform,**{**kwargs,**dict(D=D,N=N)})
+				spectrum = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=N)})
 				spectrum = eig(spectrum,**options)
 				spectrum = (-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0])).real+0.
 				
-				ratio = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=N)})
-				constant = 1-add(ratio).real+0.
-				ratio = (-add(ratio[ratio<=0])/add(ratio[ratio>0])).real+0.
-				# ratio = (-sum(add(state[i][state[i]<=0]) for i in state)/sum(add(state[i][state[i]>0]) for i in state)).real
+				constant = 1-add(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=N)})).real+0.
 
 				sums = {i:state[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in state}
 
-				print(where,spectrum,ratio,constant)
+				print(where,error,spectrum,constant)
 
 				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
 				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
@@ -2689,7 +2816,38 @@ def test_mps(*args,**kwargs):
 					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
 				data = basis.contract(state,data,where=where,**kwargs)
 				return data
+			where = [where] if not isinstance(where,iterables) else where
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
+
+			#####
+			state = basis.update(state,where=where,options={**kwargs,**kwargs.get('options',{}),**dict(scheme={'svd':'qr','nmf':'stq'}.get(kwargs.get('options',{}).get('scheme')))},**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg not in ['options']})
+
+			N,d = len(where),2
+			shapes = [[D**2 for i in range(N) for j in range(d)],[D**(2*d) for i in range(N)]]
+			axis = [[j*N+i for i in range(N) for j in range(d)],[i for i in range(N)]]
+			for shape,axes in zip(shapes,axis):
+				data = transpose(reshape(data,shape),axes)
+			U,S,V = svd(real(data))
+			A,B = [state[i] for i in where]
+
+			K,C = S.size,add(dot(reshape(A,[A.shape[0]*A.shape[1],A.shape[2]]),reshape(B,[B.shape[0],B.shape[1]*B.shape[2]])))
+
+			U,V,S = reshape(U,[*[D**2]*2,K]),reshape(dotr(V,S),[K,*[D**2]*2]),S
+			A,B = A,B/C
+
+			A,B = einsum('iuj,uvk->ivjk',A,U),einsum('iuj,kuv->ikvj',B,V)
+
+			A,B = reshape(A,[A.shape[0]*A.shape[1],A.shape[2]*A.shape[3]]),reshape(B,[B.shape[0]*B.shape[1],B.shape[2]*B.shape[3]])
+			C = add(A,0)
+			A,B = dotr(A,1/C),dotl(B,C)
+
+			print(add(A,0))
+			print(add(dot(A,B)))
+			print(A.shape)
+			print(B.shape)
+			exit()
+
+			#####
 			data = basis.contract(state,data=data,where=where,**kwargs)
 			return data
 
@@ -2762,7 +2920,7 @@ def test_mps(*args,**kwargs):
 	M = 2*N
 	L = N//2
 	K = D**(N-2)
-	parameters = pi/6
+	parameters = pi/4
 	noise = 1e-3
 	rank = D**N-0
 	seed = 12345
@@ -2777,7 +2935,8 @@ def test_mps(*args,**kwargs):
 		for index,(data,where) in enumerate((data,where) 
 		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
 		for i in [*range(0,N-1)] for where in [(i,i+1)] 
-		for data in ['unitary','depolarize'])}
+		# for data in ['unitary','depolarize'])}
+		for data in ['CNOT','depolarize'])}
 		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
 		# for data in ['CNOT','T','depolarize'])}
 
@@ -2804,7 +2963,7 @@ def test_mps(*args,**kwargs):
 			init='nndsvd',
 			iteration=int(100),
 			eps=1e-10,
-			alpha=1e-3,
+			alpha=1e-2,
 			beta=5e-1,
 			gamma=1e-10,
 			delta=1,
@@ -2816,7 +2975,8 @@ def test_mps(*args,**kwargs):
 				# {'update':'cg','iteration':int(100),'eps':1e-14},
 				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
 				# {'update':'pc','iteration':int(1e3),'eps':1e-10},
-				{'update':'rg','iteration':int(1e6),'eps':1e-10},
+				# {'update':'rg','iteration':int(1e7),'eps':1e-10},
+				{'update':'gd','iteration':int(1e7),'eps':1e-10},
 				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
 				# {'update':'qp','iteration':int(1),'eps':1e-8},
 				# {'update':'pd','iteration':int(1),'eps':1e-14},
