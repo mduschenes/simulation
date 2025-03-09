@@ -2341,15 +2341,13 @@ class Basis(object):
 	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
 		if transform:
 			n,d = len(shape),data.ndim
-			where = range(n) if where is None else where
 			shape = [*shape]*d
-			axes = [i*d+j for i in where for j in range(d)]
+			axes = [i*d+j for i in range(n) for j in range(d)]
 			data = transpose(reshape(data,shape),axes)
 		else:
 			n,d = len(shape),data.ndim//len(shape)
-			where = range(n) if where is None else where			
 			shape = [prod(shape)]*d
-			axes = [i*d+j for i in where for j in range(d)]
+			axes = [i*d+j for i in range(n) for j in range(d)]
 			data = reshape(transpose(data,axes),shape)
 		return data
 
@@ -2363,7 +2361,7 @@ class Basis(object):
 				where = data if where is None else where
 				N = len(where)
 
-				shape = [k for i,j in enumerate(data) for k in (data[j].shape[1:-1] if i not in [0,N-1] else [data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]])] if shape is None else shape
+				shape = [k for i,j in enumerate(data) for k in ([data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]] if i in [N-1] else data[j].shape[1:-1] if i not in [0,N-1])] if shape is None else shape
 				axes = range(N) if axes is None else axes
 				subscripts = '%s->%s'%(
 					','.join((
@@ -2371,7 +2369,7 @@ class Basis(object):
 						for i in range(N)
 						)),
 					','.join((
-						''.join((symbols(i),) if (not boundaries) or (i not in [0,N-1]) else (symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)))
+						''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
 						for i in range(N)
 						)),
 					)
@@ -2445,8 +2443,7 @@ class Basis(object):
 		defaults = dict(scheme='stq')
 		state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
-		defaults = dict()
-		state = cls.organize(state,where=where,**{**kwargs,**defaults})
+		state = cls.organize(state,where=where,**kwargs)
 
 		defaults = dict(scheme=options.get('scheme','spectrum'))
 		state = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,**{**kwargs,**options,**defaults})
@@ -2600,42 +2597,28 @@ class Basis(object):
 
 			for i in indices:
 
-				a = state[i]
-
 				if i < min(where):
 
-					axes = [0,1,2]
-					shape = [state[i].shape[0]*prod(state[i].shape[1:-1]),state[i].shape[-1]]
-					a = reshape(transpose(a,axes),shape)
+					shape = state[i].shape
 
-					options.update(dict())
+					state[i] = cls.organize(state[i],where=where,shape=[prod(shape[:-1]),shape[-1]],transform=True,conj=False,**kwargs)
 
-					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,conj=False,**{**kwargs,**options,**defaults})
+					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=False,**{**kwargs,**options,**defaults})
 
-					axes = [0,1,2]
-					shape = [state[i].shape[0],*state[i].shape[1:-1],s]
-					a = transpose(reshape(u,shape),axes)
-
-					state[i] = a
+					state[i] = cls.organize(u,where=where,shape=[*shape[:-1],s],transform=False,conj=False,**kwargs)
 
 					if i < (N-1):
 						state[i+1] = dot(v,state[i+1])
 
 				elif i > max(where):
 
-					axes = [0,1,2]
-					shape = [state[i].shape[0],prod(state[i].shape[1:-1])*state[i].shape[-1]]
-					a = reshape(transpose(a,axes),shape)
+					shape = state[i].shape
 
-					options.update(dict())
+					state[i] = cls.organize(state[i],where=where,shape=[shape[0],prod(shape[1:])],transform=True,conj=True,**kwargs)
 
-					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,conj=True,**{**kwargs,**options,**defaults})
+					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
 
-					axes = [0,1,2]
-					shape = [s,*state[i].shape[1:-1],state[i].shape[-1]]
-					a = transpose(reshape(v,shape),axes)
-
-					state[i] = a
+					state[i] = cls.organize(v,where=where,shape=[s,*shape[1:]],transform=True,conj=True,**kwargs)
 
 					if i > 0:
 						state[i-1] = dot(state[i-1],u)
@@ -2644,48 +2627,33 @@ class Basis(object):
 
 			if len(where) == 2:
 
-				a = state
+				shape = state.shape
 
-				axes = [0,1,2,-1]
-				shape = [state.shape[0]*state.shape[1],state.shape[2]*state.shape[-1]]
-				a = reshape(transpose(a,axes),shape)
+				state = cls.organize(state,where=where,shape=[prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])],transform=True,conj=False,**kwargs)
+
+				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
+
+				error = (norm(state-dot(u,v))/norm(state)).real
+
+				state = cls.organize((u,v),where=where,shape=[[*shape[:len(shape)//2],s],[s,*shape[len(shape)//2:]]],transform=False,conj=False,**kwargs)
 
 
-				u,v,s = None,None,min(shape) #options.get('u'),options.get('v')
 
-				axes = [[0,1,2] if u is not None else None,[0,1,2] if v is not None else None]
-				shape = [[u.shape[0]*u.shape[1],u.shape[-1]] if u is not None else None,[v.shape[0],v.shape[1]*v.shape[-1]] if v is not None else None]
-
-				options.update(
-					dict(
-						u=reshape(transpose(u,axes[0]),shape[0]) if u is not None else None,
-						v=reshape(transpose(v,axes[1]),shape[1]) if v is not None else None,
-						)
-					)
-
-				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(a,**{**kwargs,**options,**defaults})
-
-				error = (norm(a-dot(u,v))/norm(a)).real
-
-				axes = [[0,1,2],[0,1,2]]
-				shape = [[state.shape[0],state.shape[1],s],[s,state.shape[2],state.shape[-1]]]
-
-				a = {i:transpose(reshape(a,shape[index]),axes[index]) for index,(i,a) in enumerate(zip(where,(u,v)))}
 
 				variables = kwargs.get('variables')
-				state = kwargs.get('state',options.get('state'))
+				tmp = kwargs.get('state',options.get('state'))
 				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
 				basis = Basis()
 
 
 				options = dict(compute_v=False,hermitian=True)
-				spectrum = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=N)})
+				spectrum = basis.transform(tmp,transform=None,**{**kwargs,**dict(D=D,N=N)})
 				spectrum = eig(spectrum,**options)
 				spectrum = (-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0])).real+0.
 				
-				constant = 1-add(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=N)})).real+0.
+				constant = 1-add(basis.transform(tmp,transform=False,**{**kwargs,**dict(D=D,N=N)})).real+0.
 
-				sums = {i:state[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in state}
+				sums = {i:tmp[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in tmp}
 
 				print(where,error,spectrum,constant)
 
@@ -2694,15 +2662,12 @@ class Basis(object):
 				# variables['v.condition'].append(condition_number(dot(v,v.T).real))
 				# variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,**options)))
 				# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
-				# variables['uv.error'].append(sqrt(norm(a-dot(u,v))/norm(a)).real)
+				# variables['uv.error'].append(sqrt(norm(state-dot(u,v))/norm(state)).real)
 				# variables['uv.spectrum'].append(spectrum)
 				# variables['uv.rank'].append(rank)
 
 				# parse = lambda obj: asscalar(obj.real)
 				# print(where,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
-
-
-				state = a
 
 
 		return state
@@ -2716,21 +2681,18 @@ class Basis(object):
 			N = len(where)
 
 			shape = [j for i in where for j in state[i].shape[1:-1]]
-			subscripts = '%s%s,%s->%s%s%s'%(
-				''.join(symbols(i) for i in range(N,2*N)),
+			subscripts = '%s%s,%s->%s'%(
+				''.join(symbols(N+i) for i in range(N)),
 				''.join(symbols(i) for i in range(N)),
-				','.join((
-					''.join((symbols(2*N+i),symbols(i),symbols(2*N+i+1)))
-					for i in range(N)
-					)),
-				symbols(2*N),
-				''.join(symbols(i) for i in range(N,2*N)),
-				symbols(3*N)
+				''.join(symbols(i) for i in range(N)),
+				''.join(symbols(N+i) for i in range(N)),
 				)
 
 			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
 
-			data = einsum(subscripts,cls.shuffle(data,shape=shape,**kwargs),*(state[i] for i in where))
+			data = cls.shuffle(data,shape=shape,**kwargs),cls.organize(state,where=where,shape=[prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])],transform=True,conj=False,**kwargs)
+
+			data = einsum(subscripts,*data)
 
 			data = cls.update(data,where=where,options={**dict(scheme=options.get('scheme'),state=state,u=state[list(where)[0]],v=state[list(where)[-1]]),**options},**kwargs)
 
