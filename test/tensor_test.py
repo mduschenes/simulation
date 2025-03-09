@@ -990,7 +990,7 @@ def riemannian_gradient(a,u,v,rank=None,**kwargs):
 		# t,s = expm(g,iteration),expm(h,iteration)
 		# u,v = dot(t,u),dot(v,s)
 
-		# t,s = ones(shape=g.shape,dtype=g.dtype),ones(shape=h.shape,dtype=h.dtype)
+		# t,s = ones(g.shape,dtype=g.dtype),ones(h.shape,dtype=h.dtype)
 		# x = t,s,g,h
 		# x = loop(func=update,x=x,start=1,end=iteration)
 		# t,s,g,h = x
@@ -2271,69 +2271,245 @@ class Basis(object):
 
 		if transform:
 			if callable(data):
+			
 				data = einsum('uij,wji,wv->uv',basis,vmap(partial(data,**kwargs))(basis),inverse)		
+			
 			elif isinstance(data,dict):
 				pass
+			
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					raise NotImplementedError(f"Not Implemented {data}")			
+			
 				elif data.ndim > 1:
+			
 					data = einsum('uij,...ji->...u',basis,data)
 
 				if data.ndim == 1:
 					axes = [0,1,2]
 					shape = [1,*data.shape,1]
+			
 					data = transpose(reshape(data,shape),axes)
 
 		else:
 			if callable(data):
 				raise NotImplementedError(f"Not Implemented {data}")
+			
 			elif isinstance(data,dict):
 
 				N = len(data) if N is None else N
 				where = range(N) if where is None and N is not None else where
 
+				shape = {i:data[i].shape for i in where}
+
+				data = cls.organize(data,where=where,transform=True,conj=False,**kwargs)
+
 				if transform is None:
-					axes = [j for i in range(N) for j in [2*i+j for j in range(2)]]
 					shape = [basis.shape[-2+i]**N for i in range(2)]
+					axes = [j for i in range(N) for j in [2*i+j for j in range(2)]]
 					subscripts = '%s,%s,%s->%s'%(
-						','.join((
-							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+						''.join((
+							symbols(i)
 							for i in range(N)
 							)),
 						','.join((
-							''.join((symbols(i),symbols(2*N+1+i)))
+							''.join((symbols(i),symbols(N+i)))
 							for i in range(N)
 							)),	
 						','.join((
-							''.join((symbols(2*N+1+i),symbols(3*N+1+i),symbols(4*N+1+i)))
+							''.join((symbols(N+i),symbols(2*N+i),symbols(3*N+i)))
 							for i in range(N)
 							)),
 						''.join((
-							*(''.join((symbols(3*N+1+i),))
+							*(''.join((symbols(2*N+i),))
 							for i in range(N)),
-							*(''.join((symbols(4*N+1+i),))
+							*(''.join((symbols(3*N+i),))
 							for i in range(N)),							
 							)),						
 						)
-					data = reshape(transpose(squeeze(einsum(subscripts,*(data[i] for i in data),*(inverse,)*N,*(basis,)*N)),axes),shape)
+					data = reshape(transpose(einsum(subscripts,data,*(inverse,)*N,*(basis,)*N),axes),shape)
+
 				else:
-					# Check
-					axes = [j for i in range(N) for j in [sum(len(data[j].shape[1:-1]) for j in range(i))+j for j in range(len(data[i].shape[1:-1]))]]
-					shape = [j for i in data for j in data[i].shape[1:-1]]
-					subscripts = '%s'%(
-						','.join((
-							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
-							for i in range(N)
-							)),
-						)
-					data = ravel(transpose(reshape(einsum(subscripts,*(data[i] for i in data)),shape),axes))
+					shape = [j for i in where for j in shape[i][1:-1]]
+					axes = [i for i in range(N)]
+					
+					data = ravel(transpose(reshape(data,shape),axes))
 
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
+
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
+				
 				elif data.ndim > 1:
+
 					data = einsum('uij,wji,wv->uv',basis,data,inverse)
+		
+		return data
+
+	@classmethod
+	def contract(cls,state,data,where=None,options=None,**kwargs):
+
+		if isinstance(state,dict):
+
+			where = state if where is None else where
+			N = len(where)
+
+			shape = [j for i in where for j in state[i].shape[1:-1]]
+			axes = None
+			subscripts = '%s,%s->%s%s%s'%(
+				''.join((
+					''.join(symbols(i) for i in range(N)),
+					''.join(symbols(N+i) for i in range(N))
+					)),
+				','.join(''.join((
+					symbols(2*N+i),symbols(N+i),symbols(2*N+i+1))) 
+					for i in range(N)
+					),
+				''.join((symbols(2*N),)),
+				''.join(symbols(i) for i in range(N)),
+				''.join((symbols(2*N+N),))
+				)
+
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
+
+			data = cls.shuffle(data,shape=shape,**kwargs)
+
+			data = einsum(subscripts,data,*(state[i] for i in where))
+
+			shape = [state[i].shape for i in where]
+			axes = None
+
+			data = cls.update(data,shape=shape,axes=axes,where=where,options={**dict(scheme=options.get('scheme'),state=state),**options},**kwargs)
+
+			for i in where:
+				state[i] = data[i]
+
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
+
+			data = state
+
+		elif state.ndim == 1:
+			if data.ndim == 2:
+				data = einsum('ij,j->i',data,state)
+			else:	
+				raise NotImplementedError(f"Not Implemented {data}")						
+		elif state.ndim > 1:
+			if data.ndim == 2:
+				data = einsum('ij,...jk,lk->...il',data,state,conjugate(data))
+			elif data.ndim == 3:
+				data = einsum('uij,...jk,ulk->...il',data,state,conjugate(data))
+			else:	
+				raise NotImplementedError(f"Not Implemented {data}")			
+		else:
+			raise NotImplementedError(f"Not Implemented {state}")			
+		
+		return data
+
+	@classmethod
+	def organize(cls,data,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
+		
+		if transform:
+			
+			if isinstance(data,dict):
+				where = data if where is None else where
+				N = len(where)
+
+				shape = [k for i,j in enumerate(where) for k in ([data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+				axes = range(N) if axes is None else axes
+				subscripts = '%s->%s'%(
+					','.join(
+						''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+						for i in range(N)
+						),
+					''.join(
+						''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
+						for i in range(N)
+						),
+					)
+
+				data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+			
+			elif isinstance(data,tuple):
+				raise NotImplementedError(f"Not Implemented {data}")
+			
+			elif isinstance(data,arrays):
+				if data.ndim == 1:
+					if not conj:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0] if axes is None else axes
+					else:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0] if axes is None else axes
+				elif data.ndim == 2:
+					if not conj:
+						shape = [*data.shape] if shape is None else shape
+						axes = [0,1] if axes is None else axes
+					else:
+						shape = [*data.shape] if shape is None else shape
+						axes = [0,1] if axes is None else axes					
+				elif data.ndim == 3:
+					if not conj:
+						shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+					else:
+						shape = [data.shape[0],prod(data.shape[1:-1])*data.shape[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+				elif data.ndim == 4:
+					if not conj:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1,2,-1] if axes is None else axes
+					else:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1,2,-1] if axes is None else axes
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+				
+				data = reshape(transpose(data,axes),shape)
+
+		else:
+
+			if isinstance(data,dict):
+				raise NotImplementedError(f"Not Implemented {data}")
+		
+			elif isinstance(data,tuple):
+				where = range(len(data)) if where is None else where
+				shape = [[data[0].shape[0],data[0].shape[1],1],[1,data[1].shape[2],data[1].shape[-1]]] if shape is None else shape
+				axes = [[0,1,2],[0,1,2]] if axes is None else axes
+				
+				data = dict(zip(where,(transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes))))
+			elif isinstance(data,arrays):
+				if data.ndim == 1:
+					if not conj:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+					else:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+				elif data.ndim == 2:
+					if not conj:
+						shape = [data.shape[0],prod(data.shape[1:-1]),-1] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+					else:
+						shape = [-1,prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+				elif data.ndim == 3:
+					if not conj:
+						shape = [*data.shape] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+					else:
+						shape = [*data.shape] if shape is None else shape
+						axes = [0,1,2] if axes is None else axes
+				elif data.ndim == 4:
+					if not conj:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1] if axes is None else axes
+					else:
+						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
+						axes = [0,1] if axes is None else axes
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+
+				data = transpose(reshape(data,shape),axes)
 		
 		return data
 
@@ -2350,85 +2526,6 @@ class Basis(object):
 			axes = [i*d+j for i in range(n) for j in range(d)]
 			data = reshape(transpose(data,axes),shape)
 		return data
-
-
-	@classmethod
-	def organize(cls,data,shape=None,axes=None,where=None,transform=True,**kwargs):
-		
-		if transform:
-			
-			if isinstance(data,dict):
-				where = data if where is None else where
-				N = len(where)
-
-				shape = [k for i,j in enumerate(data) for k in ([data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]] if i in [N-1] else data[j].shape[1:-1] if i not in [0,N-1])] if shape is None else shape
-				axes = range(N) if axes is None else axes
-				subscripts = '%s->%s'%(
-					','.join((
-						''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
-						for i in range(N)
-						)),
-					','.join((
-						''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
-						for i in range(N)
-						)),
-					)
-				data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
-			
-			elif isinstance(data,tuple):
-				raise NotImplementedError(f"Not Implemented {data}")
-			
-			elif isinstance(data,arrays):
-				if data.ndim == 3:
-					if not conj:
-						shape = [data[0]*prod(data[1:-1]),data[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
-						data = reshape(transpose(data,axes),shape)
-					else:
-						shape = [data[0],prod(data[1:-1])*data[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
-						data = reshape(transpose(data,axes),shape)
-				elif data.ndim == 4:
-					if not conj:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1,2,-1] if axes is None else axes
-						data = reshape(transpose(data,axes),shape)
-					else:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1,2,-1] if axes is None else axes
-						data = reshape(transpose(data,axes),shape)			
-				else:
-					raise NotImplementedError(f"Not Implemented {data}")
-
-		else:
-
-			if isinstance(data,dict):
-				raise NotImplementedError(f"Not Implemented {data}")
-		
-			elif isinstance(data,tuple):
-				shape = [[data[0].shape[0],data[0].shape[1],1],[1,data[1].shape[2],data[1].shape[-1]]] if shape is None else shape
-				axes = [[0,1,2],[0,1,2]] if axes is None else axes
-				data = tuple((transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)))
-			
-			elif isinstance(data,arrays):
-				if data.ndim == 3:
-					if not conj:
-						shape = [data[0],*data[1:-1],s] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
-						a = transpose(reshape(u,shape),axes)
-					else:
-						shape = [s,*data[1:-1],data[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
-						a = transpose(reshape(v,shape),axes)
-				elif data.ndim == 4:
-					shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-					axes = [0,1,2,-1] if axes is None else axes
-					data = reshape(transpose(data,axes),shape)
-				else:
-					raise NotImplementedError(f"Not Implemented {data}")
-
-		return data
-
 
 	@classmethod
 	def spectrum(cls,state,where=None,options=None,**kwargs):
@@ -2464,8 +2561,8 @@ class Basis(object):
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				s = add(u,0)
-				u,v = dotr(u,1/s),dotl(v,s)
-				u,v = (dagger(v),dagger(u)) if conj else (u,v)
+				u,v,s = dotr(u,1/s),dotl(v,s),s
+				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 			return decorator
@@ -2476,7 +2573,7 @@ class Basis(object):
 				defaults = dict(compute_uv=True,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				u,v,s = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s))),ones(shape=s.shape,dtype=s.dtype)
+				u,v,s = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s))),ones(s.shape,dtype=s.dtype)
 				return u,v,s				
 		elif scheme in ['svd']:
 			@wrapper
@@ -2510,8 +2607,8 @@ class Basis(object):
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				s = add(dot(u,v),0)
-				u,v = u,v/s
-				u,v = (dagger(v),dagger(u)) if conj else (u,v)
+				u,v,s = u,v/s,s
+				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
 			return decorator
@@ -2521,13 +2618,13 @@ class Basis(object):
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(mode='reduced')
 				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				s = ones(shape=min(a.shape),dtype=a.dtype)
+				s = ones(min(a.shape),dtype=a.dtype)
 				return u,v,s				
 		elif scheme in ['stq']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
-				u,v,s = a,identity(shape=min(a.shape),dtype=a.dtype),ones(shape=min(a.shape),dtype=a.dtype)
+				u,v,s = a,identity(min(a.shape),dtype=a.dtype),ones(min(a.shape),dtype=a.dtype)
 				return u,v,s				
 		
 		def wrapper(func):
@@ -2580,7 +2677,7 @@ class Basis(object):
 		return scheme		
 
 	@classmethod
-	def update(cls,state,where=None,options=None,**kwargs):
+	def update(cls,state,shape=None,axes=None,where=None,options=None,**kwargs):
 		
 		options = dict() if options is None else options
 
@@ -2600,12 +2697,13 @@ class Basis(object):
 				if i < min(where):
 
 					shape = state[i].shape
+					axes = axes
 
-					state[i] = cls.organize(state[i],where=where,shape=[prod(shape[:-1]),shape[-1]],transform=True,conj=False,**kwargs)
+					state[i] = cls.organize(state[i],where=where,transform=True,conj=False,**kwargs)
 
 					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=False,**{**kwargs,**options,**defaults})
 
-					state[i] = cls.organize(u,where=where,shape=[*shape[:-1],s],transform=False,conj=False,**kwargs)
+					state[i] = cls.organize(u,where=where,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
 
 					if i < (N-1):
 						state[i+1] = dot(v,state[i+1])
@@ -2613,12 +2711,13 @@ class Basis(object):
 				elif i > max(where):
 
 					shape = state[i].shape
+					axes = axes
 
-					state[i] = cls.organize(state[i],where=where,shape=[shape[0],prod(shape[1:])],transform=True,conj=True,**kwargs)
+					state[i] = cls.organize(state[i],where=where,transform=True,conj=True,**kwargs)
 
 					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
 
-					state[i] = cls.organize(v,where=where,shape=[s,*shape[1:]],transform=True,conj=True,**kwargs)
+					state[i] = cls.organize(v,where=where,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
 
 					if i > 0:
 						state[i-1] = dot(state[i-1],u)
@@ -2627,24 +2726,18 @@ class Basis(object):
 
 			if len(where) == 2:
 
-				shape = state.shape
-
-				state = cls.organize(state,where=where,shape=[prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])],transform=True,conj=False,**kwargs)
+				state = cls.organize(state,where=where,shape=[prod(state.shape[:len(state.shape)//2]),prod(state.shape[len(state.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
 				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
 
 				error = (norm(state-dot(u,v))/norm(state)).real
 
-				state = cls.organize((u,v),where=where,shape=[[*shape[:len(shape)//2],s],[s,*shape[len(shape)//2:]]],transform=False,conj=False,**kwargs)
-
-
-
+				state = cls.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
 				variables = kwargs.get('variables')
 				tmp = kwargs.get('state',options.get('state'))
 				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
 				basis = Basis()
-
 
 				options = dict(compute_v=False,hermitian=True)
 				spectrum = basis.transform(tmp,transform=None,**{**kwargs,**dict(D=D,N=N)})
@@ -2671,54 +2764,6 @@ class Basis(object):
 
 
 		return state
-
-	@classmethod
-	def contract(cls,state,data,where=None,options=None,**kwargs):
-
-		if isinstance(state,dict):
-
-			where = state if where is None else where
-			N = len(where)
-
-			shape = [j for i in where for j in state[i].shape[1:-1]]
-			subscripts = '%s%s,%s->%s'%(
-				''.join(symbols(N+i) for i in range(N)),
-				''.join(symbols(i) for i in range(N)),
-				''.join(symbols(i) for i in range(N)),
-				''.join(symbols(N+i) for i in range(N)),
-				)
-
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
-
-			data = cls.shuffle(data,shape=shape,**kwargs),cls.organize(state,where=where,shape=[prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])],transform=True,conj=False,**kwargs)
-
-			data = einsum(subscripts,*data)
-
-			data = cls.update(data,where=where,options={**dict(scheme=options.get('scheme'),state=state,u=state[list(where)[0]],v=state[list(where)[-1]]),**options},**kwargs)
-
-			for i in where:
-				state[i] = data[i]
-
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
-
-			data = state
-
-		elif state.ndim == 1:
-			if data.ndim == 2:
-				data = einsum('ij,j->i',data,state)
-			else:	
-				raise NotImplementedError(f"Not Implemented {data}")						
-		elif state.ndim > 1:
-			if data.ndim == 2:
-				data = einsum('ij,...jk,lk->...il',data,state,conjugate(data))
-			elif data.ndim == 3:
-				data = einsum('uij,...jk,ulk->...il',data,state,conjugate(data))
-			else:	
-				raise NotImplementedError(f"Not Implemented {data}")			
-		else:
-			raise NotImplementedError(f"Not Implemented {state}")			
-		
-		return data
 
 
 def test_shuffle(*args,**kwargs):
@@ -2781,35 +2826,35 @@ def test_mps(*args,**kwargs):
 			where = [where] if not isinstance(where,iterables) else where
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 
-			#####
-			state = basis.update(state,where=where,options={**kwargs,**kwargs.get('options',{}),**dict(scheme={'svd':'qr','nmf':'stq'}.get(kwargs.get('options',{}).get('scheme')))},**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg not in ['options']})
+			# #####
+			# state = basis.update(state,where=where,options={**kwargs,**kwargs.get('options',{}),**dict(scheme={'svd':'qr','nmf':'stq'}.get(kwargs.get('options',{}).get('scheme')))},**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg not in ['options']})
 
-			N,d = len(where),2
-			shapes = [[D**2 for i in range(N) for j in range(d)],[D**(2*d) for i in range(N)]]
-			axis = [[j*N+i for i in range(N) for j in range(d)],[i for i in range(N)]]
-			for shape,axes in zip(shapes,axis):
-				data = transpose(reshape(data,shape),axes)
-			U,S,V = svd(real(data))
-			A,B = [state[i] for i in where]
+			# N,d = len(where),2
+			# shapes = [[D**2 for i in range(N) for j in range(d)],[D**(2*d) for i in range(N)]]
+			# axis = [[j*N+i for i in range(N) for j in range(d)],[i for i in range(N)]]
+			# for shape,axes in zip(shapes,axis):
+			# 	data = transpose(reshape(data,shape),axes)
+			# U,S,V = svd(real(data))
+			# A,B = [state[i] for i in where]
 
-			K,C = S.size,add(dot(reshape(A,[A.shape[0]*A.shape[1],A.shape[2]]),reshape(B,[B.shape[0],B.shape[1]*B.shape[2]])))
+			# K,C = S.size,add(dot(reshape(A,[A.shape[0]*A.shape[1],A.shape[2]]),reshape(B,[B.shape[0],B.shape[1]*B.shape[2]])))
 
-			U,V,S = reshape(U,[*[D**2]*2,K]),reshape(dotr(V,S),[K,*[D**2]*2]),S
-			A,B = A,B/C
+			# U,V,S = reshape(U,[*[D**2]*2,K]),reshape(dotr(V,S),[K,*[D**2]*2]),S
+			# A,B = A,B/C
 
-			A,B = einsum('iuj,uvk->ivjk',A,U),einsum('iuj,kuv->ikvj',B,V)
+			# A,B = einsum('iuj,uvk->ivjk',A,U),einsum('iuj,kuv->ikvj',B,V)
 
-			A,B = reshape(A,[A.shape[0]*A.shape[1],A.shape[2]*A.shape[3]]),reshape(B,[B.shape[0]*B.shape[1],B.shape[2]*B.shape[3]])
-			C = add(A,0)
-			A,B = dotr(A,1/C),dotl(B,C)
+			# A,B = reshape(A,[A.shape[0]*A.shape[1],A.shape[2]*A.shape[3]]),reshape(B,[B.shape[0]*B.shape[1],B.shape[2]*B.shape[3]])
+			# C = add(A,0)
+			# A,B = dotr(A,1/C),dotl(B,C)
 
-			print(add(A,0))
-			print(add(dot(A,B)))
-			print(A.shape)
-			print(B.shape)
-			exit()
+			# print(add(A,0))
+			# print(add(dot(A,B)))
+			# print(A.shape)
+			# print(B.shape)
+			# exit()
+			# #####
 
-			#####
 			data = basis.contract(state,data=data,where=where,**kwargs)
 			return data
 
@@ -2898,7 +2943,7 @@ def test_mps(*args,**kwargs):
 		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
 		for i in [*range(0,N-1)] for where in [(i,i+1)] 
 		# for data in ['unitary','depolarize'])}
-		for data in ['CNOT','depolarize'])}
+		for data in ['depolarize'])}
 		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
 		# for data in ['CNOT','T','depolarize'])}
 
