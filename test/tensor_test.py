@@ -448,8 +448,6 @@ def svds(a,**kwargs):
 
 	u,s,v = svd(a,**kwargs)
 
-
-
 	# s = sign(u[:,argmax(s)])
 	# slices = slice(None)
 	# k = argmax(absolute(u), axis=0)
@@ -2078,8 +2076,8 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
-			sqrt(parameters)*cls.Z(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*cls.Z(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2088,8 +2086,8 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
-			sqrt(parameters)*cls.X(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*cls.X(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2098,8 +2096,8 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(1-parameters)*cls.I(D=D,dtype=dtype),
-			sqrt(parameters)*cls.Y(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*cls.Y(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2108,10 +2106,10 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-				sqrt(1-(D**2-1)*parameters/(D**2))*cls.I(D=D,dtype=dtype),
-				sqrt(parameters/(D**2))*cls.X(D=D,dtype=dtype),
-				sqrt(parameters/(D**2))*cls.Y(D=D,dtype=dtype),
-				sqrt(parameters/(D**2))*cls.Z(D=D,dtype=dtype)
+				sqrt(absolute(1-(D**2-1)*parameters/(D**2)))*cls.I(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*cls.X(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*cls.Y(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*cls.Z(D=D,dtype=dtype)
 				],dtype=dtype)]*N)
 		return data
 
@@ -2121,8 +2119,8 @@ class Basis(object):
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
 			cls.element(D=D,data='00',dtype=dtype) + 
-				sqrt(1-parameters)*cls.element(D=D,data='11',dtype=dtype),
-			sqrt(parameters)*cls.element(D=D,data='01',dtype=dtype)
+				sqrt(absolute(1-parameters))*cls.element(D=D,data='11',dtype=dtype),
+			sqrt(absolute(parameters))*cls.element(D=D,data='01',dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2130,13 +2128,13 @@ class Basis(object):
 	def povm(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 
 		if cls.basis is None:
-			func = cls.pauli
+			func = cls.tetrad
 		if callable(cls.basis):
 			func = cls.basis			
 		elif isinstance(cls.basis,str):
 			func = getattr(cls,cls.basis)
 		else:
-			func = cls.pauli
+			func = cls.tetrad
 
 		data = func(parameters=parameters,D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 
@@ -2147,11 +2145,34 @@ class Basis(object):
 		data = (1/(D**2-1))*array([
 				cls.zero(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
 				cls.plus(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
-				cls.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				cls.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
 			   (cls.one(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
 				cls.minus(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
-				cls.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
-			],dtype=dtype)		
+				cls.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
+			],dtype=dtype)	
+		# print(data)
+		# tmp = einsum('uij,vji->uv',data,data)
+		# print(1/tmp)
+		# exit()				
+		return data
+
+	@classmethod
+	def tetrad(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+		data = (1/(D**2))*array([
+			sum(i*operator(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
+				for i,operator in 
+				zip(coefficient,(cls.I,cls.X,cls.Y,cls.Z)))
+			for coefficient in [
+			(1,0,0,1),
+			(1,2*sqrt(2)/3,0,-1/3),
+			(1,-sqrt(2)/3,sqrt(2/3),-1/3),
+			(1,-sqrt(2)/3,-sqrt(2/3),-1/3)
+			]
+			],dtype=dtype)
+		# print(data)
+		# tmp = einsum('uij,vji->uv',data,data)
+		# print(1/tmp)
+		# exit()
 		return data
 
 	@classmethod
@@ -2286,7 +2307,7 @@ class Basis(object):
 					data = einsum('uij,...ji->...u',basis,data)
 
 				if data.ndim == 1:
-					axes = [0,1,2]
+					axes = range(data.ndim+2)
 					shape = [1,*data.shape,1]
 			
 					data = transpose(reshape(data,shape),axes)
@@ -2298,7 +2319,7 @@ class Basis(object):
 			elif isinstance(data,dict):
 
 				N = len(data) if N is None else N
-				where = range(N) if where is None and N is not None else where
+				where = range(N) if where is None and N is not None else [*where]
 
 				shape = {i:data[i].shape for i in where}
 
@@ -2327,6 +2348,7 @@ class Basis(object):
 							for i in range(N)),							
 							)),						
 						)
+
 					data = reshape(transpose(einsum(subscripts,data,*(inverse,)*N,*(basis,)*N),axes),shape)
 
 				else:
@@ -2351,7 +2373,7 @@ class Basis(object):
 
 		if isinstance(state,dict):
 
-			where = state if where is None else where
+			where = [*state] if where is None else [*where]
 			N = len(where)
 
 			shape = [j for i in where for j in state[i].shape[1:-1]]
@@ -2370,7 +2392,8 @@ class Basis(object):
 				''.join((symbols(2*N+N),))
 				)
 
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
+			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = cls.shuffle(data,shape=shape,**kwargs)
 
@@ -2379,12 +2402,14 @@ class Basis(object):
 			shape = [state[i].shape for i in where]
 			axes = None
 
-			data = cls.update(data,shape=shape,axes=axes,where=where,options={**dict(scheme=options.get('scheme'),state=state),**options},**kwargs)
+			scheme = options.get('scheme')
+			data = cls.update(data,shape=shape,axes=axes,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
 
 			for i in where:
 				state[i] = data[i]
 
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme={'svd':'qr','nmf':'stq'}.get(options.get('scheme')))},**kwargs)
+			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
+			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = state
 
@@ -2411,10 +2436,10 @@ class Basis(object):
 		if transform:
 			
 			if isinstance(data,dict):
-				where = data if where is None else where
+				where = [*data] if where is None else [*where]
 				N = len(where)
 
-				shape = [k for i,j in enumerate(where) for k in ([data[j].shape[0]*data[j].shape[1],*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],data[j].shape[-2]*data[j].shape[-1]] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+				shape = [k for i,j in enumerate(where) for k in ([prod(data[j].shape[:2]),*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],prod(data[j].shape[-2:])] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
 				axes = range(N) if axes is None else axes
 				subscripts = '%s->%s'%(
 					','.join(
@@ -2443,24 +2468,24 @@ class Basis(object):
 				elif data.ndim == 2:
 					if not conj:
 						shape = [*data.shape] if shape is None else shape
-						axes = [0,1] if axes is None else axes
+						axes = range(data.ndim) if axes is None else axes
 					else:
 						shape = [*data.shape] if shape is None else shape
-						axes = [0,1] if axes is None else axes					
+						axes = range(data.ndim) if axes is None else axes					
 				elif data.ndim == 3:
 					if not conj:
 						shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim) if axes is None else axes
 					else:
 						shape = [data.shape[0],prod(data.shape[1:-1])*data.shape[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim) if axes is None else axes
 				elif data.ndim == 4:
 					if not conj:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1,2,-1] if axes is None else axes
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
 					else:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1,2,-1] if axes is None else axes
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
 				else:
 					raise NotImplementedError(f"Not Implemented {data}")
 				
@@ -2472,40 +2497,39 @@ class Basis(object):
 				raise NotImplementedError(f"Not Implemented {data}")
 		
 			elif isinstance(data,tuple):
-				where = range(len(data)) if where is None else where
-				shape = [[data[0].shape[0],data[0].shape[1],1],[1,data[1].shape[2],data[1].shape[-1]]] if shape is None else shape
-				axes = [[0,1,2],[0,1,2]] if axes is None else axes
-				
+				where = range(len(data)) if where is None else [*where]
+				shape = [[*data[0].shape[:2],1],[1,*data[1].shape[-2:]]] if shape is None else shape
+				axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
 				data = dict(zip(where,(transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes))))
 			elif isinstance(data,arrays):
 				if data.ndim == 1:
 					if not conj:
 						shape = [1,*data.shape,1] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim+2) if axes is None else axes
 					else:
 						shape = [1,*data.shape,1] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim+2) if axes is None else axes
 				elif data.ndim == 2:
 					if not conj:
 						shape = [data.shape[0],prod(data.shape[1:-1]),-1] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim+1) if axes is None else axes
 					else:
 						shape = [-1,prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim+1) if axes is None else axes
 				elif data.ndim == 3:
 					if not conj:
 						shape = [*data.shape] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim) if axes is None else axes
 					else:
 						shape = [*data.shape] if shape is None else shape
-						axes = [0,1,2] if axes is None else axes
+						axes = range(data.ndim) if axes is None else axes
 				elif data.ndim == 4:
 					if not conj:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1] if axes is None else axes
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim-2) if axes is None else axes
 					else:
-						shape = [data.shape[0]*data.shape[1],data.shape[2]*data.shape[-1]] if shape is None else shape
-						axes = [0,1] if axes is None else axes
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim-2) if axes is None else axes
 				else:
 					raise NotImplementedError(f"Not Implemented {data}")
 
@@ -2533,7 +2557,7 @@ class Basis(object):
 		N = len(state)
 		where = where if isinstance(where,integers) else min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else N//2
 		where = min(N-2,max(0,where-1))
-		where = (where,where+1)
+		where = [where,where+1]
 
 		options = dict() if options is None else options
 
@@ -2553,6 +2577,7 @@ class Basis(object):
 		options = dict() if options is None else options
 
 		scheme = options.get('scheme')
+		eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
 
 		def wrapper(func):
 			def decorator(a,rank=None,conj=None,**kwargs):
@@ -2561,6 +2586,7 @@ class Basis(object):
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				s = add(u,0)
+				s = inplace(s,absolute(s)<eps,1)				
 				u,v,s = dotr(u,1/s),dotl(v,s),s
 				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
@@ -2606,8 +2632,9 @@ class Basis(object):
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				s = add(dot(u,v),0)
-				u,v,s = u,v/s,s
+				s = add(dagger(u),-1) if conj else add(u,0)
+				s = inplace(s,absolute(s)<eps,1)
+				u,v,s = (dotr(u,1/s),dotl(v,s),s) if conj else (dotr(u,1/s),dotl(v,s),s)
 				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
@@ -2686,11 +2713,9 @@ class Basis(object):
 		if isinstance(state,dict):
 
 			N = len(state)
-			where = (N,N) if where is None else (where,where) if isinstance(where,integers) else where
+			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
 
-			indices = range(0,N)
-
-			indices = (*range(0,min(where),1),*range(N-1,max(where)-1,-1))
+			indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
 
 			for i in indices:
 
@@ -2714,13 +2739,18 @@ class Basis(object):
 					axes = axes
 
 					state[i] = cls.organize(state[i],where=where,transform=True,conj=True,**kwargs)
-
+					
 					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
 
 					state[i] = cls.organize(v,where=where,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
-
+					
 					if i > 0:
 						state[i-1] = dot(state[i-1],u)
+
+			eps = options.get('eps') if options.get('eps') is not None else epsilon()
+			s = maximums(sqrt(absolute(add(dot(state[min(where)],state[max(where)])))),eps)
+			for i in where:
+				state[i] /= s
 
 		elif isinstance(state,arrays):
 
@@ -2734,21 +2764,27 @@ class Basis(object):
 
 				state = cls.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
+				tmp = {**kwargs.get('state',options.get('state')),**state}
 				variables = kwargs.get('variables')
-				tmp = kwargs.get('state',options.get('state'))
 				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
 				basis = Basis()
 
+				options = dict(D=D,N=N)
+				constant = real(1-add(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
+
+				options = dict(D=D,N=N)
+				spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
+
+				hermitian = real(norm(spectrum-dagger(spectrum)))+0.
+
 				options = dict(compute_v=False,hermitian=True)
-				spectrum = basis.transform(tmp,transform=None,**{**kwargs,**dict(D=D,N=N)})
 				spectrum = eig(spectrum,**options)
-				spectrum = (-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0])).real+0.
+				ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
 				
-				constant = 1-add(basis.transform(tmp,transform=False,**{**kwargs,**dict(D=D,N=N)})).real+0.
 
 				sums = {i:tmp[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in tmp}
 
-				print(where,error,spectrum,constant)
+				print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
 
 				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
 				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
@@ -2760,7 +2796,7 @@ class Basis(object):
 				# variables['uv.rank'].append(rank)
 
 				# parse = lambda obj: asscalar(obj.real)
-				# print(where,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
+				# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
 
 
 		return state
@@ -2805,7 +2841,7 @@ def test_mps(*args,**kwargs):
 		basis = Basis()
 
 		def func(state,data=None,where=None,**kwargs):
-			where = [where] if not isinstance(where,iterables) else where
+			where = [where] if not isinstance(where,iterables) else [*where]
 			state = getattr(basis,state)(**{**kwargs,**dict(D=D)})
 			state = basis.transform(state,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 			return state
@@ -2816,14 +2852,14 @@ def test_mps(*args,**kwargs):
 		def func(state,data=None,where=None,**kwargs):
 			
 			def func(state=None,data=data,where=where,**kwargs):
-				where = [where] if not isinstance(where,iterables) else where
+				where = [where] if not isinstance(where,iterables) else [*where]
 				if isinstance(data,str):
 					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
 					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
 				data = basis.contract(state,data,where=where,**kwargs)
 				return data
-			where = [where] if not isinstance(where,iterables) else where
+			where = [where] if not isinstance(where,iterables) else [*where]
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 
 			# #####
@@ -2873,6 +2909,7 @@ def test_mps(*args,**kwargs):
 				state = data[i](state,**kwargs)
 				key,kwargs['key'] = rng.split(kwargs['key'])
 			print(k,{i:state[i].shape for i in state})
+
 		return state
 
 
@@ -2924,13 +2961,15 @@ def test_mps(*args,**kwargs):
 
 	N = 8
 	D = 2
-	M = 2*N
+	M = 3*N
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
 	noise = 1e-3
-	rank = D**N-0
+	rank = D**N
+	eps = 1e-14
 	seed = 12345
+	basis = Basis()
 	dtype = 'complex'
 	path = 'scratch/nmf/data/data.hdf5'
 	file = 'scratch/nmf/data/variables.hdf5'
@@ -2943,73 +2982,117 @@ def test_mps(*args,**kwargs):
 		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
 		for i in [*range(0,N-1)] for where in [(i,i+1)] 
 		# for data in ['unitary','depolarize'])}
-		for data in ['depolarize'])}
+		for data in ['unitary','depolarize'])}
+		# for data in ['unitary'])}
+		# for data in ['depolarize'])}
 		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
 		# for data in ['CNOT','T','depolarize'])}
+
+	kwargs = dict(
+		D=D,N=N,M=M,
+		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+		options=dict(
+			scheme='svd',
+			rank=rank,
+			eps=eps,			
+		),
+		key=seeder(seed),		
+		seed=seed,
+		dtype=dtype,		
+	)
 
 	# kwargs = dict(
 	# 	D=D,N=N,M=M,
 	# 	parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
-	# 	variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+	# 	variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
 	# 	options=dict(
-	# 		scheme='svd',
-	# 		rank=rank,
+	# 		scheme='nmf',
+	# 		init='nndsvd',
+	# 		iteration=int(100),
+	# 		eps=eps,
+	# 		alpha=1e-2,
+	# 		beta=5e-1,
+	# 		gamma=1e-10,
+	# 		delta=1,
+	# 		iota=6e-1,
+	# 		sigma=1e-4,
+	# 		update=[
+	# 			# {'update':'gd','iteration':int(1e6),'eps':1e-14},
+	# 			# {'update':'cg','iteration':int(1e5),'eps':1e-14},
+	# 			# {'update':'cg','iteration':int(100),'eps':1e-14},
+	# 			# {'update':'cp','iteration':int(1e1),'eps':1e-10},
+	# 			# {'update':'pc','iteration':int(1e3),'eps':1e-10},
+	# 			# {'update':'rg','iteration':int(1e7),'eps':1e-10},
+	# 			{'update':'gd','iteration':int(1e7),'eps':1e-10},
+	# 			# {'update':'sd','iteration':int(1e6),'eps':1e-14},
+	# 			# {'update':'qp','iteration':int(1),'eps':1e-8},
+	# 			# {'update':'pd','iteration':int(1),'eps':1e-14},
+	# 			# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
+	# 			# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
+	# 			# {'update':'mhu','iteration':int(1),'eps':1e-14},
+	# 			# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
+	# 			# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+	# 			# {'update':'mu','iteration':int(1e3),'eps':1e-14},
+	# 			# {'update':'mru','iteration':int(1e4),'eps':1e-14},
+	# 			# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
+	# 			# {'update':'miu','iteration':int(1e4),'eps':1e-14},
+	# 			# {'update':'cd','iteration':int(1e6),'eps':1e-14},
+	# 			],
 	# 	),
-	# 	key=seeder(seed),		
+	# 	key=seeder(seed),
 	# 	seed=seed,
 	# 	dtype=dtype,		
 	# )
 
 
-	kwargs = dict(
-		D=D,N=N,M=M,
-		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
-		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error']},
-		options=dict(
-			scheme='nmf',
-			init='nndsvd',
-			iteration=int(100),
-			eps=1e-10,
-			alpha=1e-2,
-			beta=5e-1,
-			gamma=1e-10,
-			delta=1,
-			iota=6e-1,
-			sigma=1e-4,
-			update=[
-				# {'update':'gd','iteration':int(1e6),'eps':1e-14},
-				# {'update':'cg','iteration':int(1e5),'eps':1e-14},
-				# {'update':'cg','iteration':int(100),'eps':1e-14},
-				# {'update':'cp','iteration':int(1e1),'eps':1e-10},
-				# {'update':'pc','iteration':int(1e3),'eps':1e-10},
-				# {'update':'rg','iteration':int(1e7),'eps':1e-10},
-				{'update':'gd','iteration':int(1e7),'eps':1e-10},
-				# {'update':'sd','iteration':int(1e6),'eps':1e-14},
-				# {'update':'qp','iteration':int(1),'eps':1e-8},
-				# {'update':'pd','iteration':int(1),'eps':1e-14},
-				# {'update':'gd','iteration':int(1e6),'eps':1e-14},					
-				# {'update':'ls','iteration':int(1e5),'eps':1e-14},					
-				# {'update':'mhu','iteration':int(1),'eps':1e-14},
-				# {'update':'gd','iteration':int(1e4),'eps':1e-14},					
-				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-				# {'update':'mu','iteration':int(1e3),'eps':1e-14},
-				# {'update':'mru','iteration':int(1e4),'eps':1e-14},
-				# {'update':'mhu','iteration':int(1e4),'eps':1e-14},
-				# {'update':'miu','iteration':int(1e4),'eps':1e-14},
-				# {'update':'cd','iteration':int(1e6),'eps':1e-14},
-				],
-		),
-		key=seeder(seed),
-		seed=seed,
-		dtype=dtype,		
-	)
-
-
-	basis = Basis()
-
 	state,data = initialize(state=state,data=data,**kwargs)
 
 	state = func(state,data,**kwargs)
+
+
+
+	_state = {i:'zero' 
+		for i in range(N)}
+	_data = {index:(data,where) 
+		for index,(data,where) in enumerate((data,where) 
+		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
+		for i in [*range(0,N-1)] for where in [(i,i+1)]
+		# for data in ['unitary','depolarize'])}
+		for data in ['unitary','depolarize'])}
+		# for data in ['unitary'])}
+		# for data in ['depolarize'])}
+		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
+		# for data in ['CNOT','T','depolarize'])}
+	_kwargs = dict(
+		D=D,N=N,M=M,
+		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
+		variables={attr:[] for attr in ['u.condition','v.condition','u.spectrum','v.spectrum','uv.error','uv.spectrum','uv.rank']},
+		options=dict(
+			scheme='svd',
+			rank=rank,
+			eps=eps,			
+		),
+		key=seeder(seed),		
+		seed=seed,
+		dtype=dtype,		
+	)	
+
+	_state,_data = _initialize(state=_state,data=_data,**_kwargs)
+
+	_state = _func(_state,_data,**_kwargs)
+
+
+	state = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)})
+	_state = _state
+
+
+	error = norm(state-_state)
+
+	print(error)
+	assert allclose(state,_state)
+
+	print('passed')
 
 	exit()
 
@@ -3023,8 +3106,9 @@ def test_mps(*args,**kwargs):
 	# 	D=D,N=N,M=M,
 	# 	parameters=parameters,
 	# 	options=dict(),
-	# 	seed=seed,
-	# 	dtype=dtype,		
+		# key=seeder(seed),		
+		# seed=seed,
+		# dtype=dtype,			
 	# )
 
 	# basis = Basis()
@@ -3049,7 +3133,7 @@ def test_mps(*args,**kwargs):
 	# _state = _func(_state,_data,**_kwargs)
 
 
-	# state = basis.transform(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)}),transform=False,**{**kwargs,**dict(D=D,N=None)})
+	# state = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)})
 	# _state = _state
 
 	# assert allclose(state,_state)
