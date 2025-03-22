@@ -371,6 +371,9 @@ def array(*args,**kwargs):
 def nparray(*args,**kwargs):
 	return onp.array(*args,**kwargs)
 
+def asarray(*args,**kwargs):
+	return np.asarray(*args,**kwargs)
+
 def asscalar(a,*args,**kwargs):
 	try:
 		return a.item()
@@ -441,8 +444,16 @@ def qrs(a,mode='reduced',**kwargs):
 
 	return q,r
 
-def svd(a,full_matrices=False,compute_uv=True,hermitian=False,**kwargs):
-	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
+def svd(a,compute_uv=True,full_matrices=False,hermitian=False,**kwargs):
+	# data = onp.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
+	# if isinstance(data,tuple):
+	# 	data = tuple(asarray(i) for i in data)
+	# else:
+	# 	data = asarray(data)
+	# return data
+	# return np.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices,hermitian=hermitian)
+	return sp.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices,lapack_driver="gesvd")
+	# return jax.lax.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices)
 
 def svds(a,**kwargs):
 
@@ -604,7 +615,7 @@ def einsum(subscripts,*operands,backend=backend):
 	# return np.einsum(subscripts,*operands)
 
 def norm(a):
-	return add(sqr(a))
+	return add(abs2(a))
 
 def expm(a,n=16):
 	return sp.linalg.expm(a,max_squarings=n)
@@ -2392,8 +2403,8 @@ class Basis(object):
 				''.join((symbols(2*N+N),))
 				)
 
-			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = cls.shuffle(data,shape=shape,**kwargs)
 
@@ -2408,8 +2419,8 @@ class Basis(object):
 			for i in where:
 				state[i] = data[i]
 
-			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
-			state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = state
 
@@ -2596,7 +2607,7 @@ class Basis(object):
 		if scheme is None:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=True,hermitian=False)
+				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				u,v,s = dotr(u,sign(s)*sqrt(absolute(s))),dotl(v,sign(s)*sqrt(absolute(s))),ones(s.shape,dtype=s.dtype)
@@ -2604,7 +2615,7 @@ class Basis(object):
 		elif scheme in ['svd']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=True,hermitian=False)
+				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
 				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				u,v = u,dotl(v,s)
@@ -2673,7 +2684,7 @@ class Basis(object):
 		elif scheme in ['spectrum']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=False,hermitian=False)							
+				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
 				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				s = s[:rank]
 				return s
@@ -2687,7 +2698,7 @@ class Basis(object):
 		elif scheme in ['_spectrum']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict(compute_uv=False,hermitian=False)	
+				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)	
 				rank = min(a.shape) if rank is None else rank    
 				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
 				s = s[:rank]
@@ -2764,27 +2775,30 @@ class Basis(object):
 
 				state = cls.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
-				tmp = {**kwargs.get('state',options.get('state')),**state}
-				variables = kwargs.get('variables')
-				D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
-				basis = Basis()
 
-				options = dict(D=D,N=N)
-				constant = real(1-add(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
+				if 1:
 
-				options = dict(D=D,N=N)
-				spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
+					tmp = {**kwargs.get('state',options.get('state')),**state}
+					variables = kwargs.get('variables')
+					D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
+					basis = Basis()
 
-				hermitian = real(norm(spectrum-dagger(spectrum)))+0.
+					options = dict(D=D,N=N)
+					constant = real(1-add(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
 
-				options = dict(compute_v=False,hermitian=True)
-				spectrum = eig(spectrum,**options)
-				ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
-				
+					options = dict(D=D,N=N)
+					spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
 
-				sums = {i:tmp[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in tmp}
+					hermitian = real(norm(spectrum-dagger(spectrum)))+0.
 
-				print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
+					options = dict(compute_v=False,hermitian=True)
+					spectrum = eig(spectrum,**options)
+					ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
+					
+
+					sums = {i:tmp[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in tmp}
+
+					print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
 
 				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
 				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
@@ -2863,7 +2877,7 @@ def test_mps(*args,**kwargs):
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 
 			# #####
-			# state = basis.update(state,where=where,options={**kwargs,**kwargs.get('options',{}),**dict(scheme={'svd':'qr','nmf':'stq'}.get(kwargs.get('options',{}).get('scheme')))},**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg not in ['options']})
+			# state = basis.update(state,where=where,options={**kwargs,**kwargs.get('options',{}),**dict(scheme={'svd':'stq','nmf':'stq'}.get(kwargs.get('options',{}).get('scheme')))},**{kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg not in ['options']})
 
 			# N,d = len(where),2
 			# shapes = [[D**2 for i in range(N) for j in range(d)],[D**(2*d) for i in range(N)]]
@@ -2959,14 +2973,14 @@ def test_mps(*args,**kwargs):
 	norm = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 8
+	N = 10
 	D = 2
-	M = 3*N
+	M = 2*N
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
 	noise = 1e-3
-	rank = D**N
+	rank = D**(N//1)
 	eps = 1e-14
 	seed = 12345
 	basis = Basis()
@@ -3087,9 +3101,10 @@ def test_mps(*args,**kwargs):
 	_state = _state
 
 
-	error = norm(state-_state)
+	error = norm(state-_state)/norm(_state)	
 
 	print(error)
+	print((state-_state).ravel())
 	assert allclose(state,_state)
 
 	print('passed')
