@@ -452,8 +452,8 @@ def svd(a,compute_uv=True,full_matrices=False,hermitian=False,**kwargs):
 	# 	data = asarray(data)
 	# return data
 	# return np.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices,hermitian=hermitian)
-	return sp.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices,lapack_driver="gesvd")
-	# return jax.lax.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices)
+	# return sp.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices,lapack_driver="gesvd")
+	return jax.lax.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices)
 
 def svds(a,**kwargs):
 
@@ -766,8 +766,6 @@ def nndsvd(a,u=None,v=None,rank=None,**kwargs):
 		def false(z_plus,x_plus,y_plus,z_minus,x_minus,y_minus):
 			return z_minus,x_minus,y_minus  
 
-
-		@jit
 		def func(i,x):
 			
 			u,v,s = x
@@ -837,11 +835,6 @@ def initd(a,u=None,v=None,rank=None,**kwargs):
 	k = min(min(n,m),rank)
 	dtype = a.dtype
 	u,v,s = real(u),real(v),ones(k,dtype=dtype)
-	return u,v,s
-
-def nmfd(u,v,rank=None,**kwargs):
-	x,y = add(u,0),add(v,1)
-	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
 
 # def search(parameters,func,grad,search,iteration,eps,bounds,constants,conditions='wolfe',method='zoom'):
@@ -2063,8 +2056,8 @@ class Basis(object):
 
 		return
 
-	@classmethod
-	def state(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def state(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = haar(
 			shape=(D,)*2,
 			seed=seed,
@@ -2073,8 +2066,8 @@ class Basis(object):
 		data = outer(data,conjugate(data))
 		return data
 
-	@classmethod
-	def unitary(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def unitary(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = haar(
 			shape=(D,)*2,
 			seed=seed,
@@ -2082,84 +2075,84 @@ class Basis(object):
 			dtype=dtype)
 		return data
 
-	@classmethod
-	def dephase(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def dephase(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*cls.Z(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*self.Z(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
-	@classmethod
-	def bitflip(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def bitflip(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*cls.X(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*self.X(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
-	@classmethod
-	def phaseflip(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def phaseflip(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*cls.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*cls.Y(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
+			sqrt(absolute(parameters))*self.Y(D=D,dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
-	@classmethod
-	def depolarize(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def depolarize(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-				sqrt(absolute(1-(D**2-1)*parameters/(D**2)))*cls.I(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*cls.X(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*cls.Y(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*cls.Z(D=D,dtype=dtype)
+				sqrt(absolute(1-(D**2-1)*parameters/(D**2)))*self.I(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*self.X(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*self.Y(D=D,dtype=dtype),
+				sqrt(absolute(parameters/(D**2)))*self.Z(D=D,dtype=dtype)
 				],dtype=dtype)]*N)
 		return data
 
-	@classmethod
-	def amplitude(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def amplitude(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			cls.element(D=D,data='00',dtype=dtype) + 
-				sqrt(absolute(1-parameters))*cls.element(D=D,data='11',dtype=dtype),
-			sqrt(absolute(parameters))*cls.element(D=D,data='01',dtype=dtype)
+			self.element(D=D,data='00',dtype=dtype) + 
+				sqrt(absolute(1-parameters))*self.element(D=D,data='11',dtype=dtype),
+			sqrt(absolute(parameters))*self.element(D=D,data='01',dtype=dtype)
 			],dtype=dtype)]*N)
 		return data
 
-	@classmethod
-	def povm(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def povm(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 
-		if cls.basis is None:
-			func = cls.tetrad
-		if callable(cls.basis):
-			func = cls.basis			
-		elif isinstance(cls.basis,str):
-			func = getattr(cls,cls.basis)
+		if self.basis is None:
+			func = self.tetrad
+		if callable(self.basis):
+			func = self.basis			
+		elif isinstance(self.basis,str):
+			func = getattr(self,self.basis)
 		else:
-			func = cls.tetrad
+			func = self.tetrad
 
 		data = func(parameters=parameters,D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 
 		return data
 
-	@classmethod
-	def pauli(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def pauli(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/(D**2-1))*array([
-				cls.zero(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
-				cls.plus(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
-				cls.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
-			   (cls.one(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
-				cls.minus(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
-				cls.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
+				self.zero(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				self.plus(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				self.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+			   (self.one(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
+				self.minus(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
+				self.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
 			],dtype=dtype)	
 		# print(data)
 		# tmp = einsum('uij,vji->uv',data,data)
@@ -2167,12 +2160,12 @@ class Basis(object):
 		# exit()				
 		return data
 
-	@classmethod
-	def tetrad(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def tetrad(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/(D**2))*array([
 			sum(i*operator(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 				for i,operator in 
-				zip(coefficient,(cls.I,cls.X,cls.Y,cls.Z)))
+				zip(coefficient,(self.I,self.X,self.Y,self.Z)))
 			for coefficient in [
 			(1,0,0,1),
 			(1,2*sqrt(2)/3,0,-1/3),
@@ -2186,136 +2179,141 @@ class Basis(object):
 		# exit()
 		return data
 
-	@classmethod
-	def identity(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def identity(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = identity(D,dtype=dtype)
 		return data
 
-	@classmethod
-	def I(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def I(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2	
 		data = tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N)
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data
 		return data
 
-	@classmethod
-	def X(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def X(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[0,1],[1,0]],dtype=dtype)]*N)
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data
 		return data
 
-	@classmethod
-	def Y(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def Y(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2	
 		data = tensorprod([array([[0,-1j],[1j,0]],dtype=dtype)]*N)		
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data		
 		return data
 		
-	@classmethod
-	def Z(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def Z(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[1,0],[0,-1]],dtype=dtype)]*N)				
 		if parameters is not None:
 			data = cos(parameters)*tensorprod([array([[1,0],[0,1]],dtype=dtype)]*N) + -1j*sin(parameters)*data		
 		return data
 
-	@classmethod
-	def H(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def H(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		data = tensorprod([(1/sqrt(2))*array([[1,1],[1,-1]],dtype=dtype)]*N)						
 		return data
 
-	@classmethod
-	def S(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def S(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[1,0],[0,1j]],dtype=dtype)]*N)			
 		return data
 
-	@classmethod
-	def T(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def T(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		data = tensorprod([array([[1,0],[0,e**(1j*pi/4)]],dtype=dtype)]*N)		
 		return data
 
-	@classmethod
-	def CNOT(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def CNOT(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)
 		return data
 
-	@classmethod
-	def zero(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def zero(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = array([1,*[0]*(D-1)],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 
-	@classmethod
-	def one(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def one(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = array([*[0]*(D-1),1],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 
-	@classmethod
-	def plus(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def plus(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/sqrt(D))*array([1,1],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 		
-	@classmethod
-	def minus(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def minus(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/sqrt(D))*array([1,-1],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 
-	@classmethod
-	def plusi(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def plusi(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/sqrt(D))*array([1,1j],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 		
-	@classmethod
-	def minusi(cls,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def minusi(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = (1/sqrt(D))*array([1,-1j],dtype=dtype)
 		data = outer(data,conjugate(data))
 		return data
 
-	@classmethod
-	def element(cls,D,data=None,seed=None,key=None,dtype=None,**kwargs):
+	
+	def element(self,D,data=None,seed=None,key=None,dtype=None,**kwargs):
 		index = tuple(map(int,data)) if data is not None else None
 		data = zeros((D,)*(len(index) if index is not None else 1),dtype=dtype)
 		data = inplace(data,index,1) if index is not None else data
 		return data
 
 
-	@classmethod
-	def transform(cls,data,D,N=None,where=None,transform=True,**kwargs):
+	
+	def transform(self,data,D,N=None,where=None,transform=True,**kwargs):
 		
-		basis = cls.povm(D=D,**kwargs)
+		basis = self.povm(D=D,**kwargs)
 
 		inverse = inv(einsum('uij,vji->uv',basis,basis))
-
-		if N:
-			basis = tensorprod([basis]*N)
-			inverse = tensorprod([inverse]*N)
 
 		if transform:
 			if callable(data):
 			
+				if N:
+					basis = tensorprod([basis]*N)
+					inverse = tensorprod([inverse]*N)
+
 				data = einsum('uij,wji,wv->uv',basis,vmap(partial(data,**kwargs))(basis),inverse)		
 			
 			elif isinstance(data,dict):
 				pass
 			
 			elif isinstance(data,arrays):
+
+				if N:
+					basis = tensorprod([basis]*N)
+					inverse = tensorprod([inverse]*N)
+
 				if data.ndim == 1:
 					raise NotImplementedError(f"Not Implemented {data}")			
 			
 				elif data.ndim > 1:
 			
-					data = einsum('uij,...ji->...u',basis,data)
+					data = einsum('uij,ji...->u...',basis,data)
 
 				if data.ndim == 1:
 					axes = range(data.ndim+2)
@@ -2334,11 +2332,11 @@ class Basis(object):
 
 				shape = {i:data[i].shape for i in where}
 
-				data = cls.organize(data,where=where,transform=True,conj=False,**kwargs)
+				data = self.organize(data,where=where,transform=True,conj=False,**kwargs)
 
 				if transform is None:
 					shape = [basis.shape[-2+i]**N for i in range(2)]
-					axes = [j for i in range(N) for j in [2*i+j for j in range(2)]]
+					axes = range(2*N)
 					subscripts = '%s,%s,%s->%s'%(
 						''.join((
 							symbols(i)
@@ -2364,11 +2362,16 @@ class Basis(object):
 
 				else:
 					shape = [j for i in where for j in shape[i][1:-1]]
-					axes = [i for i in range(N)]
+					axes = range(N)
 					
 					data = ravel(transpose(reshape(data,shape),axes))
 
 			elif isinstance(data,arrays):
+
+				if N:
+					basis = tensorprod([basis]*N)
+					inverse = tensorprod([inverse]*N)
+
 				if data.ndim == 1:
 
 					data = einsum('uij,uv,v->ij',basis,inverse,data)				
@@ -2379,8 +2382,8 @@ class Basis(object):
 		
 		return data
 
-	@classmethod
-	def contract(cls,state,data,where=None,options=None,**kwargs):
+	
+	def contract(self,state,data,where=None,options=None,**kwargs):
 
 		if isinstance(state,dict):
 
@@ -2404,9 +2407,9 @@ class Basis(object):
 				)
 
 			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
-			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			# state = self.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
-			data = cls.shuffle(data,shape=shape,**kwargs)
+			data = self.shuffle(data,shape=shape,**kwargs)
 
 			data = einsum(subscripts,data,*(state[i] for i in where))
 
@@ -2414,13 +2417,13 @@ class Basis(object):
 			axes = None
 
 			scheme = options.get('scheme')
-			data = cls.update(data,shape=shape,axes=axes,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
+			data = self.update(data,shape=shape,axes=axes,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
 
 			for i in where:
 				state[i] = data[i]
 
 			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
-			# state = cls.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			# state = self.update(state,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = state
 
@@ -2431,18 +2434,18 @@ class Basis(object):
 				raise NotImplementedError(f"Not Implemented {data}")						
 		elif state.ndim > 1:
 			if data.ndim == 2:
-				data = einsum('ij,...jk,lk->...il',data,state,conjugate(data))
+				data = einsum('ij,jk...,lk->il...',data,state,conjugate(data))
 			elif data.ndim == 3:
-				data = einsum('uij,...jk,ulk->...il',data,state,conjugate(data))
-			else:	
+				data = einsum('uij,jk...,ulk->il...',data,state,conjugate(data))
+			else:
 				raise NotImplementedError(f"Not Implemented {data}")			
 		else:
 			raise NotImplementedError(f"Not Implemented {state}")			
 		
 		return data
 
-	@classmethod
-	def organize(cls,data,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
+	
+	def organize(self,data,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
 		
 		if transform:
 			
@@ -2548,22 +2551,24 @@ class Basis(object):
 		
 		return data
 
-	@classmethod
-	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
+	
+	def shuffle(self,data,shape,where=None,transform=True,**kwargs):
 		if transform:
 			n,d = len(shape),data.ndim
+			where = [range(n)] if where is None else [where,sorted(set(range(n))-set(where))]
 			shape = [*shape]*d
-			axes = [i*d+j for i in range(n) for j in range(d)]
+			axes = [j*n+i for indices in where for j in range(d) for i in indices]
 			data = transpose(reshape(data,shape),axes)
 		else:
 			n,d = len(shape),data.ndim//len(shape)
+			where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
 			shape = [prod(shape)]*d
-			axes = [i*d+j for i in range(n) for j in range(d)]
+			axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
 			data = reshape(transpose(data,axes),shape)
 		return data
 
-	@classmethod
-	def spectrum(cls,state,where=None,options=None,**kwargs):
+	
+	def spectrum(self,state,where=None,options=None,**kwargs):
 
 		N = len(state)
 		where = where if isinstance(where,integers) else min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None else N//2
@@ -2573,17 +2578,17 @@ class Basis(object):
 		options = dict() if options is None else options
 
 		defaults = dict(scheme='stq')
-		state = cls.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
+		state = self.update(state,where=where,options={**kwargs,**options,**defaults},**kwargs)
 
-		state = cls.organize(state,where=where,**kwargs)
+		state = self.organize(state,where=where,**kwargs)
 
 		defaults = dict(scheme=options.get('scheme','spectrum'))
-		state = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,**{**kwargs,**options,**defaults})
+		state = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,**{**kwargs,**options,**defaults})
 
 		return state
 
-	@classmethod
-	def scheme(cls,options=None,**kwargs):
+	
+	def scheme(self,options=None,**kwargs):
 		
 		options = dict() if options is None else options
 
@@ -2596,9 +2601,10 @@ class Basis(object):
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				s = add(u,0)
-				s = inplace(s,absolute(s)<eps,1)				
-				u,v,s = dotr(u,1/s),dotl(v,s),s
+				# s = add(u,0)
+				# i = absolute(s)>eps				
+				# u,v,s = inplace(u,(slice(None),i),u[:,i]/s[i]),inplace(v,i,(v[i].T*s[i]).T),s
+				# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
 				return u,v,s
@@ -2642,12 +2648,13 @@ class Basis(object):
 				a = dagger(a) if conj else a
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
-				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				s = add(dagger(u),-1) if conj else add(u,0)
-				s = inplace(s,absolute(s)<eps,1)
-				u,v,s = (dotr(u,1/s),dotl(v,s),s) if conj else (dotr(u,1/s),dotl(v,s),s)
-				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
+				u,v,s = u[:,:rank],(v[:rank,:] if v is not None else None),(s[:rank] if s is not None else None)
+				# s = add(u,0)
+				# i = absolute(s)>eps
+				# u,v,s = inplace(u,(slice(None),i),u[:,i]/s[i]),(inplace(v,i,(v[i].T*s[i]).T) if v is not None else None),(s if s is not None else None)
+				# # u,v,s = dotr(u,reciprocal(s)),(dotl(v,s) if v is not None else None),(s if s is not None else None)
+				u,v,s = ((dagger(v) if v is not None else None),dagger(u),(dagger(s) if s is not None else None)) if conj else (u,v,s)
+				u,v,s = (cmplx(u) if u is not None else None),(cmplx(v) if v is not None else None),min(*(u.shape if u is not None else ()),*(v.shape if v is not None else ()))
 				return u,v,s
 			return decorator
 
@@ -2662,7 +2669,7 @@ class Basis(object):
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
-				u,v,s = a,identity(min(a.shape),dtype=a.dtype),ones(min(a.shape),dtype=a.dtype)
+				u,v,s = a,None,None
 				return u,v,s				
 		
 		def wrapper(func):
@@ -2714,8 +2721,8 @@ class Basis(object):
 		
 		return scheme		
 
-	@classmethod
-	def update(cls,state,shape=None,axes=None,where=None,options=None,**kwargs):
+	
+	def update(self,state,shape=None,axes=None,where=None,options=None,**kwargs):
 		
 		options = dict() if options is None else options
 
@@ -2735,13 +2742,13 @@ class Basis(object):
 					shape = state[i].shape
 					axes = axes
 
-					state[i] = cls.organize(state[i],where=where,transform=True,conj=False,**kwargs)
+					state[i] = self.organize(state[i],where=where,transform=True,conj=False,**kwargs)
 
-					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=False,**{**kwargs,**options,**defaults})
+					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=False,**{**kwargs,**options,**defaults})
 
-					state[i] = cls.organize(u,where=where,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
+					state[i] = self.organize(u,where=where,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
 
-					if i < (N-1):
+					if i < (N-1) and v is not None:
 						state[i+1] = dot(v,state[i+1])
 
 				elif i > max(where):
@@ -2749,34 +2756,32 @@ class Basis(object):
 					shape = state[i].shape
 					axes = axes
 
-					state[i] = cls.organize(state[i],where=where,transform=True,conj=True,**kwargs)
-					
-					u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
 
-					state[i] = cls.organize(v,where=where,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+					tmp = copy(state[i])
+					state[i] = self.organize(state[i],where=where,transform=True,conj=True,**kwargs)
 					
-					if i > 0:
+					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
+
+					state[i] = self.organize(v,where=where,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+					
+					if i > 0 and u is not None:
 						state[i-1] = dot(state[i-1],u)
 
-			eps = options.get('eps') if options.get('eps') is not None else epsilon()
-			s = maximums(sqrt(absolute(add(dot(state[min(where)],state[max(where)])))),eps)
-			for i in where:
-				state[i] /= s
 
 		elif isinstance(state,arrays):
 
 			if len(where) == 2:
 
-				state = cls.organize(state,where=where,shape=[prod(state.shape[:len(state.shape)//2]),prod(state.shape[len(state.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
+				state = self.organize(state,where=where,shape=[prod(state.shape[:len(state.shape)//2]),prod(state.shape[len(state.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
-				u,v,s = cls.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
+				u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
 
 				error = (norm(state-dot(u,v))/norm(state)).real
 
-				state = cls.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
+				state = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
 
-				if 1:
+				if 0:
 
 					tmp = {**kwargs.get('state',options.get('state')),**state}
 					variables = kwargs.get('variables')
@@ -2795,11 +2800,14 @@ class Basis(object):
 					spectrum = eig(spectrum,**options)
 					ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
 					
-
-					sums = {i:tmp[i].sum((0,1) if i <= min(where) else (-2,-1) if i >= max(where) else None) for i in tmp}
+					sums = {i:(
+								asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))),
+								asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))))
+							for i in tmp}
 
 					print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
-
+					print(sums)
+					print()
 				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
 				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
 				# variables['v.condition'].append(condition_number(dot(v,v.T).real))
@@ -2819,31 +2827,111 @@ class Basis(object):
 def test_shuffle(*args,**kwargs):
 
 	basis = Basis()
+	init = lambda D,N,L,d,k: (reshape(arange(D**(d*N)),(D**N,)*d),reshape(arange(D**(k*L)),(D**L,)*k))
 
+
+	# Data
 	D = 2
-	N = 2
-	d = 2
-	shape = [D]*N
-	state = arange(D**N)
-	data = reshape(arange(D**(d*N)),(D**N,)*d)
+	N = 3
+	L = N
+	d = 1
+	k = 2
+	shape = [D]
+	where = range(L)
 
-	assert allclose(data,basis.shuffle(basis.shuffle(data,shape,transform=True),shape,transform=False))
+	state,data = init(D,N,L,d,k)
+
+	assert allclose(data,basis.shuffle(basis.shuffle(data,shape*L,where=where,transform=True),shape*L,where=where,transform=False))
+
+	# Global
+	D = 2
+	N = 3
+	L = N
+	d = 1
+	k = 2
+	shape = [D]
+	where = range(L)
+
+	state,data = init(D,N,L,d,k)
 
 	subscripts = 'ij,j->i'
 	out = einsum(subscripts,data,state)
+
 	
-	state = basis.shuffle(state,shape)
-	data = basis.shuffle(data,shape)
+
+	state,data = init(D,N,L,d,k)
+
+	state = basis.shuffle(state,shape*N,where=where,transform=True)
+
+	data = basis.shuffle(data,shape*L,where=range(L),transform=True)
 
 	subscripts = '%s%s,%s->%s'%(
-		''.join(symbols(i) for i in range(N,2*N)),
+		''.join(symbols(i) for i in range(L,2*L)),
+		''.join(symbols(i) for i in range(L)),
 		''.join(symbols(i) for i in range(N)),
-		''.join(symbols(i) for i in range(N)),
-		''.join(symbols(i) for i in range(N,2*N)),
+		''.join(symbols(i) for i in range(L,2*L)),
 		)
-	_out = basis.shuffle(einsum(subscripts,data,state),shape,transform=False)
+	_out = basis.shuffle(einsum(subscripts,data,state),shape*N,where=where,transform=False)
 
 	assert allclose(out,_out)
+
+
+	# Local
+	D = 2
+	N = 7
+	L = 7
+	d = 2
+	k = 2
+	shape = [D]
+	where = [i for i in [1,3,5,7,9,0,2,4,6,8] if i < N][:L]
+
+
+	state,data = init(D,N,L,d,k)
+
+	state,data = state,reshape(
+		transpose(
+			reshape(
+				tensorprod([*(identity(D),)*(N-N),data,*(identity(D),)*(N-L)]),
+				[*shape*N]*d
+				),
+			[N*j+((len(where)+list(sorted(set(range(N))-set(where))).index(i)) 
+			if i not in where else where.index(i)) 
+			for j in range(d) for i in range(N)]
+			),
+		(D**N,D**N))
+	subscripts = 'ij,jk,lk->il'
+	out = einsum(subscripts,data,state,conjugate(data))
+
+
+	state,data = init(D,N,L,d,k)
+
+	state = basis.shuffle(state,shape*N,where=where,transform=True)
+
+	data = basis.shuffle(data,shape*L,where=range(L),transform=True)
+
+	subscripts = '%s%s,%s%s%s%s,%s%s->%s%s%s%s'%(
+		''.join(symbols(i) for i in range(2*N,2*N+L)),
+		''.join(symbols(i) for i in range(L)),
+
+		''.join(symbols(i) for i in range(L)),
+		''.join(symbols(i) for i in range(N,N+L)),
+		''.join(symbols(i) for i in range(L,N)),		
+		''.join(symbols(i) for i in range(N+L,2*N)),				
+		
+		''.join(symbols(i) for i in range(2*N+L,2*N+2*L)),
+		''.join(symbols(i) for i in range(N,N+L)),
+
+		''.join(symbols(i) for i in range(2*N,2*N+L)),
+		''.join(symbols(i) for i in range(2*N+L,2*N+2*L)),
+		''.join(symbols(i) for i in range(L,N)),		
+		''.join(symbols(i) for i in range(N+L,2*N)),				
+		)	
+	_out = basis.shuffle(einsum(subscripts,data,state,conjugate(data)),shape*N,where=where,transform=False)
+
+	assert allclose(out,_out)
+
+
+	print('passed')
 
 	return
 
@@ -2945,10 +3033,13 @@ def test_mps(*args,**kwargs):
 					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
 					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
-				data = tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)})]*min(where),data,*[basis.identity(**{**kwargs,**dict(D=D)})]*(N-max(where)-1)])
+				# data = tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)}).reshape(*(1,)*(data.ndim-2),*(D,)*2)]*min(where),data,*[basis.identity(**{**kwargs,**dict(D=D)}).reshape(*(1,)*(data.ndim-2),*(D,)*2)]*(N-max(where)-1)])
 				return data
+			shape,ndim = [D]*N,state.ndim
+			state = reshape(basis.shuffle(state,shape,where=where,transform=True),(*(D**len(where),)*(ndim),-1))
 			data = func(**kwargs)
 			data = basis.contract(state,data=data,where=where,**kwargs)
+			data = basis.shuffle(reshape(data,(*(D,)*(N*ndim),)),shape,where=where,transform=False)
 			return data
 
 		data = {index:(data,where) for index,(data,where) in enumerate(('unitary' if data is None else data,(i,j)) for i in range(N) for j in range(N) if i < j)} if not isinstance(data,dicts) else data
@@ -2969,24 +3060,62 @@ def test_mps(*args,**kwargs):
 
 		return state
 
+	@timer
+	def function(state,data,_state,_data,M=None,kwargs={},_kwargs={}):
+
+		iterations = range(1 if M is None else M)
+
+		basis = Basis()
+
+		for k in iterations:
+			for i,_i in zip(data,_data):
+
+				print(i)
+				state = data[i](state,**kwargs)
+				_state = _data[_i](_state,**_kwargs)
+
+				# _state_ = basis.transform(state,transform=None,**kwargs)
+				
+				# error = norm(_state_-_state)/norm(_state)
+				# normalization = real(1-trace(_state_))
+				# purity = real(1-norm(_state_))
+
+				# print(k,i,error,normalization,purity)
+
+				key,kwargs['key'] = rng.split(kwargs['key'])
+				_key,_kwargs['key'] = rng.split(_kwargs['key'])
+			print(k,{i:state[i].shape for i in state})
+
+		return state,_state
+
 	parse = lambda data,p=8: data.real.round(p)	
-	norm = lambda data,p=1: (data**p).sum().real
+	normalization = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 10
+	N = 8
 	D = 2
-	M = 2*N
+	M = N+N//2
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
-	noise = 1e-3
+	noise = 1
 	rank = D**(N//1)
 	eps = 1e-14
-	seed = 12345
+	seed = 103400709
 	basis = Basis()
-	dtype = 'complex'
+	dtype = 'complex128'
 	path = 'scratch/nmf/data/data.hdf5'
 	file = 'scratch/nmf/data/variables.hdf5'
+
+	# povm = Basis(basis='tetrad').povm(D=D,dtype=dtype)
+	# spectrum,vectors = eig(povm,compute_v=True,hermitian=True)
+	# print(povm)
+	# print(spectrum)
+	# print(vectors)
+	# print(einsum('uij,ukj',spectrum[:,None,:]*vectors,conjugate(vectors)))
+	# for i in vectors:
+	# 	print(dot(dagger(i[:,0]),i[:,1]).round(14)+0.)
+	# exit()
 
 
 	state = {i:'zero' 
@@ -3060,12 +3189,6 @@ def test_mps(*args,**kwargs):
 	# )
 
 
-	state,data = initialize(state=state,data=data,**kwargs)
-
-	state = func(state,data,**kwargs)
-
-
-
 	_state = {i:'zero' 
 		for i in range(N)}
 	_data = {index:(data,where) 
@@ -3092,12 +3215,17 @@ def test_mps(*args,**kwargs):
 		dtype=dtype,		
 	)	
 
+
+	state,data = initialize(state=state,data=data,**kwargs)
 	_state,_data = _initialize(state=_state,data=_data,**_kwargs)
 
-	_state = _func(_state,_data,**_kwargs)
+	state,_state = function(state,data,_state,_data,M=M,kwargs=kwargs,_kwargs=_kwargs)
+
+	# state = func(state,data,**kwargs)
+	# _state = _func(_state,_data,**_kwargs)
 
 
-	state = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)})
+	state = basis.transform(state,transform=None,**kwargs)
 	_state = _state
 
 
@@ -3148,7 +3276,7 @@ def test_mps(*args,**kwargs):
 	# _state = _func(_state,_data,**_kwargs)
 
 
-	# state = basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)})
+	# state = basis.transform(state,transform=None,**kwargs)
 	# _state = _state
 
 	# assert allclose(state,_state)
@@ -3414,8 +3542,8 @@ def test_mps(*args,**kwargs):
 
 		_state = func(_state,_data,**_kwargs)
 
-		# print(basis.transform(state,transform=None,**{**kwargs,**dict(D=D,N=None)}).round(14))
-		# print(basis.transform(_state,transform=None,**{**_kwargs,**dict(D=D,N=None)}).round(14))
+		# print(basis.transform(state,transform=None,**kwargs).round(14))
+		# print(basis.transform(_state,transform=None,**_kwargs).round(14))
 
 		spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'probability'})})
 		_spectrum = basis.spectrum(state,where=L,**{**kwargs,**dict(options={**kwargs['options'],'scheme':'spectrum'})})
@@ -3423,8 +3551,8 @@ def test_mps(*args,**kwargs):
 		spectrum = spectrum/maximum(absolute(spectrum))
 		_spectrum = _spectrum/maximum(absolute(_spectrum))
 
-		state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
-		_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
+		state = basis.transform(state,transform=False,**kwargs)
+		_state = basis.transform(_state,transform=False,**_kwargs)
 
 		tmp = np.sort((state).real)
 		_tmp = np.sort((_state).real)
@@ -3522,11 +3650,11 @@ def test_mps(*args,**kwargs):
 
 	exit()
 
-	assert allclose(basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)}).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
+	assert allclose(basis.transform(state,transform=False,**kwargs).sum(),1) and allclose(prod(_state[i].sum() for i in _state),1)
 
 
-	state = basis.transform(state,transform=False,**{**kwargs,**dict(D=D,N=None)})
-	_state = basis.transform(_state,transform=False,**{**_kwargs,**dict(D=D,N=None)})
+	state = basis.transform(state,transform=False,**kwargs)
+	_state = basis.transform(_state,transform=False,**_kwargs)
 
 
 	assert allclose(state,_state)
@@ -3555,7 +3683,6 @@ def test_precondition(*args,**kwargs):
 	M = rand(key=key,shape=shape,dtype=dtype)
 	M /= add(M)
 	U,V,S = nndsvd(M,rank=rank)
-	U,V,S = nmfd(U,V,rank=rank)
 
 	x = V
 	A = dot(U.T,U)
@@ -3618,7 +3745,7 @@ def test_nmf(*args,**kwargs):
 
 		return
 
-	n = 8
+	n = 6
 	q = 2
 	d = q**n
 	i = 2
