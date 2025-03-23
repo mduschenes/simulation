@@ -3092,7 +3092,7 @@ def test_mps(*args,**kwargs):
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
-	noise = 1e-3
+	noise = 1e-1
 	rank = D**(N//1)
 	eps = 1e-14
 	seed = 103400709
