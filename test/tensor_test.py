@@ -3034,7 +3034,6 @@ def test_mps(*args,**kwargs):
 					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
 				else:
 					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
-				# data = tensorprod([*[basis.identity(**{**kwargs,**dict(D=D)}).reshape(*(1,)*(data.ndim-2),*(D,)*2)]*min(where),data,*[basis.identity(**{**kwargs,**dict(D=D)}).reshape(*(1,)*(data.ndim-2),*(D,)*2)]*(N-max(where)-1)])
 				return data
 			shape,ndim = [D]*N,state.ndim
 			state = reshape(basis.shuffle(state,shape,where=where,transform=True),(*(D**len(where),)*(ndim),-1))
