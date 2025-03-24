@@ -2588,12 +2588,13 @@ class Basis(object):
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				s = add(u,0)
-				i = absolute(s)>eps				
-				u,v,s = u[:,i],v[i,:],s[i]
-				u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+				i = min(*u.shape,*v.shape)
+				# s = add(u,0)
+				# i = absolute(s)>eps
+				# u,v,s = u[:,i],v[i,:],s[i]
+				# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
-				u,v,s = cmplx(u),cmplx(v),min(*u.shape,*v.shape)
+				u,v,s = cmplx(u),cmplx(v),i
 				return u,v,s
 			return decorator
 
@@ -2636,11 +2637,12 @@ class Basis(object):
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],(v[:rank,:] if v is not None else None),(s[:rank] if s is not None else None)
-				s = add(u,0)
-				i = absolute(s)>eps				
-				u,v,s = u[:,i],(v[i,:] if v is not None else None),s[i]
-				u,v,s = dotr(u,reciprocal(s)),(dotl(v,s) if v is not None else None),s
-				u,v,s = ((dagger(v) if v is not None else None),dagger(u),dagger(s)) if conj else (u,v,s)
+				i = min(*(u.shape if u is not None else ()),*(v.shape if v is not None else ()))
+				# s = add(u,0)
+				# i = absolute(s)>eps				
+				# u,v,s = u[:,i],(v[i,:] if v is not None else None),s[i]
+				# u,v,s = dotr(u,reciprocal(s)),(dotl(v,s) if v is not None else None),s
+				u,v,s = ((dagger(v) if v is not None else None),dagger(u),s) if conj else (u,v,s)
 				u,v,s = (cmplx(u) if u is not None else None),(cmplx(v) if v is not None else None),i
 				return u,v,s
 			return decorator
@@ -2733,15 +2735,18 @@ class Basis(object):
 
 					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=False,**{**kwargs,**options,**defaults})
 
-					size = add(s)
+					size = add(s) if not isinstance(s,integers) else s
 
 					state[i] = self.organize(u,where=where,shape=[*shape[:-1],size],axes=axes,transform=False,conj=False,**kwargs)
 
 					if i < (N-1):
 						if v is not None:
 							state[i+1] = dot(v,state[i+1])
-						else:
+						elif not isinstance(s,integers):
 							state[i+1] = state[i+1][s]
+						else:
+							state[i+1] = state[i+1][:s]
+
 
 				elif i > max(where):
 
@@ -2752,15 +2757,17 @@ class Basis(object):
 					
 					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state[i],conj=True,**{**kwargs,**options,**defaults})
 
-					size = add(s)
+					size = add(s) if not isinstance(s,integers) else s
 
 					state[i] = self.organize(v,where=where,shape=[size,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
 					
 					if i > 0:
 						if u is not None:
 							state[i-1] = dot(state[i-1],u)
-						else:
+						elif not isinstance(s,integers):
 							state[i-1] = state[i-1][...,s]
+						else:
+							state[i-1] = state[i-1][...,:s]
 
 
 		elif isinstance(state,arrays):
@@ -3086,13 +3093,13 @@ def test_mps(*args,**kwargs):
 	normalization = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 8
+	N = 10
 	D = 2
 	M = N+N//2
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
-	noise = 1e-1
+	noise = 5e-3
 	rank = D**(N//1)
 	eps = 1e-14
 	seed = 103400709
