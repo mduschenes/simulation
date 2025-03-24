@@ -3090,7 +3090,7 @@ def test_mps(*args,**kwargs):
 	normalization = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 4
+	N = 10
 	D = 2
 	M = 3
 	L = N//2
