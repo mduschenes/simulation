@@ -3092,7 +3092,7 @@ def test_mps(*args,**kwargs):
 
 	N = 10
 	D = 2
-	M = 3
+	M = N + N//2
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
