@@ -2772,7 +2772,11 @@ class Basis(object):
 
 		elif isinstance(state,arrays):
 
-			if len(where) == 2:
+			if len(where) == 1:
+
+				state = {i:state for i in where}
+
+			elif len(where) == 2:
 
 				state = self.organize(state,where=where,shape=[prod(state.shape[:len(state.shape)//2]),prod(state.shape[len(state.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
@@ -2820,7 +2824,8 @@ class Basis(object):
 
 				# parse = lambda obj: asscalar(obj.real)
 				# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
-
+			else:
+				raise NotImplementedError(f"Not Implemented {where}")
 
 		return state
 
@@ -3074,16 +3079,9 @@ def test_mps(*args,**kwargs):
 				state = data[i](state,**kwargs)
 				_state = _data[_i](_state,**_kwargs)
 
-				# _state_ = basis.transform(state,transform=None,**kwargs)
-				
-				# error = norm(_state_-_state)/norm(_state)
-				# normalization = real(1-trace(_state_))
-				# purity = real(1-norm(_state_))
-
-				# print(k,i,error,normalization,purity)
-
 				key,kwargs['key'] = rng.split(kwargs['key'])
 				_key,_kwargs['key'] = rng.split(_kwargs['key'])
+			
 			print(k,{i:state[i].shape for i in state})
 
 		return state,_state
@@ -3092,9 +3090,9 @@ def test_mps(*args,**kwargs):
 	normalization = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 10
+	N = 4
 	D = 2
-	M = N+N//2
+	M = 3
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
@@ -3122,15 +3120,12 @@ def test_mps(*args,**kwargs):
 		for i in range(N)}
 	data = {index:(data,where) 
 		for index,(data,where) in enumerate((data,where) 
-		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
-		for i in [*range(0,N-1)] for where in [(i,i+1)] 
-		# for data in ['unitary','depolarize'])}
-		for data in ['unitary','depolarize'])}
-		# for data in ['unitary'])}
-		# for data in ['depolarize'])}
-		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
-		# for data in ['CNOT','T','depolarize'])}
-
+			for i in [*range(0,N-1)] 
+			# for where,data in zip([(i,i+1),(i,i+1)],['unitary','depolarize'])
+			for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			)
+		}
+		
 	kwargs = dict(
 		D=D,N=N,M=M,
 		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
@@ -3193,14 +3188,11 @@ def test_mps(*args,**kwargs):
 		for i in range(N)}
 	_data = {index:(data,where) 
 		for index,(data,where) in enumerate((data,where) 
-		# for i in [*range(0,N-1,2),*range(1,N-1,2)] for where in [(i,i+1)] 
-		for i in [*range(0,N-1)] for where in [(i,i+1)]
-		# for data in ['unitary','depolarize'])}
-		for data in ['unitary','depolarize'])}
-		# for data in ['unitary'])}
-		# for data in ['depolarize'])}
-		# for data in ['unitary' if not (i%4 == 2) else 'unitary','depolarize'])}
-		# for data in ['CNOT','T','depolarize'])}
+			for i in [*range(0,N-1)] 
+			# for where,data in zip([(i,i+1),(i,i+1)],['unitary','depolarize'])
+			for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			)
+		}
 	_kwargs = dict(
 		D=D,N=N,M=M,
 		parameters={'unitary':parameters,'identity':parameters,'X':parameters,'depolarize':noise},
