@@ -3090,14 +3090,14 @@ def test_mps(*args,**kwargs):
 	normalization = lambda data,p=1: (data**p).sum().real
 	boolean = lambda path: not os.path.exists(path) or 1
 
-	N = 10
+	N = 8
 	D = 2
 	M = N + N//2
 	L = N//2
 	K = D**(N-2)
 	parameters = pi/4
-	noise = 5e-3
-	rank = D**(N//1)
+	noise = 5e-1  
+	rank = D**(N//4)
 	eps = 1e-14
 	seed = 103400709
 	basis = Basis()
@@ -3122,7 +3122,7 @@ def test_mps(*args,**kwargs):
 		for index,(data,where) in enumerate((data,where) 
 			for i in [*range(0,N-1)] 
 			# for where,data in zip([(i,i+1),(i,i+1)],['unitary','depolarize'])
-			for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			for where,data in zip([(i,i+1),(i,),(i+1,)],['X','depolarize','depolarize'])
 			)
 		}
 		
@@ -3190,7 +3190,7 @@ def test_mps(*args,**kwargs):
 		for index,(data,where) in enumerate((data,where) 
 			for i in [*range(0,N-1)] 
 			# for where,data in zip([(i,i+1),(i,i+1)],['unitary','depolarize'])
-			for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			for where,data in zip([(i,i+1),(i,),(i+1,)],['X','depolarize','depolarize'])
 			)
 		}
 	_kwargs = dict(
