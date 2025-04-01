@@ -2233,7 +2233,7 @@ class Basis(object):
 		return data
 
 	
-	def CNOT(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	def unitary(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)
 		return data
 
@@ -2333,7 +2333,9 @@ class Basis(object):
 
 					data = data(where=where,**kwargs)
 
-					tmp = einsum('uij,tjk,wkl,til,wv',
+					operator = einsum('uij,njk,qkl,mli,on,pm,qv->opuv',self.basis,self.algebra,self.basis,self.algebra,self.geometry,self.geometry,self.inverse)
+
+					tmp = einsum('uij,tjk,wkl,til,wv->uv',
 						tensorprod([self.basis]*N),
 						reshape(data,[*[-1]*(3-data.ndim),*data.shape]),
 						tensorprod([self.basis]*N),
@@ -2342,26 +2344,29 @@ class Basis(object):
 
 					data = einsum('uij,vkl,tjkil->tuv',*[basis]*N,reshape(data,shape))
 
-					data = (*[self.operator]*N,data,conjugate(data))
+					data = (*[operator]*N,data,conjugate(data))
 
 					_tmp = reshape(einsum('uwik,vzjl,tuv,twz->ijkl',*data),[D**(2*N)]*2)
 
-
 					print(allclose(tmp,_tmp))
-					exit()
 
+					print(self.operator)
 
 					def data(state,where=where,data=data,subscripts=subscripts):
 
 						operator = {i:einsum('uwij,ajb->uwaib',self.operator,state[i]) for i in where}
 
 						for i in where:
-							print(i)
-							print(einsum('uwaib->uw',operator[i]).real.round(8))
+							print(einsum('uwaib->uw',operator[i]).round(8))
 
 						operator = einsum(subscripts,*data,*(state[i] for i in where))
 
 						print(add(operator))
+
+						operator = einsum('ijkl,akx,xlb->aijb',reshape(tmp,[D**2]*(2*N)),*(state[i] for i in where))
+
+						print(add(operator))
+
 
 						exit()
 
@@ -3123,7 +3128,7 @@ def test_mps(*args,**kwargs):
 	rank = D**(N//1)
 	eps = 1e-14
 	seed = 123456789
-	string = 'orthogonal'
+	string = 'tetrad'
 	measure = 'tetrad'
 	basis = Basis(string=string,measure=measure)
 	dtype = 'complex128'
