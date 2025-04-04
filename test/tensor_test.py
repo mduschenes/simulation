@@ -538,6 +538,9 @@ def condition_number(a,**kwargs):
 def trace(a,**kwargs):
 	return np.trace(a,**kwargs)
 
+def det(a,**kwargs):
+	return np.linalg.det(a,**kwargs)
+
 def diag(a,**kwargs):
 	return np.diag(a,**kwargs)
 
@@ -2054,6 +2057,13 @@ class Basis(object):
 
 		self.basis = self.povm(parameters=self.parameters,D=self.D,seed=self.seed,key=self.key,dtype=self.dtype)
 		self.inverse = inv(einsum('uij,vji->uv',self.basis,self.basis))
+		print(einsum('uij,vji->uv',self.basis,self.basis))
+		print(self.inverse)
+		# print(add(einsum('uij,vji->uv',self.basis,self.basis),0))
+		# print(add(einsum('uij,vji->uv',self.basis,self.basis),1))
+		# print(add(self.inverse,0))
+		# print(add(self.inverse,1))
+		# exit()
 		self.algebra = self.data(parameters=self.parameters,D=self.D,seed=self.seed,key=self.key,dtype=self.dtype)
 		self.geometry = inv(einsum('uij,vji->uv',self.algebra,self.algebra))
 		self.operator = einsum('uij,njk,qkl,mli,on,pm,qv->opuv',self.basis,self.algebra,self.basis,self.algebra,self.geometry,self.geometry,self.inverse)
@@ -2087,13 +2097,21 @@ class Basis(object):
 			dtype=dtype)
 		return data
 
-	
+	def noise(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+		N,D = int(log(D)/log(2)),2
+		parameters = 0 if parameters is None else parameters
+		data = tensorprod([array([
+			sqrt(absolute(1-parameters))*self.I(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+			sqrt(absolute(parameters))*self.unitary(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
+			],dtype=dtype)]*N)
+		return data
+
 	def dephase(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*self.Z(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+			sqrt(absolute(parameters))*self.Z(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2102,8 +2120,8 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*self.X(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+			sqrt(absolute(parameters))*self.X(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2112,8 +2130,8 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-			sqrt(absolute(1-parameters))*self.I(D=D,dtype=dtype),
-			sqrt(absolute(parameters))*self.Y(D=D,dtype=dtype)
+			sqrt(absolute(1-parameters))*self.I(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+			sqrt(absolute(parameters))*self.Y(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 			],dtype=dtype)]*N)
 		return data
 
@@ -2122,10 +2140,10 @@ class Basis(object):
 		N,D = int(log(D)/log(2)),2
 		parameters = 0 if parameters is None else parameters
 		data = tensorprod([array([
-				sqrt(absolute(1-(D**2-1)*parameters/(D**2)))*self.I(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*self.X(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*self.Y(D=D,dtype=dtype),
-				sqrt(absolute(parameters/(D**2)))*self.Z(D=D,dtype=dtype)
+				sqrt(absolute(1-(D**2-1)*parameters/(D**2)))*self.I(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				sqrt(absolute(parameters/(D**2)))*self.X(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				sqrt(absolute(parameters/(D**2)))*self.Y(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				sqrt(absolute(parameters/(D**2)))*self.Z(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 				],dtype=dtype)]*N)
 		return data
 
@@ -2148,15 +2166,15 @@ class Basis(object):
 		data = (1/(D**2-1))*array([
 				self.zero(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
 				self.plus(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
-				self.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
+				self.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs),
 			   (self.one(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
 				self.minus(D=D,seed=seed,key=key,dtype=dtype,**kwargs)+
-				self.plusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
+				self.minusi(D=D,seed=seed,key=key,dtype=dtype,**kwargs)),
 			],dtype=dtype)	
 		return data
 	
 	def tetrad(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
-		data = (1/(D**2))*array([
+		data = (1/(2*D))*array([
 			sum(i*operator(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 				for i,operator in 
 				zip(coefficient,(self.I,self.X,self.Y,self.Z)))
@@ -2233,7 +2251,7 @@ class Basis(object):
 		return data
 
 	
-	def unitary(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
+	def CNOT(self,parameters=None,D=None,seed=None,key=None,dtype=None,**kwargs):
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)
 		return data
 
@@ -2291,7 +2309,7 @@ class Basis(object):
 		if transform:
 			if callable(data):
 
-				if len(where) == 1:
+				if len(where) in [1,2]:
 
 					basis = tensorprod([basis]*N)
 					inverse = tensorprod([inverse]*N)
@@ -2318,7 +2336,22 @@ class Basis(object):
 					data = vmap(partial(self.contract,data=data,where=where,**kwargs))(basis)
 					data = einsum('uij,wji,wv->uv',basis,data,inverse)
 
+					# u,s,v = svd(data)
+					# d = det(data)
+					# tmp = data.real+0.
+					# tmp = tmp[tmp<1e-14]
+					# print(tmp.round(12))
+					# print(d)
+					print(add(data,0).real)
+					print(add(data,1).real)
+					# print(s/maximum(s))
+					# print(subscripts)
+					# exit()
+
+					print(data.real)
+
 					data = self.shuffle(data,shape=shape,**kwargs)
+
 
 					def data(state,where=where,data=data,subscripts=subscripts):
 						return einsum(subscripts,data,*(state[i] for i in where))
@@ -2468,6 +2501,9 @@ class Basis(object):
 			state = self.update(state,shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = data(state,where=where)
+
+			print(data.real)
+			exit()
 
 			scheme = options.get('scheme')
 			data = self.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
@@ -3025,10 +3061,24 @@ def test_mps(*args,**kwargs):
 			def func(state=None,data=data,where=where,**kwargs):
 				where = [where] if not isinstance(where,iterables) else [*where]
 				if isinstance(data,str):
-					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
+					parameters = kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters')
+					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=parameters)})
 				else:
-					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
+					parameters = kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters')
+					data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=parameters)}) for index,i in enumerate(where)])
 				return data
+
+			def func(state=None,data=data,where=where,**kwargs):
+
+				parameters = kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters')
+
+				unitary = basis.unitary(**{**kwargs,**dict(D=D**len(where),parameters=parameters)})
+				noise = basis.amplitude(**{**kwargs,**dict(D=D**len(where),parameters=parameters)})
+
+				data = dot(noise,unitary)
+
+				return data
+
 			where = [where] if not isinstance(where,iterables) else [*where]
 			data = basis.transform(func,where=where,**{**kwargs,**dict(D=D,N=len(where))})
 			data = basis.contract(state,data=data,where=where,**kwargs)
@@ -3066,9 +3116,11 @@ def test_mps(*args,**kwargs):
 			
 			def func(state=None,data=data,where=where,**kwargs):
 				if isinstance(data,str):
-					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))})
+					parameters = kwargs.get('parameters').get(data) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters')					
+					data = getattr(basis,data)(**{**kwargs,**dict(D=D**len(where),parameters=parameters)})
 				else:
-					 data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
+					parameters = kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters')					
+					data = tensorprod([getattr(basis,data[index])(**{**kwargs,**dict(D=D,parameters=kwargs.get('parameters').get(data[index]) if isinstance(kwargs.get('parameters'),dict) else kwargs.get('parameters'))}) for index,i in enumerate(where)])
 				return data
 			shape,ndim = [D]*N,state.ndim
 			state = reshape(basis.shuffle(state,shape,where=where,transform=True),(*(D**len(where),)*(ndim),-1))
@@ -3120,14 +3172,14 @@ def test_mps(*args,**kwargs):
 
 	N = 8
 	D = 2
-	M = 1#N + N//2
+	M = N + N//2
 	L = N//2
 	K = D**(N-2)
-	parameters = pi/4
+	parameters = 1e-3
 	noise = 0  
 	rank = D**(N//1)
 	eps = 1e-14
-	seed = 123456789
+	seed = 123
 	string = 'tetrad'
 	measure = 'tetrad'
 	basis = Basis(string=string,measure=measure)
@@ -3135,7 +3187,7 @@ def test_mps(*args,**kwargs):
 	path = 'scratch/nmf/data/data.hdf5'
 	file = 'scratch/nmf/data/variables.hdf5'
 
-	# povm = basis.povm(D=D,dtype=dtype)
+	# povm = basis.povm(D=D,seed=seed,key=key,dtype=dtype,**kwargs)
 	# spectrum,vectors = eig(povm,compute_v=True,hermitian=True)
 	# print(povm)
 	# print(spectrum)
@@ -3150,7 +3202,8 @@ def test_mps(*args,**kwargs):
 		for i in range(N)}
 	data = {index:(data,where) 
 		for index,(data,where) in enumerate((data,where) 
-			for i in [*range(0,N-1)] for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			# for i in [*range(0,N-1)] for where,data in zip([(i,i+1),(i,),(i+1,)],['unitary','depolarize','depolarize'])
+			for i in [*range(0,N-1)] for where,data in zip([(i,),],['unitary',])
 			)
 		}
 		
