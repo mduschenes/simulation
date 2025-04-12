@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product,representation
+from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product,representation
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
@@ -2491,22 +2491,21 @@ def test_parameters(*args,**kwargs):
 	return
 
 
-def test_quimb(*args,**kwargs):
+def test_mps(*args,**kwargs):
 
-	from src.utils import mps
 	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
-	from src.quantum import MPS as mps
+	from src.quantum import MPS as mps,MPS_quimb as mps_quimb
 	from src.quantum import Basis as basis
 
 	def representation(data):
 		return data.to_dense().ravel()
 
-	def tensor(data,k=1):
-		return array([tensorprod(i) for i in permutations(*[data]*k)])
+	def tensor(data,t=1):
+		return array([tensorprod(i) for i in permutations(*[data]*t)])
 	
-	def init(N,D):
+	def init(N,D,S,L,architecture):
 		state = 'state'
-		data = {(i,i+1):'identity' for i in range(N-1)}
+		data = {(i,i+1):'unitary' for i in range(N-1)}
 
 		measure = 'pauli'
 
@@ -2519,7 +2518,7 @@ def test_quimb(*args,**kwargs):
 
 		args = tuple()
 		kwargs = dict(
-			D=D,shape=(D,)*2,ndim=2,seed=seed,dtype=dtype,
+			D=D,shape=(D,)*2,ndim=2,S=S,seed=seed,dtype=dtype,
 			)
 		state = getattr(basis,state)(*args,**kwargs)
 
@@ -2527,7 +2526,10 @@ def test_quimb(*args,**kwargs):
 
 		state = [einsum('uij,ji->u',tensor(measure),state)]*N
 
-		state = mps(state,*args,**kwargs)
+		if architecture in ['tensor']:
+			state = mps(state,*args,**kwargs)
+		elif architecture in ['mps']:
+			state = mps_quimb(state,*args,**kwargs)
 
 		for i in data:
 			args = tuple()
@@ -2536,53 +2538,74 @@ def test_quimb(*args,**kwargs):
 				)
 			data[i] = getattr(basis,data[i])(*args,**kwargs)
 
-			data[i] = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,len(i))]*2,data[i],conjugate(data[i]),tensor(inverse,len(i)))
+			data[i] = vmap(partial(basis.contract,data=data[i],where=i,**kwargs))(tensor(measure,len(i)))
+
+			data[i] = einsum('uij,wji,wv->uv',tensor(measure,len(i)),data[i],tensor(inverse,len(i)))
 
 		return state,data
 
 
-	N = 8
+	N = 3
 	D = 2
-	M = 100
+	S = D**(N)
+	M = 10
 	L = N//2
-	T = 5
+	T = 1
+	architecture = 'tensor'
 	to = 'tensor'
 	seed = 123456789
 	seed = seeder(seed)
 	dtype = 'complex'
-	options = dict(
-		contract="swap+split",
-		max_bond=D**N,
+	options = dict()
+	options_quimb = dict(
+		# contract="swap+split",
+		max_bond=S,
 		cutoff=0
 		)
 
 	for i in range(T):
-		state,data = init(N,D)
+		state,data = init(N,D,S,L,architecture='tensor')
 		for k in range(M):
 			for i in data:
-				state = state.gate(data[i],where=i,**options)
+				state = state(data[i],where=i,**options)
+
+	for i in range(T):
+		state_quimb,data_quimb = init(N,D,S,L,architecture='mps')
+		for k in range(M):
+			for i in data_quimb:
+				state_quimb = state_quimb.gate(data_quimb[i],where=i,**options_quimb)
+
+	tmp = state.organize().ravel()
+	tmp_quimb = representation(state_quimb)
+
+	print(tmp.real.round(8))
+	print(tmp_quimb.real.round(8))
+
+	assert allclose(tmp,tmp_quimb)
+
+	print('Passed')
 
 	return
 
 
 
-	tmp = copy(state)
+	# tmp = copy(state)
 
-	_state = state.copy()
-	for k in range(M):
-		for i in data:
-			_state = _state.gate(data[i],where=i,**options)
+	# _state = state.copy()
+	# for k in range(M):
+	# 	for i in data:
+	# 		_state = _state.gate(data[i],where=i,**options)
 
-	_tmp = _state
+	# _tmp = _state
 
-	return
+	# return
 
-	print(_state.singular_values(L))
-	print(representation(_state).real.round(8))
+	# print(_state.singular_values(L))
+	# print(representation(_state).real.round(8))
 
-	_state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
+	# _state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))
 
-	print(representation(tmp).sum(),representation(_tmp).sum(),allclose(_state,tensorprod([obj]*N)))
+	# print(representation(tmp).sum(),representation(_tmp).sum(),allclose(_state,tensorprod([obj]*N)))
 
 	return
 
@@ -2641,4 +2664,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_parameters(*args,**args)
-	test_quimb(*args,**args)
+	test_mps(*args,**args)

@@ -82,6 +82,8 @@ if backend in ['jax','jax.autograd']:
 	import quimb as qu
 	import quimb.tensor as qtn
 
+	import opt_einsum
+
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
 
@@ -104,6 +106,8 @@ elif backend in ['autograd']:
 	import autograd.numpy as np
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
+
+	import opt_einsum
 
 	import quimb as qu
 	import quimb.tensor as qtn
@@ -161,6 +165,8 @@ elif backend in ['numpy']:
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
+
+	import opt_einsum
 
 	mapper = map
 
@@ -3995,7 +4001,7 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 
-def svds(a,full_matrices=True,compute_uv=False,hermitian=False):
+def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 	'''
 	Compute singular values of an array
 	Args:
@@ -4009,15 +4015,10 @@ def svds(a,full_matrices=True,compute_uv=False,hermitian=False):
 		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
 
-	u,s,v = svd(a,**kwargs)
+	u,s,v = svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
-	# signs = sign(u[:,argmax(s)])
-	slices = slice(None)
-	k = argmax(absolute(u), axis=0)
-	shift = arange(u.shape[1])
-	indices = k + shift * u.shape[0]
-	signs = sign(take(ravel(u.T), indices, axis=0))
-	u,v = dotr(u,signs),dotl(v,signs)
+	x = sign(take(ravel(u.T), argmax(abs(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
+	u,v = dotr(u,x),dotl(v,x)
 
 	return u,s,v
 
@@ -4182,8 +4183,8 @@ def nndsvd(a,u,v,rank=None,eps=None):
 
 		z,x,y = s[i],u[slices,i],v[i,slices]
 
-		x_positive,y_positive = absolute(maximums(x,0)),absolute(maximums(y,0))
-		x_negative,y_negative = absolute(minimums(x,0)),absolute(minimums(y,0))
+		x_positive,y_positive = abs(maximums(x,0)),abs(maximums(y,0))
+		x_negative,y_negative = abs(minimums(x,0)),abs(minimums(y,0))
 		x_positive_norm,y_positive_norm = norm(x_positive),norm(y_positive)
 		x_negative_norm,y_negative_norm = norm(x_negative),norm(y_negative)
 
@@ -6458,6 +6459,12 @@ def vntensorprod(a,n):
 	'''
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
+# einsummand = np.einsum
+einsummand = partial(opt_einsum.contract,backend=backend)
+
+def symbols(index):
+	return opt_einsum.get_symbol(index)
+	# return characters[index]
 
 def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	'''
@@ -6490,21 +6497,21 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 		if isinstance(subscripts,str):
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
+				return wrapper(einsummand(subscripts,*operands,optimize=optimize),*operands)
 		else:
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(np.einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
+				return wrapper(einsummand(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
 
 	else:
 		if isinstance(subscripts,str):
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize):
-				return np.einsum(subscripts,*operands,optimize=optimize)
+				return einsummand(subscripts,*operands,optimize=optimize)
 		else:
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return np.einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
+				return einsummand(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
 
 
 
@@ -7042,7 +7049,7 @@ def signs(a):
 	Returns:
 		out (array): Sign of array
 	'''
-	return (a + a==0)/(absolute(a) + a==0)
+	return (a + a==0)/(abs(a) + a==0)
 
 @partial(jit,static_argnums=(1,))
 def sqrtm(a,hermitian=False):

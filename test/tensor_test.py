@@ -3519,7 +3519,7 @@ class mps(dict):
 
 def test_mps(*args,**kwargs):
 
-	def init(N,D,S,L):
+	def init(N,D,S,L,architecture):
 		state = rand(key,(N,D),dtype,*bounds)
 		state = dotl(state,1/add(state,-1))
 	
@@ -3557,6 +3557,7 @@ def test_mps(*args,**kwargs):
 	L = 2
 	M = 100
 	T = 5
+	architecture = 'tensor'
 	indices = [[i,i+1] for i in range(N-1)]
 	bounds = [0,1]
 	seed = 123456789

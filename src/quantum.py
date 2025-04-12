@@ -14,12 +14,12 @@ from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slic
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
+from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sqr,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,structures,matrices,nulls,integers,floats,iterables,dicts,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,structures,matrices,nulls,integers,floats,iterables,dicts,symbols,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -93,6 +93,25 @@ class Basis(Dict):
 	@classmethod
 	def dot(cls,data,other):
 		return inner(data.ravel(),other.ravel())
+
+	@classmethod
+	def contract(cls,state,data,where=None,options=None,**kwargs):
+		if state.ndim == 1:
+			if data.ndim == 2:
+				data = einsum('ij,j->i',data,state)
+			else:	
+				raise NotImplementedError(f"Not Implemented {data}")						
+		elif state.ndim > 1:
+			if data.ndim == 2:
+				data = einsum('ij,jk...,lk->il...',data,state,conjugate(data))
+			elif data.ndim == 3:
+				data = einsum('uij,jk...,ulk->il...',data,state,conjugate(data))
+			else:
+				raise NotImplementedError(f"Not Implemented {data}")			
+		else:
+			raise NotImplementedError(f"Not Implemented {state}")			
+		
+		return data
 
 	@classmethod
 	@System.decorator
@@ -897,7 +916,7 @@ class Measure(System):
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 			pointer = pointer
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -913,7 +932,7 @@ class Measure(System):
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 			pointer = pointer
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			cls = tensor
 
 			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
@@ -986,7 +1005,7 @@ class Measure(System):
 			def gradient(parameters=None,state=None,**kwargs):
 				return 0
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -999,7 +1018,7 @@ class Measure(System):
 			def gradient(parameters=None,state=None,**kwargs):
 				return 0
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			def func(parameters=None,state=None,**kwargs):
 				N = state.L
 				for i in range(N):
@@ -1177,7 +1196,7 @@ class Measure(System):
 
 			state = tensorprod(state)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 			
@@ -1208,7 +1227,7 @@ class Measure(System):
 			
 			state = mps(state,**options)
 			
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			
 			if not isinstance(state,tensors):
 				
@@ -1274,11 +1293,11 @@ class Measure(System):
 			
 			state = einsummation(state,inverse,basis)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			state = state.copy()
 
@@ -1348,11 +1367,11 @@ class Measure(System):
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			K = self.K
 			ndim = 1
@@ -1429,12 +1448,12 @@ class Measure(System):
 
 		if self.architecture is None or self.architecture in ['array']:
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 			
 			raise NotImplementedError
 
 			N = len(state) if isinstance(state,structures) else len(where) if where is not None else None
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			N = state.L if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
 		else:
 			N = None
@@ -1690,7 +1709,7 @@ class Measure(System):
 			for i in where:
 				data[i] = addition(data[i],range(1,data[i].ndim-1))
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			
 			data = state.copy()
 
@@ -1743,11 +1762,11 @@ class Measure(System):
 
 			data = shuffle(function(shuffle(data,**options)),**_options)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 			
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			
 			data = state.copy()
 
@@ -1793,7 +1812,7 @@ class Measure(System):
 			
 			data = einsummation(state,inverse,other)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -1804,7 +1823,7 @@ class Measure(System):
 			for i in where:
 				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 	
 			other = state if other is None else other
 
@@ -1869,7 +1888,7 @@ class Measure(System):
 
 			data = einsummation(data,inverse,data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -1880,7 +1899,7 @@ class Measure(System):
 			for i in where:
 				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 	
 			state = state.copy()
 			other = state.copy()
@@ -1953,7 +1972,7 @@ class Measure(System):
 
 			data = addition(sqrt(abs(data)))
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -1970,7 +1989,7 @@ class Measure(System):
 
 			data = addition(sqrt(abs(data)))
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
@@ -2021,11 +2040,11 @@ class Measure(System):
 
 			data = einsummation(state,other)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 			
 			function = sqrt
 			kwargs = dict()
@@ -2070,7 +2089,7 @@ class Measure(System):
 
 			data = data/sqrt(state*other)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2080,7 +2099,7 @@ class Measure(System):
 
 			data = data/sqrt(state*other)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			options = dict(contraction=True)
 	
@@ -2141,7 +2160,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2149,7 +2168,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			options = dict(contraction=True)
 
@@ -2186,7 +2205,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2194,7 +2213,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			options = dict(contraction=True)
 
@@ -2231,7 +2250,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2239,7 +2258,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			options = dict(contraction=True)
 	
@@ -2310,7 +2329,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2329,7 +2348,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			state = state.copy()
 
@@ -2382,7 +2401,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2394,7 +2413,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2439,7 +2458,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2453,7 +2472,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 	
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2539,11 +2558,11 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 			
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2612,11 +2631,11 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2683,11 +2702,11 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2782,7 +2801,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2803,7 +2822,7 @@ class Measure(System):
 			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data -= tmp
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = 0
 
@@ -2878,7 +2897,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -2913,7 +2932,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			data = 0
 
@@ -2993,7 +3012,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3016,7 +3035,7 @@ class Measure(System):
 
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = 0
 
@@ -3079,7 +3098,7 @@ class Measure(System):
 		
 			data = asscalar(data)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3102,7 +3121,7 @@ class Measure(System):
 		
 			data = asscalar(data)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = 0
 
@@ -3170,13 +3189,13 @@ class Measure(System):
 			
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3207,13 +3226,13 @@ class Measure(System):
 			
 			data = 0
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
 			data = 0
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = 0
 
@@ -3244,13 +3263,13 @@ class Measure(System):
 			
 			data = 0
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 		
 			raise NotImplementedError
 
 			data = 0
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = 0
 
@@ -3314,7 +3333,7 @@ class Measure(System):
 
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3331,7 +3350,7 @@ class Measure(System):
 
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			state = state.copy()
 
@@ -3389,7 +3408,7 @@ class Measure(System):
 
 			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3406,7 +3425,7 @@ class Measure(System):
 
 			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 		
 			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3439,7 +3458,7 @@ class Measure(System):
 
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3447,7 +3466,7 @@ class Measure(System):
 
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3482,7 +3501,7 @@ class Measure(System):
 
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
 
@@ -3490,7 +3509,7 @@ class Measure(System):
 
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['mps']:
 
 			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3502,19 +3521,18 @@ class Measure(System):
 
 
 
-class MPS(mps): 
+class MPS_quimb(mps): 
 	'''
 	Matrix Product State class
 	Args:
 		data (iterable,int,str,callable,array,object): Tensor data
+		parameters (array,dict): Tensor parameters				
 		N (int): Tensor system size
-		D (int): Tensor physical bon dimension
+		D (int): Tensor physical bond dimension
 		S (int): Tensor virtual bond dimension
 		kwargs (dict): Tensor keyword arguments
-	Returns:
-		out (array): array
 	'''
-	def __new__(cls,data,N=None,D=None,S=None,**kwargs):
+	def __new__(cls,data,parameters=None,N=None,D=None,S=None,**kwargs):
 
 		updates = {
 			'periodic':(
@@ -3595,6 +3613,680 @@ class MPS(mps):
 			return state
 		else:
 			return self.gate(data,where=where,**kwargs)
+
+
+class MPS(dict):
+	'''
+	Matrix Product State class
+	Args:
+		data (iterable,int,str,callable,array,object): Tensor data
+		parameters (array,dict): Tensor parameters
+		N (int): Tensor system size
+		D (int): Tensor physical bond dimension
+		S (int): Tensor virtual bond dimension
+		kwargs (dict): Additional keyword arguments
+	'''
+	def __init__(self,data=None,parameters=None,N=None,D=None,S=None,**kwargs):
+
+		super().__init__()
+
+		self.data = data if data is not None else None
+		self.parameters = parameters if parameters is not None else None
+
+		self.N = N if N is not None else None
+		self.D = D if D is not None else None
+		self.S = S if S is not None else None
+
+		self.setup(data=data,parameters=parameters)
+
+		self.init(**kwargs)
+
+		return
+
+	def init(self,**kwargs):
+		'''
+		Initialize class
+		Args:
+			kwargs (dict): Additional class keyword arguments			
+		'''
+
+		for kwarg in kwargs:
+			if not hasattr(self,kwarg):
+				setattr(self,kwarg,kwargs[kwarg])
+
+		N = self.N if self.N is not None else 0
+		D = self.D if self.D is not None else 0
+		S = self.S if self.S is not None else 0
+
+		self.N = max(N,max(self)+1)
+		self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
+		self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
+
+		return
+
+	def setup(self,data=None,parameters=None,**kwargs):
+		'''
+		Setup class
+		Args:
+			data (str,array,tensor,Measure): data of class
+			parameters (array,dict): parameters of class
+			kwargs (dict): Additional class keyword arguments				
+		'''
+
+		data = data if data is not None else self.data
+		parameters = parameters if parameters is not None else self.parameters
+
+		data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
+
+		for i in data:
+			if data[i].ndim == 1:
+				axes = range(data[i].ndim+2)
+				shape = [1,*data[i].shape,1]
+				data[i] = transpose(reshape(data[i],shape),axes)
+
+		self.data = data
+		self.parameters = parameters
+
+		return
+
+	def info(self,display=None,ignore=None,verbose=None,**kwargs):
+		'''
+		Log class information
+		Args:
+			display (str,iterable[str]): Show attributes
+			ignore (str,iterable[str]): Do not show attributes
+			verbose (bool,int,str): Verbosity of message	
+			kwargs (dict): Additional logging keyword arguments						
+		'''		
+
+		msg = []
+		
+		options = dict(
+			align=kwargs.get('align','<'),
+			space=kwargs.get('space',1),
+			width=kwargs.get('width',2)
+			)
+	
+		precision = kwargs.get('precision',8)
+
+		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
+
+		display = None if display is None else [display] if isinstance(display,str) else display
+		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
+
+		for attr in [None,'N','D','S']:
+
+			obj = attr
+			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
+				continue
+
+			if attr is None:
+				substring = str(self)
+			else:
+				substring = getattr(self,attr)
+
+			if isinstance(substring,objects):
+				if attr is not None:
+					string = '%s:\n%s'%(attr,parse(substring))
+				else:
+					string = parse(substring)
+			else:
+				if attr is not None:
+					string = '%s: %s'%(attr,parse(substring))
+				else:
+					string = parse(substring)
+
+			msg.append(string)
+
+		msg = [i if isinstance(i,str) else str(i) for i in msg]
+
+		msg = '\n'.join(msg)
+
+		self.log(msg,verbose=verbose)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str,bool): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = None
+		if msg is None:
+			return
+		msg += '\n'
+		print(msg)
+		return
+
+	def update(self,data=None,shape=None,axes=None,where=None,options=None,**kwargs):
+		'''
+		Update class data
+		Args:
+			data (array,dict): Class data		
+			shape (iterable[int]): Shape of data
+			axes (iterable[int]): Axes order of data
+			where (float,int,iterable[int]): indices of class
+			options (dict): Options of class
+			kwargs (dict): Additional class keyword arguments				
+		Returns:
+			data (dict): Class data		
+		'''	
+
+		data = self if data is None else data
+
+		options = dict() if options is None else options
+
+		defaults = dict(rank=self.S)
+
+		N = self.N
+		where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
+
+		indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
+
+		if isinstance(data,dict):
+
+			for i in indices:
+
+				if i < min(where):
+
+					state = data[i]
+					shape = state.shape
+					axes = axes
+
+					state = self.organize(data=state,where=i,transform=True,conj=False,**kwargs)
+
+					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
+
+					size = add(s) if not isinstance(s,integers) else s
+
+					state = self.organize(data=u,where=i,shape=[*shape[:-1],size],axes=axes,transform=False,conj=False,**kwargs)
+
+					data[i] = state
+
+					if i < (N-1):
+						if v is not None:
+							data[i+1] = dot(v,data[i+1])
+						elif not isinstance(s,integers):
+							data[i+1] = data[i+1][s]
+						else:
+							data[i+1] = data[i+1][:s]
+
+
+				elif i > max(where):
+
+					state = self[i]
+					shape = state.shape
+					axes = axes
+
+					state = self.organize(data=state,where=i,transform=True,conj=True,**kwargs)
+					
+					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=True,**{**kwargs,**options,**defaults})
+
+					size = add(s) if not isinstance(s,integers) else s
+
+					state = self.organize(data=v,where=i,shape=[size,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+					
+					data[i] = state
+
+					if i > 0:
+						if u is not None:
+							data[i-1] = dot(data[i-1],u)
+						elif not isinstance(s,integers):
+							data[i-1] = data[i-1][...,s]
+						else:
+							data[i-1] = data[i-1][...,:s]
+
+		elif isinstance(data,arrays):
+
+			if len(where) == 1:
+
+				data = dict(zip(where,[data]))
+
+			elif len(where) == 2:
+
+				data = self.organize(data,where=where,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
+
+				u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(data,conj=False,**{**kwargs,**options,**defaults})
+
+				# error = (norm(data-dot(u,v))/norm(data)).real
+
+
+
+				data = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
+
+				data = dict(zip(where,data))
+
+				if 0:
+
+					tmp = {**kwargs.get('state',options.get('state')),**state}
+					variables = kwargs.get('variables')
+					D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
+					basis = self
+
+					options = dict(D=D,N=N)
+					constant = real(1-add(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
+
+					options = dict(D=D,N=N)
+					spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
+
+					hermitian = real(norm(spectrum-dagger(spectrum)))+0.
+
+					options = dict(compute_v=False,hermitian=True)
+					spectrum = eig(spectrum,**options)
+					ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
+					
+					sums = {i:(
+								asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))),
+								asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))))
+							for i in tmp}
+
+					print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
+					print(sums)
+					print()
+				# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
+				# variables['u.condition'].append(condition_number(dot(u.T,u).real))
+				# variables['v.condition'].append(condition_number(dot(v,v.T).real))
+				# variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,**options)))
+				# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
+				# variables['uv.error'].append(sqrt(norm(state-dot(u,v))/norm(state)).real)
+				# variables['uv.spectrum'].append(spectrum)
+				# variables['uv.rank'].append(rank)
+
+				# parse = lambda obj: asscalar(obj.real)
+				# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
+			else:
+				raise NotImplementedError(f"Not Implemented {where}")
+
+		for i in data:
+			self[i] = data[i]
+
+		return data
+
+	def organize(self,data=None,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
+		'''
+		Organize class data
+		Args:
+			data (array,dict): Class data
+			shape (iterable[int]): Shape of data
+			axes (iterable[int]): Axes order of data
+			conj (bool): Conjugate of class data
+			where (float,int,iterable[int]): indices of class
+			transform (bool): Forward or backward transform data
+			kwargs (dict): Additional class keyword arguments		
+		Returns:
+			data (array): Class data
+		'''			
+
+		data = self if data is None else data
+
+		if transform:
+			
+			if isinstance(data,dict):
+				where = [*data] if where is None else [where] if not isinstance(where,iterables) else [*where]
+				N = len(where)
+
+				shape = [k for i,j in enumerate(where) for k in ([prod(data[j].shape[:2]),*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],prod(data[j].shape[-2:])] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+				axes = range(N) if axes is None else axes
+				subscripts = '%s->%s'%(
+					','.join(
+						''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+						for i in range(N)
+						),
+					''.join(
+						''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
+						for i in range(N)
+						),
+					)
+
+				data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+				
+			elif isinstance(data,tuple):
+				raise NotImplementedError(f"Not Implemented {data}")
+			
+			elif isinstance(data,arrays):
+				if data.ndim == 1:
+					if not conj:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0] if axes is None else axes
+					else:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = [0] if axes is None else axes
+				elif data.ndim == 2:
+					if not conj:
+						shape = [*data.shape] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+					else:
+						shape = [*data.shape] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes					
+				elif data.ndim == 3:
+					if not conj:
+						shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+					else:
+						shape = [data.shape[0],prod(data.shape[1:-1])*data.shape[-1]] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+				elif data.ndim == 4:
+					if not conj:
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+					else:
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+				
+				data = reshape(transpose(data,axes),shape)
+
+		else:
+
+			if isinstance(data,dict):
+				raise NotImplementedError(f"Not Implemented {data}")
+		
+			elif isinstance(data,tuple):
+				where = range(len(data)) if where is None else [where] if not isinstance(where,iterables) else [*where]
+				shape = [[*data[0].shape[:2],1],[1,*data[1].shape[-2:]]] if shape is None else shape
+				axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
+				data = [transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)]
+				
+			elif isinstance(data,arrays):
+				if data.ndim == 1:
+					if not conj:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = range(data.ndim+2) if axes is None else axes
+					else:
+						shape = [1,*data.shape,1] if shape is None else shape
+						axes = range(data.ndim+2) if axes is None else axes
+				elif data.ndim == 2:
+					if not conj:
+						shape = [data.shape[0],prod(data.shape[1:-1]),-1] if shape is None else shape
+						axes = range(data.ndim+1) if axes is None else axes
+					else:
+						shape = [-1,prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+						axes = range(data.ndim+1) if axes is None else axes
+				elif data.ndim == 3:
+					if not conj:
+						shape = [*data.shape] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+					else:
+						shape = [*data.shape] if shape is None else shape
+						axes = range(data.ndim) if axes is None else axes
+				elif data.ndim == 4:
+					if not conj:
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim-2) if axes is None else axes
+					else:
+						shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+						axes = range(data.ndim-2) if axes is None else axes
+				else:
+					raise NotImplementedError(f"Not Implemented {data}")
+
+				data = transpose(reshape(data,shape),axes)
+
+		return data
+
+	def shuffle(self,data,shape,where=None,transform=True,**kwargs):
+		'''
+		Shuffle class data
+		Args:
+			data (array,dict): Class data
+			shape (iterable[int]): Shape of data
+			where (float,int,iterable[int]): indices of class
+			transform (bool): Forward or backward transform data
+			kwargs (dict): Additional class keyword arguments		
+		Returns:
+			data (array): Class data
+		'''	
+
+		if transform:
+			n,d = len(shape),data.ndim
+			where = [range(n)] if where is None else [where,sorted(set(range(n))-set(where))]
+			shape = [*shape]*d
+			axes = [j*n+i for indices in where for j in range(d) for i in indices]
+			data = transpose(reshape(data,shape),axes)
+		else:
+			n,d = len(shape),data.ndim//len(shape)
+			where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+			shape = [prod(shape)]*d
+			axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
+			data = reshape(transpose(data,axes),shape)
+		return data
+
+	def scheme(self,options=None,**kwargs):
+		'''
+		Scheme for updating class
+		Args:
+			options (dict): Class options
+			kwargs (dict): Additional class keyword arguments
+		Returns:
+			scheme (callable): Scheme function with signature scheme(a,rank=None,conj=None,**options)
+		'''
+		options = dict() if options is None else options
+
+		scheme = options.get('scheme')
+		eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
+
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				i = min(*u.shape,*v.shape)
+				# s = add(u,0)
+				# i = abs(s)>eps
+				# u,v,s = u[:,i],v[i,:],s[i]
+				# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
+				u,v,s = u,v,i				
+				# u,v,s = cmplx(u),cmplx(v),i
+				return u,v,s
+			return decorator
+
+		if scheme is None:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v,s = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s))),ones(s.shape,dtype=s.dtype)
+				return u,v,s				
+		elif scheme in ['svd']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v = u,dotl(v,s)
+				return u,v,s
+		elif scheme in ['nmf']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()		
+				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+				return u,v,s
+		elif scheme in ['_nmf']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()
+				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
+				u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+				return u,v,s
+
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+				u,v,s = u[:,:rank],(v[:rank,:] if v is not None else None),(s[:rank] if s is not None else None)
+				i = min(*(u.shape if u is not None else ()),*(v.shape if v is not None else ()))
+				# s = add(u,0)
+				# i = abs(s)>eps				
+				# u,v,s = u[:,i],(v[i,:] if v is not None else None),s[i]
+				# u,v,s = dotr(u,reciprocal(s)),(dotl(v,s) if v is not None else None),s
+				u,v,s = ((dagger(v) if v is not None else None),dagger(u),s) if conj else (u,v,s)
+				u,v,s = u,v,i
+				# u,v,s = (cmplx(u) if u is not None else None),(cmplx(v) if v is not None else None),i
+				return u,v,s
+			return decorator
+
+		if scheme in ['qr']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(mode='reduced')
+				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = None
+				return u,v,s				
+		elif scheme in ['stq']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()		
+				u,v,s = a,None,None
+				return u,v,s				
+		
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				s = func(a,rank=rank,conj=conj,**kwargs) 
+				s = s[:rank]
+				return s
+			return decorator
+
+		if scheme in ['eig']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_v=False,hermitian=False)	
+				rank = min(a.shape) if rank is None else rank    
+				s = eig(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				return s
+		elif scheme in ['spectrum']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
+				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
+				return s
+		elif scheme in ['probability']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()				
+				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
+				return s
+		elif scheme in ['_spectrum']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)	
+				rank = min(a.shape) if rank is None else rank    
+				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
+				return s				
+		elif scheme in ['_probability']:
+			@wrapper
+			def scheme(a,rank=None,conj=None,**options):
+				defaults = dict()						
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = s[:rank]
+				return s								
+		
+		return scheme
+
+	@property
+	def shape(self):
+		return {i:self[i].shape for i in self}
+
+	@property
+	def size(self):
+		return prod(self[i].size for i in self)
+
+	@property
+	def ndim(self):
+		return max(self[i].ndim for i in self)
+
+	def __str__(self):
+		return '%s: %s'%(str(self.__class__.__name__),' , '.join([f'{i}:{self[i].shape}' for i in self]))
+
+	def __repr__(self):
+		return self.__str__()
+	
+	def __hash__(self):
+		return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self.data[i] for i in self.data)))
+
+	def __len__(self):
+		return len(self.data)
+	
+	def __iter__(self):
+		yield from self.data
+
+	def __getitem__(self,index):
+		return self.data.get(index)
+
+	def __setitem__(self,index,value):
+		self.data[index] = value
+		return
+
+	def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+		'''
+		Call class
+		Args:
+			data (array,callable): Array to apply to class
+			parameters (array): Class parameters
+			where (float,int,iterable[int]): indices of class
+		Returns:
+			data (dict): Class with data applied
+		'''
+
+		state = self
+		options = dict() if options is None else options		
+		where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
+
+		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+		# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+
+		if isinstance(data,arrays):
+
+			L = len(where)
+			shape = [j for i in where for j in state[i].shape[1:-1]]
+			subscripts = '%s,%s->%s%s%s'%(
+				''.join((
+					''.join(symbols(i) for i in range(L)),
+					''.join(symbols(L+i) for i in range(L))
+					)),
+				','.join(''.join((
+					symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) 
+					for i in range(L)
+					),
+				''.join((symbols(2*L),)),
+				''.join(symbols(i) for i in range(L)),
+				''.join((symbols(2*L+L),))
+				)
+
+			data = self.shuffle(data,shape=shape,**kwargs)
+
+			data = einsum(subscripts,data,*(state[i] for i in where))
+
+		else:
+
+			data = data(state,where=where)
+
+		scheme = options.get('scheme')
+		shape = [state[i].shape for i in where]		
+		data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
+
+		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+		# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+
+		data = state
+
+		return data
+
 
 def trotter(iterable=None,p=None,verbose=False):
 	'''
@@ -3787,9 +4479,9 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		wrapper = jit
 	elif architecture in ['array']:		
 		wrapper = jit
-	elif architecture in ['tensor']:		
+	elif architecture in ['mps']:		
 		wrapper = jit
-	elif architecture in ['structure']:
+	elif architecture in ['tensor']:
 		wrapper = jit
 	else:
 		wrapper = jit
@@ -3864,9 +4556,9 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		wrapper = jit
 	elif architecture in ['array']:
 		wrapper = jit
-	elif architecture in ['tensor']:
+	elif architecture in ['mps']:
 		wrapper = jit
-	elif architecture in ['structure']:
+	elif architecture in ['tensor']:
 		wrapper = jit
 	else:
 		wrapper = jit
@@ -4470,7 +5162,7 @@ class Object(System):
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
-		if self.architecture is None or self.architecture in ['array','tensor','structure']:
+		if self.architecture is None or self.architecture in ['array','mps','tensor']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 		else:
 			kwargs = dict(**{**self.options}) if self.options is not None else kwargs
@@ -4493,7 +5185,7 @@ class Object(System):
 		self.contract = contract
 		self.gradient_contract = grad_contract
 
-		if self.architecture is None or self.architecture in ['array','tensor','structure']:
+		if self.architecture is None or self.architecture in ['array','mps','tensor']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			where = self.site
@@ -5162,7 +5854,7 @@ class Object(System):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array','tensor','structure']:
+		if self.architecture is None or self.architecture in ['array','mps','tensor']:
 		
 			shape = self.shape
 			size = self.size
@@ -6127,7 +6819,7 @@ class State(Object):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array','tensor']:
+		if self.architecture is None or self.architecture in ['array','mps']:
 		
 			shape = self.shape
 			ndim = self.ndim
@@ -6481,7 +7173,7 @@ class Objects(Object):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor','structure']:
+		if self.architecture is None or self.architecture in ['array','mps','tensor']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
@@ -7206,7 +7898,7 @@ class Channel(Objects):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor','structure']:
+		if self.architecture is None or self.architecture in ['array','mps','tensor']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
@@ -7485,9 +8177,9 @@ class Module(System):
 			wrapper = jit
 		elif self.architecture in ['array']:		
 			wrapper = jit
-		elif self.architecture in ['tensor']:		
+		elif self.architecture in ['mps']:		
 			wrapper = jit
-		elif self.architecture in ['structure']:
+		elif self.architecture in ['tensor']:
 			wrapper = jit
 		else:
 			wrapper = jit
@@ -8262,9 +8954,9 @@ class Callback(System):
 						wrapper = jit
 					elif model.architecture in ['array']:
 						wrapper = jit
-					elif model.architecture in ['tensor']:
+					elif model.architecture in ['mps']:
 						wrapper = jit											
-					elif model.architecture in ['structure']:
+					elif model.architecture in ['tensor']:
 						wrapper = jit
 					else:
 						wrapper = jit
