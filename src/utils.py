@@ -189,7 +189,7 @@ class none(object):
 
 null = Null()
 
-class structure(object):
+class struct(object):
 	'''
 	array placeholder class
 	Args:
@@ -263,7 +263,8 @@ if backend in ['jax','jax.autograd']:
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))
-	arrays = (np.ndarray,onp.ndarray,structure)
+	arrays = (np.ndarray,onp.ndarray,)
+	structures = ()
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 	matrices = (qtn.MatrixProductState,)
 
@@ -302,7 +303,8 @@ elif backend in ['autograd']:
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
-	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,structure)
+	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,)
+	structures = ()	
 	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
 	matrices = (qtn.MatrixProductState,)	
 
@@ -333,6 +335,7 @@ elif backend in ['numpy']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,)
+	structures = ()	
 	tensors = ()
 	matrices = ()	
 
@@ -942,6 +945,20 @@ elif backend in ['autograd','numpy']:
 if backend in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		return jax.lax.cond(pred,true_fun,false_fun,*operands)
+
+	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
 		'''
 		Perform loop of func from start to end indices
@@ -958,8 +975,40 @@ if backend in ['jax','jax.autograd']:
 
 		return jax.lax.fori_loop(start,end,func,out)
 
+	# @partial(jit,static_argnums=(2,))	
+	def whileloop(cond,func,out):	
+		'''
+		Perform loop of func while cond 
+		Args:
+			cond (callable): Condition for loop with signature cond(out)
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
+		Returns:
+			out (array): Return of loop
+		'''
+
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+
+		return jax.lax.while_loop(cond,func,out)
 
 elif backend in ['autograd','numpy']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		if pred:
+			return true_fun(*operands)
+		else:
+			return false_fun(*operands)
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -980,42 +1029,23 @@ elif backend in ['autograd','numpy']:
 			out = func(i,out)
 		return out		
 
-
-if backend in ['jax','jax.autograd']:
-	
 	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
+	def whileloop(cond,func,out):	
 		'''
-		Conditionally evaluate functions
+		Perform loop of func while cond 
 		Args:
-			pred (bool): Conditional to choose function to evaluate
-			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
-			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
-			operands (iterable[object]): Arguments for functions
+			cond (callable): Condition for loop with signature cond(out)
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
 		Returns:
-			out (array): Return of function
+			out (array): Return of loop
 		'''
-		return jax.lax.cond(pred,true_fun,false_fun,*operands)
 
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+		while cond(out):
+			out = func(out)
+		return out
 
-elif backend in ['autograd','numpy']:
-
-	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
-		'''
-		Conditionally evaluate functions
-		Args:
-			pred (bool): Conditional to choose function to evaluate
-			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
-			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
-			operands (iterable[object]): Arguments for functions
-		Returns:
-			out (array): Return of function
-		'''
-		if pred:
-			return true_fun(*operands)
-		else:
-			return false_fun(*operands)
 
 def value_and_gradient(func,grad=None,returns=False):
 	'''
@@ -2539,6 +2569,10 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
+class structure(object):
+	pass
+
+
 
 if backend in ['jax','jax.autograd','autograd']:
 
@@ -3449,6 +3483,24 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
 
+	def randpermute(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random permutation array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.permutation
+
+		return astype(generator(key,shape),dtype=dtype)
+
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
@@ -3797,6 +3849,24 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return astype(generator(*bounds,size=shape),dtype=dtype)
 
+	def randpermute(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random permutation array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.permutation
+
+		return astype(generator(shape),dtype=dtype)
+
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
@@ -3979,6 +4049,27 @@ def qrs(a):
 
 	return q,r
 
+def lu(a,**kwargs):
+	'''
+	Compute LU decomposition of array
+	Args:
+		a (array): Array to compute LU decomposition of shape (...,n,n)
+	Returns:
+		L (array): LU factor of shape (...,n,n)
+		U (array): LU factor of shape (...,n,n)
+	'''
+	return sp.linalg.lu(a)
+
+def cho(a,**kwargs):
+	'''
+	Compute cholesky decomposition of array
+	Args:
+		a (array): Array to compute cholesky decomposition of shape (...,n,n)
+	Returns:
+		T (array): cholesky factor of shape (...,n,n)
+	'''
+	return sp.linalg.cho_factor(a)
+
 def cholesky(a):
 	'''
 	Compute cholesky decomposition of array
@@ -3988,6 +4079,80 @@ def cholesky(a):
 		L (array): Cholesky factor of shape (...,n,n)
 	'''
 	return np.linalg.cholesky(a)
+
+
+def solve(a,b,method=None,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		method (str): Method to solve system
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+
+	if method is None:
+		return solve_solve(a,b,**kwargs)
+	elif method in ['triangular']:
+		return solve_triangular(a,b,**kwargs)
+	elif method in ['cholesky']:
+		return solve_chol(a,b,**kwargs)	
+	elif method in ['lu']:
+		return solve_lu(a,b,**kwargs)				
+	else:
+		return solve_solve(a,b,**kwargs)		
+
+def solve_solve(a,b,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.solve(a,b)
+
+def solve_triangular(a,b,lower=False,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		lower (bool): Array a is lower-triangular
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.solve_triangular(a,b,lower=lower)
+
+def solve_chol(a,b,lower=False,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		lower (bool): Array a is lower-triangular		
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.cho_solve(cho(a,lower=lower),b)
+
+def solve_lu(a,b,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.lu_solve(lu(a),b)
 
 def lstsq(x,y):
 	'''
@@ -6734,19 +6899,30 @@ def trace(a,axis=(0,1)):
 	'''	  
 	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
-@partial(jit,static_argnums=(1,))
-def traces(a,axes=((0,1),)):
+
+@jit
+def det(a,**kwargs):
 	'''
-	Calculate partial trace of array
+	Calculate determinant of array
 	Args:
-		a (array): Array to calculate trace
-		axis (iterable[iterable[int]]): Axes to compute trace with respect to
+		a (array): Array to calculate determinant
 	Returns:
-		out (array): Trace of array
-	'''	
-	for axis in sorted(axes,reverse=True):
-		a = trace(a,axis=axis)
-	return a
+		out (array): Determinant of array
+	'''	  
+	return np.linalg.det(a)
+
+
+@jit
+def condition_number(a,**kwargs):
+	'''
+	Calculate condition number of array
+	Args:
+		a (array): Array to calculate condition number
+	Returns:
+		out (array): Condition number of array
+	'''	  
+	return np.linalg.cond(a)
+
 
 @jit
 def rank(a,tol=None,hermitian=False):

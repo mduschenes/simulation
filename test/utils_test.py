@@ -1150,9 +1150,9 @@ def test_groupby(path=None,tol=None):
 	print('Passed')
 	return
 
-def test_structure(path=None,tol=None):
+def test_struct(path=None,tol=None):
 
-	from src.utils import array,structure,einsum,arrays
+	from src.utils import array,struct,einsum,arrays
 
 	n = 10
 	d = 2
@@ -1162,7 +1162,7 @@ def test_structure(path=None,tol=None):
 
 	subscripts = 'ij,jk->ik'
 
-	a = structure(shape=shape,dtype=dtype)
+	a = struct(shape=shape,dtype=dtype)
 
 	print(isinstance(a,arrays))
 
@@ -1281,5 +1281,5 @@ if __name__ == '__main__':
 	# test_stability(path,tol)
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
-	# test_structure(path,tol)
+	# test_struct(path,tol)
 	# test_jax(path,tol)

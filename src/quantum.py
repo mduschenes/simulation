@@ -14,12 +14,12 @@ from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slic
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,traces,norm,eig,svd,diag,inv,sqrtm,addition,product
+from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sqr,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,matrices,nulls,integers,floats,iterables,dicts,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,structures,matrices,nulls,integers,floats,iterables,dicts,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -884,7 +884,23 @@ class Measure(System):
 		zeros = [array([0 for i in range(K)],dtype=dtype)]*N
 		pointer = pointer if pointer is not None else None
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+			cls = array
+			
+			kwargs = dict(dtype=dtype)
+
+			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
+			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+			
+			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
+			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
+			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
+			pointer = pointer
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			cls = array
 			
 			kwargs = dict(dtype=dtype)
@@ -960,7 +976,20 @@ class Measure(System):
 		self.hermitian = hermitian
 		self.unitary = unitary
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+			subscripts = '...u,uv,vij->...ij'
+			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
+			einsummation = einsum(subscripts,*shapes)
+			def func(parameters=None,state=None,**kwargs):
+				return einsummation(state,self.inverse[self.pointer],self.basis[self.pointer])
+
+			def gradient(parameters=None,state=None,**kwargs):
+				return 0
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			subscripts = '...u,uv,vij->...ij'
 			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
 			einsummation = einsum(subscripts,*shapes)
@@ -1130,7 +1159,7 @@ class Measure(System):
 		if state is None:
 			return state
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			N = len(state)
 
@@ -1147,6 +1176,37 @@ class Measure(System):
 				state[i] = data
 
 			state = tensorprod(state)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+			
+			if not isinstance(state,tensors):
+				
+				N = len(state)
+
+				for i in range(N):
+
+					data = state[i] if not callable(state[i]) else state[i]()
+					inds = (*self.indices[::-1],)
+					tags = (self.tag,*self.tags,)
+
+					data = tensor(data=data,inds=inds,tags=tags)
+
+					with context(data,self.basis[i],key=i):
+						data &= self.basis[i]
+
+					data = representation(data,contraction=True)
+
+					state[i] = data
+
+			else:
+
+				state = state
+
+			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**(self.options if self.options is not None else dict())}
+			
+			state = mps(state,**options)
 			
 		elif self.architecture in ['tensor']:
 			
@@ -1199,7 +1259,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			if L:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
@@ -1213,6 +1273,10 @@ class Measure(System):
 			einsummation = einsum(subscripts,*shapes)
 			
 			state = einsummation(state,inverse,basis)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 
@@ -1244,7 +1308,7 @@ class Measure(System):
 		default = tuple()
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 
 			K = self.K
 			ndim = 1
@@ -1283,6 +1347,10 @@ class Measure(System):
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 
@@ -1359,8 +1427,13 @@ class Measure(System):
 			N (int): size of state
 		'''
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
+		elif self.architecture in ['structure']:
+			
+			raise NotImplementedError
+
+			N = len(state) if isinstance(state,structures) else len(where) if where is not None else None
 		elif self.architecture in ['tensor']:
 			N = state.L if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
 		else:
@@ -1586,7 +1659,7 @@ class Measure(System):
 		default = tuple()
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 
 			data = state
 
@@ -1607,6 +1680,15 @@ class Measure(System):
 			function = lambda data: addition(data,axis=where)
 
 			data = shuffle(function(shuffle(data,**options)),**_options)
+
+		elif self.architecture in ['tensor']:
+
+			raise NotImplementedError
+
+			data = copy(state)
+
+			for i in where:
+				data[i] = addition(data[i],range(1,data[i].ndim-1))
 
 		elif self.architecture in ['tensor']:
 			
@@ -1639,7 +1721,7 @@ class Measure(System):
 		default = dict()
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 
 			data = state
 
@@ -1660,6 +1742,10 @@ class Measure(System):
 			function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(N))]
 
 			data = shuffle(function(shuffle(data,**options)),**_options)
+
+		elif self.architecture in ['structure']:
+			
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 			
@@ -1695,7 +1781,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			other = state if other is None else other
 
@@ -1706,6 +1792,17 @@ class Measure(System):
 			einsummation = einsum(subscripts,*shapes)
 			
 			data = einsummation(state,inverse,other)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
+			data = copy(state)
+			subscripts = 'iuj,uv,kvl->ijkl'
+			shape = [j for i in where for j in [*state[i].shape[:1],*state[i].shape[-1:]]]
+
+			for i in where:
+				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
 
 		elif self.architecture in ['tensor']:
 	
@@ -1747,7 +1844,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			data = state
 
@@ -1771,6 +1868,17 @@ class Measure(System):
 			einsummation = einsum(subscripts,*shapes)
 
 			data = einsummation(data,inverse,data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
+			data = copy(state)
+			subscripts = 'iuj,uv,kvl->ijkl'
+			shape = [j for i in where for j in [*state[i].shape[:1],*state[i].shape[-1:]]]
+
+			for i in where:
+				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
 
 		elif self.architecture in ['tensor']:
 	
@@ -1834,12 +1942,29 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 			
+			state = dot(state,other)
+			data = self.eig(parameters=parameters,state=state,**kwargs)
+
+			data = addition(sqrt(abs(data)))
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
+			
+			options = dict(to=self.architecture,contraction=True)
+			state = representation(state,**{**options,**kwargs})
+			other = representation(other,**{**options,**kwargs})
+
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
 
@@ -1884,7 +2009,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			function = sqrt
 			subscripts = '...u,...u->...'
@@ -1895,6 +2020,10 @@ class Measure(System):
 			other = function(other)
 
 			data = einsummation(state,other)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 			
@@ -1933,8 +2062,18 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
+
+			data = data/sqrt(state*other)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
 			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
 			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
@@ -1996,7 +2135,15 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2033,7 +2180,15 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2070,8 +2225,16 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = asscalar(data)
@@ -2130,8 +2293,27 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -2190,8 +2372,20 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -2233,8 +2427,22 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -2304,7 +2512,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2330,6 +2538,10 @@ class Measure(System):
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+			
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 		
@@ -2384,7 +2596,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2399,6 +2611,10 @@ class Measure(System):
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 		
@@ -2447,7 +2663,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2466,6 +2682,10 @@ class Measure(System):
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)**2
 
 			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 		elif self.architecture in ['tensor']:
 		
@@ -2541,7 +2761,7 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
 			data = 0
 
@@ -2561,6 +2781,27 @@ class Measure(System):
 			data -= tmp
 
 			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			data -= tmp
 
 		elif self.architecture in ['tensor']:
 		
@@ -2604,8 +2845,43 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			tmp = state
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,**kwargs)*log(self.D**L)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			for index in permutations(*[range(self.K)]*(N-L)):
+
+				index = dict(zip(where,index))
+				tmp = self.measure(parameters=parameters,state=state,where=index,**kwargs)
+
+				index = range(L)
+				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				index = range(L)
+				options = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+
+				tmp /= norm
+
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				data -= norm*tmp
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
@@ -2696,8 +2972,31 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			data -= tmp
+
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
@@ -2759,8 +3058,31 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			data -= tmp
+		
+			data = asscalar(data)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
@@ -2844,8 +3166,14 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
@@ -2875,8 +3203,14 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = 0
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			data = 0
 
 		elif self.architecture in ['tensor']:
@@ -2906,8 +3240,14 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			data = 0
+
+		elif self.architecture in ['structure']:
+		
+			raise NotImplementedError
+
 			data = 0
 
 		elif self.architecture in ['tensor']:
@@ -2959,8 +3299,25 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 			
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			where = tuple(i for i in range(N) if i in where)
+
+			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
@@ -3017,8 +3374,25 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
 		
+			K = self.K
+			ndim = state.ndim
+
+			options = dict(
+				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
+				shape = [K,N,ndim],
+				transformation=True,
+				)
+
+			state = shuffle(state,**options)
+
+			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
+
 			K = self.K
 			ndim = state.ndim
 
@@ -3059,7 +3433,15 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3094,7 +3476,15 @@ class Measure(System):
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array','mps'] or self.architecture not in ['tensor']:
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+
+		elif self.architecture in ['structure']:
+
+			raise NotImplementedError
 
 			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3399,8 +3789,8 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		wrapper = jit
 	elif architecture in ['tensor']:		
 		wrapper = jit
-	elif architecture in ['mps']:
-		wrapper = partial
+	elif architecture in ['structure']:
+		wrapper = jit
 	else:
 		wrapper = jit
 	kwargs = dict()
@@ -3476,8 +3866,8 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		wrapper = jit
 	elif architecture in ['tensor']:
 		wrapper = jit
-	elif architecture in ['mps']:
-		wrapper = partial
+	elif architecture in ['structure']:
+		wrapper = jit
 	else:
 		wrapper = jit
 	kwargs = dict()
@@ -4080,9 +4470,9 @@ class Object(System):
 		
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
-		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
+		if self.architecture is None or self.architecture in ['array','tensor','structure']:
 			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
-		elif self.architecture in ['mps']:
+		else:
 			kwargs = dict(**{**self.options}) if self.options is not None else kwargs
 
 		try:
@@ -4103,14 +4493,14 @@ class Object(System):
 		self.contract = contract
 		self.gradient_contract = grad_contract
 
-		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
+		if self.architecture is None or self.architecture in ['array','tensor','structure']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			where = self.site
 			wrapper = jit
 			kwargs = dict()
 		
-		elif self.architecture in ['mps']:
+		else:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			where = self.site			
@@ -4291,9 +4681,6 @@ class Object(System):
 	def __repr__(self):
 		return self.__str__()
 	
-	def __len__(self):
-		return len(self.data)
-
 	def __hash__(self):
 		return (
 			hash(self.string) ^ 
@@ -4315,6 +4702,8 @@ class Object(System):
 		key = tuple(key)
 		return key
 	
+	def __len__(self):
+		return len(self.data)
 
 	def __matmul__(self,other):
 		'''
@@ -4773,7 +5162,7 @@ class Object(System):
 		norm = None
 		eps = None
 
-		if self.architecture is None or self.architecture in ['array','tensor','mps']:
+		if self.architecture is None or self.architecture in ['array','tensor','structure']:
 		
 			shape = self.shape
 			size = self.size
@@ -6092,13 +6481,13 @@ class Objects(Object):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
+		if self.architecture is None or self.architecture in ['array','tensor','structure']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
 			kwargs = dict()
 
-		elif self.architecture in ['mps']:
+		else:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = partial
@@ -6817,13 +7206,13 @@ class Channel(Objects):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor'] or self.architecture not in ['mps']:
+		if self.architecture is None or self.architecture in ['array','tensor','structure']:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
 			kwargs = dict()
 
-		elif self.architecture in ['mps']:
+		else:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = partial
@@ -7098,8 +7487,8 @@ class Module(System):
 			wrapper = jit
 		elif self.architecture in ['tensor']:		
 			wrapper = jit
-		elif self.architecture in ['mps']:
-			wrapper = partial
+		elif self.architecture in ['structure']:
+			wrapper = jit
 		else:
 			wrapper = jit
 
@@ -7875,8 +8264,8 @@ class Callback(System):
 						wrapper = jit
 					elif model.architecture in ['tensor']:
 						wrapper = jit											
-					elif model.architecture in ['mps']:
-						wrapper = partial
+					elif model.architecture in ['structure']:
+						wrapper = jit
 					else:
 						wrapper = jit
 

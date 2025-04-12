@@ -2491,7 +2491,7 @@ def test_parameters(*args,**kwargs):
 	return
 
 
-def test_tensor(*args,**kwargs):
+def test_quimb(*args,**kwargs):
 
 	from src.utils import mps
 	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
@@ -2504,10 +2504,48 @@ def test_tensor(*args,**kwargs):
 	def tensor(data,k=1):
 		return array([tensorprod(i) for i in permutations(*[data]*k)])
 	
-	N = 4
+	def init(N,D):
+		state = 'state'
+		data = {(i,i+1):'identity' for i in range(N-1)}
+
+		measure = 'pauli'
+
+		args = tuple()
+		kwargs = dict(
+			D=D,shape=(D,)*2,ndim=3,seed=seed,dtype=dtype,
+			)
+		measure = getattr(basis,measure)(*args,**kwargs)
+		inverse = inv(einsum('uij,vji->uv',measure,measure))
+
+		args = tuple()
+		kwargs = dict(
+			D=D,shape=(D,)*2,ndim=2,seed=seed,dtype=dtype,
+			)
+		state = getattr(basis,state)(*args,**kwargs)
+
+		obj = copy(state)
+
+		state = [einsum('uij,ji->u',tensor(measure),state)]*N
+
+		state = mps(state,*args,**kwargs)
+
+		for i in data:
+			args = tuple()
+			kwargs = dict(
+				D=D**len(i),shape=(D**len(i),)*2,ndim=2,seed=seed,dtype=dtype,
+				)
+			data[i] = getattr(basis,data[i])(*args,**kwargs)
+
+			data[i] = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,len(i))]*2,data[i],conjugate(data[i]),tensor(inverse,len(i)))
+
+		return state,data
+
+
+	N = 8
 	D = 2
-	M = 2*N
+	M = 100
 	L = N//2
+	T = 5
 	to = 'tensor'
 	seed = 123456789
 	seed = seeder(seed)
@@ -2518,38 +2556,15 @@ def test_tensor(*args,**kwargs):
 		cutoff=0
 		)
 
-	measure = 'pauli'
-	state = 'state'
-	data = {(i,i+1):'unitary' for i in range(N-1)}
+	for i in range(T):
+		state,data = init(N,D)
+		for k in range(M):
+			for i in data:
+				state = state.gate(data[i],where=i,**options)
 
-	args = tuple()
-	kwargs = dict(
-		D=D,shape=(D,)*2,ndim=3,seed=seed,dtype=dtype,
-		)
-	measure = getattr(basis,measure)(*args,**kwargs)
-	inverse = inv(einsum('uij,vji->uv',measure,measure))
-
-	args = tuple()
-	kwargs = dict(
-		D=D,shape=(D,)*2,ndim=2,seed=seed,dtype=dtype,
-		)
-	state = getattr(basis,state)(*args,**kwargs)
-
-	obj = copy(state)
-
-	state = [einsum('uij,ji->u',tensor(measure),state)]*N
-
-	for i in data:
-		args = tuple()
-		kwargs = dict(
-			D=D**len(i),shape=(D**len(i),)*2,ndim=2,seed=seed,dtype=dtype,
-			)
-		data[i] = getattr(basis,data[i])(*args,**kwargs)
-
-		data[i] = einsum('uij,wkl,jk,il,wv->uv',*[tensor(measure,len(i))]*2,data[i],conjugate(data[i]),tensor(inverse,len(i)))
+	return
 
 
-	state = mps(state,*args,**kwargs)
 
 	tmp = copy(state)
 
@@ -2560,6 +2575,7 @@ def test_tensor(*args,**kwargs):
 
 	_tmp = _state
 
+	return
 
 	print(_state.singular_values(L))
 	print(representation(_state).real.round(8))
@@ -2625,4 +2641,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_parameters(*args,**args)
-	test_tensor(*args,**args)
+	test_quimb(*args,**args)
