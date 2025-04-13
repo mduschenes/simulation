@@ -3576,7 +3576,7 @@ class MPS_quimb(mps):
 				return 
 			kwargs.update(dict(phys_dim=D,bond_dim=S))
 			kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
-		elif isinstance(data,(str,*iterables)):
+		elif isinstance(data,(str,*dicts,*iterables)):
 			basis = {
 				**{attr: Basis.state for attr in ['psi','state','product']},
 				**{attr: Basis.state for attr in ['haar']},
@@ -3589,7 +3589,7 @@ class MPS_quimb(mps):
 				**{attr: Basis.minusi for attr in ['minusi','-i']},	
 			}
 			options = dict(D=D,**kwargs)
-			data = [data]*N if isinstance(data,str) else [i for i in data]
+			data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
 			data = [basis.get(i)(**Basis.opts(basis.get(i),options)) if isinstance(i,str) else i for i in data]
 			kwargs.update(dict())
 			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
@@ -3697,6 +3697,11 @@ class MPS(dict):
 				shape = [1,*data[i].shape,1]
 				data[i] = transpose(reshape(data[i],shape),axes)
 
+		self.scheme = {
+			scheme:self.schemes(scheme=scheme,**kwargs)
+			for scheme in [None,'svd','nmf','_nmf','qr','stq','eig','spectrum','probability','_spectrum','_probability']
+		}
+
 		self.data = data
 		self.parameters = parameters
 
@@ -3796,6 +3801,7 @@ class MPS(dict):
 
 		N = self.N
 		where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
+		scheme = options.get('scheme',kwargs.get('scheme'))
 
 		indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
 
@@ -3811,7 +3817,7 @@ class MPS(dict):
 
 					state = self.organize(data=state,where=i,transform=True,conj=False,**kwargs)
 
-					u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(state,conj=False,**{**defaults,**kwargs,**options})
+					u,v,s = self.scheme[scheme](state,conj=False,**{**defaults,**kwargs,**options})
 
 					size = addition(s) if not isinstance(s,integers) else s
 
@@ -3836,7 +3842,7 @@ class MPS(dict):
 
 					state = self.organize(data=state,where=i,transform=True,conj=True,**kwargs)
 					
-					u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(state,conj=True,**{**defaults,**kwargs,**options})
+					u,v,s = self.scheme[scheme](state,conj=True,**{**defaults,**kwargs,**options})
 
 					size = addition(s) if not isinstance(s,integers) else s
 
@@ -3862,11 +3868,9 @@ class MPS(dict):
 
 				data = self.organize(data,where=where,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
-				u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(data,conj=False,**{**defaults,**kwargs,**options})
+				u,v,s = self.scheme[scheme](data,conj=False,**{**defaults,**kwargs,**options})
 
 				# error = (norm(data-dot(u,v))/norm(data)).real
-
-
 
 				data = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
@@ -4067,7 +4071,7 @@ class MPS(dict):
 			data = reshape(transpose(data,axes),shape)
 		return data
 
-	def scheme(self,options=None,**kwargs):
+	def schemes(self,options=None,**kwargs):
 		'''
 		Scheme for updating class
 		Args:
@@ -4163,10 +4167,10 @@ class MPS(dict):
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v,s
 				i = min(*u.shape)
-				s = addition(u,0)
+				# s = addition(u,0)
 				# i = abs(s)>eps				
 				# u,v,s = u[:,i],v,s
-				u,v,s = dotr(u,reciprocal(s)),diag(s),s				
+				# u,v,s = dotr(u,reciprocal(s)),diag(s),s				
 				u,v,s = (v,dagger(u),s) if conj else (u,v,s)
 				u,v,s = u,v,i
 				# u,v,s = (u,cmplx(v),s) if conj else (cmplx(u),v,s)
@@ -4305,8 +4309,8 @@ class MPS(dict):
 		scheme = options.get('scheme',kwargs.get('scheme'))
 		data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
 
-		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
-		# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+		scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
+		state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 		data = state
 
