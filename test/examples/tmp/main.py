@@ -9,7 +9,7 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,seeder,nester,partial,gradient,dot,einsum,tensorprod,conjugate,allclose,prod,log
+from src.utils import argparser,jit,vmap,seeder,nester,partial,gradient,dot,einsummand,tensorprod,conjugate,allclose,prod,log
 from src.utils import array,zeros,ones,empty
 from src.iterables import permutations
 from src.io import load,dump
@@ -148,7 +148,7 @@ def main(settings,*args,**kwargs):
 			if obj.ndim == 3:
 				subscripts = 'uij,jk,ulk->il'
 				shapes = (shape,shape[-2:],shape)
-				einsummation = einsum(subscripts,*shapes)
+				einsummation = einsummand(subscripts,*shapes)
 			
 				def function(parameters,state,site=site,data=obj,einsummation=einsummation):
 					if site is not None:
@@ -159,7 +159,7 @@ def main(settings,*args,**kwargs):
 			elif obj.ndim == 2:
 				subscripts = 'ij,jk,lk->il'
 				shapes = (shape,shape[-2:],shape)
-				einsummation = einsum(subscripts,*shapes)
+				einsummation = einsummand(subscripts,*shapes)
 			
 				def function(parameters,state,site=site,data=obj,einsummation=einsummation):
 					if site is not None:

@@ -14,7 +14,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
+from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position

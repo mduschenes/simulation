@@ -16,13 +16,9 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient
-from src.utils import array,asscalar,arange,eye,rand,einsum,dot,prod
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,sqrt,datatype
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import asscalar,prod
 
-from src.utils import integers,floats,delim,Null,null,scalars,arrays
+from src.utils import integers,delim,datatype
 
 from src.iterables import Dict,Dictionary,getter,setter
 from src.io import join,split,exists
@@ -604,7 +600,7 @@ class Lattice(object):
 
 
 	def __string__(self):
-		self.string = self.lattice if self.lattice is not None else 'null'
+		self.string = self.lattice if self.lattice is not None else str(None)
 		return
 		
 	def __size__(self):

@@ -14,9 +14,9 @@ from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slic
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,tensornetwork,gate,mps,representation,contract,reduce,fuse,context,reshape,transpose
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,tensorprod,conjugate,dagger,einsum,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
+from src.utils import inplace,tensorprod,conjugate,dagger,einsum,einsummand,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,abs,abs2,mod,sqr,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,structures,matrices,nulls,integers,floats,iterables,dicts,symbols,epsilon,datatype
@@ -96,6 +96,18 @@ class Basis(Dict):
 
 	@classmethod
 	def contract(cls,state,data,where=None,options=None,**kwargs):
+		'''
+		Contract state and data
+		Args:
+			state (array,dict): Class state
+			data (array,dict): Class data
+			shape (iterable[int]): Shape of data
+			where (float,int,iterable[int]): indices of class
+			transform (bool): Forward or backward transform data
+			kwargs (dict): Additional class keyword arguments		
+		Returns:
+			data (array): Class data
+		'''			
 		if state.ndim == 1:
 			if data.ndim == 2:
 				data = einsum('ij,j->i',data,state)
@@ -111,6 +123,34 @@ class Basis(Dict):
 		else:
 			raise NotImplementedError(f"Not Implemented {state}")			
 		
+		return data
+
+	@classmethod
+	def shuffle(cls,data,shape,where=None,transform=True,**kwargs):
+		'''
+		Shuffle class data
+		Args:
+			data (array,dict): Class data
+			shape (iterable[int]): Shape of data
+			where (float,int,iterable[int]): indices of class
+			transform (bool): Forward or backward transform data
+			kwargs (dict): Additional class keyword arguments		
+		Returns:
+			data (array): Class data
+		'''	
+
+		if transform:
+			n,d = len(shape),data.ndim
+			where = [range(n)] if where is None else [where,sorted(set(range(n))-set(where))]
+			shape = [*shape]*d
+			axes = [j*n+i for indices in where for j in range(d) for i in indices]
+			data = transpose(reshape(data,shape),axes)
+		else:
+			n,d = len(shape),data.ndim//len(shape)
+			where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+			shape = [prod(shape)]*d
+			axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
+			data = reshape(transpose(data,axes),shape)
 		return data
 
 	@classmethod
@@ -998,7 +1038,7 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			subscripts = '...u,uv,vij->...ij'
 			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
-			einsummation = einsum(subscripts,*shapes)
+			einsummation = einsummand(subscripts,*shapes)
 			def func(parameters=None,state=None,**kwargs):
 				return einsummation(state,self.inverse[self.pointer],self.basis[self.pointer])
 
@@ -1011,7 +1051,7 @@ class Measure(System):
 
 			subscripts = '...u,uv,vij->...ij'
 			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
-			einsummation = einsum(subscripts,*shapes)
+			einsummation = einsummand(subscripts,*shapes)
 			def func(parameters=None,state=None,**kwargs):
 				return einsummation(state,self.inverse[self.pointer],self.basis[self.pointer])
 
@@ -1186,11 +1226,7 @@ class Measure(System):
 
 				data = state[i] if not callable(state[i]) else state[i]()
 
-				subscripts = 'uij,...ji->...u'
-				shapes = (self.basis[i].shape,data.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				data = einsummation(self.basis[i],data)
+				data = einsum('uij,...ji->...u',self.basis[i],data)
 
 				state[i] = data
 
@@ -1287,11 +1323,7 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 
-			subscripts = 'u...,uv,vij->ij...'
-			shapes = (state.shape,inverse.shape,basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			state = einsummation(state,inverse,basis)
+			data = einsum('u...,uv,vij->ij...',state,inverse,basis)
 
 		elif self.architecture in ['tensor']:
 
@@ -1344,7 +1376,7 @@ class Measure(System):
 
 				subscripts = 'uij,wji,wv,v...->u...'
 				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
-				einsummation = einsum(subscripts,*shapes)
+				einsummation = einsummand(subscripts,*shapes)
 				
 				opts = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False)
 				_opts = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False)
@@ -1387,7 +1419,7 @@ class Measure(System):
 			
 				subscripts = 'uij,wji,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape)
-				einsummation = einsum(subscripts,*shapes)
+				einsummation = einsummand(subscripts,*shapes)
 
 				options = options if options is not None else dict()
 
@@ -1806,11 +1838,7 @@ class Measure(System):
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
-			subscripts = '...u,uv,...v->...'
-			shapes = (state.shape,inverse.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(state,inverse,other)
+			data = einsum('...u,uv,...v->...',state,inverse,other)
 
 		elif self.architecture in ['tensor']:
 
@@ -1882,11 +1910,7 @@ class Measure(System):
 
 			data = reshape(data,shape=(1,*data.shape)) if not (N-L) else data
 
-			subscripts = 'us,sp,vp->uv'
-			shapes = (data.shape,inverse.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			data = einsummation(data,inverse,data)
+			data = einsum('us,sp,vp->uv',data,inverse,data)
 
 		elif self.architecture in ['tensor']:
 
@@ -2031,14 +2055,11 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			
 			function = sqrt
-			subscripts = '...u,...u->...'
-			shapes = (state.shape,other.shape)
-			einsummation = einsum(subscripts,*shapes)
 			
 			state = function(state)
 			other = function(other)
 
-			data = einsummation(state,other)
+			data = einsum('...u,...u->...',state,other)
 
 		elif self.architecture in ['tensor']:
 
@@ -2544,11 +2565,7 @@ class Measure(System):
 
 			basis = reshape(basis,shape=(self.K**L,-1))
 
-			subscripts = 'uv,us,vp,si,pj->ij'
-			shapes = (data.shape,inverse.shape,inverse.shape,basis.shape,basis.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(data,inverse,inverse,basis,conjugate(basis))
+			data = einsum('uv,us,vp,si,pj->ij',data,inverse,inverse,basis,conjugate(basis))
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
 
@@ -2692,11 +2709,7 @@ class Measure(System):
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
-			subscripts = 'uv,up,vs,sp->'
-			shapes = (data.shape,inverse.shape,inverse.shape,data.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			data = einsummation(data,inverse,inverse,data)
+			data = einsum('uv,up,vs,sp->',data,inverse,inverse,data)
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)**2
 
@@ -3798,9 +3811,9 @@ class MPS(dict):
 
 					state = self.organize(data=state,where=i,transform=True,conj=False,**kwargs)
 
-					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=False,**{**kwargs,**options,**defaults})
+					u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(state,conj=False,**{**defaults,**kwargs,**options})
 
-					size = add(s) if not isinstance(s,integers) else s
+					size = addition(s) if not isinstance(s,integers) else s
 
 					state = self.organize(data=u,where=i,shape=[*shape[:-1],size],axes=axes,transform=False,conj=False,**kwargs)
 
@@ -3823,9 +3836,9 @@ class MPS(dict):
 
 					state = self.organize(data=state,where=i,transform=True,conj=True,**kwargs)
 					
-					u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(state,conj=True,**{**kwargs,**options,**defaults})
+					u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(state,conj=True,**{**defaults,**kwargs,**options})
 
-					size = add(s) if not isinstance(s,integers) else s
+					size = addition(s) if not isinstance(s,integers) else s
 
 					state = self.organize(data=v,where=i,shape=[size,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
 					
@@ -3849,7 +3862,7 @@ class MPS(dict):
 
 				data = self.organize(data,where=where,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
-				u,v,s = self.scheme(options={**kwargs,**options,**defaults},**kwargs)(data,conj=False,**{**kwargs,**options,**defaults})
+				u,v,s = self.scheme(options={**defaults,**kwargs,**options},**kwargs)(data,conj=False,**{**defaults,**kwargs,**options})
 
 				# error = (norm(data-dot(u,v))/norm(data)).real
 
@@ -3863,11 +3876,11 @@ class MPS(dict):
 
 					tmp = {**kwargs.get('state',options.get('state')),**state}
 					variables = kwargs.get('variables')
-					D,N,rank = kwargs.get('D',options.get('D')),None,kwargs.get('rank',options.get('rank'))
+					D,N,S = kwargs.get('D',options.get('D')),None,kwargs.get('S',options.get('S'))
 					basis = self
 
 					options = dict(D=D,N=N)
-					constant = real(1-add(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
+					constant = real(1-addition(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
 
 					options = dict(D=D,N=N)
 					spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
@@ -3876,11 +3889,11 @@ class MPS(dict):
 
 					options = dict(compute_v=False,hermitian=True)
 					spectrum = eig(spectrum,**options)
-					ratio = real(-add(spectrum[spectrum<=0])/add(spectrum[spectrum>0]))+0.
+					ratio = real(-addition(spectrum[spectrum<=0])/addition(spectrum[spectrum>0]))+0.
 					
 					sums = {i:(
-								asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))),
-								asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else add(dot(tmp[min(where)],tmp[max(where)])))))
+								asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))),
+								asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))))
 							for i in tmp}
 
 					print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
@@ -3893,7 +3906,7 @@ class MPS(dict):
 				# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
 				# variables['uv.error'].append(sqrt(norm(state-dot(u,v))/norm(state)).real)
 				# variables['uv.spectrum'].append(spectrum)
-				# variables['uv.rank'].append(rank)
+				# variables['uv.rank'].append(S)
 
 				# parse = lambda obj: asscalar(obj.real)
 				# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
@@ -4065,7 +4078,7 @@ class MPS(dict):
 		'''
 		options = dict() if options is None else options
 
-		scheme = options.get('scheme')
+		scheme = options.get('scheme',kwargs.get('scheme'))
 		eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
 
 		def wrapper(func):
@@ -4075,13 +4088,13 @@ class MPS(dict):
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				i = min(*u.shape,*v.shape)
-				# s = add(u,0)
+				# s = addition(u,0)
 				# i = abs(s)>eps
 				# u,v,s = u[:,i],v[i,:],s[i]
 				# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 				u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
 				u,v,s = u,v,i				
-				# u,v,s = cmplx(u),cmplx(v),i
+				# u,v,s = cmplx(u),cmplx(v),s
 				return u,v,s
 			return decorator
 
@@ -4089,15 +4102,15 @@ class MPS(dict):
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = svds(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-				u,v,s = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s))),ones(s.shape,dtype=s.dtype)
+				u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
 				return u,v,s				
 		elif scheme in ['svd']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-				u,s,v = svds(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,s,v = svds(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				u,v = u,dotl(v,s)
 				return u,v,s
@@ -4105,7 +4118,7 @@ class MPS(dict):
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
-				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 				u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
 				return u,v,s
@@ -4113,7 +4126,7 @@ class MPS(dict):
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()
-				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				u,s,v = u[:,:rank],s[:rank],v[:rank,:]
 				u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
 				return u,v,s
@@ -4123,15 +4136,15 @@ class MPS(dict):
 				a = dagger(a) if conj else a
 				rank = min(a.shape) if rank is None else rank    
 				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
-				u,v,s = u[:,:rank],(v[:rank,:] if v is not None else None),(s[:rank] if s is not None else None)
-				i = min(*(u.shape if u is not None else ()),*(v.shape if v is not None else ()))
-				# s = add(u,0)
+				u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+				i = min(*u.shape,*v.shape)
+				# s = addition(u,0)
 				# i = abs(s)>eps				
-				# u,v,s = u[:,i],(v[i,:] if v is not None else None),s[i]
-				# u,v,s = dotr(u,reciprocal(s)),(dotl(v,s) if v is not None else None),s
-				u,v,s = ((dagger(v) if v is not None else None),dagger(u),s) if conj else (u,v,s)
+				# u,v,s = u[:,i],v[i,:],s[i]
+				# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+				u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
 				u,v,s = u,v,i
-				# u,v,s = (cmplx(u) if u is not None else None),(cmplx(v) if v is not None else None),i
+				# u,v,s = cmplx(u),cmplx(v),s
 				return u,v,s
 			return decorator
 
@@ -4139,10 +4152,28 @@ class MPS(dict):
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(mode='reduced')
-				u,v = qrs(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				u,v = qrs(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				s = None
 				return u,v,s				
-		elif scheme in ['stq']:
+		
+		def wrapper(func):
+			def decorator(a,rank=None,conj=None,**kwargs):
+				a = dagger(a) if conj else a
+				rank = min(a.shape) if rank is None else rank    
+				u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+				u,v,s = u[:,:rank],v,s
+				i = min(*u.shape)
+				s = addition(u,0)
+				# i = abs(s)>eps				
+				# u,v,s = u[:,i],v,s
+				u,v,s = dotr(u,reciprocal(s)),diag(s),s				
+				u,v,s = (v,dagger(u),s) if conj else (u,v,s)
+				u,v,s = u,v,i
+				# u,v,s = (u,cmplx(v),s) if conj else (cmplx(u),v,s)
+				return u,v,s
+			return decorator
+
+		if scheme in ['stq']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()		
@@ -4163,37 +4194,31 @@ class MPS(dict):
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_v=False,hermitian=False)	
 				rank = min(a.shape) if rank is None else rank    
-				s = eig(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
+				s = eig(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				return s
 		elif scheme in ['spectrum']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
-				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				s = s[:rank]
+				s = svd(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				return s
 		elif scheme in ['probability']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
-				defaults = dict()				
-				u,v,s = nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				s = s[:rank]
+				defaults = dict()
+				u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				return s
 		elif scheme in ['_spectrum']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)	
-				rank = min(a.shape) if rank is None else rank    
-				s = svd(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				s = s[:rank]
+				s = svd(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				return s				
 		elif scheme in ['_probability']:
 			@wrapper
 			def scheme(a,rank=None,conj=None,**options):
 				defaults = dict()						
-				rank = min(a.shape) if rank is None else rank    
-				u,v,s = _nmf(real(a),**{**kwargs,**options,**defaults,**dict(rank=rank)})
-				s = s[:rank]
+				u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 				return s								
 		
 		return scheme
@@ -4246,14 +4271,15 @@ class MPS(dict):
 		state = self
 		options = dict() if options is None else options		
 		where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
+		shape = [state[i].shape for i in where]		
 
-		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
 		# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 		if isinstance(data,arrays):
 
 			L = len(where)
-			shape = [j for i in where for j in state[i].shape[1:-1]]
+			# shapes = [j for i in where for j in state[i].shape[1:-1]]
 			subscripts = '%s,%s->%s%s%s'%(
 				''.join((
 					''.join(symbols(i) for i in range(L)),
@@ -4268,7 +4294,7 @@ class MPS(dict):
 				''.join((symbols(2*L+L),))
 				)
 
-			data = self.shuffle(data,shape=shape,**kwargs)
+			# data = self.shuffle(data,shape=shapes,**kwargs)
 
 			data = einsum(subscripts,data,*(state[i] for i in where))
 
@@ -4276,11 +4302,10 @@ class MPS(dict):
 
 			data = data(state,where=where)
 
-		scheme = options.get('scheme')
-		shape = [state[i].shape for i in where]		
+		scheme = options.get('scheme',kwargs.get('scheme'))
 		data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
 
-		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme'))
+		# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
 		# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 		data = state

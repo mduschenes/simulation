@@ -47,14 +47,16 @@ for PATH in PATHS:
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd','numpy']
+BACKENDS = ['jax','autograd','jax.autograd','quimb','numpy']
 
 backend = os.environ.get(ENVIRON,DEFAULT).lower()
+
+BACKEND = {'jax':'jax','autograd':'autograd','jax.autograd':'autograd','quimb':'jax','numpy':'numpy'}.get(backend)
 
 assert backend in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,backend,BACKENDS)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	envs = {
 		'JAX_DISABLE_JIT':False,
@@ -79,8 +81,9 @@ if backend in ['jax','jax.autograd']:
 	from jax.tree_util import register_pytree_node_class as tree_register
 	from jax.tree_util import tree_map as tree_map
 
-	import quimb as qu
-	import quimb.tensor as qtn
+	if backend in ['quimb']:
+		import quimb as qu
+		import quimb.tensor as qtn
 
 	import opt_einsum
 
@@ -108,9 +111,6 @@ elif backend in ['autograd']:
 	import autograd.scipy.linalg
 
 	import opt_einsum
-
-	import quimb as qu
-	import quimb.tensor as qtn
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -254,7 +254,7 @@ class struct(object):
 # Types
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	itg = np.integer
 	flt = np.float32
@@ -271,8 +271,13 @@ if backend in ['jax','jax.autograd']:
 	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,)
 	structures = ()
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices = (qtn.MatrixProductState,)
+
+	if backend in ['quimb']:
+		tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+		matrices = (qtn.MatrixProductState,)
+	else:
+		tensors = ()
+		matrices = ()
 
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
@@ -311,8 +316,8 @@ elif backend in ['autograd']:
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,)
 	structures = ()	
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices = (qtn.MatrixProductState,)	
+	tensors = ()
+	matrices = ()	
 
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
@@ -357,7 +362,7 @@ elif backend in ['numpy']:
 
 
 # Libraries
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
@@ -609,7 +614,7 @@ def epsilon(dtype=float,eps=None):
 
 	return eps
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -694,7 +699,7 @@ elif backend in ['autograd','numpy']:
 		'''
 		return a[index]
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -731,7 +736,7 @@ elif backend in ['autograd','numpy']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -805,7 +810,7 @@ elif backend in ['autograd','numpy']:
 		return vfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -856,7 +861,7 @@ elif backend in ['autograd','numpy']:
 		return pfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -911,7 +916,7 @@ elif backend in ['autograd','numpy']:
 		return vfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -948,7 +953,7 @@ elif backend in ['autograd','numpy']:
 		return funcs[index](*args)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def cond(pred,true_fun,false_fun,*operands):	
@@ -1173,7 +1178,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1255,7 +1260,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1363,7 +1368,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1456,7 +1461,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1588,12 +1593,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 		if shapes is not None:
 			einsummations = [
-				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+				lambda *operands,einsummation=einsummand(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 		else:
 			einsummations = [
-				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 
@@ -1637,12 +1642,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		
 		if shapes is not None:
 			einsummations = [
-				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+				lambda *operands,einsummation=einsummand(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 		else:
 			einsummations = [
-				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]	
 
@@ -2041,7 +2046,7 @@ class String(str):
 # 			}
 # 		return cls(parameters)
 
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def tree_ravel(tree,is_leaf=None):
 		'''
@@ -2579,8 +2584,120 @@ class structure(object):
 	pass
 
 
+if backend in ['jax','jax.autograd','autograd','numpy']:
+	
+	class tensor(object):
+		'''
+		tensor class
+		Args:
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,*args,**kwargs):
+			return
+	
+	class tensornetwork(object):
+		'''
+		tensornetwork class
+		Args:
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,*args,**kwargs):
+			return
 
-if backend in ['jax','jax.autograd','autograd']:
+	class mps(object):
+		'''
+		matrix product state class
+		Args:
+			data (iterable,int,str,callable,array,tensor,object): Tensor data
+			args (iterable): Tensor arguments
+			kwargs (dict): Tensor keyword arguments
+		Returns:
+			self (object): class instance
+		'''
+		def __new__(cls,data,*args,**kwargs):
+			return super().__init__(cls,*args,**kwargs)
+
+	class gate(object):
+		'''
+		gate class
+		Args:
+			args (iterable): Gate arguments
+			kwargs (dict): Gate keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return super().__init__(cls,*args,**kwargs)
+
+
+	def contract(obj,where=None,**kwargs):
+		'''
+		Contract object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+		return obj
+
+	def reduce(obj,where=None,**kwargs):
+		'''
+		Reduce object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+		return obj
+
+	def fuse(obj,where=None,**kwargs):
+		'''
+		Fuse object
+		Args:
+			obj (tensor): object
+			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Fused object
+		'''
+		return obj
+
+	def representation(obj,to=True,contraction=None,func=None,**kwargs):
+		'''
+		Get data of object
+		Args:
+			obj (tensor): object
+			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
+			contraction (bool): Contract data
+			func (callable): Wrapper function for data with signature func(obj)
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): data of object
+		'''
+		return obj
+
+	class context(object):
+		'''
+		Update object attributes within context with key
+		Args:
+			key (object): Key to update attributes
+			objs (iterable[object]): Objects with attributes to update
+			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+		'''
+		def __init__(self,*objs,key=None,formats=None):
+			return
+
+elif backend in ['quimb']:
 
 	class tensor(qtn.Tensor):
 		'''
@@ -2608,7 +2725,6 @@ if backend in ['jax','jax.autograd','autograd']:
 		def __new__(cls,*args,**kwargs):
 			return qtn.TensorNetwork(*args,**kwargs)
 			# return super().__init__(cls,*args,**kwargs)
-
 
 	class mps(qtn.MatrixProductState):
 		'''
@@ -2876,7 +2992,7 @@ if backend in ['jax','jax.autograd','autograd']:
 
 
 
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def seeder(seed=None,size=None,split=False,data=False,**kwargs):
 		'''
@@ -3173,7 +3289,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				keys = wrapper(keys)
 			return keys
 
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,dtype=None,**kwargs):
 		'''
@@ -3998,6 +4114,7 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 		rightvectors (array): Array of right singular vectors of shape (...,n,n)
 		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
+	# return jax.lax.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices)
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 
@@ -4017,8 +4134,8 @@ def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 
 	u,s,v = svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
-	x = sign(take(ravel(u.T), argmax(abs(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
-	u,v = dotr(u,x),dotl(v,x)
+	# x = sign(take(ravel(u.T), argmax(abs(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
+	# u,v = dotr(u,x),dotl(v,x)
 
 	return u,s,v
 
@@ -4511,7 +4628,7 @@ def factorial(n,exact=True):
 	n = ospsp.factorial(n,exact=exact)
 	return n
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -4695,7 +4812,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				if where is None:
 					subscripts = f'ij,{string}jk->{string}ik'
 					shapes = (data.shape,(*samples,*state.shape))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(data,state)
@@ -4704,7 +4821,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						
 					subscripts = f'ij,{string}jk...->{string}ik...'
 					shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4720,14 +4837,14 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'ij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
 					else:
 						subscripts = f'ij,{string}j...->{string}i...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4741,13 +4858,13 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'ij,{string}jk,lk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state,conjugate(data))
 					else:
 						subscripts = f'ij,{string}jk...,lk->{string}il...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4769,7 +4886,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				if where is None:
 					subscripts = f'uij,{string}j...->{string}i...'
 					shapes = (data.shape,(*samples,*state.shape[1:]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
@@ -4777,7 +4894,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				else:
 					subscripts = f'uij,{string}j...->{string}i...'
 					shapes = (data.shape,(*samples,*state.shape[1:]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 			
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4793,14 +4910,14 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'uij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 					
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
 					else:
 						subscripts = f'uij,{string}j...->{string}i...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4814,7 +4931,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:					
 						subscripts = f'uij,{string}jk,ulk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state,conjugate(data))
@@ -4822,7 +4939,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					else:
 						subscripts = f'uij,{string}jk...,ulk->{string}il...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4973,7 +5090,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				if where is None:
 					subscripts = f'ij,{string}jk->{string}ik'
 					shapes = (data.shape,(*samples,*state.shape))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(grad,state)
@@ -4981,7 +5098,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				else:
 					subscripts = f'ij,{string}jk...->{string}ik...'
 					shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -4996,7 +5113,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'ij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
@@ -5004,7 +5121,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					else:
 						subscripts = f'ij,{string}j...->{string}i...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -5018,7 +5135,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'ij,{string}jk,lk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							out = einsummation(grad,state,conjugate(data))
@@ -5027,7 +5144,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					else:
 						subscripts = f'ij,{string}jk...,lk->{string}il...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -5049,7 +5166,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				if where is None:
 					subscripts = f'uij,{string}j...->{string}i...'
 					shapes = (data.shape,(*samples,*state.shape[1:]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
@@ -5057,7 +5174,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				else:
 					subscripts = f'uij,{string}j...->{string}i...'
 					shapes = (data.shape,(*samples,*state.shape[1:]))
-					einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
 
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -5073,7 +5190,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'uij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
@@ -5081,7 +5198,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					else:
 						subscripts = f'uij,{string}j...->{string}i...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -5094,7 +5211,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					if where is None:
 						subscripts = f'uij,{string}jk,ulk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							out = einsummation(grad,state,conjugate(data))
@@ -5103,7 +5220,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					else:
 						subscripts = f'uij,{string}jk...,ulk->{string}il...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						einsummation = einsummand(subscripts,*shapes)
 
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
@@ -5409,7 +5526,7 @@ def mse(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5491,7 +5608,7 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	if length == 3:
 		@jit
@@ -5591,7 +5708,7 @@ def inner_prod(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5671,7 +5788,7 @@ def gradient_inner_prod(*operands,optimize=True,wrapper=None):
 		shapes = (shapes[2],shapes[1])
 
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	if length == 3:
 		@jit
@@ -5727,7 +5844,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],)
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5770,7 +5887,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5815,7 +5932,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5860,7 +5977,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 	shapes_func = (shapes[0],shapes[1])
 
-	einsummation_func = einsum(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
+	einsummation_func = einsummand(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
 	if ndim == 1:
 		subscripts_grad = '...i,i->...'
@@ -5871,7 +5988,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 	shapes_grad = (shapes[2],shapes[1])
 
-	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
+	einsummation_grad = einsummand(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5915,7 +6032,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5959,7 +6076,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -6003,7 +6120,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -6047,7 +6164,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -6062,18 +6179,18 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	return out
 
 
-
 @jit
-def dot(a,b):
+def dot(a,b,axes=1):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (array): Array to calculate dot product
 		b (array): Array to calculate dot product
+		axes (int,iterable[int]): Axes to calculate dot product
 	Returns:
 		out (array): Dot product
 	'''	
-	return np.dot(a,b)
+	return np.tensordot(a,b,axes=axes)
 
 
 def dots(*a):
@@ -6459,14 +6576,15 @@ def vntensorprod(a,n):
 	'''
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
-# einsummand = np.einsum
-einsummand = partial(opt_einsum.contract,backend=backend)
+def einsum(*args,**kwargs):
+	# return np.einsum(*args,**kwargs)
+	return opt_einsum.contract(*args,**kwargs,backend=BACKEND)
 
 def symbols(index):
 	return opt_einsum.get_symbol(index)
 	# return characters[index]
 
-def einsum(subscripts,*operands,optimize=True,wrapper=None):
+def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 	'''
 	Get optimal summation of axis in array denoted by subscripts
 	Args:
@@ -6497,21 +6615,21 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 		if isinstance(subscripts,str):
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(einsummand(subscripts,*operands,optimize=optimize),*operands)
+				return wrapper(einsum(subscripts,*operands,optimize=optimize),*operands)
 		else:
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(einsummand(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
+				return wrapper(einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
 
 	else:
 		if isinstance(subscripts,str):
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize):
-				return einsummand(subscripts,*operands,optimize=optimize)
+				return einsum(subscripts,*operands,optimize=optimize)
 		else:
 			@jit
 			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return einsummand(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
+				return einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
 
 
 
@@ -6559,7 +6677,7 @@ def distance(a,b):
 	return norm(a-b,ord=2)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def slicing(a,start,size):
 		'''
@@ -7050,6 +7168,18 @@ def signs(a):
 		out (array): Sign of array
 	'''
 	return (a + a==0)/(abs(a) + a==0)
+
+@jit
+def reciprocal(a):
+	'''
+	Calculate reciprocal of array a
+	Args:
+		a (array): Array to compute reciprocal
+	Returns:
+		out (array): Reciprocal of array
+	'''	
+	s = a == 0
+	return (1 - s)/(a + s)
 
 @partial(jit,static_argnums=(1,))
 def sqrtm(a,hermitian=False):

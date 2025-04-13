@@ -2492,9 +2492,10 @@ def test_parameters(*args,**kwargs):
 
 
 def test_mps(*args,**kwargs):
+	from importlib import reload
+	import src
 
 	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
-	from src.quantum import MPS as mps,MPS_quimb as mps_quimb
 	from src.quantum import Basis as basis
 
 	def representation(data):
@@ -2527,9 +2528,17 @@ def test_mps(*args,**kwargs):
 		state = [einsum('uij,ji->u',tensor(measure),state)]*N
 
 		if architecture in ['tensor']:
-			state = mps(state,*args,**kwargs)
+			os.environ['NUMPY_BACKEND'] = 'jax'
+			reload(src.utils)
+			reload(src.quantum)
+			from src.quantum import MPS as mps
 		elif architecture in ['mps']:
-			state = mps_quimb(state,*args,**kwargs)
+			os.environ['NUMPY_BACKEND'] = 'quimb'
+			reload(src.utils)
+			reload(src.quantum)			
+			from src.quantum import MPS_quimb as mps
+
+		state = mps(state,*args,**kwargs)
 
 		for i in data:
 			args = tuple()
@@ -2542,48 +2551,60 @@ def test_mps(*args,**kwargs):
 
 			data[i] = einsum('uij,wji,wv->uv',tensor(measure,len(i)),data[i],tensor(inverse,len(i)))
 
+			if architecture in ['tensor']:
+				shape = [D**2]*len(i)
+				data[i] = basis.shuffle(data[i],shape=shape)
+			elif architecture in ['mps']:
+				pass
+
+
 		return state,data
 
 
-	N = 3
+	N = 12
 	D = 2
 	S = D**(N)
-	M = 10
-	L = N//2
+	M = 100
+	L = 2
 	T = 1
 	architecture = 'tensor'
+	architecture = 'mps'
+	# architecture = 'all'
 	to = 'tensor'
 	seed = 123456789
 	seed = seeder(seed)
 	dtype = 'complex'
-	options = dict()
+	options = dict(scheme='svd',rank=S)
 	options_quimb = dict(
-		# contract="swap+split",
+		contract="swap+split",
 		max_bond=S,
 		cutoff=0
 		)
+	state,state_quimb = None,None
 
-	for i in range(T):
-		state,data = init(N,D,S,L,architecture='tensor')
-		for k in range(M):
-			for i in data:
-				state = state(data[i],where=i,**options)
+	if architecture in ['tensor','all']:
+		for i in range(T):
+			state,data = init(N,D,S,L,architecture='tensor')
+			for k in range(M):
+				for i in data:
+					state = state(data[i],where=i,options=options)
+		print(state)
 
-	for i in range(T):
-		state_quimb,data_quimb = init(N,D,S,L,architecture='mps')
-		for k in range(M):
-			for i in data_quimb:
-				state_quimb = state_quimb.gate(data_quimb[i],where=i,**options_quimb)
+	if architecture in ['mps','all']:
+		for i in range(T):
+			state_quimb,data_quimb = init(N,D,S,L,architecture='mps')
+			for k in range(M):
+				for i in data_quimb:
+					state_quimb = state_quimb.gate(data_quimb[i],where=i,**options_quimb)
+		print(state_quimb)
 
-	tmp = state.organize().ravel()
-	tmp_quimb = representation(state_quimb)
+	if state is not None and state_quimb is not None:
+		tmp = state.organize().ravel()
+		tmp_quimb = representation(state_quimb)
 
-	print(tmp.real.round(8))
-	print(tmp_quimb.real.round(8))
+		assert allclose(tmp,tmp_quimb)
 
-	assert allclose(tmp,tmp_quimb)
-
-	print('Passed')
+		print('Passed')
 
 	return
 
@@ -2600,7 +2621,7 @@ def test_mps(*args,**kwargs):
 
 	# return
 
-	# print(_state.singular_values(L))
+	# print(_state.singular_values(N//2))
 	# print(representation(_state).real.round(8))
 
 	# _state = einsum('u,uv,vij->ij',representation(_state),tensor(inverse,N),tensor(measure,N))

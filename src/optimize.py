@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,partial,copy,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,einsum
+from src.utils import jit,partial,copy,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv
 from src.utils import metrics,optimizer_libraries
 from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan

@@ -13,7 +13,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
+from src.utils import jit,gradient,hessian,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose

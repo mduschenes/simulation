@@ -1120,7 +1120,6 @@ def test_seed(path=None,tol=None):
 def test_groupby(path=None,tol=None):
 
 	from src.utils import groupby
-	from src.utils import array
 
 	iterable = [
 		{'hello':1,'world':(1,2,3),'goodbye':array([5,6,1])},
@@ -1152,7 +1151,7 @@ def test_groupby(path=None,tol=None):
 
 def test_struct(path=None,tol=None):
 
-	from src.utils import array,struct,einsum,arrays
+	from src.utils import struct
 
 	n = 10
 	d = 2
@@ -1187,8 +1186,6 @@ def test_reshape(path=None,tol=None):
 	#  	split.transpose-> (x,y,z,u,v,w,s)
 	#  	split.reshape-> (xyz,uvw,s)
 	# 	split.func-> (s,xyz,uvw)
-
-	from src.utils import array,arange,transpose,reshape,allclose,prod
 
 	x,y,z,u,v,w,s = 2,3,5,4,2,7,9
 
