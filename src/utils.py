@@ -198,61 +198,6 @@ class none(object):
 
 null = Null()
 
-class struct(object):
-	'''
-	array placeholder class
-	Args:
-		args (iterable): Dataframe arguments
-		kwargs (dict): Dataframe keyword arguments
-	Returns:
-		out (array): dataframe
-	'''
-	def __init__(self,shape=None,dtype=None,**kwargs):
-		self._shape = () if shape is None else (shape,) if not isinstance(shape,iterables) else (*shape,)
-		self._dtype = float if dtype is None else dtype
-		self._data = asscalar(asarray(0,dtype=self.dtype))
-		return 
-
-	@property
-	def shape(self):
-		return self._shape
-	
-	@property
-	def size(self):
-		return prod(self.shape)
-	
-	@property
-	def ndim(self):
-		return len(self.shape)
-
-	@property
-	def dtype(self):
-		return self._dtype
-
-	@property
-	def data(self):
-		return self._data
-
-	@property
-	def nbytes(self):
-		return sys.getsizeof(self)
-
-	def __len__(self):
-		return self.shape[0]
-
-	def __iter__(self):
-		for i in range(len(self)):
-			yield self.data
-
-	def __getitem__(self,item):
-		return self.data
-
-	def __setitem__(self,item,value):
-		self.data = self.dtype(value)
-		return
-
-
-
 
 # Types
 
@@ -1908,8 +1853,6 @@ def arrayify(cls,new,*classes):
 				data = self.data if data is None else data
 				indices = self.indices if indices is None else indices
 
-				cls = array
-				classes = arrays
 				options = dict(order=None,dtype=None)
 				options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
 
@@ -2078,119 +2021,6 @@ def arrayify(cls,new,*classes):
 
 
 	return new
-
-class Array(onp.ndarray):
-	'''
-	Numpy array subclass, subclass of nd.ndarray with array of data of shape
-	
-	Classes that inherit Array must have a __setup__() in place of __init__() to properly initialize
-	subclassed ndarray, that is initalized through Array's __new__() and an array.view(cls)
-	
-	Classes that inherit Array's __setup__() create the following attributes:
-		self.data (array)
-		self.string (str)
-
-	Classes that inherit Array's __setup__() must also append newly institated attributes to the 
-	self.attrs attribute dictionary to allow for proper re-instantiation of the inherited class 
-	upon numpy-like views, slices etc.
-
-	Args:
-		data (array,list,tuple): array data if array or list, array shape if tuple
-		args (iterable): class attributes
-		kwargs (dict): class keyword attributes
-	'''
-	def __new__(cls,*args,**kwargs):
-		attrs = {}
-		clsattrs = {}
-		for attr,value in kwargs.items():
-			if attr in onp.ndarray.__dict__:
-				clsattrs[attr] = value
-			else:
-				attrs[attr] = value
-
-		field,value = 'attrs',attrs
-		setattr(cls,field,value)
-
-		cls = cls.__new__(cls,*args,**kwargs)
-
-		obj = onp.asarray(cls.data,**clsattrs).view(cls)
-
-		field,value = 'attrs',attrs
-		setattr(obj,field,value)
-
-		for attr,value in attrs.items():
-			setattr(obj,attr,getattr(obj,attr,value))
-
-		return obj
-
-	def __array_finalize__(self, obj):
-		field = 'attrs'
-		attrs = getattr(obj,field,getattr(self,field,None))
-		if obj is None or attrs is None: 
-			return
-		for attr in attrs:
-			setattr(self,attr,getattr(obj,attr,getattr(self,attr,None)))
-		return
-
-	
-	def __setup__(self,*args,**kwargs):
-		
-		field = 'attrs'
-		getattr(self,field).update({attr:getattr(self,attr,None) for attr in kwargs if attr not in getattr(self,field)})
-		
-		data = args[0] if len(args)>0 else None
-		if data is None:
-			data = onp.array()
-		elif isinstance(data,tuple):
-			data = onp.zeros(data)
-		else:
-			data = onp.asarray(data)
-		self.data = data
-		self.string = str(data)
-		return
-
-	def __repr__(self):
-		return self.string
-
-	def to_numpy(self):
-		return onp.array(self)
-
-	def to_jax(self):
-		return np.array(self)
-
-class String(str):
-	'''
-	String class to represent concatenated and delimited strings, subclass of str
-	Args:
-		string (str,tuple,list): string, tuple of strings, or list of tuple of strings or strings, where strings in tuple are concatenated and strings in list are delimited		
-	'''
-	def __new__(cls,string,deliminate=' + ',concatenate='*',fmt=None):
-		try:
-			string = [tuple([substring]) if not isinstance(substring,tuple) else substring 
-						for substring in ([string] if not isinstance(string,list) else string)]
-			string = deliminate.join([concatenate.join(substring) for substring in string])
-		except:
-			string = ''
-		string = fmt%string if fmt is not None else string
-		obj = super().__new__(cls,string)
-		obj.deliminate = deliminate
-		obj.concatenate = concatenate			
-		return obj
-
-	def __getslice__(self,item):
-		try:
-			obj = self.deliminate.join(self.split(self.deliminate)[item])
-		except:
-			obj = self
-		return obj
-
-	def __getitem__(self,item):
-		try:
-			obj = self.split(self.deliminate)[item]
-		except:
-			obj = self
-		return obj
-
 
 
 # @tree_register
@@ -2488,6 +2318,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				kwargs (dict): Additional class keyword arguments				
 			'''		
 
+			def setup(data,**kwargs):
+				return data
+
 			data = data if data is not None else self.data
 			indices = indices if indices is not None else self.indices
 			string = string if string is not None else self.string
@@ -2498,12 +2331,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				string = data.string
 
 			cls = array
-			classes = arrays
-			options = dict(order=None,dtype=None)
-			options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+			options = dict()
 
-			if not isinstance(data,classes):
-				data = cls(data,**options)
+			data = setup(data,**kwargs)
+
+			data = cls(data,**options)
 
 			string = str(string) if string is not None else string
 
@@ -2543,6 +2375,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def dtype(self):
 			return self.data.dtype
 
+		@property
+		def array(self):
+			return self.data
+
+		def __jax_array__(self,*args,**kwargs):
+			return self.data
+
 		def __str__(self):
 			if isinstance(self.string,str):
 				string = self.string
@@ -2564,7 +2403,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			yield from self.data
 
 		def __getitem__(self,index):
-			return self.data.get(index)
+			return self.data[index]
 
 		def __setitem__(self,index,value):
 			self.data = inplace(self.data,index,value)
@@ -2580,7 +2419,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict): Class data
 			'''
 			
-			if isinstance(data,arrays):
+			if isinstance(data,tensors):
+				self.data = data()
+			elif isinstance(data,arrays):
 				self.data = data
 			elif callable(data):
 				data = data(self.data,**kwargs)
@@ -2648,6 +2489,18 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
+			def setup(data,**kwargs):
+
+				if callable(data):
+					data = data(**kwargs)
+
+				if data.ndim == 1:
+					axes = range(data.ndim+2)
+					shape = [1,*data.shape,1]
+					data = transpose(reshape(data,shape),axes)
+
+				return data
+
 			data = data if data is not None else self.data
 			parameters = parameters if parameters is not None else self.parameters
 			string = string if string is not None else self.string
@@ -2657,24 +2510,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			S = self.S if self.S is not None else 0
 
 			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
-
+			parameters = parameters
 			string = str(string) if string is not None else string
 
-			cls = array
-			classes = arrays
-			boolean = lambda data: (data.ndim == 1)
 			for i in data:
 
-				if callable(data[i]):
-					data[i] = data[i](**kwargs)
-
-				if boolean(data[i]):
-					axes = range(data[i].ndim+2)
-					shape = [1,*data[i].shape,1]
-					data[i] = transpose(reshape(data[i],shape),axes)
-
+				cls = tensor
 				options = dict(string=i)
-				options = dict()
+
+				data[i] = setup(data[i],**kwargs)
 
 				data[i] = cls(data[i],**options)
 
@@ -2703,7 +2547,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Update class data
 			Args:
-				data (array,dict): Class data		
+				data (array,dict,mps): Class data		
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Axes order of data
 				where (float,int,iterable[int]): indices of class
@@ -2713,7 +2557,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict): Class data		
 			'''	
 
-			data = self if data is None else data
+			data = self.array if data is None else data
 
 			options = dict() if options is None else options
 
@@ -2752,7 +2596,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 								data[i+1] = data[i+1][s]
 							else:
 								data[i+1] = data[i+1][:s]
-
 
 					elif i > max(where):
 
@@ -2838,7 +2681,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					raise NotImplementedError(f"Not Implemented {where}")
 
 			for i in data:
-				self[i] = data[i]
+				self[i](data[i])
 
 			return data
 
@@ -3163,15 +3006,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def dtype(self):
 			return self[min(self)].dtype
 
+		@property
+		def array(self):
+			return {i:self[i]() for i in self}
+
 		def __str__(self):
 			if isinstance(self.string,str):
 				string = self.string
 			else:
 				string = self.__class__.__name__
-			if all(isinstance(self[i],tensor) for i in self):
-				data = ' , '.join([f'{i}:{dict(zip(self[i].indices,self[i].shape))}' for i in self])
-			else:
-				data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
+			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
 			return f'{string}: {data}'
 
 		def __repr__(self):

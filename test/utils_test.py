@@ -1149,34 +1149,6 @@ def test_groupby(path=None,tol=None):
 	print('Passed')
 	return
 
-def test_struct(path=None,tol=None):
-
-	from src.utils import struct
-
-	n = 10
-	d = 2
-	k = 2
-	shape = (n**d,)*k
-	dtype = None
-
-	subscripts = 'ij,jk->ik'
-
-	a = struct(shape=shape,dtype=dtype)
-
-	print(isinstance(a,arrays))
-
-
-	attrs = ['shape','size','ndim','dtype','nbytes']
-
-	for attr in attrs:
-		print(attr,getattr(a,attr))
-
-	# b = einsum(subscripts,a,a)
-	# print(b)
-
-	return
-
-
 def test_reshape(path=None,tol=None):
 
 	# ~transform: (zx,wu,y,v,s) ->
@@ -1299,6 +1271,5 @@ if __name__ == '__main__':
 	# test_stability(path,tol)
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
-	# test_struct(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)

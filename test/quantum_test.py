@@ -2582,7 +2582,7 @@ def test_mps(*args,**kwargs):
 	N = 8
 	D = 2
 	S = D**(N)
-	M = 10
+	M = 100
 	L = 2
 	T = 1
 	architecture = 'tensor'
