@@ -126,7 +126,7 @@ def main(settings,*args,**kwargs):
 
 			obj = None
 			operator = data[key].operator
-			site = data[key].site
+			where = data[key].where
 			parameters = data[key].parameters
 
 			if isinstance(operator,str):
@@ -150,10 +150,10 @@ def main(settings,*args,**kwargs):
 				shapes = (shape,shape[-2:],shape)
 				einsummation = einsummand(subscripts,*shapes)
 			
-				def function(parameters,state,site=site,data=obj,einsummation=einsummation):
-					if site is not None:
+				def function(parameters,state,where=where,data=obj,einsummation=einsummation):
+					if where is not None:
 						N = int(round(log(state.size)/log(D)/state.ndim))
-						data = tensorprod((basis.identity(N=site[0],D=D),data,basis.identity(N=N-1-site[-1],D=D)))
+						data = tensorprod((basis.identity(N=where[0],D=D),data,basis.identity(N=N-1-where[-1],D=D)))
 					return einsummation(data,state,conjugate(data))				
 			
 			elif obj.ndim == 2:
@@ -161,10 +161,10 @@ def main(settings,*args,**kwargs):
 				shapes = (shape,shape[-2:],shape)
 				einsummation = einsummand(subscripts,*shapes)
 			
-				def function(parameters,state,site=site,data=obj,einsummation=einsummation):
-					if site is not None:
+				def function(parameters,state,where=where,data=obj,einsummation=einsummation):
+					if where is not None:
 						N = int(round(log(state.size)/log(D)/state.ndim))						
-						data = tensorprod((basis.identity(N=site[0],D=D),data,basis.identity(N=N-1-site[-1],D=D)))
+						data = tensorprod((basis.identity(N=where[0],D=D),data,basis.identity(N=N-1-where[-1],D=D)))
 					return einsummation(data,state,conjugate(data))	
 			
 			func.append(function)
@@ -180,9 +180,9 @@ def main(settings,*args,**kwargs):
 				self.dtype = dtype
 				self.func = func
 				return
-			def __call__(self,parameters=None,state=None,site=None):
+			def __call__(self,parameters=None,state=None,where=None):
 				for func in self.func:
-					state = func(parameters,state,site=site)
+					state = func(parameters,state,where=where)
 				return state 
 
 
@@ -253,12 +253,12 @@ def main(settings,*args,**kwargs):
 	structure = '>ij<'
 
 	for i in range(M):
-		for site in lattice(structure):
-			state = operator(parameters,state,where=site)
+		for where in lattice(structure):
+			state = operator(parameters,state,where=where)
 
 	for i in range(M):
-		for site in lattice(structure):
-			_state = model(_parameters,_state,site=site)
+		for where in lattice(structure):
+			_state = model(_parameters,_state,where=where)
 
 	print(measure(parameters=parameters,state=state))
 

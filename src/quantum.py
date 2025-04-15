@@ -3857,7 +3857,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	indices = (0,size*length)
 
 	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
-	locality = len(set(j for i in data if data[i] is not None for j in data[i].site)) if data else None
+	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
 	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
 
@@ -3930,7 +3930,7 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	indices = (0,size*length)
 	
 	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
-	locality = len(set(j for i in data if data[i] is not None for j in data[i].site)) if data else None
+	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
 	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
 
@@ -4008,7 +4008,7 @@ class Object(System):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -4023,7 +4023,7 @@ class Object(System):
 		}
 
 	defaults = dict(			
-		data=None,operator=None,site=None,string=None,system=None,
+		data=None,operator=None,where=None,string=None,system=None,
 		state=None,parameters=None,conj=False,
 		local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		shape=None,size=None,ndim=None,dtype=None,
@@ -4033,9 +4033,9 @@ class Object(System):
 		contract=None,gradient_contract=None
 		)
 
-	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
@@ -4054,14 +4054,14 @@ class Object(System):
 			return
 
 		# Set attributes
-		#	N: size of system acted on by locality number of non-local operators with indices site
+		#	N: size of system acted on by locality number of non-local operators with indices where
 		#	local (bool): whether operator acts locally
 		# 	locality (int): number of indices acted on locally, non-trivially by operator
-		#	site (iterable[int]): indices of local action within space of size N
+		#	where (iterable[int]): indices of local action within space of size N
 
 
 		operator = self.operator if self.operator is not None else None
-		site = self.site if self.site is None or not isinstance(self.site,integers) else [self.site]
+		where = self.where if self.where is None or not isinstance(self.where,integers) else [self.where]
 		string = self.string
 
 		local = self.local if self.local is not None else None
@@ -4101,7 +4101,7 @@ class Object(System):
 		options = Dictionary(
 			parameters=parameters,
 			D=D,
-			N=((locality if isinstance(locality,integers) else len(site) if isinstance(site,iterables) else 1)//
+			N=((locality if isinstance(locality,integers) else len(where) if isinstance(where,iterables) else 1)//
 			   (number if isinstance(number,integers) else 1)),
 			ndim=ndim,
 			data=self.data,
@@ -4109,13 +4109,13 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
-		# Set local, locality, site
+		# Set local, locality, where
 		local = local
 
 		if locality is not None:
 			locality = locality
-		elif isinstance(site,iterables):
-			locality = len(site)			
+		elif isinstance(where,iterables):
+			locality = len(where)			
 		elif isinstance(operator,iterables):
 			locality = Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator],**options)
 		elif isinstance(operator,str) and operator.count(delim) > 0:
@@ -4127,73 +4127,73 @@ class Object(System):
 		else:
 			locality = None
 
-		if site is not None:
-			site = site
+		if where is not None:
+			where = where
 		else:
-			site = None
+			where = None
 
 		# Set N
 		N = locality if local and N is None else N
 
-		# Set site,locality,operator
-		if site is None:
+		# Set where,locality,operator
+		if where is None:
 			if operator is None:
 				locality = locality
-				site = site
+				where = where
 				operator = operator
 			elif isinstance(operator,str):
 				if operator in [default]:
 					locality = locality
-					site = [i for i in range(locality)]
+					where = [i for i in range(locality)]
 					operator = operator
 				elif operator.count(delim):
 					locality = locality
-					site = [i for i in range(locality)]
+					where = [i for i in range(locality)]
 					operator = [i for i in operator.split(delim)]
 				else:
 					locality = locality
-					site = [i for i in range(locality)]
+					where = [i for i in range(locality)]
 					operator = operator
 			elif not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator):
 				locality = locality
-				site = [i for i in range(locality)]
+				where = [i for i in range(locality)]
 				operator = [i for i in operator]
 			else:
 				locality = locality
-				site = [i for i in range(locality)]
+				where = [i for i in range(locality)]
 				operator = operator
 		else:
 			if operator is None:
 				locality = locality
-				site = [i for i in site] if isinstance(site,iterables) else site
+				where = [i for i in where] if isinstance(where,iterables) else where
 				operator = operator
 			elif isinstance(operator,str):
 				if operator in [default]:
 					locality = locality
-					site = [i for i in site] if isinstance(site,iterables) else site
+					where = [i for i in where] if isinstance(where,iterables) else where
 					operator = operator
 				elif operator.count(delim):
 					locality = locality
-					site = [i for i in site] if isinstance(site,iterables) else site
+					where = [i for i in where] if isinstance(where,iterables) else where
 					operator = [i for i in operator.split(delim)]
 				else:
 					locality = locality
-					site = [i for i in site] if isinstance(site,iterables) else site
+					where = [i for i in where] if isinstance(where,iterables) else where
 					operator = operator
 			elif not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator):
 				locality = locality
-				site = [i for i in site] if isinstance(site,iterables) else site
+				where = [i for i in where] if isinstance(where,iterables) else where
 				operator = [i for i in operator]
 			else:
 				locality = locality
-				site = [i for i in site] if isinstance(site,iterables) else site
+				where = [i for i in where] if isinstance(where,iterables) else where
 				operator = operator
 
 		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
 		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
 
 		local = local
-		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in site) if isinstance(site,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(site,iterables) else None
+		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
 		
 		variable = variable
@@ -4203,10 +4203,10 @@ class Object(System):
 		unitary = unitary
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
-		site = site[:locality] if isinstance(site,iterables) else site
+		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
 		local = local if local is not None else None
-		locality = max(locality,len(site)) if isinstance(site,iterables) else locality
+		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
 
 		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
@@ -4226,8 +4226,8 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
-		assert ( self.null() or (operator is None and site is None and not locality) or (
-				(len(site) == locality) and (
+		assert ( self.null() or (operator is None and where is None and not locality) or (
+				(len(where) == locality) and (
 				(isinstance(operator,iterables) and (
 					any(i not in basis for i in operator) or
 					(Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator],**options) == locality))) or
@@ -4238,10 +4238,10 @@ class Object(System):
 					(operator not in basis) or
 					((Basis.locality(basis.get(operator),**options)==0) or ((locality % Basis.locality(basis.get(operator),**options)) == 0))))
 				))
-			),"Inconsistent operator %r, site %r: locality != %d"%(operator,site,locality)
+			),"Inconsistent operator %r, where %r: locality != %d"%(operator,where,locality)
 
 
-		assert ( self.null() or (operator is None and site is None and not locality) or (
+		assert ( self.null() or (operator is None and where is None and not locality) or (
 				(isinstance(operator,iterables) and (
 					any(i not in basis for i in operator) or
 					(len(set((Basis.dimension(basis.get(i),**options)for i in operator))) == 1))) or
@@ -4256,7 +4256,7 @@ class Object(System):
 		# Set attributes
 		self.data = data if data is not None else None
 		self.operator = operator if operator is not None else None
-		self.site = site if site is not None else None
+		self.where = where if where is not None else None
 		self.string = string if string is not None else None
 
 		self.local = local
@@ -4366,7 +4366,7 @@ class Object(System):
 		D = self.D
 
 		operator = self.operator
-		site = self.site
+		where = self.where
 		string = self.string
 		local = self.local
 		locality = self.locality
@@ -4378,23 +4378,23 @@ class Object(System):
 		hermitian =  self.hermitian
 		unitary =  self.unitary
 
-		N = max((i for i in (max((i for i in (locality,len(site) if site is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
+		N = max((i for i in (max((i for i in (locality,len(where) if where is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
 		D = D if D is not None else None
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
-		site = site[:locality] if isinstance(site,iterables) else site
+		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
 		local = local if local is not None else None
-		locality = max(locality,len(site)) if isinstance(site,iterables) else locality
+		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
 
-		assert self.null() or (N is None and locality is None and site is None) or ((locality <= N) and (locality == len(site)) and all(i in range(N) for i in site)), "Inconsistent N %d, locality %d, site %r"%(N,locality,site)
+		assert self.null() or (N is None and locality is None and where is None) or ((locality <= N) and (locality == len(where)) and all(i in range(N) for i in where)), "Inconsistent N %d, locality %d, where %r"%(N,locality,where)
 
 		self.N = N
 		self.D = D
 
 		self.operator = operator
-		self.site = site
+		self.where = where
 		self.string = string
 		self.local = local
 		self.locality = locality
@@ -4433,7 +4433,7 @@ class Object(System):
 					(isinstance(self.operator,str) and not self.operator.count(delim) and (
 						(self.operator not in self.basis) or
 						((Basis.locality(self.basis.get(self.operator),**options)==0) or ((self.locality % Basis.locality(self.basis.get(self.operator),**options)) == 0))))
-				),"Inconsistent operator %r, site %r: locality != %d"%(self.operator,self.site,self.locality)
+				),"Inconsistent operator %r, where %r: locality != %d"%(self.operator,self.where,self.locality)
 
 
 			assert (
@@ -4450,7 +4450,7 @@ class Object(System):
 			_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 			shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
-			axes = [*self.site,*(() if self.local else set(range(self.N))-set(self.site))] if data is not None else None
+			axes = [*self.where,*(() if self.local else set(range(self.N))-set(self.where))] if data is not None else None
 			ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 			dtype = self.dtype
 
@@ -4478,7 +4478,7 @@ class Object(System):
 
 		if (((self.data is not None) or (self.operator is not None))):
 			
-			self.setup(data=data,operator=self.operator,site=self.site,string=self.string)
+			self.setup(data=data,operator=self.operator,where=self.where,string=self.string)
 		
 		if (self.parameters() is None) and (not isinstance(self.data,objects)) and (not callable(self.data)):
 		
@@ -4526,8 +4526,8 @@ class Object(System):
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
 
-		# TODO: Add self.site,self.state.site interdependency 
-		# for subspace evolution within site of state
+		# TODO: Add self.where,self.state.where interdependency 
+		# for subspace evolution within where of state
 		if self.null():
 			shape = None
 			axes = None
@@ -4535,26 +4535,26 @@ class Object(System):
 			samples = None
 		elif self.local:
 			if self.state is not None and self.state() is not None:
-				if all(i in self.state.site for i in self.site):
+				if all(i in self.state.where for i in self.where):
 					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-					axes = [[i for i in self.site]]
-					where = [i for i in self.site]
+					axes = [[i for i in self.where]]
+					where = [i for i in self.where]
 					samples = self.state.samples
 				elif self.state.locality >= self.locality:
 					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-					axes = [[i for i in self.site]]
-					where = [i for i in self.site]
+					axes = [[i for i in self.where]]
+					where = [i for i in self.where]
 					samples = self.samples
 				else:
-					raise NotImplementedError("Incorrect state %r for locality %d, site %r"%(self.state,self.locality,self.site))
+					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
 			else:
 				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.identity.ndim)}
-				axes = [[i for i in self.site]]
+				axes = [[i for i in self.where]]
 				where = [i for i in range(self.locality)]
 				samples = self.samples
 		else:
 			shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
-			axes = [[i for i in self.site]]
+			axes = [[i for i in self.where]]
 			where = None
 			samples = None
 		
@@ -4586,14 +4586,14 @@ class Object(System):
 		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			where = self.site
+			where = self.where
 			wrapper = jit
 			kwargs = dict()
 		
 		else:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			where = self.site			
+			where = self.where			
 			wrapper = partial
 			kwargs = dict()
 
@@ -4604,13 +4604,13 @@ class Object(System):
  
 		return
 
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
@@ -4775,12 +4775,12 @@ class Object(System):
 		return (
 			hash(self.string) ^ 
 			hash(tuple(self.operator) if not isinstance(self.operator,str) else self.operator) ^ 
-			hash(tuple(self.site)) ^
+			hash(tuple(self.where)) ^
 			hash(id(self))
 			)
 
 	def __key__(self):
-		attrs = [self.string,self.operator,self.site,id(self)]
+		attrs = [self.string,self.operator,self.where,id(self)]
 		key = []
 		for attr in attrs:
 			if attr is None:
@@ -4799,13 +4799,13 @@ class Object(System):
 		'''
 		Tensor product operation on class
 
-		Objects with disjoint sites are tensored within the larger of the self,other sites 
-		i.e) self.site = [0,1], other.site = [2,3], self.N = 3, other.N = 4 
-		-> instance.site = [*self.site,*other.site] = [0,1,2,3] ,  instance.N = max(self.N,other.N) = 4 
+		Objects with disjoint locality are tensored within the larger of the self,other locality 
+		i.e) self.where = [0,1], other.where = [2,3], self.N = 3, other.N = 4 
+		-> instance.where = [*self.where,*other.where] = [0,1,2,3] ,  instance.N = max(self.N,other.N) = 4 
 
-		Objects with non-disjoint sites are tensored within the product of the self,other sites
-		i.e) self.site = [0,1], other.site = [1,3], self.N = 3, other.N = 4 
-		-> instance.site = [*self.site,self.N+*other.site] = [0,1,4,6] ,  instance.N = max(self.N,other.N) = 7 
+		Objects with non-disjoint locality are tensored within the product of the self,other locality
+		i.e) self.where = [0,1], other.where = [1,3], self.N = 3, other.N = 4 
+		-> instance.where = [*self.where,self.N+*other.where] = [0,1,4,6] ,  instance.N = max(self.N,other.N) = 7 
 
 		Args:
 			other (class,int): class instance or integer for tensor product
@@ -4813,12 +4813,12 @@ class Object(System):
 			instance (class): new class instance with tensor product of instance and other
 		'''
 
-		support = self.site if isinstance(self.site,iterables) else None
+		support = self.where if isinstance(self.where,iterables) else None
 		attributes = ['D','ndim']
 
 		if other is self or isinstance(other,integers):
 
-			support = self.site if support is None else support
+			support = self.where if support is None else support
 			attributes = [attr for attr in attributes if hasattr(self,attr)]
 
 			if other is self:
@@ -4832,7 +4832,7 @@ class Object(System):
 
 			data = None
 			operator = ([*self.operator] if isinstance(self.operator,iterables) else [self.operator])*other
-			site = [i+self.N*j for j in range(other) for i in self.site]
+			where = [i+self.N*j for j in range(other) for i in self.where]
 			string = delim.join((self.string,)*other) if self.string is not None else None
 
 			local = self.local
@@ -4863,7 +4863,7 @@ class Object(System):
 
 		elif isinstance(other,type(self)):
 
-			support = intersection(*(obj.site for obj in (self,other) if obj is not None and obj.site is not None))
+			support = intersection(*(obj.where for obj in (self,other) if obj is not None and obj.where is not None))
 			attributes = [attr for attr in attributes if all(hasattr(obj,attr) for obj in (self,other))]
 
 			if (not self.constant) or (not other.constant):
@@ -4878,8 +4878,8 @@ class Object(System):
 			data = None
 			operator = [*(self.operator if isinstance(self.operator,iterables) else [self.operator]),
 						*(other.operator if isinstance(other.operator,iterables) else [other.operator])]
-			site = [*([i for i in self.site] if isinstance(self.site,iterables) else [self.site]),
-					*([i + self.N*(len(support) > 0) for i in other.site] if isinstance(other.site,iterables) else [other.site])]
+			where = [*([i for i in self.where] if isinstance(self.where,iterables) else [self.where]),
+					*([i + self.N*(len(support) > 0) for i in other.where] if isinstance(other.where,iterables) else [other.where])]
 			string = delim.join((self.string,other.string)) if self.string is not None and other.string is not None else self.string if self.string is not None else other.string if other.string is not None else None
 
 			local = all((self.local,other.local))
@@ -4920,7 +4920,7 @@ class Object(System):
 		kwargs = {
 			**{attr: getattr(self,attr) for attr in self if not callable(getattr(self,attr))},
 			**dict(
-				data=data,operator=operator,site=site,string=string,
+				data=data,operator=operator,where=where,string=string,
 				local=local,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
 				N=N,D=D,shape=shape,size=size,ndim=ndim,
 				state=state,parameters=parameters,conj=conj
@@ -4941,7 +4941,7 @@ class Object(System):
 		'''
 
 		null = all(getattr(self,attr,default) is None 
-			for attr,default in dict(operator=None,site=None,string=None).items())
+			for attr,default in dict(operator=None,where=None,string=None).items())
 
 		return null
 
@@ -5062,7 +5062,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','site','locality','local','variable','constant','symmetry']:
+		for attr in ['operator','where','locality','local','variable','constant','symmetry']:
 		
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5087,7 +5087,7 @@ class Object(System):
 					continue
 
 				string = []
-				for subattr in [None,'operator','variable','method','indices','local','site','shape','parameters']:
+				for subattr in [None,'operator','variable','method','indices','local','where','shape','parameters']:
 				
 					obj = subattr
 					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5172,7 +5172,7 @@ class Object(System):
 		elif isinstance(self,Object):
 
 			string = []
-			for attr in [None,'variable','method','indices','local','site','shape','parameters']:
+			for attr in [None,'variable','method','indices','local','where','shape','parameters']:
 	
 				obj = 'parameters'
 				if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5312,7 +5312,7 @@ class Data(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -5327,20 +5327,20 @@ class Data(Object):
 		**{attr: Basis.data for attr in ['data']},
 		}
 	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -5403,7 +5403,7 @@ class Data(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 
 		self.func = func
@@ -5425,7 +5425,7 @@ class Gate(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -5447,20 +5447,20 @@ class Gate(Object):
 		**{attr: Basis.identity for attr in ['IDENTITY','identity']},
 		}
 	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -5523,7 +5523,7 @@ class Gate(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 
 		self.func = func
@@ -5545,7 +5545,7 @@ class Pauli(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -5563,20 +5563,20 @@ class Pauli(Object):
 		**{attr: Basis.Z for attr in ['Z']},
 			}
 	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -5667,7 +5667,7 @@ class Pauli(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 
 		self.func = func
@@ -5689,7 +5689,7 @@ class Haar(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -5705,20 +5705,20 @@ class Haar(Object):
 		**{attr: Basis.unitary for attr in ['U','haar','u']},
 		}
 	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -5741,7 +5741,7 @@ class Haar(Object):
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 				shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
-				axes = [*self.site,*(() if self.local else set(range(self.N))-set(self.site))] if data is not None else None
+				axes = [*self.where,*(() if self.local else set(range(self.N))-set(self.where))] if data is not None else None
 				ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 				dtype = self.dtype
 
@@ -5821,7 +5821,7 @@ class Haar(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 
 		self.func = func
@@ -5844,7 +5844,7 @@ class Noise(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -5865,9 +5865,9 @@ class Noise(Object):
 		**{attr: Basis.dephase for attr in ['phase','dephase']}
 		}
 	
-	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
@@ -5875,20 +5875,20 @@ class Noise(Object):
 
 		return
 
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -5978,7 +5978,7 @@ class Noise(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 		
 		self.func = func
@@ -6001,7 +6001,7 @@ class State(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -6026,20 +6026,20 @@ class State(Object):
 		**{attr: Basis.minusi for attr in ['minusi','-i']},		
 		}
 	
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour
+			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments				
 		'''
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
-		site = self.site if site is None else site
+		where = self.where if where is None else where
 		string = self.string if string is None else string
 
 		func = self.func
@@ -6148,7 +6148,7 @@ class State(Object):
 		self.data = data
 
 		self.operator = operator if operator is not None else self.operator
-		self.site = site if site is not None else self.site
+		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
 
 		self.func = func
@@ -6279,7 +6279,7 @@ class Operator(Object):
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour
+		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
@@ -6291,13 +6291,13 @@ class Operator(Object):
 	default = 'I'	
 	basis = {**{attr: Basis.identity for attr in [default]}}
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
+	def __new__(cls,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 
 		classes = [Data,Gate,Pauli,Haar,Noise,State,Channel,Operators,Unitary,Hamiltonian,Object]
 
@@ -6339,13 +6339,13 @@ class Objects(Object):
 	'''
 	Class for Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,where,string dictionary for operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators
+			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-		site (iterable[str,iterable[int,str]]): site of local operators
+		where (iterable[str,iterable[int,str]]): location of local operators
 		string (iterable[str]): string labels of operators
 		N (int): Size of system
 		M (int): Duration of system
@@ -6365,12 +6365,12 @@ class Objects(Object):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['operators']}}
 
-	def __init__(self,data=None,operator=None,site=None,string=None,
+	def __init__(self,data=None,operator=None,where=None,string=None,
 		N=None,M=None,D=None,d=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			data=data,operator=operator,site=site,string=string,
+			data=data,operator=operator,where=where,string=string,
 			N=N,M=M,D=D,d=d,T=T,tau=tau,P=P,
 			space=space,time=time,lattice=lattice,parameters=parameters,system=system),
 			delimiter=delim,default=False)
@@ -6402,7 +6402,7 @@ class Objects(Object):
 		self.ndim = len(self.shape)
 		self.dtype = self.dtype if self.dtype is not None else None
 
-		self.setup(data,site=self.site,operator=self.operator,string=self.string)
+		self.setup(data,where=self.where,operator=self.operator,string=self.string)
 
 		# Set data
 		if data is None:
@@ -6591,17 +6591,17 @@ class Objects(Object):
 
 		return
 
-	def setup(self,data=None,operator=None,site=None,string=None,**kwargs):
+	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,where,string dictionary for operator
 				operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-				site (iterable[str,iterable[int,str]]): site of local operators
+				where (iterable[str,iterable[int,str]]): location of local operators
 				string (iterable[str]): string labels of operators
 				kwargs (dict): Additional operator keyword arguments			
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators
+			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional class keyword arguments		
 		'''
@@ -6610,8 +6610,8 @@ class Objects(Object):
 		if self.status(data):
 			return
 
-		# Get operator,site,string from data
-		objs = Dictionary(operator=operator,site=site,string=string)
+		# Get operator,where,string from data
+		objs = Dictionary(operator=operator,where=where,string=string)
 
 		# Get data and kwargs
 		if (isinstance(data,dict) or data is None) and not all(isinstance(objs[obj],list) or objs[obj] is None for obj in objs):
@@ -6655,7 +6655,7 @@ class Objects(Object):
 		
 		# Get attribute of symbolic indices
 		attrs = dict(
-			site = lambda attr,value,values,indices: [dict(zip(indices,
+			where = lambda attr,value,values,indices: [dict(zip(indices,
 								value if not isinstance(value,integers) else (value,))
 							).get(i,int(i) if not isinstance(i,str) else i) 
 							for i in values[attr]]
@@ -6732,7 +6732,7 @@ class Objects(Object):
 
 
 		# Set class dependent attributes 
-		# i.e) set parameters data with site-dependent data 
+		# i.e) set parameters data with where-dependent data 
 		# i.e) set parameters shape with depth-M-dependent shape
 		attributes = {}
 		def decorator(func):
@@ -6762,7 +6762,7 @@ class Objects(Object):
 				obj = obj
 			elif isinstance(obj,dict):
 				obj = obj.get(
-					tuple(data.site[i]),obj.get(str(data.string[i]),
+					tuple(data.where[i]),obj.get(str(data.string[i]),
 					obj.get(str(index),obj.get(int(index),default))))
 			elif isinstance(obj,iterables):
 				obj = obj[index%len(obj)] if len(obj) else default
@@ -7002,18 +7002,18 @@ class Objects(Object):
 
 		return
 
-	def extend(self,data=None,operator=None,site=None,string=None,kwargs=None):
+	def extend(self,data=None,operator=None,where=None,string=None,kwargs=None):
 		'''
 		Extend to class
 		Args:
 			data (iterable[str,Operator]): data of operator
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
-			site (iterable[str,iterable[int,str]]): site of local operators
+			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		size = min([len(i) for i in (data,operator,site,string) if i is not None and not all(j is None for j in i)],default=0)
+		size = min([len(i) for i in (data,operator,where,string) if i is not None and not all(j is None for j in i)],default=0)
 
 		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size) if kwargs is not None else None
 		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)] if kwargs is not None else None
@@ -7026,50 +7026,50 @@ class Objects(Object):
 			data = [None]*size
 		if operator is None:
 			operator = [None]*size
-		if site is None:
-			site = [None]*size
+		if where is None:
+			where = [None]*size
 		if string is None:
 			string = [None]*size						
 		if kwargs is None:
 			kwargs = [None]*size	
 
-		for _data,_operator,_site,_string,_kwargs in zip(data,operator,site,string,kwargs):
+		for _data,_operator,_where,_string,_kwargs in zip(data,operator,where,string,kwargs):
 
-			self.append(_data,_operator,_site,_string,_kwargs)
+			self.append(_data,_operator,_where,_string,_kwargs)
 
 		return
 
 
-	def append(self,data=None,operator=None,site=None,string=None,kwargs=None):
+	def append(self,data=None,operator=None,where=None,string=None,kwargs=None):
 		'''
 		Append to class
 		Args:
 			data (str,Operator): data of operator
 			operator (str): string name of operator
-			site (int): site of local operator
+			where (int): where of local operator
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 		index = -1
-		self.insert(index,data,operator,site,string,kwargs)
+		self.insert(index,data,operator,where,string,kwargs)
 		return
 
 
-	def insert(self,index,data,operator,site,string,kwargs=None):
+	def insert(self,index,data,operator,where,string,kwargs=None):
 		'''
 		Insert to class
 		Args:
 			index (int): index to insert operator
 			data (str,Operator): data of operator
 			operator (str): string name of operator
-			site (int): site of local operator
+			where (int): where of local operator
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments						
 		'''
 
 		status = self.status()
 
-		if all(obj is None for obj in (data,operator,site,string)):
+		if all(obj is None for obj in (data,operator,where,string)):
 			self.set()
 			return
 
@@ -7077,13 +7077,13 @@ class Objects(Object):
 		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
-		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
+		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','where','string']},delimiter=delim,default=False)
 		setter(kwargs,dict(N=self.N,D=self.D,local=self.local),delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,dict(verbose=False),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
 
-		data = cls(**{**dict(data=data,operator=operator,site=site,string=string),**kwargs})
+		data = cls(**{**dict(data=data,operator=operator,where=where,string=string),**kwargs})
 
 		self.set(data,index=index)
 
@@ -7108,8 +7108,8 @@ class Objects(Object):
 
 		boolean = lambda i=None,data=None: ((data is not None) and (data[i] is not None) and (not data[i].null()))
 
-		site = [j for i in data if boolean(i,data) and isinstance(data[i].site,iterables) for j in data[i].site]
-		site = list(sorted(set(site),key=lambda i:site.index(i)))
+		where = [j for i in data if boolean(i,data) and isinstance(data[i].where,iterables) for j in data[i].where]
+		where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 		operator = separ.join([
 					delim.join(data[i].operator) if isinstance(data[i].operator,iterables) else data[i].operator
@@ -7119,7 +7119,7 @@ class Objects(Object):
 
 		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
-		locality = len(site) if site is not None else None
+		locality = len(where) if where is not None else None
 
 		number = max((data[i].number for i in data if boolean(i,data)),default=None) if data is not None else None
 
@@ -7149,7 +7149,7 @@ class Objects(Object):
 		self.data = data
 
 		self.operator = operator
-		self.site = site
+		self.where = where
 		self.string = string
 
 		self.local = local
@@ -7589,7 +7589,7 @@ class Module(System):
 			if not self.model[index]:
 				continue
 
-			where = [i for model in self.model[index] if boolean(model) and isinstance(model.site,iterables) for i in model.site]
+			where = [i for model in self.model[index] if boolean(model) and isinstance(model.where,iterables) for i in model.where]
 			where = list(sorted(set(where),key=lambda i:where.index(i)))
 
 			N = max((model.N for model in self.model[index] if boolean(model) and model.N is not None),default=len(where))
@@ -7602,7 +7602,7 @@ class Module(System):
 
 			keywords = {model:dict(
 				state=state @ locality,
-				site=[where.index(i) for i in model.site],
+				where=[where.index(i) for i in model.where],
 				samples=None,
 				verbose=False,
 				) for model in self.model[index]}

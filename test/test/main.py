@@ -538,14 +538,14 @@ def init(*args,**kwargs):
 	settings = Dict({
 		"model":{
 			"operator":"depolarize",
-			"site":None,
+			"where":None,
 			"string":"noise",
 			"parameters":{"data":1,"parameters":1},
 			"N":1,"D":2,"ndim":3,
 		},
 		"state": {
 			"operator":"one",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":True,
 			"N":1,"D":2,"ndim":2,

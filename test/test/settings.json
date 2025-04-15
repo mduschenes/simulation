@@ -53,7 +53,7 @@
 
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["phase"],
-		"model.data.noise.site":[null],
+		"model.data.noise.where":[null],
 		"model.data.noise.parameters.data":[1],
 		"model.data.noise.parameters.parameters":[1e-4,1e-2],
 		"model.data.noise.parameters.parameters":[1e-4],
@@ -117,7 +117,7 @@
 "model":{
 	"data":{
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":{
 				"data":null,
 				"shape":[],
@@ -141,7 +141,7 @@
 				},
 			"variable":true,"seed":123},
 		"y":{
-			"operator":["Y"],"site":"i","string":"y",
+			"operator":["Y"],"where":"i","string":"y",
 			"parameters":{
 				"data":null,
 				"shape":[],
@@ -165,7 +165,7 @@
 				},
 			"variable":true,"seed":123},
 		"z":{
-			"operator":["Z"],"site":"i","string":"z",
+			"operator":["Z"],"where":"i","string":"z",
 			"parameters":{
 				"data":[-1.1,0,-0.1,2.9,-0.2],
 				"parameters":1e-2,
@@ -189,7 +189,7 @@
 			"attributes":["parameters.data"],				
 			"variable":false,"seed":123},								
 		"zz":{
-			"operator":["Z","Z"],"site":"i<j","string":"zz",
+			"operator":["Z","Z"],"where":"i<j","string":"zz",
 			"parameters":{
 				"data":[0.724,-1.30,0.5,2.1,0.2,-1.9,-0.3,0.60,0.9,-0.6],
 				"parameters":1e-4,
@@ -213,7 +213,7 @@
 			"attributes":["parameters.data"],							
 			"variable":false,"seed":123},		
 		"noise":{
-			"operator":"amplitude","site":null,"string":"noise",
+			"operator":"amplitude","where":null,"string":"noise",
 			"parameters":{"data":1,"parameters":1},
 			"ndim":3,
 			"variable":false
@@ -315,7 +315,7 @@
 	},
 "label": {
 	"operator":"I",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":1,
 	"ndim":2,
@@ -323,7 +323,7 @@
 	},
 "state": {
 	"operator":"plus",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":true,
 	"ndim":2,

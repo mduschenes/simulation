@@ -14,27 +14,27 @@
 "model":{
 	"data":{
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":{"data":"random","seed":123},
 			"variable":true,"local":true
 		},
 		"y":{
-			"operator":["Y"],"site":"i","string":"y",
+			"operator":["Y"],"where":"i","string":"y",
 			"parameters":{"data":"random","seed":123},
 			"variable":true,"local":true
 		},
 		"z":{
-			"operator":["Z"],"site":"i","string":"z",
+			"operator":["Z"],"where":"i","string":"z",
 			"parameters":{"data":"random","seed":123},
 			"variable":true,"local":true
 		},				
 		"zz":{
-			"operator":["Z","Z"],"site":"i<j","string":"zz",
+			"operator":["Z","Z"],"where":"i<j","string":"zz",
 			"parameters":{"data":"random","seed":123},
 			"variable":true,"local":true
 		},
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
+			"operator":"depolarize","where":null,"string":"noise",
 			"parameters":0,
 			"variable":false,"local":true
 		}
@@ -81,7 +81,7 @@
 	},
 "label": {
 	"operator":"X.X",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":0.25,
 	"ndim":2,
@@ -89,7 +89,7 @@
 	},
 "state": {
 	"operator":"zero",
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,

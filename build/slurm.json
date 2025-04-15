@@ -50,11 +50,11 @@
 
 		"model.data.unitary.operator":["haar"],
 		"model.data.unitary.parameters":[null],
-		"model.data.unitary.site":["||ij||"],
+		"model.data.unitary.where":["||ij||"],
 
 		"model.data.noise.operator":[["depolarize","depolarize"]],
 		"model.data.noise.parameters":[1e-4,1e-2],
-		"model.data.noise.site":["||ij||"],
+		"model.data.noise.where":["||ij||"],
 
 		"state.string":["psi"],
 		"state.operator":["haar"],
@@ -125,11 +125,11 @@
 "model":{
 	"data":{
 		"unitary":{
-			"operator":"haar","site":"||ij||","string":"unitary",
+			"operator":"haar","where":"||ij||","string":"unitary",
 			"parameters":null,"variable":false,"seed":null
 		},				
 		"noise":{
-			"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+			"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 			"parameters":1e-8,"variable":false
 		}
 	},
@@ -145,7 +145,7 @@
 	},
 "state": {
 	"operator":["zero"],
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":null,
 	"N":null,

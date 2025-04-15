@@ -270,7 +270,7 @@ def check_fisher(path,tol):
 
 		setter(settings,kwargs,delimiter=delim)
 
-		print('N: %d, M: %d, B: %s'%(settings.model.N,settings.model.M,settings.model.data.zz.site))
+		print('N: %d, M: %d, B: %s'%(settings.model.N,settings.model.M,settings.model.data.zz.where))
 
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
@@ -318,7 +318,7 @@ def check_fisher(path,tol):
 
 
 		# if i == (n-1):
-		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(settings.model.data.zz.site,'')}
+		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(settings.model.data.zz.where,'')}
 		# 	data = {
 		# 		'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
 		# 		'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,

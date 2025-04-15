@@ -23,11 +23,11 @@
 "model":{
 	"data":{
 		"xx":{
-			"operator":["X","X"],"site":null,"string":"XX",
+			"operator":["X","X"],"where":null,"string":"XX",
 			"parameters":0.5,"variable":false
 		},
 		"noise":{
-			"operator":["dephase","dephase"],"site":null,"string":"dephase",
+			"operator":["dephase","dephase"],"where":null,"string":"dephase",
 			"parameters":1e-6,"variable":false
 		}
 	},
@@ -40,7 +40,7 @@
 	},
 "state": {
 	"operator":["zero"],
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":null,
 	"D":2,

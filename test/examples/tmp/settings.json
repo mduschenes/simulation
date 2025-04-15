@@ -12,11 +12,11 @@
 "model":{
 	"data":{
 		"xx":{
-			"operator":["X","X"],"site":"<ij>","string":"XX",
+			"operator":["X","X"],"where":"<ij>","string":"XX",
 			"parameters":0.5,"variable":false
 		},
 		"noise":{
-			"operator":"dephase","site":null,"string":"dephase",
+			"operator":"dephase","where":null,"string":"dephase",
 			"parameters":0,"variable":false
 		}		
 	},
@@ -35,7 +35,7 @@
 	},
 "state": {
 	"operator":"zero",
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,

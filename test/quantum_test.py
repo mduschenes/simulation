@@ -110,14 +110,14 @@ def test_component(*args,**kwargs):
 				"basis":"src.quantum.Basis"
 			},
 			"operator":{
-				"data":None,"operator":None,"site":None,"string":None,
+				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
 				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
 				"operator":"data",
-				"site":None,
+				"where":None,
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
@@ -169,11 +169,11 @@ def test_null(*args,**kwargs):
 			"model":{
 				"data":{
 					"two":{
-						"operator":"haar","site":"<ij>","string":"two",
+						"operator":"haar","where":"<ij>","string":"two",
 						"parameters":None,"variable":False,"ndim":2,"seed":123456789
 					},
 					"one":{
-						"operator":"haar","site":"ij","string":"one",
+						"operator":"haar","where":"ij","string":"one",
 						"parameters":None,"variable":False,"ndim":2,"seed":123456789
 					}															
 				},
@@ -191,14 +191,14 @@ def test_null(*args,**kwargs):
 					}
 			},			
 			"operator":{
-				"data":None,"operator":None,"site":None,"string":None,
+				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,
 				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
 				"operator":"data",
-				"site":None,
+				"where":None,
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
@@ -237,7 +237,7 @@ def test_operator(*args,**kwargs):
 		"operator.local":[False,True],
 		"operator.data":[None,None,None,None,None,None,None],
 		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
-		"operator.site":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
+		"operator.where":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
 		"operator.string":["test","xz","Haar","haar","U","u","noise"],
 		"operator.parameters":[None,0.5,None,None,None,None,1e-6],
 		"operator.variable":[False,False,False,False,False,False,False,False],
@@ -245,7 +245,7 @@ def test_operator(*args,**kwargs):
 		"state.local":[False],
 		"state.data":[None],
 		"state.operator":["zero"],
-		"state.site":[None],
+		"state.where":[None],
 		"state.string":["zero"],
 		"state.parameters":[None],
 		"state.variable":[False],
@@ -253,10 +253,10 @@ def test_operator(*args,**kwargs):
 
 		}
 	groups = [[
-		"operator.data","operator.operator","operator.site",
+		"operator.data","operator.operator","operator.where",
 		"operator.string","operator.parameters","operator.variable","operator.constant"
 		],[
-		"state.data","state.operator","state.site",
+		"state.data","state.operator","state.where",
 		"state.string","state.parameters","state.variable","state.constant"
 		],
 		]
@@ -274,14 +274,14 @@ def test_operator(*args,**kwargs):
 				"basis":"src.quantum.Basis"
 			},
 			"operator":{
-				"data":None,"operator":None,"site":None,"string":None,
+				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
 				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":None	,
 				"operator":"product",
-				"site":None,
+				"where":None,
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":2,"ndim":1,
@@ -532,9 +532,9 @@ def test_data(path,tol):
 	data = trotter(data,P)
 	string = trotter(string,P)
 	datas = trotter([model.data[i].data for i in model.data if model.data[i].unitary],P)
-	sites = trotter([model.data[i].site for i in model.data if model.data[i].unitary],P)
+	where = trotter([model.data[i].where for i in model.data if model.data[i].unitary],P)
 
-	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
+	for i,(s,d,D,index) in enumerate(zip(string,data,datas,where)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
 	
 	print("Passed")
@@ -562,13 +562,13 @@ def test_copy(*args,**kwargs):
 			"state":"src.quantum.State",
 			},
 		"operator":{
-				"data":None,"operator":"haar","site":[0,2],"string":None,
+				"data":None,"operator":"haar","where":[0,2],"string":None,
 				"N":3,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
 				"parameters":0.5
 			},		
 		"state": {
 			"operator":"haar",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,
@@ -879,27 +879,27 @@ def test_tensorproduct(*args,**kwargs):
 		"model":{
 			"data":{
 				# "cnot-hadamard":{
-				# 	"operator":["S","CNOT","H"],"site":[3,2,0,5],"string":"cnot-hadamard",
+				# 	"operator":["S","CNOT","H"],"where":[3,2,0,5],"string":"cnot-hadamard",
 				# 	"parameters":None,
 				# 	"variable":False
 				# },
 				# "data":{
-				# 	"operator":["CNOT"],"site":"<ij>","string":"cnot",
+				# 	"operator":["CNOT"],"where":"<ij>","string":"cnot",
 				# 	"parameters":None,
 				# 	"variable":False
 				# },
 				# "xx":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
 				# 	"parameters":0.5,
 				# 	"variable":False
 				# },
 				"cnot":{
-					"operator":["CNOT"],"site":"<ij>","string":"cnot",
+					"operator":["CNOT"],"where":"<ij>","string":"cnot",
 					"parameters":None,
 					"variable":False
 				},								
 				"hadamard":{
-					"operator":["H"],"site":"i","string":"hadamard",
+					"operator":["H"],"where":"i","string":"hadamard",
 					"parameters":None,
 					"variable":False
 				}					
@@ -907,20 +907,20 @@ def test_tensorproduct(*args,**kwargs):
 			"N":4,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":12345678945,"dtype":"complex",
-				"architecture":None,"configuration":{"key":["site"]},
+				"architecture":None,"configuration":{"key":["where"]},
 				}
 		},	
 		"state": {
 			"data":None	,
 			"operator":["plus","minus"],
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,"ndim":2,"local":True,"variable":False,
 			"system":{"seed":12345678945,"dtype":"complex","architecture":None}
 			},
 		"operator": {
-			"operator":["CNOT"],"site":None,"string":"cnot",
+			"operator":["CNOT"],"where":None,"string":"cnot",
 			"parameters":None,
 			"D":2,"local":True,"variable":False,"dtype":"complex"
 		}
@@ -965,7 +965,7 @@ def test_tensorproduct(*args,**kwargs):
 			try:
 				new = model.data[i] @ model.data[j]
 				# new.info(verbose=verbose)
-				print(dict((map(tuple,i) for i in zip([model.data[i].site,model.data[j].site,new.site],[model.data[i].operator,model.data[j].operator,new.operator]))))
+				print(dict((map(tuple,i) for i in zip([model.data[i].where,model.data[j].where,new.where],[model.data[i].operator,model.data[j].operator,new.operator]))))
 
 				# test = new(parameters=new.parameters(),state=new.state())
 
@@ -1001,7 +1001,7 @@ def test_tensorproduct(*args,**kwargs):
 	options = Dict(**{
 		"data":None	,
 		"operator":None,
-		"site":None,
+		"where":None,
 		"string":"psi",
 		"parameters":None,
 		"D":2,"ndim":2,"local":True,"variable":False,
@@ -1012,13 +1012,13 @@ def test_tensorproduct(*args,**kwargs):
 
 
 	states = [cls(**{**options,**dict(operator=operator)}) for operator in operators]
-	site = [i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
+	where = [i for i in range(sum(len(operator) if isinstance(operator,iterables) else 1 for operator in operators))]
 
 	new = states[0] 
 	for state in states[1:]:
 		new @= state
 
-	new.init(site=site)
+	new.init(where=where)
 
 	new.info(verbose=verbose)
 
@@ -1070,7 +1070,7 @@ def test_random(*args,**kwargs):
 		"state": {
 			"data":None	,
 			"operator":"psi",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"N":3,"D":2,"ndim":2,
@@ -1080,7 +1080,7 @@ def test_random(*args,**kwargs):
 		"operator": {
 			"data":None,
 			"operator":"U",
-			"site":[0,2],
+			"where":[0,2],
 			"string":"U",
 			"parameters":None,
 			"N":3,"D":2,"ndim":2,
@@ -1191,17 +1191,17 @@ def test_layout(*args,**kwargs):
 		"model":{
 			"data":{
 				"xx":{
-					"operator":["X","X"],"site":"||ij||","string":"xx",
+					"operator":["X","X"],"where":"||ij||","string":"xx",
 					"parameters":0.5,
 					"variable":False
 				},
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 					"parameters":{"data":[0,1,2,3,4,5,6]},
 					"variable":False
 				},	
 				# "noise":{
-				# 	"operator":["depolarize"],"site":"|i.j|","string":"noise",
+				# 	"operator":["depolarize"],"where":"|i.j|","string":"noise",
 				# 	"parameters":None,
 				# 	"variable":False
 				# }				
@@ -1211,8 +1211,8 @@ def test_layout(*args,**kwargs):
 				"seed":12345678945,"dtype":"complex",
 				"architecture":None,"configuration":{
 					"key":[lambda value,iterable: (
-						# [tuple(j) for i in [*range(0,value.N,2),*range(1,value.N,2)] for j in [[i,i+1],[i],[i+1]]].index(tuple(value.site))
-						value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+						# [tuple(j) for i in [*range(0,value.N,2),*range(1,value.N,2)] for j in [[i,i+1],[i],[i+1]]].index(tuple(value.where))
+						value.where[0]%2,value.where[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
 						)],
 					"sort":None,
 					"reverse":False
@@ -1222,7 +1222,7 @@ def test_layout(*args,**kwargs):
 		"state": {
 			"data":None	,
 			"operator":"zero",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":6,"ndim":2,"local":True,"variable":False,
@@ -1242,7 +1242,7 @@ def test_layout(*args,**kwargs):
 
 	# model.init(state=state)
 
-	attrs = ["string","parameters","N","locality","operator","site",]
+	attrs = ["string","parameters","N","locality","operator","where",]
 
 	for i in model.data:
 		print(
@@ -1283,7 +1283,7 @@ def test_measure(*args,**kwargs):
 			"state": {
 				"data":"random"	,
 				"operator":"state",
-				"site":None,
+				"where":None,
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":4,"ndim":1,
@@ -1386,15 +1386,15 @@ def test_namespace(*args,**kwargs):
 			"model":{
 				"data":{
 					"z":{
-						"operator":["Z"],"site":"i","string":"Z",
+						"operator":["Z"],"where":"i","string":"Z",
 						"parameters":0.5,"variable":True
 					},
 					"xx":{
-						"operator":["X","X"],"site":"<ij>","string":"XX",
+						"operator":["X","X"],"where":"<ij>","string":"XX",
 						"parameters":0.5,"variable":False
 					},
 					"noise":{
-						"operator":["dephase","dephase"],"site":None,"string":"dephase",
+						"operator":["dephase","dephase"],"where":None,"string":"dephase",
 						"parameters":1e-3,"variable":False
 					}		
 				},
@@ -1405,7 +1405,7 @@ def test_namespace(*args,**kwargs):
 				},
 			"state": {
 				"operator":"zero",
-				"site":None,
+				"where":None,
 				"string":"psi",
 				"parameters":True,
 				"ndim":2,
@@ -1414,7 +1414,7 @@ def test_namespace(*args,**kwargs):
 				},
 			"label": {
 				"operator":"X.X.X.X",
-				"site":None,
+				"where":None,
 				"string":"U",
 				"parameters":0.5,
 				"ndim":2,
@@ -1468,7 +1468,7 @@ def test_namespace(*args,**kwargs):
 
 		attributes = {"model":model,"state":state,"label":label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","site","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","where","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
 		print()
 
 		model.init(state=state)
@@ -1476,7 +1476,7 @@ def test_namespace(*args,**kwargs):
 
 		attributes = {"model":model,"label":label}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","site","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["N","locality","where","hermitian","unitary","architecture"]},">>>>",namespace(attributes[attribute].__class__,model))
 		print()
 
 		print("Call")
@@ -1653,7 +1653,7 @@ def test_module(*args,**kwargs):
 			"options":{"contract":False,"max_bond":None,"cutoff":0},
 			"configuration":{
 				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],
+					value.where[0]%2,value.where[0],
 					)],
 				"sort":None,
 				"reverse":False
@@ -1668,31 +1668,31 @@ def test_module(*args,**kwargs):
 		"model":{
 			"data":{
 				# "local":{
-				# 	"operator":"haar","site":"i","string":"local",
+				# 	"operator":"haar","where":"i","string":"local",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
-					"operator":["X","Z"],"site":"||ij||","string":"unitary",
+					"operator":["X","Z"],"where":"||ij||","string":"unitary",
 					"parameters":0.25,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				},
 				# "unitary":{
-				# 	"operator":"haar","site":"||ij||","string":"unitary",
+				# 	"operator":"haar","where":"||ij||","string":"unitary",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },				
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+					"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				},
 				# "unitary":{
-				# 	"operator":["X","X"],"site":"||ij||","string":"unitary",
+				# 	"operator":["X","X"],"where":"||ij||","string":"unitary",
 				# 	"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
 				# },				
 				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+				# 	"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				# },					
 				# "xx":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
 				# },												
 			},
@@ -1705,7 +1705,7 @@ def test_module(*args,**kwargs):
 			"architecture":"array",
 			"configuration":{
 				"key":[lambda value,iterable: (
-					value.site[0]%2,value.site[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
+					value.where[0]%2,value.where[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
 					)],
 				"sort":None,
 				"reverse":False
@@ -1713,7 +1713,7 @@ def test_module(*args,**kwargs):
 			},
 		"state": {
 			"operator":"haar",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,
@@ -1891,7 +1891,7 @@ def test_module(*args,**kwargs):
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
-		where = model.site
+		where = model.where
 
 		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
 
@@ -2002,8 +2002,8 @@ def test_calculate(*args,**kwargs):
 	kwargs = {
 		"module.N":[4],"module.M":[3],"module.seed":[123456789],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
-		"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],
-		"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-3],"model.data.unitary.seed":[123456789],
+		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],
+		"model.data.noise.where":["||ij||"],"model.data.noise.parameters":[1e-3],"model.data.unitary.seed":[123456789],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"model.data.noise.seed":[None],
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
@@ -2014,8 +2014,8 @@ def test_calculate(*args,**kwargs):
 	# kwargs = {
 	# 	"module.N":[8],"module.M":[10],"module.seed":[123456789],
 	# 	"model.N":[8],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
-	# 	"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
-	# 	"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],"module.measure.symmetry":[None],
+	# 	"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
+	# 	"model.data.noise.where":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],"module.measure.symmetry":[None],
 	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 	# 	"module.measure.D":[2],"module.measure.operator":["tetrad"],
 	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
@@ -2057,19 +2057,19 @@ def test_calculate(*args,**kwargs):
 		"model":{
 			"data":{
 				# "local":{
-				# 	"operator":"haar","site":"i","string":"local",
+				# 	"operator":"haar","where":"i","string":"local",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
-					"operator":"haar","site":"||ij||","string":"unitary",
+					"operator":"haar","where":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":13579
 				},	
 				"noise":{
-					"operator":["depolarize","depolarize"],"site":"||ij||","string":"depolarize",
+					"operator":["depolarize","depolarize"],"where":"||ij||","string":"depolarize",
 					"parameters":1e-3,"variable":False,"ndim":3,"seed":123456789
 				},								
 				# "xx":{
-				# 	"operator":["X","X"],"site":"<ij>","string":"xx",
+				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
 				# },												
 			},
@@ -2088,7 +2088,7 @@ def test_calculate(*args,**kwargs):
 			},
 		"state": {
 			"operator":"zero",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,
@@ -2328,47 +2328,47 @@ def test_parameters(*args,**kwargs):
 		"model":{
 			"data":{
 				# "local":{
-				# 	"operator":"haar","site":"i","string":"local",
+				# 	"operator":"haar","where":"i","string":"local",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				# "unitary":{
-				# 	"operator":"haar","site":"||ij||","string":"unitary",
+				# 	"operator":"haar","where":"||ij||","string":"unitary",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },				
 				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+				# 	"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				# },
 				# "xx":{
-				# 	"operator":["X","X"],"site":">ij<","string":"xx",
+				# 	"operator":["X","X"],"where":">ij<","string":"xx",
 				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				# },	
 				# "yy":{
-				# 	"operator":["Y","Y"],"site":">ij<","string":"yy",
+				# 	"operator":["Y","Y"],"where":">ij<","string":"yy",
 				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				# },	
 				# "zz":{
-				# 	"operator":["Z","Z"],"site":">ij<","string":"zz",
+				# 	"operator":["Z","Z"],"where":">ij<","string":"zz",
 				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				# },											
 				# "z":{
-				# 	"operator":["Z"],"site":"i","string":"z",
+				# 	"operator":["Z"],"where":"i","string":"z",
 				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
 				# },
 				# "cnot":{
-				# 	"operator":["CNOT"],"site":">ij<","string":"cnot",
+				# 	"operator":["CNOT"],"where":">ij<","string":"cnot",
 				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				# },											
 				# "x":{
-				# 	"operator":["X"],"site":"i","string":"x",
+				# 	"operator":["X"],"where":"i","string":"x",
 				# 	"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
 				# },												
 				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"site":"i<j","string":"noise",
+				# 	"operator":["depolarize","depolarize"],"where":"i<j","string":"noise",
 				# 	"parameters":0,"variable":False,"ndim":3,"seed":123456789
 				# },
 				"i":{
-					"operator":["I","I"],"site":">ij<","string":"i",
+					"operator":["I","I"],"where":">ij<","string":"i",
 					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},												
 			},
@@ -2387,7 +2387,7 @@ def test_parameters(*args,**kwargs):
 			},
 		"state": {
 			"operator":"zero",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":None,
 			"D":2,
@@ -2579,10 +2579,10 @@ def test_mps(*args,**kwargs):
 		return state,data
 
 
-	N = 9
+	N = 8
 	D = 2
 	S = D**(N)
-	M = 100
+	M = 10
 	L = 2
 	T = 1
 	architecture = 'tensor'
