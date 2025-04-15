@@ -10,10 +10,11 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product,representation
+from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
+from src.utils import tensors_quimb,representation_quimb
 from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
@@ -138,7 +139,7 @@ def test_component(*args,**kwargs):
 
 	state = state(**settings.state)
 
-	basis = 'pauli'
+	basis = 'tetrad'
 	indices = {
 		'I':(data[0,0]+data[1,1]),'X':(data[0,1]+data[1,0]),
 		'Y':1j*(data[0,1]-data[1,0]),'Z':(data[0,0]-data[1,1])
@@ -1273,7 +1274,7 @@ def test_measure(*args,**kwargs):
 			},
 			"measure":{
 				"data":None,
-				"operator":"pauli",
+				"operator":"tetrad",
 				"string":"povm",
 				"N":3,
 				"D":2,
@@ -1420,8 +1421,8 @@ def test_namespace(*args,**kwargs):
 				"seed":123456789
 				},
 			"measure":{
-				"operator":"pauli",
-				"architecture":"tensor"				
+				"operator":"tetrad",
+				"architecture":"tensor_quimb"				
 			},
 			"system":{
 				"dtype":"complex",
@@ -1623,10 +1624,10 @@ def test_grad(path,tol):
 def test_module(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[2],"module.M":[5],"module.measure.operator":["pauli"],
+		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[2],"measure.D":[2],"measure.operator":["pauli"],"measure.architecture":["tensor","array"],
+		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],"measure.architecture":["tensor_quimb","array"],
 		}	
 
 	groups = None
@@ -1648,7 +1649,7 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor_quimb","options":{"cyclic":False}},
 			"options":{"contract":False,"max_bond":None,"cutoff":0},
 			"configuration":{
 				"key":[lambda value,iterable: (
@@ -1659,9 +1660,9 @@ def test_module(*args,**kwargs):
 				}			
 		},
 		"measure":{
-			"operator":"pauli",
+			"operator":"tetrad",
 			"D":2,"dtype":"complex",
-			"architecture":"tensor",
+			"architecture":"tensor_quimb",
 			"options":{"cyclic":False},
 		},		
 		"model":{
@@ -1749,7 +1750,7 @@ def test_module(*args,**kwargs):
 
 		data[index] = {}
 
-		verbose = False
+		verbose = True
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -1798,6 +1799,8 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
+		exit()
+
 		# Test
 
 		objs = state
@@ -1806,7 +1809,7 @@ def test_module(*args,**kwargs):
 			obj = i if obj is None else obj @ i
 
 		if verbose and model.N in [1]:
-			basis = 'pauli'
+			basis = 'tetrad'
 			components = ['I','X','Y','Z']
 
 			print(obj())
@@ -1841,8 +1844,8 @@ def test_module(*args,**kwargs):
 		key = "probability"
 		if measure.architecture in ["array"]:
 			value = array(probability)
-		elif measure.architecture in ["tensor"]:
-			value = tensorprod(representation(probability))
+		elif measure.architecture in ["tensor_quimb"]:
+			value = tensorprod(representation_quimb(probability))
 		
 		data[index][key] = value
 
@@ -1859,8 +1862,8 @@ def test_module(*args,**kwargs):
 		key = "amplitude"
 		if measure.architecture in ["array"]:
 			value = array(amplitude)
-		elif measure.architecture in ["tensor"]:
-			value = representation(amplitude,to=measure.architecture,contraction=True)
+		elif measure.architecture in ["tensor_quimb"]:
+			value = representation_quimb(amplitude,to=measure.architecture,contraction=True)
 
 		data[index][key] = value
 
@@ -1896,8 +1899,8 @@ def test_module(*args,**kwargs):
 		key = "operator"
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
-		elif measure.architecture in ["tensor"]:
-			value = representation(operator(parameters=parameters,state=state,**kwargs),to="tensor",contraction=True)
+		elif measure.architecture in ["tensor_quimb"]:
+			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
 
 		data[index][key] = value
 
@@ -1924,8 +1927,8 @@ def test_module(*args,**kwargs):
 			**kwargs)
 		_tmp = model(parameters=parameters,state=obj())
 
-		if isinstance(tmp,tensors):
-			tmp = representation(tmp,to=measure.architecture,contraction=True)
+		if isinstance(tmp,tensors_quimb):
+			tmp = representation_quimb(tmp,to=measure.architecture,contraction=True)
 		else:
 			tmp = array(tmp)
 
@@ -1965,8 +1968,8 @@ def test_module(*args,**kwargs):
 
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
-		if isinstance(state,tensors):
-			value = representation(state,to=module.measure.architecture,contraction=True)
+		if isinstance(state,tensors_quimb):
+			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
 			value = array(value)
 
@@ -2005,7 +2008,7 @@ def test_calculate(*args,**kwargs):
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
 		"module.measure.options":[{"cyclic":False}],
-		"module.measure.architecture":["tensor","array"],
+		"module.measure.architecture":["tensor_quimb","array"],
 		}	
 
 	# kwargs = {
@@ -2014,10 +2017,10 @@ def test_calculate(*args,**kwargs):
 	# 	"model.data.unitary.site":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
 	# 	"model.data.noise.site":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],"module.measure.symmetry":[None],
 	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-	# 	"module.measure.D":[2],"module.measure.operator":["pauli"],
+	# 	"module.measure.D":[2],"module.measure.operator":["tetrad"],
 	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
 	# 	"module.measure.options":[{"cyclic":False}],
-	# 	"module.measure.architecture":["tensor"]
+	# 	"module.measure.architecture":["tensor_quimb"]
 	# 	}	
 
 	groups = None
@@ -2039,9 +2042,9 @@ def test_calculate(*args,**kwargs):
 			"M":5,
 			"string":"module",
 			"measure":{
-				"operator":"pauli",
+				"operator":"tetrad",
 				"D":2,"dtype":"complex","seed":13579,
-				"architecture":"tensor",
+				"architecture":"tensor_quimb",
 				"options":{"cyclic":False},
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
@@ -2199,8 +2202,8 @@ def test_calculate(*args,**kwargs):
 		key = 'state'
 		if module.measure.architecture in ['array']:
 			value = array(state)
-		elif module.measure.architecture in ['tensor']:
-			value = representation(state.copy(),contraction=True).ravel()
+		elif module.measure.architecture in ['tensor_quimb']:
+			value = representation_quimb(state.copy(),contraction=True).ravel()
 
 		if verbose:
 			print(parse(value))
@@ -2258,8 +2261,8 @@ def test_calculate(*args,**kwargs):
 
 			key = attr
 
-			if isinstance(obj,tensors):
-				value = representation(obj,to=module.measure.architecture,contraction=True)
+			if isinstance(obj,tensors_quimb):
+				value = representation_quimb(obj,to=module.measure.architecture,contraction=True)
 			else:
 				value = array(obj)
 
@@ -2281,12 +2284,12 @@ def test_calculate(*args,**kwargs):
 def test_parameters(*args,**kwargs):
 
 	kwargs = {
-		"module.N":[4],"module.M":[3],"module.measure.operator":["pauli"],
+		"module.N":[4],"module.M":[3],"module.measure.operator":["tetrad"],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[4],"measure.D":[2],"measure.operator":["pauli"],
-		"measure.architecture":["tensor","array"],
-		"measure.architecture":["tensor"],
+		"measure.N":[4],"measure.D":[2],"measure.operator":["tetrad"],
+		"measure.architecture":["tensor_quimb","array"],
+		"measure.architecture":["tensor_quimb"],
 		}	
 
 	groups = None
@@ -2308,7 +2311,7 @@ def test_parameters(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"pauli","operator":"pauli","architecture":"tensor","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor_quimb","options":{"cyclic":False}},
 			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
 			"configuration":{
 				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
@@ -2317,9 +2320,9 @@ def test_parameters(*args,**kwargs):
 				}			
 		},
 		"measure":{
-			"operator":"pauli",
+			"operator":"tetrad",
 			"D":2,"dtype":"complex",
-			"architecture":"tensor",
+			"architecture":"tensor_quimb",
 			"options":{"cyclic":False},
 		},		
 		"model":{
@@ -2470,8 +2473,8 @@ def test_parameters(*args,**kwargs):
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
 		key = 'data'
-		if isinstance(state,tensors):
-			value = representation(state,to=module.measure.architecture,contraction=True)
+		if isinstance(state,tensors_quimb):
+			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
 			value = array(value)
 
@@ -2511,7 +2514,7 @@ def test_mps(*args,**kwargs):
 			reload(src.utils)
 			reload(src.quantum)
 			from src.quantum import MPS as mps
-		elif architecture in ['mps']:
+		elif architecture in ['tensor_quimb']:
 			os.environ['NUMPY_BACKEND'] = 'quimb'
 			reload(src.utils)
 			reload(src.quantum)			
@@ -2567,7 +2570,7 @@ def test_mps(*args,**kwargs):
 
 			if architecture in ['tensor']:
 				value = basis.shuffle(value,shape=[D**2]*len(where))
-			elif architecture in ['mps']:
+			elif architecture in ['tensor_quimb']:
 				pass
 
 			data[i] = {'data':value,'where':where}
@@ -2576,15 +2579,15 @@ def test_mps(*args,**kwargs):
 		return state,data
 
 
-	N = 8
+	N = 9
 	D = 2
 	S = D**(N)
 	M = 100
 	L = 2
 	T = 1
 	architecture = 'tensor'
-	architecture = 'mps'
-	architecture = 'all'
+	architecture = 'tensor_quimb'
+	# architecture = 'all'
 	parameters = 1e-3,
 	seed = 123456789
 	seed = seeder(seed)
@@ -2609,9 +2612,9 @@ def test_mps(*args,**kwargs):
 					state = state(value,where=where,options=options)
 		print(state)
 
-	if architecture in ['mps','all']:
+	if architecture in ['tensor_quimb','all']:
 		for i in range(T):
-			state_quimb,data_quimb = init(N,D,S,L,architecture='mps')
+			state_quimb,data_quimb = init(N,D,S,L,architecture='tensor_quimb')
 			for k in range(M):
 				for i in data_quimb:
 					value,where = data_quimb[i]['data'],data_quimb[i]['where']

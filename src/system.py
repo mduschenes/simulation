@@ -30,51 +30,76 @@ class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
 	Args:
+		string (str): Data string identification of class
+		
 		dtype (str,data-type): Data type of class
 		format (str): Format of array
 		device (str): Device for computation
-		seed (array,int): Seed for random number generation
-		random (str): Type of random number generation
-		key (object): key for class
-		timestamp (str): timestamp for class
 		backend (str): backend for class
 		architecture (str): architecture for class
 		configuration (object): configuration for class
+
+		key (object): key for class
+		seed (array,int): Seed for random number generation
+		seeding (array,int): Seed for random number generation
+		random (str): Type of random number generation
+		instance (array,int): Seed for random number generation
+		instances (array,int): Seed for random number generation
 		samples (int,iterable[int]): samples for class
+		
 		base (str): base for class
 		unit (int,float): units of values
-		options (dict): options for system
+
+		path (str): Path to load and dump class data
+		cwd (str): Directory to dump class data	
+		lock (bool): Lock file for load and dump
+		timestamp (str): Timestamp for load and dump
+
+		conf (str): Configuration path for class logging
+		logger (str): Log file path for class logging
+		cleanup (bool): Cleanup class log files
 		verbose (bool,str): Verbosity of class	
+
+		options (dict): options for system
+
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
 	'''
+
 	def __init__(self,*args,**kwargs):
 
 		defaults = {
 			'string':__name__,
+			
 			'dtype':'complex',
 			'format':'array',
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
 			'configuration':None,
-			'samples':None,
-			'base':None,
-			'unit':None,
-			'options':None,			
+
+			'key':None,
 			'seed':None,
 			'seedling':None,
 			'random':None,
-			'key':None,
 			'instance':None,
 			'instances':None,
-			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-			'cwd':None,
+			'samples':None,
+
+			'base':None,
+			'unit':None,
+
 			'path':None,
+			'cwd':None,
+			'lock':None,
+			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+
 			'conf':None,
 			'logger':None,
 			'cleanup':None,
 			'verbose':None,
+
+			'options':None,						
 		}
 
 		def updates(kwargs,defaults):
@@ -105,7 +130,7 @@ class System(Dictionary):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 	def __clean__(self,cleanup=None):
 		'''
@@ -271,7 +296,7 @@ class Space(System):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 		
 
 class Time(System):
@@ -392,7 +417,7 @@ class Time(System):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 
 class Lattice(object):
@@ -617,7 +642,7 @@ class Lattice(object):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 	def __len__(self):
 		return self.vertices.stop - self.vertices.start

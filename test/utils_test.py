@@ -1253,6 +1253,27 @@ def test_jax(path=None,tol=None):
 	return
 
 
+def test_tensor(path=None,tol=None):
+
+	from src.utils import rand,tensor,sin
+
+	shape = (3,5,2)
+	dtype = 'complex128'
+	seed = 123
+	func = sin
+
+	data = rand(shape,seed=seed,dtype=dtype)
+	kwargs = dict()
+
+	data = tensor(data,**kwargs)
+
+	print(data)
+
+	print(func(data))
+
+	print('Passed')
+
+	return
 
 
 
@@ -1269,7 +1290,7 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	test_shuffle(path,tol)	
+	# test_shuffle(path,tol)	
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
@@ -1280,3 +1301,4 @@ if __name__ == '__main__':
 	# test_groupby(path,tol)
 	# test_struct(path,tol)
 	# test_jax(path,tol)
+	# test_tensor(path,tol)

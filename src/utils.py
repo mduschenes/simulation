@@ -6,6 +6,7 @@ from copy import deepcopy as copy
 from string import ascii_lowercase as characters
 from math import prod
 
+import inspect
 from functools import partial,wraps
 from natsort import natsorted
 import hashlib
@@ -81,11 +82,10 @@ if backend in ['jax','jax.autograd','quimb']:
 	from jax.tree_util import register_pytree_node_class as tree_register
 	from jax.tree_util import tree_map as tree_map
 
-	if backend in ['quimb']:
-		import quimb as qu
-		import quimb.tensor as qtn
-
 	import opt_einsum
+
+	import quimb as qu
+	import quimb.tensor as qtn
 
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
@@ -111,6 +111,9 @@ elif backend in ['autograd']:
 	import autograd.scipy.linalg
 
 	import opt_einsum
+
+	import quimb as qu
+	import quimb.tensor as qtn
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -184,7 +187,7 @@ class Null(object):
 	def __str__(self):
 		return 'Null'
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 class none(object):
 	def __init__(self,default=0,*args,**kwargs):
@@ -268,16 +271,9 @@ if backend in ['jax','jax.autograd','quimb']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	strings = (str,)
 	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,)
-	structures = ()
-
-	if backend in ['quimb']:
-		tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-		matrices = (qtn.MatrixProductState,)
-	else:
-		tensors = ()
-		matrices = ()
 
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
@@ -313,12 +309,10 @@ elif backend in ['autograd']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	strings = (str,)
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,)
-	structures = ()	
-	tensors = ()
-	matrices = ()	
-
+	
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
 	nulls = (Null,)
@@ -344,12 +338,10 @@ elif backend in ['numpy']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	strings = (str,)	
 	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,)
-	structures = ()	
-	tensors = ()
-	matrices = ()	
-
+	
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)
 	nulls = (Null,)
@@ -1894,6 +1886,199 @@ def datatype(dtype):
 	
 	return np.dtype(dtype).type(0).real.dtype
 
+def arrayify(cls,new,*classes):
+
+	classes = (*classes,type(cls),cls.__class__,)
+
+	attrs = ['setup','init','__jax_array__','__array_function__','__array_ufunc__','__array_wrap__']
+
+	attr = 'setup'
+	for attr in attrs:
+		
+		if attr in ['setup']:
+			def func(self,data=None,indices=None,**kwargs):
+				'''
+				Setup class
+				Args:
+					data (array): Class data
+					indices (int,str,iterable[int,str]): Class indices
+					kwargs (dict): Additional class keyword arguments
+				'''
+
+				data = self.data if data is None else data
+				indices = self.indices if indices is None else indices
+
+				cls = array
+				classes = arrays
+				options = dict(order=None,dtype=None)
+				options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+
+				if not isinstance(data,classes):
+					data = cls(data,**options)
+
+				length = data.ndim
+				if indices is None:
+					indices = []
+				elif isinstance(indices,integers):
+					indices = symbols(indices)
+				elif isinstance(indices,strings):
+					indices = str(indices)
+				if not isinstance(indices,iterables):
+					indices = [indices]
+
+				indices = [*indices,*[symbols(i) for i in range(len(indices),length)]]
+
+				self.data = data
+				self.indices = indices
+
+				return
+
+		elif attr in ['init']:
+			def func(self,**kwargs):
+				'''
+				Initialize class
+				Args:
+					kwargs (dict): Additional class keyword arguments
+				'''
+				return
+
+		elif attr in ['__jax_array__']:
+			def func(self,*args,**kwargs):
+				return self.data
+
+		elif attr in ['__array_function__']:
+			funcs = {np.isclose: lambda self,other,*args,**kwargs: np.isclose(np.asarray(self),np.asarray(other),*args,**kwargs)}
+			def func(self,func,types,args,kwargs):
+				if func not in funcs:
+					return new(data=getattr(cls,attr)(func,types,args,kwargs))
+				else:
+					return new(data=funcs[func](*args,**kwargs))
+
+		elif attr in ['__array_ufunc__']:
+			def func(self,ufunc,method,*inputs,out=None,**kwargs):
+				return getattr(cls,attr)(ufunc,method,*(i.data if isinstance(i,new) else i for i in inputs),out=out,**kwargs)
+
+		elif attr in ['__array_wrap__']:
+			def func(self,out_arr,context=None,return_scalar=False):
+				return new(data=getattr(cls,attr)(out_arr, context, return_scalar))
+
+		if not hasattr(new,attr):
+			setattr(new,attr,func)
+
+
+	attrs = ['shape','size','ndim','dtype']
+	for attr in attrs:
+		
+		if attr in ['shape']:
+			@property
+			def func(self):
+				return self.data.shape
+
+		elif attr in ['size']:
+			@property
+			def func(self):
+				return self.data.size
+
+		elif attr in ['ndim']:
+			@property
+			def func(self):
+				return self.data.ndim				
+
+		elif attr in ['dtype']:
+			@property
+			def func(self):
+				return self.data.dtype
+	
+		if not hasattr(new,attr):
+			setattr(new,attr,func)
+
+	attrs = (
+		"__abs__","__neg__","__pos__",
+		)
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
+
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			return new(data=attribute(self.data,*args,**kwargs),indices=self.indices)
+
+		return func
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+	attrs = (
+		"__add__","__radd__","__sub__","__rsub__","__mul__","__mod__",
+		"__rmul__","__matmul__","__rmatmul__",
+		"__truediv__","__rtruediv__","__floordiv__","__rfloordiv__",
+		"__pow__","__rpow__",
+		"__gt__","__ge__","__lt__","__le__","__eq__","__ne__",
+		)
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
+
+		@wraps(attribute)
+		def func(self,other,*args,**kwargs):
+			if isinstance(other,new):
+				return new(data=attribute(self.data,other.data,*args,**kwargs),indices=self.indices)
+			else:
+				return new(data=attribute(self.data,other,*args,**kwargs),indices=self.indices)
+
+		return func	
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+	attrs = [
+		key for key,value in dict(inspect.getmembers(cls)).items() 
+		if isinstance(value,property) and 
+		not key.startswith('_') and 
+		key not in dir(new) and 
+		key not in ['at']
+		]
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
+
+		@property
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			data = getattr(self.data,attr)
+			if isinstance(data,classes):
+				return new(data=data,indices=self.indices)
+			else:
+				return data
+
+		return func	
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+	attrs = [
+		key for key,value in dict(inspect.getmembers(cls)).items()
+		if callable(value) and 
+		not key.startswith('_') and 
+		key not in dir(new) and 
+		key not in []
+		]
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
+
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			data = getattr(self.data,attr)(*args,**kwargs)
+			if isinstance(data,classes):
+				return new(data=data,indices=self.indices)
+			else:
+				return data
+
+		return func
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+
+	return new
+
 class Array(onp.ndarray):
 	'''
 	Numpy array subclass, subclass of nd.ndarray with array of data of shape
@@ -1961,7 +2146,7 @@ class Array(onp.ndarray):
 		else:
 			data = onp.asarray(data)
 		self.data = data
-		self.string = data.__str__()
+		self.string = str(data)
 		return
 
 	def __repr__(self):
@@ -2246,40 +2431,1109 @@ def wrapper(function,*arguments,**keywords):
 	return wrapper	
 
 
-class Array(onp.ndarray):
-	'''
-	array subclass (TODO: Views do not copy attrs)
-	'''
-	def __new__(cls,obj,attrs={},**kwargs):
-		self = onp.asarray(obj,**kwargs).view(cls)
-		self.attrs = attrs
-		for attr in self.attrs:
-			setattr(self,attr,attrs[attr])
-		return self
 
-	def __array_finalize__(self, obj):
-		if obj is None:
+if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
+
+	class array(np.ndarray):
+		'''
+		array class
+		Args:
+			args (iterable): Array positional arguments
+			kwargs (dict): Array keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return np.array(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
+
+	class tensor(object):
+		'''
+		tensor class
+		Args:
+			data (iterable,array,tensor,object): Class data
+			indices (iterable[int,str]): Class indices
+			string (str): Class string
+			kwargs (dict): Additional class keyword arguments
+		'''
+		def __init__(self,data,indices=None,string=None,**kwargs):
+
+			super().__init__(**kwargs)
+
+			self.data = data
+			self.indices = indices
+			self.string = string
+
+			self.setup()
+
+			self.init()
+
 			return
-		try:
-			self.attrs = obj.attrs
-			for attr in self.attrs:
-				setattr(self,attr,getattr(obj,attr,None))
-		except:
-			pass
-		return
 
-class array(np.ndarray):
-	'''
-	array class
-	Args:
-		args (iterable): Array positional arguments
-		kwargs (dict): Array keyword arguments
-	Returns:
-		out (array): array
-	'''
-	def __new__(cls,*args,**kwargs):
-		return np.array(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,indices=None,string=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (iterable,array,tensor,object): Class data
+				indices (iterable[int,str]): Class indices
+				string (str): Class string
+				kwargs (dict): Additional class keyword arguments				
+			'''		
+
+			data = data if data is not None else self.data
+			indices = indices if indices is not None else self.indices
+			string = string if string is not None else self.string
+
+			if isinstance(data,self.__class__):
+				data = data.data
+				indices = data.indices
+				string = data.string
+
+			cls = array
+			classes = arrays
+			options = dict(order=None,dtype=None)
+			options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+
+			if not isinstance(data,classes):
+				data = cls(data,**options)
+
+			string = str(string) if string is not None else string
+
+			length = data.ndim
+			if indices is None:
+				indices = []
+			elif isinstance(indices,integers):
+				indices = symbols(indices)
+			elif isinstance(indices,strings):
+				indices = str(indices)
+			if not isinstance(indices,iterables):
+				indices = [indices]
+
+			indices = [f'{string if string is not None else ""}{i}'
+				for i in [*indices,*[symbols(i) for i in range(len(indices),length)]]
+				]
+
+			self.data = data
+			self.indices = indices
+			self.string = string
+
+			return
+
+		@property
+		def shape(self):
+			return self.data.shape
+
+		@property
+		def size(self):
+			return self.data.size
+
+		@property
+		def ndim(self):
+			return self.data.ndim
+
+		@property
+		def dtype(self):
+			return self.data.dtype
+
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = dict(zip(self.indices,self.data.shape))
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
+
+		def __len__(self):
+			return len(self.data)
+		
+		def __iter__(self):
+			yield from self.data
+
+		def __getitem__(self,index):
+			return self.data.get(index)
+
+		def __setitem__(self,index,value):
+			self.data = inplace(self.data,index,value)
+			return
+
+		def __call__(self,data=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (iterable,array,tensor,object): Class data
+				kwargs (dict): Additional class keyword arguments
+			Returns:
+				data (dict): Class data
+			'''
+			
+			if isinstance(data,arrays):
+				self.data = data
+			elif callable(data):
+				data = data(self.data,**kwargs)
+			else:
+				data = self.data
+
+			return data
+
+
+	class matrix(dict):
+		'''
+		matrix class
+		Args:
+			args (iterable): Additional class positional arguments
+			kwargs (dict): Additional class keyword arguments
+		'''
+		pass
+
+	class mps(matrix):
+		'''
+		Matrix Product State class
+		Args:
+			data (iterable,int,str,callable,array,tensor,object): Class data
+			parameters (array,dict): Class parameters
+			string (str): Class string
+			N (int): Class system size
+			D (int): Class physical bond dimension
+			S (int): Class virtual bond dimension
+			kwargs (dict): Additional keyword arguments
+		'''
+
+		def __init__(self,data=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
+
+			super().__init__(**kwargs)
+
+			self.data = data
+			self.parameters = parameters
+			self.string = string
+
+			self.N = N
+			self.D = D
+			self.S = S
+
+			self.setup()
+
+			self.init()
+
+			return
+
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,parameters=None,string=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (str,array,tensor,mps): data of class
+				parameters (array,dict): parameters of class
+				string (str): Class string				
+				kwargs (dict): Additional class keyword arguments				
+			'''
+
+			data = data if data is not None else self.data
+			parameters = parameters if parameters is not None else self.parameters
+			string = string if string is not None else self.string
+
+			N = self.N if self.N is not None else 0
+			D = self.D if self.D is not None else 0
+			S = self.S if self.S is not None else 0
+
+			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
+
+			string = str(string) if string is not None else string
+
+			cls = array
+			classes = arrays
+			boolean = lambda data: (data.ndim == 1)
+			for i in data:
+
+				if callable(data[i]):
+					data[i] = data[i](**kwargs)
+
+				if boolean(data[i]):
+					axes = range(data[i].ndim+2)
+					shape = [1,*data[i].shape,1]
+					data[i] = transpose(reshape(data[i],shape),axes)
+
+				options = dict(string=i)
+				options = dict()
+
+				data[i] = cls(data[i],**options)
+
+			scheme = {
+				scheme:self.schemes(scheme=scheme,**kwargs)
+				for scheme in [None,'svd','nmf','_nmf','qr','stq','eig','spectrum','probability','_spectrum','_probability']
+			}
+
+			self.data = data
+			self.parameters = parameters
+			self.string = string
+
+			self.scheme = scheme
+
+			self.N = max(N,max(self)+1)
+			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
+			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
+
+			for kwarg in kwargs:
+				if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+					setattr(self,kwarg,kwargs[kwarg])
+
+			return
+
+		def update(self,data=None,shape=None,axes=None,where=None,options=None,**kwargs):
+			'''
+			Update class data
+			Args:
+				data (array,dict): Class data		
+				shape (iterable[int]): Shape of data
+				axes (iterable[int]): Axes order of data
+				where (float,int,iterable[int]): indices of class
+				options (dict): Options of class
+				kwargs (dict): Additional class keyword arguments				
+			Returns:
+				data (dict): Class data		
+			'''	
+
+			data = self if data is None else data
+
+			options = dict() if options is None else options
+
+			defaults = dict(rank=self.S)
+
+			N = self.N
+			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
+			scheme = options.get('scheme',kwargs.get('scheme'))
+
+			indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
+
+			if isinstance(data,dict):
+
+				for i in indices:
+
+					if i < min(where):
+
+						state = data[i]
+						shape = state.shape
+						axes = axes
+
+						state = self.organize(data=state,where=i,transform=True,conj=False,**kwargs)
+
+						u,v,s = self.scheme[scheme](state,conj=False,**{**defaults,**kwargs,**options})
+
+						size = addition(s) if not isinstance(s,integers) else s
+
+						state = self.organize(data=u,where=i,shape=[*shape[:-1],size],axes=axes,transform=False,conj=False,**kwargs)
+
+						data[i] = state
+
+						if i < (N-1):
+							if v is not None:
+								data[i+1] = dot(v,data[i+1])
+							elif not isinstance(s,integers):
+								data[i+1] = data[i+1][s]
+							else:
+								data[i+1] = data[i+1][:s]
+
+
+					elif i > max(where):
+
+						state = data[i]
+						shape = state.shape
+						axes = axes
+
+						state = self.organize(data=state,where=i,transform=True,conj=True,**kwargs)
+						
+						u,v,s = self.scheme[scheme](state,conj=True,**{**defaults,**kwargs,**options})
+
+						size = addition(s) if not isinstance(s,integers) else s
+
+						state = self.organize(data=v,where=i,shape=[size,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+						
+						data[i] = state
+
+						if i > 0:
+							if u is not None:
+								data[i-1] = dot(data[i-1],u)
+							elif not isinstance(s,integers):
+								data[i-1] = data[i-1][...,s]
+							else:
+								data[i-1] = data[i-1][...,:s]
+
+			elif isinstance(data,arrays):
+
+				if len(where) == 1:
+
+					data = dict(zip(where,[data]))
+
+				elif len(where) == 2:
+
+					data = self.organize(data,where=where,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
+
+					u,v,s = self.scheme[scheme](data,conj=False,**{**defaults,**kwargs,**options})
+
+					# error = (norm(data-dot(u,v))/norm(data)).real
+
+					data = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
+
+					data = dict(zip(where,data))
+
+					if 0:
+
+						tmp = {**kwargs.get('state',options.get('state')),**state}
+						variables = kwargs.get('variables')
+						D,N,S = kwargs.get('D',options.get('D')),None,kwargs.get('S',options.get('S'))
+						basis = self
+
+						options = dict(D=D,N=N)
+						constant = real(1-addition(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
+
+						options = dict(D=D,N=N)
+						spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
+
+						hermitian = real(norm(spectrum-dagger(spectrum)))+0.
+
+						options = dict(compute_v=False,hermitian=True)
+						spectrum = eig(spectrum,**options)
+						ratio = real(-addition(spectrum[spectrum<=0])/addition(spectrum[spectrum>0]))+0.
+						
+						sums = {i:(
+									asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))),
+									asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))))
+								for i in tmp}
+
+						print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
+						print(sums)
+						print()
+					# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
+					# variables['u.condition'].append(condition_number(dot(u.T,u).real))
+					# variables['v.condition'].append(condition_number(dot(v,v.T).real))
+					# variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,**options)))
+					# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
+					# variables['uv.error'].append(sqrt(norm(state-dot(u,v))/norm(state)).real)
+					# variables['uv.spectrum'].append(spectrum)
+					# variables['uv.rank'].append(S)
+
+					# parse = lambda obj: asscalar(obj.real)
+					# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
+				else:
+					raise NotImplementedError(f"Not Implemented {where}")
+
+			for i in data:
+				self[i] = data[i]
+
+			return data
+
+		def organize(self,data=None,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
+			'''
+			Organize class data
+			Args:
+				data (array,dict): Class data
+				shape (iterable[int]): Shape of data
+				axes (iterable[int]): Axes order of data
+				conj (bool): Conjugate of class data
+				where (float,int,iterable[int]): indices of class
+				transform (bool): Forward or backward transform data
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (array): Class data
+			'''			
+
+			data = self if data is None else data
+
+			if transform:
+				
+				if isinstance(data,dict):
+					where = [*data] if where is None else [where] if not isinstance(where,iterables) else [*where]
+					N = len(where)
+
+					shape = [k for i,j in enumerate(where) for k in ([prod(data[j].shape[:2]),*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],prod(data[j].shape[-2:])] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+					axes = range(N) if axes is None else axes
+					subscripts = '%s->%s'%(
+						','.join(
+							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+							for i in range(N)
+							),
+						''.join(
+							''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
+							for i in range(N)
+							),
+						)
+
+					data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+					
+				elif isinstance(data,tuple):
+					raise NotImplementedError(f"Not Implemented {data}")
+				
+				elif isinstance(data,arrays):
+					if data.ndim == 1:
+						if not conj:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = [0] if axes is None else axes
+						else:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = [0] if axes is None else axes
+					elif data.ndim == 2:
+						if not conj:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes					
+					elif data.ndim == 3:
+						if not conj:
+							shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [data.shape[0],prod(data.shape[1:-1])*data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					elif data.ndim == 4:
+						if not conj:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					else:
+						raise NotImplementedError(f"Not Implemented {data}")
+					
+					data = reshape(transpose(data,axes),shape)
+
+			else:
+
+				if isinstance(data,dict):
+					raise NotImplementedError(f"Not Implemented {data}")
+			
+				elif isinstance(data,tuple):
+					where = range(len(data)) if where is None else [where] if not isinstance(where,iterables) else [*where]
+					shape = [[*data[0].shape[:2],1],[1,*data[1].shape[-2:]]] if shape is None else shape
+					axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
+					data = [transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)]
+					
+				elif isinstance(data,arrays):
+					if data.ndim == 1:
+						if not conj:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = range(data.ndim+2) if axes is None else axes
+						else:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = range(data.ndim+2) if axes is None else axes
+					elif data.ndim == 2:
+						if not conj:
+							shape = [data.shape[0],prod(data.shape[1:-1]),-1] if shape is None else shape
+							axes = range(data.ndim+1) if axes is None else axes
+						else:
+							shape = [-1,prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim+1) if axes is None else axes
+					elif data.ndim == 3:
+						if not conj:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					elif data.ndim == 4:
+						if not conj:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim-2) if axes is None else axes
+						else:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim-2) if axes is None else axes
+					else:
+						raise NotImplementedError(f"Not Implemented {data}")
+
+					data = transpose(reshape(data,shape),axes)
+
+			return data
+
+		def shuffle(self,data,shape,where=None,transform=True,**kwargs):
+			'''
+			Shuffle class data
+			Args:
+				data (array,dict): Class data
+				shape (iterable[int]): Shape of data
+				where (float,int,iterable[int]): indices of class
+				transform (bool): Forward or backward transform data
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (array): Class data
+			'''	
+
+			if transform:
+				n,d = len(shape),data.ndim
+				where = [range(n)] if where is None else [where,sorted(set(range(n))-set(where))]
+				shape = [*shape]*d
+				axes = [j*n+i for indices in where for j in range(d) for i in indices]
+				data = transpose(reshape(data,shape),axes)
+			else:
+				n,d = len(shape),data.ndim//len(shape)
+				where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+				shape = [prod(shape)]*d
+				axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
+				data = reshape(transpose(data,axes),shape)
+			return data
+
+		def schemes(self,options=None,**kwargs):
+			'''
+			Scheme for updating class
+			Args:
+				options (dict): Class options
+				kwargs (dict): Additional class keyword arguments
+			Returns:
+				scheme (callable): Scheme function with signature scheme(a,rank=None,conj=None,**options)
+			'''
+			options = dict() if options is None else options
+
+			scheme = options.get('scheme',kwargs.get('scheme'))
+			eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
+
+			def wrapper(func):
+				def decorator(a,rank=None,conj=None,**kwargs):
+					a = dagger(a) if conj else a
+					rank = min(a.shape) if rank is None else rank    
+					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					i = min(*u.shape,*v.shape)
+					# s = addition(u,0)
+					# i = abs(s)>eps
+					# u,v,s = u[:,i],v[i,:],s[i]
+					# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
+					u,v,s = u,v,i				
+					# u,v,s = cmplx(u),cmplx(v),s
+					return u,v,s
+				return decorator
+
+			if scheme is None:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+					u,s,v = svds(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+					return u,v,s				
+			elif scheme in ['svd']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+					u,s,v = svds(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					u,v = u,dotl(v,s)
+					return u,v,s
+			elif scheme in ['nmf']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict()		
+					u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+					return u,v,s
+			elif scheme in ['_nmf']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict()
+					u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,s,v = u[:,:rank],s[:rank],v[:rank,:]
+					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+					return u,v,s
+
+			def wrapper(func):
+				def decorator(a,rank=None,conj=None,**kwargs):
+					a = dagger(a) if conj else a
+					rank = min(a.shape) if rank is None else rank    
+					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					i = min(*u.shape,*v.shape)
+					# s = addition(u,0)
+					# i = abs(s)>eps				
+					# u,v,s = u[:,i],v[i,:],s[i]
+					# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
+					u,v,s = u,v,i
+					# u,v,s = cmplx(u),cmplx(v),s
+					return u,v,s
+				return decorator
+
+			if scheme in ['qr']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(mode='reduced')
+					u,v = qrs(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					s = None
+					return u,v,s				
+			
+			def wrapper(func):
+				def decorator(a,rank=None,conj=None,**kwargs):
+					a = dagger(a) if conj else a
+					rank = min(a.shape) if rank is None else rank    
+					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+					u,v,s = u[:,:rank],v,s
+					i = min(*u.shape)
+					# s = addition(u,0)
+					# i = abs(s)>eps				
+					# u,v,s = u[:,i],v,s
+					# u,v,s = dotr(u,reciprocal(s)),diag(s),s				
+					u,v,s = (v,dagger(u),s) if conj else (u,v,s)
+					u,v,s = u,v,i
+					# u,v,s = (u,cmplx(v),s) if conj else (cmplx(u),v,s)
+					return u,v,s
+				return decorator
+
+			if scheme in ['stq']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict()		
+					u,v,s = a,None,None
+					return u,v,s				
+			
+			def wrapper(func):
+				def decorator(a,rank=None,conj=None,**kwargs):
+					a = dagger(a) if conj else a
+					rank = min(a.shape) if rank is None else rank    
+					s = func(a,rank=rank,conj=conj,**kwargs) 
+					s = s[:rank]
+					return s
+				return decorator
+
+			if scheme in ['eig']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(compute_v=False,hermitian=False)	
+					rank = min(a.shape) if rank is None else rank    
+					s = eig(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					return s
+			elif scheme in ['spectrum']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
+					s = svd(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					return s
+			elif scheme in ['probability']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict()
+					u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					return s
+			elif scheme in ['_spectrum']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)	
+					s = svd(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					return s				
+			elif scheme in ['_probability']:
+				@wrapper
+				def scheme(a,rank=None,conj=None,**options):
+					defaults = dict()						
+					u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					return s								
+			
+			return scheme
+
+		@property
+		def shape(self):
+			return {i:self[i].shape for i in self}
+
+		@property
+		def size(self):
+			return prod(self[i].size for i in self)
+
+		@property
+		def ndim(self):
+			return max(self[i].ndim for i in self)
+
+		@property
+		def dtype(self):
+			return self[min(self)].dtype
+
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			if all(isinstance(self[i],tensor) for i in self):
+				data = ' , '.join([f'{i}:{dict(zip(self[i].indices,self[i].shape))}' for i in self])
+			else:
+				data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
+
+		def __len__(self):
+			return len(self.data)
+		
+		def __iter__(self):
+			yield from self.data
+
+		def __getitem__(self,index):
+			return self.data.get(index)
+
+		def __setitem__(self,index,value):
+			self.data[index] = value
+			return
+
+		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (array,callable): Array to apply to class
+				parameters (array): Class parameters
+				where (float,int,iterable[int]): indices of class
+				options (dict): Options of class
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (dict): Class with data applied
+			'''
+
+			state = self
+			options = dict() if options is None else options		
+			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
+			shape = [state[i].shape for i in where]		
+
+			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
+			# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+
+			if isinstance(data,arrays):
+
+				L = len(where)
+				# shapes = [j for i in where for j in state[i].shape[1:-1]]
+				subscripts = '%s,%s->%s%s%s'%(
+					''.join((
+						''.join(symbols(i) for i in range(L)),
+						''.join(symbols(L+i) for i in range(L))
+						)),
+					','.join(''.join((
+						symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) 
+						for i in range(L)
+						),
+					''.join((symbols(2*L),)),
+					''.join(symbols(i) for i in range(L)),
+					''.join((symbols(2*L+L),))
+					)
+
+				# data = self.shuffle(data,shape=shapes,**kwargs)
+
+				data = einsum(subscripts,data,*(state[i] for i in where))
+
+			else:
+
+				data = data(state,where=where)
+
+			scheme = options.get('scheme',kwargs.get('scheme'))
+			data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
+
+			scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
+			state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+
+			data = state
+
+			return data
+
+
+
+	class tensor_quimb(qtn.Tensor):
+		'''
+		tensor class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Tensor(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
+
+	class mps_quimb(qtn.MatrixProductState):
+		'''
+		matrix product state class
+		Args:
+			data (iterable,int,str,callable,array,tensor,object): Class data
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,data,*args,**kwargs):
+
+			if isinstance(data,tensors_quimb):
+				self = data
+			elif isinstance(data,arrays):
+				kwargs.update(dict(arrays=data))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,iterables):
+				kwargs.update(dict(arrays=asarray(data)))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,str):
+				kwargs.update(dict(binary=data))
+				self = qtn.MPS_computational_state(*args,**kwargs)
+			elif isinstance(data,integers):
+				kwargs.update(dict(L=data))
+				self = qtn.MPS_rand_state(*args,**kwargs)
+			elif callable(data):
+				kwargs.update(dict(fill_fn=data))
+				self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
+			else:
+				self = qtn.MatrixProductState(data,*args,**kwargs)
+			return self
+			# return super().__init__(cls,*args,**kwargs)
+
+
+	class gate_quimb(qtn.Gate):
+		'''
+		gate class
+		Args:
+			args (iterable): Gate arguments
+			kwargs (dict): Gate keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Gate(*args,**kwargs)
+			# return super().__init__(cls,*args,**kwargs)
+
+
+	tensors = (tensor,matrix,)
+	matrices = (matrix,)	
+
+	tensors_quimb = (tensor_quimb,gate_quimb,qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+	matrices_quimb = (mps_quimb,qtn.MatrixProductState,)
+
+	objects = (*arrays,*tensors,*matrices,*tensors_quimb,*matrices_quimb)
+
+
+	def contract_quimb(obj,where=None,**kwargs):
+		'''
+		Contract object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+
+		options = dict(output_inds=where) 
+
+		obj = obj.contract(**{**kwargs,**options})
+
+		return obj
+
+
+	def reduce_quimb(obj,where=None,**kwargs):
+		'''
+		Reduce object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+
+		obj = contract_quimb(obj)
+
+		where = getattr(obj,'inds',getattr(obj,'sites',None))
+
+		if where is None:
+			return obj
+
+		for i in where:
+			options = dict(ind=i) 
+			obj = obj.sum_reduce(**{**kwargs,**options})
+
+		return obj
+
+
+	def fuse_quimb(obj,where=None,**kwargs):
+		'''
+		Fuse object
+		Args:
+			obj (tensor): object
+			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Fused object
+		'''
+
+		options = dict(fuse_map=where) 
+
+		obj = obj.fuse(**{**kwargs,**options})
+
+		return obj
+
+
+	def representation_quimb(obj,to=True,contraction=None,func=None,**kwargs):
+		'''
+		Get data of object
+		Args:
+			obj (tensor): object
+			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor_quimb']
+			contraction (bool): Contract data
+			func (callable): Wrapper function for data with signature func(obj)
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): data of object
+		'''
+
+		if not isinstance(obj,tensors_quimb):
+			return obj
+		
+		if contraction:
+			obj = contract_quimb(obj,**kwargs)
+
+		if not isinstance(obj,tensors_quimb):
+			return obj
+
+		if to in ['array']:
+			obj,structure = qtn.pack(obj)
+			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+
+		elif to in ['tensor_quimb']:
+			axes = tuple(i 
+				for i in sorted(set((i 
+				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
+				for string in tuple(sorted(set(i[0] 
+				for i in obj.inds)))) if i))) 
+				)
+			where = tuple(j for i in axes for j in i)
+			arguments = tuple(axes)
+			keywords = dict()
+			obj = contract_quimb(obj,where=where,**kwargs)
+			obj = obj.to_dense(*arguments,**keywords)
+
+		elif to in ['data']:
+			obj,structure = qtn.pack(obj)
+
+		elif to in ['structure']:
+			data,obj = qtn.pack(obj)
+
+		elif to:
+			obj,structure = qtn.pack(obj)
+			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+		
+		if func is not None:
+			obj = func(obj)
+
+		return obj
+
+
+	class context_quimb(object):
+		'''
+		Update object attributes within context with key
+		Args:
+			key (object): Key to update attributes
+			objs (iterable[object]): Objects with attributes to update
+			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+		'''
+		def __init__(self,*objs,key=None,formats=None):
+
+			if formats is None:
+				formats = ['inds','tags']
+			elif isinstance(formats,str):
+				formats = [formats]
+			if not isinstance(formats,dict):
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					for attr in formats}
+			else:
+				if key is None:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}
+				elif isinstance(key,iterables):
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}		
+				else:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}					
+
+			attributes = [attr for attr in formats]
+			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+			
+			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+			
+			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+
+			self.key = key
+			self.objs = objs
+			self.formats = formats
+			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+			self.funcs = [{attr: func for attr in attributes} for obj in objs]
+			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+			self.args = tuple()
+			self.kwargs = dict(inplace=True)
+
+			return
+
+		def __enter__(self):
+			for i in range(len(self)):
+				for attr in self.funcs[i]:
+					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+
+		def __exit__(self, type, value, traceback):
+			for i in range(len(self)):
+				for attr in self._funcs[i]:
+					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+		
+		def __len__(self):
+			return len(self.objs)
+
+		@classmethod
+		def attributes(cls,obj,attr,attrs=None,**kwargs):
+			if attrs is None:
+				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+				return wrappers[attr](getattr(obj,attributes[attr]))
+			else:
+				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+
+
 
 class nparray(onp.ndarray):
 	'''
@@ -2578,418 +3832,6 @@ class toffoli(array):
 		else:
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
-
-
-class structure(object):
-	pass
-
-
-if backend in ['jax','jax.autograd','autograd','numpy']:
-	
-	class tensor(object):
-		'''
-		tensor class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return
-	
-	class tensornetwork(object):
-		'''
-		tensornetwork class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return
-
-	class mps(object):
-		'''
-		matrix product state class
-		Args:
-			data (iterable,int,str,callable,array,tensor,object): Tensor data
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,data,*args,**kwargs):
-			return super().__init__(cls,*args,**kwargs)
-
-	class gate(object):
-		'''
-		gate class
-		Args:
-			args (iterable): Gate arguments
-			kwargs (dict): Gate keyword arguments
-		Returns:
-			out (array): array
-		'''
-		def __new__(cls,*args,**kwargs):
-			return super().__init__(cls,*args,**kwargs)
-
-
-	def contract(obj,where=None,**kwargs):
-		'''
-		Contract object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-		return obj
-
-	def reduce(obj,where=None,**kwargs):
-		'''
-		Reduce object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-		return obj
-
-	def fuse(obj,where=None,**kwargs):
-		'''
-		Fuse object
-		Args:
-			obj (tensor): object
-			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Fused object
-		'''
-		return obj
-
-	def representation(obj,to=True,contraction=None,func=None,**kwargs):
-		'''
-		Get data of object
-		Args:
-			obj (tensor): object
-			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
-			contraction (bool): Contract data
-			func (callable): Wrapper function for data with signature func(obj)
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): data of object
-		'''
-		return obj
-
-	class context(object):
-		'''
-		Update object attributes within context with key
-		Args:
-			key (object): Key to update attributes
-			objs (iterable[object]): Objects with attributes to update
-			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
-		'''
-		def __init__(self,*objs,key=None,formats=None):
-			return
-
-elif backend in ['quimb']:
-
-	class tensor(qtn.Tensor):
-		'''
-		tensor class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.Tensor(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-
-	class tensornetwork(qtn.TensorNetwork):
-		'''
-		tensornetwork class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.TensorNetwork(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-	class mps(qtn.MatrixProductState):
-		'''
-		matrix product state class
-		Args:
-			data (iterable,int,str,callable,array,tensor,object): Tensor data
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,data,*args,**kwargs):
-
-			if isinstance(data,tensors):
-				self = data
-			elif isinstance(data,arrays):
-				kwargs.update(dict(arrays=data))
-				self = qtn.MPS_product_state(*args,**kwargs)
-			elif isinstance(data,iterables):
-				kwargs.update(dict(arrays=asarray(data)))
-				self = qtn.MPS_product_state(*args,**kwargs)
-			elif isinstance(data,str):
-				kwargs.update(dict(binary=data))
-				self = qtn.MPS_computational_state(*args,**kwargs)
-			elif isinstance(data,integers):
-				kwargs.update(dict(L=data))
-				self = qtn.MPS_rand_state(*args,**kwargs)
-			elif callable(data):
-				kwargs.update(dict(fill_fn=data))
-				self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
-			else:
-				self = qtn.MatrixProductState(data,*args,**kwargs)
-			return self
-			# return super().__init__(cls,*args,**kwargs)
-
-
-	class gate(qtn.Gate):
-		'''
-		gate class
-		Args:
-			args (iterable): Gate arguments
-			kwargs (dict): Gate keyword arguments
-		Returns:
-			out (array): array
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.Gate(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-
-
-	def contract(obj,where=None,**kwargs):
-		'''
-		Contract object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-
-		options = dict(output_inds=where) 
-
-		obj = obj.contract(**{**kwargs,**options})
-
-		return obj
-
-
-	def reduce(obj,where=None,**kwargs):
-		'''
-		Reduce object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-
-		obj = contract(obj)
-
-		where = getattr(obj,'inds',getattr(obj,'sites',None))
-
-		if where is None:
-			return obj
-
-		for i in where:
-			options = dict(ind=i) 
-			obj = obj.sum_reduce(**{**kwargs,**options})
-
-		return obj
-
-
-	def fuse(obj,where=None,**kwargs):
-		'''
-		Fuse object
-		Args:
-			obj (tensor): object
-			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Fused object
-		'''
-
-		options = dict(fuse_map=where) 
-
-		obj = obj.fuse(**{**kwargs,**options})
-
-		return obj
-
-
-	def representation(obj,to=True,contraction=None,func=None,**kwargs):
-		'''
-		Get data of object
-		Args:
-			obj (tensor): object
-			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
-			contraction (bool): Contract data
-			func (callable): Wrapper function for data with signature func(obj)
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): data of object
-		'''
-
-		if not isinstance(obj,tensors):
-			return obj
-		
-		if contraction:
-			obj = contract(obj,**kwargs)
-
-		if not isinstance(obj,tensors):
-			return obj
-
-		if to in ['array']:
-			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-
-		elif to in ['tensor']:
-			axes = tuple(i 
-				for i in sorted(set((i 
-				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
-				for string in tuple(sorted(set(i[0] 
-				for i in obj.inds)))) if i))) 
-				)
-			where = tuple(j for i in axes for j in i)
-			arguments = tuple(axes)
-			keywords = dict()
-			obj = contract(obj,where=where,**kwargs)
-			obj = obj.to_dense(*arguments,**keywords)
-
-		elif to in ['data']:
-			obj,structure = qtn.pack(obj)
-
-		elif to in ['structure']:
-			data,obj = qtn.pack(obj)
-
-		elif to:
-			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-		
-		if func is not None:
-			obj = func(obj)
-
-		return obj
-
-
-	class context(object):
-		'''
-		Update object attributes within context with key
-		Args:
-			key (object): Key to update attributes
-			objs (iterable[object]): Objects with attributes to update
-			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
-		'''
-		def __init__(self,*objs,key=None,formats=None):
-
-			if formats is None:
-				formats = ['inds','tags']
-			elif isinstance(formats,str):
-				formats = [formats]
-			if not isinstance(formats,dict):
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					for attr in formats}
-			else:
-				if key is None:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}
-				elif isinstance(key,iterables):
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}		
-				else:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}					
-
-			attributes = [attr for attr in formats]
-			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-			
-			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-				return
-			
-			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-				return
-
-			self.key = key
-			self.objs = objs
-			self.formats = formats
-			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
-			self.funcs = [{attr: func for attr in attributes} for obj in objs]
-			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
-			self.args = tuple()
-			self.kwargs = dict(inplace=True)
-
-			return
-
-		def __enter__(self):
-			for i in range(len(self)):
-				for attr in self.funcs[i]:
-					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-			return
-
-		def __exit__(self, type, value, traceback):
-			for i in range(len(self)):
-				for attr in self._funcs[i]:
-					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-			return
-		
-		def __len__(self):
-			return len(self.objs)
-
-		@classmethod
-		def attributes(cls,obj,attr,attrs=None,**kwargs):
-			if attrs is None:
-				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
-				return wrappers[attr](getattr(obj,attributes[attr]))
-			else:
-				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
-
 
 
 if backend in ['jax','quimb']:
@@ -4719,6 +5561,8 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = jit
 	elif isinstance(state,tensors):
 		wrapper = None
+	elif isinstance(state,tensors_quimb):
+		wrapper = None		
 	else:
 		wrapper = None
 
@@ -4745,6 +5589,11 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					return data
 	
 		elif isinstance(state,tensors):
+
+			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				return data
+
+		elif isinstance(state,tensors_quimb):
 
 			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 				return data
@@ -4780,6 +5629,11 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+			elif isinstance(state,tensors_quimb):
+
+				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 		elif data.ndim == 1:
 			
 			if state is None:
@@ -4800,6 +5654,10 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						return data
 
 			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,tensors_quimb):
 
 				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
@@ -4873,6 +5731,11 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))							
 
 			elif isinstance(state,tensors):
+				
+				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					return state(data,where=where)
+
+			elif isinstance(state,tensors_quimb):
 				
 				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return state.gate(data,where=where)
@@ -4952,6 +5815,10 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 
 				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+			elif isinstance(state,tensors_quimb):
+
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 	elif isinstance(data,tensors):
 
 		if state is None:
@@ -4966,6 +5833,34 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif isinstance(state,tensors):
+
+			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				return state(data,where=where)
+
+		elif isinstance(state,tensors_quimb):
+
+			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				return state.gate(data,where=where)
+
+	elif isinstance(data,tensors_quimb):
+
+		if state is None:
+			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				return data
+		
+		elif isinstance(state,arrays):
+
+			if state.ndim == 1:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+			elif state.ndim > 1:
+				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+		elif isinstance(state,tensors):
+
+			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				return state(data,where=where)
+
+		elif isinstance(state,tensors_quimb):
 
 			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 				return state.gate(data,where=where)
@@ -5000,6 +5895,8 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = jit
 	elif isinstance(state,tensors):
 		wrapper = None
+	elif isinstance(state,tensors_quimb):
+		wrapper = None		
 	else:
 		wrapper = None
 
@@ -5026,6 +5923,10 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					return grad
 	
 		elif isinstance(state,tensors):
+
+			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+		elif isinstance(state,tensors_quimb):
 
 			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
@@ -5058,6 +5959,10 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 
 				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+			elif isinstance(state,tensors_quimb):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 		elif data.ndim == 1:
 			
 			if state is None:
@@ -5078,6 +5983,10 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						return grad
 
 			elif isinstance(state,tensors):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+			elif isinstance(state,tensors_quimb):
 
 				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
@@ -5157,6 +6066,10 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 
 				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+			elif isinstance(state,tensors_quimb):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 		elif data.ndim == 3:
 
 			if state is None:
@@ -5233,7 +6146,15 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 
 				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
+			elif isinstance(state,tensors_quimb):
+
+				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
 	elif isinstance(data,tensors):
+
+		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+
+	elif isinstance(data,tensors_quimb):
 
 		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
@@ -6491,7 +7412,7 @@ def vtensordot(a,b,axis=0):
 	Returns:
 		out (array): Dot product of array along axis
 	'''
-	return vmap(lambda a: tensordot(a,b,axis))(a)
+	return vmap(lambda a: Classdot(a,b,axis))(a)
 
 @partial(jit,static_argnums=(2,))
 def tensordot(a,b,axis=0):
@@ -6515,7 +7436,7 @@ def _tensorprod(a,b):
 		a (array): Array to tensorproduct
 		b (array): Array to tensorproduct
 	Returns:
-		out (array): Tensorproduct product of arrays
+		out (array): Classproduct product of arrays
 	'''
 	return np.kron(a,b)
 
