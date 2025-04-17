@@ -84,9 +84,6 @@ if backend in ['jax','jax.autograd','quimb']:
 
 	import opt_einsum
 
-	import quimb as qu
-	import quimb.tensor as qtn
-
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
 
@@ -111,9 +108,6 @@ elif backend in ['autograd']:
 	import autograd.scipy.linalg
 
 	import opt_einsum
-
-	import quimb as qu
-	import quimb.tensor as qtn
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -174,6 +168,12 @@ elif backend in ['numpy']:
 	mapper = map
 
 	rng = RNG()
+
+
+if backend in ['quimb']:
+
+	import quimb as qu
+	import quimb.tensor as qtn
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -2522,10 +2522,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 				data[i] = cls(data[i],**options)
 
-			scheme = {
-				scheme:self.schemes(scheme=scheme,**kwargs)
-				for scheme in [None,'svd','nmf','_nmf','qr','stq','eig','spectrum','probability','_spectrum','_probability']
-			}
+			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
 
 			self.data = data
 			self.parameters = parameters
@@ -2583,19 +2580,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 						u,v,s = self.scheme[scheme](state,conj=False,**{**defaults,**kwargs,**options})
 
-						size = addition(s) if not isinstance(s,integers) else s
-
-						state = self.organize(data=u,where=i,shape=[*shape[:-1],size],axes=axes,transform=False,conj=False,**kwargs)
+						state = self.organize(data=u,where=i,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
 
 						data[i] = state
 
 						if i < (N-1):
-							if v is not None:
-								data[i+1] = dot(v,data[i+1])
-							elif not isinstance(s,integers):
-								data[i+1] = data[i+1][s]
-							else:
+							if s is not None:
 								data[i+1] = data[i+1][:s]
+							if v is not None:	
+								data[i+1] = dot(v,data[i+1])
 
 					elif i > max(where):
 
@@ -2607,19 +2600,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						
 						u,v,s = self.scheme[scheme](state,conj=True,**{**defaults,**kwargs,**options})
 
-						size = addition(s) if not isinstance(s,integers) else s
-
-						state = self.organize(data=v,where=i,shape=[size,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+						state = self.organize(data=v,where=i,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
 						
 						data[i] = state
 
 						if i > 0:
+							if s is not None:
+								data[i-1] = data[i-1][...,:s]
 							if u is not None:
 								data[i-1] = dot(data[i-1],u)
-							elif not isinstance(s,integers):
-								data[i-1] = data[i-1][...,s]
-							else:
-								data[i-1] = data[i-1][...,:s]
 
 			elif isinstance(data,arrays):
 
@@ -2848,20 +2837,21 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			scheme = options.get('scheme',kwargs.get('scheme'))
 			eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
 
+			schemes = [None,'svd','nmf','qr','stq','eig','spectrum','probability']
+
+			if isinstance(scheme,bool):
+				return schemes
+
 			def wrapper(func):
 				def decorator(a,rank=None,conj=None,**kwargs):
 					a = dagger(a) if conj else a
-					rank = min(a.shape) if rank is None else rank    
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					i = min(*u.shape,*v.shape)
-					# s = addition(u,0)
-					# i = abs(s)>eps
-					# u,v,s = u[:,i],v[i,:],s[i]
-					# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
-					u,v,s = (dagger(v),dagger(u),dagger(s)) if conj else (u,v,s)
-					u,v,s = u,v,i				
-					# u,v,s = cmplx(u),cmplx(v),s
+					s = addition(u,0)
+					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = u,v,rank
+					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
@@ -2889,29 +2879,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
 					return u,v,s
-			elif scheme in ['_nmf']:
-				@wrapper
-				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict()
-					u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
-					u,s,v = u[:,:rank],s[:rank],v[:rank,:]
-					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
-					return u,v,s
 
 			def wrapper(func):
 				def decorator(a,rank=None,conj=None,**kwargs):
 					a = dagger(a) if conj else a
-					rank = min(a.shape) if rank is None else rank    
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
-					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					i = min(*u.shape,*v.shape)
-					# s = addition(u,0)
-					# i = abs(s)>eps				
-					# u,v,s = u[:,i],v[i,:],s[i]
-					# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = u[:,:rank],v[:rank,:],s
+					s = addition(u,0)
+					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = u,v,rank
 					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
-					u,v,s = u,v,i
-					# u,v,s = cmplx(u),cmplx(v),s
 					return u,v,s
 				return decorator
 
@@ -2926,17 +2904,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			def wrapper(func):
 				def decorator(a,rank=None,conj=None,**kwargs):
 					a = dagger(a) if conj else a
-					rank = min(a.shape) if rank is None else rank    
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 					u,v,s = u[:,:rank],v,s
-					i = min(*u.shape)
-					# s = addition(u,0)
-					# i = abs(s)>eps				
-					# u,v,s = u[:,i],v,s
-					# u,v,s = dotr(u,reciprocal(s)),diag(s),s				
+					s = addition(u,0)
+					u,v,s = dotr(u,reciprocal(s)),diag(s),s
+					u,v,s = u,v,rank
 					u,v,s = (v,dagger(u),s) if conj else (u,v,s)
-					u,v,s = u,v,i
-					# u,v,s = (u,cmplx(v),s) if conj else (cmplx(u),v,s)
 					return u,v,s
 				return decorator
 
@@ -2950,7 +2924,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			def wrapper(func):
 				def decorator(a,rank=None,conj=None,**kwargs):
 					a = dagger(a) if conj else a
-					rank = min(a.shape) if rank is None else rank    
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					s = func(a,rank=rank,conj=conj,**kwargs) 
 					s = s[:rank]
 					return s
@@ -2960,7 +2934,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
 					defaults = dict(compute_v=False,hermitian=False)	
-					rank = min(a.shape) if rank is None else rank    
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					s = eig(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 					return s
 			elif scheme in ['spectrum']:
@@ -2975,18 +2949,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					defaults = dict()
 					u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 					return s
-			elif scheme in ['_spectrum']:
-				@wrapper
-				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)	
-					s = svd(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
-					return s				
-			elif scheme in ['_probability']:
-				@wrapper
-				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict()						
-					u,v,s = _nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
-					return s								
 			
 			return scheme
 
@@ -3008,7 +2970,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 		@property
 		def array(self):
-			return {i:self[i]() for i in self}
+			return {i:self[i].data for i in self}
 
 		def __str__(self):
 			if isinstance(self.string,str):
@@ -3055,8 +3017,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
 			shape = [state[i].shape for i in where]		
 
-			# scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
-			# state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme','svd')))
+			if scheme is not None:
+				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			if isinstance(data,arrays):
 
@@ -3084,17 +3047,24 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 				data = data(state,where=where)
 
-			scheme = options.get('scheme',kwargs.get('scheme'))
-			data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
+			scheme = options.get('scheme',kwargs.get('scheme','svd'))
+			if scheme is not None:
+				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
 
-			scheme = {'svd':'stq','nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme')))
-			state.update(shape=shape,where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme','svd')))
+			if scheme is not None:
+				state.update(options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = state
 
 			return data
 
 
+	tensors = (tensor,matrix,)
+	matrices = (matrix,)	
+	objects = (*arrays,*tensors,*matrices)
+	
+if backend in ['quimb']:
 
 	class tensor_quimb(qtn.Tensor):
 		'''
@@ -3154,14 +3124,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			# return super().__init__(cls,*args,**kwargs)
 
 
-	tensors = (tensor,matrix,)
-	matrices = (matrix,)	
-
 	tensors_quimb = (tensor_quimb,gate_quimb,qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices_quimb = (mps_quimb,qtn.MatrixProductState,)
-
-	objects = (*arrays,*tensors,*matrices,*tensors_quimb,*matrices_quimb)
-
+	matrices_quimb = (mps_quimb,qtn.MatrixProductState)
+	objects_quimb = (*tensors_quimb,*matrices_quimb)
 
 	def contract_quimb(obj,where=None,**kwargs):
 		'''
@@ -4825,27 +4790,29 @@ def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 
 	return u,s,v
 
-def qr(a):
+def qr(a,mode='reduced',**kwargs):
 	'''
 	Compute QR decomposition of array
 	Args:
 		a (array): Array to compute QR decomposition of shape (...,n,n)
+		mode (str): Mode to compute QR decomposition
 	Returns:
 		Q (array): Q factor of shape (...,n,n)
 		R (array): R factor of shape (...,n,n)
 	'''
-	return np.linalg.qr(a)
+	return np.linalg.qr(a,mode=mode)
 
-def qrs(a):
+def qrs(a,mode='reduced',**kwargs):
 	'''
 	Compute QR decomposition of array
 	Args:
 		a (array): Array to compute QR decomposition of shape (...,n,n)
+		mode (str): Mode to compute QR decomposition
 	Returns:
 		Q (array): Q factor of shape (...,n,n)
 		R (array): R factor of shape (...,n,n)
 	'''
-	q,r = np.linalg.qr(a)
+	q,r = qr(a,mode=mode)
 
 	s = signs(diag(r))
 	q = dotr(q,conjugate(s))
@@ -5004,7 +4971,7 @@ def nndsvd(a,u,v,rank=None,eps=None):
 
 		return x
 
-	rank = min(a.shape) if rank is None else rank        
+	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	u,s,v = svd(a)
 
 	start,end,x = 0,rank,(s,u,v)
@@ -5014,7 +4981,7 @@ def nndsvd(a,u,v,rank=None,eps=None):
 	return s,u,v
 
 def nmfd(u,v,rank=None):
-	rank = min(a.shape) if rank is None else rank            
+	rank = min(*a.shape) if rank is None else min(*a.shape,rank)            
 	x,y = add(u,0),add(v,1)
 	s,u,v = x*y,u*1/x,transpose(transpose(v)*1/y)
 	return s,u,v
@@ -5063,7 +5030,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None):
 		b,u,v = x
 		return norm(a-dot(u,v))
 	
-	rank = min(a.shape) if rank is None else rank        
+	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	eps = 1e-8 if eps is None else eps
 
 	a,s,u,v = init(a,u=u,v=v,rank=rank,eps=eps)
@@ -7876,6 +7843,27 @@ def imag(a):
 	'''	
 	return np.imag(a)
 
+@jit
+def cmplx(a):
+	'''
+	Make complex array
+	Args:
+		a (array): Array to make complex
+	Returns:
+		out (array): Complex array
+	'''		
+	return a + 0*1j
+
+@jit
+def pstv(a):
+	'''
+	Make positive array
+	Args:
+		a (array): Array to make positive
+	Returns:
+		out (array): positive array
+	'''		
+	return a + 0.
 
 def transpose(a,axes=None):
 	'''
@@ -7932,7 +7920,7 @@ def signs(a):
 	Returns:
 		out (array): Sign of array
 	'''
-	return (a + a==0)/(abs(a) + a==0)
+	return (a + (a==0))/(abs(a) + (a==0))
 
 @jit
 def reciprocal(a):

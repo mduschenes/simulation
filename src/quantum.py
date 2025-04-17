@@ -13,15 +13,13 @@ for PATH in PATHS:
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,matrix,mps
-from src.utils import tensor_quimb,mps_quimb,representation_quimb,contract_quimb,fuse_quimb,context_quimb
-from src.utils import tensors_quimb,matrices_quimb
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,tensors,matrices,objects,nulls,integers,floats,strings,iterables,dicts,symbols,epsilon,datatype
+from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,matrices,objects,nulls,integers,floats,strings,iterables,dicts,symbols,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -3614,77 +3612,84 @@ class MPS(mps):
 		return
 
 
-class MPS_quimb(mps_quimb): 
-	'''
-	Matrix Product State class
-	Args:
-		data (iterable,int,str,callable,array,object): Tensor data
-		parameters (array,dict): Tensor parameters				
-		N (int): Tensor system size
-		D (int): Tensor physical bond dimension
-		S (int): Tensor virtual bond dimension
-		kwargs (dict): Tensor keyword arguments
-	'''
-	def __new__(cls,data,parameters=None,N=None,D=None,S=None,**kwargs):
+if backend in ['quimb']:
 
-		updates = {
-			'periodic':(
-				(lambda attr,value,kwargs:'cyclic'),
-				(lambda attr,value,kwargs: (value is True) and N is not None and N>2)
-				),
-			'boundaries':(
-				(lambda attr,value,kwargs:'cyclic'),
-				(lambda attr,value,kwargs: ((value in ['periodic']) or (value is True)) and N is not None and N>2)
-				)			
-			}
+	from src.utils import tensor_quimb,mps_quimb,representation_quimb,contract_quimb,fuse_quimb,context_quimb
+	from src.utils import tensors_quimb,matrices_quimb,objects_quimb
 
-		kwargs.update(dict(data=data,L=N))
-		for attr in updates:
-			if attr not in kwargs:
-				continue
-			attrs,values = updates[attr]
-			attr,value = attr,kwargs.pop(attr)
-			attr,value = attrs(attr,value,kwargs),values(attr,value,kwargs)
-			if value is None:
-				continue
-			kwargs[attr] = value
+	objects = (*objects,*objects_quimb)
 
-		if data is None:
-			kwds = {attr: kwargs.get(attr) for attr in ['random','seed','bounds','dtype']}
-			def data(shape,*args,**kwargs):
-				data = Basis.state(shape=shape,**kwds) 
-				return 
-			kwargs.update(dict(phys_dim=D,bond_dim=S))
-			kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
-		elif isinstance(data,(str,*dicts,*iterables)):
-			basis = {
-				**{attr: Basis.state for attr in ['psi','state','product']},
-				**{attr: Basis.state for attr in ['haar']},
-				**{attr: Basis.rand for attr in ['random','rand']},
-				**{attr: Basis.zero for attr in ['zero','zeros','0']},
-				**{attr: Basis.one for attr in ['one','ones','1']},
-				**{attr: Basis.plus for attr in ['plus','+']},
-				**{attr: Basis.minus for attr in ['minus','-']},
-				**{attr: Basis.plusi for attr in ['plusi','+i']},
-				**{attr: Basis.minusi for attr in ['minusi','-i']},	
-			}
-			options = dict(D=D,**kwargs)
-			data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
-			data = [basis.get(i)(**Basis.opts(basis.get(i),options)) if isinstance(i,str) else i for i in data]
-			kwargs.update(dict())
-			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
-		elif isinstance(data,integers):
-			kwargs.update(dict(phys_dim=D,bond_dim=S))			
-			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
-		else:
-			kwargs.update(dict(phys_dim=D,bond_dim=S))			
-			kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
+	class MPS_quimb(mps_quimb): 
+		'''
+		Matrix Product State class
+		Args:
+			data (iterable,int,str,callable,array,object): Tensor data
+			parameters (array,dict): Tensor parameters				
+			N (int): Tensor system size
+			D (int): Tensor physical bond dimension
+			S (int): Tensor virtual bond dimension
+			kwargs (dict): Tensor keyword arguments
+		'''
+		def __new__(cls,data,parameters=None,N=None,D=None,S=None,**kwargs):
 
-		kwargs.update(dict(data=data))
+			updates = {
+				'periodic':(
+					(lambda attr,value,kwargs:'cyclic'),
+					(lambda attr,value,kwargs: (value is True) and N is not None and N>2)
+					),
+				'boundaries':(
+					(lambda attr,value,kwargs:'cyclic'),
+					(lambda attr,value,kwargs: ((value in ['periodic']) or (value is True)) and N is not None and N>2)
+					)			
+				}
 
-		self = super().__new__(cls,**kwargs)
+			kwargs.update(dict(data=data,L=N))
+			for attr in updates:
+				if attr not in kwargs:
+					continue
+				attrs,values = updates[attr]
+				attr,value = attr,kwargs.pop(attr)
+				attr,value = attrs(attr,value,kwargs),values(attr,value,kwargs)
+				if value is None:
+					continue
+				kwargs[attr] = value
 
-		return self
+			if data is None:
+				kwds = {attr: kwargs.get(attr) for attr in ['random','seed','bounds','dtype']}
+				def data(shape,*args,**kwargs):
+					data = Basis.state(shape=shape,**kwds) 
+					return 
+				kwargs.update(dict(phys_dim=D,bond_dim=S))
+				kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
+			elif isinstance(data,(str,*dicts,*iterables)):
+				basis = {
+					**{attr: Basis.state for attr in ['psi','state','product']},
+					**{attr: Basis.state for attr in ['haar']},
+					**{attr: Basis.rand for attr in ['random','rand']},
+					**{attr: Basis.zero for attr in ['zero','zeros','0']},
+					**{attr: Basis.one for attr in ['one','ones','1']},
+					**{attr: Basis.plus for attr in ['plus','+']},
+					**{attr: Basis.minus for attr in ['minus','-']},
+					**{attr: Basis.plusi for attr in ['plusi','+i']},
+					**{attr: Basis.minusi for attr in ['minusi','-i']},	
+				}
+				options = dict(D=D,**kwargs)
+				data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
+				data = [basis.get(i)(**Basis.opts(basis.get(i),options)) if isinstance(i,str) else i for i in data]
+				kwargs.update(dict())
+				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
+			elif isinstance(data,integers):
+				kwargs.update(dict(phys_dim=D,bond_dim=S))			
+				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
+			else:
+				kwargs.update(dict(phys_dim=D,bond_dim=S))			
+				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
+
+			kwargs.update(dict(data=data))
+
+			self = super().__new__(cls,**kwargs)
+
+			return self
 
 def trotter(iterable=None,p=None,verbose=False):
 	'''
@@ -4154,7 +4159,7 @@ class Object(System):
 					locality = locality
 					where = [i for i in range(locality)]
 					operator = operator
-			elif not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator):
+			elif not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator):
 				locality = locality
 				where = [i for i in range(locality)]
 				operator = [i for i in operator]
@@ -4180,7 +4185,7 @@ class Object(System):
 					locality = locality
 					where = [i for i in where] if isinstance(where,iterables) else where
 					operator = operator
-			elif not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator):
+			elif not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator):
 				locality = locality
 				where = [i for i in where] if isinstance(where,iterables) else where
 				operator = [i for i in operator]
@@ -4190,7 +4195,7 @@ class Object(System):
 				operator = operator
 
 		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
-		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,objects) else 1
+		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,arrays) else 1
 
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
@@ -4202,7 +4207,7 @@ class Object(System):
 		hermitian = hermitian
 		unitary = unitary
 
-		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
 		local = local if local is not None else None
@@ -4381,7 +4386,7 @@ class Object(System):
 		N = max((i for i in (max((i for i in (locality,len(where) if where is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
 		D = D if D is not None else None
 
-		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,objects) and not callable(operator) else operator
+		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
 		local = local if local is not None else None
@@ -4418,7 +4423,7 @@ class Object(System):
 		self.identity = identity
 
 
-		if ( (not self.null()) and ((not isinstance(self.data,objects)) and not callable(self.data)) and (
+		if ( (not self.null()) and ((not isinstance(self.data,arrays)) and not callable(self.data)) and (
 			((isinstance(self.operator,str) and self.operator in self.basis) or 
 			(isinstance(self.operator,iterables) and all(i in self.basis for i in self.operator)))
 			)):
@@ -4480,15 +4485,15 @@ class Object(System):
 			
 			self.setup(data=data,operator=self.operator,where=self.where,string=self.string)
 		
-		if (self.parameters() is None) and (not isinstance(self.data,objects)) and (not callable(self.data)):
+		if (self.parameters() is None) and (not isinstance(self.data,arrays)) and (not callable(self.data)):
 		
 			data = None
 		
-		elif isinstance(self.data,objects) or callable(self.data):
+		elif isinstance(self.data,arrays) or callable(self.data):
 		
 			data = self.data
 		
-		elif isinstance(self.operator,objects) or callable(self.operator):
+		elif isinstance(self.operator,arrays) or callable(self.operator):
 		
 			data,self.operator = self.operator,self.string
 		
@@ -4760,7 +4765,7 @@ class Object(System):
 			string = self.string
 		elif isinstance(self.operator,str):
 			string = self.operator
-		elif self.operator is not None and not isinstance(self.operator,objects) and not callable(self.operator):
+		elif self.operator is not None and not isinstance(self.operator,arrays) and not callable(self.operator):
 			string = '%s'%(delim.join(self.operator))
 		elif self.string:
 			string = self.string
@@ -5246,7 +5251,7 @@ class Object(System):
 
 		if data is None:
 			return
-		elif not isinstance(data,objects) and not callable(data):
+		elif not isinstance(data,arrays) and not callable(data):
 			return
 
 		norm = None
@@ -6211,7 +6216,7 @@ class State(Object):
 
 		if data is None:
 			return
-		elif not isinstance(data,objects) and not callable(data):
+		elif not isinstance(data,arrays) and not callable(data):
 			return
 
 		norm = None
@@ -7858,7 +7863,7 @@ class Module(System):
 			else:
 				substring = getattrs(self,attr,delimiter=delim,default=None)
 
-			if isinstance(substring,objects):
+			if isinstance(substring,arrays):
 				string = '%s:\n%s'%(attr,parse(substring))
 			else:
 				string = '%s: %s'%(attr,parse(substring))

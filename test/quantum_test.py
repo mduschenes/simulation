@@ -14,7 +14,6 @@ from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haa
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
-from src.utils import tensors_quimb,representation_quimb
 from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
@@ -1623,6 +1622,8 @@ def test_grad(path,tol):
 
 def test_module(*args,**kwargs):
 
+	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
+
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
@@ -1999,6 +2000,8 @@ def test_module(*args,**kwargs):
 
 def test_calculate(*args,**kwargs):
 
+	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
+
 	kwargs = {
 		"module.N":[4],"module.M":[3],"module.seed":[123456789],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
@@ -2282,6 +2285,8 @@ def test_calculate(*args,**kwargs):
 
 
 def test_parameters(*args,**kwargs):
+
+	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
 	kwargs = {
 		"module.N":[4],"module.M":[3],"module.measure.operator":["tetrad"],
@@ -2581,8 +2586,8 @@ def test_mps(*args,**kwargs):
 
 	N = 8
 	D = 2
-	S = D**(N)
-	M = 100
+	S = int(D**(N//4))
+	M = 50
 	L = 2
 	T = 1
 	architecture = 'tensor'
@@ -2624,6 +2629,8 @@ def test_mps(*args,**kwargs):
 	if state is not None and state_quimb is not None:
 		tmp = state.organize().ravel()
 		tmp_quimb = representation(state_quimb)
+
+		print(tmp.sum(),tmp_quimb.sum())
 
 		assert allclose(tmp,tmp_quimb)
 
