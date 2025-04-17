@@ -111,7 +111,7 @@ def test_component(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
+				"system":{"seed":123,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
@@ -120,7 +120,7 @@ def test_component(*args,**kwargs):
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+				"system":{"seed":123,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -138,7 +138,7 @@ def test_component(*args,**kwargs):
 
 	state = state(**settings.state)
 
-	basis = 'tetrad'
+	basis = 'pauli'
 	indices = {
 		'I':(data[0,0]+data[1,1]),'X':(data[0,1]+data[1,0]),
 		'Y':1j*(data[0,1]-data[1,0]),'Z':(data[0,0]-data[1,1])
@@ -192,7 +192,7 @@ def test_null(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
+				"system":{"seed":123,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":"src.functions.state",
@@ -201,7 +201,7 @@ def test_null(*args,**kwargs):
 				"string":"psi",
 				"parameters":None,
 				"N":1,"D":2,"ndim":2,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+				"system":{"seed":123,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -275,7 +275,7 @@ def test_operator(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}				
+				"system":{"seed":123,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":None	,
@@ -284,7 +284,7 @@ def test_operator(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":2,"ndim":1,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+				"system":{"seed":123,"dtype":"complex","architecture":None}
 				},
 		})
 
@@ -301,7 +301,7 @@ def test_operator(*args,**kwargs):
 		if operator.string in ["test"]:
 			_data = [
 				array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options),
-				array([[1,1],[1,-1]],**options),
+				(1/sqrt(2))*array([[1,1],[1,-1]],**options),
 				]
 			axes = [3,0,1,2]
 			shape = {0:[2,2,2,2],1:[2,2,2,2]}
@@ -854,9 +854,6 @@ def test_initialization(path,tol):
 			return
 
 
-	print(UpsiUtmp)
-	print(UpsiU)
-
 	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
 	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
 	assert allclose(new.metric.data,old.metric.data), "Incorrect metric() re-initialization"
@@ -905,7 +902,7 @@ def test_tensorproduct(*args,**kwargs):
 			},
 			"N":4,"D":2,"ndim":2,"local":True,
 			"system":{
-				"seed":12345678945,"dtype":"complex",
+				"seed":123,"dtype":"complex",
 				"architecture":None,"configuration":{"key":["where"]},
 				}
 		},	
@@ -916,7 +913,7 @@ def test_tensorproduct(*args,**kwargs):
 			"string":"psi",
 			"parameters":None,
 			"D":2,"ndim":2,"local":True,"variable":False,
-			"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+			"system":{"seed":123,"dtype":"complex","architecture":None}
 			},
 		"operator": {
 			"operator":["CNOT"],"where":None,"string":"cnot",
@@ -1004,7 +1001,7 @@ def test_tensorproduct(*args,**kwargs):
 		"string":"psi",
 		"parameters":None,
 		"D":2,"ndim":2,"local":True,"variable":False,
-		"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+		"system":{"seed":123,"dtype":"complex","architecture":None}
 		})
 
 	cls = load(settings.cls.state)
@@ -1096,7 +1093,7 @@ def test_random(*args,**kwargs):
 
 	parameters = operator.parameters()
 	state = tensorprod([operator.basis.get(operator.default)(**operator)]*operator.N)
-	kwargs = Dictionary(seed=seeder(123456789456789))
+	kwargs = Dictionary(seed=seeder(1236789))
 
 	obj = Dictionary()
 
@@ -1195,7 +1192,7 @@ def test_layout(*args,**kwargs):
 					"variable":False
 				},
 				"noise":{
-					"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
+					"operator":["depolarize"],"where":"||i.j||","string":"noise",
 					"parameters":{"data":[0,1,2,3,4,5,6]},
 					"variable":False
 				},	
@@ -1207,12 +1204,9 @@ def test_layout(*args,**kwargs):
 			},
 			"N":6,"D":2,"ndim":2,"local":True,
 			"system":{
-				"seed":12345678945,"dtype":"complex",
+				"seed":123,"dtype":"complex",
 				"architecture":None,"configuration":{
-					"key":[lambda value,iterable: (
-						# [tuple(j) for i in [*range(0,value.N,2),*range(1,value.N,2)] for j in [[i,i+1],[i],[i+1]]].index(tuple(value.where))
-						value.where[0]%2,value.where[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-						)],
+					"key":"src.functions.brickwork",
 					"sort":None,
 					"reverse":False
 					},
@@ -1225,7 +1219,7 @@ def test_layout(*args,**kwargs):
 			"string":"psi",
 			"parameters":None,
 			"D":6,"ndim":2,"local":True,"variable":False,
-			"system":{"seed":12345678945,"dtype":"complex","architecture":None}
+			"system":{"seed":123,"dtype":"complex","architecture":None}
 			}
 	})
 
@@ -1286,7 +1280,7 @@ def test_measure(*args,**kwargs):
 				"string":"psi",
 				"parameters":True,
 				"N":3,"D":4,"ndim":1,
-				"system":{"seed":12345678945,"dtype":"complex","architecture":"array"}
+				"system":{"seed":123,"dtype":"complex","architecture":"array"}
 				}
 			})
 
@@ -1307,8 +1301,7 @@ def test_measure(*args,**kwargs):
 		print(measure.inverse)
 		print()
 
-
-		assert allclose(sum(i for i in measure.basis),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
+		assert allclose(sum(i for i in measure.basis[measure.pointer]),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
 
 	print("Passed")
 
@@ -1421,7 +1414,7 @@ def test_namespace(*args,**kwargs):
 				},
 			"measure":{
 				"operator":"tetrad",
-				"architecture":"tensor_quimb"				
+				"architecture":"array"				
 			},
 			"system":{
 				"dtype":"complex",
@@ -1488,7 +1481,7 @@ def test_namespace(*args,**kwargs):
 		print("Measure")
 		attributes = {"measure":measure}
 		for attribute in attributes:
-			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["D","operator","ind","inds","tags","data","inverse","basis","architecture"]},">>>>",attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
+			print(attribute,{attr: getattr(attributes[attribute],attr) for attr in ["D","operator","data","inverse","basis","architecture"]},">>>>",attributes[attribute].__class__,namespace(attributes[attribute].__class__,model))
 		print()
 
 		print()
@@ -1622,16 +1615,31 @@ def test_grad(path,tol):
 
 def test_module(*args,**kwargs):
 
+	from importlib import reload
+	import src
+
+	from src.quantum import MPS
+	
+	os.environ['NUMPY_BACKEND'] = 'quimb'
+	reload(src.utils)
+	reload(src.quantum)
+
 	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],"measure.architecture":["tensor_quimb","array"],
+		"measure.N":[2],"measure.D":[2],
+		"module.measure.architecture":["tensor_quimb","tensor","array"],
+		"measure.operator":["tetrad"],"measure.architecture":["tensor_quimb","tensor","array"],
+
+		"module.measure.architecture":["tensor","array"],
+		"measure.operator":["tetrad"],"measure.architecture":["tensor","array"],
+
 		}	
 
-	groups = None
+	groups = ["module.measure.architecture","measure.architecture"]
 	filters = None
 	func = None
 
@@ -1650,7 +1658,7 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor_quimb","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"cyclic":False}},
 			"options":{"contract":False,"max_bond":None,"cutoff":0},
 			"configuration":{
 				"key":[lambda value,iterable: (
@@ -1663,7 +1671,7 @@ def test_module(*args,**kwargs):
 		"measure":{
 			"operator":"tetrad",
 			"D":2,"dtype":"complex",
-			"architecture":"tensor_quimb",
+			"architecture":"tensor",
 			"options":{"cyclic":False},
 		},		
 		"model":{
@@ -1800,8 +1808,6 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
-		exit()
-
 		# Test
 
 		objs = state
@@ -1845,6 +1851,8 @@ def test_module(*args,**kwargs):
 		key = "probability"
 		if measure.architecture in ["array"]:
 			value = array(probability)
+		elif measure.architecture in ["tensor"]:
+			value = probability.array
 		elif measure.architecture in ["tensor_quimb"]:
 			value = tensorprod(representation_quimb(probability))
 		
@@ -1863,12 +1871,15 @@ def test_module(*args,**kwargs):
 		key = "amplitude"
 		if measure.architecture in ["array"]:
 			value = array(amplitude)
+		elif measure.architecture in ["tensor"]:
+			value = array(amplitude)
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(amplitude,to=measure.architecture,contraction=True)
 
 		data[index][key] = value
 
 		if verbose:
+			print(measure.architecture,parse(value))
 			print(measure.architecture,parse(value),trace(value))
 
 		tmp = value
@@ -1900,6 +1911,8 @@ def test_module(*args,**kwargs):
 		key = "operator"
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
+		elif measure.architecture in ["tensor"]:
+			value = operator(parameters=parameters,state=state,**kwargs).array			
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
 
@@ -1928,7 +1941,11 @@ def test_module(*args,**kwargs):
 			**kwargs)
 		_tmp = model(parameters=parameters,state=obj())
 
-		if isinstance(tmp,tensors_quimb):
+		if isinstance(tmp,arrays):
+			tmp = array(tmp)
+		elif isinstance(tmp,tensors):
+			tmp = tmp.array
+		elif isinstance(tmp,tensors_quimb):
 			tmp = representation_quimb(tmp,to=measure.architecture,contraction=True)
 		else:
 			tmp = array(tmp)
@@ -1969,10 +1986,14 @@ def test_module(*args,**kwargs):
 
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
-		if isinstance(state,tensors_quimb):
+		if isinstance(state,arrays):
+			value = array(state)
+		elif isinstance(state,tensors):
+			value = state.array
+		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
-			value = array(value)
+			value = array(state)
 
 		key = 'model'
 		data[index][key] = value
@@ -1993,12 +2014,25 @@ def test_module(*args,**kwargs):
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
+
+	os.environ['NUMPY_BACKEND'] = 'jax'
+	reload(src.utils)
+	reload(src.quantum)
+
+
 	print("Passed")
 
 	return
 
 
 def test_calculate(*args,**kwargs):
+
+	from importlib import reload
+	import src
+	
+	os.environ['NUMPY_BACKEND'] = 'quimb'
+	reload(src.utils)
+	reload(src.quantum)
 
 	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
@@ -2011,7 +2045,7 @@ def test_calculate(*args,**kwargs):
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
 		"module.measure.options":[{"cyclic":False}],
-		"module.measure.architecture":["tensor_quimb","array"],
+		"module.measure.architecture":["tensor_quimb","tensor","array"],
 		}	
 
 	# kwargs = {
@@ -2023,7 +2057,7 @@ def test_calculate(*args,**kwargs):
 	# 	"module.measure.D":[2],"module.measure.operator":["tetrad"],
 	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
 	# 	"module.measure.options":[{"cyclic":False}],
-	# 	"module.measure.architecture":["tensor_quimb"]
+	# 	"module.measure.architecture":["tensor_quimb","tensor"]
 	# 	}	
 
 	groups = None
@@ -2047,7 +2081,7 @@ def test_calculate(*args,**kwargs):
 			"measure":{
 				"operator":"tetrad",
 				"D":2,"dtype":"complex","seed":13579,
-				"architecture":"tensor_quimb",
+				"architecture":"tensor",
 				"options":{"cyclic":False},
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
@@ -2205,6 +2239,8 @@ def test_calculate(*args,**kwargs):
 		key = 'state'
 		if module.measure.architecture in ['array']:
 			value = array(state)
+		elif module.measure.architecture in ['tensor']:
+			value = state.array
 		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state.copy(),contraction=True).ravel()
 
@@ -2264,7 +2300,11 @@ def test_calculate(*args,**kwargs):
 
 			key = attr
 
-			if isinstance(obj,tensors_quimb):
+			if isinstance(obj,arrays):
+				value = array(obj)
+			elif isinstance(obj,tensors):
+				value = obj.array
+			elif isinstance(obj,tensors_quimb):
 				value = representation_quimb(obj,to=module.measure.architecture,contraction=True)
 			else:
 				value = array(obj)
@@ -2279,12 +2319,25 @@ def test_calculate(*args,**kwargs):
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
 
+
+	os.environ['NUMPY_BACKEND'] = 'jax'
+	reload(src.utils)
+	reload(src.quantum)
+
+
 	print("Passed")
 
 	return
 
 
 def test_parameters(*args,**kwargs):
+
+	from importlib import reload
+	import src
+	
+	os.environ['NUMPY_BACKEND'] = 'quimb'
+	reload(src.utils)
+	reload(src.quantum)
 
 	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
@@ -2293,8 +2346,8 @@ def test_parameters(*args,**kwargs):
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 		"measure.N":[4],"measure.D":[2],"measure.operator":["tetrad"],
-		"measure.architecture":["tensor_quimb","array"],
-		"measure.architecture":["tensor_quimb"],
+		"measure.architecture":["tensor_quimb","tensor","array"],
+		"measure.architecture":["tensor_quimb","tensor"],
 		}	
 
 	groups = None
@@ -2316,10 +2369,10 @@ def test_parameters(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor_quimb","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"cyclic":False}},
 			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
 			"configuration":{
-				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
+				"key":["src.functions.brickwork"],
 				"sort":None,
 				"reverse":False
 				}			
@@ -2327,7 +2380,7 @@ def test_parameters(*args,**kwargs):
 		"measure":{
 			"operator":"tetrad",
 			"D":2,"dtype":"complex",
-			"architecture":"tensor_quimb",
+			"architecture":"tensor",
 			"options":{"cyclic":False},
 		},		
 		"model":{
@@ -2385,7 +2438,7 @@ def test_parameters(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":["src.functions.layout_hamiltonian_nearest_neighbour"],
+				"key":["src.functions.brickwork"],
 				"sort":None,
 				"reverse":False
 				}
@@ -2478,10 +2531,16 @@ def test_parameters(*args,**kwargs):
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
 		key = 'data'
-		if isinstance(state,tensors_quimb):
+		
+
+		if isinstance(state,arrays):
+			value = array(state)
+		elif isinstance(state,tensors):
+			value = state.array
+		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
-			value = array(value)
+			value = array(state)
 
 
 		data[index][key] = value
@@ -2493,6 +2552,11 @@ def test_parameters(*args,**kwargs):
 
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
+
+
+	os.environ['NUMPY_BACKEND'] = 'jax'
+	reload(src.utils)
+	reload(src.quantum)
 
 	print("Passed")
 
@@ -2627,7 +2691,7 @@ def test_mps(*args,**kwargs):
 		print(state_quimb)
 
 	if state is not None and state_quimb is not None:
-		tmp = state.organize().ravel()
+		tmp = state.array
 		tmp_quimb = representation(state_quimb)
 
 		print(tmp.sum(),tmp_quimb.sum())
@@ -2683,7 +2747,7 @@ if __name__ == "__main__":
 	# test_initialization(*args,**args)
 	# test_tensorproduct(*args,**args)
 	# test_random(*args,**args)
-	# test_layout(*args,**args)
+	test_layout(*args,**args)
 	# test_measure(*args,**args)
 	# test_metric(*args,**args)
 	# test_namespace(*args,**args)
@@ -2692,4 +2756,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_parameters(*args,**args)
-	test_mps(*args,**args)
+	# test_mps(*args,**args)

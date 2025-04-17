@@ -555,20 +555,47 @@ def state(*args,**kwargs):
 
 
 def key(value,iterable):
-	return (value.where[0]%2,value.where[0],-value.locality)
+	return [id(iterable[i]) for i in iterable].index(id(value))
 
-def layout_unitary_brickwork(value,iterable):
-	return (value.where[0]%2,value.where[0],-value.locality)
+def brickwork(value,iterable):
+	N = max(j+1 for i in iterable for j in iterable[i].where)
+	L = (N-1)*(2+1)
 
-def layout_hamiltonian_nearest_neighbour(value,iterable):
-	return (-value.locality,sum(ord(i) for i in value.string),value.where[0],1-value.variable)
+	keys = {where:[i for i in iterable if tuple(iterable[i].where)==where] for where in sorted(set(tuple(iterable[i].where) for i in iterable))}
 
-def key_test(value,iterable):
-	return (value.where[0],-value.locality)
+	keys = [i 
+		for index in [*range(0,N,2),*range(1,N,2)] 
+		for where in [(index,index+1),(index,),(index+1,)] 
+		for i in iterable 
+		if iterable[i].where==list(where) and 
+		((len(keys[where])==1) or 
+		(where==(index,) and (keys[where].index(i)==0)) or 
+		(where==(index+1,) and (keys[where].index(i)!=0)))
+		]
 
+	key = [id(iterable[i]) for i in keys].index(id(value))
 
-def test_by_key(value,iterable):
-	return value['goodbye'][-1]
+	return key
+
+def nearestneighbour(value,iterable):
+	N = max(j+1 for i in iterable for j in iterable[i].where)
+	L = (N-1)*(2+1)
+
+	keys = {where:[i for i in iterable if tuple(iterable[i].where)==where] for where in sorted(set(tuple(iterable[i].where) for i in iterable))}
+
+	keys = [i 
+		for index in [*range(0,N,1)] 
+		for where in [(index,index+1),(index,),(index+1,)] 
+		for i in iterable 
+		if iterable[i].where==list(where) and 
+		((len(keys[where])==1) or 
+		(where==(index,) and (keys[where].index(i)==0)) or 
+		(where==(index+1,) and (keys[where].index(i)!=0)))
+		]
+
+	key = [id(iterable[i]) for i in keys].index(id(value))
+
+	return key
 
 
 # def func(data,*args,**kwargs):

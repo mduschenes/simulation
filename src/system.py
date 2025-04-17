@@ -601,7 +601,7 @@ class Lattice(object):
 				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)) for k in (i,j))
 			elif structure in ['||ij||']:
 				vertices = ((i,j) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)))
-			elif structure in ['|i.j|']:
+			elif structure in ['||i.j||']:
 				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)) for k in (i,j))
 			elif structure in ['i...j']:
 				vertices = ((*self.vertices,) for i in self.vertices)

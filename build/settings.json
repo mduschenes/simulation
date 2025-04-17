@@ -25,7 +25,7 @@
 		"model.d":[1],
 		"model.local":[true],
 		"model.configuration":[{
-			"key":["src.functions.key"],
+			"key":["src.functions.brickwork"],
 			"sort":null,
 			"reverse":false
 			}],
@@ -39,7 +39,7 @@
 		"module.options.max_bond":[2,3,4,6,8,16,32,64],
 		"module.options.cutoff":[0],
 		"module.configuration":[{
-			"key":["src.functions.key"],
+			"key":["src.functions.brickwork"],
 			"sort":null,
 			"reverse":false
 			}],
@@ -48,9 +48,9 @@
 		"model.data.unitary.parameters":[null],
 		"model.data.unitary.where":["||ij||"],
 
-		"model.data.noise.operator":[["depolarize","depolarize"]],
+		"model.data.noise.operator":[["depolarize"]],
 		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.where":["||ij||"],
+		"model.data.noise.where":["||i.j||"],
 
 		"state.string":["psi"],
 		"state.operator":["zero"],
@@ -124,7 +124,7 @@
 			"parameters":null,"variable":false,"seed":null
 		},				
 		"noise":{
-			"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
+			"operator":["depolarize"],"where":"||i.j||","string":"noise",
 			"parameters":1e-8,"variable":false
 		}
 	},

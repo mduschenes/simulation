@@ -2376,6 +2376,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return self.data.dtype
 
 		@property
+		def tensor(self):
+			return self.data
+
+		@property
 		def array(self):
 			return self.data
 
@@ -2554,7 +2558,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict): Class data		
 			'''	
 
-			data = self.array if data is None else data
+			data = self.tensor if data is None else data
 
 			options = dict() if options is None else options
 
@@ -2969,8 +2973,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return self[min(self)].dtype
 
 		@property
-		def array(self):
+		def tensor(self):
 			return {i:self[i].data for i in self}
+
+		@property
+		def array(self):
+			return self.organize().ravel()
 
 		def __str__(self):
 			if isinstance(self.string,str):

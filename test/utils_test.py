@@ -1121,6 +1121,10 @@ def test_groupby(path=None,tol=None):
 
 	from src.utils import groupby
 
+
+	def sorter(value,iterable):
+		return value['goodbye'][-1]
+
 	iterable = [
 		{'hello':1,'world':(1,2,3),'goodbye':array([5,6,1])},
 		{'hello':1,'world':(1,2,3),'goodbye':array([52,6,41])},
@@ -1133,7 +1137,7 @@ def test_groupby(path=None,tol=None):
 
 	key = ['hello','world']
 
-	sort = ['hello',"src.functions.test_by_key"]
+	sort = ['hello',sorter]
 
 	for value in iterable:
 		print(value)

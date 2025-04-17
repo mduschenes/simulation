@@ -785,7 +785,7 @@ class Basis(Dict):
 		data = 'unitary'
 		unitary = getattr(cls,data)(*arguments,**keywords)
 
-		data = 'pauli'
+		data = 'tetrad'
 		data = getattr(cls,data)(*args,**kwargs)
 
 		data = array([dot(unitary,dot(i,dagger(unitary))) for i in data])
@@ -1332,7 +1332,7 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 
-			data = einsum('u...,uv,vij->ij...',state,inverse,basis)
+			state = einsum('u...,uv,vij->ij...',state,inverse,basis)
 
 		elif self.architecture in ['tensor']:
 
@@ -4419,8 +4419,7 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 		
-		identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
-		self.identity = identity
+		self.identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
 
 
 		if ( (not self.null()) and ((not isinstance(self.data,arrays)) and not callable(self.data)) and (
@@ -4958,7 +4957,7 @@ class Object(System):
 			parameters (array): parameters
 			state (obj): state
 			index (int,str,iterable[str]): Index of basis operator for component
-			basis (str): basis for operators, allowed strings in ['pauli','tetrad']
+			basis (str): basis for operators, allowed strings in ['pauli']
 			kwargs (dict): Additional operator keyword arguments						
 		Returns:
 			data (array): Component of basis of class with respect to string
@@ -6491,10 +6490,7 @@ class Objects(Object):
 
 		# Set identity
 		options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system) if not self.null() else None
-		identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
-
-		self.identity = identity
-
+		self.identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
 
 		# Set data
 		for i in self.data:
@@ -7130,7 +7126,7 @@ class Objects(Object):
 
 		variable = any(data[i].variable for i in data) if data is not None else False
 		constant = all(data[i].constant for i in data) if data is not None else False
-		symmetry = [data[i].symmetry for i in data if data[i].symmetry is not None][0] if data is not None and any(data[i].symmetry for i in data) else None
+		symmetry = [data[i].symmetry for i in data if data[i] and data[i].symmetry is not None][0] if data is not None and any(data[i].symmetry for i in data if data[i]) else None
 
 		if state is None:
 			hermitian = all(data[i].hermitian for i in data if boolean(i,data))
