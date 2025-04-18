@@ -1233,7 +1233,9 @@ def test_tensor(path=None,tol=None):
 
 	from src.utils import rand,tensor,sin
 
-	shape = (3,5,2)
+	x,y,z,u = 10,50,20,40
+
+	shape = (x,y,z)
 	indices = ['x','y','z']
 	dtype = 'complex128'
 	seed = 123
@@ -1250,7 +1252,7 @@ def test_tensor(path=None,tol=None):
 	assert allclose(func(obj),func(data))
 
 
-	shape = (3,4,5)
+	shape = (x,u,y)
 	indices = ['x','u','y']
 	dtype = 'complex128'
 	seed = 123
@@ -1258,13 +1260,24 @@ def test_tensor(path=None,tol=None):
 	data = rand(shape,seed=seed,dtype=dtype)
 	kwargs = dict(indices=indices)
 
-	other = tensor(other,**kwargs)
+	other = tensor(data,**kwargs)
 
+	_obj = tensor(data=einsum(obj.data,obj.indices,other.data,other.indices),indices=list(set(i for i in [*obj.indices,*other.indices] if not (i in obj.indices and i in other.indices))))
 
-	new = data & other
+	_obj_ = obj((obj,other))
 
-	print(new)
+	obj.append(other)
 
+	__obj_ = obj.copy(deep=True)
+
+	print(obj)
+	print(_obj)
+	print(_obj_)
+	print(__obj_)
+
+	objs = [obj,_obj,_obj_,__obj_]
+
+	assert all(allclose(i,j) for i in objs for j in objs)
 
 	print('Passed')
 

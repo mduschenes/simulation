@@ -145,7 +145,7 @@ elif backend in ['autograd']:
 							tree[tree.index(key)] = leaf
 			return
 
-		trees = (*deepcopy(trees[:1]),*trees[1:])
+		trees = (*copy(trees[:1]),*trees[1:])
 		mapper(*trees,func=func,is_leaf=is_leaf,**kwargs)
 		tree = trees[0]
 
@@ -2280,8 +2280,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		tensor class
 		Args:
-			data (iterable,array,tensor,object): Class data
-			indices (iterable[int,str]): Class indices
+			data (iterable,array,tensor,object,callable): Class data
+			indices (iterable[int,str],callable): Class indices
+			parameters (array,dict,callable): Class parameters
 			string (str): Class string
 			kwargs (dict): Additional class keyword arguments
 		'''
@@ -2289,11 +2290,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			self.data = data
 			self.indices = indices
+			self.parameters = parameters
 			self.string = string
 
-			self.setup()
+			self.setup(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
-			self.init()
+			self.init(**kwargs)
 
 			return
 
@@ -2305,54 +2307,68 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return
 
-		def setup(self,data=None,indices=None,string=None,**kwargs):
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
 			'''
 			Setup class
 			Args:
-				data (iterable,array,tensor,object): Class data
-				indices (iterable[int,str]): Class indices
+				data (iterable,array,tensor,object,callable): Class data
+				indices (iterable[int,str],callable): Class indices
+				parameters (array,dict,callable): Class parameters
 				string (str): Class string
+				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
 				kwargs (dict): Additional class keyword arguments				
 			'''		
 
-			def setup(data,**kwargs):
-				return data
+			if setup is None:
+
+				def setup(data,indices,parameters,string,**kwargs):
+
+					if isinstance(data,self.__class__):
+						data = data.data
+						indices = data.indices
+						parameters = data.parameters
+						string = data.string
+
+					if callable(data):
+						data = data(**kwargs)
+
+					if callable(indices):
+						indices = indices(**kwargs)
+		
+					parameters = parameters if parameters is not None else None
+					string = str(string) if string is not None else string
+
+					length = data.ndim
+					if indices is None:
+						indices = []
+					elif isinstance(indices,integers):
+						indices = symbols(indices)
+					elif isinstance(indices,strings):
+						indices = str(indices)
+					if not isinstance(indices,iterables):
+						indices = [indices]
+
+					indices = [f'{string if string is not None else ""}{i}'
+						for i in [*indices,*[symbols(i) for i in range(len(indices),length)]]
+						]
+
+					return data,indices,parameters,string
 
 			data = data if data is not None else self.data
 			indices = indices if indices is not None else self.indices
+			parameters = parameters if parameters is not None else self.parameters
 			string = string if string is not None else self.string
 
-			if isinstance(data,self.__class__):
-				data = data.data
-				indices = data.indices
-				string = data.string
+			data,indices,parameters,string = setup(data,indices,parameters,string,**kwargs)
 
 			cls = array
 			options = dict()
 
-			data = setup(data,**kwargs)
-
-			if not isinstance(data,cls.__class__):
-				data = cls(data,**options)
-
-			string = str(string) if string is not None else string
-
-			length = data.ndim
-			if indices is None:
-				indices = []
-			elif isinstance(indices,integers):
-				indices = symbols(indices)
-			elif isinstance(indices,strings):
-				indices = str(indices)
-			if not isinstance(indices,iterables):
-				indices = [indices]
-
-			indices = [f'{string if string is not None else ""}{i}'
-				for i in [*indices,*[symbols(i) for i in range(len(indices),length)]]
-				]
+			data = cls(data,**options)
 
 			self.data = data
 			self.indices = indices
+			self.parameters = parameters
 			self.string = string
 
 			return
@@ -2380,8 +2396,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def array(self):
 			return self.data
 
-		def format(self,**formats):
-			self.indices = [i.format(**formats) for i in self.indices]
+		def format(self,*fmts,**formats):
+			self.indices = [i.format(*fmts,**formats) for i in self.indices]
 			return
 
 		def get(self):
@@ -2391,22 +2407,110 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.data = data
 			return
 
+		def append(self,*objects,indices=None):
+			'''
+			Append tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			'''			
+
+			data,indices = self.construct(self,*objects,indices=indices)
+
+			self.data = data
+			self.indices = indices
+
+			return self
+
+		@classmethod
+		def join(cls,*objects,indices=None):
+			'''
+			Join tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''	
+
+			data,indices = cls.construct(*objects)
+
+			obj = cls(data=data,indices=indices)
+
+			return obj
+
+		@classmethod
+		def construct(cls,*objects,indices=None):
+			'''
+			Construct tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				data (array): Tensor data
+				indices (iterable[int,str]): Tensor indices
+			'''	
+
+			data = cls.contraction(*objects)
+			indices = cls.complement(*objects)
+
+			return data,indices
+
+		@classmethod
+		def intersection(cls,*objects,indices=None):
+			'''
+			Intersection of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = list(i for i in set(i for obj in objects for i in obj.indices) if all(i in obj.indices for obj in objects) and ((indices is None) or i in indices))
+			return indices
+
+		@classmethod
+		def union(cls,*objects,indices=None):
+			'''
+			Union of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = list(set(i for obj in objects for i in obj.indices if ((indices is None) or i in indices)))
+			return indices
+
+		@classmethod
+		def complement(cls,*objects,indices=None):
+			'''
+			Complement of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = cls.intersection(*objects) if indices is None else indices
+			indices = list(i for obj in objects for i in obj.indices if ((indices is None) or i not in indices))
+			return indices
+
+		@classmethod
+		def contraction(cls,*objects,indices=None):
+			'''
+			Contraction of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors to contract
+			Returns:
+				data (array): Contraction of tensors
+			'''			
+			data = einsum(*(i for obj in objects for i in [obj.data,obj.indices]))
+			return data 
+
 		def __jax_array__(self,*args,**kwargs):
 			return self.data
-
-		def __str__(self):
-			if isinstance(self.string,str):
-				string = self.string
-			else:
-				string = self.__class__.__name__
-			data = dict(zip(self.indices,self.data.shape))
-			return f'{string}: {data}'
-
-		def __repr__(self):
-			return str(self)
-		
-		def __hash__(self):
-			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
 
 		def __len__(self):
 			return len(self.data)
@@ -2421,26 +2525,33 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.data = inplace(self.data,index,value)
 			return
 
-		def __and__(self,other):
-			indices = [i for i in other if i in self]
-			
-			data = einsum(self.data,indices,other.data.indices)
-			indices = [*[i for i in self if i not in indices],*[i for i in other if i not in indices]]
 
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = dict(zip(self.indices,self.data.shape))
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return hash(self.data)
+
+		def __copy__(self,*args,**kwargs):
+			return self.copy(deep=False)
+
+		def __deepcopy__(self,*args,**kwargs):
+			return self.copy(deep=True)
+
+		def copy(self,deep=False,**kwargs):
 			cls = self.__class__
-
-			obj = cls(data=data,indices=indices)
-
-			return obj
-
-		def __iand__(self,other):
-
-			obj = self & other
-
-			self.data = obj.data
-			self.indices = obj.indices
-
-			return self
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
 
 		def __call__(self,data=None,**kwargs):
 			'''
@@ -2452,10 +2563,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict): Class data
 			'''
 			
-			if isinstance(data,tensors):
-				self.data = data()
-			elif isinstance(data,arrays):
+			if isinstance(data,arrays):
 				self.data = data
+			elif isinstance(data,tensors):
+				self.data = data()
+			elif isinstance(data,iterables):
+				data = self.join(*data)
 			elif callable(data):
 				data = data(self.data,**kwargs)
 			else:
@@ -2477,23 +2590,22 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		tensor network class
 		Args:
-			data (iterable,callable,array,tensor,object): Class data
-			parameters (array,dict): Class parameters
-			indices (iterable[int,str]): Class indices
+			data (dict,iterable,array,tensor,object,callable): Class data
+			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+			parameters (array,dict,callable): Class parameters
 			string (str): Class string
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		def __init__(self,data=None,parameters=None,indices=None,string=None,**kwargs):
+		def __init__(self,data=None,indices=None,parameters=None,string=None,**kwargs):
 
 			super().__init__()
 
 			self.data = data
 			self.parameters = parameters
-			self.indices = indices
 			self.string = string
 
-			self.setup(**kwargs)
+			self.setup(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
 			self.init(**kwargs)
 
@@ -2507,53 +2619,93 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return
 
-		def setup(self,data=None,parameters=None,indices=None,string=None,**kwargs):
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
 			'''
 			Setup class
 			Args:
-				data (str,array,tensor,mps): data of class
-				parameters (array,dict): parameters of class
-				indices (iterable[int,str]): Class indices			
-				string (str): Class string				
+				data (dict,iterable,array,tensor,object,callable): Class data
+				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+				parameters (array,dict,callable): Class parameters
+				string (str): Class string		
+				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string		
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
-			def setup(data,**kwargs):
-				return data
+			if setup is None:
+				def setup(data,indices,parameters,string,**kwargs):
+					if callable(data):
+						data = data(**kwargs)
+					if callable(indices):
+						indices = indices(**kwargs)
+					return data,indices,parameters,string
 
 			data = data if data is not None else self.data
 			parameters = parameters if parameters is not None else self.parameters
 			indices = indices if indices is not None else self.indices
 			string = string if string is not None else self.string
 
-			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
+			data = data if isinstance(data,dict) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
 			parameters = parameters if parameters is not None else None
-			indices = [*(indices if isinstance(indices,iterables) and all(isinstance(i,iterables) for i in indices) if indices is not None else indices
+			indices = indices if isinstance(indices,dict) else {i:indices[index] for index,i in enumerate(data)} if isinstance(indices,iterables) and all(isinstance(i,iterables) for i in iterables) else {i:indices for i in data} if isinstance(indices,(*iterables,int,str)) else {i:indices for i in data}
 			string = str(string) if string is not None else string
 
 			for i in data:
 
+				data[i],indices[i],parameters,string = setup(data[i],indices[i],parameters,string,**kwargs)
+
 				cls = tensor
-
-				data[i],indices[i] = setup(data[i],indices[i],**kwargs)
-
-				options = dict(string=i,indices=indices)
+				options = dict(string=i,indices=indices[i])
 
 				data[i] = cls(data[i],**options)
-
-			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
 
 			self.data = data
 			self.parameters = parameters
 			self.string = string
 
-			self.scheme = scheme
-
-			for kwarg in kwargs:
-				if hasattr(self,kwarg) and kwargs[kwarg] is not None:
-					setattr(self,kwarg,kwargs[kwarg])
-
 			return
+
+		def organize(self,data=None,shape=None,axes=None,conj=None,where=None,transform=True,**kwargs):
+			'''
+			Organize class data
+			Args:
+				data (dict,array,tensor,network,object): Class data
+				shape (iterable[int]): Shape of data
+				axes (iterable[int]): Axes order of data
+				conj (bool): Conjugate of class data
+				where (float,int,iterable[int]): Class indices
+				transform (bool): Forward or backward transform data
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (array): Class data
+			'''			
+
+			data = self if data is None else data
+
+			if transform:
+
+				where = [*data] if where is None else [where] if not isinstance(where,iterables) else [*where]
+				N = len(where)
+
+				shape = [k for i,j in enumerate(where) for k in ([prod(data[j].shape[:2]),*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],prod(data[j].shape[-2:])] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+				axes = range(N) if axes is None else axes
+				subscripts = '%s->%s'%(
+					','.join(
+						''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+						for i in range(N)
+						),
+					''.join(
+						''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
+						for i in range(N)
+						),
+					)
+
+				data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+				
+			else:
+
+				raise NotImplementedError(f"Not Implemented {data}")
+			
+			return data
 
 		@property
 		def shape(self):
@@ -2582,32 +2734,120 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def array(self):
 			return self.organize().ravel()
 
-		def format(self,**formats):
+		def format(self,*fmts,**formats):
 			for i in self:
-				self[i].format(**formats)
+				self[i].format(*fmts,**formats)
 			return
 
 		def get(self):
-			return self.data
+			return {i: self[i].get() for i in self}
 
 		def set(self,data):
 			for i in data:
 				self[i].set(data[i])
 			return
 
-		def __str__(self):
-			if isinstance(self.string,str):
-				string = self.string
-			else:
-				string = self.__class__.__name__
-			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
-			return f'{string}: {data}'
+		def append(self,*objects,indices=None):
+			'''
+			Append tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			'''			
 
-		def __repr__(self):
-			return str(self)
-		
-		def __hash__(self):
-			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
+			data,indices = self.construct(self,*objects,indices=indices)
+
+			self.data = data
+			self.indices = indices
+
+			return self
+
+		@classmethod
+		def join(cls,*objects,indices=None):
+			'''
+			Join tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''	
+
+			data,indices = cls.construct(*objects)
+
+			obj = cls(data=data,indices=indices)
+
+			return obj
+
+		@classmethod
+		def construct(cls,*objects,indices=None):
+			'''
+			Construct tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				data (array): Tensor data
+				indices (iterable[int,str]): Tensor indices
+			'''	
+
+			data = cls.contraction(*objects)
+			indices = cls.complement(*objects)
+
+			return data,indices
+
+		@classmethod
+		def intersection(cls,*objects,indices=None):
+			'''
+			Intersection of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = list(i for i in set(i for obj in objects for i in obj.indices) if all(i in obj.indices for obj in objects) and ((indices is None) or i in indices))
+			return indices
+
+		@classmethod
+		def union(cls,*objects,indices=None):
+			'''
+			Union of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = list(set(i for obj in objects for i in obj.indices if ((indices is None) or i in indices)))
+			return indices
+
+		@classmethod
+		def complement(cls,*objects,indices=None):
+			'''
+			Complement of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			indices = cls.intersection(*objects) if indices is None else indices
+			indices = list(i for obj in objects for i in obj.indices if ((indices is None) or i not in indices))
+			return indices
+
+		@classmethod
+		def contraction(cls,*objects,indices=None):
+			'''
+			Contraction of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors to contract
+			Returns:
+				data (array): Contraction of tensors
+			'''			
+			data = einsum(*(i for obj in objects for i in [obj.data,obj.indices]))
+			return data 
 
 		def __len__(self):
 			return len(self.data)
@@ -2622,6 +2862,33 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.data[index] = value
 			return
 
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return hash((self[i] for i in self))
+
+		def __copy__(self,*args,**kwargs):
+			return self.copy(deep=False)
+
+		def __deepcopy__(self,*args,**kwargs):
+			return self.copy(deep=True)
+
+		def copy(self,deep=False,**kwargs):
+			cls = self.__class__
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
+
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
 			'''
 			Call class
@@ -2634,8 +2901,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Returns:
 				data (dict): Class with data applied
 			'''
-
 			return self
+
 
 	class context(object):
 		'''
@@ -2740,17 +3007,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		matrix product state tensor network class
 		Args:
-			data (iterable,callable,array,tensor,object): Class data
-			parameters (array,dict): Class parameters
-			indices (iterable[int]): Class indices
-			string (str): Class string
+			data (dict,iterable,array,tensor,object,callable): Class data
+			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+			parameters (array,dict,callable): Class parameters
+			string (str): Class string		
 			N (int): Class system size
 			D (int): Class physical bond dimension
 			S (int): Class virtual bond dimension
 			kwargs (dict): Additional keyword arguments
 		'''
 		
-		def __init__(self,data=None,parameters=None,indices=None,string=None,N=None,D=None,S=None,**kwargs):
+		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
 
 			self.N = N
 			self.D = D
@@ -2768,54 +3035,41 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return
 
-		def setup(self,data=None,parameters=None,indices=None,string=None,**kwargs):
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
 			'''
 			Setup class
 			Args:
-				data (str,array,tensor,mps): data of class
-				parameters (array,dict): parameters of class
-				string (str): Class string				
+				data (dict,iterable,array,tensor,object,callable): Class data
+				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+				parameters (array,dict,callable): Class parameters
+				string (str): Class string		
+				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string						
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
-			def setup(data,**kwargs):
+			if setup is None:
+				
+				def setup(data,indices,parameters,string,**kwargs):
 
-				if callable(data):
-					data = data(**kwargs)
+					if callable(data):
+						data = data(**kwargs)
 
-				if data.ndim == 1:
-					axes = range(data.ndim+2)
-					shape = [1,*data.shape,1]
-					data = transpose(reshape(data,shape),axes)
+					if data.ndim == 1:
+						axes = range(data.ndim+2)
+						shape = [1,*data.shape,1]
+						data = transpose(reshape(data,shape),axes)
 
-				return data
+					indices = indices
 
-			data = data if data is not None else self.data
-			parameters = parameters if parameters is not None else self.parameters
-			string = string if string is not None else self.string
+					parameters = parameters
 
-			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
-			parameters = parameters
-			string = str(string) if string is not None else string
+					string = string
 
-			for i in data:
-
-				cls = tensor
-
-				data[i],indices = setup(data[i],**kwargs)
-
-				options = dict(string=i,indices=indices)
+					return data,indices,parameters,string
 
 
-				data[i] = cls(data[i],**options)
+			super().setup(data=data,indices=indices,parameters=parameters,string=string,setup=setup,**kwargs)
 
-			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
-
-			self.data = data
-			self.parameters = parameters
-			self.string = string
-
-			self.scheme = scheme
 
 			N = self.N if self.N is not None else 0
 			D = self.D if self.D is not None else 0
@@ -2825,9 +3079,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
 			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
 
-			for kwarg in kwargs:
-				if hasattr(self,kwarg) and kwargs[kwarg] is not None:
-					setattr(self,kwarg,kwargs[kwarg])
+			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
+
+			self.scheme = scheme
 
 			return
 
@@ -2913,13 +3167,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					u,v,s = self.scheme[scheme](data,conj=False,**{**defaults,**kwargs,**options})
 
-					# error = (norm(data-dot(u,v))/norm(data)).real
-
 					data = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
 					data = dict(zip(where,data))
 
 					if 0:
+
+						# error = (norm(data-dot(u,v))/norm(data)).real
 
 						tmp = {**kwargs.get('state',options.get('state')),**state}
 						variables = kwargs.get('variables')
@@ -2969,7 +3223,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Organize class data
 			Args:
-				data (array,dict): Class data
+				data (dict,array,tensor,network,object): Class data
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Axes order of data
 				conj (bool): Conjugate of class data
@@ -2983,8 +3237,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			data = self if data is None else data
 
 			if transform:
-				
+
 				if isinstance(data,dict):
+
 					where = [*data] if where is None else [where] if not isinstance(where,iterables) else [*where]
 					N = len(where)
 
@@ -3242,6 +3497,19 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					return s
 			
 			return scheme
+
+		def __copy__(self,*args,**kwargs):
+			return self.copy(deep=False)
+
+		def __deepcopy__(self,*args,**kwargs):
+			return self.copy(deep=True)
+
+		def copy(self,deep=False,**kwargs):
+			cls = self.__class__
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string,N=self.N,D=self.D,S=self.S),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
 
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
 			'''
@@ -10274,17 +10542,15 @@ def generator(stop=None):
 	Generator wrapper to restart stop number of times
 	'''
 	def wrap(func):
-		def set(*args,**kwargs):
-			return func(*args,*kwargs)
 		@wraps(func)
 		def wrapper(*args,stop=stop,**kwargs):
-			generator = set(*args,**kwargs)
+			generator = func(*args,**kwargs)
 			while stop:
 				try:
 					yield next(generator)
 				except StopIteration:
 					stop -= 1
-					generator = set(*args,**kwargs)
+					generator = func(*args,**kwargs)
 					yield next(generator)
 		return wrapper
 	return wrap
@@ -10700,7 +10966,7 @@ def piecewise(func,bounds,**kwargs):
 		else:
 			r = x
 		conditions = [(
-			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) and 
 			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
 			)
 			for i in range(n)]

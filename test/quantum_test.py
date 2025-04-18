@@ -2570,8 +2570,8 @@ def test_mps(*args,**kwargs):
 	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
 	from src.quantum import Basis as basis
 
-	def representation(data):
-		return data.to_dense().ravel()
+	def representation_quimb(data):
+		return data.to_dense()
 
 	def tensor(data,t=1):
 		return array([tensorprod(i) for i in permutations(*[data]*t)])
@@ -2692,7 +2692,7 @@ def test_mps(*args,**kwargs):
 
 	if state is not None and state_quimb is not None:
 		tmp = state.array()
-		tmp_quimb = representation(state_quimb)
+		tmp_quimb = representation_quimb(state_quimb)
 
 		print(tmp.sum(),tmp_quimb.sum())
 
