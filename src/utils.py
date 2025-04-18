@@ -2274,8 +2274,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			out (array): array
 		'''
 		def __new__(cls,*args,**kwargs):
-			return np.array(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
+			return np.array(*args,**kwargs)			
 
 	class tensor(object):
 		'''
@@ -2286,9 +2285,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			string (str): Class string
 			kwargs (dict): Additional class keyword arguments
 		'''
-		def __init__(self,data,indices=None,string=None,**kwargs):
-
-			super().__init__(**kwargs)
+		def __init__(self,data,indices=None,parameters=None,string=None,**kwargs):
 
 			self.data = data
 			self.indices = indices
@@ -2335,7 +2332,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			data = setup(data,**kwargs)
 
-			data = cls(data,**options)
+			if not isinstance(data,cls.__class__):
+				data = cls(data,**options)
 
 			string = str(string) if string is not None else string
 
@@ -2379,9 +2377,19 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def tensor(self):
 			return self.data
 
-		@property
 		def array(self):
 			return self.data
+
+		def format(self,**formats):
+			self.indices = [i.format(**formats) for i in self.indices]
+			return
+
+		def get(self):
+			return self.data
+
+		def set(self,data):
+			self.data = data
+			return
 
 		def __jax_array__(self,*args,**kwargs):
 			return self.data
@@ -2412,6 +2420,27 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def __setitem__(self,index,value):
 			self.data = inplace(self.data,index,value)
 			return
+
+		def __and__(self,other):
+			indices = [i for i in other if i in self]
+			
+			data = einsum(self.data,indices,other.data.indices)
+			indices = [*[i for i in self if i not in indices],*[i for i in other if i not in indices]]
+
+			cls = self.__class__
+
+			obj = cls(data=data,indices=indices)
+
+			return obj
+
+		def __iand__(self,other):
+
+			obj = self & other
+
+			self.data = obj.data
+			self.indices = obj.indices
+
+			return self
 
 		def __call__(self,data=None,**kwargs):
 			'''
@@ -2444,34 +2473,29 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		pass
 
-	class mps(matrix):
+	class network(dict):
 		'''
-		Matrix Product State class
+		tensor network class
 		Args:
-			data (iterable,int,str,callable,array,tensor,object): Class data
+			data (iterable,callable,array,tensor,object): Class data
 			parameters (array,dict): Class parameters
+			indices (iterable[int,str]): Class indices
 			string (str): Class string
-			N (int): Class system size
-			D (int): Class physical bond dimension
-			S (int): Class virtual bond dimension
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		def __init__(self,data=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
+		def __init__(self,data=None,parameters=None,indices=None,string=None,**kwargs):
 
-			super().__init__(**kwargs)
+			super().__init__()
 
 			self.data = data
 			self.parameters = parameters
+			self.indices = indices
 			self.string = string
 
-			self.N = N
-			self.D = D
-			self.S = S
+			self.setup(**kwargs)
 
-			self.setup()
-
-			self.init()
+			self.init(**kwargs)
 
 			return
 
@@ -2483,7 +2507,268 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return
 
-		def setup(self,data=None,parameters=None,string=None,**kwargs):
+		def setup(self,data=None,parameters=None,indices=None,string=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (str,array,tensor,mps): data of class
+				parameters (array,dict): parameters of class
+				indices (iterable[int,str]): Class indices			
+				string (str): Class string				
+				kwargs (dict): Additional class keyword arguments				
+			'''
+
+			def setup(data,**kwargs):
+				return data
+
+			data = data if data is not None else self.data
+			parameters = parameters if parameters is not None else self.parameters
+			indices = indices if indices is not None else self.indices
+			string = string if string is not None else self.string
+
+			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
+			parameters = parameters if parameters is not None else None
+			indices = [*(indices if isinstance(indices,iterables) and all(isinstance(i,iterables) for i in indices) if indices is not None else indices
+			string = str(string) if string is not None else string
+
+			for i in data:
+
+				cls = tensor
+
+				data[i],indices[i] = setup(data[i],indices[i],**kwargs)
+
+				options = dict(string=i,indices=indices)
+
+				data[i] = cls(data[i],**options)
+
+			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
+
+			self.data = data
+			self.parameters = parameters
+			self.string = string
+
+			self.scheme = scheme
+
+			for kwarg in kwargs:
+				if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+					setattr(self,kwarg,kwargs[kwarg])
+
+			return
+
+		@property
+		def shape(self):
+			return {i:self[i].shape for i in self}
+
+		@property
+		def size(self):
+			return prod(self[i].size for i in self)
+
+		@property
+		def ndim(self):
+			return max(self[i].ndim for i in self)
+
+		@property
+		def dtype(self):
+			return self[min(self)].dtype
+
+		@property
+		def tensor(self):
+			return {i:self[i].data for i in self}
+
+		@property
+		def indices(self):
+			return {i:self[i].indices for i in self}
+
+		def array(self):
+			return self.organize().ravel()
+
+		def format(self,**formats):
+			for i in self:
+				self[i].format(**formats)
+			return
+
+		def get(self):
+			return self.data
+
+		def set(self,data):
+			for i in data:
+				self[i].set(data[i])
+			return
+
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
+
+		def __len__(self):
+			return len(self.data)
+		
+		def __iter__(self):
+			yield from self.data
+
+		def __getitem__(self,index):
+			return self.data.get(index)
+
+		def __setitem__(self,index,value):
+			self.data[index] = value
+			return
+
+		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (array,callable): Class data
+				parameters (array): Class parameters
+				where (float,int,iterable[int]): Class indices
+				options (dict): Options of class
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (dict): Class with data applied
+			'''
+
+			return self
+
+	class context(object):
+		'''
+		Update tensor attributes within context with key
+		Args:
+			key (object): Key to update attributes
+			objs (iterable[object]): Objects with attributes to update
+			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+		'''
+		def __init__(self,*objs,key=None,formats=None):
+
+			if formats is None:
+				formats = ['indices']
+			elif isinstance(formats,str):
+				formats = [formats]
+			if not isinstance(formats,dict):
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					for attr in formats}
+			else:
+				if key is None:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}
+				elif isinstance(key,iterables):
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}		
+				else:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}					
+
+			attributes = [attr for attr in formats]
+			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+			
+			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+			
+			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+
+			self.key = key
+			self.objs = objs
+			self.formats = formats
+			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+			self.funcs = [{attr: func for attr in attributes} for obj in objs]
+			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+			self.args = tuple()
+			self.kwargs = dict(inplace=True)
+
+			return
+
+		def __enter__(self):
+			for i in range(len(self)):
+				for attr in self.funcs[i]:
+					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+
+		def __exit__(self, type, value, traceback):
+			for i in range(len(self)):
+				for attr in self._funcs[i]:
+					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+		
+		def __len__(self):
+			return len(self.objs)
+
+		@classmethod
+		def attributes(cls,obj,attr,attrs=None,**kwargs):
+			if attrs is None:
+				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+				return wrappers[attr](getattr(obj,attributes[attr]))
+			else:
+				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+
+
+	class mps(network):
+		'''
+		matrix product state tensor network class
+		Args:
+			data (iterable,callable,array,tensor,object): Class data
+			parameters (array,dict): Class parameters
+			indices (iterable[int]): Class indices
+			string (str): Class string
+			N (int): Class system size
+			D (int): Class physical bond dimension
+			S (int): Class virtual bond dimension
+			kwargs (dict): Additional keyword arguments
+		'''
+		
+		def __init__(self,data=None,parameters=None,indices=None,string=None,N=None,D=None,S=None,**kwargs):
+
+			self.N = N
+			self.D = D
+			self.S = S
+
+			super().__init__(data=data,parameters=parameters,indices=indices,string=string,**kwargs)
+
+			return
+
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,parameters=None,indices=None,string=None,**kwargs):
 			'''
 			Setup class
 			Args:
@@ -2509,10 +2794,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			parameters = parameters if parameters is not None else self.parameters
 			string = string if string is not None else self.string
 
-			N = self.N if self.N is not None else 0
-			D = self.D if self.D is not None else 0
-			S = self.S if self.S is not None else 0
-
 			data = data if isinstance(data,dicts) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
 			parameters = parameters
 			string = str(string) if string is not None else string
@@ -2520,9 +2801,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			for i in data:
 
 				cls = tensor
-				options = dict(string=i)
 
-				data[i] = setup(data[i],**kwargs)
+				data[i],indices = setup(data[i],**kwargs)
+
+				options = dict(string=i,indices=indices)
+
 
 				data[i] = cls(data[i],**options)
 
@@ -2533,6 +2816,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.string = string
 
 			self.scheme = scheme
+
+			N = self.N if self.N is not None else 0
+			D = self.D if self.D is not None else 0
+			S = self.S if self.S is not None else 0
 
 			self.N = max(N,max(self)+1)
 			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
@@ -2550,8 +2837,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				data (array,dict,mps): Class data		
 				shape (iterable[int]): Shape of data
-				axes (iterable[int]): Axes order of data
-				where (float,int,iterable[int]): indices of class
+				axes (iterable[int]): Axes of data
+				where (float,int,iterable[int]): Class indices
 				options (dict): Options of class
 				kwargs (dict): Additional class keyword arguments				
 			Returns:
@@ -2686,7 +2973,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Axes order of data
 				conj (bool): Conjugate of class data
-				where (float,int,iterable[int]): indices of class
+				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
 				kwargs (dict): Additional class keyword arguments		
 			Returns:
@@ -2806,7 +3093,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				data (array,dict): Class data
 				shape (iterable[int]): Shape of data
-				where (float,int,iterable[int]): indices of class
+				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
 				kwargs (dict): Additional class keyword arguments		
 			Returns:
@@ -2956,64 +3243,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			return scheme
 
-		@property
-		def shape(self):
-			return {i:self[i].shape for i in self}
-
-		@property
-		def size(self):
-			return prod(self[i].size for i in self)
-
-		@property
-		def ndim(self):
-			return max(self[i].ndim for i in self)
-
-		@property
-		def dtype(self):
-			return self[min(self)].dtype
-
-		@property
-		def tensor(self):
-			return {i:self[i].data for i in self}
-
-		@property
-		def array(self):
-			return self.organize().ravel()
-
-		def __str__(self):
-			if isinstance(self.string,str):
-				string = self.string
-			else:
-				string = self.__class__.__name__
-			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
-			return f'{string}: {data}'
-
-		def __repr__(self):
-			return str(self)
-		
-		def __hash__(self):
-			return (hash(self.N) ^ hash(self.D) ^ hash(self.S) ^ hash((self[i] for i in self)))
-
-		def __len__(self):
-			return len(self.data)
-		
-		def __iter__(self):
-			yield from self.data
-
-		def __getitem__(self,index):
-			return self.data.get(index)
-
-		def __setitem__(self,index,value):
-			self.data[index] = value
-			return
-
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
 			'''
 			Call class
 			Args:
-				data (array,callable): Array to apply to class
+				data (array,callable): Class data
 				parameters (array): Class parameters
-				where (float,int,iterable[int]): indices of class
+				where (float,int,iterable[int]): Class indices
 				options (dict): Options of class
 				kwargs (dict): Additional class keyword arguments		
 			Returns:
@@ -3068,7 +3304,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return data
 
 
-	tensors = (tensor,matrix,)
+	tensors = (tensor,matrix,network,)
 	matrices = (matrix,)	
 	objects = (*arrays,*tensors,*matrices)
 	
@@ -3083,11 +3319,30 @@ if backend in ['quimb']:
 		'''
 		def __new__(cls,*args,**kwargs):
 			return qtn.Tensor(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
+
+	class matrix_quimb(qtn.MatrixProductState):
+		'''
+		matrix class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.MatrixProductState(*args,**kwargs)
+
+	class network_quimb(qtn.TensorNetwork):
+		'''
+		tensor network class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.TensorNetwork(*args,**kwargs)
 
 	class mps_quimb(qtn.MatrixProductState):
 		'''
-		matrix product state class
+		matrix product state tensor network class
 		Args:
 			data (iterable,int,str,callable,array,tensor,object): Class data
 			args (iterable): Class arguments
@@ -3115,7 +3370,6 @@ if backend in ['quimb']:
 			else:
 				self = qtn.MatrixProductState(data,*args,**kwargs)
 			return self
-			# return super().__init__(cls,*args,**kwargs)
 
 
 	class gate_quimb(qtn.Gate):
@@ -3129,7 +3383,6 @@ if backend in ['quimb']:
 		'''
 		def __new__(cls,*args,**kwargs):
 			return qtn.Gate(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
 
 
 	tensors_quimb = (tensor_quimb,gate_quimb,qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
@@ -3254,7 +3507,7 @@ if backend in ['quimb']:
 
 	class context_quimb(object):
 		'''
-		Update object attributes within context with key
+		Update tensor attributes within context with key
 		Args:
 			key (object): Key to update attributes
 			objs (iterable[object]): Objects with attributes to update
@@ -3363,7 +3616,6 @@ class nparray(onp.ndarray):
 	'''
 	def __new__(cls,*args,**kwargs):
 		return onp.array(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
 
 class asndarray(onp.ndarray):
 	'''
@@ -3542,7 +3794,6 @@ class dataframe(pd.DataFrame):
 	'''
 	def __new__(cls,*args,**kwargs):
 		return pd.DataFrame(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
 
 
 class identity(array):

@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
-from src.utils import tensor,matrix,mps
+from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
@@ -952,16 +952,29 @@ class Measure(System):
 
 			raise NotImplementedError
 
-			cls = array
-			
-			kwargs = dict(dtype=dtype)
+			self.ind = 'u{}'
+			self.inds = ('u{}','v{}',)
+			self.indices = ('i{}','j{}',)
+			self.symbol = ('x{}','y{}','z{}','w{}','q{}','r{}','s{}','t{}')
+			self.symbols = ('k{}','l{}','m{}','n{}','o{}','p{}','a{}','b{}')
 
+			cls = tensor_quimb
+
+			kwargs = dict(inds=(self.ind,*self.indices,))
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
+
+			kwargs = dict(inds=(*self.inds,))
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
-			
+
+			kwargs = dict(inds=(*self.inds,))
 			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
+
+			kwargs = dict(inds=(self.ind,))
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
+
+			kwargs = dict(inds=(self.ind,))
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
+
 			pointer = pointer
 
 		elif self.architecture in ['tensor_quimb']:
@@ -1050,12 +1063,12 @@ class Measure(System):
 
 			raise NotImplementedError
 
-			subscripts = '...u,uv,vij->...ij'
-			shapes = ((self.K,),self.inverse[self.pointer].shape,self.basis[self.pointer].shape)
-			einsummation = einsummand(subscripts,*shapes)
 			def func(parameters=None,state=None,**kwargs):
-				return einsummation(state,self.inverse[self.pointer],self.basis[self.pointer])
-
+				N = state.L
+				for i in range(N):
+					with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}])):
+						state &= self.inverse[i] & self.basis[i]
+				return state
 			def gradient(parameters=None,state=None,**kwargs):
 				return 0
 
@@ -1250,10 +1263,9 @@ class Measure(System):
 				for i in range(N):
 
 					data = state[i] if not callable(state[i]) else state[i]()
-					inds = (*self.indices[::-1],)
-					tags = (self.tag,*self.tags,)
+					indices = (*self.indices[::-1],)
 
-					data = cls(data=data,inds=inds,tags=tags)
+					data = cls(data=data,indices=indices)
 
 					with context_quimb(data,self.basis[i],key=i):
 						data &= self.basis[i]

@@ -1234,18 +1234,37 @@ def test_tensor(path=None,tol=None):
 	from src.utils import rand,tensor,sin
 
 	shape = (3,5,2)
+	indices = ['x','y','z']
 	dtype = 'complex128'
 	seed = 123
-	func = sin
 
 	data = rand(shape,seed=seed,dtype=dtype)
-	kwargs = dict()
+	kwargs = dict(indices=indices)
 
-	data = tensor(data,**kwargs)
+	obj = tensor(data,**kwargs)
 
-	print(data)
+	assert allclose(obj,data)
 
-	print(func(data))
+
+	func = sin
+	assert allclose(func(obj),func(data))
+
+
+	shape = (3,4,5)
+	indices = ['x','u','y']
+	dtype = 'complex128'
+	seed = 123
+
+	data = rand(shape,seed=seed,dtype=dtype)
+	kwargs = dict(indices=indices)
+
+	other = tensor(other,**kwargs)
+
+
+	new = data & other
+
+	print(new)
+
 
 	print('Passed')
 
@@ -1276,4 +1295,4 @@ if __name__ == '__main__':
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
 	# test_jax(path,tol)
-	# test_tensor(path,tol)
+	test_tensor(path,tol)
