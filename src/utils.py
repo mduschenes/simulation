@@ -2315,13 +2315,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				indices (iterable[int,str],callable): Class indices
 				parameters (array,dict,callable): Class parameters
 				string (str): Class string
-				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
 				kwargs (dict): Additional class keyword arguments				
 			'''		
 
 			if setup is None:
 
-				def setup(data,indices,parameters,string,**kwargs):
+				def setup(index,data,indices,parameters,string,**kwargs):
 
 					classes = self.__class__
 
@@ -2359,7 +2359,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			parameters = parameters if parameters is not None else self.parameters
 			string = string if string is not None else self.string
 
-			data,indices,parameters,string = setup(data,indices,parameters,string,**kwargs)
+			index = None
+			data,indices,parameters,string = setup(index,data,indices,parameters,string,**kwargs)
 
 			cls = array
 			classes = arrays
@@ -2644,13 +2645,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 				parameters (array,dict,callable): Class parameters
 				string (str): Class string		
-				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string		
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string		
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
 			if setup is None:
 				
-				def setup(data,indices,parameters,string,**kwargs):
+				def setup(index,data,indices,parameters,string,**kwargs):
 					
 					classes = tensors
 
@@ -2685,7 +2686,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			for i in data:
 
-				data[i],indices[i],parameters,string = setup(data[i],indices[i],parameters,string,**kwargs)
+				data[i],indices[i],parameters,string = setup(i,data[i],indices[i],parameters,string,**kwargs)
 
 				if not isinstance(data[i],classes):
 					data[i] = cls(data=data[i],indices=indices[i],**options)
@@ -3046,13 +3047,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 				parameters (array,dict,callable): Class parameters
 				string (str): Class string		
-				setup (callable): Class setup with signature setup(data,indices,parameters,string,**kwargs) -> data,indices,parameters,string						
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string						
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
 			if setup is None:
 				
-				def setup(data,indices,parameters,string,**kwargs):
+				def setup(index,data,indices,parameters,string,**kwargs):
 
 					if callable(data):
 						data = data(**kwargs)
@@ -3060,7 +3061,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					if data.ndim == 1:
 						axes = range(data.ndim+2)
 						shape = [1,*data.shape,1]
+						
 						data = transpose(reshape(data,shape),axes)
+						indices = [symbols(index),indices if indices is not None else f'{string}' if string is not None else f'{index}',symbols(index+1)]
 
 					indices = indices
 
@@ -3556,7 +3559,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 				# data = self.shuffle(data,shape=shapes,**kwargs)
 
-				data = einsum(subscripts,data,*(state[i] for i in where))
+				data = einsum(subscripts,data,*(state[i]() for i in where))
 
 			else:
 
@@ -3565,10 +3568,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			scheme = options.get('scheme',kwargs.get('scheme','svd'))
 			if scheme is not None:
 				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
-
-			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme','svd')))
-			if scheme is not None:
-				state.update(options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
 
 			data = state
 

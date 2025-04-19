@@ -1852,7 +1852,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(probability)
 		elif measure.architecture in ["tensor"]:
-			value = probability.array()
+			value = probability.array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = tensorprod(representation_quimb(probability))
 		
@@ -1912,7 +1912,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
 		elif measure.architecture in ["tensor"]:
-			value = operator(parameters=parameters,state=state,**kwargs).array()			
+			value = operator(parameters=parameters,state=state,**kwargs).array().ravel()			
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
 
@@ -1944,7 +1944,7 @@ def test_module(*args,**kwargs):
 		if isinstance(tmp,arrays):
 			tmp = array(tmp)
 		elif isinstance(tmp,tensors):
-			tmp = tmp.array()
+			tmp = tmp.array().ravel()
 		elif isinstance(tmp,tensors_quimb):
 			tmp = representation_quimb(tmp,to=measure.architecture,contraction=True)
 		else:
@@ -1989,7 +1989,7 @@ def test_module(*args,**kwargs):
 		if isinstance(state,arrays):
 			value = array(state)
 		elif isinstance(state,tensors):
-			value = state.array()
+			value = state.array().ravel()
 		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
@@ -2240,7 +2240,7 @@ def test_calculate(*args,**kwargs):
 		if module.measure.architecture in ['array']:
 			value = array(state)
 		elif module.measure.architecture in ['tensor']:
-			value = state.array()
+			value = state.array().ravel()
 		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state.copy(),contraction=True).ravel()
 
@@ -2303,7 +2303,7 @@ def test_calculate(*args,**kwargs):
 			if isinstance(obj,arrays):
 				value = array(obj)
 			elif isinstance(obj,tensors):
-				value = obj.array()
+				value = obj.array().ravel()
 			elif isinstance(obj,tensors_quimb):
 				value = representation_quimb(obj,to=module.measure.architecture,contraction=True)
 			else:
@@ -2536,7 +2536,7 @@ def test_parameters(*args,**kwargs):
 		if isinstance(state,arrays):
 			value = array(state)
 		elif isinstance(state,tensors):
-			value = state.array()
+			value = state.array().ravel()
 		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
@@ -2571,7 +2571,7 @@ def test_mps(*args,**kwargs):
 	from src.quantum import Basis as basis
 
 	def representation_quimb(data):
-		return data.to_dense()
+		return data.to_dense().ravel()
 
 	def tensor(data,t=1):
 		return array([tensorprod(i) for i in permutations(*[data]*t)])
@@ -2648,14 +2648,14 @@ def test_mps(*args,**kwargs):
 		return state,data
 
 
-	N = 8
+	N = 10
 	D = 2
-	S = int(D**(N//4))
-	M = 50
+	S = int(D**(N//1))
+	M = 100
 	L = 2
 	T = 1
 	architecture = 'tensor'
-	architecture = 'tensor_quimb'
+	# architecture = 'tensor_quimb'
 	# architecture = 'all'
 	parameters = 1e-3,
 	seed = 123456789
@@ -2691,7 +2691,7 @@ def test_mps(*args,**kwargs):
 		print(state_quimb)
 
 	if state is not None and state_quimb is not None:
-		tmp = state.array()
+		tmp = state.array().ravel()
 		tmp_quimb = representation_quimb(state_quimb)
 
 		print(tmp.sum(),tmp_quimb.sum())
@@ -2753,7 +2753,7 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_parameters(*args,**args)
-	# test_mps(*args,**args)
+	test_mps(*args,**args)
