@@ -392,7 +392,6 @@ def test_sizer(path=None,tol=None):
 	return
 
 
-
 def test_scinotation(path=None,tol=None):
 	number = 1e5
 	_string = '10^{5}'
@@ -1375,4 +1374,4 @@ if __name__ == '__main__':
 	# test_groupby(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
-	test_network(path,tol)
+	# test_network(path,tol)

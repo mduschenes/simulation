@@ -15,7 +15,7 @@ from src.utils import np,onp
 from src.utils import arrays,scalars
 from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
-from src.iterables import search,find,inserter,indexer
+from src.iterables import search,finder,inserter,indexer,find,replace
 
 def test_equalizer(path=None,tol=None):
 	a = {1:{2:[3,4],3:lambda x:x,4:{1:[],2:[{4:np.array([])}]}}}
@@ -48,7 +48,7 @@ def test_search(path=None,tol=None):
 	print()
 
 	item = -1
-	index = find(item,iterable,types=types)
+	index = finder(item,iterable,types=types)
 	print(item,list(index))
 
 	print()
@@ -123,6 +123,46 @@ def test_permuter(path=None,tol=None):
 	return
 
 
+def test_find_replace(path=None,tol=None):
+
+	path = 'config/tmp.json'
+
+	iterable = load(path)
+	
+	strings = {'max_bond':True,'@max_bond@':True,'max_bond.':True,'.max_bond':True,'ddfdfdf.max_bond.dgsgs':False}
+	pattern = '[?]max_bond[?]'
+	for string in strings:
+		assert contains(string,pattern) is strings[string]
+
+
+	keys = {'@max_bond@':'S','max_bond.':'S','.max_bond':'S','max_bond':'S',}
+	# keys = {'[?]max_bond[?]':'S','max_bond.':'S.','.max_bond':'.S'}
+	types = (list,dict)
+
+	for items in keys:
+		results = list(search(iterable,returns=True,items=items,types=types))
+		print('------',items,len(results))
+		# for index,shape,item in results:
+		# 	print(index)
+
+
+	replace(iterable,keys)
+
+	from src.iterables import counter
+	print(counter)
+
+	for items in keys:
+		results = list(search(iterable,returns=True,items=items,types=types))
+		print('******',items,len(results))
+		# for index,shape,item in results:
+		# 	print(index)
+
+
+
+	print('Passed')
+
+	return
+
 
 
 if __name__ == '__main__':
@@ -131,4 +171,5 @@ if __name__ == '__main__':
 
 	# test_search(path=path,tol=tol)
 	# test_equalizer(path=path,tol=tol)
-	test_permuter(path=path,tol=tol)
+	# test_permuter(path=path,tol=tol)
+	test_find_replace(path=path,tol=tol)

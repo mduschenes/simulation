@@ -1634,12 +1634,13 @@ def test_module(*args,**kwargs):
 		"module.measure.architecture":["tensor_quimb","tensor","array"],
 		"measure.operator":["tetrad"],"measure.architecture":["tensor_quimb","tensor","array"],
 
-		"module.measure.architecture":["tensor","array"],
-		"measure.operator":["tetrad"],"measure.architecture":["tensor","array"],
+		"module.measure.architecture":["tensor_quimb","array"],
+		"measure.architecture":["tensor_quimb","array"],
+		"module.options":[{"contract":False,"max_bond":None,"cutoff":0},{}],
 
 		}	
 
-	groups = ["module.measure.architecture","measure.architecture"]
+	groups = ["module.measure.architecture","measure.architecture","module.options"]
 	filters = None
 	func = None
 
@@ -1659,7 +1660,7 @@ def test_module(*args,**kwargs):
 			"M":1,
 			"string":"module",
 			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"cyclic":False}},
-			"options":{"contract":False,"max_bond":None,"cutoff":0},
+			"options":{},
 			"configuration":{
 				"key":[lambda value,iterable: (
 					value.where[0]%2,value.where[0],
@@ -2753,7 +2754,7 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_parameters(*args,**args)
-	test_mps(*args,**args)
+	# test_mps(*args,**args)
