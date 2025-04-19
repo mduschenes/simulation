@@ -3661,7 +3661,7 @@ def test_shuffle(*args,**kwargs):
 				tensorprod([*(identity(D),)*(N-N),data,*(identity(D),)*(N-L)]),
 				[*shape*N]*d
 				),
-			[N*j+((len(where)+list(sorted(set(range(N))-set(where))).index(i)) 
+			[N*j+((len(where)+sorted(set(range(N))-set(where))).index(i) 
 			if i not in where else where.index(i)) 
 			for j in range(d) for i in range(N)]
 			),

@@ -1235,12 +1235,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 						unique = [(i,*j) for index,(i,j) in enumerate(zip(unique['labels'],unique['handles']))]
 
-						unique = [unique.index(i) for i in list(sorted(set(unique),key=lambda i:unique.index(i)))]
+						unique = [unique.index(i) for i in sorted(set(unique),key=lambda i:unique.index(i))]
 
 						handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
 
 					else:
-						unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
+						unique = sorted(set(labels),key=lambda i: labels.index(i))
 						if unique:
 							indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
 							keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep

@@ -1231,58 +1231,124 @@ def test_jax(path=None,tol=None):
 
 def test_tensor(path=None,tol=None):
 
-	from src.utils import rand,tensor,sin
+	from src.utils import rand,tensor
 
-	x,y,z,u = 10,50,20,40
+	shapes = {'x':11,'y':53,'z':29,'u':41}
 
-	shape = (x,y,z)
 	indices = ['x','y','z']
+	shape = [shapes[i] for i in indices]
 	dtype = 'complex128'
 	seed = 123
 
 	data = rand(shape,seed=seed,dtype=dtype)
 	kwargs = dict(indices=indices)
-
 	obj = tensor(data,**kwargs)
 
-	assert allclose(obj,data)
+	assert allclose(obj(),data)
 
 
-	func = sin
-	assert allclose(func(obj),func(data))
-
-
-	shape = (x,u,y)
-	indices = ['x','u','y']
+	indices = ['x','u','z']
+	shape = [shapes[i] for i in indices]
 	dtype = 'complex128'
 	seed = 123
 
 	data = rand(shape,seed=seed,dtype=dtype)
 	kwargs = dict(indices=indices)
-
 	other = tensor(data,**kwargs)
 
-	_obj = tensor(data=einsum(obj.data,obj.indices,other.data,other.indices),indices=list(set(i for i in [*obj.indices,*other.indices] if not (i in obj.indices and i in other.indices))))
 
-	_obj_ = obj((obj,other))
+	assert obj.intersection(obj,other) == ['x','z']
+	assert obj.union(obj,other) == ['x','y','z','u']
+	assert obj.complement(obj,other) == ['y','u']
 
-	obj.append(other)
 
-	__obj_ = obj.copy(deep=True)
+	objs = {}
 
-	print(obj)
-	print(_obj)
-	print(_obj_)
-	print(__obj_)
+	objs['einsum'] = tensor(data=einsum(obj.data,obj.indices,other.data,other.indices),indices=sorted(set(i for i in [*obj.indices,*other.indices] if not (i in obj.indices and i in other.indices)),key=lambda i: (obj.indices.index(i) if i in obj.indices else len(obj.indices),other.indices.index(i) if i in other.indices else len(other.indices))))
 
-	objs = [obj,_obj,_obj_,__obj_]
+	objs['call'] = obj((obj,other))
 
-	assert all(allclose(i,j) for i in objs for j in objs)
+	objs['and'] = obj & other
+
+	obj &= other
+
+	objs['iand'] = obj
+
+	objs['copy'] = obj.copy(deep=True)
+
+	for i in objs:
+		print(objs[i])
+
+	assert all(allclose(objs[i](),objs[j]()) for i in objs for j in objs)
 
 	print('Passed')
 
 	return
 
+
+def test_network(path=None,tol=None):
+
+	from src.utils import rand,tensor,network
+
+	N = 3
+	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
+
+	indices = [['x{}','u{}','y{}'],['y{}','v{}','z{}'],['z{}','w{}','s{}']]
+	shape = [[shapes[j] for j in indices[i]] for i in range(N)]
+	dtype = 'complex128'
+	seed = 123
+
+	data = {i:rand(shape[i],seed=seed,dtype=dtype) for i in range(N)}
+	kwargs = dict(indices=indices)
+	obj = network(data,**kwargs)
+
+
+	assert obj.intersection(obj) == []
+	assert obj.union(obj) == ['x{}', 'u{}', 'y{}', 'v{}', 'z{}', 'w{}', 's{}']
+	assert obj.complement(obj) == ['x{}', 'u{}', 'v{}', 'w{}', 's{}']
+
+	_indices = ['t{}','u{}','q{}']
+	_shape = [shapes[i] for i in _indices]
+	dtype = 'complex128'
+	seed = 123
+
+	_data = rand(_shape,seed=seed,dtype=dtype)
+	kwargs = dict(indices=_indices)
+	_obj = tensor(_data,**kwargs)
+
+	tmp = obj & _obj
+
+	for i in obj:
+		print(i,obj[i])
+	print()
+	for i in tmp:
+		print(i,tmp[i])
+	print()
+	
+	obj &= _obj
+
+	for i in obj:
+		print(i,obj[i])
+
+	tmp = obj.array()
+
+	assert allclose(tmp,einsum('xuy,yvz,zws,tuq->xvwstq',*(data[i] for i in data),_data))
+
+	assert tmp.shape == tuple(shapes[i] for i in ['x{}', 'v{}', 'w{}', 's{}', 't{}','q{}'])
+
+
+	objs = {}
+
+	objs['obj'] = obj
+	objs['copy'] = obj.copy()
+
+	assert all(allclose(objs[i][k](),objs[j][l]()) for i in objs for j in objs for k,l in zip(objs[i],objs[j]))
+
+
+	print('Passed')
+
+
+	return
 
 
 if __name__ == '__main__':
@@ -1308,4 +1374,5 @@ if __name__ == '__main__':
 	# test_seed(path,tol)
 	# test_groupby(path,tol)
 	# test_jax(path,tol)
-	test_tensor(path,tol)
+	# test_tensor(path,tol)
+	test_network(path,tol)

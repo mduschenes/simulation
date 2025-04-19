@@ -2074,7 +2074,7 @@ def plotter(plots,processes,verbose=None):
 			data = [{attr: data[OTHER][attr] for attr in data[OTHER] if attr not in [*ALL,OTHER]}
 				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop])]
 			data = {attr:[i[attr] if isinstance(i[attr],scalars) else tuple(i[attr]) for i in data] for attr in set(attr for i in data for attr in i if all(attr in i for i in data))}
-			data = {attr: list(sorted(set(data[attr]),key=lambda i:data[attr].index(i))) for attr in data}
+			data = {attr: sorted(set(data[attr]),key=lambda i:data[attr].index(i)) for attr in data}
 			data = {attr: [i if isinstance(i,scalars) else [*i] for i in data[attr]] for attr in data}
 
 			metadata[instance][subinstance] = data
@@ -2098,7 +2098,7 @@ def plotter(plots,processes,verbose=None):
 			config = {position: {attr:config['value'][attr] if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
 				for position in ['row','col'][:LAYOUTDIM]}
 
-			layout = {position: list(permuter({attr: list(sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i)))
+			layout = {position: list(permuter({attr: sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i))
 				for attr in config[position]}))
 				for position in config}
 			layout = {position: [{**i,**{attr:data[attr][0] for attr in data if len(data[attr])==1}} for i in layout[position]] for position in layout}

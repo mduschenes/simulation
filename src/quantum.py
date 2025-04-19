@@ -7122,7 +7122,7 @@ class Objects(Object):
 		boolean = lambda i=None,data=None: ((data is not None) and (data[i] is not None) and (not data[i].null()))
 
 		where = [j for i in data if boolean(i,data) and isinstance(data[i].where,iterables) for j in data[i].where]
-		where = list(sorted(set(where),key=lambda i:where.index(i)))
+		where = sorted(set(where),key=lambda i:where.index(i))
 
 		operator = separ.join([
 					delim.join(data[i].operator) if isinstance(data[i].operator,iterables) else data[i].operator
@@ -7603,7 +7603,7 @@ class Module(System):
 				continue
 
 			where = [i for model in self.model[index] if boolean(model) and isinstance(model.where,iterables) for i in model.where]
-			where = list(sorted(set(where),key=lambda i:where.index(i)))
+			where = sorted(set(where),key=lambda i:where.index(i))
 
 			N = max((model.N for model in self.model[index] if boolean(model) and model.N is not None),default=len(where))
 			locality = len(where)

@@ -1684,8 +1684,8 @@ class Job(object):
 		for state in self.states:
 			status[state] = Dict()
 			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
-				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
-							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
+				jobs =  sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
+							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,)))
 				if jobs:
 					status[state][attr] = jobs
 
@@ -2837,8 +2837,8 @@ class Tasks(Task):
 		for state in self.states:
 			status[state] = Dict()
 			for attr in (self.states[state] if isinstance(self.states[state],iterables) else [self.states[state]]):
-				jobs =  list(sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
-							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,))))
+				jobs =  sorted(set((job.identity,job.index) if job.index is not None else job.identity for job in stats if job.state == attr),
+							key = lambda data: ((data,-1) if not isinstance(data,iterables) else (*data,)))
 				if jobs:
 					status[state][attr] = jobs
 
