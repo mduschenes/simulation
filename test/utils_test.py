@@ -1287,7 +1287,7 @@ def test_tensor(path=None,tol=None):
 
 def test_network(path=None,tol=None):
 
-	from src.utils import rand,tensor,network
+	from src.utils import rand,tensor,network,context
 
 	N = 3
 	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
@@ -1344,6 +1344,33 @@ def test_network(path=None,tol=None):
 	assert all(allclose(objs[i][k](),objs[j][l]()) for i in objs for j in objs for k,l in zip(objs[i],objs[j]))
 
 
+	N = 3
+	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
+
+	indices = [['x{}','u{}','y{}'],['y{}','v{}','z{}'],['z{}','w{}','s{}']]
+	shape = [[shapes[j] for j in indices[i]] for i in range(N)]
+	dtype = 'complex128'
+	seed = 123
+
+	data = {i:rand(shape[i],seed=seed,dtype=dtype) for i in range(N)}
+	kwargs = dict(indices=indices)
+	obj = network(data,**kwargs)
+
+	print()
+	print(obj.indices)
+
+	indices=[{attr:f'_{attr}' for attr in shapes}]
+	attribute = {i:[*obj[i].indices] for i in obj}
+
+	for i in range(N):
+		with context(obj,formats=i,indices=indices):
+			print(i,obj.indices)
+			assert obj.indices == {key:[index.format(i) for index in obj[key].indices] for key in obj}
+	print(obj.indices)
+	print()
+
+
+
 	print('Passed')
 
 
@@ -1374,4 +1401,4 @@ if __name__ == '__main__':
 	# test_groupby(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
-	# test_network(path,tol)
+	test_network(path,tol)

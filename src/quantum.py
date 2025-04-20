@@ -1066,7 +1066,7 @@ class Measure(System):
 			def func(parameters=None,state=None,**kwargs):
 				N = len(state)
 				for i in range(N):
-					with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}])):
+					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},{index:index for index in self.inds}]):
 						state &= self.inverse[i] & self.basis[i]
 				return state
 			def gradient(parameters=None,state=None,**kwargs):
@@ -1267,7 +1267,7 @@ class Measure(System):
 
 					data = cls(data=data,indices=indices)
 
-					with context_quimb(data,self.basis[i],key=i):
+					with context(data,self.basis[i],formats=i):
 						data &= self.basis[i]
 
 					data = representation_quimb(data,contraction=True)
@@ -1349,6 +1349,10 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
+
+			for i in where:
+				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},{index:index for index in self.inds}]):
+					state &= self.inverse[i] & self.basis[i]
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -1781,10 +1785,11 @@ class Measure(System):
 
 			raise NotImplementedError
 
-			data = copy(state)
+			data = state.copy()
 
 			for i in where:
-				data[i] = addition(data[i],range(1,data[i].ndim-1))
+				with context(self.ones[i],formats=i):
+					data &= self.ones[i]
 
 		elif self.architecture in ['tensor_quimb']:
 			
@@ -1843,6 +1848,14 @@ class Measure(System):
 			
 			raise NotImplementedError
 
+			data = state.copy()
+
+			for i in where:
+				self.zeros[i].set(array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+				with context(self.zeros[i],formats=i):
+					data &= self.zeros[i]
+				self.zeros[i].set(array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+
 		elif self.architecture in ['tensor_quimb']:
 			
 			data = state.copy()
@@ -1889,12 +1902,20 @@ class Measure(System):
 
 			raise NotImplementedError
 
-			data = copy(state)
-			subscripts = 'iuj,uv,kvl->ijkl'
-			shape = [j for i in where for j in [*state[i].shape[:1],*state[i].shape[-1:]]]
+			other = state if other is None else other
+
+			state = state.copy()
+			other = other.copy()
 
 			for i in where:
-				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
+				with context(self.inverse[i],formats=i):
+					state &= self.inverse[i]
+
+			with context(state,other,indices=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}]):
+
+				state &= other
+
+				data = state
 
 		elif self.architecture in ['tensor_quimb']:
 	
@@ -1961,12 +1982,18 @@ class Measure(System):
 
 			raise NotImplementedError
 
-			data = copy(state)
-			subscripts = 'iuj,uv,kvl->ijkl'
-			shape = [j for i in where for j in [*state[i].shape[:1],*state[i].shape[-1:]]]
+			state = state.copy()
+			other = state.copy()
 
 			for i in where:
-				data[i] = reshape(einsum(subscripts,state[i],self.inverse[i],state[i]),shape)
+				with context(self.inverse[i],formats=i):
+					state &= self.inverse[i]
+
+			with context(state,other,indices=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}]):
+
+				state &= other
+
+				data = state
 
 		elif self.architecture in ['tensor_quimb']:
 	
@@ -2624,6 +2651,34 @@ class Measure(System):
 			
 			raise NotImplementedError
 
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			for i in where:
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}]):
+					data &= self.inverse[i] & self.basis[i]
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
+					data &= self.inverse[i] & self.basis[i].conj()
+
+			options = dict()
+			data = contract_quimb(data,**options)
+			
+			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
+			data = fuse_quimb(data,**options)
+
+			options = dict(contraction=True)
+			data = representation_quimb(data,**options)
+
+			options = dict()
+			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+
+			data = self.eig(parameters=parameters,state=data,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+
 		elif self.architecture in ['tensor_quimb']:
 		
 			where = tuple(i for i in range(N) if i not in where)
@@ -2763,6 +2818,33 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			options = dict()
+			data = contract_quimb(data,**options)
+
+			other = data.copy()
+
+			with context(data,other,formats=where,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}]):
+
+				for i in where:
+					with context(self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}]):
+						data &= self.inverse[i]
+					with context(self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}]):
+						other &= self.inverse[i]
+
+				data &= other
+
+				options = dict(contraction=True)
+				data = representation_quimb(data,**options)
+
+				options = dict()
+				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
 
 		elif self.architecture in ['tensor_quimb']:
 		

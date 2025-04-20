@@ -2403,6 +2403,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.indices = [i.format(*fmts,**formats) for i in self.indices]
 			return
 
+		def transform(self,shape=None,axes=None,conj=None):
+			data = self.data
+			if shape is not None:
+				data = reshape(data,shape)
+			if axes is not None:
+				data = transpose(data,axes)
+			if conj is not None:
+				data = conjugate(data)
+			return data
+
 		def get(self):
 			return self.data
 
@@ -2922,103 +2932,51 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 	class context(object):
 		'''
-		Update tensor attributes within context with key
+		Update tensor within context with formats
 		Args:
-			key (object): Key to update attributes
-			objs (iterable[object]): Objects with attributes to update
-			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+			objs (iterable[object]): Objects to update
+			formats (object): Formats for indices
+			indices (iterable[dict]): Formats of indices to update, [{index:format}]
 		'''
-		def __init__(self,*objs,key=None,formats=None):
+		def __init__(self,*objs,formats=None,indices=None):
 
-			if formats is None:
-				formats = ['indices']
-			elif isinstance(formats,str):
-				formats = [formats]
-			if not isinstance(formats,dict):
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					for attr in formats}
-			else:
-				if key is None:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}
-				elif isinstance(key,iterables):
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}		
-				else:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}					
+			self.objs = [obj if isinstance(obj,network) else {None:obj} for obj in objs]
+			self.formats = formats if isinstance(formats,iterables) else [formats]
+			self.indices = indices if isinstance(indices,iterables) else [indices for obj in objs]
+			self.attributes = [{i:[*obj[i].indices] for i in obj} if isinstance(obj,network) else {None:[*obj.indices]} for obj in objs]
 
-			attributes = [attr for attr in formats]
-			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-			
-			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-				return
-			
-			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+			indexes = range(len(self.objs))
+
+			def enter(obj,formats,indices,attributes):
+				for index in indices:
+					for i in obj:
+						if index in obj[i].indices:
+							obj[i].indices[obj[i].indices.index(index)] = indices[index]
+				for i in obj:
+					obj[i].format(*formats)
 				return
 
-			self.key = key
-			self.objs = objs
-			self.formats = formats
-			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
-			self.funcs = [{attr: func for attr in attributes} for obj in objs]
-			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
-			self.args = tuple()
-			self.kwargs = dict(inplace=True)
+			def exit(obj,formats,indices,attributes):
+				for i in obj:
+					obj[i].indices = attributes[i]
+				return
+
+			self.indexes = indexes
+			self.enter = enter
+			self.exit = exit
 
 			return
 
 		def __enter__(self):
-			for i in range(len(self)):
-				for attr in self.funcs[i]:
-					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			for i in self.indexes:
+				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
 
-		def __exit__(self, type, value, traceback):
-			for i in range(len(self)):
-				for attr in self._funcs[i]:
-					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+		def __exit__(self,type,value,traceback):
+			for i in self.indexes:
+				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
 		
-		def __len__(self):
-			return len(self.objs)
-
-		@classmethod
-		def attributes(cls,obj,attr,attrs=None,**kwargs):
-			if attrs is None:
-				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
-				return wrappers[attr](getattr(obj,attributes[attr]))
-			else:
-				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
-
-
 	class mps(network):
 		'''
 		matrix product state tensor network class
@@ -3774,8 +3732,8 @@ if backend in ['quimb']:
 		'''
 		Update tensor attributes within context with key
 		Args:
-			key (object): Key to update attributes
 			objs (iterable[object]): Objects with attributes to update
+			key (object): Key to update attributes
 			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
 		'''
 		def __init__(self,*objs,key=None,formats=None):
