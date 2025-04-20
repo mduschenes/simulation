@@ -4,7 +4,7 @@
 import os,sys,warnings,itertools,re
 from functools import partial,wraps
 from copy import deepcopy
-import traceback
+import json
 
 import numpy as np
 
@@ -622,15 +622,15 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 	dictionaries = (dict,)
 	items = [items] if (items is not None) and isinstance(items,scalars) else items
 	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and 
-		# all(item in iterable for item in items)):
-		all(any(contains(key,item) for key in iterable) for item in items)):
+		all(item in iterable for item in items)):
+		# all(any(contains(key,item) for key in iterable) for item in items)):
 		
 		if items:
 			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
 				return
 			elif isinstance(iterable,dictionaries):
-				# item = [iterable[item] for item in items]
-				item = [iterable[key] for key in iterable if any(contains(key,item) for item in items)]
+				item = [iterable[item] for item in items]
+				# item = [iterable[key] for key in iterable if any(contains(key,item) for item in items)]
 			else:
 				item = items
 		else:
@@ -712,19 +712,45 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 
 	return
 
-counter = {'count':0}
+
+def find(iterable,keys,types=(dict,*iterables),exceptions=()):
+	'''
+	Find keys and values in iterable
+	Args:
+		iterable (iterable): Nested iterable
+		keys (iterable): Keys to find
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched		
+	Yields:
+		object: Found key or value
+	'''	
+
+	if not isinstance(iterable,types) or isinstance(iterable,exceptions):
+		return
+	elif isinstance(iterable,iterables):
+		for i,item in enumerate(iterable):
+			for pattern in keys:
+				if isinstance(item,str) and (contains(item,pattern) or (pattern in item)):
+					yield i,item
+			yield from find(iterable[i],keys,types=types,exceptions=exceptions)
+	elif isinstance(iterable,dict):
+		for key in iterable:
+			for pattern in keys:
+				if isinstance(key,str) and (contains(key,pattern) or (pattern in key)):
+					yield key,iterable[key]
+				if isinstance(iterable[key],str) and (contains(iterable[key],pattern) or (pattern in iterable[key])):
+					yield key,iterable[key]
+			yield from find(iterable[key],keys,types=types,exceptions=exceptions)
+	return
+
 def replace(iterable,keys,types=(dict,*iterables),exceptions=()):
 	'''
 	Replace keys and values in iterable
 	Args:
 		iterable (iterable): Nested iterable
-		keys (dict): Keys with replacements
+		keys (dict): Keys to replace
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched		
-	Yields:
-		index (iterable[int,str]): Index of item
-		shape (iterable[iterable[int]]): Shape of iterable at index
-		item (iterable): Iterable key
 	'''	
 
 	# types = (dict,*iterables) if types is None else types
@@ -736,47 +762,63 @@ def replace(iterable,keys,types=(dict,*iterables),exceptions=()):
 		for i,item in enumerate(iterable):
 			for pattern in keys:
 				if isinstance(item,str):
-					if contains(item,pattern):
-						item = keys.get(pattern,item)
-						iterable[i] = item
+					# if contains(item,pattern):
+					# 	item = keys.get(pattern,item)
+					# 	iterable[i] = item
 					if pattern in item:
 						item = keys.get(pattern,item)
 						iterable[i] = item
 			replace(iterable[i],keys,types=types,exceptions=exceptions)
 	elif isinstance(iterable,dict):
 		for key in list(iterable):
-			if not isinstance(key,str):
-				continue
 			for pattern in keys:
 				if isinstance(key,str):
-					if contains(key,pattern):
-						old = key
-						key,value = keys.get(pattern,key),iterable.pop(key)
-						iterable[key] = value
-						# print('Key',pattern,old,key)
-						counter['count'] += 1
+					# if contains(key,pattern):
+					# 	key,value = keys.get(pattern,key),iterable.pop(key)
+					# 	iterable[key] = value
 					if pattern in key:
-						old = key						
 						key,value = key.replace(pattern,keys.get(pattern,key)),iterable.pop(key)
 						iterable[key] = value
-						counter['count'] += 1
-						# print('Key',pattern,old,key)					
 				if isinstance(iterable[key],str):
-					if contains(iterable[key],pattern):
-						old = iterable[key]
-						key,value = key,keys.get(pattern,iterable[key])
-						iterable[key] = value
-						counter['count'] += 1
-						# print('Value',pattern,old,value)
+					# if contains(iterable[key],pattern):
+					# 	key,value = key,keys.get(pattern,iterable[key])
+					# 	iterable[key] = value
 					if pattern in iterable[key]:
-						old = iterable[key]
 						key,value = key,iterable[key].replace(pattern,keys.get(pattern,iterable[key]))
 						iterable[key] = value
-						counter['count'] += 1
-						# print('Value',pattern,old,value)
-
 
 			replace(iterable[key],keys,types=types,exceptions=exceptions)
+	return
+
+
+def regex(iterable,patterns=None):
+	'''
+	Find and replace patterns in dictionary keys and values
+	Args:
+		iterable (iterable,dict): Iterable to find and replace
+		patterns (dict): Patterns to find and replace
+	'''
+
+	if patterns is None:
+		return
+
+	if isinstance(iterable,dict):
+
+		string = json.dumps(iterable)
+
+		for pattern in patterns:
+			string = string.replace(pattern,patterns[pattern])
+
+		string = json.loads(string)
+
+		iterable.clear()
+
+		iterable.update(string)
+
+	else:
+
+		raise NotImplementedError
+
 	return
 
 

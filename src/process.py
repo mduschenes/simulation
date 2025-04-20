@@ -21,7 +21,7 @@ from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
-from src.iterables import search,inserter,indexer,sizer,permuter,Dict
+from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
 from src.fit import fit
 from src.postprocess import postprocess
@@ -347,10 +347,33 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	wrapper = None
 	processes = load(path,default=default,wrapper=wrapper,verbose=verbose)
 	
-	obj = 'ax'
 
+	# Parse process processes and plots
+	
 	if (plots is None) or (processes is None):
 		return data,plots,processes
+
+	defaults = {
+		'path':{},
+		'load':None,
+		'dump':None,
+		'reset':None,
+		'convert':None,
+		'patterns':None,
+		'plot':None,
+		'process':None,
+		'postprocess':None,
+		}
+	setter(processes,defaults,delimiter=delim,default=False)
+
+
+	# Process plots and processes dictionaries
+	patterns = processes.get('patterns')
+	for iterable in [plots,processes]:
+		regex(iterable,patterns)
+
+
+	obj = 'ax'
 
 	for instance in list(plots):
 
@@ -376,18 +399,6 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 					inserter(index,item,tmp)
 				plots[instance][subinstance][obj][prop] = tmp
 
-	# Set process processes
-	defaults = {
-		'path':{},
-		'load':None,
-		'dump':None,
-		'reset':None,
-		'convert':None,
-		'plot':None,
-		'process':None,
-		'postprocess':None,
-		}
-	setter(processes,defaults,delimiter=delim,default=False)
 
 	# Get paths
 	path = data if isinstance(data,str) else processes.get('path') if isinstance(processes.get('path'),str) else None

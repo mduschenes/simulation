@@ -93,8 +93,6 @@ def cwd(*args,**kwargs):
 	path = os.getcwd()
 	return path
 
-
-
 def environ():
 	'''
 	Get environmental variables
@@ -121,7 +119,6 @@ def contains(string,pattern):
 
 	return boolean
 
-
 def exists(path):
 	'''
 	Check if path exists
@@ -137,7 +134,6 @@ def exists(path):
 		exists = False
 
 	return exists
-
 
 def dirname(path,abspath=False,delimiter=delimiter):
 	'''
@@ -514,7 +510,6 @@ def basename(path,**kwargs):
 	'''	
 	return os.path.basename(path)
 
-
 def basedir(path,**kwargs):
 	'''
 	Get base path name from path
@@ -526,7 +521,6 @@ def basedir(path,**kwargs):
 	'''	
 	return basename(dirname(path))
 
- 
 class funcclass(object):
 	'''
 	Class wrapper for functions

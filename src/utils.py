@@ -2721,6 +2721,18 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def indices(self):
 			return {i:self[i].indices for i in self}
 
+		@property
+		def N(self):
+			return len(self)
+
+		@property
+		def D(self):
+			return min(size for i in self for size in self[i].shape)
+
+		@property
+		def S(self):
+			return max(size for i in self for size in self[i].shape)
+
 		def array(self):
 			return self.contraction(self)
 
@@ -3015,17 +3027,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 			parameters (array,dict,callable): Class parameters
 			string (str): Class string		
-			N (int): Class system size
-			D (int): Class physical bond dimension
-			S (int): Class virtual bond dimension
 			kwargs (dict): Additional keyword arguments
 		'''
 		
-		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
-
-			self.N = N
-			self.D = D
-			self.S = S
+		def __init__(self,data=None,indices=None,parameters=None,string=None,**kwargs):
 
 			super().__init__(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
@@ -3076,15 +3081,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			super().setup(data=data,indices=indices,parameters=parameters,string=string,setup=setup,**kwargs)
 
-
-			N = self.N if self.N is not None else 0
-			D = self.D if self.D is not None else 0
-			S = self.S if self.S is not None else 0
-
-			self.N = max(N,max(self)+1)
-			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
-			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
-
 			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
 
 			self.scheme = scheme
@@ -3109,9 +3105,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			options = dict() if options is None else options
 
-			defaults = dict(rank=self.S)
+			defaults = dict()
 
-			N = self.N
+			N = max(data)+1
 			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
 			scheme = options.get('scheme',kwargs.get('scheme'))
 
@@ -3504,18 +3500,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			return scheme
 
-		def __copy__(self,*args,**kwargs):
-			return self.copy(deep=False)
+		@property
+		def N(self):
+			return len(self)
 
-		def __deepcopy__(self,*args,**kwargs):
-			return self.copy(deep=True)
+		@property
+		def D(self):
+			return max(size for i in self for size in self[i].shape[1:-1])
 
-		def copy(self,deep=False,**kwargs):
-			cls = self.__class__
-			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string,N=self.N,D=self.D,S=self.S),**kwargs}
-			if deep:
-				options = copy(options)
-			return cls(**options)
+		@property
+		def S(self):
+			return max(size for i in self for size in (self[i].shape[0],self[i].shape[-1]))
 
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
 			'''

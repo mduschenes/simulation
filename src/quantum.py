@@ -1064,7 +1064,7 @@ class Measure(System):
 			raise NotImplementedError
 
 			def func(parameters=None,state=None,**kwargs):
-				N = state.L
+				N = len(state)
 				for i in range(N):
 					with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}])):
 						state &= self.inverse[i] & self.basis[i]
