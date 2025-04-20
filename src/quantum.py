@@ -950,29 +950,27 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			self.ind = 'u{}'
 			self.inds = ('u{}','v{}',)
 			self.indices = ('i{}','j{}',)
-			self.symbol = ('x{}','y{}','z{}','w{}','q{}','r{}','s{}','t{}')
-			self.symbols = ('k{}','l{}','m{}','n{}','o{}','p{}','a{}','b{}')
+			self.symbol = ('x{}','y{}','z{}',)
+			self.symbols = ('k{}','l{}','m{}','n{}','o{}','p{}',)
 
-			cls = tensor_quimb
+			cls = tensor
 
-			kwargs = dict(inds=(self.ind,*self.indices,))
+			kwargs = dict(indices=[self.ind,*self.indices])
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds,))
+			kwargs = dict(indices=[*self.inds])
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds,))
+			kwargs = dict(indices=[*self.inds])
 			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(self.ind,))
+			kwargs = dict(indices=[self.ind])
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(self.ind,))
+			kwargs = dict(indices=[self.ind])
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 			pointer = pointer
@@ -1061,12 +1059,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			def func(parameters=None,state=None,**kwargs):
-				N = len(state)
+				N = state.N
 				for i in range(N):
-					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},{index:index for index in self.inds}]):
+					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},None]):
 						state &= self.inverse[i] & self.basis[i]
 				return state
 			def gradient(parameters=None,state=None,**kwargs):
@@ -1252,8 +1248,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-			
 			if not isinstance(state,tensors):
 				
 				N = len(state)
@@ -1263,14 +1257,14 @@ class Measure(System):
 				for i in range(N):
 
 					data = state[i] if not callable(state[i]) else state[i]()
-					indices = (*self.indices[::-1],)
+					indices = self.indices
 
 					data = cls(data=data,indices=indices)
 
-					with context(data,self.basis[i],formats=i):
+					with context(data,self.basis[i],formats=i,indices=[dict(zip(self.indices,self.indices[::1])),dict(zip(self.indices,self.indices[::-1]))]):
 						data &= self.basis[i]
 
-					data = representation_quimb(data,contraction=True)
+					data.format(i)
 
 					state[i] = data
 
@@ -1348,10 +1342,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
+			state = state.copy()
 
 			for i in where:
-				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},{index:index for index in self.inds}]):
+				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},None]):
 					state &= self.inverse[i] & self.basis[i]
 
 		elif self.architecture in ['tensor_quimb']:
@@ -1427,6 +1421,37 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			raise NotImplementedError
+
+			K = self.K
+			ndim = 1
+
+			if L:
+				basis = array([tensorprod(i) for i in permutations(*[self.basis[i].array() for i in where])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i].array() for i in where])],dtype=self.dtype)
+			else:
+				basis = self.basis[self.pointer].array()
+				inverse = self.inverse[self.pointer].array()
+
+			if model is not None and where:
+			
+				subscripts = 'uij,wji,wv->uv'
+				shapes = (basis.shape,basis.shape,inverse.shape)
+				einsummation = einsummand(subscripts,*shapes)
+
+				options = {**options,**dict()} if options is not None else dict()
+
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
+					return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)
+		
+			else:
+				
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
+				
+				options = options if options is not None else dict()
+
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+					return None	
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -1506,10 +1531,7 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
 		elif self.architecture in ['tensor']:
-			
-			raise NotImplementedError
-
-			N = len(state) if isinstance(state,tensors) else len(where) if where is not None else None
+			N = state.N if isinstance(state,tensors) else len(where) if where is not None else None
 		elif self.architecture in ['tensor_quimb']:
 			N = state.L if isinstance(state,tensors_quimb) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
 		else:
@@ -2661,7 +2683,7 @@ class Measure(System):
 				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}]):
 					data &= self.inverse[i] & self.basis[i]
 				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
-					data &= self.inverse[i] & self.basis[i].conj()
+					data &= self.inverse[i] & self.basis[i].transform(conj=True)
 
 			options = dict()
 			data = contract_quimb(data,**options)

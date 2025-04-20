@@ -2399,19 +2399,21 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def array(self):
 			return self.data
 
-		def format(self,*fmts,**formats):
-			self.indices = [i.format(*fmts,**formats) for i in self.indices]
+		def format(self,*format,**formats):
+			self.indices = [i.format(*format,**formats) for i in self.indices]
 			return
 
 		def transform(self,shape=None,axes=None,conj=None):
-			data = self.data
 			if shape is not None:
-				data = reshape(data,shape)
+				self.data = reshape(self.data,shape)
+				self.indices = [f'{self.string if self.string is not None else ""}{symbols(i)}' for i in range(self.ndim)]
 			if axes is not None:
-				data = transpose(data,axes)
+				self.data = transpose(self.data,axes)
+				self.indices = [self.indices[i] for i in axes]
 			if conj is not None:
-				data = conjugate(data)
-			return data
+				self.data = conjugate(self.data)
+				self.indices = [*self.indices]
+			return self
 
 		def get(self):
 			return self.data
@@ -2441,8 +2443,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				indices (iterable[int,str]): Indices of tensors
 			Returns:
 				obj (tensor): Tensor
-			'''	
+			'''
 			data,indices = cls.construct(*objects)
+			cls = tensor
 			return cls(data=data,indices=indices)
 
 		@classmethod
@@ -2731,24 +2734,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def indices(self):
 			return {i:self[i].indices for i in self}
 
-		@property
-		def N(self):
-			return len(self)
-
-		@property
-		def D(self):
-			return min(size for i in self for size in self[i].shape)
-
-		@property
-		def S(self):
-			return max(size for i in self for size in self[i].shape)
-
 		def array(self):
 			return self.contraction(self)
 
-		def format(self,*fmts,**formats):
+		def format(self,*format,**formats):
 			for i in self:
-				self[i].format(*fmts,**formats)
+				self[i].format(*format,**formats)
 			return
 
 		def get(self):
@@ -2780,8 +2771,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				indices (iterable[int,str]): Indices of tensors
 			Returns:
 				obj (tensor): Tensor
-			'''	
+			'''
 			data = cls.construct(*objects)
+			cls = network
 			return cls(data=data)
 
 		@classmethod
@@ -2893,7 +2885,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				string = self.string
 			else:
 				string = self.__class__.__name__
-			data = ' , '.join([f'{i}:{self[i].shape}' for i in self])
+			data = ' , '.join([f'{i}:{self[i]}' for i in self])
 			return f'{string}: {data}'
 
 		def __repr__(self):
@@ -2934,47 +2926,68 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		Update tensor within context with formats
 		Args:
-			objs (iterable[object]): Objects to update
+			objs (iterable[tensor]): Tensors to update
 			formats (object): Formats for indices
 			indices (iterable[dict]): Formats of indices to update, [{index:format}]
 		'''
 		def __init__(self,*objs,formats=None,indices=None):
 
-			self.objs = [obj if isinstance(obj,network) else {None:obj} for obj in objs]
-			self.formats = formats if isinstance(formats,iterables) else [formats]
+			self.objs = [*objs]
+			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else None
 			self.indices = indices if isinstance(indices,iterables) else [indices for obj in objs]
-			self.attributes = [{i:[*obj[i].indices] for i in obj} if isinstance(obj,network) else {None:[*obj.indices]} for obj in objs]
+			self.attributes = {}
 
 			indexes = range(len(self.objs))
 
 			def enter(obj,formats,indices,attributes):
-				for index in indices:
-					for i in obj:
-						if index in obj[i].indices:
-							obj[i].indices[obj[i].indices.index(index)] = indices[index]
-				for i in obj:
-					obj[i].format(*formats)
+				if indices is not None:
+					indexes = {obj.indices.index(index):indices[index] for index in indices if index in obj.indices}
+					for index in indexes:
+						obj.indices[index] = indexes[index]
+				if formats is not None:
+					obj.format(*formats)
 				return
 
 			def exit(obj,formats,indices,attributes):
-				for i in obj:
-					obj[i].indices = attributes[i]
+				indexes = {obj.indices.index(index):attributes[index] for index in attributes if index in obj.indices}
+				for index in indexes:
+					obj.indices[index] = indexes[index]					
+				return
+
+			def get(objs,formats,indices,attributes):
+				index = -1
+				for obj in objs:
+					for i in obj.indices:
+						index += 1
+						attributes[index] = i
+				return
+
+			def set(objs,formats,indices,attributes):
+				index = -1				
+				for obj in objs:
+					for i in obj.indices:
+						index += 1						
+						attributes[i] = attributes.pop(index)
 				return
 
 			self.indexes = indexes
 			self.enter = enter
 			self.exit = exit
+			self.get = get
+			self.set = set
 
 			return
 
 		def __enter__(self):
+			self.get(self.objs,self.formats,self.indices,self.attributes)	
 			for i in self.indexes:
-				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes[i])
+				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes)
+			self.set(self.objs,self.formats,self.indices,self.attributes)
 			return
 
 		def __exit__(self,type,value,traceback):
 			for i in self.indexes:
-				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
+				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes)
 			return
 		
 	class mps(network):
@@ -2984,11 +2997,18 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			data (dict,iterable,array,tensor,object,callable): Class data
 			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 			parameters (array,dict,callable): Class parameters
-			string (str): Class string		
+			string (str): Class string
+			N (int): Class size
+			D (int): Class dimension
+			S (int): Class approximation
 			kwargs (dict): Additional keyword arguments
 		'''
 		
-		def __init__(self,data=None,indices=None,parameters=None,string=None,**kwargs):
+		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
+
+			self.N = N
+			self.D = D
+			self.S = S
 
 			super().__init__(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
@@ -3018,15 +3038,25 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				
 				def setup(index,data,indices,parameters,string,**kwargs):
 
+					classes = tensors
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
 					if callable(data):
 						data = data(**kwargs)
 
 					if data.ndim == 1:
-						axes = range(data.ndim+2)
 						shape = [1,*data.shape,1]
+						axes = range(data.ndim+2)
+						periodic,N = kwargs.get('periodic'),kwargs.get('N',1)
 						
 						data = transpose(reshape(data,shape),axes)
-						indices = [symbols(index),indices if indices is not None else f'{string}' if string is not None else f'{index}',symbols(index+1)]
+						indices = [
+							symbols(index),
+							*(indices if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
+							symbols(index+1 if not periodic else (index+1)%N)
+							]
 
 					indices = indices
 
@@ -3036,8 +3066,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					return data,indices,parameters,string
 
-
 			super().setup(data=data,indices=indices,parameters=parameters,string=string,setup=setup,**kwargs)
+
+			N = self.N if self.N is not None else 0
+			D = self.D if self.D is not None else 0
+			S = self.S if self.S is not None else 0
+
+			self.N = max(N,max(self)+1)
+			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
+			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
 
 			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
 
@@ -3065,7 +3102,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			defaults = dict()
 
-			N = max(data)+1
+			N = self.N
 			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
 			scheme = options.get('scheme',kwargs.get('scheme'))
 
@@ -3458,17 +3495,27 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			return scheme
 
-		@property
-		def N(self):
-			return len(self)
+		def matrix(self):
+			
+			data = self.array()
+			
+			N = self.N
+			L = data.ndim % N
+			D = max(data.shape[L:])
+			d = (data.ndim-L) // N
 
-		@property
-		def D(self):
-			return max(size for i in self for size in self[i].shape[1:-1])
+			shape = [D**N]*d
+			axes = [*range(L//2),*[L+d*i+j for j in range(d) for i in range(N)],*range(L//2,L)]
+			data = reshape(transpose(data,axes),shape)
 
-		@property
-		def S(self):
-			return max(size for i in self for size in (self[i].shape[0],self[i].shape[-1]))
+			return data
+
+		def copy(self,deep=False,**kwargs):
+			cls = self.__class__
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string,N=self.N,D=self.D,S=self.S),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
 
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
 			'''
@@ -3487,10 +3534,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			options = dict() if options is None else options		
 			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
 			shape = [state[i].shape for i in where]		
+			rank = options.get('rank',options.get('S',kwargs.get('rank',kwargs.get('S',self.S))))
 
 			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme','svd')))
 			if scheme is not None:
-				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme)},**kwargs)
+				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			if isinstance(data,arrays):
 
@@ -3520,7 +3568,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			scheme = options.get('scheme',kwargs.get('scheme','svd'))
 			if scheme is not None:
-				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,state=state),**options},**kwargs)
+				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
 
 			data = state
 

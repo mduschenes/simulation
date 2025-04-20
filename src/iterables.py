@@ -496,14 +496,14 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		Recurse permute until values are lists and not dictionaries.
 		'''
 		keys,values = list(keys),list(values)
+		if isinstance(groups,iterables) and any(not isinstance(group,iterables) for group in groups):
+			groups = [groups]
 		for i,(key,value) in enumerate(zip(keys,values)):
 			if isinstance(value,dict):
 				if isinstance(groups,dict):
 					group = groups.get(key,group)
-				else:
-					group = groups
 				values[i] = permuter(value,copy=copy,groups=group) 
-		return keys,values
+		return keys,values,groups
 
 
 	if dictionary in [None,{}]:
@@ -514,7 +514,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 
 
 	# Get values of permuted nested dictionaries in values
-	keys,values = retriever(keys,values,groups)
+	keys,values,groups = retriever(keys,values,groups)
 
 	# Retain ordering of keys in dictionary
 	keys_ordered = keys

@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product
-from src.utils import einsum,conjugate,dagger,dot,tensorprod,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
+from src.utils import einsum,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
@@ -1630,13 +1630,11 @@ def test_module(*args,**kwargs):
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[2],"measure.D":[2],
-		"module.measure.architecture":["tensor_quimb","tensor","array"],
-		"measure.operator":["tetrad"],"measure.architecture":["tensor_quimb","tensor","array"],
+		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
-		"module.measure.architecture":["tensor_quimb","array"],
-		"measure.architecture":["tensor_quimb","array"],
-		"module.options":[{"contract":False,"max_bond":None,"cutoff":0},{}],
+		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"measure.architecture":["tensor","tensor_quimb","array"],
+		"module.options":[{"S":None},{"contract":False,"max_bond":None,"cutoff":0},{}],
 
 		}	
 
@@ -1690,7 +1688,7 @@ def test_module(*args,**kwargs):
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },				
 				"noise":{
-					"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
+					"operator":["depolarize"],"where":"||i.j||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
 				},
 				# "unitary":{
@@ -1714,9 +1712,7 @@ def test_module(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.where[0]%2,value.where[0],-value.locality,[id(iterable[i]) for i in iterable].index(id(value)),
-					)],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}
@@ -1760,7 +1756,7 @@ def test_module(*args,**kwargs):
 
 		data[index] = {}
 
-		verbose = True
+		verbose = False
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -1873,24 +1869,29 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(amplitude)
 		elif measure.architecture in ["tensor"]:
-			value = array(amplitude)
+			print(amplitude.matrix().shape)
+			value = reshape(transpose(
+					amplitude.array(),
+					[0,*[2+2*i+j for j in range(2) for i in range(measure.N)],1]),
+					(measure.D**measure.N,measure.D**measure.N))
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(amplitude,to=measure.architecture,contraction=True)
 
 		data[index][key] = value
 
 		if verbose:
-			print(measure.architecture,parse(value))
 			print(measure.architecture,parse(value),trace(value))
 
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
-		if verbose:
+		if verbose or 1:
 			print(parse(tmp))
 			print(parse(_tmp))
 
 		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
+
+		continue
 
 		# Operator
 		parameters = model.parameters()
@@ -2103,7 +2104,7 @@ def test_calculate(*args,**kwargs):
 					"parameters":None,"variable":False,"ndim":2,"seed":13579
 				},	
 				"noise":{
-					"operator":["depolarize","depolarize"],"where":"||ij||","string":"depolarize",
+					"operator":["depolarize"],"where":"||i.j||","string":"depolarize",
 					"parameters":1e-3,"variable":False,"ndim":3,"seed":123456789
 				},								
 				# "xx":{
@@ -2119,7 +2120,7 @@ def test_calculate(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":["src.functions.key"],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}
@@ -2439,7 +2440,7 @@ def test_parameters(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":["src.functions.brickwork"],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}

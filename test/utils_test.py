@@ -1356,19 +1356,18 @@ def test_network(path=None,tol=None):
 	kwargs = dict(indices=indices)
 	obj = network(data,**kwargs)
 
-	print()
-	print(obj.indices)
-
-	indices=[{attr:f'_{attr}' for attr in shapes}]
+	indices=[{attr:f'_{attr}' for attr in shapes} for i in range(N)]
 	attribute = {i:[*obj[i].indices] for i in obj}
 
+	print(obj.indices)
+
 	for i in range(N):
-		with context(obj,formats=i,indices=indices):
+		with context(*(obj[i] for i in obj),formats=i,indices=indices):
 			print(i,obj.indices)
 			assert obj.indices == {key:[index.format(i) for index in obj[key].indices] for key in obj}
+
 	print(obj.indices)
 	print()
-
 
 
 	print('Passed')
