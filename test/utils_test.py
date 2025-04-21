@@ -1115,41 +1115,49 @@ def test_seed(path=None,tol=None):
 
 	return
 
+def test_sortgroupby(path=None,tol=None):
 
-def test_groupby(path=None,tol=None):
+	from src.utils import sortby,groupby
 
-	from src.utils import groupby
+	class obj(object):
+		def __init__(self,where):
+			self.where = (*where,) if isinstance(where,iterables) else (where,)
+			return
 
+		def __repr__(self):
+			return str(self)
 
-	def sorter(value,iterable):
-		return value['goodbye'][-1]
+		def __str__(self):
+			return str(self.where)
 
-	iterable = [
-		{'hello':1,'world':(1,2,3),'goodbye':array([5,6,1])},
-		{'hello':1,'world':(1,2,3),'goodbye':array([52,6,41])},
-		{'hello':1,'world':(1,2,-3),'goodbye':array([-5,6,-1])},
-		{'hello':2,'world':(1,-2,3),'goodbye':array([5,46,1])},
-		{'hello':1,'world':(1,-2,3),'goodbye':array([52,6,41])},
-		{'hello':3,'world':(-1,2,3),'goodbye':array([5,6,1])},
-		{'hello':2,'world':(1,-2,3),'goodbye':array([-5,-6,-1])},
-		]
+	sizes = range(3,8)
+	keys = {
+		'src.functions.brickwork':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],
+		'src.functions.nearestneighbour':lambda N:[*range(0,N-1,1),],
+		}
 
-	key = ['hello','world']
+	for N in sizes:
+		for key in keys:
+			iterable = {index:obj(where) for index,where in enumerate(where for i in keys[key](N) for where in [(i,i+1),(i,),(i+1,)])}
 
-	sort = ['hello',sorter]
+			print(key,N,len(iterable))
+			print(iterable)
 
-	for value in iterable:
-		print(value)
-	print()
+			iterable = {index: iterable[i] for index,i in enumerate(sortby(iterable,key=key))}
 
-	iterable = groupby(iterable,key=key,sort=sort)
+			print(iterable)
 
-	for key,value in iterable:
-		for i in value:
-			print(i)
-		print()
+			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,key=key))}
+
+			print(iterable)
+
+			assert [i for index in iterable for i in iterable[index]] == list(range(3*(N-1)))
+
+			print()
+
 
 	print('Passed')
+
 	return
 
 def test_reshape(path=None,tol=None):
@@ -1397,7 +1405,8 @@ if __name__ == '__main__':
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_seed(path,tol)
-	# test_groupby(path,tol)
+	# test_sortby(path,tol)
+	test_sortgroupby(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
-	test_network(path,tol)
+	# test_network(path,tol)

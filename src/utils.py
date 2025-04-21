@@ -682,7 +682,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -719,7 +719,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -756,7 +756,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -781,7 +781,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -807,7 +807,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		Args:
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func	
@@ -834,7 +834,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func	
@@ -9312,7 +9312,7 @@ def take(a,indices,axis):
 	Args:
 		a (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		axis (int,iterable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Sliced array
 	'''
@@ -9339,7 +9339,7 @@ def put(a,values,indices,axis):
 		a (array): Array to put
 		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		axis (int,iterable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Put array
 	'''
@@ -9399,116 +9399,53 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
-def sortby(iterable,key=None,reverse=False):
+def sortby(iterable,key=None):
 	'''
-	Sort dictionary by keys
+	Sort dictionary
 	Args:
 		iterable (dict): dictionary to be sorted
-		key (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
-		reverse (bool): Reverse sort
+		key (str,callable): sort iterable, with signature key(iterable,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
 	Returns:
-		iterable (dict[key,value]): Sorted iterable
+		iterable (dict): Sorted iterable keys
 	'''
+	
+	def default(iterable,sort=None):
+		iterable = {i:id(iterable[i]) for i in iterable}
+		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
+		return key
 
-	def parse(value):
-		if isinstance(value,iterables):
-			try:
-				return tuple((parse(i) for i in value))
-			except:
-				return asscalar(value)
-		else:
-			return value
+	key = load(key,default=default) if isinstance(key,str) else key if callable(key) else default
 
-	def get(value,key,iterable):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
-		return value
+	key = key(iterable=iterable,sort=True)
 
-	reverse = False if not reverse else True
-
-	if key is None:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(key) or not isinstance(key,iterables):
-		func = load(key,default=None) if isinstance(key,str) else None
-		key = func if func is not None else key
-		key = lambda value,key=key,iterable=iterable: parse(get(iterable[value],key,iterable))
-	elif isinstance(key,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in key]
-		key = [item if function is None else function for item,function in zip(key,func)]
-		key = lambda value,key=key,iterable=iterable: parse([get(iterable[value],item,iterable) for item in key])
-	else:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-
-	iterable = {value: iterable[value] for value in sorted(iterable,key=key,reverse=reverse)}
+	iterable = [index for index in sorted(iterable,key=key)]
 
 	return iterable
 
-def groupby(iterable,key=None,sort=None,reverse=False):
+def groupby(iterable,key=None):
 	'''
-	Group iterable by keys, after sorting by key or sort
+	Group dictionary
 	Args:
-		iterable (iterable): Iterable to be grouped
-		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
-		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value,iterable)
-		reverse (bool): Reverse sort	
+		iterable (iterable): dictionary to be grouped
+		key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
 	Returns:
-		iterable (iterable[group]): Grouped iterable with group keys and iterable values 
+		iterable (iterable[group]): grouped iterable key groups
 	'''
 
-	def parse(value):
-		if isinstance(value,iterables):
-			try:
-				return tuple((parse(i) for i in value))
-			except:
-				return asscalar(value)
-		else:
-			return value
+	def default(iterable,group=None):
+		iterable = {i:id(iterable[i]) for i in iterable}
+		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
+		return key
 
-	def get(value,key,iterable):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
-		return value
+	key = load(key,default=default) if isinstance(key,str) else key if callable(key) else default
+	
+	iterable = {index: iterable[index] for index in sortby(iterable,key=key)}
 
-	reverse = False if not reverse else True
+	key = key(iterable=iterable,group=True)
 
-	if key is None:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(key) or not isinstance(key,iterables):
-		func = load(key,default=None) if isinstance(key,str) else None
-		key = func if func is not None else key
-		key = lambda value,key=key,iterable=iterable: parse(get(value,key,iterable))
-	elif isinstance(key,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in key]
-		key = [item if function is None else function for item,function in zip(key,func)]
-		key = lambda value,key=key,iterable=iterable: parse([get(value,item,iterable) for item in key])
-	else:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-
-	if sort is None:
-		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(sort) or not isinstance(sort,iterables):
-		func = load(sort,default=None) if isinstance(sort,str) else None
-		sort = func if func is not None else sort
-		sort = lambda value,sort=sort,iterable=iterable: parse(get(value,sort,iterable))
-	elif isinstance(sort,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in sort]
-		sort = [item if function is None else function for item,function in zip(sort,func)]
-		sort = lambda value,sort=sort,iterable=iterable: parse([get(value,item,iterable) for item in sort])
-	else:
-		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-
-	sort = key if sort is None else sort
-
-	iterable = sorted(iterable,key=sort,reverse=reverse)
-
-	if key is not None:
-		iterable = itertools.groupby(iterable,key=key)
-	else:
-		iterable = ((index,(value,)) for index,value in enumerate(iterable))
+	iterable = [[*group] for index,(name,group) in enumerate(itertools.groupby(iterable,key=key))]
 
 	return iterable
-
-
-
-
 
 def convert(iterable,type=list,types=(list,),default=None):
 	'''
@@ -9611,7 +9548,7 @@ def moveaxis(a,source,destination):
 	Args:
 		a (array): Array to be moved
 		source (int,iterable[int]): Initial axis
-		destination (int,interable[int]): Final axis
+		destination (int,iterable[int]): Final axis
 	Returns:
 		out (array): Array with moved axis
 	'''

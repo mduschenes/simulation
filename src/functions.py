@@ -554,49 +554,83 @@ def state(*args,**kwargs):
 	return data
 
 
-def key(value,iterable):
-	return [id(iterable[i]) for i in iterable].index(id(value))
+def key(iterable,sort=False,group=False):
 
-def brickwork(value,iterable):
-	N = max(j+1 for i in iterable for j in iterable[i].where)
-	L = (N-1)*(2+1)
+	def key(key,iterable=iterable,sort=sort,group=group):
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
 
-	keys = {where:[i for i in iterable if tuple(iterable[i].where)==where] for where in sorted(set(tuple(iterable[i].where) for i in iterable))}
-
-	keys = [i 
-		for index in [*range(0,N,2),*range(1,N,2)] 
-		for where in [(index,index+1),(index,),(index+1,)] 
-		for i in iterable 
-		if iterable[i].where==list(where) and 
-		((len(keys[where])==1) or 
-		(where==(index,) and (keys[where].index(i)==0)) or 
-		(where==(index+1,) and (keys[where].index(i)!=0)))
-		]
-
-	key = [id(iterable[i]) for i in keys].index(id(value))
+		return index
 
 	return key
 
-def nearestneighbour(value,iterable):
-	N = max(j+1 for i in iterable for j in iterable[i].where)
-	L = (N-1)*(2+1)
+def brickwork(iterable,sort=False,group=False):
 
-	keys = {where:[i for i in iterable if tuple(iterable[i].where)==where] for where in sorted(set(tuple(iterable[i].where) for i in iterable))}
+	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
-	keys = [i 
-		for index in [*range(0,N,1)] 
-		for where in [(index,index+1),(index,),(index+1,)] 
-		for i in iterable 
-		if iterable[i].where==list(where) and 
-		((len(keys[where])==1) or 
-		(where==(index,) and (keys[where].index(i)==0)) or 
-		(where==(index+1,) and (keys[where].index(i)!=0)))
-		]
+	indices = {}
+	for index in (*range(0,N-1,2),*range(1,N-1,2)):
+		for where in ((index,index+1),(index,),(index+1,)):
+			for i in iterable:
+				if i in indices:
+					continue
+				if tuple(iterable[i].where)==tuple(where):
+					indices[i] = index
+					break
 
-	key = [id(iterable[i]) for i in keys].index(id(value))
+	iterable = indices
+
+	def key(key,iterable=iterable,sort=sort,group=group):
+
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
+
+		return index
 
 	return key
 
+def nearestneighbour(iterable,sort=False,group=False):
+
+	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
+
+	indices = {}
+	for index in (*range(0,N-1,1),):
+		for where in ((index,index+1),(index,),(index+1,)):
+			for i in iterable:
+				if i in indices:
+					continue
+				if tuple(iterable[i].where)==tuple(where):
+					indices[i] = index
+					break
+
+	iterable = indices
+
+	def key(key,iterable=iterable,sort=sort,group=group):
+
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
+
+		return index
+
+	return key
 
 # def func(data,*args,**kwargs):
 # 	if data is None:

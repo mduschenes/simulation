@@ -1997,11 +1997,14 @@ def test_module(*args,**kwargs):
 
 		key = 'model'
 		data[index][key] = value
+
+
+		if verbose or 1:
+			print(measure.architecture,parse(value))
+
 		
 		tmp = value
 		
-
-
 		model.init(state=module.state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=model.state())
 
@@ -2011,6 +2014,9 @@ def test_module(*args,**kwargs):
 
 		# print('Make Seeding Constant in func() to compare Module <-> Model')
 		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
+
+
+	print({i:list(data[i]) for i in data})
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
 
@@ -2039,29 +2045,22 @@ def test_calculate(*args,**kwargs):
 	kwargs = {
 		"module.N":[4],"module.M":[3],"module.seed":[123456789],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
-		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],
-		"model.data.noise.where":["||ij||"],"model.data.noise.parameters":[1e-3],"model.data.unitary.seed":[123456789],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"model.data.noise.seed":[None],
+		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
+		"model.data.noise.where":["||i.j||"],"model.data.noise.parameters":[1e-3],"model.data.noise.seed":[None],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
-		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
-		"module.measure.options":[{"periodic":False}],
-		"module.measure.architecture":["tensor_quimb","tensor","array"],
-		"callback.options":[{"contract":False,"max_bond":None,"cutoff":0}],
+
+		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"measure.architecture":["tensor","tensor_quimb","array"],
+		
+		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
-	# kwargs = {
-	# 	"module.N":[8],"module.M":[10],"module.seed":[123456789],
-	# 	"model.N":[8],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
-	# 	"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
-	# 	"model.data.noise.where":["||ij||"],"model.data.noise.parameters":[1e-4],"model.data.noise.seed":[None],"module.measure.symmetry":[None],
-	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-	# 	"module.measure.D":[2],"module.measure.operator":["tetrad"],
-	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
-	# 	"module.measure.options":[{"periodic":False}],
-	# 	"module.measure.architecture":["tensor_quimb","tensor"]
-	# 	}	
-
-	groups = None
+	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
 	filters = None
 	func = None
 
@@ -2329,238 +2328,6 @@ def test_calculate(*args,**kwargs):
 	return
 
 
-def test_parameters(*args,**kwargs):
-
-	from importlib import reload
-	import src
-	
-	os.environ['NUMPY_BACKEND'] = 'quimb'
-	reload(src.utils)
-	reload(src.quantum)
-
-	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
-
-	kwargs = {
-		"module.N":[4],"module.M":[3],"module.measure.operator":["tetrad"],
-		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[4],"measure.D":[2],"measure.operator":["tetrad"],
-		"measure.architecture":["tensor_quimb","tensor","array"],
-		"measure.architecture":["tensor_quimb","tensor"],
-		"callback.options":[{"contract":False,"max_bond":None,"cutoff":0}],
-		}	
-
-	groups = None
-	filters = None
-	func = None
-
-	data = {}
-	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
-
-		settings = Dict({
-		"cls":{
-			"module":"src.quantum.Module",
-			"measure":"src.quantum.Measure",
-			"model":"src.quantum.Operators",
-			"state":"src.quantum.State",
-			"callback":"src.quantum.Callback"
-			},
-		"module":{
-			"N":3,
-			"M":1,
-			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"periodic":False}},
-			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
-			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}			
-		},
-		"measure":{
-			"operator":"tetrad",
-			"D":2,"dtype":"complex",
-			"architecture":"tensor",
-			"options":{"periodic":False},
-		},		
-		"model":{
-			"data":{
-				# "local":{
-				# 	"operator":"haar","where":"i","string":"local",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				# },
-				# "unitary":{
-				# 	"operator":"haar","where":"||ij||","string":"unitary",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				# },				
-				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
-				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				# },
-				# "xx":{
-				# 	"operator":["X","X"],"where":">ij<","string":"xx",
-				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				# },	
-				# "yy":{
-				# 	"operator":["Y","Y"],"where":">ij<","string":"yy",
-				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				# },	
-				# "zz":{
-				# 	"operator":["Z","Z"],"where":">ij<","string":"zz",
-				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				# },											
-				# "z":{
-				# 	"operator":["Z"],"where":"i","string":"z",
-				# 	"parameters":1,"variable":True,"constant":None,"ndim":2,"seed":123456789
-				# },
-				# "cnot":{
-				# 	"operator":["CNOT"],"where":">ij<","string":"cnot",
-				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },											
-				# "x":{
-				# 	"operator":["X"],"where":"i","string":"x",
-				# 	"parameters":{"data":0.25,"parameters":1e-3},"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },												
-				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"where":"i<j","string":"noise",
-				# 	"parameters":0,"variable":False,"ndim":3,"seed":123456789
-				# },
-				"i":{
-					"operator":["I","I"],"where":">ij<","string":"i",
-					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},												
-			},
-			"N":4,
-			"D":2,
-			"local":True,
-			"space":"spin",
-			"time":"linear",
-			"lattice":"square",
-			"architecture":"array",
-			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}
-			},
-		"state": {
-			"operator":"zero",
-			"where":None,
-			"string":"psi",
-			"parameters":None,
-			"D":2,
-			"ndim":2,
-			"local":False
-			},
-		"callback":{
-			"attributes":{
-				"N":"N","M":"N","d":"d","D":"state.D",
-				"noise.parameters":"noise.parameters",
-				"objective":"objective",
-				"operator":"measure.operator"
-				},
-			"options":{}
-		},
-		"system":{
-			"dtype":"complex",
-			"format":"array",
-			"device":"cpu",
-			"backend":None,
-			"architecture":None,
-			"base":None,
-			"seed":123456789,
-			"key":None,
-			"instance":None,
-			"cwd":"data",
-			"path":"data.hdf5",
-			"conf":"logging.conf",
-			"logger":None,
-			"cleanup":False,
-			"verbose":False
-			}
-		})
-
-
-		verbose = False
-		precision = 8
-
-		parse = lambda data: data.round(precision)
-
-		data[index] = {}
-
-		# Settings
-		setter(settings,kwargs,delimiter=delim,default="replace")
-		system = settings.system
-
-
-		# Callback
-		callback = load(settings.cls.callback)
-		callback = callback(**{**settings.callback,**dict(system=system)})
-
-		# Module
-		module = load(settings.cls.module)
-		model = load(settings.cls.model)		
-		state = load(settings.cls.state)		
-		callback = load(settings.cls.callback)		
-		system = settings.system
-
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**settings.state,**dict(system=system)})
-		callback = callback(**{**settings.callback,**dict(system=system)})
-
-
-		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
-
-		module.info(verbose=verbose)
-		model.info(verbose=verbose)
-
-		parameters = module.parameters()
-		state = module.state()
-		kwargs = dict()
-
-		tmp = module.measure.transform(parameters=parameters,state=[state]*module.N,**kwargs)
-
-		state = module(parameters,state)
-
-		_tmp = state
-		
-		print(tmp.to_dense().sum(),_tmp.to_dense().sum())
-		print(tmp.to_dense().ravel().real)
-		print(allclose(tmp.to_dense(),_tmp.to_dense()))
-
-		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
-	
-		key = 'data'
-		
-
-		if module.measure.architecture in ['array']:
-			value = array(state)
-		elif module.measure.architecture in ['tensor']:
-			value = state.matrix()
-		elif module.measure.architecture in ['tensor_quimb']:
-			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
-
-
-		data[index][key] = value
-
-
-		if verbose:
-			print(value.round(8))
-			print()
-
-
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
-
-
-	os.environ['NUMPY_BACKEND'] = 'jax'
-	reload(src.utils)
-	reload(src.quantum)
-
-	print("Passed")
-
-	return
-
-
 def test_mps(*args,**kwargs):
 	from importlib import reload
 	import src
@@ -2751,7 +2518,6 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
-	# test_calculate(*args,**args)
-	# test_parameters(*args,**args)
+	# test_module(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)

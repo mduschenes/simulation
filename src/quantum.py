@@ -7086,7 +7086,6 @@ class Objects(Object):
 		Args:
 			configuration (dict): configuration options for layout
 				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
-				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
 		'''
 
 		self.set()
@@ -7095,11 +7094,9 @@ class Objects(Object):
 
 		configuration = self.configuration if configuration is None else configuration
 
-		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,reverse=None).items()} if configuration is not None else {}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None).items()} if configuration is not None else {}
 
-		data = sortby(data,**options)
-
-		data = {index: data[i] for index,i in enumerate(data)}
+		data = {index: data[i] for index,i in enumerate(sortby(data,**options))}
 
 		self.set(data)
 
@@ -7882,8 +7879,7 @@ class Module(System):
 		Sort models of class
 		Args:
 			configuration (dict): configuration options for layout
-				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
-				sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value)
+				key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
 		'''
 
 		self.set()
@@ -7892,12 +7888,10 @@ class Module(System):
 
 		configuration = self.configuration if configuration is None else configuration
 
-		model = [model for index in self.model for model in self.model[index]]
-		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,sort=None,reverse=None).items()} if configuration is not None else {}
+		model = {index: model for index,model in enumerate(model for index in self.model for model in self.model[index])}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None).items()} if configuration is not None else {}
 
-		model = groupby(model,**options)
-
-		model = {index: [model for model in group] for index,(key,group) in enumerate(model)}
+		model = {index: [model[i] for i in group] for index,group in enumerate(groupby(model,**options))}
 
 		self.set(model)
 
