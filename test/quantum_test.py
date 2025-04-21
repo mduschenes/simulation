@@ -1869,11 +1869,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(amplitude)
 		elif measure.architecture in ["tensor"]:
-			print(amplitude.matrix().shape)
-			value = reshape(transpose(
-					amplitude.array(),
-					[0,*[2+2*i+j for j in range(2) for i in range(measure.N)],1]),
-					(measure.D**measure.N,measure.D**measure.N))
+			value = amplitude.matrix()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(amplitude,to=measure.architecture,contraction=True)
 
@@ -1991,7 +1987,7 @@ def test_module(*args,**kwargs):
 		if isinstance(state,arrays):
 			value = array(state)
 		elif isinstance(state,tensors):
-			value = state.array().ravel()
+			value = state.matrix()
 		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
@@ -2538,7 +2534,7 @@ def test_parameters(*args,**kwargs):
 		if isinstance(state,arrays):
 			value = array(state)
 		elif isinstance(state,tensors):
-			value = state.array().ravel()
+			value = state.matrix()
 		elif isinstance(state,tensors_quimb):
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
 		else:
@@ -2694,7 +2690,7 @@ def test_mps(*args,**kwargs):
 
 	if state is not None and state_quimb is not None:
 		tmp = state.array().ravel()
-		tmp_quimb = representation_quimb(state_quimb)
+		tmp_quimb = representation_quimb(state_quimb).ravel()
 
 		print(tmp.sum(),tmp_quimb.sum())
 

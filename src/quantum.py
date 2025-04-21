@@ -1096,7 +1096,7 @@ class Measure(System):
 		Call class for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
@@ -1184,13 +1184,13 @@ class Measure(System):
 		Probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (str,iterable[str],array,Probability,MPS): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
+			state (str,iterable[str],array,tensor,network): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (float,int,iterable[int]): indices of function
 			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
 			kwargs (dict): Additional class keyword arguments
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
+			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
@@ -1202,7 +1202,7 @@ class Measure(System):
 
 			return self.amplitude(parameters=parameters,state=state,where=where,**kwargs)
 
-		elif transformation in [None,True,'operator','model'] and model is not None:
+		elif transformation in [None,True,'probability','state'] and model is not None:
 		
 			state = self.transform(parameters=parameters,state=state,transformation=transformation,where=where)
 		
@@ -1220,7 +1220,7 @@ class Measure(System):
 			state (str,callable,iterable[str,callable],array): state of class of shape (N,self.D,self.D)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N)
+			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N)
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
@@ -1314,11 +1314,11 @@ class Measure(System):
 		Amplitude for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function			
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability state of shape (self.D**N,self.D**N)
+			state (array,tensor,network): state of class of Probability state of shape (self.D**N,self.D**N)
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
@@ -1364,7 +1364,7 @@ class Measure(System):
 		Operator for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability state of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (float,int,iterable[int]): indices of function
 			options (dict): Operator keyword options			
@@ -1500,7 +1500,7 @@ class Measure(System):
 		Args:
 			attr (str): attribute for calculation of data
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			data (object): data
@@ -1518,7 +1518,7 @@ class Measure(System):
 		Indices of function
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
@@ -1561,7 +1561,7 @@ class Measure(System):
 		Eigenvalues for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -1622,7 +1622,7 @@ class Measure(System):
 		Singular values for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
@@ -1679,7 +1679,7 @@ class Measure(System):
 		Rank for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
@@ -1702,12 +1702,12 @@ class Measure(System):
 		Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			data (array,Probability,MPS): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
+			data (array,tensor,network): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
@@ -1767,12 +1767,12 @@ class Measure(System):
 		Trace for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
+			state (array,tensor,network): state of class of Probability of shape (L,self.K) or (self.K**L,)
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
@@ -1830,12 +1830,12 @@ class Measure(System):
 		Measure probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (dict[int,int]): indices and values of measured probability
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
-			state (array,Probability,MPS): state of class of Probability of shape (L,self.K) or (self.K**L,)
+			state (array,tensor,network): state of class of Probability of shape (L,self.K) or (self.K**L,)
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
@@ -1897,8 +1897,8 @@ class Measure(System):
 		Trace of Square for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -1965,7 +1965,7 @@ class Measure(System):
 		Partial Trace of Vectorized Operator for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2041,8 +2041,8 @@ class Measure(System):
 		Infidelity for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2064,8 +2064,8 @@ class Measure(System):
 		Infidelity (Quantum) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2097,10 +2097,8 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
-			
-			options = dict(to=self.architecture,contraction=True)
-			state = representation_quimb(state,**{**options,**kwargs})
-			other = representation_quimb(other,**{**options,**kwargs})
+
+			state,other = state.matrix(),other.matrix()
 
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
@@ -2131,8 +2129,8 @@ class Measure(System):
 		Infidelity (Classical) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data		
 			kwargs (dict): Additional class keyword arguments					
@@ -2181,8 +2179,8 @@ class Measure(System):
 		Infidelity (pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			other (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2233,7 +2231,7 @@ class Measure(System):
 		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2255,7 +2253,7 @@ class Measure(System):
 		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function		
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2300,7 +2298,7 @@ class Measure(System):
 		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function					
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2345,7 +2343,7 @@ class Measure(System):
 		Norm (pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function			
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2391,7 +2389,7 @@ class Measure(System):
 		Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2413,7 +2411,7 @@ class Measure(System):
 		Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2438,6 +2436,8 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
+			state = state.matrix()
+
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
@@ -2456,6 +2456,8 @@ class Measure(System):
 
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+			state = state.matrix()
 
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -2492,7 +2494,7 @@ class Measure(System):
 		Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2547,7 +2549,7 @@ class Measure(System):
 		Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2610,7 +2612,7 @@ class Measure(System):
 		Entangling Power/Operator Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2632,7 +2634,7 @@ class Measure(System):
 		Entangling Power/Operator Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2740,7 +2742,7 @@ class Measure(System):
 		Entangling Power/Operator Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2807,7 +2809,7 @@ class Measure(System):
 		Entangling Power/Operator Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -2906,7 +2908,7 @@ class Measure(System):
 		Mutual Information for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -2928,7 +2930,7 @@ class Measure(System):
 		Mutual Information (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -3012,7 +3014,7 @@ class Measure(System):
 		Mutual Information (Measure) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -3083,6 +3085,8 @@ class Measure(System):
 				options = dict(transformation=False)
 				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
 
+				tmp = tmp.matrix()
+
 				tmp /= norm
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
@@ -3139,7 +3143,7 @@ class Measure(System):
 		Mutual Information (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -3225,7 +3229,7 @@ class Measure(System):
 		Mutual Information (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -3311,7 +3315,7 @@ class Measure(System):
 		Discord for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -3333,7 +3337,7 @@ class Measure(System):
 		Discord (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data
 			kwargs (dict): Additional class keyword arguments					
@@ -3370,7 +3374,7 @@ class Measure(System):
 		Discord (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
@@ -3407,7 +3411,7 @@ class Measure(System):
 		Discord (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data			
 			kwargs (dict): Additional class keyword arguments					
@@ -3444,7 +3448,7 @@ class Measure(System):
 		Spectrum for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function				
 			func (callable): function to apply to data	
 			kwargs (dict): Additional class keyword arguments					
@@ -3466,7 +3470,7 @@ class Measure(System):
 		Spectrum (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data					
 			kwargs (dict): Additional class keyword arguments					
@@ -3508,6 +3512,8 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
+			state = state.matrix()
+
 			where = tuple(i for i in range(N) if i in where)
 
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
@@ -3541,7 +3547,7 @@ class Measure(System):
 		Spectrum (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					
@@ -3600,7 +3606,7 @@ class Measure(System):
 		Rank (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data						
 			kwargs (dict): Additional class keyword arguments					
@@ -3643,7 +3649,7 @@ class Measure(System):
 		Rank (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,Probability,MPS): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
 			func (callable): function to apply to data							
 			kwargs (dict): Additional class keyword arguments					

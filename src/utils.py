@@ -3498,14 +3498,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def matrix(self):
 			
 			data = self.array()
-			
-			N = self.N
-			L = data.ndim % N
-			D = max(data.shape[L:])
-			d = (data.ndim-L) // N
 
-			shape = [D**N]*d
-			axes = [*range(L//2),*[L+d*i+j for j in range(d) for i in range(N)],*range(L//2,L)]
+			d = 2			
+			N = self.N
+			L = data.ndim - d*N
+			D = data.shape[L:]
+
+			shape = [prod(D[d*i+j] for i in range(N)) for j in range(d)]
+			axes = [*range(L//2),*(L+d*i+j for j in range(d) for i in range(N)),*range(L//2,L)]
 			data = reshape(transpose(data,axes),shape)
 
 			return data
