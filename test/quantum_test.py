@@ -1959,8 +1959,6 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
-		continue
-
 		# Callback
 		callback = load(settings.cls.callback)
 		callback = callback(**{**settings.callback,**dict(system=system)})
