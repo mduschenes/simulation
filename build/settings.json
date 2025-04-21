@@ -25,7 +25,7 @@
 		"model.d":[1],
 		"model.local":[true],
 		"model.configuration":[{
-			"key":["src.functions.brickwork"],
+			"key":"src.functions.brickwork",
 			"sort":null,
 			"reverse":false
 			}],
@@ -34,12 +34,13 @@
 		"module.measure.operator":["pauli"],
 		"module.measure.architecture":["tensor"],
 		"module.measure.D":[2],		
-		"module.measure.options":[{"cyclic":false}],
+		"module.measure.options":[{"periodic":false}],
 		"module.options.max_bond":[null],
 		"module.options.max_bond":[2,3,4,6,8,16,32,64],
 		"module.options.cutoff":[0],
+		"module.options.contract":["swap+split"],
 		"module.configuration":[{
-			"key":["src.functions.brickwork"],
+			"key":"src.functions.brickwork",
 			"sort":null,
 			"reverse":false
 			}],
@@ -113,9 +114,9 @@
 	"d":1,
 	"seed":null,
 	"string":"module",
-	"measure":{"string":"povm","operator":"pauli","D":2,"seed":null,"architecture":"tensor","options":{"cyclic":false}},
+	"measure":{"string":"povm","operator":"pauli","D":2,"seed":null,"architecture":"tensor","options":{"periodic":false}},
 	"configuration":{},
-	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
+	"options":{}		
 },
 "model":{
 	"data":{
@@ -243,7 +244,7 @@
 		"noise.parameters":"noise.parameters",
 		"operator":"measure.operator",
 		"max_bond":"options.max_bond",
-		"cyclic":"measure.options.cyclic",
+		"periodic":"measure.options.periodic",
 		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",

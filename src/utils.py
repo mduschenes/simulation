@@ -2364,7 +2364,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			cls = array
 			classes = arrays
-			options = dict()
+			options = {}
 
 			if not isinstance(data,classes): 
 				data = cls(data)
@@ -2695,7 +2695,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			cls = tensor
 			classes = tensors
-			options = dict()
+			options = {}
 
 			for i in data:
 
@@ -3076,7 +3076,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.D = max(D,max((max(self[i].shape[1:-1]) for i in self),default=D))
 			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
 
-			scheme = {scheme:self.schemes(scheme=scheme,**kwargs) for scheme in self.schemes(scheme=True)}
+			scheme = {scheme:self.schemes(options=dict(scheme=scheme),**kwargs) for scheme in self.schemes(options=dict(scheme=True))}
 
 			self.scheme = scheme
 
@@ -3098,13 +3098,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			data = self.tensor if data is None else data
 
-			options = dict() if options is None else options
+			options = {} if options is None else options
 
-			defaults = dict()
+			defaults = {}
 
 			N = self.N
 			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
-			scheme = options.get('scheme',kwargs.get('scheme'))
+			scheme = options.get('scheme')
 
 			indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
 
@@ -3168,46 +3168,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					data = dict(zip(where,data))
 
-					if 0:
-
-						# error = (norm(data-dot(u,v))/norm(data)).real
-
-						tmp = {**kwargs.get('state',options.get('state')),**state}
-						variables = kwargs.get('variables')
-						D,N,S = kwargs.get('D',options.get('D')),None,kwargs.get('S',options.get('S'))
-						basis = self
-
-						options = dict(D=D,N=N)
-						constant = real(1-addition(basis.transform(tmp,transform=False,**{**kwargs,**options})))+0.
-
-						options = dict(D=D,N=N)
-						spectrum = basis.transform(tmp,transform=None,**{**kwargs,**options})
-
-						hermitian = real(norm(spectrum-dagger(spectrum)))+0.
-
-						options = dict(compute_v=False,hermitian=True)
-						spectrum = eig(spectrum,**options)
-						ratio = real(-addition(spectrum[spectrum<=0])/addition(spectrum[spectrum>0]))+0.
-						
-						sums = {i:(
-									asscalar(minimum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))),
-									asscalar(maximum(tmp[i].sum((0,1) if i < min(where) else (-2,-1) if i > max(where) else None) if i not in where else addition(dot(tmp[min(where)],tmp[max(where)])))))
-								for i in tmp}
-
-						print('---',where,minimum(spectrum),max(spectrum),'---',1-spectrum.sum(),constant,hermitian,ratio)
-						print(sums)
-						print()
-					# options = dict(compute_uv=False,full_matrices=False,hermitian=True)
-					# variables['u.condition'].append(condition_number(dot(u.T,u).real))
-					# variables['v.condition'].append(condition_number(dot(v,v.T).real))
-					# variables['u.spectrum'].append(tuple(svd(dot(u.T,u).real,**options)))
-					# variables['v.spectrum'].append(tuple(svd(dot(v,v.T).real,**options)))
-					# variables['uv.error'].append(sqrt(norm(state-dot(u,v))/norm(state)).real)
-					# variables['uv.spectrum'].append(spectrum)
-					# variables['uv.rank'].append(S)
-
-					# parse = lambda obj: asscalar(obj.real)
-					# print(where,error,parse(variables['uv.error'][-1]),{'u':[parse(variables['u.condition'][-1]),parse(u.min()),parse(u.max()),u.shape],'v':[parse(variables['v.condition'][-1]),parse(v.min()),parse(v.max()),v.shape]})
 				else:
 					raise NotImplementedError(f"Not Implemented {where}")
 
@@ -3375,10 +3335,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Returns:
 				scheme (callable): Scheme function with signature scheme(a,rank=None,conj=None,**options)
 			'''
-			options = dict() if options is None else options
+			options = {} if options is None else options
 
-			scheme = options.get('scheme',kwargs.get('scheme'))
-			eps = kwargs.get('eps') if kwargs.get('eps') is not None else epsilon()
+			scheme = options.get('scheme')
+			eps = options.get('eps') if options.get('eps') is not None else epsilon()
 
 			schemes = [None,'svd','nmf','qr','stq','eig','spectrum','probability']
 
@@ -3395,6 +3355,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 					u,v,s = u,v,rank
 					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
+					u,v,s = cmplx(u),cmplx(v),s
 					return u,v,s
 				return decorator
 
@@ -3404,7 +3365,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
 					u,s,v = svds(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
+					u,v = u,dotl(v,s)
 					return u,v,s				
 			elif scheme in ['svd']:
 				@wrapper
@@ -3417,8 +3378,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			elif scheme in ['nmf']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict()		
-					u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,v,s = nmf(real(a),**{**kwargs,**options,**dict(rank=rank)})
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 					u,v = dotr(u,sign(s)*sqrt(abs(s))),dotl(v,sign(s)*sqrt(abs(s)))
 					return u,v,s
@@ -3433,6 +3393,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 					u,v,s = u,v,rank
 					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
+					u,v,s = cmplx(u),cmplx(v),s
 					return u,v,s
 				return decorator
 
@@ -3454,13 +3415,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = dotr(u,reciprocal(s)),diag(s),s
 					u,v,s = u,v,rank
 					u,v,s = (v,dagger(u),s) if conj else (u,v,s)
+					u,v,s = (u,cmplx(v),s) if conj else (cmplx(u),v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['stq']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict()		
 					u,v,s = a,None,None
 					return u,v,s				
 			
@@ -3489,8 +3450,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			elif scheme in ['probability']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
-					defaults = dict()
-					u,v,s = nmf(real(a),**{**defaults,**kwargs,**options,**dict(rank=rank)})
+					u,v,s = nmf(real(a),**{**kwargs,**options,**dict(rank=rank)})
 					return s
 			
 			return scheme
@@ -3531,19 +3491,18 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 
 			state = self
-			options = dict() if options is None else options		
+			options = {} if options is None else options		
 			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
 			shape = [state[i].shape for i in where]		
-			rank = options.get('rank',options.get('S',kwargs.get('rank',kwargs.get('S',self.S))))
+			rank = options.get('S')
 
-			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme',kwargs.get('scheme','svd')))
+			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
 			if scheme is not None:
 				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			if isinstance(data,arrays):
 
 				L = len(where)
-				# shapes = [j for i in where for j in state[i].shape[1:-1]]
 				subscripts = '%s,%s->%s%s%s'%(
 					''.join((
 						''.join(symbols(i) for i in range(L)),
@@ -3558,6 +3517,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					''.join((symbols(2*L+L),))
 					)
 
+				# shapes = [j for i in where for j in state[i].shape[1:-1]]
 				# data = self.shuffle(data,shape=shapes,**kwargs)
 
 				data = einsum(subscripts,data,*(state[i]() for i in where))
@@ -3566,7 +3526,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 				data = data(state,where=where)
 
-			scheme = options.get('scheme',kwargs.get('scheme','svd'))
+			scheme = options.get('scheme')
 			if scheme is not None:
 				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
 
@@ -5750,7 +5710,7 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 		data = data.groupby(by=by,**options)
 
 	if apply is not None and by is not None and agg is not None:
-		options = dict()
+		options = {}
 		data = data.apply(apply,**options)
 
 		options = dict(drop=True)
@@ -5760,15 +5720,15 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 		data = data.groupby(by=by,**options)
 
 	elif apply is not None and by is not None:
-		options = dict()
+		options = {}
 		data = data.apply(apply,**options)
 
 		options = dict(drop=True)
 		data = data.reset_index(**options)
 
 	elif apply is not None:
-		options = dict()
-		data = data.apply(apply)
+		options = {}
+		data = data.apply(apply,**options)
 	
 	if agg is not None and by is not None:
 		options = dict(level=0,axis=1)

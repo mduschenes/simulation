@@ -231,7 +231,7 @@
 			]
 		]
 	],
-	"patterns": {"max_bond":"S"},
+	"patterns": {"max_bond":"S","cyclic":"periodic"},
 	"texify": {
 		"iteration": "\\textrm{Iteration}",
 		"objective": "\\textrm{Infidelity}",

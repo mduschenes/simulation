@@ -1084,7 +1084,7 @@ class Measure(System):
 
 		parameters = self.parameters()
 		wrapper = partial
-		kwargs = dict()
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,**kwargs)
@@ -1272,7 +1272,7 @@ class Measure(System):
 
 				state = state
 
-			options = {**dict(),**(self.options if self.options is not None else dict())}
+			options = self.options
 			
 			state = mps(state,**options)
 			
@@ -1303,7 +1303,7 @@ class Measure(System):
 
 				state = state
 
-			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**(self.options if self.options is not None else dict())}
+			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**dict(cyclic=self.options.get('periodic',self.options.get('cyclic',None)))}
 			
 			state = mps_quimb(state,**options)
 
@@ -1383,6 +1383,8 @@ class Measure(System):
 			K = self.K
 			ndim = 1
 
+			options = {**{option:self.options[option] for option in self.options if option not in []},**(options if options is not None else {})}
+
 			if L:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
 				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
@@ -1403,7 +1405,7 @@ class Measure(System):
 				shuffler = shuffle(**opts) if where is not None else lambda state:state
 				_shuffler = shuffle(**_opts) if where is not None else lambda state:state
 			
-				options = options if options is not None else dict()
+				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
 					return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
@@ -1413,17 +1415,17 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 				
-				options = options if options is not None else dict()
+				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			K = self.K
 			ndim = 1
+
+			options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
 
 			if L:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis[i].array() for i in where])],dtype=self.dtype)
@@ -1436,19 +1438,22 @@ class Measure(System):
 			
 				subscripts = 'uij,wji,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape)
+				shape = [*[self.K]*self.N]*2
 				einsummation = einsummand(subscripts,*shapes)
 
-				options = {**options,**dict()} if options is not None else dict()
+				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
-					return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)
+					# return state(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),where=where,options=options)
+					return state(reshape(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),shape),where=where,options=options)
+					# return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)
 		
 			else:
 				
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 				
-				options = options if options is not None else dict()
+				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None	
@@ -1457,6 +1462,8 @@ class Measure(System):
 
 			K = self.K
 			ndim = 1
+
+			options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
 
 			if L:
 				basis = array([tensorprod(i) for i in permutations(*[representation_quimb(self.basis[i]) for i in where])],dtype=self.dtype)
@@ -1471,7 +1478,7 @@ class Measure(System):
 				shapes = (basis.shape,basis.shape,inverse.shape)
 				einsummation = einsummand(subscripts,*shapes)
 
-				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else dict()
+				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
 					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
@@ -1481,14 +1488,14 @@ class Measure(System):
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
 				
-				options = options if options is not None else dict()
+				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
 					return None				
 
 		parameters = self.parameters() if parameters is None else parameters
 		wrapper = partial
-		kwargs = dict()
+		kwargs = {}
 
 		func = wrapper(func,parameters=parameters,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs)
 
@@ -1841,7 +1848,7 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
-		default = dict()
+		default = {}
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array']:
@@ -2160,7 +2167,7 @@ class Measure(System):
 		elif self.architecture in ['tensor_quimb']:
 			
 			function = sqrt
-			kwargs = dict()
+			kwargs = {}
 
 			state = contract_quimb(state,**kwargs)
 			state.modify(apply=function)
@@ -2687,7 +2694,7 @@ class Measure(System):
 				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
 					data &= self.inverse[i] & self.basis[i].transform(conj=True)
 
-			options = dict()
+			options = {}
 			data = contract_quimb(data,**options)
 			
 			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
@@ -2696,7 +2703,7 @@ class Measure(System):
 			options = dict(contraction=True)
 			data = representation_quimb(data,**options)
 
-			options = dict()
+			options = {}
 			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
@@ -2717,7 +2724,7 @@ class Measure(System):
 				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
 					data &= self.inverse[i] & self.basis[i].conj()
 
-			options = dict()
+			options = {}
 			data = contract_quimb(data,**options)
 			
 			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
@@ -2726,7 +2733,7 @@ class Measure(System):
 			options = dict(contraction=True)
 			data = representation_quimb(data,**options)
 
-			options = dict()
+			options = {}
 			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
@@ -2784,7 +2791,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict()
+			options = {}
 			data = contract_quimb(data,**options)
 			
 			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
@@ -2793,7 +2800,7 @@ class Measure(System):
 			options = dict(contraction=True)
 			data = representation_quimb(data,**options)
 
-			options = dict()
+			options = {}
 			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
@@ -2849,7 +2856,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict()
+			options = {}
 			data = contract_quimb(data,**options)
 
 			other = data.copy()
@@ -2867,7 +2874,7 @@ class Measure(System):
 				options = dict(contraction=True)
 				data = representation_quimb(data,**options)
 
-				options = dict()
+				options = {}
 				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
 
 		elif self.architecture in ['tensor_quimb']:
@@ -2878,7 +2885,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict()
+			options = {}
 			data = contract_quimb(data,**options)
 
 			other = data.copy()
@@ -2896,7 +2903,7 @@ class Measure(System):
 				options = dict(contraction=True)
 				data = representation_quimb(data,**options)
 
-				options = dict()
+				options = {}
 				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
 
 		data = func(data)
@@ -3758,11 +3765,7 @@ if backend in ['quimb']:
 				'periodic':(
 					(lambda attr,value,kwargs:'cyclic'),
 					(lambda attr,value,kwargs: (value is True) and N is not None and N>2)
-					),
-				'boundaries':(
-					(lambda attr,value,kwargs:'cyclic'),
-					(lambda attr,value,kwargs: ((value in ['periodic']) or (value is True)) and N is not None and N>2)
-					)			
+					),		
 				}
 
 			kwargs.update(dict(data=data,L=N))
@@ -3798,7 +3801,6 @@ if backend in ['quimb']:
 				options = dict(D=D,**kwargs)
 				data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
 				data = [basis.get(i)(**Basis.opts(basis.get(i),options)) if isinstance(i,str) else i for i in data]
-				kwargs.update(dict())
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
 			elif isinstance(data,integers):
 				kwargs.update(dict(phys_dim=D,bond_dim=S))			
@@ -3986,7 +3988,6 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
 	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
-	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
 
 	if parameters is not None and len(parameters):
 		def function(parameters,state=state,indices=indices,**kwargs):	
@@ -4010,7 +4011,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		wrapper = jit
 	else:
 		wrapper = jit
-	kwargs = dict()
+	kwargs = {}
 
 	data = [wrapper(data[i],**kwargs) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
 
@@ -4059,7 +4060,6 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
 	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
-	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
 
 	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation,architecture=architecture)	
 
@@ -4077,6 +4077,7 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
+	
 	if architecture is None:
 		wrapper = jit
 	elif architecture in ['array']:
@@ -4087,7 +4088,7 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		wrapper = jit
 	else:
 		wrapper = jit
-	kwargs = dict()
+	kwargs = {}
 
 	data,grad,indexes = (
 		[wrapper(data[i],**kwargs) for i in range(length)],
@@ -4457,7 +4458,7 @@ class Object(System):
 
 		cls = Parameter
 		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
-			defaults = dict()
+			defaults = {}
 			parameters = parameters if parameters is not None else self.parameters
 			keywords = dict(data=parameters) if not isinstance(parameters,dicts) else parameters
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
@@ -4469,9 +4470,9 @@ class Object(System):
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
-			defaults = dict()
+			defaults = {}
 			parameters = parameters if parameters is not None else parameters			
-			keywords = parameters if isinstance(parameters,dicts) else dict(data=parameters) if parameters is not None else dict()
+			keywords = parameters if isinstance(parameters,dicts) else dict(data=parameters) if parameters is not None else {}
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,constant=self.constant,system=self.system),delimiter=delim,default=False)
 			setter(keywords,defaults,delimiter=delim,default=False)
@@ -4714,14 +4715,14 @@ class Object(System):
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			where = self.where
 			wrapper = jit
-			kwargs = dict()
+			kwargs = {}
 		
 		else:
 			parameters = self.parameters()
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			where = self.where			
 			wrapper = partial
-			kwargs = dict()
+			kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -6698,13 +6699,13 @@ class Objects(Object):
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
-			kwargs = dict()
+			kwargs = {}
 
 		else:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = partial
-			kwargs = dict()
+			kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -7423,13 +7424,13 @@ class Channel(Objects):
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = jit
-			kwargs = dict()
+			kwargs = {}
 
 		else:
 			parameters = self.parameters(self.parameters())
 			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 			wrapper = partial
-			kwargs = dict()
+			kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -7539,7 +7540,7 @@ class Operators(Objects):
 		parameters = self.parameters(self.parameters())
 		state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
 		wrapper = partial
-		kwargs = dict()
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -7803,7 +7804,7 @@ class Module(System):
 		parameters = self.parameters()
 		state = self.state()
 		wrapper = partial
-		kwargs = dict()
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -8020,7 +8021,7 @@ class Module(System):
 			state = self.state()
 			model = self
 			data = data
-			kwargs = dict()
+			kwargs = {}
 
 			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
 
@@ -8318,7 +8319,7 @@ class Callback(System):
 				index = -1 if ((not stop) or other) else -2
 				parameters = attributes['parameters'][index]
 				state = metric.state()
-				kwargs = dict()
+				kwargs = {}
 
 				if attr in [
 					'parameters','grad','search',

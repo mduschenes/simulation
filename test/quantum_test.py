@@ -184,7 +184,7 @@ def test_null(*args,**kwargs):
 				"lattice":"square",
 				"architecture":"array",
 				"configuration":{
-					"key":["src.functions.key"],
+					"key":"src.functions.key",
 					"sort":None,
 					"reverse":False
 					}
@@ -1634,11 +1634,13 @@ def test_module(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"S":None},{"contract":False,"max_bond":None,"cutoff":0},{}],
-
+		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
-	groups = ["module.measure.architecture","measure.architecture","module.options"]
+	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
 	filters = None
 	func = None
 
@@ -1657,12 +1659,10 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"periodic":False}},
 			"options":{},
 			"configuration":{
-				"key":[lambda value,iterable: (
-					value.where[0]%2,value.where[0],
-					)],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}			
@@ -1671,7 +1671,7 @@ def test_module(*args,**kwargs):
 			"operator":"tetrad",
 			"D":2,"dtype":"complex",
 			"architecture":"tensor",
-			"options":{"cyclic":False},
+			"options":{"periodic":False},
 		},		
 		"model":{
 			"data":{
@@ -1733,7 +1733,7 @@ def test_module(*args,**kwargs):
 				"objective":"objective",
 				"operator":"measure.operator"
 				},
-			"options":{"contract":False,"max_bond":None,"cutoff":0}
+			"options":{}
 		},
 		"system":{
 			"dtype":"complex",
@@ -1881,13 +1881,11 @@ def test_module(*args,**kwargs):
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
-		if verbose or 1:
+		if verbose:
 			print(parse(tmp))
 			print(parse(_tmp))
 
 		assert allclose(tmp,_tmp),"Incorrect probability <-> amplitude conversion"
-
-		continue
 
 		# Operator
 		parameters = model.parameters()
@@ -1898,12 +1896,13 @@ def test_module(*args,**kwargs):
 		parameters = model.parameters()
 		state = [i for i in objs]
 		kwargs = dict()
+		options = settings.module.options
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
 		where = model.where
 
-		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
+		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
 
 
 		key = "operator"
@@ -1916,8 +1915,11 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		if verbose:
+		if verbose or 1:
 			print(measure.architecture,parse(value))
+
+		continue
+
 
 		parameters = model.parameters()
 		state = [i for i in objs]
@@ -2042,8 +2044,9 @@ def test_calculate(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"model.data.noise.seed":[None],
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 		"module.options":[{"contract":"swap+split","max_bond":10000,"cutoff":0}],
-		"module.measure.options":[{"cyclic":False}],
+		"module.measure.options":[{"periodic":False}],
 		"module.measure.architecture":["tensor_quimb","tensor","array"],
+		"callback.options":[{"contract":False,"max_bond":None,"cutoff":0}],
 		}	
 
 	# kwargs = {
@@ -2054,7 +2057,7 @@ def test_calculate(*args,**kwargs):
 	# 	"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 	# 	"module.measure.D":[2],"module.measure.operator":["tetrad"],
 	# 	"module.options":[{"contract":"swap+split","max_bond":128,"cutoff":0}],
-	# 	"module.measure.options":[{"cyclic":False}],
+	# 	"module.measure.options":[{"periodic":False}],
 	# 	"module.measure.architecture":["tensor_quimb","tensor"]
 	# 	}	
 
@@ -2080,11 +2083,11 @@ def test_calculate(*args,**kwargs):
 				"operator":"tetrad",
 				"D":2,"dtype":"complex","seed":13579,
 				"architecture":"tensor",
-				"options":{"cyclic":False},
+				"options":{"periodic":False},
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
 			"configuration":{
-				"key":["src.functions.key"],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}
@@ -2137,7 +2140,7 @@ def test_calculate(*args,**kwargs):
 				"objective":"objective",
 				"operator":"measure.operator"
 				},
-			"options":{"contract":False,"max_bond":None,"cutoff":0}
+			"options":{}
 		},
 		"system":{
 			"dtype":"complex",
@@ -2346,6 +2349,7 @@ def test_parameters(*args,**kwargs):
 		"measure.N":[4],"measure.D":[2],"measure.operator":["tetrad"],
 		"measure.architecture":["tensor_quimb","tensor","array"],
 		"measure.architecture":["tensor_quimb","tensor"],
+		"callback.options":[{"contract":False,"max_bond":None,"cutoff":0}],
 		}	
 
 	groups = None
@@ -2367,10 +2371,10 @@ def test_parameters(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"cyclic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"periodic":False}},
 			"options":{"contract":"swap+split","max_bond":1000,"cutoff":0},
 			"configuration":{
-				"key":["src.functions.brickwork"],
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}			
@@ -2379,7 +2383,7 @@ def test_parameters(*args,**kwargs):
 			"operator":"tetrad",
 			"D":2,"dtype":"complex",
 			"architecture":"tensor",
-			"options":{"cyclic":False},
+			"options":{"periodic":False},
 		},		
 		"model":{
 			"data":{
@@ -2457,7 +2461,7 @@ def test_parameters(*args,**kwargs):
 				"objective":"objective",
 				"operator":"measure.operator"
 				},
-			"options":{"contract":False,"max_bond":None,"cutoff":0}
+			"options":{}
 		},
 		"system":{
 			"dtype":"complex",
