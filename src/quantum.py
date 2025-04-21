@@ -19,7 +19,7 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,differen
 from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,matrices,objects,nulls,integers,floats,strings,iterables,dicts,symbols,epsilon,datatype
+from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -1217,16 +1217,18 @@ class Measure(System):
 		Probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (str,callable,iterable[str,callable],array): state of class of shape (N,self.D,self.D)
+			state (iterable[array,tensor,callable]): state of class of shape (N,self.D,self.D)
 			kwargs (dict): Additional class keyword arguments					
 		Returns:
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N)
 		'''
 		
+		state = [*state] if isinstance(state,iterables) else [state] if state is not None else state		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
 		if state is None:
 			return state
+
 
 		if self.architecture is None or self.architecture in ['array']:
 			
@@ -1248,60 +1250,47 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			if not isinstance(state,tensors):
-				
-				N = len(state)
+			N = len(state)
 
-				cls = tensor
+			cls = tensor
 
-				for i in range(N):
+			for i in range(N):
 
-					data = state[i] if not callable(state[i]) else state[i]()
-					indices = self.indices
+				data = state[i] if not callable(state[i]) else state[i]()
+				indices = self.indices[::-1]
 
-					data = cls(data=data,indices=indices)
+				data = cls(data=data,indices=indices)
 
-					with context(data,self.basis[i],formats=i,indices=[dict(zip(self.indices,self.indices[::1])),dict(zip(self.indices,self.indices[::-1]))]):
-						data &= self.basis[i]
+				data &= self.basis[i]
 
-					data.format(i)
+				data.format(i)
 
-					state[i] = data
-
-			else:
-
-				state = state
+				state[i] = data
 
 			options = self.options
 			
 			state = mps(state,**options)
-			
+
 		elif self.architecture in ['tensor_quimb']:
 			
-			if not isinstance(state,tensors_quimb):
-				
-				N = len(state)
+			N = len(state)
 
-				cls = tensor_quimb
+			cls = tensor_quimb
 
-				for i in range(N):
+			for i in range(N):
 
-					data = state[i] if not callable(state[i]) else state[i]()
-					inds = (*self.indices[::-1],)
-					tags = (self.tag,*self.tags,)
+				data = state[i] if not callable(state[i]) else state[i]()
+				inds = (*self.indices[::-1],)
+				tags = (self.tag,*self.tags,)
 
-					data = cls(data=data,inds=inds,tags=tags)
+				data = cls(data=data,inds=inds,tags=tags)
 
-					with context_quimb(data,self.basis[i],key=i):
-						data &= self.basis[i]
+				with context_quimb(data,self.basis[i],key=i):
+					data &= self.basis[i]
 
-					data = representation_quimb(data,contraction=True)
+				data = representation_quimb(data,contraction=True)
 
-					state[i] = data
-
-			else:
-
-				state = state
+				state[i] = data
 
 			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**dict(cyclic=self.options.get('periodic',self.options.get('cyclic',None)))}
 			
@@ -1322,6 +1311,7 @@ class Measure(System):
 		'''
 		
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = state if state is not None else state
 		
 		if state is None:
 			return state
@@ -1374,6 +1364,7 @@ class Measure(System):
 		'''
 
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = state if state is not None else state
 		
 		default = tuple()
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -1590,10 +1581,6 @@ class Measure(System):
 
 			data = eig(state,**kwargs) if where is not None else array([])
 
-		elif isinstance(state,matrices):
-
-			raise NotImplementedError
-
 		elif isinstance(state,tensors):
 			
 			raise NotImplementedError
@@ -1650,10 +1637,6 @@ class Measure(System):
 			where = tuple(where) if where is not None and L else None
 			
 			data = svd(state,**kwargs) if where is not None else array([])
-
-		elif isinstance(state,matrices):
-
-			raise NotImplementedError
 
 		elif isinstance(state,tensors):
 
@@ -1738,10 +1721,6 @@ class Measure(System):
 			data /= addition(data)
 
 			data = -addition(data*log(data))
-
-		elif isinstance(state,matrices):
-
-			raise NotImplementedError
 
 		elif isinstance(state,tensors):
 

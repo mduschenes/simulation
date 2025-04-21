@@ -1793,7 +1793,6 @@ def test_module(*args,**kwargs):
 		state = [state(**{**settings.model,**i,**dict(system=system)})
 				for i in settings.state]
 
-
 		obj = state
 
 		tmp = None
@@ -1808,6 +1807,7 @@ def test_module(*args,**kwargs):
 		# Test
 
 		objs = state
+
 		obj = None
 		for i in objs:
 			obj = i if obj is None else obj @ i
@@ -1896,11 +1896,12 @@ def test_module(*args,**kwargs):
 		parameters = model.parameters()
 		state = [i for i in objs]
 		kwargs = dict()
-		options = settings.module.options
 
 		state = measure.probability(parameters=parameters,state=state,**kwargs)
 
+
 		where = model.where
+		options = dict(**settings.module.options)
 
 		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
 
@@ -1915,14 +1916,17 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		if verbose or 1:
+		if verbose:
 			print(measure.architecture,parse(value))
-
-		continue
 
 
 		parameters = model.parameters()
 		state = [i for i in objs]
+
+		kwargs = dict()
+		
+		where = model.where
+		options = dict(**settings.module.options)
 
 		tmp = measure.amplitude(
 			parameters=parameters,
@@ -1931,6 +1935,7 @@ def test_module(*args,**kwargs):
 				state=state,
 				model=model,
 				where=where,
+				options=options,
 				**kwargs)(
 				parameters=parameters,
 				state=measure.probability(
@@ -1941,14 +1946,12 @@ def test_module(*args,**kwargs):
 			**kwargs)
 		_tmp = model(parameters=parameters,state=obj())
 
-		if isinstance(tmp,arrays):
+		if measure.architecture in ['array']:
 			tmp = array(tmp)
-		elif isinstance(tmp,tensors):
-			tmp = tmp.array().ravel()
-		elif isinstance(tmp,tensors_quimb):
+		elif measure.architecture in ['tensor']:
+			tmp = tmp.matrix()
+		elif measure.architecture in ['tensor_quimb']:
 			tmp = representation_quimb(tmp,to=measure.architecture,contraction=True)
-		else:
-			tmp = array(tmp)
 
 		if verbose:
 			print(parse(tmp))
@@ -1956,6 +1959,7 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
+		continue
 
 		# Callback
 		callback = load(settings.cls.callback)
@@ -1986,14 +1990,12 @@ def test_module(*args,**kwargs):
 
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
-		if isinstance(state,arrays):
+		if module.measure.architecture in ['array']:
 			value = array(state)
-		elif isinstance(state,tensors):
+		elif module.measure.architecture in ['tensor']:
 			value = state.matrix()
-		elif isinstance(state,tensors_quimb):
+		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
-		else:
-			value = array(state)
 
 		key = 'model'
 		data[index][key] = value
@@ -2301,14 +2303,12 @@ def test_calculate(*args,**kwargs):
 
 			key = attr
 
-			if isinstance(obj,arrays):
+			if module.measure.architecture in ['array']:
 				value = array(obj)
-			elif isinstance(obj,tensors):
+			elif module.measure.architecture in ['tensor']:
 				value = obj.array().ravel()
-			elif isinstance(obj,tensors_quimb):
+			elif module.measure.architecture in ['tensor_quimb']:
 				value = representation_quimb(obj,to=module.measure.architecture,contraction=True)
-			else:
-				value = array(obj)
 
 			if verbose or True:
 				print(module.measure.architecture,attr,where,value.shape)
@@ -2529,20 +2529,18 @@ def test_parameters(*args,**kwargs):
 		print(tmp.to_dense().sum(),_tmp.to_dense().sum())
 		print(tmp.to_dense().ravel().real)
 		print(allclose(tmp.to_dense(),_tmp.to_dense()))
-		exit()
+
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
 	
 		key = 'data'
 		
 
-		if isinstance(state,arrays):
+		if module.measure.architecture in ['array']:
 			value = array(state)
-		elif isinstance(state,tensors):
+		elif module.measure.architecture in ['tensor']:
 			value = state.matrix()
-		elif isinstance(state,tensors_quimb):
+		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
-		else:
-			value = array(state)
 
 
 		data[index][key] = value

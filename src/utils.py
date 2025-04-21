@@ -2403,7 +2403,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.indices = [i.format(*format,**formats) for i in self.indices]
 			return
 
-		def transform(self,shape=None,axes=None,conj=None):
+		def transform(self,data=None,func=None,shape=None,axes=None,conj=None):
+			if data is not None:
+				self.data = data
+			if func is not None:
+				self.data = func(self.data)
 			if shape is not None:
 				self.data = reshape(self.data,shape)
 				self.indices = [f'{self.string if self.string is not None else ""}{symbols(i)}' for i in range(self.ndim)]
@@ -2788,6 +2792,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
 			data = {i: data for i,data in enumerate(obj[key] for obj in objects for key in obj)}
+			for i in data:
+				data[i].data = copy(data[i].data)
+				data[i].indices = [*data[i].indices]
 			return data
 
 		@classmethod
@@ -2885,7 +2892,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				string = self.string
 			else:
 				string = self.__class__.__name__
-			data = ' , '.join([f'{i}:{self[i]}' for i in self])
+			data = '  ,  '.join([f'{i}: {dict(zip(self[i].indices,self[i].shape))}' for i in self])
 			return f'{string}: {data}'
 
 		def __repr__(self):
@@ -2933,61 +2940,36 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def __init__(self,*objs,formats=None,indices=None):
 
 			self.objs = [*objs]
-			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else None
-			self.indices = indices if isinstance(indices,iterables) else [indices for obj in objs]
-			self.attributes = {}
+			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else []
+			self.indices = [index if index is not None else {} for index in indices] if isinstance(indices,iterables) else [indices if indices is not None else {} for obj in objs]
+			self.attributes = [[] for obj in objs]
 
 			indexes = range(len(self.objs))
 
 			def enter(obj,formats,indices,attributes):
-				if indices is not None:
-					indexes = {obj.indices.index(index):indices[index] for index in indices if index in obj.indices}
-					for index in indexes:
-						obj.indices[index] = indexes[index]
-				if formats is not None:
-					obj.format(*formats)
+				attributes.extend(obj.indices)
+				obj.indices = [indices[index] if index in indices else index for index in obj.indices]
+				obj.format(*formats)
 				return
 
 			def exit(obj,formats,indices,attributes):
-				indexes = {obj.indices.index(index):attributes[index] for index in attributes if index in obj.indices}
-				for index in indexes:
-					obj.indices[index] = indexes[index]					
-				return
-
-			def get(objs,formats,indices,attributes):
-				index = -1
-				for obj in objs:
-					for i in obj.indices:
-						index += 1
-						attributes[index] = i
-				return
-
-			def set(objs,formats,indices,attributes):
-				index = -1				
-				for obj in objs:
-					for i in obj.indices:
-						index += 1						
-						attributes[i] = attributes.pop(index)
+				obj.indices = attributes
 				return
 
 			self.indexes = indexes
 			self.enter = enter
 			self.exit = exit
-			self.get = get
-			self.set = set
 
 			return
 
 		def __enter__(self):
-			self.get(self.objs,self.formats,self.indices,self.attributes)	
 			for i in self.indexes:
-				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes)
-			self.set(self.objs,self.formats,self.indices,self.attributes)
+				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
 
 		def __exit__(self,type,value,traceback):
 			for i in self.indexes:
-				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes)
+				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
 		
 	class mps(network):
@@ -3536,8 +3518,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 
 	tensors = (tensor,matrix,network,)
-	matrices = (matrix,)	
-	objects = (*arrays,*tensors,*matrices)
+	objects = (*arrays,*tensors)
 	
 if backend in ['quimb']:
 
