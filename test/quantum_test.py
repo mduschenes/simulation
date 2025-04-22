@@ -1881,7 +1881,8 @@ def test_module(*args,**kwargs):
 		tmp = value
 		_tmp = tensorprod([i() for i in objs]) 
 
-		if verbose:
+		if verbose or 1:
+			print(measure.architecture)
 			print(parse(tmp))
 			print(parse(_tmp))
 
@@ -2186,33 +2187,33 @@ def test_calculate(*args,**kwargs):
 
 	
 		attrs = [
-			# 'trace',
-			# 'vectorize',
-			# 'measure',
-			# 'square',
-			# 'norm_quantum',
-			# 'norm_classical',
-			# 'norm_pure',
-			# 'infidelity_quantum',
-			# 'infidelity_classical',
-			# 'infidelity_pure',
-			# 'entanglement_quantum',
-			# 'entanglement_classical',
-			# 'entanglement_renyi',
-			# 'entangling_quantum',
-			# 'entangling_classical',
-			# 'entangling_renyi',
-			# 'mutual_quantum',
+			'trace',
+			'vectorize',
+			'measure',
+			'square',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			'entangling_quantum',
+			'entangling_classical',
+			'entangling_renyi',
+			'mutual_quantum',
 			'mutual_measure',
-			# 'mutual_classical',
-			# 'mutual_renyi',
-			# 'discord_quantum',
-			# 'discord_classical',
-			# 'discord_renyi',
-			# 'spectrum_quantum',
-			# 'spectrum_classical',
-			# 'rank_quantum',
-			# 'rank_classical',
+			'mutual_classical',
+			'mutual_renyi',
+			'discord_quantum',
+			'discord_classical',
+			'discord_renyi',
+			'spectrum_quantum',
+			'spectrum_classical',
+			'rank_quantum',
+			'rank_classical',
 			]
 
 
@@ -2306,7 +2307,7 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = 0.25
+				where = 0.5
 
 			elif attr in [
 				'measure',
@@ -2396,7 +2397,7 @@ def test_mps(*args,**kwargs):
 
 		state = {i:{'data':data} 
 			for i,data in enumerate(
-				[data for i in range(N) for data in ['state']],
+				[data for i in range(N) for data in ['zero']],
 				)
 			}
 		data = {i:{'data':data,'where':where} 
@@ -2452,10 +2453,10 @@ def test_mps(*args,**kwargs):
 		return state,data
 
 
-	N = 10
+	N = 4
 	D = 2
 	S = int(D**(N//1))
-	M = 100
+	M = 10
 	L = 2
 	T = 1
 	architecture = 'tensor'

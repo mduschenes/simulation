@@ -1265,6 +1265,8 @@ class Measure(System):
 
 				data.format(i)
 
+				data.transform()
+
 				state[i] = data
 
 			options = self.options
@@ -1574,8 +1576,6 @@ class Measure(System):
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		where = where if where is not None and L else None 
-
-		# print(self.architecture,where,L,N)
 
 		if isinstance(state,arrays):
 
@@ -2157,7 +2157,7 @@ class Measure(System):
 
 	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
 		'''
-		Infidelity (pure) for POVM probability measure with respect to other POVM
+		Infidelity (Pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
@@ -2315,7 +2315,7 @@ class Measure(System):
 
 	def norm_pure(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
-		Norm (pure) for POVM probability measure
+		Norm (Pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
@@ -3015,7 +3015,7 @@ class Measure(System):
 				options = dict(transformation=False)
 				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
 
-				print(where,index,tmp.shape)
+				tmp /= norm
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
@@ -3053,9 +3053,7 @@ class Measure(System):
 				norm = norm.array()
 
 				tmp /= norm
-
-				print(where,index,tmp.shape)
-
+ 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
@@ -3094,8 +3092,6 @@ class Measure(System):
 				norm = representation_quimb(norm,**{**options,**kwargs})
 
 				tmp /= norm
-
-				print(where,index,tmp.shape)
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 

@@ -2326,7 +2326,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				kwargs (dict): Additional class keyword arguments				
 			'''		
 
-			if setup is None:
+			if setup is None or setup is True:
 
 				def setup(index,data,indices,parameters,string,**kwargs):
 
@@ -2358,6 +2358,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					indices = [f'{string if string is not None else ""}{i}'
 						for i in [*indices,*[symbols(i) for i in range(len(indices),length)]]
 						]
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+					
+					classes = self.__class__
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
 
 					return data,indices,parameters,string
 
@@ -2675,7 +2686,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
-			if setup is None:
+			if setup is None or setup is True:
 				
 				def setup(index,data,indices,parameters,string,**kwargs):
 					
@@ -2693,6 +2704,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					parameters = parameters if parameters is not None else parameters
 
 					string = str(string) if string is not None else string
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+					
+					classes = self.__class__
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
 
 					return data,indices,parameters,string
 
@@ -2808,7 +2830,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			data = cls.construct(*objects)
 			cls = network
-			return cls(data=data)
+			return cls(data=data,setup=False)
 
 		@classmethod
 		def construct(cls,*objects,indices=None):
@@ -3053,7 +3075,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			strings = lambda index=None,string=None,strings='|':(f'{strings}{characters(4) if string is None else string}{strings}' if index is None or index.startswith(strings) and index.endswith(strings) else index)
 
-			if setup is None:
+			if setup is None or setup is True:
 				
 				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
 
@@ -3079,6 +3101,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					parameters = parameters if parameters is not None else parameters
 
 					string = str(string) if string is not None else string
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+					
+					classes = tensors
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
 
 					return data,indices,parameters,string
 
@@ -3498,7 +3531,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return
 
 		def copy(self,deep=False,**kwargs):
-			kwargs.update(dict(N=self.N,D=self.D,S=self.S))
+			kwargs.update(dict(N=self.N,D=self.D,S=self.S,setup=False))
 			return super().copy(deep=deep,**kwargs)
 
 		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
