@@ -3,7 +3,7 @@
 # Import python modules
 import os,sys,itertools,ast,operator
 from copy import deepcopy as copy
-from string import ascii_lowercase as characters
+from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
 from math import prod
 
 import inspect
@@ -224,6 +224,8 @@ if backend in ['jax','jax.autograd','quimb']:
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
 	nulls = (Null,)
+
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'
 
@@ -262,6 +264,8 @@ elif backend in ['autograd']:
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)	
 	nulls = (Null,)
+	
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
 
@@ -291,6 +295,8 @@ elif backend in ['numpy']:
 	iterables = (*arrays,list,tuple,set,range)
 	dicts = (dict,)
 	nulls = (Null,)
+	
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
 
@@ -2404,21 +2410,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.indices = [i.format(*format,**formats) for i in self.indices]
 			return
 
-		def randomize(self,indices=None,characters=None):
-			if indices is not None and characters is not None:
-				self.indices = [i if index not in indices else characters+i[-1:] for index,i in enumerate(self.indices)]
-			return
-
 		def transform(self,data=None,indices=None,func=None,shape=None,axes=None,conj=None):
 			if data is not None:
 				self.data = data
 			if indices is not None:
-				self.indices = [index if index not in indices else indices[index] for index in self.indices]
+				self.indices = [indices.get(index,index) for index in self.indices]
 			if func is not None:
 				self.data = func(self.data)
 			if shape is not None:
-				self.data = reshape(self.data,shape)
-				self.indices = [f'{self.string if self.string is not None else ""}{symbols(i)}' for i in range(self.ndim)]
+				self.data = reshape(self.data,[shape[i] for i in shape])
+				self.indices = [i for i in shape]
 			if axes is not None:
 				self.data = transpose(self.data,axes)
 				self.indices = [self.indices[i] for i in axes]
@@ -2754,35 +2755,26 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				self[i].format(*format,**formats)
 			return
 
-		def randomize(self,indices=None,characters=None):
-			for i in self:
-				self[i].randomize(indices=indices[i],characters=characters[i])
-			return
-
 		def transform(self,data=None,indices=None,func=None,shape=None,axes=None,conj=None):
 			if data is not None:
 				for i in data:
-					self[i].data = data[i]
+					self[i].transform(data=data[i])
 			if indices is not None:
 				for i in indices:
-					self[i].indices = [index if index not in indices else indices[i][index] for index in self[i].indices]
+					self[i].transform(indices=indices[i])
 			if func is not None:
 				for i in func:
-					self[i].data = func[i](self[i].data)
+					self[i].transform(func=func[i])
 			if shape is not None:
 				for i in shape:
-					self[i].data = reshape(self[i].data,shape[i])
-					self[i].indices = [f'{self[i].string if self[i].string is not None else ""}{symbols(index)}' for index in range(self[i].ndim)]
+					self[i].transform(shape=shape[i])
 			if axes is not None:
 				for i in axes:
-					self[i].data = transpose(self[i].data,axes[i])
-					self[i].indices = [self[i].indices[index] for index in axes]
+					self[i].transform(axes=axes[i])
 			if conj is not None:
 				for i in conj:
-					self[i].data = conjugate(self[i].data)
-					self[i].indices = [*self[i].indices]
+					self[i].transform(conj=conj[i])
 			return self
-
 
 		def get(self):
 			return {i: self[i].get() for i in self}
@@ -2927,7 +2919,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				string = self.string
 			else:
 				string = self.__class__.__name__
-			data = '  ,  '.join([f'{i}: {dict(zip(self[i].indices,self[i].shape))}' for i in self])
+			data = '\n\t'.join(['',*[f'{i}: {dict(zip(self[i].indices,self[i].shape))}' for i in self]])
 			return f'{string}: {data}'
 
 		def __repr__(self):
@@ -2974,23 +2966,25 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 		def __init__(self,*objs,formats=None,indices=None):
 
-			self.objs = [obj if isinstance(obj,network) else {None:obj} for obj in objs]
+			self.objs = [obj for obj in objs]
 			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else []
 			self.indices = [index if index is not None else {} for index in indices] if isinstance(indices,iterables) else [indices if indices is not None else {} for obj in objs]
-			self.attributes = [{} for obj in objs]
+			self.attributes = [[] for obj in objs]
 
 			indexes = range(len(objs))
 
 			def enter(obj,formats,indices,attributes):
-				for i in obj:
-					attributes[i] = [*obj[i].indices]
-					obj[i].indices = [indices[index] if index in indices else index for index in obj[i].indices]
-					obj[i].format(*formats)
+				attributes.extend(obj.indices)
+				indexes = [*obj.indices]
+				for i,index in enumerate(indexes):
+					if index in indices:
+						indexes[i] = indices[index]
+				obj.indices = indexes
+				obj.format(*formats)
 				return
 
 			def exit(obj,formats,indices,attributes):
-				for i in obj:
-					obj[i].indices = attributes[i][:len(obj[i].indices)]
+				obj.indices = attributes
 				return
 
 			self.indexes = indexes
@@ -3053,9 +3047,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				kwargs (dict): Additional class keyword arguments				
 			'''
 
+			N = self.N if self.N is not None else 0
+			D = self.D if self.D is not None else 0
+			S = self.S if self.S is not None else 0
+
+			strings = lambda index=None,string=None,strings='|':(f'{strings}{characters(4) if string is None else string}{strings}' if index is None or index.startswith(strings) and index.endswith(strings) else index)
+
 			if setup is None:
 				
-				def setup(index,data,indices,parameters,string,**kwargs):
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
 
 					classes = tensors
 
@@ -3071,9 +3071,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						
 						data = transpose(reshape(data,shape),axes)
 						indices = [
-							symbols(index),
+							strings(string=symbols(index)),
 							*(indices if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
-							symbols(index+1)
+							strings(string=symbols(index+1)),
 							]
 
 					parameters = parameters if parameters is not None else parameters
@@ -3082,20 +3082,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					return data,indices,parameters,string
 
-			N = self.N if self.N is not None else 0
-			D = self.D if self.D is not None else 0
-			S = self.S if self.S is not None else 0
-
 			super().setup(data=data,indices=indices,parameters=parameters,string=string,setup=setup,**kwargs)
-
-			self.randomize()
 
 			self.N = max(N,max(self)+1)
 			self.D = max(D,max((max(self[i].shape[1:-1],default=1) for i in self),default=D))
 			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
+			
+			self.strings = strings
+
+			self.index()
 
 			scheme = {scheme:self.schemes(options=dict(scheme=scheme),**kwargs) for scheme in self.schemes(options=dict(scheme=True))}
-
 			self.scheme = scheme
 
 			return
@@ -3473,26 +3470,32 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			return scheme
 
-		def randomize(self,indices=None,characters=None):
-			indices = [[0,len(self[i].indices)-1] for i in self] if indices is None else indices
-			characters = [letters(8)]*len(self) if characters is None else characters
-			super().randomize(indices=indices,characters=characters)
-			return
-
-		def matrix(self):
+		def matrix(self,indices=None):
 			
 			data = self.array()
 
-			d = 2			
-			L = data.shape.count(1)
-			D = data.shape[L:]
-			N = int(round(log(data.size)/log(max(D)**d)))
+			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.strings(index)==index}
+			
+			if indices is None:
+				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in set(indexes[index][0] for index in indexes)}
+			else:
+				axes = {index:[i for i in indexes if indexes[i] in inds] for index,inds in enumerate(indices)}
 
-			shape = [prod(D[d*i+j] for i in range(N)) for j in range(d)]
-			axes = [*range(L//2),*(L+d*i+j for j in range(d) for i in range(N)),*range(L//2,L)]
-			data = reshape(transpose(data,axes),shape)
+			axis = tuple(i for i in range(data.ndim) if i not in indexes)
+			shape = data.shape
+
+			shape = [prod(shape[i] for i in axes[index]) for index in axes]
+			axes = [*axis,*[i for index in axes for i in axes[index]]]
+			axis = tuple(range(len(axis)))
+
+			data = reshape(addition(transpose(data,axes),axis),shape)
 
 			return data
+
+		def index(self):
+			indices = {index:self.strings(index) for i in self for index in self[i].indices}
+			self.transform(indices={i:indices for i in self})
+			return
 
 		def copy(self,deep=False,**kwargs):
 			kwargs.update(dict(N=self.N,D=self.D,S=self.S))
@@ -4784,7 +4787,7 @@ if backend in ['jax','quimb']:
 
 		return astype(generator(key,shape),dtype=dtype)
 
-	def letters(n=16,**kwargs):
+	def characters(n=16,**kwargs):
 		'''
 		Get random string
 		Args:
@@ -4793,7 +4796,7 @@ if backend in ['jax','quimb']:
 		Returns:
 			string (str): Random string
 		'''			
-		return ''.join(choices(characters,k=n))
+		return ''.join(choices(character,k=n))
 
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
@@ -5161,7 +5164,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return astype(generator(shape),dtype=dtype)
 
-	def letters(n=16,**kwargs):
+	def characters(n=16,**kwargs):
 		'''
 		Get random string
 		Args:
@@ -5170,7 +5173,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Returns:
 			string (str): Random string
 		'''			
-		return ''.join(choices(characters,k=n))
+		return ''.join(choices(character,k=n))
 
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
@@ -5910,7 +5913,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = None
 
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
-	string = characters[:len(samples)] if samples is not None else ''
+	string = character[:len(samples)] if samples is not None else ''
 
 	if data is None:
 
@@ -6244,7 +6247,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = None
 
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
-	string = characters[:len(samples)] if samples is not None else ''
+	string = character[:len(samples)] if samples is not None else ''
 
 	if data is None:
 		
@@ -7846,7 +7849,7 @@ def einsum(*args,**kwargs):
 
 def symbols(index):
 	return opt_einsum.get_symbol(index)
-	# return characters[index]
+	# return character[index]
 
 def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 	'''

@@ -953,8 +953,8 @@ class Measure(System):
 			self.ind = 'u{}'
 			self.inds = ('u{}','v{}',)
 			self.indices = ('i{}','j{}',)
-			self.symbol = ('x{}','y{}','z{}',)
-			self.symbols = ('k{}','l{}','m{}','n{}','o{}','p{}',)
+			self.symbol = ('x{}','y{}',)
+			self.symbols = ('k{}','l{}','m{}','n{}',)
 
 			cls = tensor
 
@@ -982,8 +982,8 @@ class Measure(System):
 			self.indices = ('i{}','j{}',)
 			self.tag = 'I{}'
 			self.tags = ()
-			self.symbol = ('x{}','y{}','z{}','w{}','q{}','r{}','s{}','t{}')
-			self.symbols = ('k{}','l{}','m{}','n{}','o{}','p{}','a{}','b{}')
+			self.symbol = ('x{}','y{}',)
+			self.symbols = ('k{}','l{}','m{}','n{}',)
 
 			cls = tensor_quimb
 
@@ -1575,6 +1575,8 @@ class Measure(System):
 
 		where = where if where is not None and L else None 
 
+		# print(self.architecture,where,L,N)
+
 		if isinstance(state,arrays):
 
 			where = tuple(where) if where is not None else None
@@ -1905,11 +1907,13 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			with context(other,indices={self.ind.format(i):self.inds[-1].format(i) for i in range(N)}):
+			indices = {self.inds[0].format(i):self.inds[-1].format(i) for i in range(N)}
 
-				state &= other
+			other.transform(indices={index:indices for index in other})
 
-				data = state
+			state &= other
+
+			data = state
 
 		elif self.architecture in ['tensor_quimb']:
 	
@@ -1981,11 +1985,13 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			with context(other,indices={self.ind.format(i):self.inds[-1].format(i) for i in range(other.N)}):
+			indices = {self.inds[0].format(i):self.inds[-1].format(i) for i in range(N)}
 
-				state &= other
+			other.transform(indices={index:indices for index in other})
 
-				data = state
+			state &= other
+
+			data = state
 
 		elif self.architecture in ['tensor_quimb']:
 	
@@ -2183,7 +2189,7 @@ class Measure(System):
 			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
 			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
 
-			data = data.array()/sqrt(state.array()*other.array())
+			data = (data.array()/sqrt(state.array()*other.array())).item()
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -2648,11 +2654,8 @@ class Measure(System):
 				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
 					data &= self.inverse[i] & self.basis[i].transform(conj=True)
 
-			print(data)
-
-			print({self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
-
-			data = data.matrix()
+			indices = [[symbol.format(i) for i in where for symbol in symbols] for symbols in [self.symbols[:2],self.symbols[2:4]]]
+			data = data.matrix(indices=indices)
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
 
@@ -2676,7 +2679,7 @@ class Measure(System):
 
 			options = {}
 			data = contract_quimb(data,**options)
-			
+
 			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
 			data = fuse_quimb(data,**options)
 
@@ -2731,7 +2734,19 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = data.matrix()
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
+
+			data = self.eig(parameters=parameters,state=data,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2743,7 +2758,7 @@ class Measure(System):
 
 			options = {}
 			data = contract_quimb(data,**options)
-			
+
 			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
 			data = fuse_quimb(data,**options)
 
@@ -2806,7 +2821,9 @@ class Measure(System):
 
 			other = data.copy()
 
-			other.transform(indices={i:{self.inds[0].format(i):self.symbol[0].format(i),self.inds[-1].format(i):self.symbol[1].format(i)} for i in where})
+			indices = {**{self.inds[0].format(i):self.symbol[0].format(i) for i in range(N)},**{self.inds[-1].format(i):self.symbol[1].format(i) for i in range(N)}}
+
+			other.transform(indices={index:indices for index in other})
 
 			for i in where:
 				with context(self.inverse[i],formats=i,indices={self.inds[-1]:self.symbol[1],self.inds[0]:self.inds[0]}):
@@ -2816,11 +2833,9 @@ class Measure(System):
 
 			data &= other
 
-			print(data)
+			data = data.array().item()
 
-			data = data.array()
-
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array().item()**2
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -3000,7 +3015,7 @@ class Measure(System):
 				options = dict(transformation=False)
 				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
 
-				tmp /= norm
+				print(where,index,tmp.shape)
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
@@ -3026,18 +3041,20 @@ class Measure(System):
 				index = dict(zip(where,index))
 				tmp = self.measure(parameters=parameters,state=state,where=index,**kwargs)
 
-				index = range(L)
+				index = tuple(i for i in range(N) if i not in where)
 				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
 
-				norm = norm.array()
-
-				index = range(L)
+				index = tuple(i for i in range(N) if i not in where)
 				options = dict(transformation=False)
 				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
 
 				tmp = tmp.matrix()
 
+				norm = norm.array()
+
 				tmp /= norm
+
+				print(where,index,tmp.shape)
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
@@ -3077,6 +3094,8 @@ class Measure(System):
 				norm = representation_quimb(norm,**{**options,**kwargs})
 
 				tmp /= norm
+
+				print(where,index,tmp.shape)
 
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 

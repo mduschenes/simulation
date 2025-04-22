@@ -1497,7 +1497,7 @@ def test_namespace(*args,**kwargs):
 		data[index] = value
 
 
-	assert all(allclose(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+	assert all(allclose(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent models"
 
 	print("Passed")
 
@@ -2018,7 +2018,7 @@ def test_module(*args,**kwargs):
 
 	print({i:list(data[i]) for i in data})
 
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent models"
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent models"
 
 
 	os.environ['NUMPY_BACKEND'] = 'jax'
@@ -2040,6 +2040,7 @@ def test_calculate(*args,**kwargs):
 	reload(src.utils)
 	reload(src.quantum)
 
+	from src.utils import tensors
 	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
 	kwargs = {
@@ -2049,18 +2050,15 @@ def test_calculate(*args,**kwargs):
 		"model.data.noise.where":["||i.j||"],"model.data.noise.parameters":[1e-3],"model.data.noise.seed":[None],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
 
-		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
+		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"measure.architecture":["tensor","tensor_quimb","array"],
-
 		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
+		"callback.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		}	
 
-	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
+	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = None
 	func = None
 
@@ -2191,6 +2189,7 @@ def test_calculate(*args,**kwargs):
 			# 'trace',
 			# 'vectorize',
 			# 'measure',
+			# 'square',
 			# 'norm_quantum',
 			# 'norm_classical',
 			# 'norm_pure',
@@ -2202,9 +2201,9 @@ def test_calculate(*args,**kwargs):
 			# 'entanglement_renyi',
 			# 'entangling_quantum',
 			# 'entangling_classical',
-			'entangling_renyi',
+			# 'entangling_renyi',
 			# 'mutual_quantum',
-			# 'mutual_measure',
+			'mutual_measure',
 			# 'mutual_classical',
 			# 'mutual_renyi',
 			# 'discord_quantum',
@@ -2274,11 +2273,9 @@ def test_calculate(*args,**kwargs):
 
 		data[index][key] = value
 
-
-
 		# Calculate
 		for attr in attrs:
-			
+
 			if attr in [
 				'infidelity_quantum','infidelity_classical','infidelity_pure',
 				]:
@@ -2309,7 +2306,7 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = 0.5
+				where = 0.25
 
 			elif attr in [
 				'measure',
@@ -2317,6 +2314,13 @@ def test_calculate(*args,**kwargs):
 
 				kwargs = dict()
 				where = {i:min(model.D**2-1,[1,4,3,2][j%4]) for j,i in enumerate(range(model.N//2,model.N)) if i < model.N}
+
+			elif attr in [
+				'square',
+				]:
+
+				kwargs = dict()
+				where = None
 
 			else:
 
@@ -2342,7 +2346,15 @@ def test_calculate(*args,**kwargs):
 			data[index][key] = value
 
 
-	assert all(equalizer(data[i],data[j]) for i in data for j in data if i != j), "Error - Inconsistent calculations"
+	for i in data:
+		for j in data:
+			if i >= j:
+				continue
+			for k in data[i]:
+				if not allclose(data[i][k],data[j][k]):
+					print(i,j,k)
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent calculations"
 
 
 	os.environ['NUMPY_BACKEND'] = 'jax'
