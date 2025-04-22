@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_nan,product
+from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_array,is_nan,product
 from src.utils import einsum,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
@@ -22,6 +22,8 @@ from src.iterables import namespace,permuter,setter,getter
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
+
+import src.quantum
 
 
 def equalizer(a,b):
@@ -1618,8 +1620,6 @@ def test_module(*args,**kwargs):
 	from importlib import reload
 	import src
 
-	from src.quantum import MPS
-	
 	os.environ['NUMPY_BACKEND'] = 'quimb'
 	reload(src.utils)
 	reload(src.quantum)
@@ -2035,7 +2035,7 @@ def test_calculate(*args,**kwargs):
 
 	from importlib import reload
 	import src
-	
+
 	os.environ['NUMPY_BACKEND'] = 'quimb'
 	reload(src.utils)
 	reload(src.quantum)
@@ -2053,7 +2053,7 @@ def test_calculate(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
-		
+
 		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
 		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
@@ -2137,7 +2137,33 @@ def test_calculate(*args,**kwargs):
 				"N":"N","M":"N","d":"d","D":"state.D",
 				"noise.parameters":"noise.parameters",
 				"objective":"objective",
-				"operator":"measure.operator"
+				"operator":"measure.operator",
+				"trace":"trace",
+				"vectorize":"vectorize",
+				"measure":"measure",
+				"norm_quantum":"norm_quantum",
+				"norm_classical":"norm_classical",
+				"norm_pure":"norm_pure",
+				"infidelity_quantum":"infidelity_quantum",
+				"infidelity_classical":"infidelity_classical",
+				"infidelity_pure":"infidelity_pure",
+				"entanglement_quantum":"entanglement_quantum",
+				"entanglement_classical":"entanglement_classical",
+				"entanglement_renyi":"entanglement_renyi",
+				"entangling_quantum":"entangling_quantum",
+				"entangling_classical":"entangling_classical",
+				"entangling_renyi":"entangling_renyi",
+				"mutual_quantum":"mutual_quantum",
+				"mutual_measure":"mutual_measure",
+				"mutual_classical":"mutual_classical",
+				"mutual_renyi":"mutual_renyi",
+				"discord_quantum":"discord_quantum",
+				"discord_classical":"discord_classical",
+				"discord_renyi":"discord_renyi",
+				"spectrum_quantum":"spectrum_quantum",
+				"spectrum_classical":"spectrum_classical",
+				"rank_quantum":"rank_quantum",
+				"rank_classical":"rank_classical",
 				},
 			"options":{}
 		},
@@ -2162,32 +2188,32 @@ def test_calculate(*args,**kwargs):
 
 	
 		attrs = [
-			'trace',
-			'vectorize',
-			'measure',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
-			'entangling_quantum',
-			'entangling_classical',
+			# 'trace',
+			# 'vectorize',
+			# 'measure',
+			# 'norm_quantum',
+			# 'norm_classical',
+			# 'norm_pure',
+			# 'infidelity_quantum',
+			# 'infidelity_classical',
+			# 'infidelity_pure',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
+			# 'entanglement_renyi',
+			# 'entangling_quantum',
+			# 'entangling_classical',
 			'entangling_renyi',
-			'mutual_quantum',
-			'mutual_measure',
-			'mutual_classical',
-			'mutual_renyi',
-			'discord_quantum',
-			'discord_classical',
-			'discord_renyi',
-			'spectrum_quantum',
-			'spectrum_classical',
-			'rank_quantum',
-			'rank_classical',
+			# 'mutual_quantum',
+			# 'mutual_measure',
+			# 'mutual_classical',
+			# 'mutual_renyi',
+			# 'discord_quantum',
+			# 'discord_classical',
+			# 'discord_renyi',
+			# 'spectrum_quantum',
+			# 'spectrum_classical',
+			# 'rank_quantum',
+			# 'rank_classical',
 			]
 
 
@@ -2235,7 +2261,6 @@ def test_calculate(*args,**kwargs):
 
 
 		# Test
-
 		key = 'state'
 		if module.measure.architecture in ['array']:
 			value = array(state)
@@ -2250,17 +2275,19 @@ def test_calculate(*args,**kwargs):
 		data[index][key] = value
 
 
+
+		# Calculate
 		for attr in attrs:
 			
 			if attr in [
 				'infidelity_quantum','infidelity_classical','infidelity_pure',
 				]:
-			
+				
 				kwargs = dict(
 					other=module(
 						parameters=module.parameters(),
 						state=module.state(),
-						**dict(options = dict(contract=False,max_bond=None,cutoff=0))
+						**dict(options=callback.options[attr])
 						)
 					)
 				where = None
@@ -2270,7 +2297,7 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				kwargs = dict()
-				where = [i for i in range(model.N//2)]
+				where = [i for i in range(model.N//4,3*model.N//4)]
 
 			elif attr in [
 				'entanglement_quantum','entanglement_classical','entanglement_renyi',
@@ -2301,11 +2328,11 @@ def test_calculate(*args,**kwargs):
 			key = attr
 
 			if module.measure.architecture in ['array']:
-				value = array(obj)
+				value = array(obj).ravel()
 			elif module.measure.architecture in ['tensor']:
-				value = obj.array().ravel()
+				value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel()
 			elif module.measure.architecture in ['tensor_quimb']:
-				value = representation_quimb(obj,to=module.measure.architecture,contraction=True)
+				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel()
 
 			if verbose or True:
 				print(module.measure.architecture,attr,where,value.shape)

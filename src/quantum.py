@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
-from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,random,haar,arange
+from src.utils import array,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
@@ -1429,7 +1429,7 @@ class Measure(System):
 			
 				subscripts = 'uij,wji,wv->uv'
 				shapes = (basis.shape,basis.shape,inverse.shape)
-				shape = [*[self.K]*self.N]*2
+				shape = [*[K]*L]*2
 				einsummation = einsummand(subscripts,*shapes)
 
 				options = options if options is not None else {}
@@ -1529,7 +1529,7 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
 		elif self.architecture in ['tensor']:
-			N = state.N if isinstance(state,tensors) else len(where) if where is not None else None
+			N = state.N if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else len(where) if where is not None else None
 		elif self.architecture in ['tensor_quimb']:
 			N = state.L if isinstance(state,tensors_quimb) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
 		else:
@@ -1640,7 +1640,7 @@ class Measure(System):
 
 		elif isinstance(state,tensors):
 
-			raise NotImplementedError
+			data = state.array()
 
 		elif isinstance(state,matrices_quimb):
 
@@ -1710,21 +1710,13 @@ class Measure(System):
 
 			data = state
 
-			data = sort(abs(data))[::-1]
-
-			options = Dictionary(**{**dict(eps=None),**kwargs})
-			size = nonzero(data,eps=options.eps)
-			indices = slice(size)
-
-			data = data[indices]
-
-			data /= addition(data)
-
 			data = -addition(data*log(data))
 
 		elif isinstance(state,tensors):
 
-			raise NotImplementedError
+			data = state.array()
+
+			data = -addition(data*log(data))
 
 		elif isinstance(state,matrices_quimb):
 
@@ -1791,8 +1783,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = state.copy()
 
 			for i in where:
@@ -1854,8 +1844,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 			
-			raise NotImplementedError
-
 			data = state.copy()
 
 			for i in where:
@@ -1908,8 +1896,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			other = state if other is None else other
 
 			state = state.copy()
@@ -1919,7 +1905,7 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			with context(state,other,indices=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}]):
+			with context(other,indices={self.ind.format(i):self.inds[-1].format(i) for i in range(N)}):
 
 				state &= other
 
@@ -1988,8 +1974,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			state = state.copy()
 			other = state.copy()
 
@@ -1997,7 +1981,7 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			with context(state,other,indices=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}]):
+			with context(other,indices={self.ind.format(i):self.inds[-1].format(i) for i in range(other.N)}):
 
 				state &= other
 
@@ -2078,13 +2062,12 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
 
-			state,other = state.matrix(),other.matrix()
+			state = state.matrix()
+			other = other.matrix()
 
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
@@ -2141,7 +2124,13 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
+			function = sqrt
+			kwargs = {}
+
+			state = function(state.array().ravel(),**kwargs)
+			other = function(other.array().ravel(),**kwargs)
+
+			data = dot(state,other)
 
 		elif self.architecture in ['tensor_quimb']:
 			
@@ -2190,13 +2179,11 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
 			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
 			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
 
-			data = data/sqrt(state*other)
+			data = data.array()/sqrt(state.array()*other.array())
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -2257,15 +2244,13 @@ class Measure(System):
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2302,15 +2287,13 @@ class Measure(System):
 
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2347,15 +2330,13 @@ class Measure(System):
 		
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -2422,17 +2403,15 @@ class Measure(System):
 			options = dict(transformation=False)
 			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
 
-			state = state.matrix()
+			state = array(state)
 
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2449,7 +2428,7 @@ class Measure(System):
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2502,19 +2481,19 @@ class Measure(System):
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			where = tuple(i for i in range(N) if i not in where)
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
+			state = state.array()
+
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2559,11 +2538,9 @@ class Measure(System):
 
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2573,7 +2550,7 @@ class Measure(System):
 
 			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
 	
@@ -2655,12 +2632,10 @@ class Measure(System):
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
 			
-			raise NotImplementedError
-
 			where = tuple(i for i in range(N) if i not in where)
 
 			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
@@ -2673,17 +2648,13 @@ class Measure(System):
 				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
 					data &= self.inverse[i] & self.basis[i].transform(conj=True)
 
-			options = {}
-			data = contract_quimb(data,**options)
-			
-			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
-			data = fuse_quimb(data,**options)
+			print(data)
 
-			options = dict(contraction=True)
-			data = representation_quimb(data,**options)
+			print({self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
 
-			options = {}
-			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+			data = data.matrix()
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
@@ -2756,7 +2727,7 @@ class Measure(System):
 
 			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
@@ -2823,11 +2794,9 @@ class Measure(System):
 
 			data /= self.vectorize(parameters=parameters,state=state,**kwargs)**2
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2835,26 +2804,23 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = {}
-			data = contract_quimb(data,**options)
-
 			other = data.copy()
 
-			with context(data,other,formats=where,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}]):
+			other.transform(indices={i:{self.inds[0].format(i):self.symbol[0].format(i),self.inds[-1].format(i):self.symbol[1].format(i)} for i in where})
 
-				for i in where:
-					with context(self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}]):
-						data &= self.inverse[i]
-					with context(self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}]):
-						other &= self.inverse[i]
+			for i in where:
+				with context(self.inverse[i],formats=i,indices={self.inds[-1]:self.symbol[1],self.inds[0]:self.inds[0]}):
+					data &= self.inverse[i]
+				with context(self.inverse[i],formats=i,indices={self.inds[-1]:self.symbol[0],self.inds[0]:self.inds[-1]}):
+					other &= self.inverse[i]
 
-				data &= other
+			data &= other
 
-				options = dict(contraction=True)
-				data = representation_quimb(data,**options)
+			print(data)
 
-				options = {}
-				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
+			data = data.array()
+
+			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -2949,11 +2915,9 @@ class Measure(System):
 			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
 			data -= tmp
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = 0
 
@@ -3045,11 +3009,9 @@ class Measure(System):
 
 				data -= norm*tmp
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = 0
 
@@ -3067,6 +3029,8 @@ class Measure(System):
 				index = range(L)
 				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
 
+				norm = norm.array()
+
 				index = range(L)
 				options = dict(transformation=False)
 				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
@@ -3082,7 +3046,7 @@ class Measure(System):
 
 				data -= norm*tmp
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -3162,11 +3126,9 @@ class Measure(System):
 			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data -= tmp
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = 0
 
@@ -3185,7 +3147,7 @@ class Measure(System):
 			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
 			data -= tmp
 
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -3248,11 +3210,9 @@ class Measure(System):
 			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data -= tmp
 		
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = 0
 
@@ -3271,7 +3231,7 @@ class Measure(System):
 			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
 			data -= tmp
 		
-			data = asscalar(data)
+			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
 		
@@ -3343,8 +3303,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
@@ -3379,8 +3337,6 @@ class Measure(System):
 			data = 0
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = 0
 
@@ -3417,8 +3373,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 		
-			raise NotImplementedError
-
 			data = 0
 
 		elif self.architecture in ['tensor_quimb']:
@@ -3486,8 +3440,6 @@ class Measure(System):
 			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3564,7 +3516,7 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
+			state = state.array().ravel()
 
 			K = self.K
 			ndim = state.ndim
@@ -3614,8 +3566,6 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			raise NotImplementedError
-
 			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
 
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
@@ -3656,8 +3606,6 @@ class Measure(System):
 			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
 
 		elif self.architecture in ['tensor']:
-
-			raise NotImplementedError
 
 			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -7543,7 +7491,6 @@ class Module(System):
 		N (int): Size of system
 		M (int): Duration of system
 		D (int): Local Dimension of system
-		d (int): Spatial Dimension of system
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
@@ -7552,11 +7499,10 @@ class Module(System):
 
 	N = None
 	D = None
-	d = None
 
 	defaults = dict(
 		model=None,
-		N=None,M=None,D=None,d=None,
+		N=None,M=None,D=None,
 		state=None,parameters=None,
 		variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		data=None,measure=None,callback=None,
@@ -7564,11 +7510,11 @@ class Module(System):
 		system=None,
 		)
 
-	def __init__(self,model=None,N=None,M=None,D=None,d=None,
+	def __init__(self,model=None,N=None,M=None,D=None,
 		state=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,N=N,M=M,D=D,d=d,
+			model=model,N=N,M=M,D=D,
 			state=state,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -8014,41 +7960,6 @@ class Module(System):
 
 		# Set data
 		data = load(path)
-
-		return
-
-	def lattices(self,N=None,d=None,lattice=None,system=None):
-		'''
-		Set lattice attributes
-		Args:
-			N (int): Size of system
-			d (int): Spatial dimension of system
-			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
-		'''		
-
-		lattice = self.lattice if lattice is None else lattice
-
-		defaults = dict(
-			N = self.N if N is None else N,
-			d = self.d if d is None else d,
-			lattice = self.lattice if lattice is None else lattice,
-			system = self.system if system is None else system,
-		)
-
-		if lattice is None:
-			lattice = dict(lattice=lattice)
-		elif not isinstance(lattice,dicts):
-			lattice = dict(lattice=lattice)
-		else:
-			lattice = dict(**lattice)
-
-		setter(lattice,defaults,delimiter=delim,default=False)
-
-		self.lattice = Lattice(**lattice)
-
-		self.N = self.lattice.N
-		self.d = self.lattice.d
 
 		return
 
