@@ -353,25 +353,13 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	if (plots is None) or (processes is None):
 		return data,plots,processes
 
-	defaults = {
-		'path':{},
-		'load':None,
-		'dump':None,
-		'reset':None,
-		'convert':None,
-		'patterns':None,
-		'plot':None,
-		'process':None,
-		'postprocess':None,
-		}
-	setter(processes,defaults,delimiter=delim,default=False)
-
 
 	# Process plots and processes dictionaries
-	patterns = processes.get('patterns')
+	attr = 'patterns'
+	patterns = processes.get(attr)
 	for iterable in [plots,processes]:
 		regex(iterable,patterns)
-
+	processes[attr] = patterns
 
 	obj = 'ax'
 
@@ -398,6 +386,21 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 					index = [*index,*[0]*(INDEXDIM-len(shape))]
 					inserter(index,item,tmp)
 				plots[instance][subinstance][obj][prop] = tmp
+
+
+
+	defaults = {
+		'path':{},
+		'load':None,
+		'dump':None,
+		'reset':None,
+		'convert':None,
+		'patterns':None,
+		'plot':None,
+		'process':None,
+		'postprocess':None,
+		}
+	setter(processes,defaults,delimiter=delim,default=False)
 
 
 	# Get paths
@@ -1180,6 +1183,9 @@ def loader(data,plots,processes,verbose=None):
 			plots.update(tmp)
 			tmp = new
 			setter(plots,tmp,default=func)
+
+		patterns = processes.get('patterns')
+		regex(plots,patterns)
 
 	else:
 
