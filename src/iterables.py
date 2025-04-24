@@ -61,28 +61,6 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
-	@staticmethod
-	def decorator(func):
-		@wraps(func)
-		def wrapper(cls,*args,system=None,**kwargs):
-			# super().__init__(*args,system=system,**kwargs)
-
-			setter(kwargs,dict(system=system),delimiter=delim,default=False)
-			setter(kwargs,system,delimiter=delim,default=False)			
-			setter(kwargs,cls.defaults,delimiter=delim,default='none')
-
-			out = func(cls,*args,**kwargs)
-			
-			return out
-		
-		return wrapper
-
-	@classmethod
-	@property
-	def properties(cls):
-		return properties(cls,methods=[sys._getframe().f_code.co_name])
-
-
 class Dict(Dictionary):
 	'''
 	Dictionary subclass with nested Dictionary elements

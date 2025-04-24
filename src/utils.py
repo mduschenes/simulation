@@ -80,7 +80,7 @@ if backend in ['jax','jax.autograd','quimb']:
 	import jax.scipy as sp
 
 	import jax.example_libraries.optimizers
-	from jax.tree_util import register_pytree_node_class as tree_register
+	from jax.tree_util import register_pytree_node_class as register
 	from jax.tree_util import tree_map as tree_map
 
 	import opt_einsum
@@ -2030,7 +2030,7 @@ def arrayify(cls,new,*classes):
 	return new
 
 
-# @tree_register
+# @register
 # class Parameters(dict):
 # 	'''
 # 	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
@@ -2631,7 +2631,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			return data
 
-
 	class matrix(dict):
 		'''
 		matrix class
@@ -2977,7 +2976,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return self
 
-
 	class context(object):
 		'''
 		Update tensor within context with formats
@@ -3024,7 +3022,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			for i in self.indexes:
 				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
-		
+	
 	class mps(network):
 		'''
 		matrix product state tensor network class

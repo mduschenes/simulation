@@ -577,8 +577,7 @@ def brickwork(iterable,sort=False,group=False):
 	indexes = [*range(0,N-1,2),*range(1,N-1,2)]
 	attributes = lambda index: [(index,index+1),(index,),(index+1,)]
 	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute: 3*index+attributes(index).index(attribute)
-	# groups = lambda i,index,attribute: index
+	groups = lambda i,index,attribute: len(attributes(index))*index+attributes(index).index(attribute)
 
 	indices = {}
 	for index in indexes:

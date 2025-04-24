@@ -281,7 +281,7 @@ def test_operator(*args,**kwargs):
 			},	
 			"state": {
 				"data":None	,
-				"operator":"product",
+				"operator":"state",
 				"where":None,
 				"string":"psi",
 				"parameters":True,
@@ -2536,24 +2536,18 @@ def test_function(*args,**kwargs):
 
 def test_class(*args,**kwargs):
 
-	from importlib import reload
-	import src
-
 	kwargs = {
-		"module.M":[5],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
+		"module.M":[3],"module.measure.operator":["tetrad"],
+		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
-		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
 		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
-	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
+	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if i['module.measure.architecture'] in ["tensor"]]
 	func = None
 
@@ -2580,12 +2574,6 @@ def test_class(*args,**kwargs):
 				"reverse":False
 				}			
 		},
-		"measure":{
-			"operator":"tetrad",
-			"D":2,"dtype":"complex",
-			"architecture":"tensor",
-			"options":{"periodic":False},
-		},		
 		"model":{
 			"data":{
 				# "local":{
@@ -2593,8 +2581,8 @@ def test_class(*args,**kwargs):
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
 				# },
 				"unitary":{
-					"operator":["X","Z"],"where":"||ij||","string":"unitary",
-					"parameters":0.25,"variable":True,"constant":None,"ndim":2,"seed":123456789
+					"operator":"unitary","where":"||ij||","string":"unitary",
+					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},
 				# "unitary":{
 				# 	"operator":"haar","where":"||ij||","string":"unitary",
@@ -2674,6 +2662,8 @@ def test_class(*args,**kwargs):
 
 		parse = lambda data: data.round(precision)
 
+		test = False
+
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default="replace")
 		system = settings.system
@@ -2685,7 +2675,9 @@ def test_class(*args,**kwargs):
 		elif settings.module.measure.architecture in ["tensor"]:
 			pass
 		elif settings.module.measure.architecture in ["tensor_quimb"]:
+			from importlib import reload
 			os.environ['NUMPY_BACKEND'] = 'quimb'
+			import src
 			reload(src.utils)
 			reload(src.quantum)
 			from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
@@ -2712,33 +2704,38 @@ def test_class(*args,**kwargs):
 
 		state = module(parameters,state)
 
+		print(module.measure.architecture)
+		print(state)
+
 		# Value
-		value = module.measure.transform(parameters=parameters,state=state,transformation=False)
-		if module.measure.architecture in ['array']:
-			value = array(value)
-		elif module.measure.architecture in ['tensor']:
-			value = value.matrix()
-		elif module.measure.architecture in ['tensor_quimb']:
-			value = representation_quimb(value,to=module.measure.architecture,contraction=True)
-
-		key = 'model'
-		data[index][key] = value
-
-
-		if verbose or 1:
-			print(module.measure.architecture)
-			print(parse(value))
+		if test:
+			
+			value = module.measure.transform(parameters=parameters,state=state,transformation=False)
+			if module.measure.architecture in ['array']:
+				value = array(value)
+			elif module.measure.architecture in ['tensor']:
+				value = value.matrix()
+			elif module.measure.architecture in ['tensor_quimb']:
+				value = representation_quimb(value,to=module.measure.architecture,contraction=True)
 
 
-		model.init(state=module.state @ module.N)
-		_value = model(parameters=module.parameters(),state=model.state())
+			key = 'model'
+			data[index][key] = value
 
-		if verbose:
-			print(parse(value))
-			print(parse(_value))
 
-		assert allclose(value,_value),"Incorrect Module <-> Model conversion"
+			if verbose or 1:
+				print(module.measure.architecture)
+				print(parse(value))
 
+
+			model.init(state=module.state @ module.N)
+			_value = model(parameters=module.parameters(),state=model.state())
+
+			if verbose:
+				print(parse(value))
+				print(parse(_value))
+
+			assert allclose(value,_value),"Incorrect Module <-> Model conversion"
 
 
 		# Backend

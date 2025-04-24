@@ -44,6 +44,22 @@ class Basis(Dict):
 		kwargs (dict): Additional class keyword arguments
 	'''
 
+	def decorator(func):
+		@wraps(func)
+		def wrapper(cls,*args,system=None,**kwargs):
+			# super().__init__(*args,system=system,**kwargs)
+
+			setter(kwargs,dict(system=system),delimiter=delim,default=False)
+			setter(kwargs,system,delimiter=delim,default=False)			
+			setter(kwargs,cls.defaults,delimiter=delim,default='none')
+
+			out = func(cls,*args,**kwargs)
+			
+			return out
+		
+		return wrapper
+
+
 	defaults = dict(
 		D = 2,
 		N = 1,
@@ -153,7 +169,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def opts(cls,attr,options,*args,**kwargs):
 		'''
 		Default options for class
@@ -187,7 +203,7 @@ class Basis(Dict):
 		return options
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def locality(cls,attr,*args,**kwargs):
 		'''
 		Locality of composite operators
@@ -256,7 +272,7 @@ class Basis(Dict):
 
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def dimension(cls,attr,*args,**kwargs):
 		'''
 		Number of dimensions of composite operators
@@ -329,7 +345,7 @@ class Basis(Dict):
 
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def shapes(cls,attr,*args,**kwargs):
 		'''
 		Shape of composite operators
@@ -411,7 +427,7 @@ class Basis(Dict):
 
 	# Basis
 	@classmethod
-	@System.decorator
+	@decorator
 	def basis(cls,attr,*args,**kwargs):
 		'''
 		Shape of composite operators
@@ -450,7 +466,7 @@ class Basis(Dict):
 
 	# General
 	@classmethod
-	@System.decorator
+	@decorator
 	def string(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = kwargs.data if kwargs.data is not None else None
@@ -461,7 +477,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def data(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = kwargs.data if kwargs.data is not None else None
@@ -470,7 +486,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def identity(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = identity(kwargs.D,dtype=kwargs.dtype)
@@ -479,7 +495,7 @@ class Basis(Dict):
 
 	# Random
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def rand(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
@@ -497,7 +513,7 @@ class Basis(Dict):
 
 	# Pauli
 	@classmethod
-	@System.decorator
+	@decorator
 	def I(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
@@ -507,7 +523,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def X(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
@@ -517,7 +533,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def Y(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
@@ -527,7 +543,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def Z(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
@@ -538,21 +554,21 @@ class Basis(Dict):
 
 	# Gate
 	@classmethod
-	@System.decorator
+	@decorator
 	def H(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(2))*array([[1,1],[1,-1]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def S(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,],[0,1j]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def CNOT(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=kwargs.dtype)
@@ -561,19 +577,23 @@ class Basis(Dict):
 
 	# Unitary
 	@classmethod
-	@System.decorator	
+	# @decorator	
 	def unitary(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
+		# kwargs = Dictionary(**kwargs)
+		# data = haar(
+		# 	shape=kwargs.shape,
+		# 	seed=kwargs.seed,
+			# dtype=kwargs.dtype)
 		data = haar(
-			shape=kwargs.shape,
-			seed=kwargs.seed,
-			dtype=kwargs.dtype)
+			shape=kwargs['shape'],
+			seed=kwargs['seed'],
+			dtype=kwargs['dtype'])		
 		return data
 
 
 	# State
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def state(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)		
 		data = haar(
@@ -588,7 +608,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def zero(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([1,*[0]*(kwargs.D-1)],dtype=kwargs.dtype)
@@ -597,7 +617,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def one(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([*[0]*(kwargs.D-1),1],dtype=kwargs.dtype)
@@ -606,7 +626,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def plus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1],dtype=kwargs.dtype)
@@ -615,7 +635,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def minus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1],dtype=kwargs.dtype)
@@ -624,7 +644,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def plusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1j],dtype=kwargs.dtype)
@@ -633,7 +653,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def minusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1j],dtype=kwargs.dtype)
@@ -642,7 +662,7 @@ class Basis(Dict):
 		return data		
 
 	@classmethod
-	@System.decorator	
+	@decorator	
 	def element(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		index = tuple(map(int,kwargs.data)) if kwargs.data is not None else None
@@ -653,7 +673,7 @@ class Basis(Dict):
 
 	# Operator
 	@classmethod
-	@System.decorator
+	@decorator
 	def projector(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = []
@@ -666,7 +686,7 @@ class Basis(Dict):
 
 	# Noise
 	@classmethod
-	@System.decorator
+	@decorator
 	def dephase(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
@@ -678,7 +698,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def bitflip(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
@@ -690,7 +710,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def phaseflip(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
@@ -702,7 +722,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def depolarize(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
@@ -716,7 +736,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def amplitude(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
@@ -730,7 +750,7 @@ class Basis(Dict):
 
 	# POVM
 	@classmethod
-	@System.decorator
+	@decorator
 	def pauli(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		
@@ -750,7 +770,7 @@ class Basis(Dict):
 
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def tetrad(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 	
@@ -772,7 +792,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def povm(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		
@@ -793,7 +813,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 	
@@ -812,7 +832,7 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@System.decorator
+	@decorator
 	def standard(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		
@@ -1137,6 +1157,9 @@ class Measure(System):
 			kwargs (dict): Additional logging keyword arguments						
 		'''		
 
+		if not verbose and not self.verbose:
+			return
+
 		msg = []
 		
 		options = dict(
@@ -1438,8 +1461,10 @@ class Measure(System):
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
 					# return state(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),where=where,options=options)
-					return state(reshape(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),shape),where=where,options=options)
-					# return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)
+					# return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)					
+  					# return state(reshape(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),shape),where=where,options=options)
+					# return state(reshape(einsummation(basis,array([model(parameters=parameters,state=operator,**kwargs) for operator in basis]),inverse),shape),where=where,options=options)
+					return state(reshape(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shape),where=where,options=options)
 		
 			else:
 				
@@ -1474,7 +1499,8 @@ class Measure(System):
 				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
-					return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
+					# return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
+					return state.gate(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,**options)
 		
 			else:
 				
@@ -3660,7 +3686,7 @@ class MPS(mps):
 
 		if isinstance(data,(*strings,*dicts)):
 			basis = {
-				**{attr: Basis.state for attr in ['psi','state','product']},
+				**{attr: Basis.state for attr in ['state','psi']},
 				**{attr: Basis.state for attr in ['haar']},
 				**{attr: Basis.rand for attr in ['random','rand']},
 				**{attr: Basis.zero for attr in ['zero','zeros','0']},
@@ -3730,7 +3756,7 @@ if backend in ['quimb']:
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
 			elif isinstance(data,(str,*dicts,*iterables)):
 				basis = {
-					**{attr: Basis.state for attr in ['psi','state','product']},
+					**{attr: Basis.state for attr in ['state','psi']},
 					**{attr: Basis.state for attr in ['haar']},
 					**{attr: Basis.rand for attr in ['random','rand']},
 					**{attr: Basis.zero for attr in ['zero','zeros','0']},
@@ -4607,12 +4633,12 @@ class Object(System):
 				if all(i in self.state.where for i in self.where):
 					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
 					axes = [[i for i in self.where]]
-					where = [i for i in self.where]
-					samples = self.state.samples
+					where = [i for i in self.where] if len(self.where) < self.state.N else None
+					samples = self.state.samples if self.state.samples is not None else self.samples
 				elif self.state.locality >= self.locality:
 					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
 					axes = [[i for i in self.where]]
-					where = [i for i in self.where]
+					where = [i for i in self.where] if len(self.where) < self.state.N else None
 					samples = self.samples
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
@@ -4626,7 +4652,7 @@ class Object(System):
 			axes = [[i for i in self.where]]
 			where = None
 			samples = None
-		
+
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
 
 		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
@@ -5092,6 +5118,9 @@ class Object(System):
 			verbose (bool,int,str): Verbosity of message	
 			kwargs (dict): Additional logging keyword arguments						
 		'''		
+
+		if not verbose and not self.verbose:
+			return
 
 		msg = []
 		
@@ -5771,7 +5800,7 @@ class Haar(Object):
 	basis = {
 		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.identity for attr in ['I']},
-		**{attr: Basis.unitary for attr in ['U','haar','u']},
+		**{attr: Basis.unitary for attr in ['unitary','haar','U','u']},
 		}
 	
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
@@ -5795,7 +5824,7 @@ class Haar(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = ['U','haar','u']
+		functions = ['unitary','haar','U','u']
 
 		do = not self.null()
 
@@ -5832,11 +5861,18 @@ class Haar(Object):
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
-					options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
-					for index,i in zip(options,data):
-						options[index].basis = options[index].basis.get(i)
-					def function(parameters,state,options=options,**kwargs):
-						return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return options.basis(**{**options,**kwargs})
 				else:
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
@@ -6084,7 +6120,7 @@ class State(Object):
 		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.identity for attr in ['I']},
 		**{attr: Basis.data for attr in ['data']},
-		**{attr: Basis.state for attr in ['psi','state','product']},
+		**{attr: Basis.state for attr in ['state','psi']},
 		**{attr: Basis.state for attr in ['haar']},
 		**{attr: Basis.rand for attr in ['random','rand']},
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
@@ -6116,7 +6152,7 @@ class State(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = ['psi','state','product','haar','random','rand']
+		functions = ['state','psi','haar','random','rand']
 
 		do = not self.null()
 
@@ -6153,11 +6189,20 @@ class State(Object):
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
-					options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
-					for index,i in zip(options,data):
-						options[index].basis = options[index].basis.get(i)
-					def function(parameters,state,options=options,**kwargs):
-						return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return options.basis(**{**options,**kwargs})
+
+
 				else:
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
@@ -7311,7 +7356,7 @@ class Objects(Object):
 
 class Channel(Objects):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['channel']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Channel']}}
 
 	def init(self,data=None,state=None,parameters=None,conj=False):
 		''' 
@@ -7491,11 +7536,11 @@ class Operators(Objects):
 
 class Hamiltonian(Channel):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['hamiltonian']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Hamiltonian']}}
 
 class Unitary(Channel):
 	default = 'I'
-	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['unitary']}}
+	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Unitary']}}
 
 
 class Module(System):
@@ -7505,19 +7550,15 @@ class Module(System):
 		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 		N (int): Size of system
 		M (int): Duration of system
-		D (int): Local Dimension of system
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	N = None
-	D = None
-
 	defaults = dict(
 		model=None,
-		N=None,M=None,D=None,
+		N=None,M=None,
 		state=None,parameters=None,
 		variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		data=None,measure=None,callback=None,
@@ -7525,11 +7566,11 @@ class Module(System):
 		system=None,
 		)
 
-	def __init__(self,model=None,N=None,M=None,D=None,
+	def __init__(self,model=None,N=None,M=None,
 		state=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,dict(
-			model=model,N=N,M=M,D=D,
+			model=model,N=N,M=M,
 			state=state,parameters=parameters,system=system),
 			delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -7620,10 +7661,7 @@ class Module(System):
 		boolean = lambda model: ((model is not None) and (not model.null()))
 
 		N = max((model.N for index in self.model for model in self.model[index] if boolean(model) and model.N is not None),default=self.N)
-		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=self.D)
-
 		self.N = N
-		self.D = D
 
 		# Measure
 		cls = Measure
@@ -7663,6 +7701,7 @@ class Module(System):
 			where = sorted(set(where),key=lambda i:where.index(i))
 
 			N = max((model.N for model in self.model[index] if boolean(model) and model.N is not None),default=len(where))
+			D = max((model.D for model in self.model[index] if boolean(model) and model.D is not None),default=measure.D)
 			locality = len(where)
 
 			keywords = dict(verbose=False)
@@ -7670,19 +7709,23 @@ class Module(System):
 			state = self.state.__class__(**{**self.state,**keywords})
 
 
+			cls = {model:model.__class__ for model in self.model[index]}
 			keywords = {model:dict(
 				state=state @ locality,
 				where=[where.index(i) for i in model.where],
-				samples=None,
+				samples=D**(2*locality),
 				verbose=False,
 				) for model in self.model[index]}
 
-			model = [wrapper(model.__class__(**{**model,**keywords[model]}),parameters=model.parameters()) for model in self.model[index]]
+			model = [wrapper(cls[model](**{**model,**keywords[model]})) for model in self.model[index]]
 
-			def model(parameters,state,model=model,**kwargs):
-				for func in model:
-					state = func(parameters=parameters,state=state,**kwargs)
-				return state		
+			if len(model) > 1:
+				def model(parameters,state,model=model,**kwargs):
+					for func in model:
+						state = func(parameters=parameters,state=state,**kwargs)
+					return state
+			else:
+				model, = model
 
 			parameters = measure.parameters()
 			state = [self.state]*N
@@ -7722,18 +7765,18 @@ class Module(System):
 		options = self.options
 
 		def func(parameters,state,options=options,**kwargs):
-			size = len(self.data)
+			M,N,size = self.M,self.N,len(self.data)
 			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 
-			state = [state]*self.N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state)
 
-			parameters = [parameters]*self.M if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
-			parameters = array(parameters) if parameters is not None else parameters
+			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
+			parameters = parameters if parameters is not None else parameters
 
-			for l in range(self.M):
+			for l in range(M):
 				for i,data in enumerate(self.data):
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
@@ -7892,6 +7935,9 @@ class Module(System):
 			verbose (bool,int,str): Verbosity of message		
 			kwargs (dict): Additional logging keyword arguments	
 		'''		
+
+		if not verbose and not self.verbose:
+			return
 
 		msg = []
 
