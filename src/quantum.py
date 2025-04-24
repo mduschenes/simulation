@@ -7612,6 +7612,19 @@ class Module(System):
 		self.state = state
 		self.parameters = parameters
 
+		# Attributes
+		self.set(model=model)
+		self.layout()
+
+		options = self.options if self.options is not None else {}
+		boolean = lambda model: ((model is not None) and (not model.null()))
+
+		N = max((model.N for index in self.model for model in self.model[index] if boolean(model) and model.N is not None),default=self.N)
+		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=self.D)
+
+		self.N = N
+		self.D = D
+
 		# Measure
 		cls = Measure
 		measure = self.measure if isinstance(self.measure,dicts) else {}
@@ -7627,10 +7640,6 @@ class Module(System):
 		self.set(model=model)
 
 		self.layout()
-
-		options = self.options if self.options is not None else {}
-
-		boolean = lambda model: ((model is not None) and (not model.null()))
 
 		if self.architecture is None:
 			wrapper = jit

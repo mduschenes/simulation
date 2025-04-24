@@ -574,14 +574,20 @@ def brickwork(iterable,sort=False,group=False):
 
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
+	indexes = [*range(0,N-1,2),*range(1,N-1,2)]
+	attributes = lambda index: [(index,index+1),(index,),(index+1,)]
+	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
+	groups = lambda i,index,attribute: 3*index+attributes(index).index(attribute)
+	# groups = lambda i,index,attribute: index
+
 	indices = {}
-	for index in (*range(0,N-1,2),*range(1,N-1,2)):
-		for where in ((index,index+1),(index,),(index+1,)):
+	for index in indexes:
+		for attribute in attributes(index):
 			for i in iterable:
 				if i in indices:
 					continue
-				if tuple(iterable[i].where)==tuple(where):
-					indices[i] = index
+				if boolean(i,index,attribute):
+					indices[i] = groups(i,index,attribute)
 					break
 
 	iterable = indices
@@ -605,14 +611,20 @@ def nearestneighbour(iterable,sort=False,group=False):
 
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
+	indexes = [*range(0,N-1,1),]
+	attributes = lambda index: [(index,index+1),(index,),(index+1,)]
+	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
+	groups = lambda i,index,attribute: 3*index+attributes(index).index(attribute)
+	groups = lambda i,index,attribute: index
+
 	indices = {}
-	for index in (*range(0,N-1,1),):
-		for where in ((index,index+1),(index,),(index+1,)):
+	for index in indexes:
+		for attribute in attributes(index):
 			for i in iterable:
 				if i in indices:
 					continue
-				if tuple(iterable[i].where)==tuple(where):
-					indices[i] = index
+				if boolean(i,index,attribute):
+					indices[i] = groups(i,index,attribute)
 					break
 
 	iterable = indices

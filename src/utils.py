@@ -3510,9 +3510,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.strings(index)==index}
 			
 			if indices is None:
-				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in set(indexes[index][0] for index in indexes)}
+				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in sorted(set(indexes[index][0] for index in indexes))}
 			else:
-				axes = {index:[i for i in indexes if indexes[i] in inds] for index,inds in enumerate(indices)}
+				axes = {index:[i for i in indexes if indexes[i] in inds] for index,inds in sorted(enumerate(indices))}
 
 			axis = tuple(i for i in range(data.ndim) if i not in indexes)
 			shape = data.shape
