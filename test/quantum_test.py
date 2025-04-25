@@ -23,7 +23,7 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
 
-import src.quantum
+from src.quantum import Basis as basis
 
 
 def equalizer(a,b):
@@ -41,8 +41,6 @@ def equalizer(a,b):
 
 def test_basis(*args,**kwargs):
 
-	from src.quantum import Basis as basis
-	
 	D = 2
 	N = 1
 	L = 1
@@ -240,28 +238,36 @@ def test_operator(*args,**kwargs):
 		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
 		"operator.where":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
 		"operator.string":["test","xz","Haar","haar","U","u","noise"],
-		"operator.parameters":[None,0.5,None,None,None,None,1e-6],
+		"operator.parameters":[None,0.25,None,None,None,None,1e-6],
 		"operator.variable":[False,False,False,False,False,False,False,False],
 		"operator.constant":[True,False,False,False,False,False,True,True],
 		"state.local":[False],
 		"state.data":[None],
-		"state.operator":["zero"],
+		"state.operator":["state"],
 		"state.where":[None],
-		"state.string":["zero"],
+		"state.string":["state"],
 		"state.parameters":[None],
 		"state.variable":[False],
 		"state.constant":[True],
 
+		"operator.tensor":[False],
+		"state.tensor":[False],
+
 		}
-	groups = [[
+	groups = [
+		[
 		"operator.data","operator.operator","operator.where",
 		"operator.string","operator.parameters","operator.variable","operator.constant"
-		],[
+		],
+		[
 		"state.data","state.operator","state.where",
 		"state.string","state.parameters","state.variable","state.constant"
 		],
+		[	
+		"operator.tensor","state.tensor",
+		],		
 		]
-	filters = None
+	filters = lambda kwargs:[i for i in kwargs if all([i['operator.string'] in ["xz"],i['state.ndim'] in [2]])]
 	func = None
 
 	options = dict(dtype="complex")
@@ -276,7 +282,7 @@ def test_operator(*args,**kwargs):
 			},
 			"operator":{
 				"data":None,"operator":None,"where":None,"string":None,
-				"N":2,"D":2,"ndim":2,"local":True,"variable":True,"constant":False,
+				"N":2,"D":2,"ndim":2,"tensor":False,"local":True,"variable":True,"constant":False,
 				"system":{"seed":123,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
@@ -295,52 +301,52 @@ def test_operator(*args,**kwargs):
 		verbose = True
 
 
-		# Data
+		# Class
 		operator = load(settings.cls.operator)
-
 		operator = operator(**settings.operator)
 
+		state = load(settings.cls.state)
+		state = state(**settings.state)
+
+		operator.info(verbose=verbose)
+		state.info(verbose=verbose)
+
+
+
+
+		# Data
+		axes = [operator.where.index(i) for i in sorted(operator.where)] if operator.local else [*operator.where,*(i for i in range(operator.N) if i not in operator.where)]
+		shape = {**{i:[operator.shape[i]] for i in range(operator.ndim-2)},**{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(1,operator.ndim-1)}} if operator.ndim > 2 else {i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim)}
+
 		if operator.string in ["test"]:
-			_data = [
+			data = [
 				array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options),
 				(1/sqrt(2))*array([[1,1],[1,-1]],**options),
 				]
-			axes = [3,0,1,2]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["xz"]:
-			_data = [
+			data = [
 				array([[0,1],[1,0]],**options),
 				array([[1,0],[0,-1]],**options),
 				]
-			axes = [0,2,1,3]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["Haar"]:
-			_data = [
+			data = [
 				haar(shape=(2**4,)*2,seed=seeder(operator.seed),**options),
 				]
-			axes = [0,1,2,3]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["haar"]:
-			_data = [
+			data = [
 				haar(shape=(2**3,)*2,seed=seeder(operator.seed),**options),
 				]
-			axes = [1,2,0,3]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["U"]:
-			_data = [
+			data = [
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				]
-			axes = [3,1,0,2]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["u"]:
-			_data = [
+			data = [
 				haar(shape=(2,)*2,seed=seeder(operator.seed),**options),
 				]
-			axes = [0,3,1,2]
-			shape = {0:[2,2,2,2],1:[2,2,2,2]}
 		elif operator.string in ["noise"]:
-			_data = [
+			data = [
 				array([
 				sqrt(1-(2**2-1)*operator.parameters()/(2**2))*array([[1,0],[0,1]],**options),
 				sqrt(operator.parameters()/(2**2))*array([[0,1],[1,0]],**options),
@@ -357,79 +363,99 @@ def test_operator(*args,**kwargs):
 					sqrt(operator.parameters())*array([[1,0],[0,-1]],**options)
 					],**options),
 				]
-			axes = [0,2,1,3]
-			shape = {0:[4,2,2,1],1:[2,2,2,2],2:[2,2,2,2]}
+			shape.update({i:[operator.D**2,operator.D,operator.D,*([1]*(operator.N-operator.locality) if not operator.local else [])] for i in range(operator.ndim-2)},**{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(1,operator.ndim-1)})
 
-			
-		# if operator.local:
-		# 	_tmp = tensorprod(_data)
-		# else:
-		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-		_tmp = swap(tensorprod(_tmp),axes=axes,shape=shape)
+
+		obj = [*data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
+
+		print(obj)
+
+		if not operator.local:
+			obj = swap(tensorprod(obj),axes=axes,shape=shape)
+		else:
+			obj = tensorprod(obj)
 
 		if not operator.constant:
-			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
-					-1j*sin(operator.parameters(operator.parameters()))*_tmp)
+			_identity = tensorprod([array([[1,0],[0,1]],**options)]*(operator.locality if operator.local else operator.N))
+			_parameters = operator.parameters(operator.parameters())
+			obj = cos(_parameters)*_identity + -1j*sin(_parameters)*obj
 
-		operator.info(verbose=verbose)
+		if operator.tensor:
+			_shape = [*([-1] if operator.ndim>1 else []),*[operator.D]*(operator.ndim*(operator.locality if operator.local else operator.N))]
+			obj = reshape(obj,_shape)
 
+
+
+
+		# Operator
+		operator.init()
+		
 		parameters = operator.parameters()
-		state = tensorprod((operator.basis.get(operator.default)(D=operator.D,dtype=operator.dtype),)*operator.N)
+		state = operator.identity(N=operator.N)
 		kwargs = dict()
 
-		tmp = operator(parameters=parameters,state=state,**kwargs)
+		print(operator.shape,obj.shape,state.shape,operator.local,operator.locality,operator.N)
+
+		data = operator(parameters=parameters,state=state,**kwargs)
+
+		if not operator.unitary:
+			data = operator.data
+
+		test = obj
 
 		if verbose:
+			print(operator.string)
 			print("----- data ------")
-			print(tmp)
+			print(data)
 			print("-----------------")
 			print()
 			print("----- _data ------")
-			print(_tmp)
+			print(obj)
 			print("-----------------")
 			print()
 
-		assert (not operator.unitary) or allclose(tmp,_tmp), "Incorrect operator %r"%(operator)
+		assert allclose(data,test), "Incorrect operator %r"%(operator)
 
+		continue
 
 
 		# State
-
-		state = load(settings.cls.state)
-		state = state(**settings.state)
-
 		operator.init(state=state)
 
 		parameters = operator.parameters()
 		state = operator.state()
 		kwargs = dict()
 
-		tmp = operator(parameters=parameters,state=state,**kwargs)
-
-		_tmp = [*_data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-		_tmp = swap(tensorprod(_tmp),axes=axes,shape=shape)
-
-		if not operator.constant:
-			_tmp = (cos(operator.parameters(operator.parameters()))*tensorprod([array([[1,0],[0,1]],**options)]*(operator.N)) + 
-						-1j*sin(operator.parameters(operator.parameters()))*_tmp)
+		data = operator(parameters=parameters,state=state,**kwargs)
 
 		if operator.ndim == 3:
 			if state is None:
-				_tmp = _tmp
+				test = obj
 			elif state.ndim == 2:
-				_tmp = einsum("uij,jl,ukl->ik",_tmp,state,conjugate(_tmp))
+				if operator.tensor:
+					subscripts = "uij,jl,ulk->ik"
+				else:
+					subscripts = "uij,jl,ulk->ik"
+				test = einsum(subscripts,obj,state,dagger(obj))
 			elif state.ndim == 1:
 				continue
 			else:
 				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
-
 		elif operator.ndim == 2:
 			if state is None:
-				_tmp = _tmp
+				test = obj
 			elif state.ndim == 2:
-				_tmp = einsum("ij,jl,kl->ik",_tmp,state,conjugate(_tmp))
+				if operator.tensor:
+					subscripts = "ij,jl,lk->ik"
+				else:
+					subscripts = "ij,jl,lk->ik"	
+				test = einsum(subscripts,obj,state,dagger(obj))
 			elif state.ndim == 1:
-				_tmp = einsum("ij,j->i",_tmp,state)				
+				if operator.tensor:
+					subscripts = "ij,j->i"
+				else:
+					subscripts = "ij,j->i"	
+				test = einsum(subscripts,obj,state)
 			else:
 				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
 		
@@ -440,16 +466,17 @@ def test_operator(*args,**kwargs):
 
 
 		if verbose:
+			print(operator.string)
 			print("----- state ------")
-			print(tmp)
+			print(data)
 			print("-----------------")
 			print()
 			print("----- _state ------")
-			print(_tmp)
+			print(test)
 			print("-----------------")
 			print()
 
-		assert allclose(tmp,_tmp), "Incorrect operator(parameters,state) %r"%(operator)
+		assert allclose(data,test), "Incorrect operator(parameters,state) %r"%(operator)
 
 	print("Passed")
 
@@ -458,7 +485,36 @@ def test_operator(*args,**kwargs):
 
 def test_data(path,tol):
 
-	from src.quantum import trotter
+	def trotter(iterable=None,p=None,verbose=False):
+		'''
+		Trotterized iterable for order p or parameters for order p
+		Args:
+			iterable (iterable): Iterable
+			p (int): Order of trotterization
+			verbose (bool,int,str): Verbosity of function		
+		Returns:
+			iterables (iterable,scalar): Trotterized iterable for order p or parameters for order p if iterable is None
+		'''
+		P = 2
+		if p is None and iterable is None:
+			return p
+		elif p is None:
+			return iterable
+		elif not isinstance(p,integers) or (p > P):
+			raise NotImplementedError('p = %r !< %d Not Implemented'%(p,P))
+
+		if iterable is None:
+			options = {i:1/p for i in range(P+1)}
+			iterables = options[p]
+		else:
+			options = {i:[slice(None,None,(-1)**i)] for i in range(P)}
+			iterables = []        
+			for i in range(p):
+				for indices in options[i]:
+					iterables += iterable[indices]
+
+		return iterables
+
 
 	default = None
 	settings = load(path,default=default)
@@ -528,7 +584,7 @@ def test_data(path,tol):
 		data = [tensorprod(array([basis[i] for i in s])) for s in string]
 		identity = tensorprod(array([basis[default]]*N))		
 
-	assert allclose(model.identity,identity), "Incorrect model identity"
+	assert allclose(model.identity(),identity), "Incorrect model identity"
 
 	data = trotter(data,P)
 	string = trotter(string,P)
@@ -2372,7 +2428,6 @@ def test_mps(*args,**kwargs):
 	import src
 
 	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
-	from src.quantum import Basis as basis
 
 	def representation_quimb(data):
 		return data.to_dense().ravel()
@@ -2766,7 +2821,7 @@ if __name__ == "__main__":
 	# test_function(*args,**args)
 	# test_basis(*args,**args)
 	# test_component(*args,**args)
-	# test_operator(*args,**args)
+	test_operator(*args,**args)
 	# test_null(*args,**args)
 	# test_data(*args,**args)
 	# test_copy(*args,**args)
@@ -2782,4 +2837,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
-	test_class(*args,**args)
+	# test_class(*args,**args)

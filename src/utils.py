@@ -1513,6 +1513,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	if grad is None:
 		grad = gradient(func,mode=mode,move=True)
 
+	shape = shapes[0]
 	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
 	dtype = getattr(func,'dtype',None)
 
@@ -1523,7 +1524,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 	if hermitian:
 
-		func = spectrum(func,compute_v=True,hermitian=hermitian)
+		func = spectrum(func,shape=shape,compute_v=True,hermitian=hermitian)
 
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
@@ -1600,6 +1601,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
+			function = reshape(function,shape)
+			gradient = reshape(function,[-1,*shape])
+
 			out = 0
 
 			tmp = einsummations[0](conjugate(gradient),function)
@@ -1648,6 +1652,8 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	else:
 		def entropy(*args,**kwargs):
 			out = func(*args,**kwargs)
+
+			out = reshape(out,shape)
 			
 			out = eig(out,compute_v=False,hermitian=hermitian)
 
@@ -1691,6 +1697,8 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		def purity(*args,**kwargs):
 			out = func(*args,**kwargs)
 			
+			out = reshape(out,shape)
+
 			out = real(einsum('ij,ij->',out,conjugate(out)))
 
 			return out
@@ -1722,6 +1730,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	if callable(label):
 		label = label()
+	label = reshape(label,shape)
 
 	labels = einsum('ij,ji->',label,label)
 
@@ -1734,6 +1743,8 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	else:
 		def similarity(*args,**kwargs):
 			out = func(*args,**kwargs)
+
+			out = reshape(out,shape)
 
 			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
 			
@@ -1767,6 +1778,8 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	if callable(label):
 		label = label()
+	label = reshape(label,shape)
+
 	labels = eig(label,compute_v=False,hermitian=hermitian)
 	labels = abs(labels)
 	labels = addition(log(labels**labels))
@@ -1780,6 +1793,8 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	else:
 		def divergence(*args,**kwargs):
 			out = func(*args,**kwargs)
+
+			out = reshape(out,shape)
 
 			outs,out = eig(out,compute_v=True,hermitian=hermitian)
 
@@ -5620,11 +5635,13 @@ def inv(a):
 	'''
 	return np.linalg.inv(a)
 
-def spectrum(func,compute_v=False,hermitian=False):
+def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors of a function
 	Args:
 		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		shape (iterable[int]): Shape to reshape function
+		axes (iterable[int]): Axes to transpose function
 		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
 		hermitian (bool): Whether array is Hermitian
 	Returns:
@@ -5633,9 +5650,21 @@ def spectrum(func,compute_v=False,hermitian=False):
 			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
 	'''
 
+	if shape is not None and axes is not None:
+		def transform(data):
+			return reshape(transpose(data,axes),shape)
+	if shape is not None:
+		def transform(data):
+			return reshape(data,shape)
+	elif axes is not None:
+		def transform(data):
+			return transpose(data,axes)
+	else:
+		def transform(data):
+			return data
 	@jit
 	def wrapper(*args,**kwargs):
-		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+		return eig(transform(func(*args,**kwargs)),compute_v=compute_v,hermitian=hermitian)
 
 	return wrapper
 
@@ -5917,8 +5946,8 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
-		data (array,tensor): data
-		state (array,tensor): state
+		data (array,iterable[array]): data
+		state (array,iterable[array]): state
 		where (int,str,iterable[int,str]): indices of contraction
 		samples (int,iterable[int]): samples of state		
 		kwargs (dict): Additional keyword arguments for contraction
@@ -5936,10 +5965,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = jit
 	elif isinstance(state,arrays):
 		wrapper = jit
-	elif isinstance(state,tensors):
-		wrapper = None
-	elif isinstance(state,tensors_quimb):
-		wrapper = None		
 	else:
 		wrapper = None
 
@@ -5964,21 +5989,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				
 				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return data
-	
-		elif isinstance(state,tensors):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-
-		elif isinstance(state,tensors_quimb):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-
-	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
-	
-		def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-			return data(state)
 
 	elif isinstance(data,arrays):
 
@@ -6001,16 +6011,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
 
-			elif isinstance(state,tensors):
-
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 		elif data.ndim == 1:
 			
 			if state is None:
@@ -6029,14 +6029,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return data
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 2:
 
@@ -6064,7 +6056,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(data,shuffler(state)))
 
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -6087,7 +6078,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
 
-
 				elif state.ndim > 1:
 				
 					if where is None:
@@ -6106,16 +6096,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))							
-
-			elif isinstance(state,tensors):
-				
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return state(data,where=where)
-
-			elif isinstance(state,tensors_quimb):
-				
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return state.gate(data,where=where)
 
 		elif data.ndim == 3:
 
@@ -6142,7 +6122,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return state
 
-
 			elif isinstance(state,arrays):
 
 				if state.ndim == 1:
@@ -6165,7 +6144,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
 
-
 				elif state.ndim > 1:
 
 					if where is None:					
@@ -6187,61 +6165,6 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
 
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-	elif isinstance(data,tensors):
-
-		if state is None:
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-		
-		elif isinstance(state,arrays):
-
-			if state.ndim == 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-			elif state.ndim > 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif isinstance(state,tensors):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return state(data,where=where)
-
-		elif isinstance(state,tensors_quimb):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return state.gate(data,where=where)
-
-	elif isinstance(data,tensors_quimb):
-
-		if state is None:
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-		
-		elif isinstance(state,arrays):
-
-			if state.ndim == 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-			elif state.ndim > 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif isinstance(state,tensors):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return state(data,where=where)
-
-		elif isinstance(state,tensors_quimb):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return state.gate(data,where=where)
-
 	func = wrapper(func) if wrapper is not None else func
 
 	return func
@@ -6251,8 +6174,8 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
-		data (array,tensor): data
-		state (array,tensor): state
+		data (array,iterable[array]): data
+		state (array,iterable[array]): state
 		where (int,str,iterable[int,str]): indices of contraction
 		samples (int,iterable[int]): samples of state
 		kwargs (dict): Additional keyword arguments for contraction		
@@ -6270,10 +6193,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		wrapper = jit
 	elif isinstance(state,arrays):
 		wrapper = jit
-	elif isinstance(state,tensors):
-		wrapper = None
-	elif isinstance(state,tensors_quimb):
-		wrapper = None		
 	else:
 		wrapper = None
 
@@ -6299,18 +6218,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 	
-		elif isinstance(state,tensors):
-
-			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif isinstance(state,tensors_quimb):
-
-			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
-	
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 	elif isinstance(data,arrays):
 
 		if data.ndim == 0:
@@ -6332,14 +6239,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 		elif data.ndim == 1:
 			
 			if state is None:
@@ -6358,14 +6257,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 					
 					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 		elif data.ndim == 2:
 
@@ -6439,14 +6330,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)				
 
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
 		elif data.ndim == 3:
 
 			if state is None:
@@ -6518,22 +6401,6 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)						
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-			elif isinstance(state,tensors_quimb):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-	elif isinstance(data,tensors):
-
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-	elif isinstance(data,tensors_quimb):
-
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
 
 	func = wrapper(func) if wrapper is not None else func
 

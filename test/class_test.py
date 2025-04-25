@@ -21,7 +21,6 @@ from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_positi
 from src.iterables import getter,setter,permuter,namespace,getattrs,setattrs
 from src.io import load,dump,join,exists
 
-from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter,compile,variables
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.system import Dictionary,Dict
 

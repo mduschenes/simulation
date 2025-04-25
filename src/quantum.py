@@ -859,7 +859,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,identity=None,ones=None,zeros=None,pointer=None,
+		basis=None,inverse=None,ones=None,zeros=None,pointer=None,
 		parameters=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -949,7 +949,6 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = dtype
 
-		identity = [Basis.identity(D=K,dtype=dtype)]*N
 		ones = [array([1 for i in range(K)],dtype=dtype)]*N
 		zeros = [array([0 for i in range(K)],dtype=dtype)]*N
 		pointer = pointer if pointer is not None else None
@@ -963,7 +962,6 @@ class Measure(System):
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 			
-			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 			pointer = pointer
@@ -983,9 +981,6 @@ class Measure(System):
 
 			kwargs = dict(indices=[*self.inds])
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
-
-			kwargs = dict(indices=[*self.inds])
-			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
 
 			kwargs = dict(indices=[self.ind])
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
@@ -1013,9 +1008,6 @@ class Measure(System):
 			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
-			identity = [cls(identity[pointer],**kwargs)]*N if symmetry else [cls(identity[i],**kwargs) for i in where]
-
 			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
@@ -1026,7 +1018,6 @@ class Measure(System):
 
 		basis = [basis]*N if isinstance(basis,objects) else basis
 		inverse = [inverse]*N if isinstance(inverse,objects) else inverse
-		identity = [identity]*N if isinstance(identity,objects) else identity
 		ones = [ones]*N if isinstance(ones,objects) else ones
 		zeros = [zeros]*N if isinstance(zeros,objects) else zeros
 		pointer = pointer if pointer is not None else min(where) if where is not None else 0 if N is not None else None
@@ -1051,7 +1042,6 @@ class Measure(System):
 
 		self.basis = basis
 		self.inverse = inverse
-		self.identity = identity
 		self.ones = ones
 		self.zeros = zeros
 		self.pointer = pointer
@@ -1124,7 +1114,7 @@ class Measure(System):
 		return self.func(parameters=parameters,state=state,**kwargs)
 
 	def __len__(self):
-		return self.basis[self.pointer].shape[0]
+		return len(self.basis[self.pointer])
 
 	def __str__(self):
 		if isinstance(self.string,str):
@@ -3926,7 +3916,7 @@ def variables(data,state=None,conj=False,size=None,compilation=None,verbose=Fals
 
 
 
-def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
+def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Contract data and state
 	Args:
@@ -3938,7 +3928,6 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		compilation (dict[str,int,bool]): Compilation options, allowed keys 
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
-		architecture (str): Architecture data structure of data
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract data with signature func(parameters,state,indices,**kwargs)
@@ -3953,7 +3942,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	length = len(data) if data is not None else 1
 	indices = (0,size*length)
 
-	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
+	D = min(data[i].D for i in data if data[i] is not None) if data else None
 	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
 
@@ -3967,18 +3956,11 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)
 
 	length = len(data)
-	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
-	
-	if architecture is None:
-		wrapper = jit
-	elif architecture in ['array']:		
-		wrapper = jit
-	elif architecture in ['tensor_quimb']:		
-		wrapper = jit
-	elif architecture in ['tensor']:
-		wrapper = jit
-	else:
-		wrapper = jit
+
+	obj = state if state is not None else tensorprod([Basis.identity(D=D,dtype=dtype)]*locality) if data else None
+
+	wrapper = jit
+
 	kwargs = {}
 
 	data = [wrapper(data[i],**kwargs) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
@@ -3998,7 +3980,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 
 
 
-def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,architecture=None,verbose=False):
+def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Contract gradient of data and state
 	Args:
@@ -4010,7 +3992,6 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		compilation (dict[str,int,bool]): Compilation options, allowed keys 
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
-		architecture (str): Architecture data structure of data
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract gradient with signature func(parameters,state,indices,**kwargs)
@@ -4025,11 +4006,11 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	length = len(data)
 	indices = (0,size*length)
 	
-	dimension = min(data[i].D for i in data if data[i] is not None) if data else None
+	D = min(data[i].D for i in data if data[i] is not None) if data else None
 	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
 
-	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation,architecture=architecture)	
+	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation)	
 
 	if parameters is not None and len(parameters):
 		def gradient(parameters,state=state,indices=indices,**kwargs):	
@@ -4043,19 +4024,13 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	indexes,shape = variables(data,state=state,conj=conj,size=size,compilation=compilation)	
 
 	length = len(data)
+
 	indices = (0,size*length)
-	obj = state if state is not None else tensorprod([Basis.identity(D=dimension,dtype=dtype)]*locality) if data else None
+
+	obj = state if state is not None else tensorprod([Basis.identity(D=D,dtype=dtype)]*locality) if data else None
 	
-	if architecture is None:
-		wrapper = jit
-	elif architecture in ['array']:
-		wrapper = jit
-	elif architecture in ['tensor_quimb']:
-		wrapper = jit
-	elif architecture in ['tensor']:
-		wrapper = jit
-	else:
-		wrapper = jit
+	wrapper = jit
+
 	kwargs = {}
 
 	data,grad,indexes = (
@@ -4121,7 +4096,7 @@ class Object(System):
 	defaults = dict(			
 		data=None,operator=None,where=None,string=None,system=None,
 		state=None,parameters=None,conj=False,
-		local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
+		tensor=None,local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,
 		space=None,time=None,lattice=None,
@@ -4151,8 +4126,10 @@ class Object(System):
 
 		# Set attributes
 		#	N: size of system acted on by locality number of non-local operators with indices where
+		#	tensor (bool): whether operator has tensor shape
 		#	local (bool): whether operator acts locally
 		# 	locality (int): number of indices acted on locally, non-trivially by operator
+		# 	number (int): number of operators within class
 		#	where (iterable[int]): indices of local action within space of size N
 
 
@@ -4160,6 +4137,7 @@ class Object(System):
 		where = self.where if self.where is None or not isinstance(self.where,integers) else [self.where]
 		string = self.string
 
+		tensor = self.tensor if self.tensor is not None else None
 		local = self.local if self.local is not None else None
 		locality = self.locality if self.locality is not None else None
 		number = self.number if self.number is not None else None
@@ -4173,11 +4151,12 @@ class Object(System):
 		N = self.N if self.N is not None else None
 		D = self.D if self.D is not None else None
 
-		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
-		size = self.size if self.size is not None else getattr(data,'size',self.size) if data is not None else None
-		ndim = self.ndim if self.ndim is not None else getattr(data,'ndim',self.ndim) if data is not None else None
-		dtype = self.dtype if self.dtype is not None else getattr(data,'dtype',self.dtype) if data is not None else None
+		shape = self.shape if self.shape is not None else None
+		size = self.size if self.size is not None else None
+		ndim = self.ndim if self.ndim is not None else None
+		dtype = self.dtype if self.dtype is not None else None
 	
+		identity = self.identity
 		basis = self.basis
 		default = self.default
 		
@@ -4205,7 +4184,10 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
-		# Set local, locality, where
+		# Set tenor, local, locality, where
+
+		tensor = tensor
+
 		local = local
 
 		if locality is not None:
@@ -4286,8 +4268,9 @@ class Object(System):
 				operator = operator
 
 		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
-		D = D if D is not None else getattr(data,'size',1)**(1/max(1,getattr(data,'ndim',1)*N)) if isinstance(data,arrays) else 1
+		D = D if D is not None else 2
 
+		tensor = tensor
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
@@ -4301,15 +4284,19 @@ class Object(System):
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
+		
+		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
 
-		shape = self.shape if self.shape is not None else getattr(data,'shape',self.shape) if data is not None else None
-		size = self.size if self.size is not None else getattr(data,'size',self.size) if data is not None else None
-		ndim = self.ndim if self.ndim is not None else getattr(data,'ndim',self.ndim) if data is not None else None
-		dtype = self.dtype if self.dtype is not None else getattr(data,'dtype',self.dtype) if data is not None else None
+		shape = self.shape if self.shape is not None else None
+		size = self.size if self.size is not None else None
+		ndim = self.ndim if self.ndim is not None else None
+		dtype = self.dtype if self.dtype is not None else None
 		
+		identity = identity if self.identity is not None else lambda self=self:None
+
 		system = self.system if self.system is not None else None
 
 		# Check attributes
@@ -4355,6 +4342,7 @@ class Object(System):
 		self.where = where if where is not None else None
 		self.string = string if string is not None else None
 
+		self.tensor = tensor
 		self.local = local
 		self.locality = locality
 		self.number = number
@@ -4464,6 +4452,8 @@ class Object(System):
 		operator = self.operator
 		where = self.where
 		string = self.string
+		
+		tensor = self.tensor
 		local = self.local
 		locality = self.locality
 		number = self.number
@@ -4474,12 +4464,16 @@ class Object(System):
 		hermitian =  self.hermitian
 		unitary =  self.unitary
 
+		identity = self.identity
+
 		N = max((i for i in (max((i for i in (locality,len(where) if where is not None else None,N) if i is not None),default=None),) if i is not None),default=None)
 		D = D if D is not None else None
 
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
+		
+		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
@@ -4492,6 +4486,8 @@ class Object(System):
 		self.operator = operator
 		self.where = where
 		self.string = string
+		
+		self.tensor = tensor
 		self.local = local
 		self.locality = locality
 		self.number = number
@@ -4510,8 +4506,16 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 		
-		self.identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
+		def identity(N=None,self=self):
+			if self.null():
+				return None
+			N = (self.locality if self.local else self.N) if N is None else N
+			options = dict(D=self.D,dtype=self.dtype,system=self.system)
+			data = tensorprod([Basis.identity(**options)]*(N))
+			data = reshape(data,[self.D]*(data.ndim*N)) if self.tensor else data
+			return data
 
+		self.identity = identity
 
 		if ( (not self.null()) and ((not isinstance(self.data,arrays)) and not callable(self.data)) and (
 			((isinstance(self.operator,str) and self.operator in self.basis) or 
@@ -4595,16 +4599,38 @@ class Object(System):
 		
 			data = self.data
 
+
+		if self.tensor:
+			if isinstance(data,arrays):
+				shape,size,ndim = data.shape,data.size,data.ndim
+				N = self.locality if self.local else self.N
+				D = self.D
+
+				if ndim == 1:
+					shape = [*[D]*(ndim*N)]
+				elif ndim == 2:
+					shape = [*[D]*(ndim*N)]
+				elif ndim == 3:
+					shape = [-1,*[D]*(ndim*N)]
+
+				data = reshape(data,shape)
+
 		self.data = data
 
 		self.N = max((i for i in (self.N if self.N is not None else None,self.locality if self.locality is not None else None,) if i is not None),default=None) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
 		self.D = self.D if self.D is not None else None
 
-		self.shape = getattr(data,'shape',self.shape) if data is not None else self.shape if self.shape is not None else None
-		self.size = getattr(data,'size',self.size) if data is not None else self.size if self.size is not None else None
-		self.ndim = getattr(data,'ndim',self.ndim) if data is not None else self.ndim if self.ndim is not None else None
-		self.dtype = getattr(data,'dtype',self.dtype) if data is not None else self.dtype if self.dtype is not None else None
-
+		self.shape = [prod(i) for i in Basis.shapes(
+				attr=Basis.string,
+				operator=[self.basis.get(i) 
+					for i in [
+						*(self.operator if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options))),
+						*([] if self.local else [self.default]*(self.N-self.locality))]
+						],
+				**options).values()] if all(obj is not None for obj in [self.operator,self.N,self.D,self.locality]) else ()
+		self.size = prod(self.shape) if self.shape is not None else None
+		self.ndim = len(self.shape) if self.size is not None else None
+		self.dtype = self.dtype if self.dtype is not None else None
 
 		if self.func is None:
 			def func(parameters=None,state=None,**kwargs):
@@ -4643,7 +4669,7 @@ class Object(System):
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
 			else:
-				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.identity.ndim)}
+				shape = {axis: [self.D for i in range(self.N)] for axis in range(2)}
 				axes = [[i for i in self.where]]
 				where = [i for i in range(self.locality)]
 				samples = self.samples
@@ -4654,11 +4680,7 @@ class Object(System):
 			samples = None
 
 		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
-
-		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
-			kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
-		else:
-			kwargs = dict(**{**self.options}) if self.options is not None else kwargs
+		kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 
 		try:
 			contract = contraction(data,state,where=where,samples=samples,**kwargs) if self.contract is None else self.contract
@@ -4678,19 +4700,11 @@ class Object(System):
 		self.contract = contract
 		self.gradient_contract = grad_contract
 
-		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			where = self.where
-			wrapper = jit
-			kwargs = {}
-		
-		else:
-			parameters = self.parameters()
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			where = self.where			
-			wrapper = partial
-			kwargs = {}
+		parameters = self.parameters()
+		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		where = self.where
+		wrapper = jit
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -4930,6 +4944,7 @@ class Object(System):
 			where = [i+self.N*j for j in range(other) for i in self.where]
 			string = delim.join((self.string,)*other) if self.string is not None else None
 
+			tensor = self.tensor
 			local = self.local
 			locality = self.locality*other
 			number = self.number
@@ -4977,6 +4992,7 @@ class Object(System):
 					*([i + self.N*(len(support) > 0) for i in other.where] if isinstance(other.where,iterables) else [other.where])]
 			string = delim.join((self.string,other.string)) if self.string is not None and other.string is not None else self.string if self.string is not None else other.string if other.string is not None else None
 
+			tensor = all((self.tensor,other.tensor))
 			local = all((self.local,other.local))
 			locality = sum((self.locality,other.locality))
 			number = max((self.number,other.number))
@@ -5016,7 +5032,7 @@ class Object(System):
 			**{attr: getattr(self,attr) for attr in self if not callable(getattr(self,attr))},
 			**dict(
 				data=data,operator=operator,where=where,string=string,
-				local=local,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
+				tensor=tensor,local=local,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
 				N=N,D=D,shape=shape,size=size,ndim=ndim,
 				state=state,parameters=parameters,conj=conj
 				)
@@ -5137,7 +5153,7 @@ class Object(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
+		for attr in [None,'string','key','seed','instance','instances','timestamp','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','conf','logger','cleanup']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5160,7 +5176,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','where','locality','local','variable','constant','symmetry']:
+		for attr in ['operator','where','locality','tensor','local','variable','constant','symmetry']:
 		
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5326,83 +5342,6 @@ class Object(System):
 		self.log(msg,verbose=verbose)
 
 		return
-
-	def norm(self,data=None):
-		'''
-		Normalize class
-		Args:
-			data (array): data to normalize			
-		Returns:
-			norm (array): data to normalize
-		'''
-
-		if data is None:
-			try:
-				data = self(self.parameters(),self.state())
-			except:
-				data = self.data
-
-		if data is None:
-			return
-		elif not isinstance(data,arrays) and not callable(data):
-			return
-
-		norm = None
-		eps = None
-
-		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
-		
-			shape = self.shape
-			size = self.size
-			ndim = self.ndim
-			dtype = self.dtype
-			hermitian = self.hermitian		
-			unitary = self.unitary	
-
-			if hermitian is None and unitary is None:
-				norm = None
-				eps = None
-			
-			elif ndim is None:
-				norm = None
-				eps = None
-			
-			elif ndim > 3:
-				if not hermitian and unitary:
-					norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
-					eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
-			
-			elif ndim == 3:
-				if not hermitian and not unitary:
-					norm = einsum('uij,uik->jk',conjugate(data),data)
-					eps = identity(shape[-2:],dtype=dtype)
-			
-			elif ndim == 2:
-				if hermitian and unitary:
-					norm = einsum('ii->',data)
-					eps = ones(shape[:-2],dtype=dtype)
-				elif not hermitian and unitary:
-					norm = einsum('ij,kj->ik',conjugate(data),data)
-					eps = identity(shape[-2:],dtype=dtype)
-				elif hermitian and not unitary:
-					norm = einsum('ii->',data)
-					eps = ones(shape[:-2],dtype=dtype)
-				
-			
-			elif ndim == 1:
-				if not hermitian and unitary:
-					norm = einsum('i,i->',conjugate(data),data)
-					eps = ones(shape=(),dtype=dtype)
-		
-		if norm is None or eps is None:
-			return
-
-		if dtype not in ['complex256','float128']:
-			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
-			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
-
-		return norm
-
 
 class Data(Object):
 	'''
@@ -5716,7 +5655,6 @@ class Pauli(Object):
 
 			data = None
 
-
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
 		symmetry = None		
@@ -5737,26 +5675,28 @@ class Pauli(Object):
 
 		self.parameters.init(parameters=dict(scale=pi/2))
 
+		identity = self.identity()
+
 		if self.parameters() is not None:
 
 			def func(parameters=None,state=None,**kwargs):
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
-				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				return cos(parameters)*identity + -1j*sin(parameters)*self.data
 			
 			def gradient(parameters=None,state=None,**kwargs):
 				grad = self.parameters.grad(parameters,**kwargs)
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
-				return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+				return grad*(-sin(parameters)*identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
 		
 			def func(parameters=None,state=None,**kwargs):
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
-				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
+				return cos(parameters)*identity + -1j*sin(parameters)*self.data
 
 			def gradient(parameters=None,state=None,**kwargs):
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
-				return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+				return (-sin(parameters)*identity + -1j*cos(parameters)*self.data)
 
 
 		contract = None
@@ -6308,84 +6248,6 @@ class State(Object):
 		else:
 			return self.gradient_contract(self.gradient(parameters=parameters,state=state,**kwargs),self.func(parameters=parameters,state=state,**kwargs),state=state)
 
-	def norm(self,data=None):
-		'''
-		Normalize class
-		Args:
-			data (array): data to normalize			
-		Returns:
-			norm (array): data to normalize
-		'''
-
-		if data is None:
-			try:
-				data = self(self.parameters(),self.state())
-			except:
-				data = self.data
-
-		if data is None:
-			return
-		elif not isinstance(data,arrays) and not callable(data):
-			return
-
-		norm = None
-		eps = None
-
-		if self.architecture is None or self.architecture in ['array','tensor_quimb']:
-		
-			shape = self.shape
-			ndim = self.ndim
-			dtype = self.dtype
-			hermitian = self.hermitian		
-			unitary = self.unitary	
-
-			if hermitian is None and unitary is None:
-				norm = None
-				eps = None
-			
-			elif ndim is None:
-				norm = None
-				eps = None
-			
-			elif ndim > 3:
-				if not hermitian and unitary:
-					norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
-					eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
-			
-			elif ndim == 3:
-				if not hermitian and not unitary:
-					norm = einsum('uij,uik->jk',conjugate(data),data)
-					eps = identity(shape[-2:],dtype=dtype)
-			
-			elif ndim == 2:
-				if hermitian and unitary:
-					norm = einsum('ii->',data)
-					eps = ones(shape[:-2],dtype=dtype)
-				elif not hermitian and unitary:
-					norm = einsum('ij,kj->ik',conjugate(data),data)
-					eps = identity(shape[-2:],dtype=dtype)
-				elif hermitian and not unitary:
-					norm = einsum('ii->',data)
-					eps = ones(shape[:-2],dtype=dtype)
-				
-			
-			elif ndim == 1:
-				if not hermitian and unitary:
-					norm = einsum('i,i->',conjugate(data),data)
-					eps = ones(shape=(),dtype=dtype)
-		
-
-		if norm is None or eps is None:
-			return
-
-		if dtype not in ['complex256','float128']:
-			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
-			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
-
-		return norm
-
-
-
 
 class Operator(Object):
 	'''
@@ -6512,8 +6374,8 @@ class Objects(Object):
 		self.lattices()
 
 		self.shape = () if self.D is None or self.locality is None else (self.D**self.locality,)*2
-		self.size = prod(self.shape)
-		self.ndim = len(self.shape)
+		self.size = prod(self.shape) if self.shape is not None else None
+		self.ndim = len(self.shape) if self.shape is not None else None
 		self.dtype = self.dtype if self.dtype is not None else None
 
 		self.setup(data,where=self.where,operator=self.operator,string=self.string)
@@ -6599,8 +6461,16 @@ class Objects(Object):
 
 
 		# Set identity
-		options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system) if not self.null() else None
-		self.identity = tensorprod([Basis.identity(**options)]*(self.locality if self.local else self.N)) if not self.null() else None
+		def identity(N=None,self=self):
+			if self.null():
+				return None
+			N = (self.locality if self.local else self.N) if N is None else N
+			options = dict(D=self.D,dtype=self.dtype,system=self.system)
+			data = tensorprod([Basis.identity(**options)]*(N))
+			data = reshape(data,[self.D]*(data.ndim*N)) if self.tensor else data
+			return data
+
+		self.identity = identity
 
 		# Set data
 		for i in self.data:
@@ -6618,7 +6488,7 @@ class Objects(Object):
 
 		# Set functions
 		def func(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
@@ -6637,7 +6507,7 @@ class Objects(Object):
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
 			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
@@ -6682,17 +6552,10 @@ class Objects(Object):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			wrapper = jit
-			kwargs = {}
-
-		else:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			wrapper = partial
-			kwargs = {}
+		parameters = self.parameters(self.parameters())
+		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		wrapper = jit
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -7225,6 +7088,8 @@ class Objects(Object):
 
 		string = separ.join([data[i].string for i in data if boolean(i,data)]) if data is not None else None
 
+		tensor = all(data[i].tensor for i in data if boolean(i,data)) if data is not None else None
+		
 		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
 		locality = len(where) if where is not None else None
@@ -7260,6 +7125,7 @@ class Objects(Object):
 		self.where = where
 		self.string = string
 
+		self.tensor = tensor
 		self.local = local
 		self.locality = locality
 		self.number = number
@@ -7387,8 +7253,8 @@ class Channel(Objects):
 		self.update()
 
 		# Set functions
-		func = scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
-		grad = gradient_scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),architecture=self.architecture,verbose=self.verbose)
+		func = scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),verbose=self.verbose)
+		grad = gradient_scheme(data=self.data,parameters=self.parameters,state=self.state,conj=self.conj,size=self.M,compilation=dict(trotter=self.P,**self),verbose=self.verbose)
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
@@ -7404,17 +7270,10 @@ class Channel(Objects):
 
 
 		# Set wrapper
-		if self.architecture is None or self.architecture in ['array','tensor_quimb','tensor']:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			wrapper = jit
-			kwargs = {}
-
-		else:
-			parameters = self.parameters(self.parameters())
-			state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
-			wrapper = partial
-			kwargs = {}
+		parameters = self.parameters(self.parameters())
+		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		wrapper = jit
+		kwargs = {}
 
 		self.func = wrapper(self.func,parameters=parameters,state=state,**kwargs)
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
@@ -7458,7 +7317,7 @@ class Operators(Objects):
 
 		# Set functions
 		def func(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
@@ -7477,7 +7336,7 @@ class Operators(Objects):
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
 			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
@@ -7522,7 +7381,7 @@ class Operators(Objects):
 
 		# Set wrapper
 		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
 		wrapper = partial
 		kwargs = {}
 
@@ -7679,18 +7538,8 @@ class Module(System):
 
 		self.layout()
 
-		if self.architecture is None:
-			wrapper = jit
-		elif self.architecture in ['array']:		
-			wrapper = jit
-		elif self.architecture in ['tensor_quimb']:		
-			wrapper = jit
-		elif self.architecture in ['tensor']:
-			wrapper = jit
-		else:
-			wrapper = jit
-
 		data = []
+		wrapper = jit
 
 		for index in self.model:
 
@@ -8085,7 +7934,7 @@ class Label(Operator):
 		'''
 
 		parameters = self.parameters() if parameters is None and self.parameters is not None else parameters if parameters is not None else None
-		state = self.state() if state is None and self.state is not None else state if state is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity(N=self.N)
 
 		if state is None:
 			return self.func(parameters=parameters,state=state,**kwargs)
@@ -8101,7 +7950,7 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-		state = self.state() if state is None and self.state is not None else state if state is not None else Basis.identity(D=self.D**self.locality,dtype=self.dtype) if self.D is not None and self.locality is not None else None
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity(N=self.N)
 
 		if state is None:
 			return self.gradient(parameters=parameters,state=state,**kwargs)
@@ -8426,16 +8275,7 @@ class Callback(System):
 					
 					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 					grad = model.grad_analytical
-					if model.architecture is None:
-						wrapper = jit
-					elif model.architecture in ['array']:
-						wrapper = jit
-					elif model.architecture in ['tensor_quimb']:
-						wrapper = jit											
-					elif model.architecture in ['tensor']:
-						wrapper = jit
-					else:
-						wrapper = jit
+					wrapper = jit
 
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(wrapper(lambda parameters,state,**kwargs: metric(model(parameters=parameters,state=state,**kwargs))))
