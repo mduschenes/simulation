@@ -59,6 +59,7 @@ class Basis(Dict):
 		
 		return wrapper
 
+	dimension = 2
 
 	defaults = dict(
 		D = 2,
@@ -192,7 +193,7 @@ class Basis(Dict):
 		elif attr in ['unitary']:
 			options.update(dict(
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else 
-					  (options.D**options.N,)*cls.dimension(attr,**options))
+					  (options.D**options.N,)*cls.dimensions(attr,**options))
 				))
 		elif attr in ['state']:
 			options.update(dict(
@@ -222,7 +223,7 @@ class Basis(Dict):
 		options = Dictionary(
 			D=kwargs.D if kwargs.D is not None else None,
 			N=kwargs.N if kwargs.N is not None else None,
-			ndim=cls.dimension(attr,*args,**kwargs),
+			ndim=cls.dimensions(attr,*args,**kwargs),
 			operator=((
 				[cls.parse(i) for i in kwargs.operator] if isinstance(kwargs.operator,iterables) else
 				[i for i in cls.parse(kwargs.operator)] if isinstance(kwargs.operator,str) and not kwargs.operator.count(delim) else
@@ -273,7 +274,7 @@ class Basis(Dict):
 
 	@classmethod
 	@decorator
-	def dimension(cls,attr,*args,**kwargs):
+	def dimensions(cls,attr,*args,**kwargs):
 		'''
 		Number of dimensions of composite operators
 		Args:
@@ -305,7 +306,7 @@ class Basis(Dict):
 		if attr is None or not hasattr(cls,attr):
 			dimension = None
 		elif attr in ['string']:
-			dimension = max(cls.dimension(i,*args,**kwargs) for i in options.operator if i is not None and hasattr(cls,i)) if options.operator is not None else None
+			dimension = max(cls.dimensions(i,*args,**kwargs) for i in options.operator if i is not None and hasattr(cls,i)) if options.operator is not None else None
 		elif attr in ['data']:
 			data = getattr(cls,attr)(*args,**kwargs)
 			dimension = data.ndim
@@ -364,7 +365,7 @@ class Basis(Dict):
 		options = Dictionary(
 			D=kwargs.D if kwargs.D is not None else None,
 			N=cls.locality(attr,*args,**kwargs),
-			ndim=cls.dimension(attr,*args,**kwargs),
+			ndim=cls.dimensions(attr,*args,**kwargs),
 			operator=((
 				[cls.parse(i) for i in kwargs.operator] if isinstance(kwargs.operator,iterables) else
 				[i for i in cls.parse(kwargs.operator)] if isinstance(kwargs.operator,str) and not kwargs.operator.count(delim) else
@@ -4332,13 +4333,13 @@ class Object(System):
 		assert ( self.null() or (operator is None and where is None and not locality) or (
 				(isinstance(operator,iterables) and (
 					any(i not in basis for i in operator) or
-					(len(set((Basis.dimension(basis.get(i),**options)for i in operator))) == 1))) or
+					(len(set((Basis.dimensions(basis.get(i),**options)for i in operator))) == 1))) or
 				(isinstance(operator,str) and operator.count(delim) and (
 					any(i not in basis for i in operator.split(delim)) or
-					(len(set((Basis.dimension(basis.get(i),**options)for i in operator))) == 1))) or
+					(len(set((Basis.dimensions(basis.get(i),**options)for i in operator))) == 1))) or
 				(isinstance(operator,str) and not operator.count(delim))
 				)
-			),"Inconsistent operator %r, dimension %r"%(operator,[Basis.dimension(basis.get(i),**options) for i in (operator if isinstance(operator,iterables) else [operator])])
+			),"Inconsistent operator %r, dimension %r"%(operator,[Basis.dimensions(basis.get(i),**options) for i in (operator if isinstance(operator,iterables) else [operator])])
 
 
 		# Set attributes
@@ -4517,7 +4518,7 @@ class Object(System):
 			cls = Basis.identity
 			N = self.N if N is None else N
 			D = [*self.D][:N] if D is not None and isinstance(self.D,iterables) else [self.D]*N if D is None else [*D][:N] if isinstance(D,iterables) else [D]*N
-			d = Basis.dimension(cls)
+			d = Basis.dimensions(cls)
 			options = dict(dtype=self.dtype,system=self.system)
 			data = tensorprod([cls(D=d,**options) for d in D])
 			data = reshape(data,self.tensor(N,D,d)) if self.tensor is not None else data
@@ -4546,19 +4547,19 @@ class Object(System):
 			assert (
 					(isinstance(self.operator,iterables) and (
 						any(i not in self.basis for i in self.operator) or
-						(len(set((Basis.dimension(self.basis.get(i),**options)for i in self.operator))) == 1))) or
+						(len(set((Basis.dimensions(self.basis.get(i),**options)for i in self.operator))) == 1))) or
 					(isinstance(self.operator,str) and self.operator.count(delim) and (
 						any(i not in self.basis for i in self.operator.split(delim)) or
-						(len(set((Basis.dimension(self.basis.get(i),**options)for i in self.operator))) == 1))) or
+						(len(set((Basis.dimensions(self.basis.get(i),**options)for i in self.operator))) == 1))) or
 					(isinstance(self.operator,str) and not self.operator.count(delim))
-				),"Inconsistent operator %r, dimension %r"%(self.operator,[Basis.dimension(self.basis.get(i),**options) for i in (self.operator if isinstance(self.operator,iterables) else [self.operator])])
+				),"Inconsistent operator %r, dimension %r"%(self.operator,[Basis.dimensions(self.basis.get(i),**options) for i in (self.operator if isinstance(self.operator,iterables) else [self.operator])])
 
 			data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 			_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 			shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 			axes = [*self.where,*(() if self.local else set(range(self.N))-set(self.where))] if data is not None else None
-			ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
+			ndim = Basis.dimensions(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 			dtype = self.dtype
 
 			shape = {axis: [shape[axis][axes.index(i)] for i in range(max(axes)+1) if i in axes] for axis in shape} if data is not None else None
@@ -4668,28 +4669,28 @@ class Object(System):
 					axes = [[i for i in self.where]]
 					where = [i for i in self.where] if self.locality < self.state.N else None
 					samples = self.state.samples if self.state.samples is not None else self.samples
-					tensor = dict(N=self.state.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
+					tensor = Dictionary(N=self.state.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
 			else:
-				shape = {axis: [self.D for i in range(self.N)] for axis in range(Basis.dimension(Basis.identity))}
+				shape = {axis: [self.D for i in range(self.N)] for axis in range(Basis.dimension)}
 				axes = [[i for i in self.where]]
 				where = [i for i in range(self.locality)]
 				samples = self.samples
-				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension(Basis.identity)) if self.tensor is not None else None
+				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension) if self.tensor is not None else None
 		else:
 			if self.state is not None and self.state() is not None:
 				shape = {axis: [self.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
 				axes = [[i for i in self.where]]
 				where = None
 				samples = None
-				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
+				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
 			else:
 				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
 				axes = [[i for i in self.where]]
 				where = None
 				samples = None
-				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension(Basis.identity)) if self.tensor is not None else None
+				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension) if self.tensor is not None else None
 
 		kwargs = dict(**{**dict(shape=shape,axes=axes,tensor=tensor),**(self.options if self.options is not None else {})})
 		kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
@@ -5793,7 +5794,7 @@ class Haar(Object):
 
 				shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 				axes = [*self.where,*(() if self.local else set(range(self.N))-set(self.where))] if data is not None else None
-				ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
+				ndim = Basis.dimensions(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 				dtype = self.dtype
 
 				shape = {axis: [shape[axis][axes.index(i)] for i in range(max(axes)+1) if i in axes] for axis in shape} if data is not None else None
@@ -6128,7 +6129,7 @@ class State(Object):
 
 				shape = {axis: shape if self.local else [*shape] for axis,shape in Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options).items()} if data is not None else None
 				axes = [i for i in range(self.locality)] if data is not None else None
-				ndim = Basis.dimension(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
+				ndim = Basis.dimensions(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
 				dtype = self.dtype
 
 				shape = {axis: [shape[axis][axes.index(i)] for i in range(max(axes)+1) if i in axes] for axis in shape} if data is not None else None

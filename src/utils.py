@@ -5950,191 +5950,169 @@ def contraction(data=None,state=None,where=None,samples=None,tensor=None,**kwarg
 		state (array,iterable[array]): state
 		where (int,str,iterable[int,str]): indices of contraction
 		samples (int,iterable[int]): samples of state		
-		tensor (bool): Tensorized data and state shapes
+		tensor (dict): Tensorized data and state shapes	{N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions}
 		kwargs (dict): Additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,where=where)
 	'''
 
+	einsummation = None
 	shuffler = None
 	_shuffler = None
 
-	def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+	def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 		return data
 
-	if state is None:
-		wrapper = jit
-	elif isinstance(state,arrays):
-		wrapper = jit
-	else:
-		wrapper = None
-
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
-	string = character[:len(samples)] if samples is not None else ''
+	length = len(samples) if samples is not None else 0
+	string = [symbols(i) for i in range(length)] if samples is not None else []
+
+	ellipses = ['...']
+
+	wrapper = jit
+
+	k = 2
+	shape = data.shape[:max(0,data.ndim-k)] if data is not None else []
+	size = len(shape) if shape is not None else 0
+	strings = [symbols(length+i) for i in range(size)]
+	if tensor is not None:
+		N,D,d,s = tensor.N,tensor.D,tensor.d,tensor.s
+	elif data is not None and state is not None:
+		N,D,d,s = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),data.ndim,state.ndim
+	elif data is not None and state is None:
+		N,D,d,s = int(log(prod(data.shape[-k:]))/log(max(data.shape[-k:]))/max(1,data.ndim-k)),max(data.shape[-k:]),data.ndim,data.ndim
+	elif data is None and state is not None:
+		N,D,d,s = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),state.ndim,state.ndim
+	else:
+		N,D,d,s = None,None,None,None
+
+	tensor = tensor is not None
+	local = where is not None
+
+	where = [*range(N)] if not local and N is not None else [*where] if where is not None else []
+	L = len(where)
+	D = [*D][:N] if isinstance(D,iterables) else [D]**N
 
 	if data is None:
 
-		if state is None:
-		
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+		def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+			return data
+
+	else:
+
+		if d < k:
+			
+			def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 				return data
-
-		elif isinstance(state,arrays):
-			
-			if state.ndim == 1:
-
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-	
-			elif state.ndim > 1:
-				
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-
-	elif isinstance(data,arrays):
-
-		if data.ndim == 0:
-
-			if state is None:
-			
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-			
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-				elif state.ndim > 1:
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-		elif data.ndim == 1:
-			
-			if state is None:
-			
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-				elif state.ndim > 1:
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-		elif data.ndim == 2:
+		
+		else:
 
 			if state is None:
 
-				state = data
-
-				if where is None:
-					subscripts = f'ij,{string}jk->{string}ik'
-					shapes = (data.shape,(*samples,*state.shape))
+				if not local and not tensor:
+					subscripts = '%s,%s->%s'%(
+						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+						''.join([*string,*[symbols(length+size+1*(s-1)+i) for i in range(s)]]),
+						''.join([
+							''.join([*strings,*string,*[symbols(length+size+i) for i in range(k-1)]]),
+							]),
+						)
+					shapes = ((*shape,[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(data,state)
 
-				else:
+				elif local and not tensor:
+
+					raise NotImplementedError
 						
-					subscripts = f'ij,{string}jk...->{string}ik...'
-					shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
+					subscripts = '%s,%s->%s'%(
+						''.join([*strings,*[symbols(length+size+i) for i in range(k)],*ellipses]),
+						''.join([*string,*[symbols(length+size+1*(s-1)+i) for i in range(s)]]),
+						''.join([
+							''.join([*strings,*string,*[symbols(length+size+i) for i in range(k-1)],*ellipses]),
+							]),
+						)
+					shapes = ((*shape,[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					einsummation = einsummand(subscripts,*shapes)
 					
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(data,shuffler(state)))
 
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-					
-					if where is None:
-						subscripts = f'ij,{string}j->{string}i'
-						shapes = (data.shape,(*samples,*state.shape))
-						einsummation = einsummand(subscripts,*shapes)
-						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state)
-					else:
-						subscripts = f'ij,{string}j...->{string}i...'
-						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
-						einsummation = einsummand(subscripts,*shapes)
-						
-						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
-						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return _shuffler(einsummation(data,shuffler(state)))
-
-				elif state.ndim > 1:
-				
-					if where is None:
-						subscripts = f'ij,{string}jk,lk->{string}il'
-						shapes = (data.shape,(*samples,*state.shape),data.shape)
-						einsummation = einsummand(subscripts,*shapes)
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state,conjugate(data))
-					else:
-						subscripts = f'ij,{string}jk...,lk->{string}il...'
-						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
-						einsummation = einsummand(subscripts,*shapes)
-						
-						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
-						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))							
-
-		elif data.ndim == 3:
-
-			if state is None:
-
-				state = data
-				
-				if where is None:
-					subscripts = f'uij,{string}j...->{string}i...'
-					shapes = (data.shape,(*samples,*state.shape[1:]))
-					einsummation = einsummand(subscripts,*shapes)
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
-
 				else:
-					subscripts = f'uij,{string}j...->{string}i...'
-					shapes = (data.shape,(*samples,*state.shape[1:]))
+
+					raise NotImplementedError
+
+					# subscripts = '%s,%s->%s'%(
+					# 	''.join([*strings,*[symbols(length+size+0*N+i) for i in range(N)]]),
+					# 	''.join([*string,*[symbols(length+size+1*(s-1)+i) for i in range(s)]]),
+					# 	''.join([
+					# 		''.join([*strings,*string,*[symbols(length+size+i) for i in range(k-1)]]),
+					# 		]),
+					# 	)
+
+					# subscripts = '%s->%s'%(
+					# 		','.join([
+					# 			''.join([characters[i] for i in [
+					# 						*[i for i in range(k)],
+					# 						*[k+0*N+i for i in range(N) if i in where],
+					# 						*[k+1*N+i for i in range(N) if i in where]
+					# 						]
+					# 					]),
+					# 			''.join([characters[i] for i in [
+					# 						*[k+1*N+i if i in where else k+0*N+i for i in range(N)],
+					# 						]
+					# 					]),                    
+					# 		]),
+					# 		''.join([
+					# 			''.join([characters[i] for i in [
+					# 						*[k+0*N+i for i in range(N)],
+					# 						]
+					# 					]),                 
+					# 		]),
+					# 	)
+
+					shapes = ((*shape,[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					einsummation = einsummand(subscripts,*shapes)
-			
-					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
+					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						return einsummation(data,state)
 
-			elif isinstance(state,arrays):
 
-				if state.ndim == 1:
-					
-					if where is None:
+					raise NotImplementedError
+
+			else:
+
+				if s == 1:
+					if not local and not tensor:
+						subscripts = '%s,%s->%s'%(
+							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+							''.join([*string,*[symbols(length+size+1*(s-1)+i) for i in range(s)]]),
+							''.join([
+								''.join([*strings,*string,*[symbols(length+size+i) for i in range(k-1)]]),
+								]),
+							)
+						shapes = ((*shape,[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+						einsummation = einsummand(subscripts,*shapes)
+						
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+							return einsummation(data,state)
+
+					elif local and not tensor:
+						raise NotImplementedError
 						subscripts = f'uij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsummand(subscripts,*shapes)
 					
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
+					
 					else:
+						raise NotImplementedError
 						subscripts = f'uij,{string}j...->{string}i...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]))
 						einsummation = einsummand(subscripts,*shapes)
@@ -6142,20 +6120,30 @@ def contraction(data=None,state=None,where=None,samples=None,tensor=None,**kwarg
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
 
-				elif state.ndim > 1:
+				elif s > 1:
 
-					if where is None:					
-						subscripts = f'uij,{string}jk,ulk->{string}il'
-						shapes = (data.shape,(*samples,*state.shape),data.shape)
+					if not local and not tensor:
+						subscripts = '%s,%s,%s->%s'%(
+							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+							''.join([*string,*[symbols(length+size+1*(s-1)+i) for i in range(s)]]),
+							''.join([*strings,*[symbols(length+size+2*(s-1)+i) for i in range(k-1,-1,-1)]]),
+							''.join([
+								''.join([*strings,*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+2*(s-1)+i) for i in range(k-1,k-2,-1)]]),
+								]),
+							)
+						shapes = ((*shape,[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 						einsummation = einsummand(subscripts,*shapes)
-
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state,conjugate(data))
-
+						
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+							return einsummation(data,state)
+					
+					elif local and not tensor:
+						raise NotImplementedError
 					else:
+						raise NotImplementedError
 						subscripts = f'uij,{string}jk...,ulk->{string}il...'
 						shapes = (data.shape,(*samples,*data.shape[(data.ndim-state.ndim):]),data.shape)
 						einsummation = einsummand(subscripts,*shapes)
@@ -6163,7 +6151,7 @@ def contraction(data=None,state=None,where=None,samples=None,tensor=None,**kwarg
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
 
 	func = wrapper(func) if wrapper is not None else func
@@ -6188,15 +6176,10 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 	shuffler = None
 	_shuffler = None
 
-	def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+	def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 		return grad
 
-	if state is None:
-		wrapper = jit
-	elif isinstance(state,arrays):
-		wrapper = jit
-	else:
-		wrapper = None
+	wrapper = jit
 
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
 	string = character[:len(samples)] if samples is not None else ''
@@ -6205,73 +6188,73 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 		
 		if state is None:
 		
-			def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+			def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 				return grad
 
-		elif isinstance(state,arrays):
+		else:
 
-			if state.ndim == 1:
+			if s == 1:
 
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 
-			elif state.ndim > 1:
+			elif s > 1:
 				
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 	
-	elif isinstance(data,arrays):
+	else:
 
-		if data.ndim == 0:
+		if d == 0:
 
 			if state is None:
 			
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 			
-			elif isinstance(state,arrays):
+			else:
 
-				if state.ndim == 1:
+				if s == 1:
 
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif state.ndim > 1:
+				elif s > 1:
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-		elif data.ndim == 1:
+		elif d == 1:
 			
 			if state is None:
 			
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 
-			elif isinstance(state,arrays):
+			else:
 
-				if state.ndim == 1:
+				if s == 1:
 
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif state.ndim > 1:
+				elif s > 1:
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-		elif data.ndim == 2:
+		elif d == 2:
 
 			if state is None:
 
 				state = data
 
-				if where is None:
+				if local:
 					subscripts = f'ij,{string}jk->{string}ik'
 					shapes = (data.shape,(*samples,*state.shape))
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return einsummation(grad,state)
 
 				else:
@@ -6282,19 +6265,19 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(grad,shuffler(state)))					
 
-			elif isinstance(state,arrays):
+			else:
 
-				if state.ndim == 1:
+				if s == 1:
 
-					if where is None:
+					if local:
 						subscripts = f'ij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
 
 					else:
@@ -6305,18 +6288,18 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
 
-				elif state.ndim > 1:
+				elif s > 1:
 					
-					if where is None:
+					if local:
 						subscripts = f'ij,{string}jk,lk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -6328,22 +6311,22 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)				
 
-		elif data.ndim == 3:
+		elif d == 3:
 
 			if state is None:
 
 				state = data
 
-				if where is None:
+				if local:
 					subscripts = f'uij,{string}j...->{string}i...'
 					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return state
 
 				else:
@@ -6354,20 +6337,20 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 					shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 					_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return state
 
 
-			elif isinstance(state,arrays):
+			else:
 
-				if state.ndim == 1:
+				if s == 1:
 					
-					if where is None:
+					if local:
 						subscripts = f'uij,{string}j->{string}i'
 						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(grad,state)
 
 					else:
@@ -6378,17 +6361,17 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
-				elif state.ndim > 1:
+				elif s > 1:
 					
-					if where is None:
+					if local:
 						subscripts = f'uij,{string}jk,ulk->{string}il'
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -6400,7 +6383,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=Non
 						shuffler = shuffle(state,**kwargs,samples=samples,transformation=True,execute=False)
 						_shuffler = shuffle(state,**kwargs,samples=samples,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)						
 
