@@ -5942,7 +5942,7 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None,samples=None,**kwargs):
+def contraction(data=None,state=None,where=None,samples=None,tensor=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
@@ -5950,6 +5950,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		state (array,iterable[array]): state
 		where (int,str,iterable[int,str]): indices of contraction
 		samples (int,iterable[int]): samples of state		
+		tensor (bool): Tensorized data and state shapes
 		kwargs (dict): Additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,where=where)
@@ -6170,7 +6171,7 @@ def contraction(data=None,state=None,where=None,samples=None,**kwargs):
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
+def gradient_contraction(data=None,state=None,where=None,samples=None,tensor=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
@@ -6178,6 +6179,7 @@ def gradient_contraction(data=None,state=None,where=None,samples=None,**kwargs):
 		state (array,iterable[array]): state
 		where (int,str,iterable[int,str]): indices of contraction
 		samples (int,iterable[int]): samples of state
+		tensor (dict): Tensorized data and state shapes	{N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions}
 		kwargs (dict): Additional keyword arguments for contraction		
 	Returns:
 		func (callable): contracted data and state with signature func(grad,data,state,where=where)

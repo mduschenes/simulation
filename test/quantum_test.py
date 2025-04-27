@@ -10,8 +10,8 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,partial,array,zeros,ones,empty,rand,haar,allclose,asscalar,is_array,is_nan,product
-from src.utils import einsum,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
+from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,allclose,asscalar,is_array,is_nan,product
+from src.utils import einsum,symbols,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
@@ -233,7 +233,9 @@ def test_operator(*args,**kwargs):
 		"operator.N":[4],"state.N":[4],
 		"operator.D":[2],"state.D":[2],
 		"operator.ndim":[None],"state.ndim":[2,1],
-		"operator.local":[False,True],
+		"operator.local":[True,False],
+		"operator.tensor":[True],
+		"state.tensor":[True],
 		"operator.data":[None,None,None,None,None,None,None],
 		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
 		"operator.where":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
@@ -250,8 +252,6 @@ def test_operator(*args,**kwargs):
 		"state.variable":[False],
 		"state.constant":[True],
 
-		"operator.tensor":[False],
-		"state.tensor":[False],
 
 		}
 	groups = [
@@ -267,7 +267,7 @@ def test_operator(*args,**kwargs):
 		"operator.tensor","state.tensor",
 		],		
 		]
-	filters = lambda kwargs:[i for i in kwargs if all([i['operator.string'] in ["xz"],i['state.ndim'] in [2]])]
+	filters = lambda kwargs:[i for i in kwargs if all([i['operator.string'] in ["noise","xz"],i['state.ndim'] in [2],i['operator.local'] in [True]])]
 	func = None
 
 	options = dict(dtype="complex")
@@ -298,7 +298,7 @@ def test_operator(*args,**kwargs):
 
 		setter(settings,kwargs,delimiter=delim,default=True)
 
-		verbose = True
+		verbose = False
 
 
 		# Class
@@ -312,41 +312,40 @@ def test_operator(*args,**kwargs):
 		state.info(verbose=verbose)
 
 
-
-
 		# Data
+		N,D,L,d,l,where = state.N,state.D,operator.locality,state.ndim,2,operator.where
 		axes = [operator.where.index(i) for i in sorted(operator.where)] if operator.local else [*operator.where,*(i for i in range(operator.N) if i not in operator.where)]
-		shape = {**{i:[operator.shape[i]] for i in range(operator.ndim-2)},**{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(1,operator.ndim-1)}} if operator.ndim > 2 else {i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim)}
+		shape = {**{i:[operator.shape[i]] for i in range(operator.ndim-2)},**{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim-2,operator.ndim)}} if operator.ndim > 2 else {i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim-2,operator.ndim)}
 
 		if operator.string in ["test"]:
-			data = [
+			obj = [
 				array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options),
 				(1/sqrt(2))*array([[1,1],[1,-1]],**options),
 				]
 		elif operator.string in ["xz"]:
-			data = [
+			obj = [
 				array([[0,1],[1,0]],**options),
 				array([[1,0],[0,-1]],**options),
 				]
 		elif operator.string in ["Haar"]:
-			data = [
+			obj = [
 				haar(shape=(2**4,)*2,seed=seeder(operator.seed),**options),
 				]
 		elif operator.string in ["haar"]:
-			data = [
+			obj = [
 				haar(shape=(2**3,)*2,seed=seeder(operator.seed),**options),
 				]
 		elif operator.string in ["U"]:
-			data = [
+			obj = [
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				haar(shape=(2**1,)*2,seed=seeder(operator.seed),**options),
 				]
 		elif operator.string in ["u"]:
-			data = [
+			obj = [
 				haar(shape=(2,)*2,seed=seeder(operator.seed),**options),
 				]
 		elif operator.string in ["noise"]:
-			data = [
+			obj = [
 				array([
 				sqrt(1-(2**2-1)*operator.parameters()/(2**2))*array([[1,0],[0,1]],**options),
 				sqrt(operator.parameters()/(2**2))*array([[0,1],[1,0]],**options),
@@ -363,40 +362,44 @@ def test_operator(*args,**kwargs):
 					sqrt(operator.parameters())*array([[1,0],[0,-1]],**options)
 					],**options),
 				]
-			shape.update({i:[operator.D**2,operator.D,operator.D,*([1]*(operator.N-operator.locality) if not operator.local else [])] for i in range(operator.ndim-2)},**{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(1,operator.ndim-1)})
 
+			shape.update({**{i:[operator.D**2,operator.D,operator.D,*([1]*(operator.N-operator.locality) if not operator.local else [])]
+				for i in range(operator.ndim-2)},
+			 **{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim-2,operator.ndim)},
+				})
 
-		obj = [*data,*[array([[1,0],[0,1]],**options)]*(operator.N-operator.locality)]
-
-		print(obj)
+		obj = [*obj,*[reshape(identity(operator.D),[*[1]*(operator.ndim-l),*[operator.D]*l])]*(operator.N-operator.locality)] if not operator.local else obj
 
 		if not operator.local:
 			obj = swap(tensorprod(obj),axes=axes,shape=shape)
 		else:
 			obj = tensorprod(obj)
 
-		if not operator.constant:
-			_identity = tensorprod([array([[1,0],[0,1]],**options)]*(operator.locality if operator.local else operator.N))
-			_parameters = operator.parameters(operator.parameters())
-			obj = cos(_parameters)*_identity + -1j*sin(_parameters)*obj
-
 		if operator.tensor:
-			_shape = [*([-1] if operator.ndim>1 else []),*[operator.D]*(operator.ndim*(operator.locality if operator.local else operator.N))]
+			_shape = [*([-1] if operator.ndim>2 else []),*[operator.D]*(l*(operator.locality if operator.local else operator.N))]
 			obj = reshape(obj,_shape)
 
 
+		if not operator.constant:
+			_identity = operator.identity(operator.locality if operator.local else operator.N)
+			_parameters = operator.parameters(operator.parameters())
+			obj = cos(_parameters)*_identity + -1j*sin(_parameters)*obj
+
+
+		print(
+			'operator',{attr:getattr(operator,attr) for attr in ['local','shape','N','locality','string']},
+			'state',{attr:getattr(state,attr) for attr in ['shape']},
+			'obj',{attr:getattr(obj,attr) for attr in ['shape']}
+			)
 
 
 		# Operator
-		operator.init()
-		
-		parameters = operator.parameters()
-		state = operator.identity(N=operator.N)
-		kwargs = dict()
+		operator.init(N=operator.locality if operator.local else operator.N,where=list(range(operator.locality)) if operator.local else operator.where)
 
-		print(operator.shape,obj.shape,state.shape,operator.local,operator.locality,operator.N)
 
-		data = operator(parameters=parameters,state=state,**kwargs)
+		data = operator(parameters=operator.parameters(),state=operator.identity(N=operator.locality if operator.local else operator.N,D=operator.D),**dict())
+
+		print(data.shape)
 
 		if not operator.unitary:
 			data = operator.data
@@ -420,49 +423,97 @@ def test_operator(*args,**kwargs):
 
 
 		# State
-		operator.init(state=state)
+		operator.init(N=operator.locality if operator.local else operator.N,where=list(range(operator.locality)) if operator.local else operator.where,state=state)
 
-		parameters = operator.parameters()
-		state = operator.state()
-		kwargs = dict()
+		data = operator(parameters=operator.parameters(),state=operator.state(),**dict())
 
-		data = operator(parameters=parameters,state=state,**kwargs)
-
-		if operator.ndim == 3:
+		if operator.ndim in [2,3]:
 			if state is None:
 				test = obj
 			elif state.ndim == 2:
 				if operator.tensor:
-					subscripts = "uij,jl,ulk->ik"
+					if operator.local:
+						raise NotImplementedError
+					else:
+						raise NotImplementedError
 				else:
-					subscripts = "uij,jl,ulk->ik"
-				test = einsum(subscripts,obj,state,dagger(obj))
+					if operator.local:
+						test = reshape(
+								transpose(
+								reshape(
+									tensorprod([test,reshape(identity(D**(N-L)),[*[1]*(operator.ndim-l),*[D**(N-L)]*l])]),
+									[*[-1]*(operator.ndim-l),*[D]*(N*l)]),
+									[*range(operator.ndim-l),*[operator.ndim-l+N*j+[*where,*sorted(set(range(N))-set(where))].index(i) for j in range(l) for i in range(N)]]),
+									[*[-1]*(operator.ndim-l),*[D**N]*(l)]
+								)
+					else:
+						pass
+					subscripts = '%s->%s'%(
+						','.join([
+							''.join([*[symbols(i) for i in range(operator.ndim-l)],*[symbols(operator.ndim-l+i) for i in range(d)]]),
+							''.join([*[symbols(operator.ndim-l+1*(d-1)+i) for i in range(d)]]),
+							''.join([*[symbols(i) for i in range(operator.ndim-l)],*[symbols(operator.ndim-l+2*(d-1)+i) for i in range(d-1,-1,-1)]]),
+							]),
+						''.join([
+							''.join([symbols(operator.ndim-l+i) for i in range(1)]),
+							''.join([symbols(operator.ndim-l+2*(d-1)+i) for i in range(d-1,d-1-1,-1)]),
+							]),
+						)
+				test = einsum(subscripts,test,operator.state(),conjugate(test))
 			elif state.ndim == 1:
-				continue
+				if operator.ndim in [3]:
+					continue
+
+				if operator.tensor:
+					if operator.local:
+						subscripts = '%s->%s'%(
+								','.join([
+									''.join([characters[i] for i in [
+												*[i for i in range(k)],
+												*[k+0*N+i for i in range(N) if i in where],
+												*[k+1*N+i for i in range(N) if i in where]
+												]
+											]),
+									''.join([characters[i] for i in [
+												*[k+1*N+i if i in where else k+0*N+i for i in range(N)],
+												]
+											]),                    
+								]),
+								''.join([
+									''.join([characters[i] for i in [
+												*[k+0*N+i for i in range(N)],
+												]
+											]),                 
+								]),
+							)
+					else:
+						raise NotImplementedError
+				else:
+					if operator.local:
+						test = reshape(
+								transpose(
+								reshape(
+									tensorprod([test,reshape(identity(D**(N-L)),[*[1]*(operator.ndim-l),*[D**(N-L)]*l])]),
+									[*[-1]*(operator.ndim-l),*[D]*(N*l)]),
+									[*range(operator.ndim-l),*[operator.ndim-l+N*j+[*where,*sorted(set(range(N))-set(where))].index(i) for j in range(l) for i in range(N)]]),
+									[*[-1]*(operator.ndim-l),*[D**N]*(l)]
+								)
+					else:
+						pass
+				subscripts = '%s->%s'%(
+					','.join([
+						''.join([*[symbols(i) for i in range(operator.ndim-l)],*[symbols(operator.ndim-l+i) for i in range(l)]]),
+						''.join([*[symbols(operator.ndim-l+1*(l-1)+i) for i in range(d)]]),
+						]),
+					''.join([
+						''.join([symbols(operator.ndim-l+i) for i in range(1)]),
+						]),
+					)
+				test = einsum(subscripts,test,operator.state())
 			else:
 				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
-		elif operator.ndim == 2:
-			if state is None:
-				test = obj
-			elif state.ndim == 2:
-				if operator.tensor:
-					subscripts = "ij,jl,lk->ik"
-				else:
-					subscripts = "ij,jl,lk->ik"	
-				test = einsum(subscripts,obj,state,dagger(obj))
-			elif state.ndim == 1:
-				if operator.tensor:
-					subscripts = "ij,j->i"
-				else:
-					subscripts = "ij,j->i"	
-				test = einsum(subscripts,obj,state)
-			else:
-				raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
-		
 		else:
-			
 			raise NotImplementedError("Incompatible dimensions data and state %r"%(operator))
-
 
 
 		if verbose:
@@ -475,6 +526,9 @@ def test_operator(*args,**kwargs):
 			print(test)
 			print("-----------------")
 			print()
+
+
+
 
 		assert allclose(data,test), "Incorrect operator(parameters,state) %r"%(operator)
 
@@ -674,7 +728,7 @@ def test_copy(*args,**kwargs):
 		operator.info(verbose=verbose)
 
 		parameters = operator.parameters()
-		state = operator.state() if operator.state() is not None else operator.identity
+		state = operator.state() if operator.state() is not None else operator.identity()
 		kwargs = dict()
 
 		tmp = operator(parameters=parameters,state=state)
@@ -692,7 +746,7 @@ def test_copy(*args,**kwargs):
 		_operator.info(verbose=verbose)
 
 		_parameters = _operator.parameters()
-		_state = _operator.state() if _operator.state() is not None else _operator.identity
+		_state = _operator.state() if _operator.state() is not None else _operator.identity()
 		kwargs = dict()
 
 		_tmp = _operator(parameters=_parameters,state=_state)
@@ -1828,7 +1882,7 @@ def test_module(*args,**kwargs):
 		model.info(verbose=verbose)
 
 		parameters = model.parameters()
-		state = model.state() if model.state() is not None else model.identity
+		state = model.state() if model.state() is not None else model.identity()
 		kwargs = dict()
 
 		if verbose:

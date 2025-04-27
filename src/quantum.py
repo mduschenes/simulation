@@ -3953,14 +3953,13 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		def function(parameters,state=state,indices=indices,**kwargs):	
 			return switch(indices%length,data,parameters,state,**kwargs)
 
+	obj = state() if state is not None and state() is not None else state.identity() if data else None
+
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)
 
 	length = len(data)
 
-	obj = state if state is not None else tensorprod([Basis.identity(D=D,dtype=dtype)]*locality) if data else None
-
 	wrapper = jit
-
 	kwargs = {}
 
 	data = [wrapper(data[i],**kwargs) for i in range(length)] # TODO: Time/M-dependent constant data/parameters
@@ -4019,18 +4018,15 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		def gradient(parameters,state=state,indices=indices,**kwargs):	
 			return switch(indices%length,grad,parameters,state,**kwargs)
 
+	obj = state() if state is not None and state() is not None else state.identity() if data else None
+
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)	
 
 	indexes,shape = variables(data,state=state,conj=conj,size=size,compilation=compilation)	
-
 	length = len(data)
-
 	indices = (0,size*length)
 
-	obj = state if state is not None else tensorprod([Basis.identity(D=D,dtype=dtype)]*locality) if data else None
-	
 	wrapper = jit
-
 	kwargs = {}
 
 	data,grad,indexes = (
@@ -4126,7 +4122,7 @@ class Object(System):
 
 		# Set attributes
 		#	N: size of system acted on by locality number of non-local operators with indices where
-		#	tensor (bool): whether operator has tensor shape
+		#	tensor (bool,iterable[int],callable): whether operator has tensor shape, or shape of tensor, or callable with signature tensor(N,D)
 		#	local (bool): whether operator acts locally
 		# 	locality (int): number of indices acted on locally, non-trivially by operator
 		# 	number (int): number of operators within class
@@ -4268,9 +4264,18 @@ class Object(System):
 				operator = operator
 
 		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
-		D = D if D is not None else 2
+		D = D if D is not None else None
 
-		tensor = tensor
+		if tensor not in [None,False]:
+			def tensor(N,D,d,tensor=tensor):
+				if callable(tensor):
+					return tensor(N,D,d)
+				elif not isinstance(tensor,iterables):
+					return ((D[:N] if isinstance(D,iterables) else [D]*N))*d
+				else:
+					return ([*tensor][:N])*d
+		else:
+			tensor = None
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
@@ -4506,13 +4511,16 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 		
-		def identity(N=None,self=self):
+		def identity(N=None,D=None,self=self):
 			if self.null():
 				return None
-			N = (self.locality if self.local else self.N) if N is None else N
-			options = dict(D=self.D,dtype=self.dtype,system=self.system)
-			data = tensorprod([Basis.identity(**options)]*(N))
-			data = reshape(data,[self.D]*(data.ndim*N)) if self.tensor else data
+			cls = Basis.identity
+			N = self.N if N is None else N
+			D = [*self.D][:N] if D is not None and isinstance(self.D,iterables) else [self.D]*N if D is None else [*D][:N] if isinstance(D,iterables) else [D]*N
+			d = Basis.dimension(cls)
+			options = dict(dtype=self.dtype,system=self.system)
+			data = tensorprod([cls(D=d,**options) for d in D])
+			data = reshape(data,self.tensor(N,D,d)) if self.tensor is not None else data
 			return data
 
 		self.identity = identity
@@ -4599,24 +4607,6 @@ class Object(System):
 		
 			data = self.data
 
-
-		if self.tensor:
-			if isinstance(data,arrays):
-				shape,size,ndim = data.shape,data.size,data.ndim
-				N = self.locality if self.local else self.N
-				D = self.D
-
-				if ndim == 1:
-					shape = [*[D]*(ndim*N)]
-				elif ndim == 2:
-					shape = [*[D]*(ndim*N)]
-				elif ndim == 3:
-					shape = [-1,*[D]*(ndim*N)]
-
-				data = reshape(data,shape)
-
-		self.data = data
-
 		self.N = max((i for i in (self.N if self.N is not None else None,self.locality if self.locality is not None else None,) if i is not None),default=None) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
 		self.D = self.D if self.D is not None else None
 
@@ -4631,6 +4621,23 @@ class Object(System):
 		self.size = prod(self.shape) if self.shape is not None else None
 		self.ndim = len(self.shape) if self.size is not None else None
 		self.dtype = self.dtype if self.dtype is not None else None
+
+
+
+		if self.tensor is not None and not self.null():
+			if isinstance(data,arrays):
+				N = self.locality if self.local else self.N
+				D = self.D
+				d = self.ndim
+				l = 2
+				shape = data.shape
+
+				shape = [*shape[:max(0,d-l)],*self.tensor(N,D,min(l,d))]
+
+				data = reshape(data,shape)
+
+		self.data = data
+
 
 		if self.func is None:
 			def func(parameters=None,state=None,**kwargs):
@@ -4656,30 +4663,35 @@ class Object(System):
 			samples = None
 		elif self.local:
 			if self.state is not None and self.state() is not None:
-				if all(i in self.state.where for i in self.where):
+				if all(i in self.state.where for i in self.where) or (self.state.locality >= self.locality):
 					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
 					axes = [[i for i in self.where]]
-					where = [i for i in self.where] if len(self.where) < self.state.N else None
+					where = [i for i in self.where] if self.locality < self.state.N else None
 					samples = self.state.samples if self.state.samples is not None else self.samples
-				elif self.state.locality >= self.locality:
-					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-					axes = [[i for i in self.where]]
-					where = [i for i in self.where] if len(self.where) < self.state.N else None
-					samples = self.samples
+					tensor = dict(N=self.state.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
 			else:
-				shape = {axis: [self.D for i in range(self.N)] for axis in range(2)}
+				shape = {axis: [self.D for i in range(self.N)] for axis in range(Basis.dimension(Basis.identity))}
 				axes = [[i for i in self.where]]
 				where = [i for i in range(self.locality)]
 				samples = self.samples
+				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension(Basis.identity)) if self.tensor is not None else None
 		else:
-			shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
-			axes = [[i for i in self.where]]
-			where = None
-			samples = None
+			if self.state is not None and self.state() is not None:
+				shape = {axis: [self.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
+				axes = [[i for i in self.where]]
+				where = None
+				samples = None
+				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
+			else:
+				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
+				axes = [[i for i in self.where]]
+				where = None
+				samples = None
+				tensor = dict(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension(Basis.identity)) if self.tensor is not None else None
 
-		kwargs = dict(**{**dict(shape=shape,axes=axes),**(self.options if self.options is not None else {})})
+		kwargs = dict(**{**dict(shape=shape,axes=axes,tensor=tensor),**(self.options if self.options is not None else {})})
 		kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 
 		try:
@@ -4701,7 +4713,7 @@ class Object(System):
 		self.gradient_contract = grad_contract
 
 		parameters = self.parameters()
-		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		state = self.state() if self.state is not None and self.state() is not None else self.identity()
 		where = self.where
 		wrapper = jit
 		kwargs = {}
@@ -4736,6 +4748,7 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
+		print('contracting',self.contract,self.data.shape)
 		return self.contract(self.func(parameters=parameters,state=state,**kwargs),state=state)
 
 	def grad(self,parameters=None,state=None,**kwargs):
@@ -4992,7 +5005,7 @@ class Object(System):
 					*([i + self.N*(len(support) > 0) for i in other.where] if isinstance(other.where,iterables) else [other.where])]
 			string = delim.join((self.string,other.string)) if self.string is not None and other.string is not None else self.string if self.string is not None else other.string if other.string is not None else None
 
-			tensor = all((self.tensor,other.tensor))
+			tensor = self.tensor if self.tensor is not None else other.tensor if other.tensor is not None else None
 			local = all((self.local,other.local))
 			locality = sum((self.locality,other.locality))
 			number = max((self.number,other.number))
@@ -5153,7 +5166,7 @@ class Object(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','N','D','d','M','tau','T','P','unit','data','shape','size','ndim','dtype','cwd','path','backend','conf','logger','cleanup']:
+		for attr in [None,'string','key','seed','instance','instances','timestamp','N','D','data','shape','size','ndim','dtype','cwd','path','backend','conf','logger','cleanup']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5675,7 +5688,7 @@ class Pauli(Object):
 
 		self.parameters.init(parameters=dict(scale=pi/2))
 
-		identity = self.identity()
+		identity = self.identity(N=self.locality if self.local else self.N,D=self.D)
 
 		if self.parameters() is not None:
 
@@ -5822,11 +5835,18 @@ class Haar(Object):
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
-					options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
-					for index,i in zip(options,data):
-						options[index].basis = options[index].basis.get(i)
-					def function(parameters,state,options=options,**kwargs):
-						return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return options.basis(**{**options,**kwargs})					
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -6152,11 +6172,18 @@ class State(Object):
 						basis=self.basis,axes=axes,shapes=shape,
 						)
 					data = options.operator
-					options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
-					for index,i in zip(options,data):
-						options[index].basis = options[index].basis.get(i)
-					def function(parameters,state,options=options,**kwargs):
-						return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						def function(parameters,state,options=options,**kwargs):
+							return options.basis(**{**options,**kwargs})
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -6269,7 +6296,7 @@ class Operator(Object):
 
 	def __new__(cls,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
 
-		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+		# TODO: Allow multiple different classes to be part of one operator
 
 		self = None
 
@@ -6461,15 +6488,16 @@ class Objects(Object):
 
 
 		# Set identity
-		def identity(N=None,self=self):
-			if self.null():
-				return None
-			N = (self.locality if self.local else self.N) if N is None else N
-			options = dict(D=self.D,dtype=self.dtype,system=self.system)
-			data = tensorprod([Basis.identity(**options)]*(N))
-			data = reshape(data,[self.D]*(data.ndim*N)) if self.tensor else data
+		def identity(N=None,D=None,self=self):
+			data = None
+			for i in self.data:
+				if self.data[i].null():
+					continue
+				else:
+					data = self.data[i].identity(N=N,D=D)
+					break
 			return data
-
+		
 		self.identity = identity
 
 		# Set data
@@ -6488,7 +6516,7 @@ class Objects(Object):
 
 		# Set functions
 		def func(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity()
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
@@ -6507,7 +6535,7 @@ class Objects(Object):
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity()
 			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
@@ -6553,7 +6581,7 @@ class Objects(Object):
 
 		# Set wrapper
 		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		state = self.state() if self.state is not None and self.state() is not None else self.identity()
 		wrapper = jit
 		kwargs = {}
 
@@ -7088,7 +7116,8 @@ class Objects(Object):
 
 		string = separ.join([data[i].string for i in data if boolean(i,data)]) if data is not None else None
 
-		tensor = all(data[i].tensor for i in data if boolean(i,data)) if data is not None else None
+		for i in data:
+			tensor = data[i].tensor if data[i].tensor is not None else None
 		
 		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
@@ -7271,7 +7300,7 @@ class Channel(Objects):
 
 		# Set wrapper
 		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		state = self.state() if self.state is not None and self.state() is not None else self.identity()
 		wrapper = jit
 		kwargs = {}
 
@@ -7317,7 +7346,7 @@ class Operators(Objects):
 
 		# Set functions
 		def func(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity()
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
@@ -7336,7 +7365,7 @@ class Operators(Objects):
 			return out
 
 		def grad(parameters=None,state=None,**kwargs):
-			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+			state = state if state is not None else self.state() if self.state is not None and self.state() is not None else self.identity()
 			grad = zeros((parameters.size,*state.shape),dtype=state.dtype)
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
@@ -7381,7 +7410,7 @@ class Operators(Objects):
 
 		# Set wrapper
 		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else self.identity(N=self.N)
+		state = self.state() if self.state is not None and self.state() is not None else self.identity()
 		wrapper = partial
 		kwargs = {}
 
@@ -7934,7 +7963,7 @@ class Label(Operator):
 		'''
 
 		parameters = self.parameters() if parameters is None and self.parameters is not None else parameters if parameters is not None else None
-		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity(N=self.N)
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity()
 
 		if state is None:
 			return self.func(parameters=parameters,state=state,**kwargs)
@@ -7950,7 +7979,7 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity(N=self.N)
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity()
 
 		if state is None:
 			return self.gradient(parameters=parameters,state=state,**kwargs)
