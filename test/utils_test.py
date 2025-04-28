@@ -956,27 +956,7 @@ def test_contract(path=None,tol=None):
 		states[attr] = process(states[attr])
 
 
-		attr = 'nonlocal.nontensor'
-		def init(data,state):
-			data = reshape(
-					swap(
-					tensorprod([reshape(data,[*shape,*[D**L]*k]),reshape(identity(D**(N-L)),[*[1]*(d-k),*[D**(N-L)]*k])]),
-					axes=[[i] for i in where],
-					shape={**{i:[shape[i],*[1]*(N-1)] for i in range(d-k)},**{d-k+i:[D]*N for i in range(k)}}
-					),
-					[*shape,*[D**N]*k]
-				)
-			state = reshape(state,[*samples,*[D**N]*s])
-			return data,state
-		def process(state):
-			state = reshape(state,[*samples,*[D**N]*s])
-			return state		
-		data,state = init(objs.data,objs.state)
-		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=False)
-		states[attr] = func(data,state)
-		states[attr] = process(states[attr])
-
-		# attr = 'nonlocal.tensor'
+		# attr = 'nonlocal.nontensor'
 		# def init(data,state):
 		# 	data = reshape(
 		# 			swap(
@@ -984,31 +964,51 @@ def test_contract(path=None,tol=None):
 		# 			axes=[[i] for i in where],
 		# 			shape={**{i:[shape[i],*[1]*(N-1)] for i in range(d-k)},**{d-k+i:[D]*N for i in range(k)}}
 		# 			),
-		# 			[*shape,*[D]*(N*k)]
+		# 			[*shape,*[D**N]*k]
 		# 		)
-		# 	state = reshape(state,[*samples,[D]*(N*s)])
+		# 	state = reshape(state,[*samples,*[D**N]*s])
 		# 	return data,state
 		# def process(state):
 		# 	state = reshape(state,[*samples,*[D**N]*s])
-		# 	return state
+		# 	return state		
 		# data,state = init(objs.data,objs.state)
-		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=True)
+		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=False)
 		# states[attr] = func(data,state)
 		# states[attr] = process(states[attr])
 
-
-		attr = 'local.nontensor'
+		attr = 'nonlocal.tensor'
 		def init(data,state):
-			data = reshape(data,[*shape,*[D**L]*k])
-			state = reshape(state,[*samples,*[D**N]*s])
+			data = reshape(
+					swap(
+					tensorprod([reshape(data,[*shape,*[D**L]*k]),reshape(identity(D**(N-L)),[*[1]*(d-k),*[D**(N-L)]*k])]),
+					axes=[[i] for i in where],
+					shape={**{i:[shape[i],*[1]*(N-1)] for i in range(d-k)},**{d-k+i:[D]*N for i in range(k)}}
+					),
+					[*shape,*[D]*(N*k)]
+				)
+			state = reshape(state,[*samples,[D]*(N*s)])
 			return data,state
 		def process(state):
 			state = reshape(state,[*samples,*[D**N]*s])
 			return state
 		data,state = init(objs.data,objs.state)
-		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=True)
 		states[attr] = func(data,state)
 		states[attr] = process(states[attr])
+
+
+		# attr = 'local.nontensor'
+		# def init(data,state):
+		# 	data = reshape(data,[*shape,*[D**L]*k])
+		# 	state = reshape(state,[*samples,*[D**N]*s])
+		# 	return data,state
+		# def process(state):
+		# 	state = reshape(state,[*samples,*[D**N]*s])
+		# 	return state
+		# data,state = init(objs.data,objs.state)
+		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
+		# states[attr] = func(data,state)
+		# states[attr] = process(states[attr])
 
 
 		# attr = 'local.tensor'
