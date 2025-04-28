@@ -6012,7 +6012,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 				if not local and not tensor:
 					subscripts = '%s,%s->%s'%(
 						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-						''.join([*string,*[symbols(length+size+1*(k-1)+i) for i in range(s)]]),
+						''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 						''.join([
 							''.join([*string,*[symbols(length+size+i) for i in range(k-1)]]),
 							]),
@@ -6029,7 +6029,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						
 					subscripts = '%s,%s->%s'%(
 						''.join([*strings,*[symbols(length+size+i) for i in range(k)],*ellipses]),
-						''.join([*string,*[symbols(length+size+1*(k-1)+i) for i in range(s)]]),
+						''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 						''.join([
 							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*ellipses]),
 							]),
@@ -6038,10 +6038,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					einsummation = einsummand(subscripts,*shapes)
 					
 					shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-					axes = [[i for i in where]]
+					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 				
-					shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-					_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
 					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(data,shuffler(state)))
@@ -6052,7 +6052,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					# subscripts = '%s,%s->%s'%(
 					# 	''.join([*strings,*[symbols(length+size+0*N+i) for i in range(N)]]),
-					# 	''.join([*string,*[symbols(length+size+1*(k-1)+i) for i in range(s)]]),
+					# 	''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 					# 	''.join([
 					# 		''.join([*string,*[symbols(length+size+i) for i in range(k-1)]]),
 					# 		]),
@@ -6094,9 +6094,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					if not local and not tensor:
 						subscripts = '%s,%s->%s'%(
 							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+1*(k-1)+i) for i in range(s)]]),
+							''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)]]),
+								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+2*s-1-i) for i in range(s-1)]]),
 								]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
@@ -6106,13 +6106,26 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 							return einsummation(data,state)
 
 					elif local and not tensor:
-						raise NotImplementedError
-						subscripts = f'uij,{string}j->{string}i'
-						shapes = (data.shape,(*samples,*state.shape))
+
+						subscripts = '%s,%s->%s'%(
+							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+							''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
+							''.join([
+								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+2*s-1-i) for i in range(s)]]),
+								]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
+
 						einsummation = einsummand(subscripts,*shapes)
-					
+
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state)
+							return _shuffler(einsummation(data,shuffler(state)))
 					
 					else:
 						raise NotImplementedError
@@ -6121,10 +6134,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						einsummation = einsummand(subscripts,*shapes)
 						
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state)))
@@ -6134,21 +6147,43 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					if not local and not tensor:
 						subscripts = '%s,%s,%s->%s'%(
 							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+1*(k-1)+i) for i in range(s)]]),
-							''.join([*strings,*[symbols(length+size+2*(k-1)+i) for i in range(k-1,-1,-1)]]),
+							''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
+							''.join([*strings,*[symbols(length+size+k-1+s+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(1)]]),
 							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+2*(k-1)+i) for i in range(k-1,k-2,-1)]]),
+								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+s+i) for i in range(k-1)]]),
 								]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
-						
+
 						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state,conjugate(data))
 					
 					elif local and not tensor:
-						raise NotImplementedError
+
+						subscripts = '%s,%s,%s->%s'%(
+							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+							''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
+							''.join([*strings,*[symbols(length+size+k-1+2*s+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(1)]]),
+							''.join([
+								''.join([*string,*[symbols(length+size+i) for i in range(s-1)],*[symbols(length+size+k-1+2*s+i) for i in range(k-1)],*[symbols(length+size+k-1+s+i) for i in range(s)]]),
+								]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
+
+						einsummation = einsummand(subscripts,*shapes)
+
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						
+						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
+
+
 					else:
 						raise NotImplementedError
 						subscripts = f'uij,{string}jk...,ulk->{string}il...'
@@ -6156,10 +6191,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						einsummation = einsummand(subscripts,*shapes)
 
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
@@ -6274,10 +6309,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					einsummation = einsummand(subscripts,*shapes)
 					
 					shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-					axes = [[i for i in where]]
+					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 					
-					shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-					_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return _shuffler(einsummation(grad,shuffler(state)))					
@@ -6300,10 +6335,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						einsummation = einsummand(subscripts,*shapes)
 
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
@@ -6326,10 +6361,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						einsummation = einsummand(subscripts,*shapes)
 
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
@@ -6355,10 +6390,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					einsummation = einsummand(subscripts,*shapes)
 
 					shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-					axes = [[i for i in where]]
+					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-					shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-					_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return state
@@ -6382,10 +6417,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						einsummation = einsummand(subscripts,*shapes)
 
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
@@ -6407,10 +6442,10 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						einsummation = einsummand(subscripts,*shapes)
 
 						shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
-						axes = [[i for i in where]]
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,samples=samples,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
 						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
@@ -9532,7 +9567,7 @@ def moveaxis(a,source,destination):
 	return np.moveaxis(a,source,destination)
 
 
-def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute=True):
+def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 	'''
 	Split and swap, and group axis
 	
@@ -9589,7 +9624,6 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 					size: prod(shape)*prod(shapes),
 					ndim: len(shape)+len(shapes)		
 				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
-		samples (int,iterable[int]): samples of array	
 		transformation (bool): transformation of array options
 			True,None: split and swap and group axes
 			False: reverse split, and swap, and group
@@ -9598,7 +9632,7 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 		a (array): reordered array
 	'''
 
-	def parse(axes,shape,samples):
+	def parse(axes,shape):
 		'''
 		Parse axes and shape
 		Args:
@@ -9606,7 +9640,6 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 			shape (dict[int,iterable[int] or int]): shape of array of form 
 				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}	
 				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
-			samples (int,iterable[int]): samples of array		
 		Returns:
 			axes (iterable[iterable[int]]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
 			shape (dict[int,iterable[int]]): dimension of composite axis of form {axis_i: (dimension_ij for j in [n]) for i in [ndim]}
@@ -9616,8 +9649,6 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 			n (int): number of composite dimensions
 			sort (iterable[int]): order of axis, with composite then non-composite axis
 		'''
-
-		samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
 
 		if not isinstance(shape,dict):
 			d,n,ndim = shape
@@ -9630,25 +9661,23 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 		ndims = len(shapes)
 
 		n = max(len(shape[axis]) for axis in shape)
-		
-		sort = [*[axis for axis in shape],*[axis for axis in shapes]]
 
-		shape,shapes = ({i: shape[axis] for i,axis in enumerate(shape)},
-						{ndim+i: shapes[axis] for i,axis in enumerate(shapes)})
+		sort = [*[axis for axis in shapes],*[axis for axis in shape]]
+
+		shape,shapes = ({ndims+i: shape[axis] for i,axis in enumerate(shape)},
+						{i: shapes[axis] for i,axis in enumerate(shapes)})
 
 		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
 		axes = [sorted(set(axis),key=lambda i: axis.index(i)) for axis in axes if axis]
 		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
 	
-		size = len(samples)
-
-		axes = [*[[i] for i in range(size)],*[[i+size for i in axis] for axis in axes]]
-		shape = {**{axis:[samples[axis]] for axis in range(size)},**{axis+size:shape[axis] for axis in shape}}
-		shapes = {**{axis+size:shapes[axis] for axis in shapes}}
-		ndim = ndim + size
+		axes = [*[[i for i in axis] for axis in axes]]
+		shape = {**{axis:shape[axis] for axis in shape}}
+		shapes = {**{axis:shapes[axis] for axis in shapes}}
+		ndim = ndim
 		ndims = ndims
 		n = n
-		sort = [*[i for i in range(size)],*[i+size for i in sort]]
+		sort = [*[i for i in sort]]
 
 		return axes,shape,shapes,ndim,ndims,n,sort
 
@@ -9656,56 +9685,56 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 	if execute:
 
 		def split(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[axis][i] for axis in shape for i in range(n)]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*n for i in range(n) for j in range(ndim)]]
 			func = lambda a: transpose(a,sort)
 			return transpose(reshape(func(a),shape),axes)
 
 		def group(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
-			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[ndims+i][j] for j in axis) for axis in axes for i in range(ndim)]]
+			axes = [*[i for i in range(ndims)],*[ndims+j*ndim+i for axis in axes for i in range(ndim) for j in axis]]
 			func = lambda a: a
 			return reshape(transpose(func(a),axes),shape)
 
 		def _split(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[axis][i] for i in range(n)) for axis in shape ]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*ndim for i in range(ndim) for j in range(n)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return func(reshape(transpose(a,axes),shape))
 
 		def _group(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
-			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[ndims+i][j] for axis in axes for i in range(ndim) for j in axis]]
+			axes = [*[i for i in range(ndims)],*[ndims+[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)]]
 			func = lambda a: a
 			return func(transpose(reshape(a,shape),axes))
 
 	else:
 
 		def split(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[axis][i] for axis in shape for i in range(n)]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*n for i in range(n) for j in range(ndim)]]
 			func = lambda a: reshape(transpose(a,sort))
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (transpose(reshape(func(a if not callable(obj) else obj(a)),shape),axes)))
 
 		def group(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
-			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[ndims+i][j] for j in axis) for axis in axes for i in range(ndim)]]
+			axes = [*[i for i in range(ndims)],*[ndims+j*ndim+i for axis in axes for i in range(ndim) for j in axis]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (reshape(transpose(func(obj(a)),axes),shape)))
 
 		def _split(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[axis][i] for i in range(n)) for axis in shape ]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*ndim for i in range(ndim) for j in range(n)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(reshape(transpose(obj(a),axes),shape))))
 
 		def _group(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
-			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[ndims+i][j] for axis in axes for i in range(ndim) for j in axis]]
+			axes = [*[i for i in range(ndims)],*[ndims+[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(a if not callable(obj) else obj(a),shape),axes))))
 
-	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape,samples)
+	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 
 	if transformation is None or transformation is True:
 
@@ -9715,7 +9744,7 @@ def shuffle(a=None,axes=None,shape=None,samples=None,transformation=None,execute
 		
 		return _split(_group(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 
-def swap(a=None,axes=None,shape=None,samples=None,execute=True):
+def swap(a=None,axes=None,shape=None,execute=True):
 	'''
 	Swap axes of array
 	Args:
@@ -9724,7 +9753,6 @@ def swap(a=None,axes=None,shape=None,samples=None,execute=True):
 		shape (dict[int,iterable[int] or int]): shape of array of form 
 			dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
 			iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
-		samples (int,iterable[int]): samples of array
 		execute (bool): Execute transformations or return function with precomputed axes and shapes
 	Returns:
 		a (array): shuffled array
@@ -9774,7 +9802,7 @@ def swap(a=None,axes=None,shape=None,samples=None,execute=True):
 	axes,shape,_axes,_shape = permute(axes,shape)
 	transformation = True
 
-	return shuffle(shuffle(a,axes=axes,shape=shape,samples=samples,transformation=transformation,execute=execute),axes=_axes,shape=_shape,samples=samples,transformation=not transformation,execute=execute)
+	return shuffle(shuffle(a,axes=axes,shape=shape,transformation=transformation,execute=execute),axes=_axes,shape=_shape,transformation=not transformation,execute=execute)
 
 
 def broadcast_to(a,shape):
