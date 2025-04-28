@@ -4658,54 +4658,45 @@ class Object(System):
 		# TODO: Add self.where,self.state.where interdependency 
 		# for subspace evolution within where of state
 		if self.null():
-			shape = None
-			axes = None
-			where = None
-			samples = None
-		elif self.local:
+			kwargs = dict(
+				where = None,
+				samples = None,
+				attributes = None,
+				local = None,
+				tensor = None,
+				)
+		else:
 			if self.state is not None and self.state() is not None:
 				if all(i in self.state.where for i in self.where) or (self.state.locality >= self.locality):
-					shape = {axis: [self.state.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-					axes = [[i for i in self.where]]
-					where = [i for i in self.where] if self.locality < self.state.N else None
-					samples = self.state.samples if self.state.samples is not None else self.samples
-					tensor = Dictionary(N=self.state.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
+					kwargs = dict(
+						where = self.where,
+						attributes = Dictionary(N=self.state.N,D=self.state.D,d=self.ndim,s=self.state.ndim,samples=self.state.samples if self.state.samples is not None else self.samples,),
+						local = self.local is True,
+						tensor = self.tensor is not None,
+						)
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
 			else:
-				shape = {axis: [self.D for i in range(self.N)] for axis in range(Basis.dimension)}
-				axes = [[i for i in self.where]]
-				where = [i for i in range(self.locality)]
-				samples = self.samples
-				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension) if self.tensor is not None else None
-		else:
-			if self.state is not None and self.state() is not None:
-				shape = {axis: [self.D for i in range(self.state.N)] for axis in range(self.state.ndim)}
-				axes = [[i for i in self.where]]
-				where = None
-				samples = None
-				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=self.state.ndim) if self.tensor is not None else None
-			else:
-				shape = {axis: [self.D for i in range(self.N)] for axis in range(self.ndim)}
-				axes = [[i for i in self.where]]
-				where = None
-				samples = None
-				tensor = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension) if self.tensor is not None else None
+				kwargs = dict(
+					where = self.where,
+					attributes = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension,samples=self.samples),
+					local = self.local is True,
+					tensor = self.tensor is not None,
+					)
 
-		kwargs = dict(**{**dict(shape=shape,axes=axes,tensor=tensor),**(self.options if self.options is not None else {})})
 		kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
 
 		try:
-			contract = contraction(data,state,where=where,samples=samples,**kwargs) if self.contract is None else self.contract
+			contract = contraction(data,state,**kwargs) if self.contract is None else self.contract
 		except NotImplementedError as exception:
-			def contract(data,state,where=where,**kwargs):
+			def contract(data,state,**kwargs):
 				return state
 			raise exception
 
 		try:
-			grad_contract = gradient_contraction(data,state,where=where,**kwargs) if self.gradient_contract is None else self.gradient_contract
+			grad_contract = gradient_contraction(data,state,**kwargs) if self.gradient_contract is None else self.gradient_contract
 		except NotImplementedError as exception:
-			def grad_contract(grad,data,state,where=where,**kwargs):
+			def grad_contract(grad,data,state,**kwargs):
 				return 0
 
 		self.func = func
