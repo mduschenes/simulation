@@ -885,7 +885,7 @@ def test_concatenate(path=None,tol=None):
 
 def test_contract(path=None,tol=None):
 
-	kwargs = dict(N=[3,5],D=[2],d=[2,3],s=[1,2],samples=[[7]])
+	kwargs = dict(N=[3,5],D=[2],d=[2,3],s=[None,1,2],samples=[[7]])
 	for kwargs in permuter(kwargs):
 
 		N = kwargs['N']
@@ -895,6 +895,9 @@ def test_contract(path=None,tol=None):
 		samples = kwargs['samples']
 
 		k = 2
+		l = s
+		d = d
+		s = 2 if s is None else s
 
 		where = [i for i in range(0,N,2) if i in range(N)]
 		shape = [D**(2*N)][:d-k]
@@ -923,16 +926,28 @@ def test_contract(path=None,tol=None):
 			return state
 		def func(data,state,**kwargs):
 			def func(data,state):
-				if d == 3 and s == 2:
-					state = einsum('uij,vjk,ulk->vil',data,state,conjugate(data))
-				elif d == 2 and s == 2:
-					state = einsum('ij,vjk,lk->vil',data,state,conjugate(data))		
-				elif d == 3 and s == 1:
-					state = einsum('uij,vj->vi',data,state)
-				elif d == 2 and s == 1:
-					state = einsum('ij,vj->vi',data,state)								
+				if l is not None:
+					if d == 3 and s == 2:
+						state = einsum('uij,vjk,ulk->vil',data,state,conjugate(data))
+					elif d == 2 and s == 2:
+						state = einsum('ij,vjk,lk->vil',data,state,conjugate(data))		
+					elif d == 3 and s == 1:
+						state = einsum('uij,vj->vi',data,state)
+					elif d == 2 and s == 1:
+						state = einsum('ij,vj->vi',data,state)								
+					else:
+						raise NotImplementedError
 				else:
-					raise NotImplementedError
+					if d == 3 and s == 2:
+						state = einsum('uij,vjk->vik',data,state)
+					elif d == 2 and s == 2:
+						state = einsum('ij,vjk->vik',data,state)		
+					elif d == 3 and s == 1:
+						state = einsum('uij,vj->vi',data,state)
+					elif d == 2 and s == 1:
+						state = einsum('ij,vj->vi',data,state)								
+					else:
+						raise NotImplementedError					
 				return state
 			return func
 		data,state = init(objs.data,objs.state)
@@ -957,7 +972,7 @@ def test_contract(path=None,tol=None):
 			state = reshape(state,[*samples,*[D**N]*s])
 			return state		
 		data,state = init(objs.data,objs.state)
-		func = contraction(data,state,where=where,attributes=attributes,local=False,tensor=False)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=False)
 		states[attr] = func(data,state)
 		states[attr] = process(states[attr])
 
@@ -977,7 +992,7 @@ def test_contract(path=None,tol=None):
 		# 	state = reshape(state,[*samples,*[D**N]*s])
 		# 	return state
 		# data,state = init(objs.data,objs.state)
-		# func = contraction(data,state,where=where,attributes=attributes,local=False,tensor=True)
+		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=True)
 		# states[attr] = func(data,state)
 		# states[attr] = process(states[attr])
 
@@ -991,7 +1006,7 @@ def test_contract(path=None,tol=None):
 			state = reshape(state,[*samples,*[D**N]*s])
 			return state
 		data,state = init(objs.data,objs.state)
-		func = contraction(data,state,where=where,attributes=attributes,local=True,tensor=False)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
 		states[attr] = func(data,state)
 		states[attr] = process(states[attr])
 
@@ -1005,7 +1020,7 @@ def test_contract(path=None,tol=None):
 		# 	state = reshape(state,[*samples,*[D**N]*s])
 		# 	return state		
 		# data,state = init(objs.data,objs.state)
-		# func = contraction(data,state,where=where,attributes=attributes,local=True,tensor=True)
+		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=True)
 		# states[attr] = func(data,state)
 		# states[attr] = process(states[attr])
 

@@ -6014,10 +6014,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
 						''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 						''.join([
-							''.join([*string,*[symbols(length+size+i) for i in range(k-1)]]),
+							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+1+i) for i in range(s-1)]]),
 							]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					
 					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
@@ -6025,21 +6026,20 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 				elif local and not tensor:
 
-					raise NotImplementedError
-						
 					subscripts = '%s,%s->%s'%(
-						''.join([*strings,*[symbols(length+size+i) for i in range(k)],*ellipses]),
-						''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
+						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
+						''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
 						''.join([
-							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*ellipses]),
+							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+1+i) for i in range(2*s-1)]]),
 							]),
 						)
-					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
+
 					einsummation = einsummand(subscripts,*shapes)
-					
-					shape = {axis: [D[i] for i in range(N)] for axis in range(s)}
+
+					shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
-				
+
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
@@ -6080,6 +6080,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					# 	)
 
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					
 					einsummation = einsummand(subscripts,*shapes)
 					
 					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
@@ -6096,10 +6097,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
 							''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
 							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+2*s-1-i) for i in range(s-1)]]),
+								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(s-1)]]),
 								]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					
 						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
