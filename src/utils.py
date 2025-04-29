@@ -6016,9 +6016,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 				if not local and not tensor:
 				
 					subscripts = (
-						(*strings,*[letters['i'],letters['j']][:k]),
-						(*string,*[letters['j'],letters['k']][:s]),
-						(*string,*[letters['i'],letters['k']][:s]),
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]]),
+						(*string,*[letters[j] for j in ['i','k'][:s]]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
@@ -6033,9 +6033,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 				elif local and not tensor:
 
 					subscripts = (
-						(*strings,*[letters['i'],letters['j']][:k]),
-						(*string,*[letters['j'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
-						(*string,*[letters['i'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]],*[letters[j] for j in ['l','m'][:s]]),
+						(*string,*[letters[j] for j in ['i','k'][:s]],*[letters[j] for j in ['l','m'][:s]]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
 
@@ -6094,9 +6094,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					if not local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters['i'],letters['j']][:k]),
-							(*string,*[letters['j'],letters['k']][:s]),
-							(*string,*[letters['i'],letters['k']][:s]),
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*string,*[letters[j] for j in ['i','k'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
@@ -6111,9 +6111,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters['i'],letters['j']][:k]),
-							(*string,*[letters['j'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
-							(*string,*[letters['i'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*[letters[j] for j in ['l','m'][:s]]),
+							(*string,*[letters[j] for j in ['i','k'][:s]],*[letters[j] for j in ['l','m'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
 
@@ -6170,10 +6170,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					if not local and not tensor:
 						
 						subscripts = (
-							(*strings,*[letters['i'],letters['j']][:k]),
-							(*string,*[letters['j'],letters['k']][:s]),
-							(*strings,*[letters['l'],letters['k']][:k]),
-							(*string,*[letters['i'],letters['l']][:s]),
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
@@ -6188,10 +6188,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters['i'],letters['j']][:k]),
-							(*string,*[letters['j'],letters['k']][:s],*[letters['m'],letters['n']][:s]),
-							(*strings,*[letters['l'],letters['k']][:k]),
-							(*string,*[letters['i'],letters['l']][:s],*[letters['m'],letters['n']][:s]),
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*[letters[j] for j in ['m','n'][:s]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]],*[letters[j] for j in ['m','n'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
