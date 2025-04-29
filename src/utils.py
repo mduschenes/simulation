@@ -6194,39 +6194,37 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					elif not local and tensor:
 
-						subscripts = '%s,%s->%s'%(
+						subscripts = '%s,%s,%s->%s'%(
 							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
 							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
+							''.join([*strings,*[symbols(length+size+N+(k-i)*N+j) for i in range(k) for j in range(N) if j in where]]),							
 							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
+								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+(N+(k-i)*N+j if j in where else N+N+i*N+j)) for i in range(k-1) for j in range(N)]]),
 								]),
 							)
-						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state)
+							return einsummation(data,state,conjugate(data))
 
 					elif local and tensor:
 
-						subscripts = '%s,%s->%s'%(
+						subscripts = '%s,%s,%s->%s'%(
 							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
 							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-							''.join([*strings,*[symbols(length+size+s*N+N+i*N+j) for i in range(k) for j in range(N) if j in where]]),							
+							''.join([*strings,*[symbols(length+size+N+(k-i)*N+j) for i in range(k) for j in range(N) if j in where]]),							
 							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
+								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+(N+(k-i)*N+j if j in where else N+N+i*N+j)) for i in range(k-1) for j in range(N)]]),
 								]),
 							)
-						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
-
-						print(subscripts,shapes)
-						exit()
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state)
+							return einsummation(data,state,conjugate(data))
 
 	func = wrapper(func) if wrapper is not None else func
 
