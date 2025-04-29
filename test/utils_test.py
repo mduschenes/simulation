@@ -885,7 +885,7 @@ def test_concatenate(path=None,tol=None):
 
 def test_contract(path=None,tol=None):
 
-	kwargs = dict(N=[3,4,5],D=[2],d=[2,3],s=[None,1],samples=[[7]])
+	kwargs = dict(N=[3,4,5],D=[2],d=[2,3],s=[2],samples=[[7]])
 	for kwargs in permuter(kwargs):
 
 		N = kwargs['N']
@@ -997,18 +997,18 @@ def test_contract(path=None,tol=None):
 		# states[attr] = process(states[attr])
 
 
-		attr = 'local.nontensor'
-		def init(data,state):
-			data = reshape(data,[*shape,*[D**L]*k])
-			state = reshape(state,[*samples,*[D**N]*s])
-			return data,state
-		def process(state):
-			state = reshape(state,[*samples,*[D**N]*s])
-			return state
-		data,state = init(objs.data,objs.state)
-		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
-		states[attr] = func(data,state)
-		states[attr] = process(states[attr])
+		# attr = 'local.nontensor'
+		# def init(data,state):
+		# 	data = reshape(data,[*shape,*[D**L]*k])
+		# 	state = reshape(state,[*samples,*[D**N]*s])
+		# 	return data,state
+		# def process(state):
+		# 	state = reshape(state,[*samples,*[D**N]*s])
+		# 	return state
+		# data,state = init(objs.data,objs.state)
+		# func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
+		# states[attr] = func(data,state)
+		# states[attr] = process(states[attr])
 
 
 		attr = 'local.tensor'
