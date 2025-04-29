@@ -5956,8 +5956,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	shuffler = None
 	_shuffler = None
 
-	def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+	def function(data,state,*args,**kwargs):
 		return data
+
+	def func(data,state,function=function,**kwargs):
+		return function(data,state)
 
 	k = 2
 
@@ -5990,15 +5993,21 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 	if data is None:
 
-		def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+		def function(data,state,*args,**kwargs):
 			return data
+
+		def func(data,state,function=function,**kwargs):
+			return function(data,state)
 
 	elif isinstance(data,arrays):
 
 		if d < k:
 			
-			def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+			def function(data,state,*args,**kwargs):
 				return data
+
+			def func(data,state,function=function,**kwargs):
+				return function(data,state)
 		
 		else:
 
@@ -6015,8 +6024,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(data,state)
+
+					def func(data,state,function=function,**kwargs):
+						return function(data,state)
 
 				elif local and not tensor:
 
@@ -6035,8 +6047,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return _shuffler(einsummation(data,shuffler(state)))
+
+					def func(data,state,function=function,**kwargs):
+						return function(data,state)
 
 				elif not local and tensor:
 
@@ -6049,8 +6064,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(data,state)
+
+					def func(data,state,function=function,**kwargs):
+						return function(data,state)
 
 				elif local and tensor:
 
@@ -6062,9 +6080,12 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 					einsummation = einsummand(subscripts,*shapes)
-					
-					def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+
+					def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(data,state)
+
+					def func(data,state,function=function,**kwargs):
+						return function(data,state)
 
 			else:
 
@@ -6081,8 +6102,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state)
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 					elif local and not tensor:
 
@@ -6101,8 +6125,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state)))
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 					
 					elif not local and tensor:
 
@@ -6115,8 +6142,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state)
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 					elif local and tensor:
 
@@ -6129,8 +6159,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state)
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 				elif s == 2:
 
@@ -6146,8 +6179,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state,conjugate(data))
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 					
 					elif local and not tensor:
 
@@ -6167,8 +6203,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 					elif not local and tensor:
 
@@ -6182,8 +6221,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state,conjugate(data))
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 					elif local and tensor:
 
@@ -6197,8 +6239,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state,conjugate(data))
+
+						def func(data,state,function=function,**kwargs):
+							return function(data,state)
 
 	func = wrapper(func) if wrapper is not None else func
 
@@ -6223,7 +6268,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 	shuffler = None
 	_shuffler = None
 
-	def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+	def func(grad,data,state,*args,**kwargs):
 		return grad
 
 	wrapper = jit
@@ -6235,19 +6280,19 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 		
 		if state is None:
 		
-			def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+			def func(grad,data,state,*args,**kwargs):
 				return grad
 
 		else:
 
 			if s == 1:
 
-				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,*args,**kwargs):
 					return grad
 
 			elif s == 2:
 				
-				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,*args,**kwargs):
 					return grad
 	
 	else:
@@ -6256,38 +6301,38 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 			if state is None:
 			
-				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,*args,**kwargs):
 					return grad
 			
 			else:
 
 				if s == 1:
 
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return grad
 
 				elif s == 2:
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return grad
 
 		elif d == 1:
 			
 			if state is None:
 			
-				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+				def func(grad,data,state,*args,**kwargs):
 					return grad
 
 			else:
 
 				if s == 1:
 
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return grad
 
 				elif s == 2:
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return grad
 
 		elif d == 2:
@@ -6301,7 +6346,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shapes = (data.shape,(*samples,*state.shape))
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return einsummation(grad,state)
 
 				else:
@@ -6315,7 +6360,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return _shuffler(einsummation(grad,shuffler(state)))					
 
 			else:
@@ -6327,7 +6372,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							return einsummation(grad,state)
 
 					else:
@@ -6341,7 +6386,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
 
@@ -6352,7 +6397,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -6367,7 +6412,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)				
 
@@ -6382,7 +6427,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shapes = (data.shape,(*samples,*state.shape[1:]))
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return state
 
 				else:
@@ -6396,7 +6441,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+					def func(grad,data,state,*args,**kwargs):
 						return state
 
 
@@ -6409,7 +6454,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = (data.shape,(*samples,*state.shape))
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							return einsummation(grad,state)
 
 					else:
@@ -6423,7 +6468,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
 				elif s == 2:
@@ -6433,7 +6478,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = (data.shape,(*samples,*state.shape),data.shape)
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							out = einsummation(grad,state,conjugate(data))
 							return out + dagger(out)
 
@@ -6448,7 +6493,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
+						def func(grad,data,state,*args,**kwargs):
 							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
 							return out + dagger(out)						
 
