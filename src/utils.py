@@ -3578,17 +3578,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						''.join(symbols(i) for i in range(L)),
 						''.join(symbols(L+i) for i in range(L))
 						)),
-					','.join(''.join((
-						symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) 
-						for i in range(L)
-						),
+					','.join(
+						''.join((symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) for i in range(L)),
 					''.join((symbols(2*L),)),
 					''.join(symbols(i) for i in range(L)),
 					''.join((symbols(2*L+L),))
 					)
-
-				# shapes = [j for i in where for j in state[i].shape[1:-1]]
-				# data = self.shuffle(data,shape=shapes,**kwargs)
 
 				data = einsum(subscripts,data,*(state[i]() for i in where))
 
@@ -5946,8 +5941,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	'''
 	Contract data and state
 	Args:
-		data (array,iterable[array]): data
-		state (array,iterable[array]): state
+		data (array): data
+		state (array): state
 		where (int,str,iterable[int,str]): indices of contraction
 		attributes (dict): tensorized data and state attributes {N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
 		local (bool): local data contraction on state
@@ -5998,7 +5993,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 		def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 			return data
 
-	else:
+	elif isinstance(data,arrays):
 
 		if d < k:
 			
@@ -6235,8 +6230,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 	'''
 	Contract grad, data and state
 	Args:
-		data (array,iterable[array]): data
-		state (array,iterable[array]): state
+		data (array): data
+		state (array): state
 		where (int,str,iterable[int,str]): indices of contraction
 		attributes (dict): tensorized data and state shapes	{N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
 		local (bool): local data contraction on state

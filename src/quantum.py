@@ -1430,7 +1430,8 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			K = self.K
-			ndim = 1
+			D = self.D
+			ndim = 2
 
 			options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
 
@@ -1443,9 +1444,21 @@ class Measure(System):
 
 			if model is not None and where:
 			
-				subscripts = 'uij,wji,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
-				shape = [*[K]*L]*2
+				size = len(basis)
+				shape = [size,*[*[D]*L]*2]
+				basis = reshape(basis,shape)
+				strings = [symbols(i) for i in range(3)]
+
+				subscripts = '%s,%s,%s->%s'%(
+					''.join([strings[0],*[symbols(len(strings)+i*ndim+j) for i in range(ndim) for j in range(L)]]),
+					''.join([strings[1],*[symbols(len(strings)+(ndim-1-i)*ndim+j) for i in range(ndim) for j in range(L)]]),
+					''.join([strings[1],strings[-1]]),
+					''.join([strings[0],strings[-1]]),
+					)
+				shapes = (shape,shape,(size,)*2)
+
+				# subscripts = 'uij,wji,wv->uv'
+
 				einsummation = einsummand(subscripts,*shapes)
 
 				options = options if options is not None else {}
@@ -1455,7 +1468,8 @@ class Measure(System):
 					# return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)					
   					# return state(reshape(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),shape),where=where,options=options)
 					# return state(reshape(einsummation(basis,array([model(parameters=parameters,state=operator,**kwargs) for operator in basis]),inverse),shape),where=where,options=options)
-					return state(reshape(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shape),where=where,options=options)
+					# return state(reshape(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shape),where=where,options=options)
+					return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
 		
 			else:
 				
@@ -1470,7 +1484,8 @@ class Measure(System):
 		elif self.architecture in ['tensor_quimb']:
 
 			K = self.K
-			ndim = 1
+			D = self.D
+			ndim = 2
 
 			options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
 
@@ -1483,8 +1498,22 @@ class Measure(System):
 
 			if model is not None and where:
 			
-				subscripts = 'uij,wji,wv->uv'
-				shapes = (basis.shape,basis.shape,inverse.shape)
+
+				size = len(basis)
+				shape = [size,*[*[D]*L]*2]
+				basis = reshape(basis,shape)
+				strings = [symbols(i) for i in range(3)]
+
+				subscripts = '%s,%s,%s->%s'%(
+					''.join([strings[0],*[symbols(len(strings)+i*ndim+j) for i in range(ndim) for j in range(L)]]),
+					''.join([strings[1],*[symbols(len(strings)+(ndim-1-i)*ndim+j) for i in range(ndim) for j in range(L)]]),
+					''.join([strings[1],strings[-1]]),
+					''.join([strings[0],strings[-1]]),
+					)
+				shapes = (shape,shape,(size,)*2)
+
+				# subscripts = 'uij,wji,wv->uv'
+
 				einsummation = einsummand(subscripts,*shapes)
 
 				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else {}
@@ -7574,19 +7603,19 @@ class Module(System):
 			D = max((model.D for model in self.model[index] if boolean(model) and model.D is not None),default=measure.D)
 			locality = len(where)
 
-			keywords = dict(verbose=False)
-
-			state = self.state.__class__(**{**self.state,**keywords})
-
+			cls = self.state.__class__
+			keywords = dict(local=False,tensor=True,verbose=False)
+			state = cls(**{**self.state,**keywords})
 
 			cls = {model:model.__class__ for model in self.model[index]}
 			keywords = {model:dict(
 				state=state @ locality,
 				where=[where.index(i) for i in model.where],
 				samples=D**(2*locality),
+				local=True,
+				tensor=True,
 				verbose=False,
 				) for model in self.model[index]}
-
 			model = [wrapper(cls[model](**{**model,**keywords[model]})) for model in self.model[index]]
 
 			if len(model) > 1:
