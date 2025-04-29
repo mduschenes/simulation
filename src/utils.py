@@ -5961,7 +5961,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 	k = 2
 
-	ellipses = ['...']
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
 
 	wrapper = jit
 
@@ -6006,12 +6006,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 				if not local and not tensor:
 				
-					subscripts = '%s,%s->%s'%(
-						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-						''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
-						''.join([
-							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+1+i) for i in range(s-1)]]),
-							]),
+					subscripts = (
+						(*strings,*[letters['i'],letters['j']][:k]),
+						(*string,*[letters['j'],letters['k']][:s]),
+						(*string,*[letters['i'],letters['k']][:s]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
@@ -6022,12 +6020,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 				elif local and not tensor:
 
-					subscripts = '%s,%s->%s'%(
-						''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-						''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
-						''.join([
-							''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+1+i) for i in range(2*s-1)]]),
-							]),
+					subscripts = (
+						(*strings,*[letters['i'],letters['j']][:k]),
+						(*string,*[letters['j'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
+						(*string,*[letters['i'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
 
@@ -6044,12 +6040,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 				elif not local and tensor:
 
-					subscripts = '%s,%s->%s'%(
-						''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-						''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-						''.join([
-							''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
-							]),
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
 					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
@@ -6060,12 +6054,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 				elif local and tensor:
 
-					subscripts = '%s,%s->%s'%(
-						''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-						''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-						''.join([
-							''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
-							]),
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
 					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
@@ -6077,13 +6069,13 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 			else:
 
 				if s == 1:
+
 					if not local and not tensor:
-						subscripts = '%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(s-1)]]),
-								]),
+
+						subscripts = (
+							(*strings,*[letters['i'],letters['j']][:k]),
+							(*string,*[letters['j'],letters['k']][:s]),
+							(*string,*[letters['i'],letters['k']][:s]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
@@ -6094,12 +6086,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					elif local and not tensor:
 
-						subscripts = '%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+2*s-1-i) for i in range(s)]]),
-								]),
+						subscripts = (
+							(*strings,*[letters['i'],letters['j']][:k]),
+							(*string,*[letters['j'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
+							(*string,*[letters['i'],letters['k']][:s],*[letters['l'],letters['m']][:s]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),)
 
@@ -6116,12 +6106,10 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					
 					elif not local and tensor:
 
-						subscripts = '%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
-								]),
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
@@ -6132,13 +6120,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					elif local and tensor:
 
-						subscripts = '%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+2*N+i*N+j) for i in range(s-1) for j in range(N)]]),
-								]),
-							)
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+							)	
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 						einsummation = einsummand(subscripts,*shapes)
@@ -6146,16 +6132,15 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						def func(data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return einsummation(data,state)
 
-				elif s > 1:
+				elif s == 2:
 
 					if not local and not tensor:
-						subscripts = '%s,%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+k-1+i) for i in range(s)]]),
-							''.join([*strings,*[symbols(length+size+k-1+s+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(1)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(k-1)],*[symbols(length+size+k-1+s+i) for i in range(k-1)]]),
-								]),
+						
+						subscripts = (
+							(*strings,*[letters['i'],letters['j']][:k]),
+							(*string,*[letters['j'],letters['k']][:s]),
+							(*strings,*[letters['l'],letters['k']][:k]),
+							(*string,*[letters['i'],letters['l']][:s]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
@@ -6166,13 +6151,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					
 					elif local and not tensor:
 
-						subscripts = '%s,%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i) for i in range(k)]]),
-							''.join([*string,*[symbols(length+size+k-1+i) for i in range(2*s)]]),
-							''.join([*strings,*[symbols(length+size+k-1+2*s+i) for i in range(k-1)],*[symbols(length+size+k-1+s-1-i) for i in range(1)]]),
-							''.join([
-								''.join([*string,*[symbols(length+size+i) for i in range(s-1)],*[symbols(length+size+k-1+2*s+i) for i in range(k-1)],*[symbols(length+size+k-1+s+i) for i in range(s)]]),
-								]),
+						subscripts = (
+							(*strings,*[letters['i'],letters['j']][:k]),
+							(*string,*[letters['j'],letters['k']][:s],*[letters['m'],letters['n']][:s]),
+							(*strings,*[letters['l'],letters['k']][:k]),
+							(*string,*[letters['i'],letters['l']][:s],*[letters['m'],letters['n']][:s]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*[prod(D[i] for i in range(N) if i not in where)]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
@@ -6189,13 +6172,11 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					elif not local and tensor:
 
-						subscripts = '%s,%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-							''.join([*strings,*[symbols(length+size+N+(k-i)*N+j) for i in range(k) for j in range(N) if j in where]]),							
-							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+(N+(k-i)*N+j if j in where else N+N+i*N+j)) for i in range(k-1) for j in range(N)]]),
-								]),
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
 							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
@@ -6206,14 +6187,12 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					elif local and tensor:
 
-						subscripts = '%s,%s,%s->%s'%(
-							''.join([*strings,*[symbols(length+size+i*N+j) for i in range(k) for j in range(N) if j in where]]),
-							''.join([*string,*[symbols(length+size+N+i*N+j) for i in range(s) for j in range(N)]]),
-							''.join([*strings,*[symbols(length+size+N+(k-i)*N+j) for i in range(k) for j in range(N) if j in where]]),							
-							''.join([
-								''.join([*string,*[symbols(length+size+(i*N+j if j in where else N+i*N+j)) for i in range(k-1) for j in range(N)],*[symbols(length+size+(N+(k-i)*N+j if j in where else N+N+i*N+j)) for i in range(k-1) for j in range(N)]]),
-								]),
-							)
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
+							)	
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
@@ -6266,7 +6245,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
 
-			elif s > 1:
+			elif s == 2:
 				
 				def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 					return grad
@@ -6287,7 +6266,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif s > 1:
+				elif s == 2:
 					
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
@@ -6306,7 +6285,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
 
-				elif s > 1:
+				elif s == 2:
 					
 					def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 						return grad
@@ -6366,7 +6345,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 							return _shuffler(einsummation(grad,shuffler(state)))
 
 
-				elif s > 1:
+				elif s == 2:
 					
 					if local:
 						subscripts = f'ij,{string}jk,lk->{string}il'
@@ -6447,7 +6426,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						def func(grad,data,state,where=where,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
-				elif s > 1:
+				elif s == 2:
 					
 					if local:
 						subscripts = f'uij,{string}jk,ulk->{string}il'
@@ -7812,7 +7791,7 @@ def vntensorprod(a,n):
 	'''
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
-def einsum(*args,**kwargs):
+def einsum(*args,optimize=None,backend=None,**kwargs):
 	# return np.einsum(*args,**kwargs)
 	return opt_einsum.contract(*args,**kwargs,backend=BACKEND)
 
@@ -7847,26 +7826,48 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)
 
-	if wrapper is not None:
-		if isinstance(subscripts,str):
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(einsum(subscripts,*operands,optimize=optimize),*operands)
-		else:
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
+	if callable(optimize):
+		func = optimize
+		if wrapper is not None:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
 
+		else:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
 	else:
-		if isinstance(subscripts,str):
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize):
-				return einsum(subscripts,*operands,optimize=optimize)
-		else:
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
+		func = lambda *args,**kwargs: einsum(*args,**kwargs,optimize=optimize)
+		if wrapper is not None:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1]),*operands)
 
+		else:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1])		
 
 
 	if isarray:
@@ -7891,10 +7892,13 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	optimize = optimizers.get(optimize,optimize)
 
 	if isinstance(subscripts,str):
+		# operands = (zeros(shape) for shape in shapes)
+		# optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
+		args = (subscripts,*shapes)
+	else:
+		args = (*(j for i in zip(shapes,subscripts[:-1]) for j in i),subscripts[-1])
 
-		operands = (zeros(shape) for shape in shapes)
-
-		optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
+	optimize = opt_einsum.contract_expression(*args)
 
 	return optimize
 
