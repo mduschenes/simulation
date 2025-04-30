@@ -907,7 +907,7 @@ class Measure(System):
 		self.parameters = parameters
 
 		for kwarg in kwargs:
-			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+			if hasattr(self,kwarg):
 				setattr(self,kwarg,kwargs[kwarg])
 
 		self.setup(data=data)
@@ -1115,7 +1115,7 @@ class Measure(System):
 		return self.func(parameters=parameters,state=state,**kwargs)
 
 	def __len__(self):
-		return len(self.basis[self.pointer])
+		return self.basis[self.pointer].shape[0]
 
 	def __str__(self):
 		if isinstance(self.string,str):
@@ -1385,43 +1385,83 @@ class Measure(System):
 		default = tuple()
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
-		if self.architecture is None or self.architecture in ['array']:
+		K = self.K
+		D = self.D
+		d = 2
+		letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
-			K = self.K
-			ndim = 1
+		if L:
+			if self.architecture is None or self.architecture in ['array']:
+				basis = [self.basis[i] for i in where]
+				inverse = [self.inverse[i] for i in where]
+			elif self.architecture in ['tensor']:
+				basis = [self.basis[i].array() for i in where]
+				inverse = [self.inverse[i].array() for i in where]
+			elif self.architecture in ['tensor_quimb']:
+				basis = [representation_quimb(self.basis[i]) for i in where]
+				inverse = [representation_quimb(self.inverse[i]) for i in where]
+			basis = array([tensorprod(i) for i in permutations(*[i for i in basis])],dtype=self.dtype)
+			inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)				
+		else:
+			if self.architecture is None or self.architecture in ['array']:
+				basis = self.basis[self.pointer]
+				inverse = self.inverse[self.pointer]
+			elif self.architecture in ['tensor']:
+				basis = self.basis[self.pointer].array()
+				inverse = self.inverse[self.pointer].array()
+			elif self.architecture in ['tensor_quimb']:
+				basis = representation_quimb(self.basis[self.pointer])
+				inverse = representation_quimb(self.inverse[self.pointer])						
+		
+		if where is not None:
+			samples = [K]*L
+
+			shape = (*samples,*[*[D]*L]*2)
+			basis = reshape(basis,shape)
+
+			shape = (*samples,)*2
+			inverse = reshape(inverse,shape)
+
+			subscripts = (
+				(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:d] for i in range(N) if i in where)),
+				(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:d] for i in range(N) if i in where)),
+				(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
+				(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
+				)
+			shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,(*samples,)*2)
+
+			einsummation = einsummand(subscripts,*shapes)
+
+		else:
+
+			einsummation = None
+		
+		if self.architecture is None or self.architecture in ['array']:
 
 			options = {**{option:self.options[option] for option in self.options if option not in []},**(options if options is not None else {})}
 
-			if L:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
-			else:
-				basis = self.basis[self.pointer]
-				inverse = self.inverse[self.pointer]
-			
-
 			if model is not None and where:
 
-				subscripts = 'uij,wji,wv,v...->u...'
-				shapes = (basis.shape,basis.shape,inverse.shape,inverse.shape[-1:])
-				einsummation = einsummand(subscripts,*shapes)
-				
-				opts = dict(axes=[where],shape=(K,N,ndim),transformation=True,execute=False)
-				_opts = dict(axes=[where],shape=(K,N,ndim),transformation=False,execute=False)
-				
-				shuffler = shuffle(**opts) if where is not None else lambda state:state
-				_shuffler = shuffle(**_opts) if where is not None else lambda state:state
-			
+				shuffler = lambda state,K=K,N=N: reshape(state,[K]*N)
+				_shuffler = lambda state,K=K,N=N: reshape(state,[K**N])
+
+				subscripts = (
+					(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where]),
+					(*[letters['v'].format(i) for i in range(N)],),
+					(*[letters['u' if i in where else 'v'].format(i) for i in range(N)],),
+					)
+				shapes = ((*[K]*L,*[K]*L,),(*[K]*N,),)
+
+				function = einsummand(subscripts,*shapes)
+
 				options = options if options is not None else {}
 
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,options=options,**kwargs):
-					return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,function=function,options=options,**kwargs):
+					# return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
+					return _shuffler(function(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shuffler(state)))
 
 			else:
 
-				basis = self.basis[self.pointer]
-				inverse = self.inverse[self.pointer]
-				
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
@@ -1429,35 +1469,10 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			K = self.K
-			D = self.D
-			ndim = 2
-
 			options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
-
-			if L:
-				basis = array([tensorprod(i) for i in permutations(*[self.basis[i].array() for i in where])],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i].array() for i in where])],dtype=self.dtype)
-			else:
-				basis = self.basis[self.pointer].array()
-				inverse = self.inverse[self.pointer].array()
 
 			if model is not None and where:
 			
-				size = len(basis)
-				shape = [size,*[*[D]*L]*2]
-				basis = reshape(basis,shape)
-				letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
-
-				subscripts = (
-					(letters['u'],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
-					(letters['w'],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
-					(letters['w'],letters['v']),
-					)
-				shapes = (shape,shape,(size,)*2)
-
-				einsummation = einsummand(subscripts,*shapes)
-
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
@@ -1470,9 +1485,6 @@ class Measure(System):
 		
 			else:
 				
-				basis = self.basis[self.pointer]
-				inverse = self.inverse[self.pointer]
-				
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
@@ -1480,46 +1492,19 @@ class Measure(System):
 
 		elif self.architecture in ['tensor_quimb']:
 
-			K = self.K
-			D = self.D
-			ndim = 2
-
 			options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
-
-			if L:
-				basis = array([tensorprod(i) for i in permutations(*[representation_quimb(self.basis[i]) for i in where])],dtype=self.dtype)
-				inverse = array([tensorprod(i) for i in permutations(*[representation_quimb(self.inverse[i]) for i in where])],dtype=self.dtype)
-			else:
-				basis = representation_quimb(self.basis[self.pointer])
-				inverse = representation_quimb(self.inverse[self.pointer])
 
 			if model is not None and where:
 			
-
-				size = len(basis)
-				shape = [size,*[*[D]*L]*2]
-				basis = reshape(basis,shape)
-				letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
-
-				subscripts = (
-					(letters['u'],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
-					(letters['w'],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
-					(letters['w'],letters['v']),
-					)
-				shapes = (shape,shape,(size,)*2)
-
-				einsummation = einsummand(subscripts,*shapes)
-
 				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else {}
 
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
+				shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
+
+				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
 					# return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
-					return state.gate(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,**options)
+					return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
 		
 			else:
-				
-				basis = self.basis[self.pointer]
-				inverse = self.inverse[self.pointer]
 				
 				options = options if options is not None else {}
 
@@ -4290,12 +4275,7 @@ class Object(System):
 		N = max((i for i in (N if N is not None else None,locality if locality is not None else None,) if i is not None),default=None) if N is not None or locality is not None else None
 		D = D if D is not None else None
 
-		if tensor not in [None,False]:
-			if not callable(tensor):
-				def tensor(data,N,D,d):
-					return reshape(data,[*data.shape[:max(0,d-2)],*[D]*(N*min(d,2))])
-		else:
-			tensor = None
+		tensor = tensor
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
@@ -4421,7 +4401,7 @@ class Object(System):
 			conj = False
 
 		for kwarg in kwargs:
-			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+			if hasattr(self,kwarg):
 				setattr(self,kwarg,kwargs[kwarg])
 
 		self.data = data
@@ -4531,6 +4511,15 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 		
+
+		if tensor not in [None,False]:
+			if not callable(tensor):
+				def tensor(data,N,D,d):
+					return reshape(data,[*data.shape[:max(0,d-2)],*[D]*(N*min(d,2))])
+		else:
+			tensor = None
+		self.tensor = tensor
+
 		def identity(N=None,D=None,self=self):
 			if self.null():
 				return None
@@ -4977,7 +4966,7 @@ class Object(System):
 			if self.state is not None and self.state() is not None:
 				try:
 					state = self.state @ other
-				except Exception as exception:
+				except:
 					state = None
 			else:
 				state = None
@@ -6542,7 +6531,7 @@ class Objects(Object):
 
 		# Set kwargs
 		for kwarg in kwargs:
-			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+			if hasattr(self,kwarg):
 				setattr(self,kwarg,kwargs[kwarg])		
 
 
@@ -6565,10 +6554,9 @@ class Objects(Object):
 			if self.data[i] is None:
 				continue
 
-			kwargs = dict(
-				state=self.state
-				)
-			self.data[i].init(**kwargs)
+			keywords = {**dict(state=self.state)}
+
+			self.data[i].init(**keywords)
 
 		# Set attributes
 		self.update()
@@ -7136,7 +7124,7 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','where','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(N=self.N,D=self.D,local=self.local,tensor=self.tensor),delimiter=delim,default=False)
+		setter(kwargs,dict(N=self.N,D=self.D,local=self.local,tensor=self.tensor,samples=self.samples),delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,dict(verbose=False),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
@@ -7314,7 +7302,7 @@ class Channel(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Channel']}}
 
-	def init(self,data=None,state=None,parameters=None,conj=False):
+	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
 		''' 
 		Setup class functions
 		Args:
@@ -7324,7 +7312,7 @@ class Channel(Objects):
 			conj (bool): conjugate
 		'''
 
-		super().init(data=data,state=state,parameters=parameters,conj=conj)
+		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
 
 		# Set data
 		for i in self.data:
@@ -7332,11 +7320,13 @@ class Channel(Objects):
 			if self.data[i] is None:
 				continue
 
-			kwargs = dict(
-				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
-				state=self.state
-				)
-			self.data[i].init(**kwargs)
+			keywords = {
+				**dict(
+					parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
+					state=self.state,
+					),
+				**kwargs}
+			self.data[i].init(**keywords)
 
 
 		# Set attributes
@@ -7378,7 +7368,7 @@ class Operators(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['operators']}}
 
-	def init(self,data=None,state=None,parameters=None,conj=False):
+	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
 		''' 
 		Setup class functions
 		Args:
@@ -7386,9 +7376,10 @@ class Operators(Objects):
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
 			conj (bool): conjugate
+			kwargs (dict): Additional class keyword arguments						
 		'''
 
-		super().init(data=data,state=state,parameters=parameters,conj=conj)
+		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
 
 		# Set data
 		for i in self.data:
@@ -7396,10 +7387,9 @@ class Operators(Objects):
 			if self.data[i] is None:
 				continue
 
-			kwargs = dict(
-				state=self.state
-				)
-			self.data[i].init(**kwargs)
+			keywords = {**dict(state=self.state),**kwargs}
+			
+			self.data[i].init(**keywords)
 
 
 		# Set attributes
@@ -7574,7 +7564,7 @@ class Module(System):
 
 		# Set kwargs
 		for kwarg in kwargs:
-			if hasattr(self,kwarg) and kwargs[kwarg] is not None:
+			if hasattr(self,kwarg):
 				setattr(self,kwarg,kwargs[kwarg])		
 
 	
@@ -7651,7 +7641,7 @@ class Module(System):
 			keywords = {model:dict(
 				state=state @ locality,
 				where=[where.index(i) for i in model.where],
-				samples=D**(2*locality),
+				samples=[D**2]*locality,
 				local=True,
 				tensor=True,
 				verbose=False,

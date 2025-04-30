@@ -1690,8 +1690,8 @@ def test_module(*args,**kwargs):
 
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
-		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[False],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[False]
+		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -1709,6 +1709,8 @@ def test_module(*args,**kwargs):
 	data = {}
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 
+		print(kwargs)
+
 		settings = Dict({
 		"cls":{
 			"module":"src.quantum.Module",
@@ -1721,7 +1723,7 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"periodic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{"periodic":False}},
 			"options":{},
 			"configuration":{
 				"key":"src.functions.brickwork",
@@ -1862,7 +1864,7 @@ def test_module(*args,**kwargs):
 			tmp = i if tmp is None else tmp @ i
 
 		tmp = tmp()
-		_tmp = tensorprod([i() for i in obj])
+		_tmp = reshape(tensorprod([i() for i in obj]),tmp.shape)
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
@@ -1956,6 +1958,8 @@ def test_module(*args,**kwargs):
 
 		model.init(state=state)
 
+		model.init(samples=[model.D**2]*model.locality,local=True,tensor=True)
+
 		parameters = model.parameters()
 		state = [i for i in objs]
 		kwargs = dict()
@@ -1965,6 +1969,7 @@ def test_module(*args,**kwargs):
 
 		where = model.where
 		options = dict(**settings.module.options)
+
 
 		operator = measure.operation(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
 
@@ -1995,7 +2000,10 @@ def test_module(*args,**kwargs):
 			parameters=parameters,
 			state=measure.operation(
 				parameters=parameters,
-				state=state,
+				state=measure.probability(
+					parameters=parameters,
+					state=state,
+					**kwargs),
 				model=model,
 				where=where,
 				options=options,
@@ -2007,6 +2015,9 @@ def test_module(*args,**kwargs):
 					**kwargs),
 				**kwargs),
 			**kwargs)
+
+		model.init(samples=None,local=True,tensor=True)
+
 		_tmp = model(parameters=parameters,state=obj())
 
 		if measure.architecture in ['array']:
@@ -2019,6 +2030,8 @@ def test_module(*args,**kwargs):
 		if verbose:
 			print(parse(tmp))
 			print(parse(_tmp))
+
+		_tmp = reshape(_tmp,tmp.shape)
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
@@ -2074,6 +2087,8 @@ def test_module(*args,**kwargs):
 		if verbose:
 			print(parse(tmp))
 			print(parse(_tmp))
+
+		_tmp = reshape(_tmp,tmp.shape)
 
 		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
