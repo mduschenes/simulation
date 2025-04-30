@@ -1690,8 +1690,8 @@ def test_module(*args,**kwargs):
 
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
-		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[False],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[False]
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2839,8 +2839,8 @@ if __name__ == "__main__":
 	# test_metric(*args,**args)
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
-	test_grad(*args,**args)
-	# test_module(*args,**args)
+	# test_grad(*args,**args)
+	test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
