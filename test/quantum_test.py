@@ -2122,10 +2122,10 @@ def test_calculate(*args,**kwargs):
 
 	kwargs = {
 		"module.N":[4],"module.M":[3],"module.seed":[123456789],
-		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.seed":[123456789],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],"model.seed":[123456789],
 		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
 		"model.data.noise.where":["||i.j||"],"model.data.noise.parameters":[1e-3],"model.data.noise.seed":[None],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
@@ -2614,8 +2614,8 @@ def test_class(*args,**kwargs):
 
 	kwargs = {
 		"module.M":[3],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],
+		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
@@ -2642,7 +2642,7 @@ def test_class(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","architecture":"tensor","options":{"periodic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{"periodic":False}},
 			"options":{},
 			"configuration":{
 				"key":"src.functions.brickwork",
@@ -2855,7 +2855,7 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	test_module(*args,**args)
+	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
