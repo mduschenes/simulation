@@ -3566,7 +3566,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			shape = [state[i].shape for i in where]		
 			rank = options.get('S')
 
-			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
+			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme'))
 			if scheme is not None:
 				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 

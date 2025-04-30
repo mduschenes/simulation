@@ -430,9 +430,6 @@ def test_operator(*args,**kwargs):
 		data = operator(parameters=operator.parameters(),state=operator.state(),**dict())
 
 
-		data = reshape(data,[D**N]*state.ndim)
-
-
 		test = obj
 
 		if operator.local:
@@ -441,7 +438,7 @@ def test_operator(*args,**kwargs):
 			test = reshape(
 					transpose(
 					reshape(
-						reshape(test,[*[-1]*(operator.ndim-l),*[D**(N)]*l]),
+						reshape(test,[*[-1]*(operator.ndim-l),*[D**N]*l]),
 						[*[-1]*(operator.ndim-l),*[D]*(N*l)]),
 						[*range(operator.ndim-l),*[operator.ndim-l+N*j+[*operator.where,*sorted(set(range(N))-set(operator.where))].index(i) for j in range(l) for i in range(N)]]),
 						[*[-1]*(operator.ndim-l),*[D**N]*(l)]
@@ -449,6 +446,7 @@ def test_operator(*args,**kwargs):
 		elif operator.tensor:
 			test = reshape(test,[*[-1]*(operator.ndim-l),*[D**N]*l])
 
+		test = reshape(test,[*[-1]*(operator.ndim-l),*[D**N]*l])
 		tmp = reshape(state(),[D**N]*state.ndim)
 
 		if state.ndim == 2:
@@ -468,6 +466,9 @@ def test_operator(*args,**kwargs):
 		else:
 			raise NotImplementedError			
 
+
+		data = data.ravel()
+		test = test.ravel()
 
 		if verbose:
 			print(operator.string)
@@ -1863,8 +1864,8 @@ def test_module(*args,**kwargs):
 		for i in state:
 			tmp = i if tmp is None else tmp @ i
 
-		tmp = tmp()
-		_tmp = reshape(tensorprod([i() for i in obj]),tmp.shape)
+		tmp = tmp().ravel()
+		_tmp = tensorprod([i() for i in obj]).ravel()
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
@@ -2031,7 +2032,8 @@ def test_module(*args,**kwargs):
 			print(parse(tmp))
 			print(parse(_tmp))
 
-		_tmp = reshape(_tmp,tmp.shape)
+		tmp = tmp.ravel()
+		_tmp = _tmp.ravel()
 
 		assert allclose(tmp,_tmp), "Incorrect model <-> operator conversion"
 
@@ -2088,7 +2090,8 @@ def test_module(*args,**kwargs):
 			print(parse(tmp))
 			print(parse(_tmp))
 
-		_tmp = reshape(_tmp,tmp.shape)
+		tmp = tmp.ravel()
+		_tmp = _tmp.ravel()
 
 		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
@@ -2536,7 +2539,7 @@ def test_mps(*args,**kwargs):
 	T = 1
 	architecture = 'tensor'
 	# architecture = 'tensor_quimb'
-	# architecture = 'all'
+	architecture = 'all'
 	parameters = 1e-3,
 	seed = 123456789
 	seed = seeder(seed)
@@ -2613,8 +2616,8 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[3],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[5],"module.measure.operator":["tetrad"],
+		"model.N":[4],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2624,7 +2627,14 @@ def test_class(*args,**kwargs):
 		}	
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
-	filters = lambda kwargs:[i for i in kwargs if i['module.measure.architecture'] in ["tensor"]]
+	filters = lambda kwargs:[i for i in kwargs if (
+		i['module.measure.architecture'] in [
+			"tensor",
+			# "tensor_quimb",
+			# "array",
+			] 
+		)
+		]
 	func = None
 
 	data = {}
@@ -2633,7 +2643,6 @@ def test_class(*args,**kwargs):
 		settings = Dict({
 		"cls":{
 			"module":"src.quantum.Module",
-			"measure":"src.quantum.Measure",
 			"model":"src.quantum.Operators",
 			"state":"src.quantum.State",
 			"callback":"src.quantum.Callback"
@@ -2858,4 +2867,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
-	# test_class(*args,**args)
+	test_class(*args,**args)

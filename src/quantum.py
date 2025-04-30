@@ -7597,12 +7597,14 @@ class Module(System):
 		boolean = lambda model: ((model is not None) and (not model.null()))
 
 		N = max((model.N for index in self.model for model in self.model[index] if boolean(model) and model.N is not None),default=self.N)
+		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=None)
+		
 		self.N = N
 
 		# Measure
 		cls = Measure
 		measure = self.measure if isinstance(self.measure,dicts) else {}
-		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dicts) else {}) if hasattr(self,attr)},**measure,**dict(system=self.system)}
+		measure = {**namespace(cls,self),**{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dicts) else {}) if hasattr(self,attr)},**measure,**dict(N=N,D=D,system=self.system)}
 		measure = cls(**measure)
 
 		self.measure = measure
