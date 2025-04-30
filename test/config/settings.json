@@ -45,6 +45,7 @@
 	"M":4,
 	"tau":1,
 	"P":1,
+	"tensor":true,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
@@ -93,6 +94,7 @@
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,
+	"tensor":true,
 	"seed":123
 	},
 "callback":{

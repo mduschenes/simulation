@@ -19,7 +19,7 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,differen
 from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,epsilon,datatype
+from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -1447,17 +1447,14 @@ class Measure(System):
 				size = len(basis)
 				shape = [size,*[*[D]*L]*2]
 				basis = reshape(basis,shape)
-				strings = [symbols(i) for i in range(3)]
+				letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
-				subscripts = '%s,%s,%s->%s'%(
-					''.join([strings[0],*[symbols(len(strings)+i*ndim+j) for i in range(ndim) for j in range(L)]]),
-					''.join([strings[1],*[symbols(len(strings)+(ndim-1-i)*ndim+j) for i in range(ndim) for j in range(L)]]),
-					''.join([strings[1],strings[-1]]),
-					''.join([strings[0],strings[-1]]),
+				subscripts = (
+					(letters['u'],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
+					(letters['w'],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
+					(letters['w'],letters['v']),
 					)
 				shapes = (shape,shape,(size,)*2)
-
-				# subscripts = 'uij,wji,wv->uv'
 
 				einsummation = einsummand(subscripts,*shapes)
 
@@ -1502,17 +1499,14 @@ class Measure(System):
 				size = len(basis)
 				shape = [size,*[*[D]*L]*2]
 				basis = reshape(basis,shape)
-				strings = [symbols(i) for i in range(3)]
+				letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
-				subscripts = '%s,%s,%s->%s'%(
-					''.join([strings[0],*[symbols(len(strings)+i*ndim+j) for i in range(ndim) for j in range(L)]]),
-					''.join([strings[1],*[symbols(len(strings)+(ndim-1-i)*ndim+j) for i in range(ndim) for j in range(L)]]),
-					''.join([strings[1],strings[-1]]),
-					''.join([strings[0],strings[-1]]),
+				subscripts = (
+					(letters['u'],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
+					(letters['w'],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
+					(letters['w'],letters['v']),
 					)
 				shapes = (shape,shape,(size,)*2)
-
-				# subscripts = 'uij,wji,wv->uv'
 
 				einsummation = einsummand(subscripts,*shapes)
 
@@ -4152,7 +4146,7 @@ class Object(System):
 
 		# Set attributes
 		#	N: size of system acted on by locality number of non-local operators with indices where
-		#	tensor (bool,iterable[int],callable): whether operator has tensor shape, or shape of tensor, or callable with signature tensor(N,D)
+		#	tensor (bool,callable): whether operator has tensor shape, or callable with signature tensor(data,N,D,d)
 		#	local (bool): whether operator acts locally
 		# 	locality (int): number of indices acted on locally, non-trivially by operator
 		# 	number (int): number of operators within class
@@ -4297,13 +4291,9 @@ class Object(System):
 		D = D if D is not None else None
 
 		if tensor not in [None,False]:
-			def tensor(N,D,d,tensor=tensor):
-				if callable(tensor):
-					return tensor(N,D,d)
-				elif not isinstance(tensor,iterables):
-					return ((D[:N] if isinstance(D,iterables) else [D]*N))*d
-				else:
-					return ([*tensor][:N])*d
+			if not callable(tensor):
+				def tensor(data,N,D,d):
+					return reshape(data,[*data.shape[:max(0,d-2)],*[D]*(N*min(d,2))])
 		else:
 			tensor = None
 		local = local
@@ -4546,11 +4536,11 @@ class Object(System):
 				return None
 			cls = Basis.identity
 			N = self.N if N is None else N
-			D = [*self.D][:N] if D is not None and isinstance(self.D,iterables) else [self.D]*N if D is None else [*D][:N] if isinstance(D,iterables) else [D]*N
+			D = self.D if D is None else D
 			d = Basis.dimensions(cls)
 			options = dict(dtype=self.dtype,system=self.system)
-			data = tensorprod([cls(D=d,**options) for d in D])
-			data = reshape(data,self.tensor(N,D,d)) if self.tensor is not None else data
+			data = tensorprod([cls(D=D,**options)]*N)
+			data = self.tensor(data,N=N,D=D,d=d) if self.tensor is not None else data
 			return data
 
 		self.identity = identity
@@ -4596,6 +4586,9 @@ class Object(System):
 			ndim = ndim if data is not None else None
 			dtype = dtype
 
+			local = self.local
+			tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+
 			data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in data] if data is not None else None
 			_data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in _data] if data is not None else None
 
@@ -4605,7 +4598,7 @@ class Object(System):
 				data = tensorprod(data) if data is not None else None
 			else:
 				data = swap(tensorprod(data),axes=axes,shape=shape) if data is not None else None
-				
+
 			data = array(data,dtype=dtype) if data is not None else None
 
 		else:
@@ -4653,18 +4646,7 @@ class Object(System):
 		self.dtype = self.dtype if self.dtype is not None else None
 
 
-
-		if self.tensor is not None and not self.null():
-			if isinstance(data,arrays):
-				N = self.locality if self.local else self.N
-				D = self.D
-				d = self.ndim
-				l = 2
-				shape = data.shape
-
-				shape = [*shape[:max(0,d-l)],*self.tensor(N,D,min(l,d))]
-
-				data = reshape(data,shape)
+		data = self.tensor(data,N=self.locality if self.local else self.N,D=self.D,d=self.ndim) if self.tensor is not None else data
 
 		self.data = data
 
@@ -4769,7 +4751,6 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-		print('contracting',self.contract,self.data.shape)
 		return self.contract(self.func(parameters=parameters,state=state,**kwargs),state=state)
 
 	def grad(self,parameters=None,state=None,**kwargs):
@@ -5217,7 +5198,10 @@ class Object(System):
 				continue
 
 			if getattr(self,attr,None) is not None:
-				string = '%s: %s'%(attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
+				try:
+					string = '%s: %s'%(attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
+				except:
+					string = '%s: %s'%(attr,getattr(self,attr) is not None if callable(getattr(self,attr)) else getattr(self,attr))					
 			else:
 				string = '%s: %s'%(attr,parse(substring))
 
@@ -5235,7 +5219,7 @@ class Object(System):
 					continue
 
 				string = []
-				for subattr in [None,'operator','variable','method','indices','local','where','shape','parameters']:
+				for subattr in [None,'operator','variable','method','indices','local','tensor','where','shape','parameters']:
 				
 					obj = subattr
 					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5264,9 +5248,23 @@ class Object(System):
 							substring = '%0.4e'%(substring)
 						else:
 							substring = parse(substring)
+					elif subattr in ['tensor']:
+						substring = getattrs(self.data[attr],subattr,default=None,delimiter=delim)
+						if callable(substring):
+							try:
+								substring = parse(substring())
+							except:
+								substring = parse(substring is not None)						
+						else:
+							substring = parse(substring is not None)													
 					else:
 						substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
-						if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
+						if callable(substring):
+							try:
+								substring = parse(substring())
+							except:
+								substring = parse(substring is not None)
+						elif isinstance(substring,(str,int,list,tuple,bool,*arrays)):
 							substring = parse(substring)
 						elif isinstance(substring,dict):
 							substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
@@ -5822,13 +5820,17 @@ class Haar(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
+				local = self.local
+				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+
 				data = [*data,*_data] if not self.local else data
 
 				seed = seeder(self.seed)
 
 				if self.local:
 					options = Dictionary(
-						D=self.D,N=self.locality//self.number,ndim=ndim,							
+						D=self.D,N=self.locality//self.number,ndim=ndim,
+						local=local,tensor=tensor,							
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
 						data=self.data,operator=data,
@@ -5839,17 +5841,26 @@ class Haar(Object):
 						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 						for index,i in zip(options,data):
 							options[index].basis = options[index].basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])														
 					else:
 						for i in data:
 							options = Dictionary(Basis.opts(options.basis.get(i),options))
 							options.basis = options.basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return options.basis(**{**options,**kwargs})
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})							
 				else:
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
+						local=local,tensor=tensor,						
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
 						data=self.data,operator=data,
@@ -5860,14 +5871,22 @@ class Haar(Object):
 						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 						for index,i in zip(options,data):
 							options[index].basis = options[index].basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
 					else:
 						for i in data:
 							options = Dictionary(Basis.opts(options.basis.get(i),options))
 							options.basis = options.basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return options.basis(**{**options,**kwargs})					
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})													
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -6157,6 +6176,9 @@ class State(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
+				local = self.local
+				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None				
+
 				data = [*data,*_data] if not self.local else data
 
 				seed = seeder(self.seed)
@@ -6164,6 +6186,7 @@ class State(Object):
 				if self.local:
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
+						local=local,tensor=tensor,						
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
 						data=self.data,operator=data,
@@ -6174,19 +6197,26 @@ class State(Object):
 						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 						for index,i in zip(options,data):
 							options[index].basis = options[index].basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])							
 					else:
 						for i in data:
 							options = Dictionary(Basis.opts(options.basis.get(i),options))
 							options.basis = options.basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return options.basis(**{**options,**kwargs})
-
-
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})								
 				else:
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=ndim,							
+						local=local,tensor=tensor,						
 						random=self.random,seed=seed,
 						dtype=self.dtype,system=self.system,
 						data=self.data,operator=data,
@@ -6197,14 +6227,22 @@ class State(Object):
 						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 						for index,i in zip(options,data):
 							options[index].basis = options[index].basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)														
 					else:
 						for i in data:
 							options = Dictionary(Basis.opts(options.basis.get(i),options))
 							options.basis = options.basis.get(i)
-						def function(parameters,state,options=options,**kwargs):
-							return options.basis(**{**options,**kwargs})
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})							
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -7098,7 +7136,7 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','where','string']},delimiter=delim,default=False)
-		setter(kwargs,dict(N=self.N,D=self.D,local=self.local),delimiter=delim,default=False)
+		setter(kwargs,dict(N=self.N,D=self.D,local=self.local,tensor=self.tensor),delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,dict(verbose=False),delimiter=delim,default=True)
 		setter(kwargs,defaults,default=False)
@@ -7122,9 +7160,11 @@ class Objects(Object):
 			data (dict): Class data
 		'''
 
+		cls = Object
+
 		status = self.status() if status is None else status
 		data = self.data if data is None else data
-		state = self.state() if callable(self.state) else self.state
+		state = self.state if isinstance(self.state,cls) else self.state() if callable(self.state) else self.state
 
 		boolean = lambda i=None,data=None: ((data is not None) and (data[i] is not None) and (not data[i].null()))
 
@@ -7709,7 +7749,6 @@ class Module(System):
 		'''
 	
 		model = self.model if model is None else model
-
 
 		cls = Object
 
