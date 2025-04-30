@@ -1391,6 +1391,7 @@ class Measure(System):
 		letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
 		if L:
+		
 			if self.architecture is None or self.architecture in ['array']:
 				basis = [self.basis[i] for i in where]
 				inverse = [self.inverse[i] for i in where]
@@ -1400,9 +1401,12 @@ class Measure(System):
 			elif self.architecture in ['tensor_quimb']:
 				basis = [representation_quimb(self.basis[i]) for i in where]
 				inverse = [representation_quimb(self.inverse[i]) for i in where]
+		
 			basis = array([tensorprod(i) for i in permutations(*[i for i in basis])],dtype=self.dtype)
 			inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)				
+		
 		else:
+		
 			if self.architecture is None or self.architecture in ['array']:
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
@@ -1457,7 +1461,6 @@ class Measure(System):
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,function=function,options=options,**kwargs):
-					# return _shuffler(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse,shuffler(state)))
 					return _shuffler(function(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shuffler(state)))
 
 			else:
@@ -1476,11 +1479,6 @@ class Measure(System):
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
-					# return state(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),where=where,options=options)
-					# return state(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,options=options)					
-  					# return state(reshape(einsummation(basis,vmap(partial(model,parameters=parameters,**kwargs))(state=basis),inverse),shape),where=where,options=options)
-					# return state(reshape(einsummation(basis,array([model(parameters=parameters,state=operator,**kwargs) for operator in basis]),inverse),shape),where=where,options=options)
-					# return state(reshape(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shape),where=where,options=options)
 					return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
 		
 			else:
@@ -1501,7 +1499,6 @@ class Measure(System):
 				shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
-					# return state.gate(einsummation(basis,array([model(parameters,operator,**kwargs) for operator in basis]),inverse),where=where,**options)
 					return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
 		
 			else:
