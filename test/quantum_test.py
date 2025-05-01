@@ -2624,8 +2624,8 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[4],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[3],"module.measure.operator":["tetrad"],
+		"model.N":[4],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2638,8 +2638,8 @@ def test_class(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
 			"tensor",
-			"tensor_quimb",
-			"array",
+			# "tensor_quimb",
+			# "array",
 			] 
 		)
 		]
@@ -2797,8 +2797,18 @@ def test_class(*args,**kwargs):
 
 		state = module(parameters,state)
 
+		value = module.measure.trace(parameters=parameters,state=state)
+		if module.measure.architecture in ['array']:
+			value = array(value)
+		elif module.measure.architecture in ['tensor']:
+			value = value.array().item()
+		elif module.measure.architecture in ['tensor_quimb']:
+			value = representation_quimb(value,to=module.measure.architecture,contraction=True)
+
 		print(module.measure.architecture)
 		print(state)
+		print(value)
+
 
 		# Value
 		if test:

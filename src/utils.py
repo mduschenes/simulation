@@ -3058,6 +3058,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.D = D
 			self.S = S
 
+			for key,value in dict(strings=None,orientation=None,scheme=None,func=None).items():
+				setattr(self,key,kwargs.get(key,value))
+
 			super().__init__(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
 			return
@@ -3086,7 +3089,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			D = self.D if self.D is not None else 0
 			S = self.S if self.S is not None else 0
 
-			strings = lambda index=None,string=None,strings='|':(f'{strings}{characters(4) if string is None else string}{strings}' if index is None or index.startswith(strings) and index.endswith(strings) else index)
+			strings = self.strings if callable(self.strings) else lambda index=None,string=None,strings='|':(f'{strings}{characters(4) if string is None else string}{strings}' if index is None or index.startswith(strings) and index.endswith(strings) else index)
 
 			if setup is None or setup is True:
 				
@@ -3136,22 +3139,51 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			self.strings = strings
 
-			self.index()
+			orientation = self.orientation
+			if not callable(orientation):
+				def orientation(i,where):
+					if i < min(where):
+						return True
+					elif i > max(where):
+						return False
+					else:
+						return None
+			self.orientation = orientation
 
-			scheme = {scheme:self.schemes(options=dict(scheme=scheme),**kwargs) for scheme in self.schemes(options=dict(scheme=True))}
+			scheme = self.scheme if self.scheme is not None else {scheme:self.schemes(options=dict(scheme=scheme),**kwargs) for scheme in self.schemes(options=dict(scheme=True))}
 			self.scheme = scheme
+
+			func = self.func if self.func is not None else None
+			if func is None:
+				subscripts = {L:'%s,%s->%s%s%s'%(
+					''.join((
+						''.join(symbols(i) for i in range(L)),
+						''.join(symbols(L+i) for i in range(L))
+						)),
+					','.join(
+						''.join((symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) for i in range(L)),
+					''.join((symbols(2*L),)),
+					''.join(symbols(i) for i in range(L)),
+					''.join((symbols(2*L+L),))
+					)
+					for L in range(self.N)}
+				def func(data,state,where=None,subscripts=subscripts):
+					return einsum(subscripts.get(len(where)),data,*(state[i]() for i in where))
+			self.func = func
+
+			self.index()
 
 			return
 
-		def update(self,data=None,shape=None,axes=None,where=None,options=None,**kwargs):
+		def update(self,data=None,shape=None,axes=None,orientation=None,where=None,options=None,**kwargs):
 			'''
 			Update class data
 			Args:
 				data (array,dict,mps): Class data		
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Class axes
-				where (float,int,iterable[int]): Class indices
-				options (dict): Class options
+				orientation (callable): Class orientation with signature orientation(i,where)
+				where (float,int,iterable[int],callable): Class indices
 				kwargs (dict): Additional class keyword arguments				
 			Returns:
 				data (dict): Class data		
@@ -3164,16 +3196,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			defaults = {}
 
 			N = self.N
-			where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
 			scheme = options.get('scheme')
-
-			indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
 
 			if isinstance(data,dict):
 
+				where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
+				indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
+				orientation = self.orientation if not callable(orientation) else orientation
+
 				for i in indices:
 
-					if i < min(where):
+					if orientation(i,where) is True:
 
 						state = data[i]
 						shape = state.shape
@@ -3193,7 +3226,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							if v is not None:	
 								data[i+1] = dot(v,data[i+1])
 
-					elif i > max(where):
+					elif orientation(i,where) is False:
 
 						state = data[i]
 						shape = state.shape
@@ -3412,8 +3445,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
 					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					# s = addition(u,0)
-					# u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					s = addition(u,0)
+					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
 					u,v,s = u,v,rank
 					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
 					u,v,s = cmplx(u),cmplx(v),s
@@ -3563,37 +3596,22 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			state = self
 			options = {} if options is None else options		
 			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
+
 			shape = [state[i].shape for i in where]		
-			rank = options.get('S')
+			orientation = self.orientation
+			rank = options.get('S',options.get('rank'))
 
-			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme'))
-			if scheme is not None:
-				state.update(where=where,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
+			func = self.func
 
-			if isinstance(data,arrays):
-
-				L = len(where)
-				subscripts = '%s,%s->%s%s%s'%(
-					''.join((
-						''.join(symbols(i) for i in range(L)),
-						''.join(symbols(L+i) for i in range(L))
-						)),
-					','.join(
-						''.join((symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) for i in range(L)),
-					''.join((symbols(2*L),)),
-					''.join(symbols(i) for i in range(L)),
-					''.join((symbols(2*L+L),))
-					)
-
-				data = einsum(subscripts,data,*(state[i]() for i in where))
-
-			else:
-
-				data = data(state,where=where)
+			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
 			if scheme is not None:
-				data = state.update(data,shape=shape,where=where,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+				data = state.update(data,shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+
+			scheme = {'svd':'qr','nmf':'stq'}.get(scheme)
+			if scheme is not None:
+				state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			data = state
 

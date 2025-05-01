@@ -1564,6 +1564,10 @@ class Measure(System):
 
 		if where is None:
 			where = None
+		elif where is True:
+			where = tuple(range(N))
+		elif where is False:
+			where = tuple()
 		elif isinstance(where,integers):
 			where = tuple(range(where))
 		elif isinstance(where,floats):
@@ -1781,7 +1785,7 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
-		default = tuple()
+		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
 
 		if self.architecture is None or self.architecture in ['array']:
