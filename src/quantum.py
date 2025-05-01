@@ -33,6 +33,7 @@ from src.optimize import Objective,Metric
 
 delim = '.'
 separ = '_'
+memory = lambda size:size<2**20
 
 class Basis(Dict):
 	'''
@@ -184,7 +185,7 @@ class Basis(Dict):
 		'''
 
 		attr = cls.parse(attr)
- 	
+	
 		if attr in ['rand']:
 			options.update(dict(
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim,))) else 
@@ -205,7 +206,7 @@ class Basis(Dict):
 
 	@classmethod
 	@decorator
-	def locality(cls,attr,*args,**kwargs):
+	def localities(cls,attr,*args,**kwargs):
 		'''
 		Locality of composite operators
 		Args:
@@ -236,7 +237,7 @@ class Basis(Dict):
 		if attr is None or not hasattr(cls,attr):
 			locality = None
 		elif attr in ['string']:
-			locality = sum(cls.locality(i,*args,**kwargs) for i in options.operator if i is not None and hasattr(cls,i)) if options.operator is not None else None
+			locality = sum(cls.localities(i,*args,**kwargs) for i in options.operator if i is not None and hasattr(cls,i)) if options.operator is not None else None
 		elif attr in ['data']:
 			data = getattr(cls,attr)(*args,**kwargs)
 			locality = int(round(log(data.size)/log(options.D)/data.ndim))
@@ -364,7 +365,7 @@ class Basis(Dict):
 
 		options = Dictionary(
 			D=kwargs.D if kwargs.D is not None else None,
-			N=cls.locality(attr,*args,**kwargs),
+			N=cls.localities(attr,*args,**kwargs),
 			ndim=cls.dimensions(attr,*args,**kwargs),
 			operator=((
 				[cls.parse(i) for i in kwargs.operator] if isinstance(kwargs.operator,iterables) else
@@ -1432,7 +1433,7 @@ class Measure(System):
 				(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 				(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 				)
-			shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,(*samples,)*2)
+			shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
 
 			einsummation = einsummand(subscripts,*shapes)
 
@@ -4173,7 +4174,7 @@ class Object(System):
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
-		number = Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in (operator if isinstance(operator,iterables) else operator.split(delim))],**options) if operator is not None else None if not self.null() else None
+		number = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in (operator if isinstance(operator,iterables) else operator.split(delim))],**options) if operator is not None else None if not self.null() else None
 
 		options = Dictionary(
 			parameters=parameters,
@@ -4197,9 +4198,9 @@ class Object(System):
 		elif isinstance(where,iterables):
 			locality = len(where)			
 		elif isinstance(operator,iterables):
-			locality = Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator],**options)
+			locality = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in operator],**options)
 		elif isinstance(operator,str) and operator.count(delim) > 0:
-			locality = Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator.split(delim)],**options)
+			locality = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in operator.split(delim)],**options)
 		elif N is not None:
 			locality = N
 		elif not self.null():
@@ -4315,13 +4316,13 @@ class Object(System):
 				(len(where) == locality) and (
 				(isinstance(operator,iterables) and (
 					any(i not in basis for i in operator) or
-					(Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator],**options) == locality))) or
+					(Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in operator],**options) == locality))) or
 				(isinstance(operator,str) and operator.count(delim) and (
 					any(i not in basis for i in operator.split(delim)) or
-					(Basis.locality(attr=Basis.string,operator=[basis.get(i) for i in operator.split(delim)],**options) == locality))) or
+					(Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in operator.split(delim)],**options) == locality))) or
 				(isinstance(operator,str) and not operator.count(delim) and (
 					(operator not in basis) or
-					((Basis.locality(basis.get(operator),**options)==0) or ((locality % Basis.locality(basis.get(operator),**options)) == 0))))
+					((Basis.localities(basis.get(operator),**options)==0) or ((locality % Basis.localities(basis.get(operator),**options)) == 0))))
 				))
 			),"Inconsistent operator %r, where %r: locality != %d"%(operator,where,locality)
 
@@ -4518,15 +4519,24 @@ class Object(System):
 		self.tensor = tensor
 
 		def identity(N=None,D=None,self=self):
+			
+			data = None
+			
 			if self.null():
-				return None
+				return data
+			
 			cls = Basis.identity
 			N = self.N if N is None else N
 			D = self.D if D is None else D
 			d = Basis.dimensions(cls)
 			options = dict(dtype=self.dtype,system=self.system)
+
+			if not memory(D**N):
+				return data
+
 			data = tensorprod([cls(D=D,**options)]*N)
 			data = self.tensor(data,N=N,D=D,d=d) if self.tensor is not None else data
+			
 			return data
 
 		self.identity = identity
@@ -4539,13 +4549,13 @@ class Object(System):
 			assert (
 					(isinstance(self.operator,iterables) and (
 						any(i not in self.basis for i in self.operator) or
-						(Basis.locality(attr=Basis.string,operator=[self.basis.get(i) for i in self.operator],**options) == self.locality))) or
+						(Basis.localities(attr=Basis.string,operator=[self.basis.get(i) for i in self.operator],**options) == self.locality))) or
 					(isinstance(self.operator,str) and self.operator.count(delim) and (
 						any(i not in self.basis for i in self.operator.split(delim)) or
-						(Basis.locality(attr=Basis.string,operator=[self.basis.get(i) for i in self.operator.split(delim)],**options) == self.locality))) or
+						(Basis.localities(attr=Basis.string,operator=[self.basis.get(i) for i in self.operator.split(delim)],**options) == self.locality))) or
 					(isinstance(self.operator,str) and not self.operator.count(delim) and (
 						(self.operator not in self.basis) or
-						((Basis.locality(self.basis.get(self.operator),**options)==0) or ((self.locality % Basis.locality(self.basis.get(self.operator),**options)) == 0))))
+						((Basis.localities(self.basis.get(self.operator),**options)==0) or ((self.locality % Basis.localities(self.basis.get(self.operator),**options)) == 0))))
 				),"Inconsistent operator %r, where %r: locality != %d"%(self.operator,self.where,self.locality)
 
 
@@ -4559,7 +4569,7 @@ class Object(System):
 					(isinstance(self.operator,str) and not self.operator.count(delim))
 				),"Inconsistent operator %r, dimension %r"%(self.operator,[Basis.dimensions(self.basis.get(i),**options) for i in (self.operator if isinstance(self.operator,iterables) else [self.operator])])
 
-			data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+			data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 			_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 			shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
@@ -4623,7 +4633,7 @@ class Object(System):
 				attr=Basis.string,
 				operator=[self.basis.get(i) 
 					for i in [
-						*(self.operator if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options))),
+						*(self.operator if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options))),
 						*([] if self.local else [self.default]*(self.N-self.locality))]
 						],
 				**options).values()] if all(obj is not None for obj in [self.operator,self.N,self.D,self.locality]) else ()
@@ -5416,7 +5426,7 @@ class Data(Object):
 
 				seed = seeder(self.seed)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 
 				def function(parameters,state,options=options,**kwargs):
 					return None
@@ -5536,7 +5546,7 @@ class Gate(Object):
 
 				seed = seeder(self.seed)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 
 				def function(parameters,state,options=options,**kwargs):
 					return None
@@ -5652,7 +5662,7 @@ class Pauli(Object):
 
 				seed = seeder(self.seed)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 
 				def function(parameters,state,options=options,**kwargs):
 					return None
@@ -5793,7 +5803,7 @@ class Haar(Object):
 				
 				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 				shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
@@ -6000,7 +6010,7 @@ class Noise(Object):
 
 				seed = seeder(self.seed)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 
 				if all(i in ['noise','rand'] for i in data):
 					options = Dictionary(
@@ -6149,7 +6159,7 @@ class State(Object):
 				
 				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.locality(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
 
 				shape = {axis: shape if self.local else [*shape] for axis,shape in Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options).items()} if data is not None else None
@@ -7162,9 +7172,10 @@ class Objects(Object):
 
 		string = separ.join([data[i].string for i in data if boolean(i,data)]) if data is not None else None
 
+		tensor = None
 		for i in data:
-			tensor = data[i].tensor if data[i].tensor is not None else None
-		
+			tensor = data[i].tensor if boolean(i,data) and data[i].tensor is not None else None
+
 		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
 		locality = len(where) if where is not None else None

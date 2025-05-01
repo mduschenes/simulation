@@ -130,7 +130,7 @@ def test_dump(path=None):
 			assert all(exists(path[subpath]) for subpath in path),msg
 	
 	path = 'config/tmp'
-	rm(path,execute=True)
+	rm(path)
 
 	return
 
@@ -185,7 +185,7 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	path = dirname(path)
 
-	rm(path,execute=True)
+	rm(path)
 
 	return
 
@@ -278,8 +278,8 @@ def test_lock(*args,**kwargs):
 
 if __name__ == '__main__':
 	# test_load()
-	# test_dump()
+	test_dump()
 	# test_importlib()
 	# test_glob()
-	test_lock(*sys.argv[1:])
-
+	# test_lock(*sys.argv[1:])
+	# test_hdf5()

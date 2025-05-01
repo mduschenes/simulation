@@ -1505,15 +1505,14 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	if mode is None:
 		mode = 'fwd'
 
-	if shapes is None:
-		ndim = None
-	else:
-		ndim = min((len(shape) for shape in shapes),default=2)
-
 	if grad is None:
 		grad = gradient(func,mode=mode,move=True)
 
 	shape = shapes[0]
+	if shapes is None:
+		ndim = None
+	else:
+		ndim = min((len(shape) for shape in shapes),default=2)
 	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
 	dtype = getattr(func,'dtype',None)
 
@@ -1524,14 +1523,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 	if hermitian:
 
-		func = spectrum(func,shape=shape,compute_v=True,hermitian=hermitian)
-
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
 			shapes = [[shapes[0],shapes[1],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out, lambda out,*operands: 2*real(out)]
+			wrappers = [lambda out,*operands,shape=shape: out, lambda out,*operands,shape=shape: 2*real(out)]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1546,6 +1543,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
+
+		func = spectrum(func,shape=shape,compute_v=True,hermitian=hermitian)
+		grad = lambda *args,grad=grad,shape=shape,**kwargs:reshape(grad(*args,**kwargs),[-1,*shape])
 
 		# @jit
 		def fisher(*args,**kwargs):
@@ -1575,15 +1575,15 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		if ndim == 1:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**0),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**0)]
+			wrappers = [lambda out,*operands,shape=shape: out,lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out]
 		elif ndim == 2:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
+			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]
 		else:
 			shapes = None
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
+			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]			
 		
 		if shapes is not None:
 			einsummations = [
@@ -1602,7 +1602,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 			gradient = grad(*args,**kwargs)
 
 			function = reshape(function,shape)
-			gradient = reshape(function,[-1,*shape])
+			gradient = reshape(gradient,[-1,*shape])
 
 			out = 0
 
@@ -2378,7 +2378,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			elif setup is False:
 
-				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,strings=strings,**kwargs):
 					
 					classes = self.__class__
 
@@ -2723,7 +2723,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			elif setup is False:
 
-				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,strings=strings,**kwargs):
 					
 					classes = self.__class__
 
@@ -5977,8 +5977,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 		N,D,d,s,samples = None,None,None,None,None
 
 	where = [*range(N)] if ((where is None or not local) and (N is not None)) else [] if where is None else where
-	L = len(where)
-	D = [*D][:N] if isinstance(D,iterables) else [D]*N
+	L = len(where) if where is not None else None
+	D = [*D][:N] if isinstance(D,iterables) and N is not None else [D]*N if D is not None and N is not None else None
 
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
 	length = len(samples) if samples is not None else 0
@@ -6249,8 +6249,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 		N,D,d,s,samples = None,None,None,None,None
 
 	where = [*range(N)] if ((where is None or not local) and (N is not None)) else [] if where is None else where
-	L = len(where)
-	D = [*D][:N] if isinstance(D,iterables) else [D]*N
+	L = len(where) if where is not None else None
+	D = [*D][:N] if isinstance(D,iterables) and N is not None else [D]*N if D is not None and N is not None else None
 
 	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
 	length = len(samples) if samples is not None else 0
@@ -6487,7 +6487,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	'''
 	Setup metrics
 	Args:
-		metric (str,callable): Type of metric
+		metric (str,callable): Type of metric, or function with signature
 		shapes (iterable[tuple[int]]): Shapes of Operators
 		label (array,callable): Label			
 		weights (array): Weights
@@ -6500,61 +6500,62 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	'''
 	
 	if shapes:
-		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
-		ndim = min([len(shape) for shape in shapes[:2] if shape is not None])
+		size = sum(int(prod(shape)**(1/min(2,len(shape)))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+		ndim = min([min(2,len(shape)) for shape in shapes[:2] if shape is not None])
+		shape = [size]*ndim
 	else:
 		size = 1
 		ndim = None
-
-
-	if callable(metric):
-			metric = metric
-			func = jit(metric)
-			grad = jit(gradient(metric))
-			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
-			grad_analytical = jit(gradient(metric))
+		shape = [size]
 	
+	if callable(metric):
+		metric = metric
+		func = jit(metric)
+		grad = jit(gradient(metric))
+		# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
+		grad_analytical = jit(gradient(metric))
+
 	elif metric is None:
 
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return out/2
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return out/2
 
 	elif metric in ['lstsq']:
 		func = mse
 		grad_analytical = gradient_mse
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return out/2
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return out/2	
 
 	elif metric in ['mse']:
 		func = mse
 		grad_analytical = gradient_mse
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].size/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/prod(shape)/2
 
-		def wrapper_grad(out,*operands):
-			return out/operands[0].size/2					
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/prod(shape)/2					
 
 	elif metric in ['norm']:
 
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/shape[-1]/2
 		
-		def wrapper_grad(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
 	elif metric in ['abs2']:
 
@@ -6563,41 +6564,41 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 		if ndim is not None:
 			if ndim == 1:
-				def wrapper_func(out,*operands):
+				def wrapper_func(out,*operands,shape=shape):
 					return 1 - out
 
-				def wrapper_grad(out,*operands):
+				def wrapper_grad(out,*operands,shape=shape):
 					return - out
 
 			elif ndim == 2:
-				def wrapper_func(out,*operands):
-					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_func(out,*operands,shape=shape):
+					return 1 - out/prod(shape)
 
-				def wrapper_grad(out,*operands):
-					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_grad(out,*operands,shape=shape):
+					return - out/prod(shape)
 			else:
-				def wrapper_func(out,*operands):
-					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_func(out,*operands,shape=shape):
+					return 1 - out/prod(shape)
 
-				def wrapper_grad(out,*operands):
-					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_grad(out,*operands,shape=shape):
+					return - out/prod(shape)
 
 		else:
-			def wrapper_func(out,*operands):
-				return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+			def wrapper_func(out,*operands,shape=shape):
+				return 1 - out/prod(shape)
 
-			def wrapper_grad(out,*operands):
-				return - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+			def wrapper_grad(out,*operands,shape=shape):
+				return - out/prod(shape)
 
 	elif metric in ['real']:
 
 		func = inner_real
 		grad_analytical = gradient_inner_real
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return 1 - out
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return  - out
 
 	elif metric in ['imag']:
@@ -6605,10 +6606,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_imag
 		grad_analytical = gradient_inner_imag
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return 1 - out
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return - out
 
 	else:
@@ -6616,30 +6617,31 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
-		def wrapper_grad(out,*operands):
-			return out/operands[0].shape[-1]/2
-
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
 	shapes_func = (*(shape for shape in shapes if shape is not None),) if shapes else ()
 	optimize_func = optimize
 	wrapper_func = jit(wrapper_func)
 
-	shapes_grad = (*(shape for shape in shapes if shape is not None),(size**2,*shapes[0]),) if shapes else ()
+	shapes_grad = (*(shape for shape in shapes if shape is not None),(prod(shape),*shapes[0]),) if shapes else ()
 	optimize_grad = optimize
 	wrapper_grad = jit(wrapper_grad)
 
+	shape,shape_grad = [(*shape,)]*len(shapes_func),[*[(*shape,)]*len(shapes_func),*[(prod(shape),*shape)]]
+
 	if shapes_func:
-		func = func(*shapes_func,optimize=optimize_func,wrapper=wrapper_func)
+		func = func(*shapes_func,shape=shape,optimize=optimize_func,wrapper=wrapper_func)
 	else:
-		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
+		func = partial(func,shape=shape,optimize=optimize_grad,wrapper=wrapper_func)
 
 	if shapes_grad:
-		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+		grad_analytical = grad_analytical(*shapes_grad,shape=shape_grad,optimize=optimize_func,wrapper=wrapper_grad)
 	else:
-		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+		grad_analytical = partial(grad_analytical,shape=shape_grad,optimize=optimize_grad,wrapper=wrapper_grad)
 	# grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	grad = grad_analytical
@@ -6701,13 +6703,12 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		return func,grad,grad_analytical
 
 
-
-
-def mse(*operands,optimize=True,wrapper=None):
+def mse(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -6715,65 +6716,169 @@ def mse(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
+	
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:
+			if length == 2:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]							
+				else:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+			else:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]				
+		elif ndim == 2:
+			if length == 2:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]										
+				else:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]					
+			else:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+		else:
+			if length == 2:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['j'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]										
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]					
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]	
+	
 		if length == 2:
-			subscripts = 'i,i->'
+			shapes = (shapes[0],shapes[1])
 		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = 'i,j,ij->'			
+			shapes = (shapes[0],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[0],shapes[1])
+	
+	else:
+		if ndim == 1:
+			if length == 2:
+				subscripts = 'i,i->'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = 'i,i,i->'
+				elif len(shapes[2]) == 2:
+					subscripts = 'i,j,ij->'			
+				else:
+					subscripts = 'i,i->'
 			else:
 				subscripts = 'i,i->'
-		else:
-			subscripts = 'i,i->'
-	elif ndim == 2:
-		if length == 2:
-			subscripts = 'ij,ij->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = 'ij,ik,jk->'			
+		elif ndim == 2:
+			if length == 2:
+				subscripts = 'ij,ij->'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = 'ij,ij,j->'			
+				elif len(shapes[2]) == 2:
+					subscripts = 'ij,ik,jk->'			
+				else:
+					subscripts = 'ij,ij->'
 			else:
 				subscripts = 'ij,ij->'
 		else:
-			subscripts = 'ij,ij->'
-	else:
-		if length == 2:
-			subscripts = '...ij,...ij->...'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
+			if length == 2:
+				subscripts = '...ij,...ij->...'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,...ij,j->...'
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,...ik,jk->...'
+				else:
+					subscripts = '...ij,...ij->...'
 			else:
 				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
 
-	if length == 2:
-		shapes = (shapes[0],shapes[1])
-	elif length == 3:
-		shapes = (shapes[0],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[0],shapes[1])
+		if length == 2:
+			shapes = (shapes[0],shapes[1])
+		elif length == 3:
+			shapes = (shapes[0],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = real(einsummation(out,out,*operands[2:]))
+		out = real(einsummation(out,out,*operands[2:length]))
 		# out = real(einsummation(out,conjugate(out),*operands[2:])/
 		# 		   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
 		return wrapper(out,*operands)
@@ -6785,11 +6890,12 @@ def mse(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_mse(*operands,optimize=True,wrapper=None):
+def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -6797,58 +6903,162 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
+	
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]			
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]				
+		elif ndim == 2:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]						
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]					
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]										
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]														
+		else:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]						
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]						
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]										
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+
 		if length == 3:
-			subscripts = '...i,i->'
+			shapes = (shapes[2],shapes[1])
 		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = '...i,j,ij->'			
+			shapes = (shapes[3],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[2],shapes[1])
+
+	else:
+		if ndim == 1:
+			if length == 3:
+				subscripts = '...i,i->'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...i,i,i->'
+				elif len(shapes[2]) == 2:
+					subscripts = '...i,j,ij->'			
+				else:
+					subscripts = '...i,i->'
 			else:
 				subscripts = '...i,i->'
-		else:
-			subscripts = '...i,i->'
-	elif ndim == 2:
-		if length == 3:
-			subscripts = '...ij,ij->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,ik,jk->'			
+		elif ndim == 2:
+			if length == 3:
+				subscripts = '...ij,ij->'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,ij,j->'			
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,ik,jk->'			
+				else:
+					subscripts = '...ij,ij->'
 			else:
 				subscripts = '...ij,ij->'
 		else:
-			subscripts = '...ij,ij->'
-	else:
-		if length == 3:
-			subscripts = '...ij,...ij->...'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
+			if length == 3:
+				subscripts = '...ij,...ij->...'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,...ij,j->...'
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,...ik,jk->...'
+				else:
+					subscripts = '...ij,...ij->...'
 			else:
 				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
 
-	if length == 3:
-		shapes = (shapes[2],shapes[1])
-	elif length == 4:
-		shapes = (shapes[3],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[2],shapes[1])
+		if length == 3:
+			shapes = (shapes[2],shapes[1])
+		elif length == 4:
+			shapes = (shapes[3],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[2],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
@@ -6883,208 +7093,60 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 
 	return out
 
-
-
-def inner_prod(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	isarray = all(isinstance(operand,arrays) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
-	if isarray:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
-
-	if ndim == 1:
-		if length == 2:
-			subscripts = 'i,i->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = 'i,j,ij->'			
-			else:
-				subscripts = 'i,i->'
-		else:
-			subscripts = 'i,i->'
-	elif ndim == 2:
-		if length == 2:
-			subscripts = 'ij,ij->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = 'ij,ik,jk->'			
-			else:
-				subscripts = 'ij,ij->'
-		else:
-			subscripts = 'ij,ij->'
-	else:
-		if length == 2:
-			subscripts = '...ij,...ij->...'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
-			else:
-				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
-
-	if length == 2:
-		shapes = (shapes[0],shapes[1])
-	elif length == 3:
-		shapes = (shapes[0],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[0],shapes[1])
-
-	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
-
-	@jit
-	def func(*operands):
-		out = real(einsummation(*operands[:length]))
-		return wrapper(out,*operands)
-
-	if isarray:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-def gradient_inner_prod(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate gradient of inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	isarray = all(isinstance(operand,arrays) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
-	if isarray:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
-
-	if ndim == 1:
-		if length == 3:
-			subscripts = '...i,i->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = '...i,j,ij->'			
-			else:
-				subscripts = '...i,i->'
-		else:
-			subscripts = '...i,i->'
-	elif ndim == 2:
-		if length == 3:
-			subscripts = '...ij,ij->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,ik,jk->'			
-			else:
-				subscripts = '...ij,ij->'
-		else:
-			subscripts = '...ij,ij->'
-	else:
-		if length == 3:
-			subscripts = '...ij,...ij->...'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
-			else:
-				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
-
-	if length == 3:
-		shapes = (shapes[2],shapes[1])
-	elif length == 4:
-		shapes = (shapes[3],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[2],shapes[1])
-
-
-	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
-
-	if length == 3:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[2],operands[1]))
-			return wrapper(out,*operands)
-	elif length == 4:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[3],operands[1],operands[2]))
-			return wrapper(out,*operands)
-	else:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[2],operands[1]))
-			return wrapper(out,*operands)			
-
-	if isarray:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-
-def inner_norm(*operands,optimize=True,wrapper=None):
+def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i->'
-	elif ndim == 2:
-		subscripts = 'ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],)
+
 	else:
-		subscripts = '...ij->...'
+		if ndim == 1:
+			subscripts = 'i->'
+		elif ndim == 2:
+			subscripts = 'ij->'
+		else:
+			subscripts = '...ij->...'
 
-	shapes = (shapes[0],)
+		shapes = (shapes[0],)
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
@@ -7100,11 +7162,12 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_inner_norm(*operands,optimize=True,wrapper=None):
+def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7112,22 +7175,50 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
@@ -7145,11 +7236,12 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_abs2(*operands,optimize=True,wrapper=None):
+def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate absolute square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7161,24 +7253,52 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
-	else:
-		subscripts = '...ij,...ij->...'
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	shapes = (shapes[0],shapes[1])
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
+	else:
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
+		out = abs2(einsummation(*operands[:2]))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
 	if isarray:
@@ -7190,11 +7310,12 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 
 
-def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
+def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of absolute square of inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7202,33 +7323,83 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts_func = 'i,i->'
-	elif ndim == 2:
-		subscripts_func = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts_func = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts_func = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts_func = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes_func = (shapes[0],shapes[1])
+
 	else:
-		subscripts_func = '...ij,...ij->...'
-
-	shapes_func = (shapes[0],shapes[1])
+		if ndim == 1:
+			subscripts_func = 'i,i->'
+		elif ndim == 2:
+			subscripts_func = 'ij,ij->'
+		else:
+			subscripts_func = '...ij,...ij->...'
+		
+		shapes_func = (shapes[0],shapes[1])
 
 	einsummation_func = einsummand(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
-	if ndim == 1:
-		subscripts_grad = '...i,i->...'
-	elif ndim == 2:
-		subscripts_grad = '...ij,ij->...'
-	else:
-		subscripts_grad = '...ij,...ij->...'
 
-	shapes_grad = (shapes[2],shapes[1])
+
+	if tensor:
+		if ndim == 1:	
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes_grad = (shapes[2],shapes[1])
+
+	else:
+		if ndim == 1:
+			subscripts_grad = '...i,i->...'
+		elif ndim == 2:
+			subscripts_grad = '...ij,ij->...'
+		else:
+			subscripts_grad = '...ij,...ij->...'
+		
+		shapes_grad = (shapes[2],shapes[1])
 
 	einsummation_grad = einsummand(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
 
@@ -7245,11 +7416,12 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_real(*operands,optimize=True,wrapper=None):
+def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7257,28 +7429,56 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
-
-	shapes = (shapes[0],shapes[1])
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = real(einsummation(*operands))
+		out = real(einsummation(*operands[:2]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -7289,11 +7489,12 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_real(*operands,optimize=True,wrapper=None):
+def gradient_inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7301,22 +7502,50 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
@@ -7333,11 +7562,12 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_imag(*operands,optimize=True,wrapper=None):
+def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -7345,28 +7575,56 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
-
-	shapes = (shapes[0],shapes[1])
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands).imag
+		out = imag(einsummation(*operands[:2]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -7377,40 +7635,69 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_imag(*operands,optimize=True,wrapper=None):
+def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = einsummation(operands[2],operands[1]).imag
+		out = imag(einsummation(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -7838,7 +8125,7 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
 
-	noperands = subscripts.count(',')+1 if isinstance(subscripts,str) else len(subscripts)-1
+	noperands = subscripts.count(',')+subscripts.count('->')  if isinstance(subscripts,str) else len(operands)
 	operands = operands[:noperands]
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
@@ -7860,6 +8147,10 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return wrapper(func(*operands),*operands)
+			elif len(subscripts)==len(operands):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
@@ -7870,6 +8161,10 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return func(*operands)
+			elif len(subscripts)==len(operands):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)			
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
@@ -7881,6 +8176,10 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return wrapper(func(*operands),*operands)
+			elif len(subscripts)==len(operands):				
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)),*operands)
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
@@ -7891,6 +8190,10 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return func(*operands)
+			elif len(subscripts)==len(operands):				
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)))			
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
@@ -7922,6 +8225,8 @@ def einsum_path(subscripts,*shapes,optimize=True):
 		# operands = (zeros(shape) for shape in shapes)
 		# optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
 		args = (subscripts,*shapes)
+	elif len(subscripts)==len(shapes):
+		args = (*(j for i in zip(shapes,subscripts) for j in i),)
 	else:
 		args = (*(j for i in zip(shapes,subscripts[:-1]) for j in i),subscripts[-1])
 
@@ -10904,7 +11209,7 @@ def piecewise(func,bounds,**kwargs):
 		else:
 			r = x
 		conditions = [(
-			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) and 
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
 			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
 			)
 			for i in range(n)]

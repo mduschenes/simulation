@@ -55,11 +55,11 @@ def test_basis(*args,**kwargs):
 	options = Dict(D=D,N=N,ndim=ndim,shape=shape,operator=operator,key=key,dtype=dtype)
 
 	operators = {
-		"rand":Dict(locality=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimension=2),
-		"X":Dict(locality=1,shapes={i:[options.D]*options.N for i in range(K)},dimension=2),
-		"depolarize":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),
-		"string":Dict(locality=len(operator.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(operator.split(delim))},dimension=3),
-		"pauli":Dict(locality=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimension=3),		
+		"rand":Dict(localities=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimensions=2),
+		"X":Dict(localities=1,shapes={i:[options.D]*options.N for i in range(K)},dimensions=2),
+		"depolarize":Dict(localities=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimensions=3),
+		"string":Dict(localities=len(operator.split(delim)),shapes={0:[1,options.D**2,1],1:[2,options.D,options.D],2:[options.D]*len(operator.split(delim))},dimensions=3),
+		"pauli":Dict(localities=1,shapes={**{i:[options.D**2]*options.N for i in range(1)},**{i:[options.D]*options.N for i in range(1,K+1)}},dimensions=3),		
 		}
 
 	for operator in operators:
@@ -89,7 +89,6 @@ def test_basis(*args,**kwargs):
 
 		print(operator)
 		print(data.round(8))
-		# print(dot(dagger(data),data))
 		print()
 
 		assert (kwargs.D > 2) or allclose(data,operators[operator]),"Incorrect %s"%(operator)
@@ -220,6 +219,8 @@ def test_null(*args,**kwargs):
 
 	model.info(verbose=verbose)
 
+
+	print('Passed')
 
 	return
 
@@ -555,6 +556,7 @@ def test_data(path,tol):
 	P = model.P
 	locality = model.locality
 	local = model.local
+	tensor = model.tensor
 
 	if local:
 		string = [
@@ -588,9 +590,9 @@ def test_data(path,tol):
 		identity = tensorprod(array([basis[default]]*N))
 	else:
 		data = [tensorprod(array([basis[i] for i in s])) for s in string]
-		identity = tensorprod(array([basis[default]]*N))		
+		identity = tensorprod(array([basis[default]]*N))
 
-	assert allclose(model.identity(),identity), "Incorrect model identity"
+	assert allclose(model.identity().ravel(),identity.ravel()), "Incorrect model identity"
 
 	data = trotter(data,P)
 	string = trotter(string,P)
@@ -598,7 +600,7 @@ def test_data(path,tol):
 	where = trotter([model.data[i].where for i in model.data if model.data[i].unitary],P)
 
 	for i,(s,d,D,index) in enumerate(zip(string,data,datas,where)):
-		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
+		assert allclose(d.ravel(),D.ravel()), "data[%s,%d] incorrect"%(s,i)
 	
 	print("Passed")
 	
@@ -713,12 +715,6 @@ def test_copy(*args,**kwargs):
 	return
 
 
-
-
-	return
-
-
-
 def test_initialization(path,tol):
 
 	default = None
@@ -757,6 +753,7 @@ def test_initialization(path,tol):
 				state=state,
 				noise=[model.data[i] for i in model.data 
 					if (model.data[i] is not None) and (not model.data[i].unitary)],
+				shape=model.shape,size=model.size,ndim=model.ndim,dtype=model.dtype,
 				info=model.info,hermitian=model.hermitian,unitary=model.unitary),
 			metric=Dictionary(
 				func=metric.__call__,
@@ -771,11 +768,13 @@ def test_initialization(path,tol):
 				state=state,
 				info=label.info,
 				hermitian=label.hermitian,
-				unitary=label.unitary),
+				unitary=label.unitary,
+				shape=label.shape,size=label.size,ndim=label.ndim,dtype=label.dtype),			
 			state=Dictionary(
 				func=state.__call__,
 				data=state(),
 				state=state,
+				shape=state.shape,size=state.size,ndim=state.ndim,dtype=state.dtype,							
 				info=state.info,hermitian=state.hermitian,unitary=state.unitary),
 			)
 
@@ -896,22 +895,40 @@ def test_initialization(path,tol):
 	VpsiV = old.label.data
 	V = tmp.label.data
 
+	shape = old.state.shape
+	UpsiU = reshape(UpsiU,shape) if UpsiU is not None else None
+
+	shape = old.model.shape
+	U = reshape(U,shape) if U is not None else None
+
+	shape = old.state.shape
+	psi = reshape(psi,shape) if psi is not None else None
+
+	shape = old.model.shape
+	K = reshape(K,[-1,*shape]) if K is not None else None
+
+	shape = old.model.shape
+	VpsiV = reshape(VpsiV,shape) if VpsiV is not None else None
+
+	shape = old.label.shape
+	V = reshape(V,shape) if V is not None else None
+
 	if K is None:
 		if psi is None:
 			return
-		elif psi.ndim == 1:
+		elif old.state.ndim == 1:
 			UpsiUtmp = einsum("ij,j->i",U,psi,conjugate(U))
 			VpsiVtmp = einsum("ij,j->i",V,psi,conjugate(V))
-		elif psi.ndim == 2:
+		elif old.state.ndim == 2:
 			UpsiUtmp = einsum("ij,jk,lk->il",U,psi,conjugate(U))
 			VpsiVtmp = einsum("ij,jk,lk->il",V,psi,conjugate(V))		
 	elif K is not None:
 		#TODO: Implement test for multiple layers of noise 
 		if psi is None:
 			return
-		elif psi.ndim == 1:
+		elif old.state.ndim == 1:
 			return
-		elif psi.ndim == 2 and model.M == 1:
+		elif old.state.ndim == 2 and model.M == 1:
 			UpsiUtmp = einsum("uij,jk,kl,ml,unm->in",K,U,psi,conjugate(U),conjugate(K))
 			VpsiVtmp = einsum("ij,jk,lk->il",V,psi,conjugate(V))		
 		else:
@@ -1361,7 +1378,6 @@ def test_measure(*args,**kwargs):
 
 		print(settings["measure"]["operator"])
 		print(measure,len(measure),measure.D,state.D)
-		print(measure.identity)
 		print(measure.inverse)
 		print()
 
@@ -1402,11 +1418,6 @@ def test_metric(path,tol):
 	model.init(state=state)
 
 	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
-
-
-	print(state())
-	print(label.parameters())
-	print(label.data)
 
 	out = metric(label())
 
@@ -1599,10 +1610,7 @@ def test_objective(path,tol):
 
 	parameters = model.parameters()
 	state = model.state()
-	label = model(parameters,state=state)
-
-	print(state)
-	print(label)
+	label = partial(model,parameters=parameters,state=state)
 
 	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
@@ -2451,7 +2459,7 @@ def test_mps(*args,**kwargs):
 	from importlib import reload
 	import src
 
-	from src.utils import array,allclose,conjugate,dagger,seeder,permutations,tensorprod,inv
+	from src.utils import array,allclose,seeder,permutations,tensorprod,inv
 
 	def representation_quimb(data):
 		return data.to_dense().ravel()
@@ -2616,8 +2624,8 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[5],"module.measure.operator":["tetrad"],
-		"model.N":[4],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[4],"module.measure.operator":["tetrad"],
+		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2630,8 +2638,8 @@ def test_class(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
 			"tensor",
-			# "tensor_quimb",
-			# "array",
+			"tensor_quimb",
+			"array",
 			] 
 		)
 		]

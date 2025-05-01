@@ -113,9 +113,9 @@ def test_fisher(path,tol):
 
 		hyperparameters = settings.optimize
 		system = settings.system
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
-		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+		model = model(**{**settings.model,**dict(system=system,verbose=False)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system,verbose=False)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system,verbose=False)})
 
 		label.init(state=state)
 		model.init(state=state)
@@ -535,10 +535,10 @@ if __name__ == '__main__':
 	# test_logger(path,tol)
 	# test_data(path,tol)
 	# test_initialization(path,tol)
-	# test_hessian(path,tol)
+	test_hessian(path,tol)
 	# test_model(path,tol)
 
-	test_fisher(path,tol)
+	# test_fisher(path,tol)
 	# test_object(path,tol)
 	# test_data(path,tol)
 

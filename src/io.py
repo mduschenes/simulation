@@ -237,7 +237,10 @@ def rm(path):
 		try:
 			os.rmdir(path)
 		except Exception as exception:
-			pass
+			try:
+				shutil.rmtree(path)
+			except Exception as exception:
+				pass
 
 	return
 

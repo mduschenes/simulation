@@ -1304,21 +1304,15 @@ def test_sortgroupby(path=None,tol=None):
 		for key in keys:
 			iterable = {index:obj(where) for index,where in enumerate(where for i in keys[key](N) for where in [(i,i+1),(i,),(i+1,)])}
 
-			print(key,N,len(iterable))
-			print(iterable)
-
 			iterable = {index: iterable[i] for index,i in enumerate(sortby(iterable,key=key))}
-
-			print(iterable)
 
 			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,key=key))}
 
-			print(iterable)
-
-			assert [i for index in iterable for i in iterable[index]] == list(range(3*(N-1)))
-
-			print()
-
+			print(key,N,len(iterable))
+			if key in ['src.functions.brickwork']:
+				assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in [*range(0,N-1,2),*range(1,N-1,2)] for j in [(i,i+1),(i,),(i+1,)]]))
+			elif key in ['src.functions.nearestneighbour']:
+				assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in [*range(0,N-1,1)] for j in [(i,i+1),(i,),(i+1,)]]))
 
 	print('Passed')
 
@@ -1435,7 +1429,12 @@ def test_tensor(path=None,tol=None):
 
 	objs = {}
 
-	objs['einsum'] = tensor(data=einsum(obj.data,obj.indices,other.data,other.indices),indices=sorted(set(i for i in [*obj.indices,*other.indices] if not (i in obj.indices and i in other.indices)),key=lambda i: (obj.indices.index(i) if i in obj.indices else len(obj.indices),other.indices.index(i) if i in other.indices else len(other.indices))))
+
+	indices = sorted(set(i for i in [*obj.indices,*other.indices] 
+			if not (i in obj.indices and i in other.indices)),
+			key=lambda i: [*obj.indices,*other.indices].index(i))
+	data = einsum(obj.data,obj.indices,other.data,other.indices,indices)
+	objs['einsum'] = tensor(data=data,indices=indices)
 
 	objs['call'] = obj((obj,other))
 
@@ -1448,7 +1447,7 @@ def test_tensor(path=None,tol=None):
 	objs['copy'] = obj.copy(deep=True)
 
 	for i in objs:
-		print(objs[i])
+		print(i,objs[i])
 
 	assert all(allclose(objs[i](),objs[j]()) for i in objs for j in objs)
 
@@ -1557,12 +1556,12 @@ if __name__ == '__main__':
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_norm(path,tol)
+	test_norm(path,tol)
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_shuffle(path,tol)	
-	test_contract(path,tol)
+	# test_contract(path,tol)
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
