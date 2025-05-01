@@ -7271,7 +7271,8 @@ class Objects(Object):
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.path
 			path = join(file,root=root)
-			dump(data[attr],path)
+			lock = self.lock
+			dump(data[attr],path,lock=lock)
 		
 		return
 
@@ -7952,11 +7953,12 @@ class Module(System):
 			state = self.state()
 			model = self
 			data = data
+			lock = self.lock
 			kwargs = {}
 
 			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
 
-			dump(data,path)
+			dump(data,path,lock=lock)
 		
 		return
 
