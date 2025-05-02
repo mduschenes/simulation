@@ -108,7 +108,7 @@ class System(Dictionary):
 			kwargs[attr] = defaults.get(attr) if kwargs.get(attr,defaults.get(attr)) is None else kwargs.get(attr)
 
 			attr = 'backend'
-			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
+			kwargs[attr] = (os.environ.get('NUMPY_BACKEND').lower() if os.environ.get("NUMPY_BACKEND") is not None else None) if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
 
 			attr = 'instances'
 			if kwargs.get(attr) is not None:

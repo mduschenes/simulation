@@ -14,7 +14,7 @@ from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slic
 from src.utils import array,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dotr,dotl,inner,outer,trace,norm,eig,svd,svds,diag,inv,sqrtm,addition,product
+from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
@@ -1167,7 +1167,7 @@ class Measure(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','operator','D','K','basis','data','inverse']:
+		for attr in [None,'string','key','seed','instance','instances','backend','architecture','timestamp','operator','N','D','K','basis','data','inverse']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5168,7 +5168,7 @@ class Object(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','N','D','data','shape','size','ndim','dtype','cwd','path','backend','conf','logger','cleanup']:
+		for attr in [None,'string','key','seed','instance','instances','backend','architecture','timestamp','N','D','d','data','shape','size','ndim','dtype','cwd','path','conf','logger','cleanup']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -7897,7 +7897,7 @@ class Module(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','timestamp','N','M','measure','architecture','model','data']:
+		for attr in [None,'string','key','seed','instance','instances','backend','architecture','timestamp','N','M','measure','model','data']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -8085,7 +8085,7 @@ class Callback(System):
 			'entropy':[],'purity':[],'similarity':[],'divergence':[],
 
 			'N':[],'D':[],'d':[],'M':[],'T':[],'tau':[],'P':[],
-			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
+			'space':[],'time':[],'lattice':[],'backend':[],'architecture':[],'timestamp':[],
 
 			'noise.string':[],'noise.ndim':[],'noise.locality':[],'noise.method':[],'noise.scale':[],'noise.tau':[],'noise.initialization':[],
 			'noise.parameters':[],

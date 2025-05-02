@@ -2624,14 +2624,14 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[3],"module.measure.operator":["tetrad"],
+		"module.M":[2],"module.measure.operator":["tetrad"],
 		"model.N":[4],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.options":[{"S":None,"eps":1e7,"parameters":1e2,"method":"mu","initialize":"nndsvda","scheme":"nmf"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
+		"callback.options":[{"S":None,"eps":None,"parameters":None,"method":None,"initialize":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
@@ -2669,34 +2669,14 @@ def test_class(*args,**kwargs):
 		},
 		"model":{
 			"data":{
-				# "local":{
-				# 	"operator":"haar","where":"i","string":"local",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				# },
 				"unitary":{
 					"operator":"unitary","where":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},
-				# "unitary":{
-				# 	"operator":"haar","where":"||ij||","string":"unitary",
-				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				# },				
-				"noise":{
-					"operator":["depolarize"],"where":"||i.j||","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				},
-				# "unitary":{
-				# 	"operator":["X","X"],"where":"||ij||","string":"unitary",
-				# 	"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
-				# },				
 				# "noise":{
-				# 	"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
+				# 	"operator":["depolarize"],"where":"||i.j||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				# },					
-				# "xx":{
-				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
-				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
-				# },												
+				# },
 			},
 			"N":4,
 			"D":2,
@@ -2788,8 +2768,8 @@ def test_class(*args,**kwargs):
 	
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
-		module.info(verbose=verbose)
 		model.info(verbose=verbose)
+		module.info(verbose=verbose)
 
 		parameters = module.parameters()
 		state = module.state()
@@ -2797,17 +2777,19 @@ def test_class(*args,**kwargs):
 
 		state = module(parameters,state)
 
-		value = module.measure.trace(parameters=parameters,state=state)
-		if module.measure.architecture in ['array']:
-			value = array(value)
-		elif module.measure.architecture in ['tensor']:
-			value = value.array().item()
-		elif module.measure.architecture in ['tensor_quimb']:
-			value = representation_quimb(value,to=module.measure.architecture,contraction=True)
+		if verbose or 1:
 
-		print(module.measure.architecture)
-		print(state)
-		print(value)
+			value = module.measure.trace(parameters=parameters,state=state)
+			if module.measure.architecture in ['array']:
+				value = array(value)
+			elif module.measure.architecture in ['tensor']:
+				value = value.array().item()
+			elif module.measure.architecture in ['tensor_quimb']:
+				value = representation_quimb(value,to=module.measure.architecture,contraction=True)
+
+			print(module.measure.architecture)
+			print(state)
+			print(value)
 
 
 		# Value
@@ -2826,7 +2808,7 @@ def test_class(*args,**kwargs):
 			data[index][key] = value
 
 
-			if verbose or 1:
+			if verbose:
 				print(module.measure.architecture)
 				print(parse(value))
 
