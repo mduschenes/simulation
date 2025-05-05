@@ -1547,6 +1547,123 @@ def test_network(path=None,tol=None):
 	return
 
 
+
+def test_nmf(path=None,tol=None):
+
+	from src.utils import array,rand
+	from src.utils import nmf
+	from src.utils import addition,norm,condition_number
+	from src.utils import seeder,delim
+	from src.iterables import permuter,setter,getter
+	from src.io import load,dump,join,exists
+
+	import matplotlib
+	import matplotlib.pyplot as plt
+	from random import choices,seed	
+
+
+	seed(0)
+	kwargs = {'seed':choices(range(int(1e4)),k=int(1e1))}
+	# kwargs = {'seed':[7288]}
+	data = {}
+
+	directory = 'data'
+	file = 'data'
+	path = join(directory,file,ext='pkl')
+
+	run = True# and not exists(path)
+	plot = True
+
+	if run:
+
+		print('Run',kwargs)
+
+		for index,kwargs in enumerate(permuter(kwargs)):
+			options = {
+				'rank': None,
+				'eps': int(0),
+				'parameters': 0,
+				'method': 'mu',
+				'initialize': 'nndsvdr',
+				'seed': 123,
+				}
+			def init(options):
+				options['key'] = seeder(options['seed'])
+				return
+
+			def err(a,u,v,s):
+				return norm(a-dot(u*s,v))/norm(a)
+
+			a = join(directory,file,ext='npy')
+			setter(options,kwargs,delimiter=delim,default='replace')
+
+			a = load(a)
+			init(options)
+
+			u,v,s = nmf(a,**options)
+
+			data[index] = {
+				'options':options,
+				'kwargs':kwargs,
+				'error':err(a,u,v,s),
+				# 'cond.u':condition_number(u),
+				# 'cond.v':condition_number(v)
+				}
+
+			print(index,{attr: data[index][attr] for attr in data[index] if attr not in ['options']})
+
+		dump(data,path)
+
+
+	if plot:
+
+		print('Plot',path)
+		
+		data = load(path)
+
+		attribute = 'seed'
+		attrs = list(set(i for index in data for i in data[index] if i not in ['options','kwargs']))
+		texify = {'seed':'$\\textnormal{Seed}$','error':'$\\textnormal{Error}~\\norm{A-UV}/\\norm{A}$','cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$','cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$'}
+		mplstyle = 'config/plot.mplstyle'
+		with matplotlib.style.context(mplstyle):
+			for attr in attrs:
+
+				try:
+
+					fname = join(directory,'%s.%s'%(file,attr),ext='pdf')
+					options = dict(marker='o',linestyle='--',markersize=12,linewidth=3)
+
+					fig,ax = plt.subplots()
+					
+					indices = sorted(data,key=lambda i:data[i]['error'])[::10]
+					x = [i for i,index in enumerate(indices)]
+					y = [data[index][attr] for i,index in enumerate(indices)]
+
+					ax.plot(x,y,**options)
+
+					ax.set_xlabel(xlabel=texify.get(attribute))
+					ax.set_ylabel(ylabel=texify.get(attr))
+					ax.set_xscale(value='linear')
+					ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
+					ax.set_xticklabels(labels=['$%d$'%(data[index]['options'][attribute]) for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
+
+					if attr in ['cond.u','cond.v']:
+						ax.set_yscale(value='log')
+						ax.set_yticks(ticks=[1e-1,1e0,1e1,1e2,1e3,1e4])
+					else:
+						ax.set_yscale(value='log')
+						# ax.set_yticks(ticks=[1,2,3,4])
+
+					fig.set_size_inches(w=10,h=10)
+					fig.subplots_adjust()
+					fig.tight_layout()
+					fig.savefig(fname,bbox_inches='tight',pad_inches=0.2)
+
+				except:
+					pass
+	return
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -1556,7 +1673,7 @@ if __name__ == '__main__':
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
-	test_norm(path,tol)
+	# test_norm(path,tol)
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
@@ -1574,3 +1691,4 @@ if __name__ == '__main__':
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)
+	test_nmf(path,tol)

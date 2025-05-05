@@ -2629,7 +2629,11 @@ def test_class(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"S":None,"eps":1e7,"parameters":1e2,"method":"mu","initialize":"nndsvda","scheme":"nmf"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.options":[
+			{"S":None,"eps":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"contract":"swap+split","max_bond":None,"cutoff":0},
+			{"periodic":False}
+			],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
 		"callback.options":[{"S":None,"eps":None,"parameters":None,"method":None,"initialize":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	

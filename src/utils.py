@@ -3259,6 +3259,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					data = self.organize(data,where=where,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
+					print(where,addition(data))
+
 					u,v,s = self.scheme[scheme](data,conj=False,**{**defaults,**kwargs,**options})
 
 					data = self.organize((u,v),where=where,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
@@ -3356,7 +3358,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 				elif isinstance(data,tuple):
 					where = range(len(data)) if where is None else [where] if not isinstance(where,iterables) else [*where]
-					shape = [[*data[0].shape[:2],1],[1,*data[1].shape[-2:]]] if shape is None else shape
+					shape = [[*data[0].shape[:2],-1],[-1,*data[1].shape[-2:]]] if shape is None else shape
 					axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
 					data = [transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)]
 					
@@ -3472,7 +3474,22 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 					u,v = u,dotl(v,s)
 					return u,v,s
-			elif scheme in ['nmf']:
+			
+			def wrapper(func):
+				def decorator(a,rank=None,conj=None,**kwargs):
+					a = dagger(a) if conj else a
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
+					u,v,s = func(a,rank=rank,conj=conj,**kwargs) 
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					s = addition(u,0)
+					u,v,s = dotr(u,reciprocal(s)),dotl(v,s),s
+					u,v,s = u,v,rank
+					u,v,s = (dagger(v),dagger(u),s) if conj else (u,v,s)
+					u,v,s = cmplx(u),cmplx(v),s
+					return u,v,s
+				return decorator
+
+			if scheme in ['nmf']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
 					u,v,s = nmf(real(a),**{**kwargs,**options,**dict(rank=rank)})
@@ -3606,15 +3623,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			func = self.func
 
+			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme'))
+			if scheme is not None:
+				state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
+
 			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
 			if scheme is not None:
 				data = state.update(data,shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
-
-			scheme = {'svd':None,'nmf':'stq'}.get(scheme)
-			if scheme is not None:
-				state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			data = state
 
@@ -5320,7 +5337,7 @@ def eig(a,compute_v=False,hermitian=False):
 		if hermitian:
 			_eig = np.linalg.eigh
 		else:
-			_eig = sp.linalg.eig
+			_eig = np.linalg.eig
 	else:
 		if hermitian:
 			_eig = np.linalg.eigvalsh
@@ -5423,8 +5440,9 @@ def lu(a,**kwargs):
 	Args:
 		a (array): Array to compute LU decomposition of shape (...,n,n)
 	Returns:
-		L (array): LU factor of shape (...,n,n)
-		U (array): LU factor of shape (...,n,n)
+		P (array): P factor of shape (...,n,n)
+		L (array): L factor of shape (...,n,n)
+		U (array): U factor of shape (...,n,n)
 	'''
 	return sp.linalg.lu(a)
 
@@ -5573,6 +5591,8 @@ def nndsvd(a,u,v,rank=None,eps=None):
 
 	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []))
 
+	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+
 	start,end,x = 0,rank,(u,v,s)
 	x = forloop(start,end,func,x)
 	u,v,s = x
@@ -5580,127 +5600,163 @@ def nndsvd(a,u,v,rank=None,eps=None):
 	return u,v,s
 
 def nmfd(u,v,rank=None):
-	rank = min(*a.shape) if rank is None else min(*a.shape,rank)            
-	x,y = add(u,0),add(v,1)
+	x,y = addition(u,0),addition(v,1)
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
 
-def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,samples=None,method=None,initialize=None,**kwargs):
 	
 	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	eps = epsilon(a.dtype) if eps is None else eps
+	samples = [*samples] if isinstance(samples,iterables) else [samples] if samples is not None else []
 
-	def init(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None):
+	def init(a,u=None,v=None,rank=None,eps=None,parameters=None,samples=None,method=None,initialize=None,**kwargs):
+		eps = epsilon(a.dtype)
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None			
+			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+		elif initialize in ['rand']:				
+			u = random(shape=[*a.shape[:-1],rank],dtype=a.dtype,**kwargs)
+			v = random(shape=[rank,*a.shape[1:]],dtype=a.dtype,**kwargs)
+			u,v = dotr(u,reciprocal(addition(u,0))),dotl(v,reciprocal(addition(v,-1)))
 		elif initialize in ['nndsvd']:
 			u,v,s = nndsvd(a,u=u,v=v,rank=rank,eps=eps)		
+			z = sqrt(addition(dot(u,v)))
+			u,v = u*reciprocal(z),v*reciprocal(z)		
 		elif initialize in ['nndsvda']:
 			u,v,s = nndsvd(a,u=u,v=v,rank=rank,eps=eps)		
-			x = eps
-			debug(u[u<0])
-			debug(v[v<0])
-			u,v = inplace(u,u==0,x),inplace(v,v==0,x)
+			x = mean(a)/a.size
+			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+			z = sqrt(addition(dot(u,v)))
+			u,v = u*reciprocal(z),v*reciprocal(z)			
+		elif initialize in ['nndsvdr']:
+			u,v,s = nndsvd(a,u=u,v=v,rank=rank,eps=eps)		
+			i = u<=eps
+			j = v<=eps
+			x = random(shape=(addition(i),),dtype=a.dtype,**kwargs)
+			y = random(shape=(addition(j),),dtype=a.dtype,**kwargs)
+			u,v = inplace(u,i,x),inplace(v,j,y)
+			z = sqrt(addition(dot(u,v)))
+			u,v = u*reciprocal(z),v*reciprocal(z)
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
 		return u,v
 	
-	def run(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None):
+	def run(a,u=None,v=None,rank=None,eps=None,parameters=None,samples=None,method=None,initialize=None,**kwargs):
+		if method is None:
+			def func(i,x):
+
+				a,u,v = x
+				
+				u,v = (
+					(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
+					(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
+				)
+
+				x = a,u,v
+
+				return x		
+		elif method in ['mu']:
+			def func(i,x):
+
+				a,u,v = x
+				
+				u = (dot(a,transpose(v))*reciprocal(dot(u,dot(v,transpose(v)))))*u
+				v = (dot(transpose(u),a)*reciprocal(dot(dot(transpose(u),u),v)))*v
+
+				x = a,u,v
+
+				return x
+		elif method in ['klmu']:
+			def func(i,x):
+
+				a,u,v = x
+				
+				u = dot((a/dot(u,v)),transpose(v))*u
+				u = dotr(u,reciprocal(addition(u,0)))
+				v = dot(transpose(u),(a/dot(u,v)))*v
+
+				x = a,u,v
+
+				return x				
+		elif method in ['psvd']:
+			def func(i,x):
+
+				a,u,v = x
+				
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+				u,v = maximums(u,eps),maximums(v,eps)
+
+				x = a,u,v
+
+				return x		
+		elif method in ['als']:
+			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
+			def func(i,x):
+
+				a,u,v = x
+				
+				v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a))
+				v = maximums(v,eps)
+				
+				u = solve(dot(v,transpose(v))+parameters,dot(a,transpose(v)))
+				u = maximums(u,eps)
+
+				z = sqrt(addition(dot(u,v)))
+				u,v = u*reciprocal(z),v*reciprocal(z)
+
+				x = a,u,v
+
+				return x	
+		else:
+			def func(i,x):
+
+				a,u,v = x
+				
+				x = a,u,v
+
+				return x	
+
 		if isinstance(eps,int) or float(eps)==int(eps):
 			eps = int(eps)
-			func = update
+			func = func
 			start,end,func,x = 0,eps,func,(a,u,v)
 			x = forloop(start,end,func,x)
 			a,u,v = x
 		elif isinstance(eps,float):
 			eps = float(eps)
 			cond = lambda x,a=a,eps=eps: error(x,a) > eps
-			cond,func,x = cond,partial(update,None),(a,u,v)
+			cond,func,x = cond,partial(func,None),(a,u,v)
 			x = whileloop(cond,func,x)
 			a,u,v = x           
-			
 		return u,v
-
-	if method is None:
-		def update(i,x):
-
-			a,u,v = x
-			
-			u,v = (
-				(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
-				(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
-			)
-
-			x = a,u,v
-
-			return x		
-	elif method in ['mu']:
-		def update(i,x):
-
-			a,u,v = x
-			
-			u,v = (
-				(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
-				(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
-			)
-
-			x = a,u,v
-
-			return x
-	elif method in ['psvd']:
-		def update(i,x):
-
-			a,u,v = x
-			
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
-			u,v = maximums(u,eps),maximums(v,eps)
-
-			x = a,u,v
-
-			return x		
-	elif method in ['als']:
-		parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
-		def update(i,x):
-
-			a,u,v = x
-			
-			v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a))
-			v = maximums(v,eps)
-			
-			u = solve(dot(v,transpose(v))+parameters,dot(a,transpose(v)))
-			u = maximums(u,eps)
-
-			x = a,u,v
-
-			return x	
-	else:
-		def update(i,x):
-
-			a,u,v = x
-			
-			x = a,u,v
-
-			return x		
 
 	def error(x,a):
 		b,u,v = x
 		return norm(a-dot(u,v))/norm(a)
 	
-	u,v = init(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize)
+	u,v = init(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,samples=samples,method=method,initialize=initialize,**kwargs)
+
+
+	print(a)
+
+	print(norm(a-dot(u,v))/norm(a))
 	
-	debug(initialize,method)
-	debug(norm(a-dot(u,v))/norm(a))
+	u,v = run(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,samples=samples,method=method,initialize=initialize,**kwargs)
+	# u,v = run(a,u=u,v=v,rank=rank,eps=10000,parameters=1e-2,samples=samples,method='als',initialize=initialize,**kwargs)
 
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize)
+	print(norm(a-dot(u,v))/norm(a))
 
-	debug(norm(a-dot(u,v))/norm(a))
-	exit()
+	err = norm(a-dot(u,v))/norm(a)
+	eps = 1e-15
+	if is_naninf(err) or (err>eps):
+		dump(a,'data/data.npy')
+		exit()
 
 	u,v,s = nmfd(u,v,rank=rank)
 
@@ -6286,7 +6342,6 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state,conjugate(data))
-
 
 	def func(data,state,function=function,**kwargs):
 		return function(data,state)
@@ -7899,19 +7954,6 @@ def multiplication(a):
 
 @jit
 def add(a,b):
-	'''
-	Add arrays elementwise
-	Args:
-		a (array): Array to add
-		b (array): Array to add
-	Returns:
-		out (ndarray): Elementwise addition of arrays
-	'''
-	return np.add(a,b)
-
-
-@jit
-def _addition(a,b):
 	'''
 	Add arrays elementwise
 	Args:
