@@ -5713,6 +5713,25 @@ def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,samples=None,method=N
 				x = a,u,v
 
 				return x	
+		elif method in ['cals']:
+			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
+			def func(i,x):
+
+				a,u,v = x
+				
+				v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a)+dot(parameters,dot(u,v)))
+				v = maximums(v,eps)
+				
+				u = solve(dot(v,transpose(v))+parameters,dot(a,transpose(v))+dot(parameters,tranpose(dot(u,v))))
+				u = maximums(u,eps)
+
+				z = sqrt(addition(dot(u,v)))
+				u,v = u*reciprocal(z),v*reciprocal(z)
+
+				x = a,u,v
+
+				return x	
+
 		else:
 			def func(i,x):
 
