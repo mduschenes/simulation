@@ -861,7 +861,7 @@ class Measure(System):
 	defaults = dict(			
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
-		basis=None,inverse=None,ones=None,zeros=None,pointer=None,
+		basis=None,inverse=None,structure=None,ones=None,zeros=None,pointer=None,
 		parameters=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		func=None,gradient=None,
 		)
@@ -869,7 +869,6 @@ class Measure(System):
 	def __init__(self,data=None,operator=None,string=None,system=None,**kwargs):
 		'''
 		Measure Class
-		Generate positive valued measure basis and their overlap and inverse
 		Args:
 			data (str,array,tensor,mps,Measure): data of measure
 			operator (str): name of measure basis
@@ -933,27 +932,30 @@ class Measure(System):
 		invariant = isinstance(operator,str)
 		symmetry = self.symmetry is None
 		N = min((i for i in (self.N,len(operator) if not invariant else self.N if self.N is not None else None) if i is not None),default=None)
+		D = self.D
+		seed = self.seed
 		dtype = self.dtype
 
 		where = range(N) if N is not None else None
 		pointer = min(where) if where is not None else 0 if N is not None else None
 
 		operator = [operator for i in where] if invariant else [operator[i] for i in where]
-		seed = [seeder(self.seed)]*N if symmetry else seeder(self.seed,size=N)
-		options = [dict(D=self.D,dtype=self.dtype,seed=seed[i],system=self.system) for i in where]
+		seed = [seeder(seed)]*N if symmetry else seeder(seed,size=N)
+		options = [dict(D=D,dtype=dtype,seed=seed[i],system=self.system) for i in where]
 
 		basis = [getattr(Basis,operator[pointer])(**options[pointer])]*N if symmetry and invariant else [getattr(Basis,operator[i])(**options[i]) for i in where]
 		inverse = [inv(einsum('uij,vji->uv',basis[pointer],basis[pointer]))]*N if symmetry else [inv(einsum('uij,vji->uv',basis[i],basis[i])) for i in where]
+		structure = [D*(D+1)*einsum('uij,vjk,wki->uvw',basis[pointer],basis[pointer],basis[pointer])-einsum('uij,vji,w->uvw',basis[pointer],basis[pointer],array([1 for i in range(len(basis[pointer]))],dtype=dtype))]*N if symmetry else [D*(D+1)*einsum('uij,vjk,wki->uvw',basis[pointer],basis[pointer],basis[pointer])-einsum('uij,vji,w->uvw',basis[i],basis[i],array([1 for i in range(len(basis[i]))],dtype=dtype)) for i in where]
+
+		ones = [array([1 for i in range(len(basis[i]))],dtype=dtype) for i in where]
+		zeros = [array([0 for i in range(len(basis[i]))],dtype=dtype) for i in where]
+		pointer = pointer if pointer is not None else None
 
 		K = max(len(basis[i]) for i in where)
 		shape = [min(data.shape[axis] for i in where for data in basis[i]) for axis in range(min(len(data.shape) for i in where for data in basis[i]))]
 		size = prod(shape)
 		ndim = len(shape)
 		dtype = dtype
-
-		ones = [array([1 for i in range(K)],dtype=dtype)]*N
-		zeros = [array([0 for i in range(K)],dtype=dtype)]*N
-		pointer = pointer if pointer is not None else None
 
 		if self.architecture is None or self.architecture in ['array']:
 			
@@ -963,39 +965,40 @@ class Measure(System):
 
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 			
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
-			pointer = pointer
 
 		elif self.architecture in ['tensor']:
 
 			self.ind = 'u{}'
-			self.inds = ('u{}','v{}',)
+			self.inds = ('u{}','v{}','w{}',)
 			self.indices = ('i{}','j{}',)
 			self.symbol = ('x{}','y{}',)
 			self.symbols = ('k{}','l{}','m{}','n{}',)
 
 			cls = tensor
 
-			kwargs = dict(indices=[self.ind,*self.indices])
+			kwargs = dict(indices=[*self.inds[:1],*self.indices[:2]])
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[*self.inds])
+			kwargs = dict(indices=[*self.inds[:2]])
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+			
+			kwargs = dict(indices=[*self.inds[:3]])
+			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[self.ind])
+			kwargs = dict(indices=[*self.inds[:1]])
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[self.ind])
+			kwargs = dict(indices=[*self.inds[:1]])
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
-
-			pointer = pointer
 
 		elif self.architecture in ['tensor_quimb']:
 			
 			self.ind = 'u{}'
-			self.inds = ('u{}','v{}',)
+			self.inds = ('u{}','v{}','w{}',)
 			self.indices = ('i{}','j{}',)
 			self.tag = 'I{}'
 			self.tags = ()
@@ -1004,26 +1007,26 @@ class Measure(System):
 
 			cls = tensor_quimb
 
-			kwargs = dict(inds=(self.ind,*self.indices,),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*self.inds[:1],*self.indices[:2],),tags=(self.tag,*self.tags,))
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds,),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*self.inds[:2],),tags=(self.tag,*self.tags,))
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+			
+			kwargs = dict(inds=(*self.inds[:3],),tags=(self.tag,*self.tags,))
+			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*self.inds[:1],),tags=(self.tag,*self.tags,))
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(self.ind,),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*self.inds[:1],),tags=(self.tag,*self.tags,))
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
-
-			pointer = pointer
 
 		basis = [basis]*N if isinstance(basis,objects) else basis
 		inverse = [inverse]*N if isinstance(inverse,objects) else inverse
+		structure = [structure]*N if isinstance(structure,objects) else structure
 		ones = [ones]*N if isinstance(ones,objects) else ones
 		zeros = [zeros]*N if isinstance(zeros,objects) else zeros
-		pointer = pointer if pointer is not None else min(where) if where is not None else 0 if N is not None else None
-
 
 		if self.parameters is not None and self.parameters() is not None:
 			variable = True
@@ -1038,12 +1041,14 @@ class Measure(System):
 		unitary = False
 
 		self.N = N
+		self.D = D
 
 		self.operator = operator
 		self.string = string
 
 		self.basis = basis
 		self.inverse = inverse
+		self.structure = structure
 		self.ones = ones
 		self.zeros = zeros
 		self.pointer = pointer
@@ -1074,7 +1079,7 @@ class Measure(System):
 			def func(parameters=None,state=None,**kwargs):
 				N = state.N
 				for i in range(N):
-					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},None]):
+					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
 						state &= self.inverse[i] & self.basis[i]
 				return state
 			def gradient(parameters=None,state=None,**kwargs):
@@ -1084,7 +1089,7 @@ class Measure(System):
 			def func(parameters=None,state=None,**kwargs):
 				N = state.L
 				for i in range(N):
-					with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
+					with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1]},{index:index for index in self.inds}],tags=None)):
 						state &= self.inverse[i] & self.basis[i]
 				return state
 
@@ -1167,7 +1172,7 @@ class Measure(System):
 		display = None if display is None else [display] if isinstance(display,str) else display
 		ignore = None if ignore is None else [ignore] if isinstance(ignore,str) else ignore
 
-		for attr in [None,'string','key','seed','instance','instances','backend','architecture','timestamp','operator','N','D','K','basis','data','inverse']:
+		for attr in [None,'string','key','seed','instance','instances','backend','architecture','timestamp','operator','N','D','K','data']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -1272,7 +1277,7 @@ class Measure(System):
 			for i in range(N):
 
 				data = state[i] if not callable(state[i]) else state[i]()
-				indices = self.indices[::-1]
+				indices = self.indices[:2][::-1]
 
 				data = cls(data=data,indices=indices)
 
@@ -1297,7 +1302,7 @@ class Measure(System):
 			for i in range(N):
 
 				data = state[i] if not callable(state[i]) else state[i]()
-				inds = (*self.indices[::-1],)
+				inds = (*self.indices[:2][::-1],)
 				tags = (self.tag,*self.tags,)
 
 				data = cls(data=data,inds=inds,tags=tags)
@@ -1352,7 +1357,7 @@ class Measure(System):
 			state = state.copy()
 
 			for i in where:
-				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.ind:self.inds[-1]},None]):
+				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
 					state &= self.inverse[i] & self.basis[i]
 
 		elif self.architecture in ['tensor_quimb']:
@@ -1360,7 +1365,7 @@ class Measure(System):
 			state = state.copy()
 
 			for i in where:
-				with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.ind:self.inds[-1]},{index:index for index in self.inds}],tags=None)):
+				with context_quimb(self.basis[i],self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1]},{index:index for index in self.inds}],tags=None)):
 					state &= self.inverse[i] & self.basis[i]
 
 
@@ -1934,7 +1939,7 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			indices = {self.inds[0].format(i):self.inds[-1].format(i) for i in range(N)}
+			indices = {self.inds[0].format(i):self.inds[1].format(i) for i in range(N)}
 
 			other.transform(indices={index:indices for index in other})
 
@@ -1953,7 +1958,7 @@ class Measure(System):
 				with context_quimb(self.inverse[i],key=i):
 					state &= self.inverse[i]
 
-			with context_quimb(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+			with context_quimb(state,other,formats=dict(sites=[{self.inds[1]:self.inds[1]},{self.inds[0]:self.inds[1]}],tags=None)):
 
 				state &= other
 
@@ -2012,7 +2017,7 @@ class Measure(System):
 				with context(self.inverse[i],formats=i):
 					state &= self.inverse[i]
 
-			indices = {self.inds[0].format(i):self.inds[-1].format(i) for i in range(N)}
+			indices = {self.inds[0].format(i):self.inds[1].format(i) for i in range(N)}
 
 			other.transform(indices={index:indices for index in other})
 
@@ -2029,7 +2034,7 @@ class Measure(System):
 				with context_quimb(self.inverse[i],key=i):
 					state &= self.inverse[i]
 
-			with context_quimb(state,other,formats=dict(sites=[{self.inds[-1]:self.inds[-1]},{self.ind:self.inds[-1]}],tags=None)):
+			with context_quimb(state,other,formats=dict(sites=[{self.inds[1]:self.inds[1]},{self.inds[0]:self.inds[1]}],tags=None)):
 
 				state &= other
 
@@ -2676,9 +2681,9 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in where)
 
 			for i in where:
-				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}]):
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}]):
 					data &= self.inverse[i] & self.basis[i]
-				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[1],self.inds[1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
 					data &= self.inverse[i] & self.basis[i].transform(conj=True)
 
 			indices = [[symbol.format(i) for i in where for symbol in symbols] for symbols in [self.symbols[:2],self.symbols[2:4]]]
@@ -2699,9 +2704,9 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in where)
 
 			for i in where:
-				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
+				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}],tags=None)):
 					data &= self.inverse[i] & self.basis[i]
-				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
+				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1],self.inds[1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
 					data &= self.inverse[i] & self.basis[i].conj()
 
 			options = {}
@@ -2848,14 +2853,14 @@ class Measure(System):
 
 			other = data.copy()
 
-			indices = {**{self.inds[0].format(i):self.symbol[0].format(i) for i in range(N)},**{self.inds[-1].format(i):self.symbol[1].format(i) for i in range(N)}}
+			indices = {**{self.inds[0].format(i):self.symbol[0].format(i) for i in range(N)},**{self.inds[1].format(i):self.symbol[1].format(i) for i in range(N)}}
 
 			other.transform(indices={index:indices for index in other})
 
 			for i in where:
-				with context(self.inverse[i],formats=i,indices={self.inds[-1]:self.symbol[1],self.inds[0]:self.inds[0]}):
+				with context(self.inverse[i],formats=i,indices={self.inds[1]:self.symbol[1],self.inds[0]:self.inds[0]}):
 					data &= self.inverse[i]
-				with context(self.inverse[i],formats=i,indices={self.inds[-1]:self.symbol[0],self.inds[0]:self.inds[-1]}):
+				with context(self.inverse[i],formats=i,indices={self.inds[1]:self.symbol[0],self.inds[0]:self.inds[1]}):
 					other &= self.inverse[i]
 
 			data &= other
@@ -2877,12 +2882,12 @@ class Measure(System):
 
 			other = data.copy()
 
-			with context_quimb(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.inds[-1]},{self.inds[0]:self.symbol[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+			with context_quimb(data,other,key=where,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[1]:self.inds[1]},{self.inds[0]:self.symbol[0],self.inds[1]:self.symbol[1]}],tags=None)):
 
 				for i in where:
-					with context_quimb(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[-1]:self.symbol[1]}],tags=None)):
+					with context_quimb(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[0],self.inds[1]:self.symbol[1]}],tags=None)):
 						data &= self.inverse[i]
-					with context_quimb(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[-1],self.inds[-1]:self.symbol[0]}],tags=None)):
+					with context_quimb(self.inverse[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1],self.inds[1]:self.symbol[0]}],tags=None)):
 						other &= self.inverse[i]
 
 				data &= other
@@ -7728,7 +7733,7 @@ class Module(System):
 					print('spectrum',self.measure.spectrum_quantum(parameters=parameters,state=state))
 					print('data')
 					for i in state:
-						print(i,state[i].shape,addition(state[i].data,(0,1)))
+						print(i,state[i].shape)
 						print(state[i].data)
 					print()
 			return state
