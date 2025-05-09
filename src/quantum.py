@@ -7731,10 +7731,7 @@ class Module(System):
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 					print('trace',self.measure.trace(parameters=parameters,state=state).array().item())
 					print('spectrum',self.measure.spectrum_quantum(parameters=parameters,state=state))
-					print('data')
-					for i in state:
-						print(i,state[i].shape)
-						print(state[i].data)
+					print('data',state)
 					print()
 			return state
 
