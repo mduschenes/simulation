@@ -2630,8 +2630,8 @@ def test_class(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			{"S":None,"eps":1e-32,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
+			# {"S":None,"eps":1e-32,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
 			],
