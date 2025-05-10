@@ -3646,7 +3646,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			data = func(data,state,where=where)
 
-			print(where,addition(data),data.shape)
+			print('where',where,addition(data),data.shape)
 
 			scheme = options.get('scheme')
 			if scheme is not None:
@@ -5617,9 +5617,11 @@ def nndsvd(a,rank=None,eps=None):
 	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 	u,s,v = svd(a,**options)
 
-	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []))
+	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),nonzero(s,eps=eps))
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
+
+	print('svd',rank,s)	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -5662,7 +5664,7 @@ def pnmfd(u,v,rank=None):
 	s = None
 	return u,v,s
 
-def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for matrices
 	Args:
@@ -5671,6 +5673,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initializ
 		v (array): Array for nmf of shape (k,m)
 		rank (int): Rank of nmf
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (scalar): Number of iterations, defaults to 1e7
 		parameters (scalar,array,dict,object): Parameters for nmf method
 		method (str): Nmf method, allowed strings in ['mu','als','psvd',]
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
@@ -5682,34 +5685,41 @@ def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initializ
 	'''	
 	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	eps = epsilon(a.dtype) if eps is None else eps
+	iters = int(eps) if eps==int(eps) else int(1e7)
 
-	def init(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+	def init(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		eps = epsilon(a.dtype)
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
-		elif initialize in ['rand']:				
-			u = random(shape=[*a.shape[:-1],rank],dtype=a.dtype,**kwargs)
-			v = random(shape=[rank,*a.shape[1:]],dtype=a.dtype,**kwargs)
+		elif initialize in ['rand']:	
+			options = {**dict(dtype=a.dtype),**kwargs}					
+			u = random(shape=[*a.shape[:-1],rank],**options)
+			v = random(shape=[rank,*a.shape[1:]],**options)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)
 		elif initialize in ['nndsvd']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)			
+			u,v,s = nndsvd(a,**options)		
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)		
 		elif initialize in ['nndsvda']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)			
+			u,v,s = nndsvd(a,**options)		
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)			
 		elif initialize in ['nndsvdr']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)						
+			u,v,s = nndsvd(a,**options)		
+
+			options = {**dict(dtype=a.dtype),**kwargs}			
 			i = u<=eps
 			j = v<=eps
-			x = random(shape=(addition(i),),dtype=a.dtype,**kwargs)
-			y = random(shape=(addition(j),),dtype=a.dtype,**kwargs)
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
 			u,v = inplace(u,i,x),inplace(v,j,y)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)
@@ -5719,36 +5729,40 @@ def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initializ
 			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
 		return u,v
 	
-	def run(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+	def run(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		if method is None:
 			def func(i,x):
 
-				a,u,v = x
+				a,u,v,i = x
 				
 				u,v = (
 					(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
 					(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
 				)
 
-				x = a,u,v
+				i += 1
+
+				x = a,u,v,i
 
 				return x		
 		elif method in ['mu']:
 			def func(i,x):
 
-				a,u,v = x
+				a,u,v,i = x
 				
 				u = (dot(a,transpose(v))*reciprocal(dot(u,dot(v,transpose(v)))))*u
 				v = (dot(transpose(u),a)*reciprocal(dot(dot(transpose(u),u),v)))*v
 
-				x = a,u,v
+				i += 1
+
+				x = a,u,v,i
 
 				return x
 		elif method in ['als']:
 			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
 			def func(i,x):
 
-				a,u,v = x
+				a,u,v,i = x
 				
 				v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a))
 				v = maximums(v,eps)
@@ -5759,57 +5773,65 @@ def nmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initializ
 				z = sqrt(addition(dot(u,v)))
 				u,v = u*reciprocal(z),v*reciprocal(z)
 
-				x = a,u,v
+				i += 1
+
+				x = a,u,v,i
 
 				return x				
 		elif method in ['psvd']:
 			def func(i,x):
 
-				a,u,v = x
+				a,u,v,i = x
 				
 				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 				u,s,v = svd(a,**options)
 				u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
 				u,v = maximums(u,eps),maximums(v,eps)
 
-				x = a,u,v
+				i += 1
+
+				x = a,u,v,i
 
 				return x		
 		else:
 			def func(i,x):
 				return x	
 
-		x = a,u,v
+		def cond(x):
+			a,u,v,i = x
+			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
 
-		if isinstance(eps,int) or float(eps)==int(eps):
+		i = 0
+
+		x = a,u,v,i
+
+		if isinstance(eps,int) or eps==int(eps):
 			eps = int(eps)
 			func = func
-			start,end,func = 0,eps,func
+			start,end,func = i,eps,func
 			x = forloop(start,end,func,x)
 		elif isinstance(eps,float):
 			eps = float(eps)
-			cond = lambda x,a=a,eps=eps: error(x,a) > eps
-			cond,func = cond,partial(func,None)
+			cond,func = cond,partial(func,i)
 			x = whileloop(cond,func,x)
 
-		a,u,v = x           
+		a,u,v,i = x           
 
 		return u,v
 
-	def error(x,a):
-		b,u,v = x
-		return norm(a-dot(u,v))/norm(a)
-	
-	u,v = init(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	def norm(a):
+		return addition(abs2(a))
 
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
+	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	u,v,s = nmfd(u,v,rank=rank)
 
 	return u,v,s
 
 
-def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
@@ -5818,6 +5840,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initiali
 		v (array): v array of pnmf of shape (k,q,m)		
 		rank (int): Rank of nmf
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (scalar): Number of iterations, defaults to 1e7		
 		parameters (scalar,array,dict,object): Parameters for nmf method
 		method (str): Nmf method, allowed strings in ['mu']
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
@@ -5830,50 +5853,69 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initiali
 
 	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
 	eps = epsilon(a.dtype) if eps is None else eps
+	iters = int(eps) if eps==int(eps) else int(1e7)
 
-	def init(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
-		eps = epsilon(a.dtype)
-		shape = a.shape
-		a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+	def init(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+		shape,dtype = a.shape,a.dtype
+		eps = epsilon(dtype)
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
-		elif initialize in ['rand']:				
-			u = random(shape=[*a.shape[:-1],rank],dtype=a.dtype,**kwargs)
-			v = random(shape=[rank,*a.shape[1:]],dtype=a.dtype,**kwargs)
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+		elif initialize in ['rand']:
+			options = {**dict(dtype=dtype),**kwargs}
+			u = random(shape=[*shape[:len(shape)//2],rank],**options)
+			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)					
 		elif initialize in ['nndsvd']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
 			z = sqrt(addition(dot(u,v)))
-			u,v = u*reciprocal(z),v*reciprocal(z)		
+			u,v = u*reciprocal(z),v*reciprocal(z)
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))					
 		elif initialize in ['nndsvda']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)	
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			z = sqrt(addition(dot(u,v)))
-			u,v = u*reciprocal(z),v*reciprocal(z)			
+			u,v = u*reciprocal(z),v*reciprocal(z)	
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))					
 		elif initialize in ['nndsvdr']:
-			u,v,s = nndsvd(a,rank=rank,eps=eps)		
+			options = dict(rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			
+			options = {**dict(dtype=dtype),**kwargs}
 			i = u<=eps
 			j = v<=eps
-			x = random(shape=(addition(i),),dtype=a.dtype,**kwargs)
-			y = random(shape=(addition(j),),dtype=a.dtype,**kwargs)
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
 			u,v = inplace(u,i,x),inplace(v,j,y)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))			
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
-
-		u = reshape(u,(*shape[:len(shape)//2],-1,))
-		v = reshape(u,(-1,*shape[len(shape)//2:],))
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
 
 		return u,v
 	
-	def run(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initialize=None,**kwargs):
+	def run(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		if method is None:
 			def func(i,x):
 				return x		
@@ -5896,7 +5938,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initiali
 
 		def cond(x):
 			a,b,c,d,u,v,i = x
-			return (norm(d-dot(u,v))/norm(d) > eps) & (i < 1e7)
+			return (norm(d-dot(u,v))/norm(d) > eps) & (i < iters)
 
 		a,b,c,d = addition(a,(0,-1)),ones(u.shape[0]),ones(v.shape[-1]),a
 	
@@ -5904,7 +5946,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initiali
 
 		x = a,b,c,d,u,v,i
 
-		if isinstance(eps,int) or float(eps)==int(eps):
+		if isinstance(eps,int) or eps==int(eps):
 			eps = int(eps)
 			func = func
 			start,end,func = i,eps,func
@@ -5921,19 +5963,18 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,parameters=None,method=None,initiali
 	def norm(a):
 		return addition(abs2(a))
 	
-	u,v = init(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	error = norm(a-dot(u,v))/norm(a)
 	
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 	# u,v = run(a,u=u,v=v,rank=rank,eps=10000,parameters=1e-2,method='als',initialize=initialize,**kwargs)
 
 	err = norm(a-dot(u,v))/norm(a)
-	eps = 1e-15
 	print('error',error,err)
-	if is_naninf(err) or (err>eps):
-		dump(a,'data/data.npy')
-		exit()
+	# if is_naninf(err) or (err>eps):
+	# 	dump(a,'data/data.npy')
+	# 	exit()
 
 	u,v,s = pnmfd(u,v,rank=rank)
 

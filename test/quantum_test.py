@@ -2630,8 +2630,8 @@ def test_class(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			# {"S":None,"eps":1e-32,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			{"S":None,"eps":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
+			{"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":1e5,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
 			],
@@ -2678,6 +2678,10 @@ def test_class(*args,**kwargs):
 					"operator":"unitary","where":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},
+				# "XX":{
+				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
+				# 	"parameters":1e-10,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },				
 				# "noise":{
 				# 	"operator":["depolarize"],"where":"||i.j||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
