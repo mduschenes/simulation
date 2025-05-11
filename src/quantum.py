@@ -7729,10 +7729,16 @@ class Module(System):
 				for i,data in enumerate(self.data):
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-					print('trace',self.measure.trace(parameters=parameters,state=state).array().item())
-					print('spectrum',self.measure.spectrum_quantum(parameters=parameters,state=state))
-					print('data',state)
+					
+					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					trace = self.measure.trace(parameters=parameters,state=state).array().item()
+					data = state
+					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					print('trace',trace)
+					# print('data',data)
 					print()
+
 			return state
 
 		def grad(parameters=None,state=None,options=options,**kwargs):

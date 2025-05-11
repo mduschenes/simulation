@@ -2624,13 +2624,18 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[2],"module.measure.operator":["tetrad"],
-		"model.N":[4],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[5],"module.measure.operator":["tetrad"],
+		"model.N":[8],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			{"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":5e-9,"iters":1e4,"parameters":1e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":5e-9,"iters":1e3,"parameters":1e-6,"method":"als","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":1e5,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
@@ -2667,21 +2672,25 @@ def test_class(*args,**kwargs):
 			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{"periodic":False}},
 			"options":{},
 			"configuration":{
-				"key":"src.functions.brickwork",
+				"key":"src.functions.nearestneighbour",
 				"sort":None,
 				"reverse":False
 				}			
 		},
 		"model":{
 			"data":{
-				"unitary":{
-					"operator":"unitary","where":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},
-				# "XX":{
-				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
-				# 	"parameters":1e-10,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },				
+				# "unitary":{
+				# 	"operator":"unitary","where":"||ij||","string":"unitary",
+				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },
+				"XX":{
+					"operator":["X","X"],"where":"||ij||","string":"XX",
+					"parameters":1e-3,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},				
+				# "II":{
+				# 	"operator":["I","I"],"where":"||ij||","string":"II",
+				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },								
 				# "noise":{
 				# 	"operator":["depolarize"],"where":"||i.j||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
@@ -2695,7 +2704,7 @@ def test_class(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":"src.functions.brickwork",
+				"key":"src.functions.nearestneighbour",
 				"sort":None,
 				"reverse":False
 				}

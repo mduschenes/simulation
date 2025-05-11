@@ -242,9 +242,6 @@ if backend in ['jax','jax.autograd','quimb']:
 
 		jax.debug.print(string,**strings)
 		return
-		# with jax.disable_jit():
-		# 	print(*args,**kwargs)
-		# return
 
 elif backend in ['autograd']:
 
@@ -3502,8 +3499,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				@wrapper
 				def scheme(a,rank=None,conj=None,**options):
 					u,v,s = pnmf(real(a),**{**kwargs,**options,**dict(rank=rank)})
-					# u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
-					# u,v,s = u*s,v,rank
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
+					u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),rank
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
 					u,v,s = u,v,rank
 					u,v,s = cmplx(u),cmplx(v),s					
@@ -5305,6 +5302,29 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return out
 
 
+@jit
+def inv(a):
+	'''
+	Compute inverse of a
+	Args:
+		a (array): Array to compute inverse
+	Returns:
+		out (array): Inverse
+	'''
+	return np.linalg.inv(a)
+
+
+@jit
+def pinv(a):
+	'''
+	Compute pseudo inverse of a
+	Args:
+		a (array): Array to compute inverse
+	Returns:
+		out (array): Inverse
+	'''
+	return np.linalg.pinv(a)
+
 def _svd(A,k=None):
 	'''
 	Perform SVD on array, possibly reduced rank k
@@ -5591,6 +5611,7 @@ def nndsvd(a,rank=None,eps=None):
 	def false(x_positive,y_positive,z_positive,x_negative,y_negative,z_negative):
 		return x_negative,y_negative,z_negative
 
+	@jit
 	def func(i,x):
 		u,v,s = x
 
@@ -5617,11 +5638,11 @@ def nndsvd(a,rank=None,eps=None):
 	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 	u,s,v = svd(a,**options)
 
-	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),nonzero(s,eps=eps))
+	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s)	
+	print('svd',rank,s[s>eps].min()/s[s>eps].max(),s[0],s[1],s[-2],s[-1])	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -5631,13 +5652,14 @@ def nndsvd(a,rank=None,eps=None):
 
 	return u,v,s
 
-def nmfd(u,v,rank=None):
+def nmfd(u,v,rank=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of nmf
 	Args:
 		u (array): Array for nmf of shape (n,k)
 		v (array): Array for nmf of shape (k,m)
 		rank (int): Rank of nmf
+		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of nmf of shape (n,k)
 		v (array): v array of nmf of shape (k,m)
@@ -5647,21 +5669,22 @@ def nmfd(u,v,rank=None):
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
 
-def pnmfd(u,v,rank=None):
+def pnmfd(u,v,rank=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of pnmf
 	Args:
 		u (array): Array for pnmf of shape (n,p,k)
 		v (array): Array for pnmf of shape (k,q,m)
 		rank (int): Rank of pnmf
+		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of pnmf of shape (n,p,k)
 		v (array): v array of pnmf of shape (k,q,m)
 		s (array): s array of pnmf of shape (k,)
 	'''
-	# x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
-	# u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	s = None
+	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
+	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
+	print('xy',addition(s),s[s>eps].min()/s[s>eps].max(),s.sort()[-1],s.sort()[0])
 	return u,v,s
 
 def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
@@ -5685,7 +5708,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 	'''	
 	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	eps = epsilon(a.dtype) if eps is None else eps
-	iters = int(eps) if eps==int(eps) else int(1e7)
+	iters = iters if iters is not None else int(eps) if eps is not None and eps==int(eps) else int(1e7)
 
 	def init(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		eps = epsilon(a.dtype)
@@ -5826,7 +5849,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 
 	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	u,v,s = nmfd(u,v,rank=rank)
+	u,v,s = nmfd(u,v,rank=rank,eps=eps)
 
 	return u,v,s
 
@@ -5842,7 +5865,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (scalar): Number of iterations, defaults to 1e7		
 		parameters (scalar,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu']
+		method (str): Nmf method, allowed strings in ['mu','kl','als','grad','div']
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
@@ -5853,7 +5876,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
 	eps = epsilon(a.dtype) if eps is None else eps
-	iters = int(eps) if eps==int(eps) else int(1e7)
+	iters = iters if iters is not None else int(eps) if eps is not None and eps==int(eps) else int(1e7)
 
 	def init(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
@@ -5922,29 +5945,101 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 		elif method in ['mu']:
 			def func(i,x):
 
-				a,b,c,d,u,v,i = x
+				a,b,c,d,w,z,u,v,i = x
 				
 				u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
 				v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
 
 				i += 1
 
-				x = a,b,c,d,u,v,i
+				x = a,b,c,d,w,z,u,v,i
 
 				return x
+		elif method in ['kl']:
+			def func(i,x):
+
+				a,b,c,d,w,z,u,v,i = x
+
+				u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
+				v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+
+				i += 1
+
+				x = a,b,c,d,w,z,u,v,i
+
+				return x
+		elif method in ['als']:
+			def func(i,x):
+
+				a,b,c,d,w,z,u,v,i = x
+				
+				g = reshape(transpose(einsum('a,gvb,b->avg',b,v,c),(1,0,2)),(v.shape[1],u.shape[0]*u.shape[2]))
+				u = transpose(reshape(
+						solve(dot(transpose(g),g)+parameters*identity(g.shape[-1]),dot(transpose(g),transpose(a))),
+						(u.shape[1],u.shape[0],u.shape[2])),(1,0,2))
+				u = maximums(u,eps)
+
+				h = reshape(transpose(einsum('a,aug,b->gub',b,u,c),(1,0,2)),(u.shape[1],v.shape[0]*v.shape[2]))
+				v = transpose(reshape(
+						solve(dot(transpose(h),h)+parameters*identity(h.shape[-1]),dot(transpose(h),a)),
+						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
+				v = maximums(v,eps)
+
+				# debug(condition_number(dot(transpose(g),g)+parameters*identity(g.shape[-1])),condition_number(dot(transpose(h),h)+parameters*identity(h.shape[-1])))
+
+				i += 1
+
+				x = a,b,c,d,w,z,u,v,i
+
+				return x		
+		elif method in ['grad']:
+			def func(i,x):
+
+				a,b,c,d,w,z,u,v,i = x
+				
+				g = einsum('a,gvb,b,t,lvk,k,tul->aug',b,v,c,b,v,c,u) - einsum('a,gvb,b,uv->aug',b,v,c,a)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = einsum('n,nug,b,k,kul,t,lvt->gvb',b,u,c,b,u,c,v) - einsum('n,nug,b,uv->gvb',b,u,c,a)
+				v = v - parameters*h
+				v = maximums(v,eps)
+
+				i += 1
+
+				x = a,b,c,d,w,z,u,v,i
+
+				return x
+		elif method in ['div']:
+			def func(i,x):
+
+				a,b,c,d,w,z,u,v,i = x
+
+				g = -einsum('a,gvb,b,uv->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c))) + einsum('a,gb,b,u->aug',b,addition(v,1),c,w)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = -einsum('a,aug,b,uv->gvb',b,u,c,a*reciprocal(einsum('n,nuk,l,kvl->uv',b,u,c,v))) + einsum('a,ag,b,v->gvb',b,addition(u,1),c,z)
+				v = v - parameters*h
+				v = maximums(v,eps)
+				i += 1
+
+				x = a,b,c,d,w,z,u,v,i
+
+				return x								
 		else:
 			def func(i,x):
 				return x	
 
 		def cond(x):
-			a,b,c,d,u,v,i = x
+			a,b,c,d,w,z,u,v,i = x
 			return (norm(d-dot(u,v))/norm(d) > eps) & (i < iters)
 
-		a,b,c,d = addition(a,(0,-1)),ones(u.shape[0]),ones(v.shape[-1]),a
+		a,b,c,d,w,z,u,v = addition(a,(0,-1)),ones(u.shape[0]),ones(v.shape[-1]),a,ones(a.shape[1]),ones(a.shape[2]),u,v
 	
 		i = 0
 
-		x = a,b,c,d,u,v,i
+		x = a,b,c,d,w,z,u,v,i
 
 		if isinstance(eps,int) or eps==int(eps):
 			eps = int(eps)
@@ -5956,7 +6051,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			cond,func = cond,partial(func,i)
 			x = whileloop(cond,func,x)
 		
-		a,b,c,d,u,v,i = x
+		a,b,c,d,w,z,u,v,i = x
 
 		return u,v
 
@@ -5966,30 +6061,23 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	error = norm(a-dot(u,v))/norm(a)
-	
+
 	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-	# u,v = run(a,u=u,v=v,rank=rank,eps=10000,parameters=1e-2,method='als',initialize=initialize,**kwargs)
+	# u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=2,parameters=parameters,method='als',initialize=initialize,**kwargs)
 
 	err = norm(a-dot(u,v))/norm(a)
 	print('error',error,err)
+
+	if error < err:
+		u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
 	# if is_naninf(err) or (err>eps):
 	# 	dump(a,'data/data.npy')
 	# 	exit()
 
-	u,v,s = pnmfd(u,v,rank=rank)
+	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
 	return u,v,s
-
-@jit
-def inv(a):
-	'''
-	Compute inverse of a
-	Args:
-		a (array): Array to compute inverse
-	Returns:
-		out (array): Inverse
-	'''
-	return np.linalg.inv(a)
 
 def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 	'''
@@ -12079,16 +12167,16 @@ def uncertainty_propagation(x,y,xerr,yerr,operation):
 
 	if operation in ['+','plus']:
 		func = lambda x,y: x+y
-		error = lambda x,y: sqrt((xerr*1)**2+(yerr*1)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*1)**2+(yerr*1)**2)
 	elif operation in ['-','minus']:
 		func = lambda x,y: x-y
-		error = lambda x,y: sqrt((xerr*1)**2+(yerr*-1)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*1)**2+(yerr*-1)**2)
 	elif operation in ['*','times']:
 		func = lambda x,y: x*y
-		error = lambda x,y: sqrt((xerr*y)**2+(yerr*x)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*y)**2+(yerr*x)**2)
 	elif operation in ['/','divides']:
 		func = lambda x,y: x+y
-		error = lambda x,y: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
 
 	out,err = func(x,y),error(x,y)
 
