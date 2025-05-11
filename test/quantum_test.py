@@ -2680,14 +2680,14 @@ def test_class(*args,**kwargs):
 		},
 		"model":{
 			"data":{
-				"unitary":{
-					"operator":"unitary","where":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},
-				# "XX":{
-				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
-				# 	"parameters":1e-1,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },				
+				# "unitary":{
+				# 	"operator":"unitary","where":"||ij||","string":"unitary",
+				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },
+				"XX":{
+					"operator":["X","X"],"where":"||ij||","string":"XX",
+					"parameters":1e-1,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
 				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789
