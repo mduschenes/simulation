@@ -2632,7 +2632,8 @@ def test_class(*args,**kwargs):
 		"module.options":[
 			# {"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			{"S":None,"eps":5e-9,"iters":1e4,"parameters":1e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":5e-9,"iters":1e4,"parameters":1e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":5e-9,"iters":5e5,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e3,"parameters":1e-6,"method":"als","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
@@ -2679,14 +2680,14 @@ def test_class(*args,**kwargs):
 		},
 		"model":{
 			"data":{
-				# "unitary":{
-				# 	"operator":"unitary","where":"||ij||","string":"unitary",
-				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },
-				"XX":{
-					"operator":["X","X"],"where":"||ij||","string":"XX",
-					"parameters":1e-3,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},				
+				"unitary":{
+					"operator":"unitary","where":"||ij||","string":"unitary",
+					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},
+				# "XX":{
+				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
+				# 	"parameters":1e-1,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
 				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789

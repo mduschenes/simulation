@@ -5865,7 +5865,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (scalar): Number of iterations, defaults to 1e7		
 		parameters (scalar,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu','kl','als','grad','div']
+		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','grad','div']
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
@@ -5880,7 +5880,6 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 	def init(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
-		eps = epsilon(dtype)
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
@@ -5906,6 +5905,8 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			options = dict(rank=rank,eps=eps)			
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
+
+			eps = epsilon(dtype)
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			z = sqrt(addition(dot(u,v)))
@@ -5917,6 +5918,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
+			eps = epsilon(dtype)
 			options = {**dict(dtype=dtype),**kwargs}
 			i = u<=eps
 			j = v<=eps
@@ -5985,13 +5987,46 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
 				v = maximums(v,eps)
 
-				# debug(condition_number(dot(transpose(g),g)+parameters*identity(g.shape[-1])),condition_number(dot(transpose(h),h)+parameters*identity(h.shape[-1])))
+				i += 1
+
+				x = a,b,c,d,w,z,u,v,i
+
+				return x
+		elif method in ['hals']:
+			size = rank*max(a.shape[0],a.shape[-1])
+			eps = eps*size if eps is not None and eps==int(eps) else eps
+			iters = iters*size if iters is not None else iters
+			def func(i,x):
+
+				a,b,c,d,w,z,u,v,i = x
+
+				n = i%size
+				m = n//rank # in max(b,c) -> j in b,k in c
+				l = n%rank # in rank
+				j,k = m%b.size,m%c.size
+
+				# g = einsum('vb,b->v',b[j]*v[l,:,:],c)
+				# g = maximums((einsum('uv,v->u',a-einsum('aug,a,gvb,b->uv',u,b,v,c)+einsum('u,v->uv',u[j,:,l],g),g)+parameters*u[j,:,l])/(einsum('v,v->',g,g)+parameters),0)
+				# u = inplace(u,(j,slice(None),l),g)
+
+				# h = einsum('au,a->u',u[:,:,l]*c[k],b)
+				# h = maximums((einsum('uv,u->v',a-einsum('a,aug,b,gvb->uv',b,u,c,v)+einsum('u,v->uv',h,v[l,:,k]),h)+parameters*v[l,:,k])/(einsum('u,u->',h,h)+parameters),0)
+				# v = inplace(v,(l,slice(None),k),h)
+
+				g = einsum('vb,b->v',b[j]*v[l,:,:],c)
+				g = maximums((einsum('uv,v->u',a-einsum('aug,a,gvb,b->uv',u,b,v,c)+einsum('u,v->uv',u[j,:,l],g),g)+parameters*u[j,:,l])/(einsum('v,v->',g,g)+parameters),0)
+				g = g*reciprocal(sqrt(dot(g,g)))
+				u = inplace(u,(j,slice(None),l),g)
+
+				h = einsum('au,a->u',u[:,:,l]*c[k],b)
+				h = maximums((einsum('uv,u->v',a-einsum('a,aug,b,gvb->uv',b,u,c,v)+einsum('u,v->uv',h,v[l,:,k]),g)),0)
+				v = inplace(v,(l,slice(None),k),h)
 
 				i += 1
 
 				x = a,b,c,d,w,z,u,v,i
 
-				return x		
+				return x						
 		elif method in ['grad']:
 			def func(i,x):
 
@@ -6060,16 +6095,20 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 	
 	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
+	rank = min(*u.shape,*v.shape,rank)
+
 	error = norm(a-dot(u,v))/norm(a)
 
+	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=100,parameters=parameters,method='kl',initialize=initialize,**kwargs)
 	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-	# u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=2,parameters=parameters,method='als',initialize=initialize,**kwargs)
+
+	err = norm(a-dot(u,v))/norm(a)
+
+	if error < err:
+		u,v = init(a,u=u,v=v,rank=rank,eps=None,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	err = norm(a-dot(u,v))/norm(a)
 	print('error',error,err)
-
-	if error < err:
-		u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	# if is_naninf(err) or (err>eps):
 	# 	dump(a,'data/data.npy')
