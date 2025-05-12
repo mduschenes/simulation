@@ -22,9 +22,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
-from src.utils import maximum,minimum,abs,sort,log
 from src.utils import grouper,conditions
 from src.utils import orng as rng
 from src.utils import arrays,scalars,nonzero,delim
@@ -127,10 +126,10 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 	return data
 
 def func_y(data):
-	return abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
+	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
 
 def func_yerr(data):
-	return abs(np.array(data['yerr']))#*(data['N']*log(data['D']))/log(2)
+	return np.abs(np.array(data['yerr']))#*(data['N']*log(data['D']))/log(2)
 
 def func_line(data,attr=None):
 	if attr not in data:
@@ -144,16 +143,16 @@ def func_line_err(data):
 	return 0
 
 def func_objective(data):
-	return abs(data['objective'])
+	return np.abs(data['objective'])
 
 def func_mutual_measure(data):
 	return np.array(data['mutual.quantum']) - np.array(data['discord.quantum'])
 
 def func_infidelity(data):
-	return 1 - abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+	return 1 - np.abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
 
 def func_infidelity_err(data):
-	return abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+	return np.abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
 
 def func_max_bond(data):
 	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
@@ -176,8 +175,8 @@ def func_spectrum(data,attr=None):
 		raise ValueError("Incorrect attribute %s"%(attr))
 		return
 	def func(data):
-		data = sorted(data,reverse=True)/max(abs(i) for i in data)
-		# data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/maximum(abs(data[i][~is_nan(data[i])])) for i in range(n)]
+		data = sorted(data,reverse=True)/max(np.abs(i) for i in data)
+		# data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/maximum(np.abs(data[i][~is_nan(data[i])])) for i in range(n)]
 		return data
 	data = (func(i) for i in data[attr])
 	data = to_tuple(data)
@@ -192,7 +191,7 @@ def func_spectrum_rank(data,attr=None,eps=None):
 		data = asscalar(
 			nonzero(
 				sort(
-					abs(data[~is_nan(data)])/maximum(abs(data[~is_nan(data)]))
+					np.abs(data[~is_nan(data)])/maximum(np.abs(data[~is_nan(data)]))
 				),eps=eps)
 			)
 		return data
@@ -207,7 +206,7 @@ def func_spectrum_sign(data,attr=None,eps=None):
 	eps = 1e-16 if eps is None else eps
 	def func(data):
 		data = np.array(list(data))
-		data = abs(addition(data[data<eps])/addition(data[data>=eps]))
+		data = np.abs(addition(data[data<eps])/addition(data[data>=eps]))
 		return data
 	data = np.array([func(i) for i in data[attr]])
 	return data
@@ -240,28 +239,28 @@ def func_variables_relative_mean(data):
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
-	out = sort(abs(out))
+	out = sort(np.abs(out))
 	out = out/maximum(out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
 	return out
 
 def func_fisher_eigenvalues(data):
 	out = np.array(list(data['fisher.eigenvalues']))
-	out = abs(out)
+	out = np.abs(out)
 	out = out/maximum(out)
 	out = to_tuple(out)
 	return out
 
 def func_hessian_rank(data):
 	out = np.array(list(data['hessian.eigenvalues']))
-	out = sort(abs(out))
+	out = sort(np.abs(out))
 	out = out/maximum(out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-16))
 	return out
 
 def func_hessian_eigenvalues(data):
 	out = np.array(list(data['hessian.eigenvalues']))
-	out = abs(out)
+	out = np.abs(out)
 	out = out/maximum(out)
 	out = to_tuple(out)
 	return out
@@ -432,7 +431,7 @@ def error(data,*args,**kwargs):
 		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
 	
 		matrix = lambda k=1: V*D(k)*V.H
-		norm = lambda A,bit=maxftype,ord=ord: ((((abs(A,dtype=bit))**ord).sum(dtype=bit))**(1/ord)).real
+		norm = lambda A,bit=maxftype,ord=ord: ((((np.abs(A,dtype=bit))**ord).sum(dtype=bit))**(1/ord)).real
 		numerical = lambda A,bit: array(sp.N(A,bit),dtype=maxdtype)
 
 		A = {sample: {

@@ -15,7 +15,7 @@ for PATH in PATHS:
 
 from src.utils import np,onp,backend
 from src.io import load,dump,join,split,edit
-from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,abs,inf
+from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,absolute,inf
 from src.fit import fit,cov
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -54,7 +54,7 @@ def test_err(path=None,tol=None):
 	yerr = sigma*ones(n) if (sigma is not None and sigma>0) else None
 
 	y = y#+yerr if yerr is not None else y
-	yerr = abs(yerr) if yerr is not None else yerr
+	yerr = absolute(yerr) if yerr is not None else yerr
 
 	x_ = x
 	y_ = y

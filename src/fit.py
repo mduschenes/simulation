@@ -16,7 +16,7 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace
-from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
+from src.utils import exp,log,absolute,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
 from src.utils import nan,null,arrays,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
@@ -195,7 +195,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 0
 		if xerr.ndim == 1:
 			jac = diag(invgrad[i][i])
-			xerr = abs((1/jac)*xerr)
+			xerr = absolute((1/jac)*xerr)
 		else:
 			jac = invgrad[i][i]
 			xerr = lstsq(jac.T,lstsq(jac,xerr).T).T
@@ -204,7 +204,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 1
 		if yerr.ndim == 1:
 			jac = diag(invgrad[i][i])
-			yerr = abs((1/jac)*yerr)
+			yerr = absolute((1/jac)*yerr)
 		else:
 			jac = invgrad[i][i]
 			yerr = lstsq(jac.T,lstsq(jac,yerr).T).T
@@ -214,7 +214,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 0
 		if _xerr.ndim == 1:
 			_jac = diag(_invgrad[i][i])
-			_xerr = abs((1/_jac)*_xerr)
+			_xerr = absolute((1/_jac)*_xerr)
 		else:
 			_jac = invgrad[i][i]
 			_xerr = lstsq(_jac.T,lstsq(_jac,_xerr).T).T
@@ -223,7 +223,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 1
 		if _yerr.ndim == 1:
 			_jac = diag(_invgrad[i][i])
-			_yerr = abs((1/_jac)*_yerr)
+			_yerr = absolute((1/_jac)*_yerr)
 		else:
 			_jac = invgrad[i][i]
 			_yerr = lstsq(_jac.T,lstsq(_jac,_yerr).T).T
@@ -268,11 +268,11 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr = 0
 			_funcerr = interp(x,y+yerr,**kwargs)
 			funcerr = lambda parameters,x,_func=_funcerr: _func(x)
-			_yerr += abs(funcerr(_parameters,_x) - _y)
+			_yerr += absolute(funcerr(_parameters,_x) - _y)
 
 			_funcerr = interp(x,y-yerr,**kwargs)
 			funcerr = lambda parameters,x,_func=_funcerr: _func(x)
-			_yerr += abs(funcerr(_parameters,_x) - _y)
+			_yerr += absolute(funcerr(_parameters,_x) - _y)
 
 			_yerr /= 1
 
@@ -292,7 +292,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		if _covariance is None:
 			pass
 		elif _covariance.ndim == 1:
-			_yerr = abs(diag(_grad)*_covariance)
+			_yerr = absolute(diag(_grad)*_covariance)
 		elif _covariance.ndim == 2:
 			_yerr = sqrt(diag(dot(dot(_grad,_covariance),_grad.T)))
 
@@ -314,7 +314,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 0
 		if xerr.ndim == 1:
 			jac = diag(invgrad[i][i])
-			xerr = abs(jac*xerr)
+			xerr = absolute(jac*xerr)
 		else:
 			jac = invgrad[i][i]
 			xerr = dot(dot(jac,xerr),jac.T)
@@ -322,7 +322,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 1
 		if yerr.ndim == 1:
 			jac = diag(invgrad[i][i])
-			yerr = abs(jac*yerr)
+			yerr = absolute(jac*yerr)
 		else:
 			jac = invgrad[i][i]
 			yerr = dot(dot(jac,yerr),jac.T)
@@ -332,7 +332,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 0
 		if _xerr.ndim == 1:
 			_jac = diag(_invgrad[i][i])
-			_xerr = abs(_jac*_xerr)
+			_xerr = absolute(_jac*_xerr)
 		else:
 			_jac = _invgrad[i][i]
 			_xerr = dot(dot(_jac,_xerr),_jac.T)
@@ -340,7 +340,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 1
 		if _yerr.ndim == 1:
 			_jac = diag(_invgrad[i][i])
-			_yerr = abs(_jac*_yerr)
+			_yerr = absolute(_jac*_yerr)
 		else:
 			_jac = _invgrad[i][i]
 			_yerr = dot(dot(_jac,_yerr),_jac.T)
@@ -350,7 +350,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		i = 2
 		if _covariance.ndim == 1:
 			_jac = diag(_invgrad[i][i])
-			_covariance = abs(_jac*_covariance)
+			_covariance = absolute(_jac*_covariance)
 		else:
 			_jac = _invgrad[i][i]
 			_covariance = dot(dot(_jac,_covariance),_jac.T)
@@ -404,7 +404,7 @@ def curve_fit(func,x,y,**kwargs):
 	
 	def callback(parameters,data,optimizer,model,metric,func,grad,**kwargs):
 		attr = 'value'
-		status = (abs(optimizer.attributes[attr][-1]) > 
+		status = (absolute(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
 		
 		logger.log(

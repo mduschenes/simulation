@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,partial,copy,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv
+from src.utils import jit,partial,copy,value_and_gradient,gradient,hessian,absolute,dot,lstsq,inv
 from src.utils import metrics,optimizer_libraries
 from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
@@ -384,7 +384,7 @@ class GradSearcher(System):
 				returns[attr] = 0
 			else:
 				returns[attr] = beta[0]
-		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(dot(grad[-1],grad[-2]))/(dot(grad[-1],grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
+		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((absolute(dot(grad[-1],grad[-2]))/(dot(grad[-1],grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
 			returns[attr] = 0			
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
@@ -549,7 +549,7 @@ class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
 		'''
 
 		_beta = [(dot(grad[-1],grad[-1]))/(dot(grad[-2],grad[-2])),max(0,(dot(grad[-1],grad[-1]-grad[-2]))/(dot(grad[-2],grad[-2])))] # Polak-Ribiere-Fletcher-Reeves
-		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
+		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if absolute(_beta[1]) <= _beta[0] else _beta[0]
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search,*args,**kwargs)

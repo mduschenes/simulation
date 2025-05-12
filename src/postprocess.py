@@ -17,7 +17,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,copy
 from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
-from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,allclose,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
+from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,absolute,difference,rand,allclose,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,search
@@ -909,12 +909,12 @@ def postprocess(path,**kwargs):
 						for p,parameters in enumerate(params):
 
 							y = func(parameters)
-							y = sort(abs(eig(y,hermitian=True)))[::-1]
+							y = sort(absolute(eig(y,hermitian=True)))[::-1]
 							y = y/maximum(y)
 							x = arange(y.size)
 
 							attrs = {
-								'rank': argmax(abs(difference(y)/y[:-1]))+1 if y[argmax(abs(difference(y)/y[:-1]))+1]<1e-4 else y.size
+								'rank': argmax(absolute(difference(y)/y[:-1]))+1 if y[argmax(absolute(difference(y)/y[:-1]))+1]<1e-4 else y.size
 								}
 
 							y = y[:U.g*2]

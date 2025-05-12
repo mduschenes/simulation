@@ -16,7 +16,7 @@ from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
 from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,abs,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
+from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
@@ -1712,7 +1712,7 @@ class Measure(System):
 		'''
 		
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(nonzero(real(data)/maximum(abs(real(data))),**kwargs))
+		func = lambda data,func=func: func(nonzero(real(data)/maximum(absolute(real(data))),**kwargs))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -2096,7 +2096,7 @@ class Measure(System):
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
 
-			data = addition(sqrt(abs(data)))
+			data = addition(sqrt(absolute(data)))
 
 		elif self.architecture in ['tensor']:
 
@@ -2110,7 +2110,7 @@ class Measure(System):
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
 
-			data = addition(sqrt(abs(data)))
+			data = addition(sqrt(absolute(data)))
 
 		elif self.architecture in ['tensor_quimb']:
 
@@ -2125,7 +2125,7 @@ class Measure(System):
 			state = dot(state,other)
 			data = self.eig(parameters=parameters,state=state,**kwargs)
 
-			data = addition(sqrt(abs(data)))
+			data = addition(sqrt(absolute(data)))
 
 		data = func(data)
 
@@ -2202,7 +2202,7 @@ class Measure(System):
 		'''
 		
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
+		func = lambda data,func=func: func(1 - sqrt(absolute(real(data))))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -2359,7 +2359,7 @@ class Measure(System):
 		'''
 		
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(1 - sqrt(abs(real(data))))
+		func = lambda data,func=func: func(1 - sqrt(absolute(real(data))))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -7734,6 +7734,7 @@ class Module(System):
 					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
 					trace = self.measure.trace(parameters=parameters,state=state).array().item()
 					data = state
+					print('index',l,i)
 					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
 					print('trace',trace)
 					# print('data',data)
@@ -8141,10 +8142,10 @@ class Callback(System):
 			 (attributes['iteration'][-1] <= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
 			(
-			(abs(attributes['value'][-1]) > 
+			(absolute(attributes['value'][-1]) > 
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
-			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
-				(log10(abs(hyperparameters['eps']['value.difference'])))) and
+			(log10(absolute(attributes['value'][-1] - attributes['value'][-2])) > 
+				(log10(absolute(hyperparameters['eps']['value.difference'])))) and
 			(norm(attributes['grad'][-1])/(attributes['grad'][-1].size) > 
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/(attributes['grad'][-2].size) > 
@@ -8258,10 +8259,10 @@ class Callback(System):
 					value = int(track['iteration'][-1])
 
 				elif attr in ['iteration.min']:
-					value = int(track['iteration'][argmin(abs(array(track['objective'],dtype=model.dtype)))])
+					value = int(track['iteration'][argmin(absolute(array(track['objective'],dtype=model.dtype)))])
 
 				elif attr in ['value']:
-					value = abs(attributes[attr][index])
+					value = absolute(attributes[attr][index])
 				
 				elif attr in ['parameters','grad','search'] and (not do):
 					value = default
@@ -8285,7 +8286,7 @@ class Callback(System):
 					if attr in ['parameters.relative']:
 						value = parameters
 						_value = attributes['parameters'][0]
-						value = abs((value-_value)/(_value+eps))
+						value = absolute((value-_value)/(_value+eps))
 					elif attr in ['parameters.relative.mean']:
 						value = parameters
 						_value = attributes['parameters'][0]
@@ -8304,7 +8305,7 @@ class Callback(System):
 						value = array([model.data[i].parameters(j) for j in value for i in model.data if model.data[i].variable])
 						_value = model.parameters(attributes['parameters'][0])
 						_value = array([model.data[i].parameters(j) for j in _value for i in model.data if model.data[i].variable])
-						value = abs((value-_value)/(_value+eps))
+						value = absolute((value-_value)/(_value+eps))
 					elif attr in ['variables.relative.mean']:
 						value = model.parameters(parameters)
 						value = array([model.data[i].parameters(j) for j in value for i in model.data if model.data[i].variable])
@@ -8313,7 +8314,7 @@ class Callback(System):
 						value = norm((value-_value)/(_value+eps))/(value.size)
 
 				elif attr in ['objective']:
-					value = abs(metric(model(parameters=parameters,state=state,**kwargs)))
+					value = absolute(metric(model(parameters=parameters,state=state,**kwargs)))
 				
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
@@ -8358,11 +8359,11 @@ class Callback(System):
 
 					
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
-						value = abs(metric(model(parameters=parameters,state=state,**kwargs)))
+						value = absolute(metric(model(parameters=parameters,state=state,**kwargs)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-						value = abs((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs))))
+						value = absolute((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-						value = abs((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs)))/(track['objective'][-1]))
+						value = absolute((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs)))/(track['objective'][-1]))
 
 
 					data = defaults.data
@@ -8396,13 +8397,13 @@ class Callback(System):
 						value = function(parameters=parameters,state=state,**kwargs)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = sort(abs(eig(function(parameters=parameters,state=state,**kwargs),hermitian=True)))[::-1]
+						value = sort(absolute(eig(function(parameters=parameters,state=state,**kwargs),hermitian=True)))[::-1]
 						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
-						value = sort(abs(eig(function(parameters=parameters,state=state,**kwargs),hermitian=True)))[::-1]
+						value = sort(absolute(eig(function(parameters=parameters,state=state,**kwargs),hermitian=True)))[::-1]
 						value = value/maximum(value)
 						value = nonzero(value,eps=1e-12)
-						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
+						# value = (argmax(absolute(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
 				elif attr in ['entropy'] and (not do):
 					value = default
@@ -8494,7 +8495,7 @@ class Callback(System):
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
 					attributes['iteration'][-1],
-					# abs(metric(model(attributes['parameters'][-1],metric.state()))),
+					# absolute(metric(model(attributes['parameters'][-1],metric.state()))),
 					attributes['value'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(

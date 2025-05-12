@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
-from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
+from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,absolute,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
 from src.iterables import getter,setter,permuter,namespace,getattrs,setattrs
 from src.io import load,dump,join,exists
@@ -77,7 +77,7 @@ def test_hessian(path,tol):
 
 	out = func(parameters)
 
-	eigs = sort(abs(eig(out,compute_v=False,hermitian=True)))[::-1] if out is not None else None
+	eigs = sort(absolute(eig(out,compute_v=False,hermitian=True)))[::-1] if out is not None else None
 	eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 	rank = nonzero(eigs,eps=50) if eigs is not None else None
 
@@ -130,7 +130,7 @@ def test_fisher(path,tol):
 
 		tmp = func(parameters=parameters,state=state)
 
-		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
+		eigs = sort(absolute(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
 		eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 		rank = nonzero(eigs,eps=50) if eigs is not None else None
 
@@ -327,7 +327,7 @@ def check_fisher(path,tol):
 		# 	for file in data:
 		# 		dump(data[file],join(directory,file))
 
-		eigs = sort(abs(eigs))[::-1] if eigs is not None else None
+		eigs = sort(absolute(eigs))[::-1] if eigs is not None else None
 		# eigs = eigs/max(1,maximum(eigs))
 
 		print('-----')

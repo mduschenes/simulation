@@ -1657,7 +1657,7 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 			
 			out = eig(out,compute_v=False,hermitian=hermitian)
 
-			out = abs(out)
+			out = absolute(out)
 
 			out = -addition(out*log(out))
 
@@ -1748,7 +1748,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
 			
-			out = abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
+			out = absolute((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
 
 			return out
 
@@ -1781,7 +1781,7 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	label = reshape(label,shape)
 
 	labels = eig(label,compute_v=False,hermitian=hermitian)
-	labels = abs(labels)
+	labels = absolute(labels)
 	labels = addition(log(labels**labels))
 
 	ndim = len(shape) if shape is not None else None
@@ -1798,7 +1798,7 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			outs,out = eig(out,compute_v=True,hermitian=hermitian)
 
-			outs = abs(outs)
+			outs = absolute(outs)
 
 			out = real(labels - einsum('ij,jk,k,ik->',label,out,log(outs),conjugate(out)))
 
@@ -3168,25 +3168,58 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						''.join(symbols(i) for i in range(L)),
 						''.join((symbols(2*L+L),))
 						)
-					if L < 2 or L > 2:
+					if L < 2 or L > 2 or L == 2:
 						options = {}
-						def function(data,state,where=None,L=L,subscripts=subscripts,options=options):
+						def function(data,state,where=None,subscripts=subscripts,options=options):
 							return einsum(subscripts,data,*(state[i]() for i in where))
 					elif L == 2:
 						options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-						def function(data,state,where=None,L=L,subscripts=subscripts,options=options):
+						def function(data,state,where=None,subscripts=subscripts,options=options):
+							L = len(where)
 							d = data.ndim//L
 							shape = [(state[i].shape[1],)*d for i in where]
 							axes = [j for i in range(L) for j in range(i,d*L,L)]
 
+
 							data = real(reshape(transpose(data,axes),[prod(i) for i in shape]))
 							u,s,v = svd(data,**options)
-							u,v = reshape(dotr(u,sqrt(s)),(*shape[0],-1)),reshape(dotl(v,sqrt(s)),(-1,*shape[1]))
-							print([state[i].shape for i in state])
+							u,v = reshape(u,(*shape[0],-1)),reshape(v,(-1,*shape[-1]))
+
+							a,b = state[where[0]](),state[where[-1]]()
+							x,y = addition(a,(0,1)),addition(b,(-2,-1))
+							a,b,c = dotr(a,reciprocal(x)),dotl(b,reciprocal(y)),x*y
+
+							u,v = reshape(einsum('acs,xcz->xasz',u,a),(*a.shape[:-1],-1)),reshape(einsum('sbd,zdy->szby',v,b),(-1,*b.shape[1:]))
+							z = tensorproduct(s,c)
+
+
+							x,y = addition(u,(0,1)),addition(v,(-2,-1))
+							u,v = dotr(u,reciprocal(x)),dotl(v,reciprocal(y))
+							z = z*x*y 
+
+
+							print(s.real.sort()[::-1])
+							print(c.real.sort()[::-1])
+							print(z.real.sort()[::-1])
+
+							print(addition(real(z)))
+							exit()
+
+
+							# rank = nonzero(s,eps=1e-15)
+							# u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+
+
+							u,v = reshape(dotr(u,sqrt(absolute(s))),(*shape[0],-1)),reshape(dotl(v,sqrt(absolute(s))),(-1,*shape[1]))
+							u,v = real(reshape(einsum('uzx,azb->aubx',u,state[where[0]]()),(*state[where[0]].shape[:-1],-1))),real(reshape(einsum('xvw,bwc->bxvc',v,state[where[1]]()),(-1,*state[where[1]].shape[1:])))
+
+							print(addition(sqrt(absolute(s))),s/sqrt(s.size))
+							print(addition(einsum('aub,bvc->auvc',u,v))-1)
+
 							print(u.shape,v.shape)
-							u,v = einsum('uzx,azb->aubx',u,state[where[0]]()),einsum('xvw,bwc->bxvc',u,state[where[1]]())
-							print(s)
-							print(addition(einsum('aubx,bxvc->auvc',u,v)))
+							print(u)
+							print(v)
+
 							exit()
 							return einsum(subscripts,data,*(state[i]() for i in where))						
 					func[L] = function
@@ -3527,7 +3560,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				def scheme(a,u=None,v=None,rank=None,conj=None,**options):
 					u,v,s = pnmf(real(a),**{**kwargs,**options,**dict(rank=rank)})
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
-					u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),rank
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
 					u,v,s = u,v,rank
 					u,v,s = cmplx(u),cmplx(v),s					
@@ -4684,7 +4717,7 @@ if backend in ['jax','quimb']:
 
 						Q,R = qr(out[i,j])
 						R = diag(R)
-						R = diag(R/abs(R))
+						R = diag(R/absolute(R))
 						
 						out = inplace(out,(i,j),dot(Q,R))
 
@@ -4944,7 +4977,7 @@ if backend in ['jax','quimb']:
 
 		Q,R = qr(out)
 		R = diag(R)
-		R = diag(R/abs(R))
+		R = diag(R/absolute(R))
 		
 		out = dot(Q,R)
 
@@ -5063,7 +5096,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 						Q,R = qr(out[i,j])
 						R = diag(R)
-						R = diag(R/abs(R))
+						R = diag(R/absolute(R))
 						
 						out = inplace(out,(i,j),dot(Q,R))
 
@@ -5322,7 +5355,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		Q,R = qr(out)
 		R = diag(R)
-		R = diag(R/abs(R))
+		R = diag(R/absolute(R))
 		
 		out = dot(Q,R)
 
@@ -5465,7 +5498,7 @@ def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 
 	u,s,v = svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
-	# x = sign(take(ravel(u.T), argmax(abs(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
+	# x = sign(take(ravel(u.T), argmax(absolute(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
 	# u,v = dotr(u,x),dotl(v,x)
 
 	return u,s,v
@@ -5619,11 +5652,13 @@ def lstsq(x,y):
 	return out
 
 
-def nndsvd(a,rank=None,eps=None):
+def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	'''
 	Non-negative svd
 	Args:
 		a (array): Array for svd
+		u (array): u array of svd
+		v (array): v array of svd
 		rank (int): Rank of svd
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
@@ -5644,8 +5679,8 @@ def nndsvd(a,rank=None,eps=None):
 
 		x,y,z = u[slices,i],v[i,slices],s[i]
 
-		x_positive,y_positive = abs(maximums(x,eps)),abs(maximums(y,eps))
-		x_negative,y_negative = abs(minimums(x,eps)),abs(minimums(y,eps))
+		x_positive,y_positive = absolute(maximums(x,eps)),absolute(maximums(y,eps))
+		x_negative,y_negative = absolute(minimums(x,eps)),absolute(minimums(y,eps))
 		x_positive_norm,y_positive_norm = norm(x_positive),norm(y_positive)
 		x_negative_norm,y_negative_norm = norm(x_negative),norm(y_negative)
 
@@ -5665,7 +5700,7 @@ def nndsvd(a,rank=None,eps=None):
 	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 	u,s,v = svd(a,**options)
 
-	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
+	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),)#*([nonzero(s,eps=eps)] if eps is not None else []))
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
@@ -5742,7 +5777,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 		elif initialize in ['rand']:	
 			options = {**dict(dtype=a.dtype),**kwargs}					
 			u = random(shape=[*a.shape[:-1],rank],**options)
@@ -5750,19 +5785,19 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)
 		elif initialize in ['nndsvd']:
-			options = dict(rank=rank,eps=eps)			
+			options = dict(u=u,v=v,rank=rank,eps=eps)
 			u,v,s = nndsvd(a,**options)		
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)		
 		elif initialize in ['nndsvda']:
-			options = dict(rank=rank,eps=eps)			
+			options = dict(u=u,v=v,rank=rank,eps=eps)
 			u,v,s = nndsvd(a,**options)		
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)			
 		elif initialize in ['nndsvdr']:
-			options = dict(rank=rank,eps=eps)						
+			options = dict(u=u,v=v,rank=rank,eps=eps)			
 			u,v,s = nndsvd(a,**options)		
 
 			options = {**dict(dtype=a.dtype),**kwargs}			
@@ -5776,7 +5811,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 		return u,v
 	
 	def run(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
@@ -5835,7 +5870,7 @@ def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=Non
 				
 				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 				u,s,v = svd(a,**options)
-				u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 				u,v = maximums(u,eps),maximums(v,eps)
 
 				i += 1
@@ -5911,7 +5946,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))			
 		elif initialize in ['rand']:
@@ -5921,7 +5956,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			z = sqrt(addition(dot(u,v)))
 			u,v = u*reciprocal(z),v*reciprocal(z)					
 		elif initialize in ['nndsvd']:
-			options = dict(rank=rank,eps=eps)			
+			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			z = sqrt(addition(dot(u,v)))
@@ -5929,7 +5964,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
 		elif initialize in ['nndsvda']:
-			options = dict(rank=rank,eps=eps)			
+			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
@@ -5941,7 +5976,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
 		elif initialize in ['nndsvdr']:
-			options = dict(rank=rank,eps=eps)
+			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
@@ -5961,7 +5996,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(s)),dotl(v,sqrt(s)),None
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))
 
@@ -6122,19 +6157,19 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 	
 	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	rank = min(*u.shape,*v.shape,rank)
+	# rank = min(*u.shape,*v.shape,rank)
 
 	error = norm(a-dot(u,v))/norm(a)
 
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=100,parameters=parameters,method='kl',initialize=initialize,**kwargs)
+	# u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=100,parameters=parameters,method='kl',initialize=initialize,**kwargs)
 	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	err = norm(a-dot(u,v))/norm(a)
 
 	if error < err:
-		u,v = init(a,u=u,v=v,rank=rank,eps=None,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+		u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+		err = norm(a-dot(u,v))/norm(a)
 
-	err = norm(a-dot(u,v))/norm(a)
 	print('error',error,err)
 
 	# if is_naninf(err) or (err>eps):
@@ -8538,7 +8573,7 @@ def tensordot(a,b,axis=0):
 
 
 @jit
-def _tensorprod(a,b):
+def tensorproduct(a,b):
 	'''
 	Tensor (kronecker) product of arrays a and b	
 	Args:
@@ -8561,9 +8596,9 @@ def tensorprod(a):
 	'''
 	out = a[0]
 	for i in range(1,len(a)):
-		out = _tensorprod(out,a[i])
+		out = tensorproduct(out,a[i])
 	return out
-	# return forloop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
+	# return forloop(1,len(a),lambda i,out: tensorproduct(out,a[i]),a[0])	
 
 @jit
 def vtensorprod(a):
@@ -8592,7 +8627,7 @@ def ntensorprod(a,n):
 	for i in range(1,n):
 		out = _tensorpod(out,a)
 	return out
-	# return forloop(1,n,lambda i,out: _tensorprod(out,a),a)	
+	# return forloop(1,n,lambda i,out: tensorproduct(out,a),a)	
 
 @jit
 def vntensorprod(a,n):
@@ -8890,7 +8925,7 @@ def nonzero(a,axis=None,eps=None):
 		n (int): Number of non-zero entries
 	'''
 	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,integers) else eps
-	n = np.count_nonzero(abs(a)>=eps,axis=axis)
+	n = np.count_nonzero(absolute(a)>=eps,axis=axis)
 	return n
 
 
@@ -9140,7 +9175,7 @@ def rank(a,tol=None,hermitian=False):
 
 
 @jit
-def abs(a):
+def absolute(a):
 	'''
 	Calculate absolute value of array
 	Args:
@@ -9159,7 +9194,7 @@ def abs2(a):
 	Returns:
 		out (array): Absolute value squared of array
 	'''	
-	return abs(a)**2
+	return absolute(a)**2
 
 @jit
 def real(a):
@@ -9261,7 +9296,7 @@ def signs(a):
 	Returns:
 		out (array): Sign of array
 	'''
-	return (a + (a==0))/(abs(a) + (a==0))
+	return (a + (a==0))/(absolute(a) + (a==0))
 
 @jit
 def reciprocal(a):
@@ -11743,7 +11778,7 @@ def extrema(x,y,_x=None,**kwargs):
 
 	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 
-	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
+	indices = argsort(absolute(interp(x,y,**kwargs)(_x)))
 
 	return indices
 
