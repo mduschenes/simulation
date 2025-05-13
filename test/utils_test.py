@@ -1670,7 +1670,7 @@ def test_nmf(path=None,tol=None):
 				# try:
 
 				fname = join(directory,'%s.%s'%(file,attrs[attr]),ext='pdf')
-				opts = dict(marker='o',linestyle='--',markersize=8,linewidth=3,alpha=0.6)
+				opts = dict(marker='',linestyle='--',markersize=8,linewidth=3,alpha=0.6)
 
 				fig,ax = plt.subplots()
 				
