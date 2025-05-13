@@ -1552,7 +1552,7 @@ def test_nmf(path=None,tol=None):
 
 	from src.utils import array,rand,random,stochastic
 	from src.utils import nmf,pnmf,svd
-	from src.utils import addition,abs2,reciprocal,einsum,dot,dotr,dotl,condition_number
+	from src.utils import addition,abs2,log10,reciprocal,einsum,dot,dotr,dotl,condition_number
 	from src.utils import seeder,delim,is_nan
 	from src.iterables import permuter,setter,getter
 	from src.io import load,dump,join,exists
@@ -1563,13 +1563,14 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 4
+	n = 3
 	d = 2
 	l = 2
 	k = d**2
 
 	seeds(0)
 	kwargs = {
+		'method':['mu','kl','als'],
 		'seed':choices(range(int(2**32)),k=int(5)),
 		'shapes':[[[d**(n),k,d**(n+1)],[d**(n+1),k,d**(n+1)],[k**l]*(2)]]
 		}
@@ -1579,7 +1580,8 @@ def test_nmf(path=None,tol=None):
 	file = 'data'
 	path = join(directory,file,ext='pkl')
 
-	run = True and not exists(path)
+	do = False
+	run = do or False
 	plot = True
 
 	if run:
@@ -1590,7 +1592,7 @@ def test_nmf(path=None,tol=None):
 			options = {
 				'rank': None,
 				'eps': 5e-9,
-				'iters':1e4,
+				'iters':1e3,
 				'parameters': 1e-4,
 				'method': 'kl',
 				'initialize': 'nndsvda',
@@ -1670,7 +1672,7 @@ def test_nmf(path=None,tol=None):
 				# try:
 
 				fname = join(directory,'%s.%s'%(file,attrs[attr]),ext='pdf')
-				opts = dict(marker='',linestyle='--',markersize=8,linewidth=3,alpha=0.6)
+				opts = dict(marker='',markersize=8,linewidth=3,alpha=0.6)
 
 				fig,ax = plt.subplots()
 				
@@ -1679,7 +1681,7 @@ def test_nmf(path=None,tol=None):
 				indices = range(max(len(boolean(data[index][attrs[attr]])) for index in data))
 				x = {index:list(range(0,length*len(boolean(data[index][attrs[attr]])),length)) for index in data}
 				y = {index:boolean(data[index][attrs[attr]]) for index in data}
-				options = {index:{**opts,**dict(color=plt.get_cmap('viridis')((index+1)/(len(data)+1)),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in labels[attr][:-1]).replace('$','')))} for index in data}
+				options = {index:{**opts,**dict(color=plt.get_cmap('viridis')((index+1)/(len(data)+1)),linestyle={'mu':':','kl':'--','als':'-.'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in labels[attr][:-1]).replace('$','')))} for index in data}
 
 				plot = {}
 				for index in data:
@@ -1692,25 +1694,23 @@ def test_nmf(path=None,tol=None):
 				options = {**options,**dict(orientation='vertical')}
 				cbar = matplotlib.colorbar.ColorbarBase(cax,**options)
 				cbar.ax.set_ylabel(ylabel=texify.get(labels[attr][-1],labels[attr][-1]))
-				cbar.ax.set_yticks(ticks=[(index+1)/(len(data)+1) for index in data])
-				cbar.ax.set_yticklabels(ticklabels=['$%d$'%(index) for index in data])
+				cbar.ax.set_yticks(ticks=[(index+1)/(len(data)+1) for index in data][::len(data)//6])
+				cbar.ax.set_yticklabels(ticklabels=['$%d$'%(index) for index in data][::len(data)//6])
 
 				ax.set_xlabel(xlabel=texify.get(attr))
 				ax.set_ylabel(ylabel=texify.get(attrs[attr]))
 
-				ax.set_xlim(xmin=min(min(x[index]) for index in x)-1,xmax=max(max(x[index]) for index in x)+1)
+				options = dict(x=[int(min(min((x[index])) for index in y)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
+				ax.set_xlim(xmin=(options['x'][0]-1),xmax=(options['x'][-1]+1))
 				ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
 				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
 				ax.set_xscale(value='linear')
-				
-				ax.set_ylim(ymin=5e-7,ymax=5e0)
-				ax.set_yticks(ticks=[1e-6,1e-4,1e-2,1e0])
-				ax.set_ylim(ymin=5e-4,ymax=1e-2)
-				ax.set_yticks(ticks=[1e-4,1e-3,1e-2])
+				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))
+				ax.set_yticks(ticks=[10**(i) for i in range(options['y'][0]-1,options['y'][-1]+1,2)])
 				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
 				ax.set_yscale(value='log')
 
-				options = dict(title=' , '.join(texify.get(label,label) for label in labels[attr][:-1]),ncol=1,loc='lower right')
+				options = dict(title=' , '.join(texify.get(label,label) for label in labels[attr][:-1]),ncol=1,loc='upper right')
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
 				handles,labels = (
