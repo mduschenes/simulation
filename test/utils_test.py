@@ -1550,28 +1550,36 @@ def test_network(path=None,tol=None):
 
 def test_nmf(path=None,tol=None):
 
-	from src.utils import array,rand
-	from src.utils import nmf
-	from src.utils import addition,norm,condition_number
-	from src.utils import seeder,delim
+	from src.utils import array,rand,random,stochastic
+	from src.utils import nmf,pnmf,svd
+	from src.utils import addition,abs2,reciprocal,einsum,dot,dotr,dotl,condition_number
+	from src.utils import seeder,delim,is_nan
 	from src.iterables import permuter,setter,getter
 	from src.io import load,dump,join,exists
 
 	import matplotlib
 	import matplotlib.pyplot as plt
-	from random import choices,seed	
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	from random import choices,seed	as seeds
 
+	seed = 0
+	n = 4
+	d = 2
+	l = 2
+	k = d**2
 
-	seed(0)
-	kwargs = {'seed':choices(range(int(1e4)),k=int(1e1))}
-	# kwargs = {'seed':[7288]}
+	seeds(0)
+	kwargs = {
+		'seed':choices(range(int(2**32)),k=int(5)),
+		'shapes':[[[d**(n),k,d**(n+1)],[d**(n+1),k,d**(n+1)],[k**l]*(2)]]
+		}
 	data = {}
 
 	directory = 'data'
 	file = 'data'
 	path = join(directory,file,ext='pkl')
 
-	run = True# and not exists(path)
+	run = True and not exists(path)
 	plot = True
 
 	if run:
@@ -1581,39 +1589,54 @@ def test_nmf(path=None,tol=None):
 		for index,kwargs in enumerate(permuter(kwargs)):
 			options = {
 				'rank': None,
-				'eps': int(0),
-				'parameters': 0,
-				'method': 'mu',
-				'initialize': 'nndsvdr',
+				'eps': 5e-9,
+				'iters':1e4,
+				'parameters': 1e-4,
+				'method': 'kl',
+				'initialize': 'nndsvda',
 				'seed': 123,
 				}
-			def init(options):
+
+			def init(index,data,options):
+
+				data[index] = {}
+
 				options['key'] = seeder(options['seed'])
+				options['keys'] = seeder(options['seed'],size=3)
+
+				shapes = options.pop('shapes')
+				keys = options.pop('keys')
+
+				u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),stochastic(shapes[-1],key=keys[-1])
+				u,v,d = u*reciprocal(sqrt(addition(dot(u,v)))),v*reciprocal(sqrt(addition(dot(u,v)))),reshape(d,(k,)*(2*l))
+				a = einsum('aib,bjc,klij->aklc',u,v,d)
+
+				s = svd(reshape(transpose(d,(0,2,1,3)),(k**2,)*l),full_matrices=False,compute_uv=False,hermitian=False)
+				q = addition(u,(0,1))*addition(v,(-2,-1))
+				t = svd(reshape(a,(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))))
+				
+				print('Non-negative data',dict(zip(('data','state','obj'),map(lambda a: float(a.min()/a.max()),(s,q,t)))))
+
+				# a = load(join(directory,file,ext='npy'))
+				return a
+
+			def process(index,data,options,stats):
+				data[index].update({**dict(options=options),**stats})
 				return
 
-			def err(a,u,v,s):
-				return norm(a-dot(u*s,v))/norm(a)
+			def func(a,**options):
+				u,v,s,data = pnmf(a,**options)
+				return data
 
-			a = join(directory,file,ext='npy')
 			setter(options,kwargs,delimiter=delim,default='replace')
 
-			a = load(a)
-			init(options)
+			a = init(index,data,options)
 
-			u,v,s = nmf(a,**options)
+			stats = func(a,**options)
 
-			data[index] = {
-				'options':options,
-				'kwargs':kwargs,
-				'error':err(a,u,v,s),
-				# 'cond.u':condition_number(u),
-				# 'cond.v':condition_number(v)
-				}
-
-			print(index,{attr: data[index][attr] for attr in data[index] if attr not in ['options']})
+			process(index,data,options,stats)
 
 		dump(data,path)
-
 
 	if plot:
 
@@ -1621,46 +1644,93 @@ def test_nmf(path=None,tol=None):
 		
 		data = load(path)
 
-		attribute = 'seed'
-		attrs = list(set(i for index in data for i in data[index] if i not in ['options','kwargs']))
-		texify = {'seed':'$\\textnormal{Seed}$','error':'$\\textnormal{Error}~\\norm{A-UV}/\\norm{A}$','cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$','cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$'}
+		attrs = {
+			**{None:attr for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])}
+		}
+		labels = {
+			**{None:['method','seed'] for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])}
+		}
+		texify = {
+			None:'$\\textnormal{Iteration}$',
+			'method':'$\\textnormal{Method}$',
+			'seed':'$\\textnormal{Seed}$',
+			'error':'$\\textnormal{Error}~\\norm{A-UV}/\\norm{A}$',
+			'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
+			'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
+			'nmf':'$\\textnormal{NMF}$',
+			'mu':'$\\textnormal{MU}$',
+			'kl':'$\\textnormal{KL}$',
+			'als':'$\\textnormal{ALS}$',
+			'hals':'$\\textnormal{H-ALS}$',
+			}
 		mplstyle = 'config/plot.mplstyle'
 		with matplotlib.style.context(mplstyle):
 			for attr in attrs:
 
-				try:
+				# try:
 
-					fname = join(directory,'%s.%s'%(file,attr),ext='pdf')
-					options = dict(marker='o',linestyle='--',markersize=12,linewidth=3)
+				fname = join(directory,'%s.%s'%(file,attrs[attr]),ext='pdf')
+				opts = dict(marker='o',linestyle='--',markersize=8,linewidth=3,alpha=0.6)
 
-					fig,ax = plt.subplots()
-					
-					indices = sorted(data,key=lambda i:data[i]['error'])[::10]
-					x = [i for i,index in enumerate(indices)]
-					y = [data[index][attr] for i,index in enumerate(indices)]
+				fig,ax = plt.subplots()
+				
+				length = 100
+				boolean = lambda data: data[~is_nan(data)][::length]
+				indices = range(max(len(boolean(data[index][attrs[attr]])) for index in data))
+				x = {index:list(range(0,length*len(boolean(data[index][attrs[attr]])),length)) for index in data}
+				y = {index:boolean(data[index][attrs[attr]]) for index in data}
+				options = {index:{**opts,**dict(color=plt.get_cmap('viridis')((index+1)/(len(data)+1)),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in labels[attr][:-1]).replace('$','')))} for index in data}
 
-					ax.plot(x,y,**options)
+				plot = {}
+				for index in data:
+					plot[index] = ax.plot(x[index],y[index],**options[index])
 
-					ax.set_xlabel(xlabel=texify.get(attribute))
-					ax.set_ylabel(ylabel=texify.get(attr))
-					ax.set_xscale(value='linear')
-					ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
-					ax.set_xticklabels(labels=['$%d$'%(data[index]['options'][attribute]) for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
+				options = dict(position='right',size="3%",pad=0.1)
+				colors = [plt.get_cmap('viridis')((index+1)/(len(data)+1)) for index in data]
+				cax,options = make_axes_locatable(ax).append_axes(**options),dict()
+				cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
+				options = {**options,**dict(orientation='vertical')}
+				cbar = matplotlib.colorbar.ColorbarBase(cax,**options)
+				cbar.ax.set_ylabel(ylabel=texify.get(labels[attr][-1],labels[attr][-1]))
+				cbar.ax.set_yticks(ticks=[(index+1)/(len(data)+1) for index in data])
+				cbar.ax.set_yticklabels(ticklabels=['$%d$'%(index) for index in data])
 
-					if attr in ['cond.u','cond.v']:
-						ax.set_yscale(value='log')
-						ax.set_yticks(ticks=[1e-1,1e0,1e1,1e2,1e3,1e4])
-					else:
-						ax.set_yscale(value='log')
-						# ax.set_yticks(ticks=[1,2,3,4])
+				ax.set_xlabel(xlabel=texify.get(attr))
+				ax.set_ylabel(ylabel=texify.get(attrs[attr]))
 
-					fig.set_size_inches(w=10,h=10)
-					fig.subplots_adjust()
-					fig.tight_layout()
-					fig.savefig(fname,bbox_inches='tight',pad_inches=0.2)
+				ax.set_xlim(xmin=min(min(x[index]) for index in x)-1,xmax=max(max(x[index]) for index in x)+1)
+				ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
+				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
+				ax.set_xscale(value='linear')
+				
+				ax.set_ylim(ymin=5e-7,ymax=5e0)
+				ax.set_yticks(ticks=[1e-6,1e-4,1e-2,1e0])
+				ax.set_ylim(ymin=5e-4,ymax=1e-2)
+				ax.set_yticks(ticks=[1e-4,1e-3,1e-2])
+				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
+				ax.set_yscale(value='log')
 
-				except:
-					pass
+				options = dict(title=' , '.join(texify.get(label,label) for label in labels[attr][:-1]),ncol=1,loc='lower right')
+				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
+				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
+				handles,labels = (
+					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
+					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
+					)
+				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in set(labels)],[0 for i in set(labels)]
+				labels,handles = [labels[i[j]] for i,j in zip(indexes,unique)],[copy.deepcopy(handles[i[j]]) for i,j in zip(indexes,unique)]
+				for handle in handles:
+					handle.set_color('gray')
+				leg = ax.legend(handles,labels,**options)
+
+				fig.set_size_inches(w=10,h=10)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname,bbox_inches='tight',pad_inches=0.2)
+
+				# except Exception as exception:
+				# 	print(exception)
+				# 	pass
 	return
 
 

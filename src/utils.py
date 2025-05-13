@@ -3168,7 +3168,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						''.join(symbols(i) for i in range(L)),
 						''.join((symbols(2*L+L),))
 						)
-					if L < 2 or L > 2 or L == 2:
+					if L < 2 or L > 2:
 						options = {}
 						def function(data,state,where=None,subscripts=subscripts,options=options):
 							return einsum(subscripts,data,*(state[i]() for i in where))
@@ -3197,9 +3197,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							u,v = dotr(u,reciprocal(x)),dotl(v,reciprocal(y))
 							z = z*x*y 
 
+							norm = lambda a: addition(abs2(a))
+
 
 							print(s.real.sort()[::-1])
 							print(c.real.sort()[::-1])
+							print(x.real.sort()[::-1])
+							print(y.real.sort()[::-1])
 							print(z.real.sort()[::-1])
 
 							print(addition(real(z)))
@@ -4983,6 +4987,24 @@ if backend in ['jax','quimb']:
 
 		return out
 
+	def stochastic(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random stochastic array
+		Args:
+			shape (iterable): Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random			
+		Returns:
+			out (array): Random array
+		'''	
+
+		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
+
+		out = abs2(out)
+
+		return out
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
@@ -5361,6 +5383,24 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return out
 
+	def stochastic(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random stochastic array
+		Args:
+			shape (iterable): Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random			
+		Returns:
+			out (array): Random array
+		'''	
+
+		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
+
+		out = abs2(out)
+
+		return out
 
 @jit
 def inv(a):
@@ -5704,7 +5744,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s[s>eps].min()/s[s>eps].max(),s[0],s[1],s[-2],s[-1])	
+	print('svd',rank,s.min()/s.max())	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -5746,7 +5786,7 @@ def pnmfd(u,v,rank=None,eps=None):
 	'''
 	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	print('xy',addition(s),s[s>eps].min()/s[s>eps].max(),s.sort()[-1],s.sort()[0])
+	print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
 def nmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
@@ -6009,33 +6049,37 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 		elif method in ['mu']:
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 				
 				u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
 				v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
 
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x
 		elif method in ['kl']:
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 
 				u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
 				v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
 
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x
 		elif method in ['als']:
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 				
 				g = reshape(transpose(einsum('a,gvb,b->avg',b,v,c),(1,0,2)),(v.shape[1],u.shape[0]*u.shape[2]))
 				u = transpose(reshape(
@@ -6051,7 +6095,9 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x
 		elif method in ['hals']:
@@ -6060,7 +6106,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			iters = iters*size if iters is not None else iters
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 
 				n = i%size
 				m = n//rank # in max(b,c) -> j in b,k in c
@@ -6086,13 +6132,15 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x						
 		elif method in ['grad']:
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 				
 				g = einsum('a,gvb,b,t,lvk,k,tul->aug',b,v,c,b,v,c,u) - einsum('a,gvb,b,uv->aug',b,v,c,a)
 				u = u - parameters*g
@@ -6104,13 +6152,15 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x
 		elif method in ['div']:
 			def func(i,x):
 
-				a,b,c,d,w,z,u,v,i = x
+				a,b,c,d,w,z,u,v,data,i = x
 
 				g = -einsum('a,gvb,b,uv->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c))) + einsum('a,gb,b,u->aug',b,addition(v,1),c,w)
 				u = u - parameters*g
@@ -6119,9 +6169,12 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 				h = -einsum('a,aug,b,uv->gvb',b,u,c,a*reciprocal(einsum('n,nuk,l,kvl->uv',b,u,c,v))) + einsum('a,ag,b,v->gvb',b,addition(u,1),c,z)
 				v = v - parameters*h
 				v = maximums(v,eps)
+
 				i += 1
 
-				x = a,b,c,d,w,z,u,v,i
+				data['error'] = inplace(data['error'],i,norm(d-dot(u,v))/norm(d))
+
+				x = a,b,c,d,w,z,u,v,data,i
 
 				return x								
 		else:
@@ -6129,14 +6182,20 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 				return x	
 
 		def cond(x):
-			a,b,c,d,w,z,u,v,i = x
+			a,b,c,d,w,z,u,v,data,i = x
 			return (norm(d-dot(u,v))/norm(d) > eps) & (i < iters)
 
 		a,b,c,d,w,z,u,v = addition(a,(0,-1)),ones(u.shape[0]),ones(v.shape[-1]),a,ones(a.shape[1]),ones(a.shape[2]),u,v
 	
 		i = 0
 
-		x = a,b,c,d,w,z,u,v,i
+		data = {attr:None for attr in ['error']}
+		for attr in data:
+			data[attr] = nan*ones(int(max(iters,eps))+1)
+			if attr in ['error']:
+				data[attr] = inplace(data[attr],i,norm(d-dot(u,v))/norm(d))
+
+		x = a,b,c,d,w,z,u,v,data,i
 
 		if isinstance(eps,int) or eps==int(eps):
 			eps = int(eps)
@@ -6148,21 +6207,18 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 			cond,func = cond,partial(func,i)
 			x = whileloop(cond,func,x)
 		
-		a,b,c,d,w,z,u,v,i = x
+		a,b,c,d,w,z,u,v,data,i = x
 
-		return u,v
+		return u,v,data
 
 	def norm(a):
 		return addition(abs2(a))
 	
 	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	# rank = min(*u.shape,*v.shape,rank)
-
 	error = norm(a-dot(u,v))/norm(a)
 
-	# u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=100,parameters=parameters,method='kl',initialize=initialize,**kwargs)
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v,data = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	err = norm(a-dot(u,v))/norm(a)
 
@@ -6178,7 +6234,7 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
-	return u,v,s
+	return u,v,s,data
 
 def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 	'''
