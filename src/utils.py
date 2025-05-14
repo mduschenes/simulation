@@ -6051,8 +6051,8 @@ def pnmf(a,u=None,v=None,rank=None,eps=None,iters=None,parameters=None,method=No
 
 				a,b,c,d,w,z,u,v,data,i = x
 				
-				u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
-				v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
+				u = einsum('uv,a,gvb,b->aug',a,b,v,c)/(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
+				v = einsum('a,aug,b,uv->gvb',b,u,c,a)/(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
 
 				i += 1
 

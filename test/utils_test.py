@@ -1567,20 +1567,29 @@ def test_nmf(path=None,tol=None):
 	d = 2
 	l = 2
 	k = d**2
-
 	seeds(0)
+
+	data = {}
 	kwargs = {
-		'method':['mu','kl','als'],
-		'seed':choices(range(int(2**32)),k=int(5)),
+		'method':[
+			'mu',
+			'kl',
+			'als'
+			],
+		'rank':[None],
+		'eps':[5e-9],
+		'iters':[10e2],
+		'seed':choices(range(int(2**32)),k=int(3)),
 		'shapes':[[[d**(n),k,d**(n+1)],[d**(n+1),k,d**(n+1)],[k**l]*(2)]]
 		}
-	data = {}
 
 	directory = 'data'
 	file = 'data'
 	path = join(directory,file,ext='pkl')
 
-	do = False
+	boolean = lambda index,data,options: any(options==data[i]['options'] for i in data)
+
+	do = 1
 	run = do or False
 	plot = True
 
@@ -1592,16 +1601,16 @@ def test_nmf(path=None,tol=None):
 			options = {
 				'rank': None,
 				'eps': 5e-9,
-				'iters':1e3,
-				'parameters': 1e-4,
+				'iters':1e6,
+				'parameters': 1e-6,
 				'method': 'kl',
-				'initialize': 'nndsvda',
+				'initialize': 'rand',
 				'seed': 123,
 				}
 
 			def init(index,data,options):
 
-				data[index] = {}
+				data.update(load(path,default=data))
 
 				options['key'] = seeder(options['seed'])
 				options['keys'] = seeder(options['seed'],size=3)
@@ -1616,13 +1625,23 @@ def test_nmf(path=None,tol=None):
 				s = svd(reshape(transpose(d,(0,2,1,3)),(k**2,)*l),full_matrices=False,compute_uv=False,hermitian=False)
 				q = addition(u,(0,1))*addition(v,(-2,-1))
 				t = svd(reshape(a,(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))))
-				
-				print('Non-negative data',dict(zip(('data','state','obj'),map(lambda a: float(a.min()/a.max()),(s,q,t)))))
 
-				# a = load(join(directory,file,ext='npy'))
+				if not boolean(index,data,options):
+					print('Non-negative data',dict(zip(('data','state','obj'),map(lambda a: float(a.min()/a.max()),(s,q,t)))))
+
 				return a
 
 			def process(index,data,options,stats):
+				if boolean(index,data,options):
+					print('yes')
+					for i in data:
+						if options==data[i]['options']:
+							index = i
+							break
+				else:
+					index = len(data)
+				if not isinstance(data.get(index),dict):
+					data[index] = {}
 				data[index].update({**dict(options=options),**stats})
 				return
 
@@ -1634,6 +1653,9 @@ def test_nmf(path=None,tol=None):
 
 			a = init(index,data,options)
 
+			if boolean(index,data,options):
+				continue
+			
 			stats = func(a,**options)
 
 			process(index,data,options,stats)
@@ -1642,16 +1664,13 @@ def test_nmf(path=None,tol=None):
 
 	if plot:
 
-		print('Plot',path)
+		print('Plot',path,len(data))
 		
 		data = load(path)
 
-		attrs = {
-			**{None:attr for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])}
-		}
-		labels = {
-			**{None:['method','seed'] for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])}
-		}
+		attrs = [
+			*[dict(x=None,y=attr,label=['method','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
+		]
 		texify = {
 			None:'$\\textnormal{Iteration}$',
 			'method':'$\\textnormal{Method}$',
@@ -1669,40 +1688,40 @@ def test_nmf(path=None,tol=None):
 		with matplotlib.style.context(mplstyle):
 			for attr in attrs:
 
-				# try:
-
-				fname = join(directory,'%s.%s'%(file,attrs[attr]),ext='pdf')
-				opts = dict(marker='',markersize=8,linewidth=3,alpha=0.6)
-
 				fig,ax = plt.subplots()
-				
+
+				options = dict(marker='',markersize=8,linewidth=3,alpha=0.6)
 				length = 100
 				boolean = lambda data: data[~is_nan(data)][::length]
-				indices = range(max(len(boolean(data[index][attrs[attr]])) for index in data))
-				x = {index:list(range(0,length*len(boolean(data[index][attrs[attr]])),length)) for index in data}
-				y = {index:boolean(data[index][attrs[attr]]) for index in data}
-				options = {index:{**opts,**dict(color=plt.get_cmap('viridis')((index+1)/(len(data)+1)),linestyle={'mu':':','kl':'--','als':'-.'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in labels[attr][:-1]).replace('$','')))} for index in data}
+				unique = sorted(list(set(data[i]['options'][attr['label'][-1]] for i in data)),key=lambda i:[data[i]['options'][attr['label'][-1]] for i in data].index(i))
+				indices = range(max(len(boolean(data[index][attr['y']])) for index in data))
+				x = {index:list(range(0,length*len(boolean(data[index][attr['y']])),length)) for index in data}
+				y = {index:boolean(data[index][attr['y']]) for index in data}
+				options = {index:{**options,**dict(color=plt.get_cmap('viridis')((unique.index(data[index]['options'][attr['label'][-1]])+1)/(len(unique)+1)),linestyle={'mu':':','kl':'--','als':'-.'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')))} for index in data}
 
 				plot = {}
 				for index in data:
 					plot[index] = ax.plot(x[index],y[index],**options[index])
 
 				options = dict(position='right',size="3%",pad=0.1)
+				number = 6
 				colors = [plt.get_cmap('viridis')((index+1)/(len(data)+1)) for index in data]
 				cax,options = make_axes_locatable(ax).append_axes(**options),dict()
 				cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
 				options = {**options,**dict(orientation='vertical')}
 				cbar = matplotlib.colorbar.ColorbarBase(cax,**options)
-				cbar.ax.set_ylabel(ylabel=texify.get(labels[attr][-1],labels[attr][-1]))
-				cbar.ax.set_yticks(ticks=[(index+1)/(len(data)+1) for index in data][::len(data)//6])
-				cbar.ax.set_yticklabels(ticklabels=['$%d$'%(index) for index in data][::len(data)//6])
+				cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
+				cbar.ax.set_yticks(ticks=[(i+1)/(len(unique)+1) for i,obj in enumerate(unique)][::max(1,len(unique)//number)])
+				cbar.ax.set_yticklabels(ticklabels=['$%s$'%(i) for i,obj in enumerate(unique)][::max(1,len(unique)//number)])
 
-				ax.set_xlabel(xlabel=texify.get(attr))
-				ax.set_ylabel(ylabel=texify.get(attrs[attr]))
+				options = dict()
+				ax.set_xlabel(xlabel=texify.get(attr['x']),**options)
+				ax.set_ylabel(ylabel=texify.get(attr['y']),**options)
 
 				options = dict(x=[int(min(min((x[index])) for index in y)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
-				ax.set_xlim(xmin=(options['x'][0]-1),xmax=(options['x'][-1]+1))
-				ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//6)]])
+				number = 6
+				ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.01))),xmax=(max(int(options['x'][-1]*1.1),1)))
+				ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//number)]])
 				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
 				ax.set_xscale(value='linear')
 				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))
@@ -1710,27 +1729,26 @@ def test_nmf(path=None,tol=None):
 				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
 				ax.set_yscale(value='log')
 
-				options = dict(title=' , '.join(texify.get(label,label) for label in labels[attr][:-1]),ncol=1,loc='upper right')
+				options = dict(title=' , '.join(texify.get(label,label) for label in attr['label'][:-1]),ncol=1,loc='upper right')
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
 				handles,labels = (
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
-				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in set(labels)],[0 for i in set(labels)]
-				labels,handles = [labels[i[j]] for i,j in zip(indexes,unique)],[copy.deepcopy(handles[i[j]]) for i,j in zip(indexes,unique)]
+				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[0 for i in sorted(set(labels),key=lambda i:labels.index(i))]
+				handles,labels = [copy.deepcopy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
 				for handle in handles:
 					handle.set_color('gray')
 				leg = ax.legend(handles,labels,**options)
 
-				fig.set_size_inches(w=10,h=10)
+				options = dict(w=10,h=10)
+				fig.set_size_inches(**options)
 				fig.subplots_adjust()
 				fig.tight_layout()
-				fig.savefig(fname,bbox_inches='tight',pad_inches=0.2)
+				options = dict(fname=join(directory,'%s.%s.%s'%(file,attr['x'] if attr['x'] is not None else 'iteration',attr['y'] if attr['y'] is not None else 'data'),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
+				fig.savefig(**options)
 
-				# except Exception as exception:
-				# 	print(exception)
-				# 	pass
 	return
 
 
