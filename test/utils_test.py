@@ -1550,7 +1550,7 @@ def test_network(path=None,tol=None):
 
 def test_nmf(path=None,tol=None):
 
-	from src.utils import array,rand,random,stochastic
+	from src.utils import array,ones,zeros,rand,random,stochastic
 	from src.utils import nmf,pnmf,svd
 	from src.utils import addition,abs2,log10,reciprocal,einsum,dot,dotr,dotl,condition_number
 	from src.utils import seeder,delim,is_nan
@@ -1573,19 +1573,24 @@ def test_nmf(path=None,tol=None):
 	kwargs = {
 		'method':[
 			'mu',
-			'kl',
-			'als'
+			# 'kl',
+			# 'als'
+			# 'hals'
 			],
+		'initialize':['nndsvda'],
 		'rank':[None],
 		'eps':[5e-9],
-		'iters':[10e2],
-		'seed':choices(range(int(2**32)),k=int(3)),
+		'iters':[1e5],
+		'parameters':[1e-1],
+		'seed':choices(range(int(2**32)),k=int(1)),
 		'shapes':[[[d**(n),k,d**(n+1)],[d**(n+1),k,d**(n+1)],[k**l]*(2)]]
 		}
 
 	directory = 'data'
 	file = 'data'
 	path = join(directory,file,ext='pkl')
+
+	data.update(load(path,default=data))
 
 	boolean = lambda index,data,options: any(options==data[i]['options'] for i in data)
 
@@ -1602,7 +1607,7 @@ def test_nmf(path=None,tol=None):
 				'rank': None,
 				'eps': 5e-9,
 				'iters':1e6,
-				'parameters': 1e-6,
+				'parameters': 1e-3,
 				'method': 'kl',
 				'initialize': 'rand',
 				'seed': 123,
@@ -1610,30 +1615,23 @@ def test_nmf(path=None,tol=None):
 
 			def init(index,data,options):
 
-				data.update(load(path,default=data))
-
 				options['key'] = seeder(options['seed'])
 				options['keys'] = seeder(options['seed'],size=3)
 
 				shapes = options.pop('shapes')
 				keys = options.pop('keys')
 
-				u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),stochastic(shapes[-1],key=keys[-1])
-				u,v,d = u*reciprocal(sqrt(addition(dot(u,v)))),v*reciprocal(sqrt(addition(dot(u,v)))),reshape(d,(k,)*(2*l))
-				a = einsum('aib,bjc,klij->aklc',u,v,d)
-
-				s = svd(reshape(transpose(d,(0,2,1,3)),(k**2,)*l),full_matrices=False,compute_uv=False,hermitian=False)
-				q = addition(u,(0,1))*addition(v,(-2,-1))
-				t = svd(reshape(a,(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))))
-
-				if not boolean(index,data,options):
-					print('Non-negative data',dict(zip(('data','state','obj'),map(lambda a: float(a.min()/a.max()),(s,q,t)))))
-
-				return a
+				u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
+				d = ones(d.shape)/d.shape[0]
+				p,q = random(shapes[0][:1],key=keys[0]),random(shapes[1][-1:],key=keys[1])
+				a = einsum('awb,bzc,uvwz->auvc',u,v,d)
+				a = dotr(dotl(a,p),q)
+				a /= addition(a)
+				objects = a,u,v,(p,q)
+				return objects
 
 			def process(index,data,options,stats):
 				if boolean(index,data,options):
-					print('yes')
 					for i in data:
 						if options==data[i]['options']:
 							index = i
@@ -1645,18 +1643,18 @@ def test_nmf(path=None,tol=None):
 				data[index].update({**dict(options=options),**stats})
 				return
 
-			def func(a,**options):
-				u,v,s,data = pnmf(a,**options)
+			def func(*objects,**options):
+				u,v,s,data = pnmf(*objects,**options)
 				return data
 
 			setter(options,kwargs,delimiter=delim,default='replace')
 
-			a = init(index,data,options)
+			objects = init(index,data,options)
 
 			if boolean(index,data,options):
 				continue
 			
-			stats = func(a,**options)
+			stats = func(*objects,**options)
 
 			process(index,data,options,stats)
 
@@ -1683,6 +1681,8 @@ def test_nmf(path=None,tol=None):
 			'kl':'$\\textnormal{KL}$',
 			'als':'$\\textnormal{ALS}$',
 			'hals':'$\\textnormal{H-ALS}$',
+			'grad':'$\\textnormal{GD}$',
+			'div':'$\\textnormal{KL-GD}$',
 			}
 		mplstyle = 'config/plot.mplstyle'
 		with matplotlib.style.context(mplstyle):
@@ -1697,7 +1697,7 @@ def test_nmf(path=None,tol=None):
 				indices = range(max(len(boolean(data[index][attr['y']])) for index in data))
 				x = {index:list(range(0,length*len(boolean(data[index][attr['y']])),length)) for index in data}
 				y = {index:boolean(data[index][attr['y']]) for index in data}
-				options = {index:{**options,**dict(color=plt.get_cmap('viridis')((unique.index(data[index]['options'][attr['label'][-1]])+1)/(len(unique)+1)),linestyle={'mu':':','kl':'--','als':'-.'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')))} for index in data}
+				options = {index:{**options,**dict(color=plt.get_cmap('viridis')((unique.index(data[index]['options'][attr['label'][-1]])+1)/(len(unique)+1)),linestyle={'mu':':','kl':'--','als':'-.','grad':'-','div':'-'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')))} for index in data}
 
 				plot = {}
 				for index in data:
