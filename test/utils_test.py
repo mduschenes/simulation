@@ -1563,7 +1563,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 3
+	n = 1
 	d = 2
 	l = 2
 	k = d**2
@@ -1577,13 +1577,13 @@ def test_nmf(path=None,tol=None):
 			# 'als'
 			# 'hals'
 			],
-		'initialize':['nndsvda'],
+		'initialize':['rand'],
 		'rank':[None],
-		'eps':[5e-9],
-		'iters':[1e5],
+		'eps':[5e-16],
+		'iters':[1e6],
 		'parameters':[1e-1],
 		'seed':choices(range(int(2**32)),k=int(1)),
-		'shapes':[[[d**(n),k,d**(n+1)],[d**(n+1),k,d**(n+1)],[k**l]*(2)]]
+		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n+1)],[k**l]*(2)]]
 		}
 
 	directory = 'data'

@@ -5755,7 +5755,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s.min()/s.max())	
+	print('svd',rank,s.min()/s.max(),a.shape,u.shape,v.shape)	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -6012,7 +6012,6 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
-			eps = epsilon(dtype)
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			
@@ -6025,10 +6024,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
-			eps = epsilon(dtype)
 			options = {**dict(dtype=dtype),**kwargs}
 			i = u<=eps
 			j = v<=eps
+			print(options['key'],eps,u[i].size,v[j].size)
 			x = random(shape=(addition(i),),**options)
 			y = random(shape=(addition(j),),**options)
 			u,v = inplace(u,i,x),inplace(v,j,y)
@@ -6061,7 +6060,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6076,7 +6075,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6106,41 +6105,37 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
 				return x
 		elif method in ['hals']:
-			size = rank*max(a.shape[0],a.shape[-1])
+			size = rank*(a.shape[0]*a.shape[-1])
 			eps = eps*size if eps is not None and eps==int(eps) else eps
 			iters = iters*size if iters is not None else iters
 			def func(i,x):
 
 				a,b,c,d,e,u,v,stats,i = x
 
-				n = i%size
-				m = n//rank # in max(b,c) -> j in b,k in c
-				l = n%rank # in rank
-				j,k = m%b.size,m%c.size
+				q = i%size
+				l = q%rank
+				k = (q%(rank*c.size))//rank
+				j = (q)//(rank*c.size)
 
-				h = einsum('au,a->u',u[:,:,l]*c[k],b)
-				e += einsum('u,v->uv',h,v[l,:,k])
-				g = h*reciprocal(addition(h*h))
-				g = maximums(einsum('uv,u->v',e,g),0)
-				u = inplace(u,(l,slice(None),k),g)
-				e -= einsum('u,v->uv',h,v[l,:,k])
+				h = c[k]*dot(u[:,:,l].T,b)
+				e += out(h,v[l,:,k])
+				v = inplace(v,(l,slice(None),k),maximums(dot(e.T,h)*reciprocal(addition(h*h)),eps))
+				e -= out(h,v[l,:,k])
 
-				h = einsum('vb,b->v',b[j]*v[l,:,:],c)
-				e += einsum('u,v->uv',u[j,:,l],h)
-				g = h*reciprocal(addition(h*h))
-				g = maximums(einsum('uv,v->u',e,g),0)
-				u = inplace(u,(j,slice(None),l),g)
-				e -= einsum('u,v->uv',u[j,:,l],h)
+				h = b[j]*dot(v[l,:,:],c)
+				e += out(u[j,:,l],h)
+				u = inplace(u,(j,slice(None),l),maximums(dot(e,h)*reciprocal(addition(h*h)),eps))
+				e -= out(u[j,:,l],h)
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6160,7 +6155,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6180,7 +6175,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dot(u,v))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6191,9 +6186,9 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		def cond(x):
 			a,b,c,d,e,u,v,stats,i = x
-			return (norm(d-dot(u,v))/norm(d) > eps) & (i < iters)
+			return (norm(d-dotr(dotl(dot(u,v),b),c))/norm(d) > eps) & (i < iters)
 
-		a,b,c,d,e,u,v = addition(a,(0,-1)),*data,a,addition(a-dot(u,v),(0,-1)),u,v
+		a,b,c,d,e,u,v = addition(a,(0,-1)),*data,a,addition(a-dotr(dotl(dot(u,v),data[0]),data[1]),(0,-1)),u,v
 	
 		i = 0
 
@@ -6201,7 +6196,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		for attr in stats:
 			stats[attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['error']:
-				stats[attr] = inplace(stats[attr],i,norm(d-dot(u,v))/norm(d))
+				stats[attr] = inplace(stats[attr],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
 
 		x = a,b,c,d,e,u,v,stats,i
 
@@ -6217,7 +6212,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		a,b,c,d,e,u,v,stats,i = x
 
-		u,v = dotl(u,data[0]),dotr(v,data[-1])
+		u,v = dotl(u,b),dotr(v,c)
 
 		return u,v,stats
 
@@ -6226,23 +6221,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	
 	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	error = norm(a-dot(dotl(u,data[0]),dotr(v,data[-1])))/norm(a)
-
-	# u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=100,parameters=parameters,method='als',initialize=initialize,**kwargs)
 	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-	# u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=100,parameters=parameters,method='als',initialize=initialize,**kwargs)
 
-	err = norm(a-dot(u,v))/norm(a)
-
-	# if error < err:
-	# 	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-	# 	err = norm(a-dot(u,v))/norm(a)
-
-	print('error',error,err)
-
-	# if is_naninf(err) or (err>eps):
-	# 	dump(a,'data/data.npy')
-	# 	exit()
+	attr = 'error'
+	print(attr,stats[attr][0],stats[attr][-1])
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
@@ -8338,25 +8320,17 @@ def dot(a,b,axes=1):
 	'''	
 	return np.tensordot(a,b,axes=axes)
 
-
-def dots(*a):
+@jit
+def out(a,b):
 	'''
-	Calculate dot product of arrays a and b
+	Calculate outer product of arrays a and b
 	Args:
-		a (iterable[array]): Arrays to calculate dot product
+		a (array): Array to calculate outer product
+		b (array): Array to calculate outer product
 	Returns:
-		out (array): Dot product
+		out (array): Outer product
 	'''	
-
-	if not len(a):
-		out = None
-	else:
-		out = a[0]
-		for i in a[1:]:
-			out = dot(out,i)
-	
-	return out
-	
+	return np.outer(a,b)
 
 @jit
 def inner(a,b):
