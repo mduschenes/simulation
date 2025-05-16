@@ -574,7 +574,7 @@ def brickwork(iterable,sort=False,group=False):
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
 	indexes = [*range(0,N-1,2),*range(1,N-1,2)]
-	attributes = lambda index: [(index,index+1),(index,),(index+1,)]
+	attributes = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
 	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
 	groups = lambda i,index,attribute: len(attributes(index))*index+attributes(index).index(attribute)
 
@@ -610,9 +610,9 @@ def nearestneighbour(iterable,sort=False,group=False):
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
 	indexes = [*range(0,N-1,1),]
-	attributes = lambda index: [(index,index+1),(index,),(index+1,)]
+	attributes = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
 	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute: 3*index+attributes(index).index(attribute)
+	groups = lambda i,index,attribute: len(attributes(index))*index+attributes(index).index(attribute)
 	groups = lambda i,index,attribute: index
 
 	indices = {}
@@ -628,7 +628,6 @@ def nearestneighbour(iterable,sort=False,group=False):
 	iterable = indices
 
 	def key(key,iterable=iterable,sort=sort,group=group):
-
 		if sort and group:
 			index = (list(iterable).index(key),iterable[key])
 		elif sort:

@@ -15,7 +15,7 @@ from src.utils import array,empty,identity,ones,zeros,rand,random,haar,arange
 from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
-from src.utils import maximum,minimum,argmax,argmin,nonzero,nonnegative,difference,unique,shift,sort,relsort,prod,product
+from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
@@ -7732,13 +7732,15 @@ class Module(System):
 					
 					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
 					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					trace = self.measure.trace(parameters=parameters,state=state).array().item()
+					trace = self.measure.trace(parameters=parameters,state=state).array().item()-1
 					data = state
 					print('index',l,i)
 					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
 					print('trace',trace)
 					# print('data',data)
 					print()
+					# if i == 1:
+					# 	exit()
 
 			return state
 

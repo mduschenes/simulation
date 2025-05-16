@@ -1572,15 +1572,15 @@ def test_nmf(path=None,tol=None):
 	data = {}
 	kwargs = {
 		'method':[
-			'mu',
+			# 'mu',
 			# 'kl',
 			# 'als'
-			# 'hals'
+			'hals'
 			],
-		'initialize':['rand'],
+		'initialize':['nndsvda'],
 		'rank':[None],
 		'eps':[5e-16],
-		'iters':[1e6],
+		'iters':[1e2],
 		'parameters':[1e-1],
 		'seed':choices(range(int(2**32)),k=int(1)),
 		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n+1)],[k**l]*(2)]]

@@ -5751,7 +5751,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 	u,s,v = svd(a,**options)
 
-	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),)#*([nonzero(s,eps=eps)] if eps is not None else []))
+	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
@@ -5997,16 +5997,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			options = {**dict(dtype=dtype),**kwargs}
 			u = random(shape=[*shape[:len(shape)//2],rank],**options)
 			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
-			z = sqrt(addition(einsum('a,b,auc,cvb->uv',*data,u,v))*addition(a))
-			u,v = u*reciprocal(z),v*reciprocal(z)		
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
-			z = sqrt(addition(einsum('a,b,auc,cvb->uv',*data,u,v))*addition(a))
-			u,v = u*reciprocal(z),v*reciprocal(z)
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
@@ -6017,8 +6017,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))	
-			z = sqrt(addition(einsum('a,b,auc,cvb->uv',*data,u,v))*addition(a))
-			u,v = u*reciprocal(z),v*reciprocal(z)
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
@@ -6034,8 +6034,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))			
-			z = sqrt(addition(einsum('a,b,auc,cvb->uv',*data,u,v)))
-			u,v = u*reciprocal(z),v*reciprocal(z)
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			u,v = u*z,v*z
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
@@ -6091,8 +6091,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 						(u.shape[1],u.shape[0],u.shape[2])),(1,0,2))
 				u = maximums(u,eps)
 
-				s = reciprocal(sqrt(addition(einsum('a,b,auc,cvb->uv',b,c,u,v))))
-				u,v = u*s,v*s
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
 
 				h = reshape(transpose(einsum('a,aug,b->gub',b,u,c),(1,0,2)),(u.shape[1],v.shape[0]*v.shape[2]))
 				v = transpose(reshape(
@@ -6100,8 +6100,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
 				v = maximums(v,eps)
 
-				s = reciprocal(sqrt(addition(einsum('a,b,auc,cvb->uv',b,c,u,v))))
-				u,v = u*s,v*s
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
 
 				i += 1
 
@@ -6123,19 +6123,25 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				k = (q%(rank*c.size))//rank
 				j = (q)//(rank*c.size)
 
+				s = (l,slice(None),k)
 				h = c[k]*dot(u[:,:,l].T,b)
-				e += out(h,v[l,:,k])
-				v = inplace(v,(l,slice(None),k),maximums(dot(e.T,h)*reciprocal(addition(h*h)),eps))
-				e -= out(h,v[l,:,k])
+				e += out(h,v[s])
+				v = inplace(v,s,maximums((dot(e.T,h)+parameters*v[s])*reciprocal(dot(h,h)+parameters),eps))
+				v = inplace(v,s,v[s]*addition(d-e)/(addition(v)*addition(h)))
 
+				e -= out(h*z,v[s])
+
+				s = (j,slice(None),l)
 				h = b[j]*dot(v[l,:,:],c)
-				e += out(u[j,:,l],h)
-				u = inplace(u,(j,slice(None),l),maximums(dot(e,h)*reciprocal(addition(h*h)),eps))
-				e -= out(u[j,:,l],h)
+				e += out(u[s],h)
+				u = inplace(u,s,maximums((dot(e,h)+parameters*u[s])*reciprocal(dot(h,h)+parameters),eps))
+				u = inplace(u,s,u[s]*addition(d-e)/(addition(u)*addition(h)))
+
+				e -= out(u[s],h*z)
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,norm(e)/norm(d))	
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6188,7 +6194,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			a,b,c,d,e,u,v,stats,i = x
 			return (norm(d-dotr(dotl(dot(u,v),b),c))/norm(d) > eps) & (i < iters)
 
-		a,b,c,d,e,u,v = addition(a,(0,-1)),*data,a,addition(a-dotr(dotl(dot(u,v),data[0]),data[1]),(0,-1)),u,v
+		a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
+		e = a-addition(dotr(dotl(dot(u,v),b),c),(0,-1))
 	
 		i = 0
 
@@ -6196,7 +6203,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		for attr in stats:
 			stats[attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['error']:
-				stats[attr] = inplace(stats[attr],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats[attr] = inplace(stats[attr],i,norm(e)/norm(d))
 
 		x = a,b,c,d,e,u,v,stats,i
 
@@ -6213,6 +6220,11 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		a,b,c,d,e,u,v,stats,i = x
 
 		u,v = dotl(u,b),dotr(v,c)
+		s = reciprocal(sqrt(addition(dot(u,v))))
+		u,v = u*s,v*s
+
+		for attr in stats:
+			stats[attr] = stats[attr][~is_nan(stats[attr])]
 
 		return u,v,stats
 
@@ -6223,8 +6235,9 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	attr = 'error'
-	print(attr,stats[attr][0],stats[attr][-1])
+
+	for attr in stats:
+		print(attr,stats[attr][0],stats[attr][-1],norm(a-dot(u,v))/norm(a))
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 

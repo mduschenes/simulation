@@ -2624,16 +2624,16 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[10],"module.measure.operator":["tetrad"],
-		"model.N":[8],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[2],"module.measure.operator":["tetrad"],
+		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
 			# {"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			{"S":None,"eps":1e-32,"iters":1e4,"parameters":1e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":5e-9,"iters":5e5,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":1e-16,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":1e-16,"iters":5e4,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e3,"parameters":1e-6,"method":"als","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
@@ -2686,7 +2686,7 @@ def test_class(*args,**kwargs):
 				},
 				# "XX":{
 				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
-				# 	"parameters":5e-3,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# 	"parameters":0e-3,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				# },				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
