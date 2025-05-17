@@ -2425,8 +2425,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def dtype(self):
 			return self.data.dtype
 
-		@property
-		def tensor(self):
+		def tensor(self,where=None):
 			return self.data
 
 		def array(self):
@@ -2630,7 +2629,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Returns:
 				data (dict): Class data
 			'''
-
 			if data is None:
 				data = self.data
 			elif isinstance(data,arrays):
@@ -2776,12 +2774,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return self[min(self)].dtype
 
 		@property
-		def tensor(self):
-			return {i:self[i].data for i in self}
-
-		@property
 		def indices(self):
 			return {i:self[i].indices for i in self}
+
+		def tensor(self,where=None):
+			where = self if where is None else where
+			return {i:self[i].data for i in where}
 
 		def array(self):
 			return self.contraction(self)
@@ -3185,7 +3183,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							u,s,v = svd(data,**options)
 							u,v = reshape(u,(*shape[0],-1)),reshape(v,(-1,*shape[-1]))
 
-							a,b = state[where[0]](),state[where[-1]]()
+							a,b = state[where[0]],state[where[-1]]
 							x,y = addition(a,(0,1)),addition(b,(-2,-1))
 							a,b,c = dotr(a,reciprocal(x)),dotl(b,reciprocal(y)),x*y
 
@@ -3209,21 +3207,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							print(addition(real(z)))
 							exit()
 
-
-							# rank = nonzero(s,eps=1e-15)
-							# u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-
-
-							u,v = reshape(dotr(u,sqrt(absolute(s))),(*shape[0],-1)),reshape(dotl(v,sqrt(absolute(s))),(-1,*shape[1]))
-							u,v = real(reshape(einsum('uzx,azb->aubx',u,state[where[0]]()),(*state[where[0]].shape[:-1],-1))),real(reshape(einsum('xvw,bwc->bxvc',v,state[where[1]]()),(-1,*state[where[1]].shape[1:])))
-
-							print(addition(sqrt(absolute(s))),s/sqrt(s.size))
-							print(addition(einsum('aub,bvc->auvc',u,v))-1)
-
-							print(u.shape,v.shape)
-							print(u)
-							print(v)
-
 							return einsum(subscripts,data,*(state[i]() for i in where))						
 					func[L] = function
 			self.func = func
@@ -3246,7 +3229,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict): Class data		
 			'''	
 
-			data = self.tensor if data is None else data
+			data = self.tensor() if data is None else data
 
 			options = {} if options is None else options
 
@@ -3298,7 +3281,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							elif v.ndim == 1:
 								data[i+1] = dotl(data[i+1],v)
 
-						if abs(index) == 1:
 							objects[0] = v
 					
 					elif index > 0:
@@ -3323,11 +3305,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 								data[i-1] = dot(data[i-1],u)
 							elif u.ndim == 1:
 								data[i-1] = dotr(data[i-1],u)
-
-						if abs(index) == 1:
+							
 							objects[-1] = u
-					
-				data = objects
 
 			elif isinstance(data,(*arrays,*iterables)):
 
@@ -3344,6 +3323,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v = [state[i] for i in where]
 
 					data = self.organize(data,where=where,scheme=scheme,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
+
 					u,v,s = self.scheme[scheme](data,u,v,objects,**{**defaults,**kwargs,**options})
 
 					data = self.organize((u,v),where=where,scheme=scheme,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
@@ -3353,9 +3333,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				else:
 					raise NotImplementedError(f"Not Implemented {where}")
 
-			if isinstance(data,dicts):
-				for i in data:
-					self[i](data[i])
+				objects = data
+
+			for i in data:
+				self[i](data[i])
+
+			data = objects
 
 			return data
 
@@ -3539,8 +3522,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
 					shape = a.shape
-					a = conjugate(transpose(a)) if conj else a
 					rank = min(*shape,*([] if rank is None else [rank]))
+					a = conjugate(transpose(a)) if conj else a
 					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
@@ -3560,14 +3543,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
 					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					u,v,s = u*s,v,rank
+					u,v,s = u,dotl(v,s),rank
+					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
+					# u,v,s = dotr(u,s),dotl(v,s),rank
 					return u,v,s
 			
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
 					shape = (prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))
-					a = conjugate(transpose(a)) if conj else a
 					rank = min(*shape,*([] if rank is None else [rank]))
+					a = conjugate(transpose(a)) if conj else a
 					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
@@ -3605,8 +3590,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
 					shape = (*a.shape[:1],prod(a.shape[1:])) if conj else (prod(a.shape[:-1]),*a.shape[-1:])
+					rank = min(*shape,*([] if rank is None else [rank]))
 					a = conjugate(transpose(a)) if conj else a
-					rank = min(*shape,*([] if rank is None else [rank]))			
 					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
 					u,v,s = (v,conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
@@ -3615,9 +3600,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			if scheme in ['stq']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
-					u = a[...,:rank]
-					s = addition(u,range(a.ndim-1))
-					u,v,s = u*reciprocal(s),s,rank
+					u = a[:,:,:rank]
+					s = addition(u,(0,1))
+					u,v,s = dotr(u,reciprocal(s)),s,rank
 					return u,v,s				
 			
 			def wrapper(func):
@@ -3716,15 +3701,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			func = self.func[len(where)]
 
-			scheme = {'svd':None,'nmf':'stq'}.get(options.get('scheme'))
+			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
 			objects = state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
-			data = state.update((data,state,objects),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+			data = state.update((data,state.tensor(),objects),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
 
-			data = state
+			data = self
 
 			return data
 
@@ -5755,7 +5740,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s.min()/s.max(),a.shape,u.shape,v.shape)	
+	print('svd',rank,s.min()/s.max())	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -6027,7 +6012,6 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			options = {**dict(dtype=dtype),**kwargs}
 			i = u<=eps
 			j = v<=eps
-			print(options['key'],eps,u[i].size,v[j].size)
 			x = random(shape=(addition(i),),**options)
 			y = random(shape=(addition(j),),**options)
 			u,v = inplace(u,i,x),inplace(v,j,y)
@@ -6060,7 +6044,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6070,12 +6054,17 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				a,b,c,d,e,u,v,stats,i = x
 
-				u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
-				v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+				# u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
+				# v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+
+				u,v = (
+					einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u,
+					einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+					)
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6105,7 +6094,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6141,7 +6130,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(e)/norm(d))	
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6161,7 +6150,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6181,7 +6170,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,norm(d-dotr(dotl(dot(u,v),b),c))/norm(d))
+				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
 
 				x = a,b,c,d,e,u,v,stats,i
 
@@ -6190,22 +6179,37 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			def func(i,x):
 				return x	
 
-		def cond(x):
-			a,b,c,d,e,u,v,stats,i = x
-			return (norm(d-dotr(dotl(dot(u,v),b),c))/norm(d) > eps) & (i < iters)
+		@jit
+		def norm(a):
+			return addition(abs2(a))
 
+		@jit
+		def error(x):
+			a,b,c,d,e,u,v,stats,i = x
+			# err = (addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
+			# err = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)
+			err = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
+			return err
+
+		@jit
+		def cond(x):
+			a,b,c,d,e,u,v,stats,i = x			
+			return (stats['error'][i] > eps) & (i < iters)
+			
 		a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
-		e = a-addition(dotr(dotl(dot(u,v),b),c),(0,-1))
-	
+		e = a-dot(dot(b,dot(u,v)),c)
+
 		i = 0
 
-		stats = {attr:None for attr in ['error']}
+		stats = {}
+
+		x = a,b,c,d,e,u,v,stats,i
+
+		stats.update({attr:None for attr in ['error']})
 		for attr in stats:
 			stats[attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['error']:
-				stats[attr] = inplace(stats[attr],i,norm(e)/norm(d))
-
-		x = a,b,c,d,e,u,v,stats,i
+				stats[attr] = inplace(stats[attr],i,error(x))
 
 		if isinstance(eps,int) or eps==int(eps):
 			eps = int(eps)
@@ -6228,16 +6232,12 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		return u,v,stats
 
-	def norm(a):
-		return addition(abs2(a))
-	
 	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-
 	for attr in stats:
-		print(attr,stats[attr][0],stats[attr][-1],norm(a-dot(u,v))/norm(a))
+		print(attr,stats[attr][0],stats[attr][-1])
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 

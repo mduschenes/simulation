@@ -574,18 +574,19 @@ def brickwork(iterable,sort=False,group=False):
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
 	indexes = [*range(0,N-1,2),*range(1,N-1,2)]
-	attributes = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
-	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute: len(attributes(index))*index+attributes(index).index(attribute)
+	attrs = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
+	boolean = lambda i,index,attribute,attributes: tuple(iterable[i].where)==tuple(attribute)
+	groups = lambda i,index,attribute,attributes: len(attributes)*index+attributes.index(attribute)
 
 	indices = {}
 	for index in indexes:
-		for attribute in attributes(index):
+		attributes = attrs(index)
+		for attribute in attributes:
 			for i in iterable:
 				if i in indices:
 					continue
-				if boolean(i,index,attribute):
-					indices[i] = groups(i,index,attribute)
+				if boolean(i,index,attribute,attributes):
+					indices[i] = groups(i,index,attribute,attributes)
 					break
 
 	iterable = indices
@@ -610,19 +611,19 @@ def nearestneighbour(iterable,sort=False,group=False):
 	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
 	indexes = [*range(0,N-1,1),]
-	attributes = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
-	boolean = lambda i,index,attribute: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute: len(attributes(index))*index+attributes(index).index(attribute)
-	groups = lambda i,index,attribute: index
+	attrs = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
+	boolean = lambda i,index,attribute,attributes: tuple(iterable[i].where)==tuple(attribute)
+	groups = lambda i,index,attribute,attributes: len(attributes)*index+attributes.index(attribute)
 
 	indices = {}
 	for index in indexes:
-		for attribute in attributes(index):
+		attributes = attrs(index)
+		for attribute in attributes:
 			for i in iterable:
 				if i in indices:
 					continue
-				if boolean(i,index,attribute):
-					indices[i] = groups(i,index,attribute)
+				if boolean(i,index,attribute,attributes):
+					indices[i] = groups(i,index,attribute,attributes)
 					break
 
 	iterable = indices

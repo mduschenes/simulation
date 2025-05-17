@@ -2624,15 +2624,15 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[2],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[10],"module.measure.operator":["tetrad"],
+		"model.N":[10],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
 			# {"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			{"S":None,"eps":1e-16,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":1e-16,"iters":5e4,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
@@ -2648,8 +2648,8 @@ def test_class(*args,**kwargs):
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
-			"tensor",
-			# "tensor_quimb",
+			# "tensor",
+			"tensor_quimb",
 			# "array",
 			] 
 		)
@@ -2686,7 +2686,7 @@ def test_class(*args,**kwargs):
 				},
 				# "XX":{
 				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
-				# 	"parameters":0e-3,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# 	"parameters":1e-2,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				# },				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
@@ -2799,12 +2799,15 @@ def test_class(*args,**kwargs):
 		if verbose or 1:
 
 			value = module.measure.trace(parameters=parameters,state=state)
+
 			if module.measure.architecture in ['array']:
 				value = array(value)
 			elif module.measure.architecture in ['tensor']:
 				value = value.array().item()
 			elif module.measure.architecture in ['tensor_quimb']:
 				value = representation_quimb(value,to=module.measure.architecture,contraction=True)
+
+			value = value.real - 1
 
 			print(module.measure.architecture)
 			print(state)
