@@ -3505,7 +3505,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				options (dict): Class options
 				kwargs (dict): Additional class keyword arguments
 					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
-					eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+					eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 			Returns:
 				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options)
 			'''
@@ -5696,7 +5696,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 		u (array): u array of svd
 		v (array): v array of svd
 		rank (int): Rank of svd
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		u (array): u array of svd
 		v (array): v array of svd
@@ -5757,7 +5757,7 @@ def nmfd(u,v,rank=None,eps=None):
 		u (array): Array for nmf of shape (n,k)
 		v (array): Array for nmf of shape (k,m)
 		rank (int): Rank of nmf
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype		
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of nmf of shape (n,k)
 		v (array): v array of nmf of shape (k,m)
@@ -5774,7 +5774,7 @@ def pnmfd(u,v,rank=None,eps=None):
 		u (array): Array for pnmf of shape (n,p,k)
 		v (array): Array for pnmf of shape (k,q,m)
 		rank (int): Rank of pnmf
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype		
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of pnmf of shape (n,p,k)
 		v (array): v array of pnmf of shape (k,q,m)
@@ -5794,11 +5794,12 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 		v (array): Array for nmf of shape (k,m)
 		data (array,iterable[array]): Data for nmf
 		rank (int): Rank of nmf
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (scalar): Number of iterations, defaults to 1e7
-		parameters (scalar,array,dict,object): Parameters for nmf method
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int): Number of iterations, defaults to 1e7
+		parameters (int,float,array,dict,object): Parameters for nmf method
 		method (str): Nmf method, allowed strings in ['mu','als','psvd',]
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','sum','div']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
 		u (array): u array of nmf of shape (n,k)
@@ -5807,7 +5808,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 	'''	
 	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
 	eps = epsilon(a.dtype) if eps is None else eps
-	iters = iters if iters is not None else int(eps) if eps is not None and eps==int(eps) else int(1e7)
+	iters = iters if iters is not None else int(1e7)
 
 	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		eps = epsilon(a.dtype)
@@ -5845,7 +5846,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 	
 	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		if method is None:
-			def func(i,x):
+			def func(x):
 
 				a,u,v,i = x
 				
@@ -5860,7 +5861,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 				return x		
 		elif method in ['mu']:
-			def func(i,x):
+			def func(x):
 
 				a,u,v,i = x
 				
@@ -5874,7 +5875,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 				return x
 		elif method in ['als']:
 			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
-			def func(i,x):
+			def func(x):
 
 				a,u,v,i = x
 				
@@ -5890,7 +5891,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 				return x				
 		elif method in ['psvd']:
-			def func(i,x):
+			def func(x):
 
 				a,u,v,i = x
 				
@@ -5905,10 +5906,26 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 				return x		
 		else:
-			def func(i,x):
+			def func(x):
 				return x	
 
-		def cond(x):
+		@jit
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+		
+		@partial(jit,static_argnums=(1,))
+		def error(x,metric=None):
+			a,b,c,d,e,u,v,stats,i = x
+			if metric is None or metric in ['norm']:
+				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
+			elif metric in ['sum']:
+				data = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)				
+			elif metric in ['div']:
+				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
+			return data
+
+		@jit
+		def condition(x):
 			a,u,v,i = x
 			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
 
@@ -5916,22 +5933,13 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 		x = a,u,v,i
 
-		if isinstance(eps,int) or eps==int(eps):
-			eps = int(eps)
-			func = func
-			start,end,func = i,eps,func
-			x = forloop(start,end,func,x)
-		elif isinstance(eps,float):
-			eps = float(eps)
-			cond,func = cond,partial(func,i)
-			x = whileloop(cond,func,x)
+		loop = partial(whileloop,condition,func)
+		
+		x = loop(x)
 
 		a,u,v,i = x           
 
 		return u,v
-
-	def norm(a):
-		return addition(abs2(a))
 
 	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
@@ -5951,11 +5959,12 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		v (array): v array of pnmf of shape (k,q,m)	
 		data (array,iterable[array]): Data for pnmf
 		rank (int): Rank of nmf
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (scalar): Number of iterations, defaults to 1e7		
-		parameters (scalar,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','grad','div']
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int,float): Number of iterations, defaults to 1e7		
+		parameters (int,float,array,dict,object): Parameters for nmf method
+		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','sum','div']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
 		u (array): u array of pnmf of shape (n,p,k)
@@ -5966,14 +5975,13 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	data = [ones(a.shape[0],dtype=a.dtype),ones(a.shape[-1],dtype=a.dtype)] if data is None else data
 	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
 	eps = epsilon(a.dtype) if eps is None else eps
-	iters = iters if iters is not None else int(eps) if eps is not None and eps==int(eps) else int(1e7)
-
+	iters = iters if iters is not None else int(1e7)
 
 	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
@@ -5986,7 +5994,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
@@ -5994,10 +6002,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
-			x = mean(a)/a.size
+			x = addition(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
@@ -6006,7 +6014,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
 			options = {**dict(dtype=dtype),**kwargs}
@@ -6022,7 +6030,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
@@ -6030,12 +6038,12 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		
 		return u,v
 	
-	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 		if method is None:
-			def func(i,x):
+			def func(x):
 				return x		
 		elif method in ['mu']:
-			def func(i,x):
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 				
@@ -6044,33 +6052,35 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
 
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+				
 				return x
 		elif method in ['kl']:
-			def func(i,x):
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 
-				# u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
-				# v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+				u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
+				v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
 
-				u,v = (
-					einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u,
-					einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
-					)
+				# u,v = (
+				# 	einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u,
+				# 	einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+				# 	)
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 
 				return x
 		elif method in ['als']:
-			def func(i,x):
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 				
@@ -6094,16 +6104,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 
 				return x
 		elif method in ['hals']:
 			size = rank*(a.shape[0]*a.shape[-1])
-			eps = eps*size if eps is not None and eps==int(eps) else eps
 			iters = iters*size if iters is not None else iters
-			def func(i,x):
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 
@@ -6116,27 +6126,28 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				h = c[k]*dot(u[:,:,l].T,b)
 				e += out(h,v[s])
 				v = inplace(v,s,maximums((dot(e.T,h)+parameters*v[s])*reciprocal(dot(h,h)+parameters),eps))
-				v = inplace(v,s,v[s]*addition(d-e)/(addition(v)*addition(h)))
+				# v = inplace(v,s,v[s]*addition(a-e)/(addition(v)*addition(h)))
 
-				e -= out(h*z,v[s])
+				e -= out(h,v[s])
 
 				s = (j,slice(None),l)
 				h = b[j]*dot(v[l,:,:],c)
 				e += out(u[s],h)
 				u = inplace(u,s,maximums((dot(e,h)+parameters*u[s])*reciprocal(dot(h,h)+parameters),eps))
-				u = inplace(u,s,u[s]*addition(d-e)/(addition(u)*addition(h)))
+				# u = inplace(u,s,u[s]*addition(a-e)/(addition(u)*addition(h)))
 
-				e -= out(u[s],h*z)
+				e -= out(u[s],h)
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
 
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
 				return x						
-		elif method in ['grad']:
-			def func(i,x):
+		elif method in ['gd']:
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 				
@@ -6150,13 +6161,14 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
 
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
 				return x
-		elif method in ['div']:
-			def func(i,x):
+		elif method in ['kld']:
+			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
 
@@ -6170,31 +6182,38 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				i += 1
 
-				stats['error'] = inplace(stats['error'],i,error((a,b,c,d,e,u,v,stats,i)))
-
 				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 
 				return x								
 		else:
-			def func(i,x):
+			def func(x):
 				return x	
 
 		@jit
 		def norm(a):
-			return addition(abs2(a))
+			return sqrt(addition(abs2(a)))
+		
+		def null(*args,**kwargs):
+			return nan
 
-		@jit
-		def error(x):
+		@partial(jit,static_argnums=(1,))
+		def error(x,metric=metric):
 			a,b,c,d,e,u,v,stats,i = x
-			# err = (addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
-			# err = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)
-			err = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-			return err
+			if metric is None or metric in ['norm']:
+				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
+			elif metric in ['sum']:
+				data = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)				
+			elif metric in ['div']:
+				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
+			return data
 
 		@jit
-		def cond(x):
+		def condition(x):
 			a,b,c,d,e,u,v,stats,i = x			
-			return (stats['error'][i] > eps) & (i < iters)
+			return (stats['error'][i] > eps) & (i <= iters)
 			
 		a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
 		e = a-dot(dot(b,dot(u,v)),c)
@@ -6205,39 +6224,48 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		x = a,b,c,d,e,u,v,stats,i
 
-		stats.update({attr:None for attr in ['error']})
+		stats.update({attr:None for attr in ['iteration','error']})
 		for attr in stats:
 			stats[attr] = nan*ones(int(max(iters,eps))+1)
+			if attr in ['iteration']:
+				stats[attr] = inplace(stats[attr],i,i)
 			if attr in ['error']:
 				stats[attr] = inplace(stats[attr],i,error(x))
 
-		if isinstance(eps,int) or eps==int(eps):
-			eps = int(eps)
-			func = func
-			start,end,func = i,eps,func
-			x = forloop(start,end,func,x)
-		elif isinstance(eps,float):
-			eps = float(eps)
-			cond,func = cond,partial(func,i)
-			x = whileloop(cond,func,x)
+		loop = partial(whileloop,condition,func)
+		
+		x = loop(x)
 
 		a,b,c,d,e,u,v,stats,i = x
+
+		p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
+		err = absolute(1-p/q)
+		print(err.mean(),err.max(),err.min(),error(x,metric='sum').item())
+
+		# print({metric:error(x).item() for metric in ['norm','sum','div']})
+		# p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
+		# err = absolute(1-p/q)
+		# print(err.mean(),err.max(),err.min())
+		# p,q = dot(dot(b,dot(u,v)),c).sort(),a.sort()
+		# err = absolute(1-p/q)
+		# print(err.mean(),err.max(),err.min())
 
 		u,v = dotl(u,b),dotr(v,c)
 		s = reciprocal(sqrt(addition(dot(u,v))))
 		u,v = u*s,v*s
 
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
 		for attr in stats:
-			stats[attr] = stats[attr][~is_nan(stats[attr])]
+			stats[attr] = stats[attr][indices]
+
+		print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
 
 		return u,v,stats
 
 	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
 	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-
-	for attr in stats:
-		print(attr,stats[attr][0],stats[attr][-1])
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
@@ -8975,7 +9003,7 @@ def nonzero(a,axis=None,eps=None):
 	Args:
 		a (array): Array to count non-zero elements
 		axis (int,iterable[int]): Axis to compute non-zero elements
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		n (int): Number of non-zero entries
 	'''

@@ -1553,7 +1553,7 @@ def test_nmf(path=None,tol=None):
 	from src.utils import array,ones,zeros,rand,random,stochastic
 	from src.utils import nmf,pnmf,svd
 	from src.utils import addition,abs2,log10,reciprocal,einsum,dot,dotr,dotl,condition_number
-	from src.utils import seeder,delim,is_nan
+	from src.utils import seeder,delim
 	from src.iterables import permuter,setter,getter
 	from src.io import load,dump,join,exists
 
@@ -1563,7 +1563,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 1
+	n = 3
 	d = 2
 	l = 2
 	k = d**2
@@ -1572,17 +1572,22 @@ def test_nmf(path=None,tol=None):
 	data = {}
 	kwargs = {
 		'method':[
-			# 'mu',
-			# 'kl',
+			'mu',
+			'kl',
 			# 'als'
-			'hals'
+			# 'hals'
 			],
 		'initialize':['nndsvda'],
+		'metric':[
+			'norm',
+			'div',
+			'sum',
+			],
 		'rank':[None],
-		'eps':[5e-16],
-		'iters':[1e2],
+		'eps':[1e-20],
+		'iters':[5e4],
 		'parameters':[1e-1],
-		'seed':choices(range(int(2**32)),k=int(1)),
+		'seed':choices(range(int(2**32)),k=int(3)),
 		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n+1)],[k**l]*(2)]]
 		}
 
@@ -1594,7 +1599,7 @@ def test_nmf(path=None,tol=None):
 
 	boolean = lambda index,data,options: any(options==data[i]['options'] for i in data)
 
-	do = 1
+	do = 0 or not exists(path)
 	run = do or False
 	plot = True
 
@@ -1606,10 +1611,11 @@ def test_nmf(path=None,tol=None):
 			options = {
 				'rank': None,
 				'eps': 5e-9,
-				'iters':1e6,
+				'iters':1e3,
 				'parameters': 1e-3,
 				'method': 'kl',
 				'initialize': 'rand',
+				'metric':'norm',
 				'seed': 123,
 				}
 
@@ -1622,7 +1628,7 @@ def test_nmf(path=None,tol=None):
 				keys = options.pop('keys')
 
 				u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
-				d = ones(d.shape)/d.shape[0]
+				# d = ones(d.shape)/d.shape[0]
 				p,q = random(shapes[0][:1],key=keys[0]),random(shapes[1][-1:],key=keys[1])
 				a = einsum('awb,bzc,uvwz->auvc',u,v,d)
 				a = dotr(dotl(a,p),q)
@@ -1653,6 +1659,8 @@ def test_nmf(path=None,tol=None):
 
 			if boolean(index,data,options):
 				continue
+
+			print(kwargs)
 			
 			stats = func(*objects,**options)
 
@@ -1667,13 +1675,15 @@ def test_nmf(path=None,tol=None):
 		data = load(path)
 
 		attrs = [
-			*[dict(x=None,y=attr,label=['method','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
+			*[dict(x='iteration',y=attr,label=['method','metric','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
 		]
 		texify = {
-			None:'$\\textnormal{Iteration}$',
 			'method':'$\\textnormal{Method}$',
+			'initialize':'$\\textnormal{Initialize}$',
+			'metric':'$\\textnormal{Metric}$',
 			'seed':'$\\textnormal{Seed}$',
-			'error':'$\\textnormal{Error}~\\norm{A-UV}/\\norm{A}$',
+			'iteration':'$\\textnormal{Iteration}$',
+			'error':'$\\textnormal{Error}~\\mathcal{L}(A,UV)$',
 			'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
 			'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
 			'nmf':'$\\textnormal{NMF}$',
@@ -1681,8 +1691,11 @@ def test_nmf(path=None,tol=None):
 			'kl':'$\\textnormal{KL}$',
 			'als':'$\\textnormal{ALS}$',
 			'hals':'$\\textnormal{H-ALS}$',
-			'grad':'$\\textnormal{GD}$',
-			'div':'$\\textnormal{KL-GD}$',
+			'gd':'$\\textnormal{GD}$',
+			'kld':'$\\textnormal{KL-GD}$',
+			'norm':'$\\norm{A-UV}/\\norm{A}',
+			'sum':'$\\norm{Z-FG}/\\norm{Z}',
+			'div':'$\\mathcal{D}(A,UV)',
 			}
 		mplstyle = 'config/plot.mplstyle'
 		with matplotlib.style.context(mplstyle):
@@ -1690,15 +1703,30 @@ def test_nmf(path=None,tol=None):
 
 				fig,ax = plt.subplots()
 
-				options = dict(marker='',markersize=8,linewidth=3,alpha=0.6)
-				length = 100
-				boolean = lambda data: data[~is_nan(data)][::length]
-				unique = sorted(list(set(data[i]['options'][attr['label'][-1]] for i in data)),key=lambda i:[data[i]['options'][attr['label'][-1]] for i in data].index(i))
-				indices = range(max(len(boolean(data[index][attr['y']])) for index in data))
-				x = {index:list(range(0,length*len(boolean(data[index][attr['y']])),length)) for index in data}
-				y = {index:boolean(data[index][attr['y']]) for index in data}
-				options = {index:{**options,**dict(color=plt.get_cmap('viridis')((unique.index(data[index]['options'][attr['label'][-1]])+1)/(len(unique)+1)),linestyle={'mu':':','kl':'--','als':'-.','grad':'-','div':'-'}.get(data[index]['options']['method']),label='$%s$'%(' , '.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')))} for index in data}
+				def boolean(data,index=None,wrapper=None):
+					if index is None:
+						size = max(len(data[i][attr['y']]) for i in data)	
+					else:
+						size = len(data[index][attr['y']])
+					size = min(size,15000)
+					indices = slice(0,size,1 if size < 1000 else 100)
+					if wrapper is not None:
+						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)
+					return indices
 
+				options = dict()
+				indices = sorted(list(set(data[i]['options'][attr['label'][-1]] for i in data)),key=lambda i:[data[i]['options'][attr['label'][-1]] for i in data].index(i))
+				x = {index:data[index][attr['x']][boolean(data,index=index)] for index in data}
+				y = {index:data[index][attr['y']][boolean(data,index=index)] for index in data}
+				options = {index:{**options,**dict(
+					label='$%s$'%('~,~'.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
+					color=plt.get_cmap('viridis')((indices.index(data[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
+					alpha=0.6,
+					marker={'norm':'o','sum':'s','div':'^'}.get(data[index]['options']['metric']),
+					linestyle={'mu':'-','kl':'--',}.get(data[index]['options']['method']),
+					markersize=8,
+					linewidth=3
+					)} for index in data}
 				plot = {}
 				for index in data:
 					plot[index] = ax.plot(x[index],y[index],**options[index])
@@ -1711,17 +1739,17 @@ def test_nmf(path=None,tol=None):
 				options = {**options,**dict(orientation='vertical')}
 				cbar = matplotlib.colorbar.ColorbarBase(cax,**options)
 				cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
-				cbar.ax.set_yticks(ticks=[(i+1)/(len(unique)+1) for i,obj in enumerate(unique)][::max(1,len(unique)//number)])
-				cbar.ax.set_yticklabels(ticklabels=['$%s$'%(i) for i,obj in enumerate(unique)][::max(1,len(unique)//number)])
+				cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+				cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
 
 				options = dict()
 				ax.set_xlabel(xlabel=texify.get(attr['x']),**options)
 				ax.set_ylabel(ylabel=texify.get(attr['y']),**options)
 
-				options = dict(x=[int(min(min((x[index])) for index in y)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
+				options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
 				number = 6
 				ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.01))),xmax=(max(int(options['x'][-1]*1.1),1)))
-				ax.set_xticks(ticks=[i for i,index in list(enumerate(indices))[::max(1,len(indices)//number)]])
+				ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],(options['x'][-1]-options['x'][0])//number))
 				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
 				ax.set_xscale(value='linear')
 				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))
@@ -1729,7 +1757,14 @@ def test_nmf(path=None,tol=None):
 				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
 				ax.set_yscale(value='log')
 
-				options = dict(title=' , '.join(texify.get(label,label) for label in attr['label'][:-1]),ncol=1,loc='upper right')
+				options = dict(
+					title='$%s ~:~ %s$'%(
+						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
+						'$A_{\\mu\\nu} = X_{\\alpha}Z_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}F_{\\alpha\\mu\\gamma}G_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$','')
+						),
+					ncol=2,
+					loc=(1.1,0.4075),
+					)
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
 				handles,labels = (
@@ -1742,11 +1777,14 @@ def test_nmf(path=None,tol=None):
 					handle.set_color('gray')
 				leg = ax.legend(handles,labels,**options)
 
-				options = dict(w=10,h=10)
+				options = dict(
+					w=30,
+					h=14
+					)
 				fig.set_size_inches(**options)
 				fig.subplots_adjust()
 				fig.tight_layout()
-				options = dict(fname=join(directory,'%s.%s.%s'%(file,attr['x'] if attr['x'] is not None else 'iteration',attr['y'] if attr['y'] is not None else 'data'),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
+				options = dict(fname=join(directory,'%s.%s.%s'%(file,attr['x'],attr['y']),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
 				fig.savefig(**options)
 
 	return
