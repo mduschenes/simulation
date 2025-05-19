@@ -2625,14 +2625,14 @@ def test_class(*args,**kwargs):
 
 	kwargs = {
 		"module.M":[10],"module.measure.operator":["tetrad"],
-		"model.N":[10],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"model.N":[8],"model.D":[2],"model.M":[None],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			# {"S":None,"eps":1e-32,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":1e-20,"iters":5e4,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			{"S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			# {"S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":1e-16,"iters":5e4,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
@@ -2648,8 +2648,8 @@ def test_class(*args,**kwargs):
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
-			# "tensor",
-			"tensor_quimb",
+			"tensor",
+			# "tensor_quimb",
 			# "array",
 			] 
 		)
@@ -2680,14 +2680,14 @@ def test_class(*args,**kwargs):
 		},
 		"model":{
 			"data":{
-				"unitary":{
-					"operator":"unitary","where":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},
-				# "XX":{
-				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
-				# 	"parameters":1e-2,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },				
+				# "unitary":{
+				# 	"operator":"unitary","where":"||ij||","string":"unitary",
+				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },
+				"XX":{
+					"operator":["X","X"],"where":"||ij||","string":"XX",
+					"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
 				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789

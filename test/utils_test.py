@@ -1563,7 +1563,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 3
+	n = 1
 	d = 2
 	l = 2
 	k = d**2
@@ -1581,7 +1581,7 @@ def test_nmf(path=None,tol=None):
 		'metric':[
 			'norm',
 			'div',
-			'sum',
+			'abs',
 			],
 		'rank':[None],
 		'eps':[1e-20],
@@ -1694,7 +1694,7 @@ def test_nmf(path=None,tol=None):
 			'gd':'$\\textnormal{GD}$',
 			'kld':'$\\textnormal{KL-GD}$',
 			'norm':'$\\norm{A-UV}/\\norm{A}',
-			'sum':'$\\norm{Z-FG}/\\norm{Z}',
+			'abs':'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
 			'div':'$\\mathcal{D}(A,UV)',
 			}
 		mplstyle = 'config/plot.mplstyle'
@@ -1722,7 +1722,7 @@ def test_nmf(path=None,tol=None):
 					label='$%s$'%('~,~'.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
 					color=plt.get_cmap('viridis')((indices.index(data[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
 					alpha=0.6,
-					marker={'norm':'o','sum':'s','div':'^'}.get(data[index]['options']['metric']),
+					marker={'norm':'o','abs':'s','div':'^'}.get(data[index]['options']['metric']),
 					linestyle={'mu':'-','kl':'--',}.get(data[index]['options']['method']),
 					markersize=8,
 					linewidth=3
@@ -1760,10 +1760,10 @@ def test_nmf(path=None,tol=None):
 				options = dict(
 					title='$%s ~:~ %s$'%(
 						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
-						'$A_{\\mu\\nu} = X_{\\alpha}Z_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}F_{\\alpha\\mu\\gamma}G_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$','')
+						'$A_{\\mu\\nu} = X_{\\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$','')
 						),
-					ncol=2,
-					loc=(1.1,0.4075),
+					ncol=1,
+					loc=(1.1,0.3095),
 					)
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]

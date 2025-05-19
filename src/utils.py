@@ -3641,7 +3641,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
 					data = [real(i) for i in data] if data is not None else data				
-					u,v,s = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
 					s = s[:rank]
 					return s
 			
@@ -5799,7 +5799,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 		parameters (int,float,array,dict,object): Parameters for nmf method
 		method (str): Nmf method, allowed strings in ['mu','als','psvd',]
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
-		metric (str): Nmf metric, allowed strings in ['norm','sum','div']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
 		u (array): u array of nmf of shape (n,k)
@@ -5918,7 +5918,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 			a,b,c,d,e,u,v,stats,i = x
 			if metric is None or metric in ['norm']:
 				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-			elif metric in ['sum']:
+			elif metric in ['abs']:
 				data = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)				
 			elif metric in ['div']:
 				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
@@ -5964,7 +5964,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		parameters (int,float,array,dict,object): Parameters for nmf method
 		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
 		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
-		metric (str): Nmf metric, allowed strings in ['norm','sum','div']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
 		u (array): u array of pnmf of shape (n,p,k)
@@ -6204,8 +6204,8 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			a,b,c,d,e,u,v,stats,i = x
 			if metric is None or metric in ['norm']:
 				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-			elif metric in ['sum']:
-				data = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)				
+			elif metric in ['abs']:
+				data = norm(addition(absolute(d-dotr(dotl(dot(u,v),b),c)),(0,-1)))/norm(a)
 			elif metric in ['div']:
 				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
 			return data
@@ -6238,11 +6238,11 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		a,b,c,d,e,u,v,stats,i = x
 
-		p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
-		err = absolute(1-p/q)
-		print(err.mean(),err.max(),err.min(),error(x,metric='sum').item())
+		# p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
+		# err = absolute(1-p/q)
+		# print(err.mean(),err.max(),err.min(),error(x,metric='abs').item())
 
-		# print({metric:error(x).item() for metric in ['norm','sum','div']})
+		# print({metric:error(x).item() for metric in ['norm','abs','div']})
 		# p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
 		# err = absolute(1-p/q)
 		# print(err.mean(),err.max(),err.min())
