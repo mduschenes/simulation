@@ -34,6 +34,7 @@ build/data
 build/data/**/data*.hdf5
 build/data/**/data*.json
 
+test/data
 test/examples
 test/config/settings.*.json
 test/job
