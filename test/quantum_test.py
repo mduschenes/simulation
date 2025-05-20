@@ -1705,10 +1705,10 @@ def test_module(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
 		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"callback.options":[{"S":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
+		"callback.options":[{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
 	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
@@ -2141,9 +2141,9 @@ def test_calculate(*args,**kwargs):
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
+		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"callback.options":[{"S":None,"scheme":"svd"},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"callback.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		}	
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
@@ -2552,7 +2552,7 @@ def test_mps(*args,**kwargs):
 	seed = 123456789
 	seed = seeder(seed)
 	dtype = 'complex'
-	options = dict(scheme='svd',rank=S)
+	options = dict(scheme='svd',S=S)
 	options_quimb = dict(
 		contract="swap+split",
 		max_bond=S,
@@ -2630,19 +2630,14 @@ def test_class(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			{"S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvdr","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":1e-16,"iters":5e4,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"grad","initialize":"rand","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":5e-9,"iters":1e6,"parameters":1e-3,"method":"div","initialize":"rand","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":5e-9,"iters":1e3,"parameters":1e-6,"method":"als","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
-			# {"S":None,"eps":1e5,"iters":1e7,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"svd","key":seeder(123)},
+			{"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvdr","metric":"div","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
 			],
 		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"callback.options":[{"S":None,"eps":None,"parameters":None,"method":None,"initialize":None,"scheme":"svd"},{"contract":True,"max_bond":None,"cutoff":0},{}],
+		"callback.options":[{"scheme":"svd","S":None,"eps":None,"parameters":None,"method":None,"initialize":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]

@@ -7,7 +7,7 @@ import itertools,functools,copy,warnings
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','..','..']
+PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -1549,9 +1549,11 @@ def test_network(path=None,tol=None):
 
 
 def test_nmf(path=None,tol=None):
+	PATHS = ['','.','..']
+	for PATH in PATHS:
+		sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 	from src.utils import array,ones,zeros,rand,random,stochastic
-	from src.utils import nmf,pnmf,svd
 	from src.utils import addition,abs2,log10,reciprocal,einsum,dot,dotr,dotl,condition_number
 	from src.utils import seeder,delim
 	from src.iterables import permuter,setter,getter
@@ -1562,8 +1564,11 @@ def test_nmf(path=None,tol=None):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	from random import choices,seed	as seeds
 
+	from build.utils import pnmf as function
+	from src.utils import pnmf as function
+
 	seed = 0
-	n = 2
+	n = 3
 	d = 2
 	l = 2
 	k = d**2
@@ -1572,23 +1577,23 @@ def test_nmf(path=None,tol=None):
 	data = {}
 	kwargs = {
 		'method':[
-			'mu',
+			# 'mu',
 			'kl',
 			# 'als'
 			# 'hals'
 			],
 		'initialize':['nndsvda'],
 		'metric':[
-			'norm',
+			# 'norm',
 			'div',
-			'abs',
+			# 'abs',
 			],
 		'rank':[None],
-		'eps':[1e-17],
-		'iters':[1e5],
+		'eps':[1e-16],
+		'iters':[6.5e4],
 		'parameters':[1e-1],
 		'seed':choices(range(int(2**32)),k=int(5)),
-		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n+1)],[k**l]*(2)]]
+		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n)],[k**l]*(2)]]
 		}
 
 	directory = 'data'
@@ -1650,7 +1655,7 @@ def test_nmf(path=None,tol=None):
 				return
 
 			def func(*objects,**options):
-				u,v,s,data = pnmf(*objects,**options)
+				u,v,s,data = function(*objects,**options)
 				return data
 
 			setter(options,kwargs,delimiter=delim,default='replace')
@@ -1749,7 +1754,7 @@ def test_nmf(path=None,tol=None):
 				options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
 				number = 6
 				ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.01))),xmax=(max(int(options['x'][-1]*1.1),1)))
-				ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],(options['x'][-1]-options['x'][0])//number))
+				ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],max(1,(options['x'][-1]-options['x'][0])//number)))
 				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
 				ax.set_xscale(value='linear')
 				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))

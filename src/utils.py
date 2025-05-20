@@ -5899,22 +5899,22 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 			def func(x):
 				return x	
 
-		@jit
 		def norm(a):
 			return sqrt(addition(abs2(a)))
-		
-		@partial(jit,static_argnums=(1,))
-		def error(x,metric=None):
-			a,b,c,d,e,u,v,stats,i = x
-			if metric is None or metric in ['norm']:
-				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-			elif metric in ['abs']:
-				data = norm(d-dotr(dotl(dot(u,v),b),c))/norm(d)				
-			elif metric in ['div']:
-				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
-			return data
 
-		@jit
+		if metric is None or metric in ['norm']:
+			def error(x):
+				a,u,v,i = x
+				return norm(a-dot(u,v))/norm(a)
+		elif metric in ['abs']:
+			def error(x):
+				a,u,v,i = x
+				return norm(a-dot(u,v))/norm(a)
+		elif metric in ['div']:
+			def error(x):
+				a,u,v,i = x
+				return absolute(-addition(a*log(dot(u,v)*reciprocal(a))))
+		
 		def condition(x):
 			a,u,v,i = x
 			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
@@ -5938,7 +5938,6 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 	u,v,s = nmfd(u,v,rank=rank,eps=eps)
 
 	return u,v,s
-
 
 def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 	'''
@@ -6048,38 +6047,52 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		elif method in ['mu']:
 			def func(x):
 
-				a,b,c,d,e,u,v,stats,i = x
+				x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['b'],x['v'],x['c'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['b'],x['v'],x['c'],x['b'],x['v'],x['c']))*x['u']
+				x['v'] = einsum('a,aug,b,uv->gvb',x['b'],x['u'],x['c'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['b'],x['u'],x['c'],x['b'],x['u'],x['c'],x['v']))*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%100),error,null,x))
 				
-				u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
-				v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
 
-				i += 1
+				# a,b,c,d,e,u,v,stats,i = x
+				
+				# u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
+				# v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
 
-				x = a,b,c,d,e,u,v,stats,i
+				# i += 1
 
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+				# x = a,b,c,d,e,u,v,stats,i
+
+				# stats['iteration'] = inplace(stats['iteration'],i,i)
+				# stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 				
 				return x
 		elif method in ['kl']:
-			def func(x):
+			@jit
+			def func(i,x):
 
-				a,b,c,d,e,u,v,stats,i = x
+				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
+				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
 
-				u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
-				v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+				x['i'] += 1
 
-				# u,v = (
-				# 	einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u,
-				# 	einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
-				# 	)
+				# x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				# x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
 
-				i += 1
 
-				x = a,b,c,d,e,u,v,stats,i
+				# a,b,c,d,e,u,v,stats,i = x
 
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+				# u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
+				# v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+
+				# i += 1
+
+				# x = a,b,c,d,e,u,v,stats,i
+
+				# stats['iteration'] = inplace(stats['iteration'],i,i)
+				# stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 
 				return x
 		elif method in ['als']:
@@ -6195,62 +6208,106 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			def func(x):
 				return x	
 
-		@jit
 		def norm(a):
 			return sqrt(addition(abs2(a)))
 		
 		def null(*args,**kwargs):
 			return nan
 
-		@partial(jit,static_argnums=(1,))
-		def error(x,metric=metric):
-			a,b,c,d,e,u,v,stats,i = x
-			if metric is None or metric in ['norm']:
-				data = norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-			elif metric in ['abs']:
-				data = norm(addition(absolute(d-dotr(dotl(dot(u,v),b),c)),(0,-1)))/norm(a)
-			elif metric in ['div']:
-				data = absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
-			return data
+		if metric is None or metric in ['norm']:
+			def error(x):
+				return norm(x['a']-dot(dot(x['b'],dot(x['u'],x['v'])),x['c']))/norm(x['a'])
+		elif metric in ['abs']:
+			def error(x):
+				return norm(addition(absolute(x['d']-dotr(dotl(dot(x['u'],x['v']),x['b']),x['c'])),(0,-1)))/norm(x['a'])
+		elif metric in ['div']:
+			def error(x):
+				return absolute(-addition(x['a']*log(dot(dot(x['b'],dot(x['u'],x['v'])),x['c'])*reciprocal(x['a']))))
 
-		@jit
+		# if metric is None or metric in ['norm']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x
+		# 		return norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
+		# elif metric in ['abs']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x			
+		# 		return norm(addition(absolute(d-dotr(dotl(dot(u,v),b),c)),(0,-1)))/norm(a)
+		# elif metric in ['div']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x			
+		# 		return absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
+
 		def condition(x):
-			a,b,c,d,e,u,v,stats,i = x			
-			return (stats['error'][i] > eps) & (i <= iters)
+			return x['i'] <= iters
+			# return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
 			
-		a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
-		e = a-dot(dot(b,dot(u,v)),c)
+		# def condition(x):
+		# 	a,b,c,d,e,u,v,stats,i = x			
+		# 	return (stats['error'][i] > eps) & (i <= iters)
 
-		i = 0
+		x = {}
+		x['a'] = addition(a,(0,-1))
+		x['b'] = data[0]
+		x['c'] = data[-1]
+		x['d'] = a
+		x['u'] = u
+		x['v'] = v
+		x['e'] = x['a']-dot(dot(x['b'],dot(x['u'],x['v'])),x['c'])
+		x['stats'] = {}
+		x['i'] = 0
 
-		stats = {}
-
-		x = a,b,c,d,e,u,v,stats,i
-
-		stats.update({attr:None for attr in ['iteration','error']})
-		for attr in stats:
-			stats[attr] = nan*ones(int(max(iters,eps))+1)
+		x['stats'].update({attr:None for attr in ['iteration','error']})
+		for attr in x['stats']:
+			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['iteration']:
-				stats[attr] = inplace(stats[attr],i,i)
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
 			if attr in ['error']:
-				stats[attr] = inplace(stats[attr],i,error(x))
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
 
-		loop = partial(whileloop,condition,func)
+		# loop = partial(whileloop,condition,func)
+		loop = partial(forloop,int(0),int(iters),func)
 		
 		x = loop(x)
 
-		a,b,c,d,e,u,v,stats,i = x
-
-		u,v = dotl(u,b),dotr(v,c)
+		u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
 		s = reciprocal(sqrt(addition(dot(u,v))))
 		u,v = u*s,v*s
 
-		# attribute = 'error'
-		# indices = ~is_nan(stats[attribute])
-		# for attr in stats:
-		# 	stats[attr] = stats[attr][indices]
+		stats = x['stats']
 
-		# print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+		# a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
+		# e = a-dot(dot(b,dot(u,v)),c)
+
+		# i = 0
+
+		# stats = {}
+
+		# x = a,b,c,d,e,u,v,stats,i
+
+		# stats.update({attr:None for attr in ['iteration','error']})
+		# for attr in stats:
+		# 	stats[attr] = nan*ones(int(max(iters,eps))+1)
+		# 	if attr in ['iteration']:
+		# 		stats[attr] = inplace(stats[attr],i,i)
+		# 	if attr in ['error']:
+		# 		stats[attr] = inplace(stats[attr],i,error(x))
+
+		# loop = partial(whileloop,condition,func)
+		
+		# x = loop(x)
+
+		# a,b,c,d,e,u,v,stats,i = x
+
+		# u,v = dotl(u,b),dotr(v,c)
+		# s = reciprocal(sqrt(addition(dot(u,v))))
+		# u,v = u*s,v*s
+
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
+		for attr in stats:
+			stats[attr] = stats[attr][indices]
+
+		print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
 
 		return u,v,stats
 

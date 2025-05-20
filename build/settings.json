@@ -36,7 +36,7 @@
 		"module.measure.architecture":["tensor"],
 		"module.measure.D":[2],		
 		"module.measure.options":[{}],
-		"module.options":[{"scheme":"nmf","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","seed":null}],
+		"module.options":[{"scheme":"nmf","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","metric":"div","seed":null}],
 		"module.options.S":[2,4,8,16,32,64,128,256],
 		"module.options.S":[2],
 		"module.configuration":[{
@@ -284,7 +284,7 @@
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
 	"options":{
-		"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null
+		"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null
 	}
 },
 "workflow": {
