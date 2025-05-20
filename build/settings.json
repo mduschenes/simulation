@@ -36,8 +36,8 @@
 		"module.measure.architecture":["tensor"],
 		"module.measure.D":[2],		
 		"module.measure.options":[{}],
-		"module.options":[{"eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","scheme":"nmf","seed":null}],
-		"module.options.S":[2,3,4,6,8,16,32,64],
+		"module.options":[{"scheme":"nmf","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","seed":null}],
+		"module.options.S":[2,4,8,16,32,64,128,256],
 		"module.options.S":[2],
 		"module.configuration":[{
 			"key":"src.functions.brickwork",
@@ -50,8 +50,8 @@
 		"model.data.unitary.where":["||ij||"],
 
 		"model.data.noise.operator":[["depolarize"]],
-		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.parameters":[1e-8],
+		"model.data.noise.parameters":[1e-4,1e-3,1e-2,1e-1],
+		"model.data.noise.parameters":[1e-2],
 		"model.data.noise.where":["||i.j||"],
 
 		"state.string":["psi"],
@@ -62,8 +62,8 @@
 		"state.ndim":[2],
 		"state.parameters":[null],
 
-		"jobs.job.cwd":["scratch/tmp"],
-		"jobs.postprocess.cwd":["scratch/tmp"],
+		"jobs.job.cwd":["~/scratch/tmp"],
+		"jobs.postprocess.cwd":["~/scratch/tmp"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
@@ -246,6 +246,7 @@
 		"noise.parameters":"noise.parameters",
 		"operator":"measure.operator",
 		"S":"options.S",
+		"scheme":"options.scheme",		
 		"periodic":"measure.options.periodic",
 		
 		"infidelity.quantum":"measure.infidelity_quantum",
@@ -283,7 +284,7 @@
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
 	"options":{
-		"S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"scheme":"svd"
+		"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null
 	}
 },
 "workflow": {
