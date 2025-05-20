@@ -3197,16 +3197,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 							norm = lambda a: addition(abs2(a))
 
-
-							print(s.real.sort()[::-1])
-							print(c.real.sort()[::-1])
-							print(x.real.sort()[::-1])
-							print(y.real.sort()[::-1])
-							print(z.real.sort()[::-1])
-
-							print(addition(real(z)))
-							exit()
-
 							return einsum(subscripts,data,*(state[i]() for i in where))						
 					func[L] = function
 			self.func = func
@@ -5740,7 +5730,7 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s.min()/s.max())	
+	# print('svd',rank,s.min()/s.max())	
 
 	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
 
@@ -5782,7 +5772,7 @@ def pnmfd(u,v,rank=None,eps=None):
 	'''
 	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	print('xy',addition(s),s.min()/s.max())
+	# print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
 def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
@@ -5981,40 +5971,49 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
 		elif initialize in ['rand']:
 			options = {**dict(dtype=dtype),**kwargs}
 			u = random(shape=[*shape[:len(shape)//2],rank],**options)
 			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
+			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))		
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
 			x = addition(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))	
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))				
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
 			options = {**dict(dtype=dtype),**kwargs}
@@ -6025,17 +6024,21 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = inplace(u,i,x),inplace(v,j,y)
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+			v = reshape(v,(-1,*shape[len(shape)//2:],))		
+			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
 			u,v = u*z,v*z
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1])),(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))
-		
+			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z	
 		return u,v
 	
 	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
@@ -6238,28 +6241,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		a,b,c,d,e,u,v,stats,i = x
 
-		# p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
-		# err = absolute(1-p/q)
-		# print(err.mean(),err.max(),err.min(),error(x,metric='abs').item())
-
-		# print({metric:error(x).item() for metric in ['norm','abs','div']})
-		# p,q = dotr(dotl(dot(u,v),b),c).sort(),d.sort()
-		# err = absolute(1-p/q)
-		# print(err.mean(),err.max(),err.min())
-		# p,q = dot(dot(b,dot(u,v)),c).sort(),a.sort()
-		# err = absolute(1-p/q)
-		# print(err.mean(),err.max(),err.min())
-
 		u,v = dotl(u,b),dotr(v,c)
 		s = reciprocal(sqrt(addition(dot(u,v))))
 		u,v = u*s,v*s
 
-		attribute = 'error'
-		indices = ~is_nan(stats[attribute])
-		for attr in stats:
-			stats[attr] = stats[attr][indices]
+		# attribute = 'error'
+		# indices = ~is_nan(stats[attribute])
+		# for attr in stats:
+		# 	stats[attr] = stats[attr][indices]
 
-		print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+		# print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
 
 		return u,v,stats
 

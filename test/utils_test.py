@@ -1563,7 +1563,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 1
+	n = 2
 	d = 2
 	l = 2
 	k = d**2
@@ -1584,10 +1584,10 @@ def test_nmf(path=None,tol=None):
 			'abs',
 			],
 		'rank':[None],
-		'eps':[1e-20],
-		'iters':[5e4],
+		'eps':[1e-17],
+		'iters':[1e5],
 		'parameters':[1e-1],
-		'seed':choices(range(int(2**32)),k=int(3)),
+		'seed':choices(range(int(2**32)),k=int(5)),
 		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n+1)],[k**l]*(2)]]
 		}
 

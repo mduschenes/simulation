@@ -271,6 +271,8 @@ def setup(settings):
 			attrs = {'name':name}
 			jobs[name].update({attr: attrs[attr] for attr in attrs if attr not in jobs[name]})
 
+	jobs = {name: jobs[name] for name in jobs if len(jobs[name])}			
+
 	return jobs
 
 

@@ -7,7 +7,8 @@
 	},
 "seed":{
 	"seed":123,
-	"size":5,
+	"size":3,
+	"size":1,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -15,30 +16,29 @@
 "permutations":{
 	"permutations":{	
 
-		"module.N":[4,6,8],
 		"module.M":[1,2,5,10,20,50],
-		"module.D":[2],
-		"module.d":[1],
+		"module.M":[4],
 		"model.N":[4,6,8],
+		"model.N":[4],
 		"model.M":[1],
 		"model.D":[2],
 		"model.d":[1],
 		"model.local":[true],
+		"model.tensor":[true],
 		"model.configuration":[{
 			"key":"src.functions.brickwork",
 			"sort":null,
 			"reverse":false
 			}],
 		
-		"module.measure.string":["pauli"],
-		"module.measure.operator":["pauli"],
+		"module.measure.string":["povm"],
+		"module.measure.operator":["tetrad"],
 		"module.measure.architecture":["tensor"],
 		"module.measure.D":[2],		
-		"module.measure.options":[{"periodic":false}],
-		"module.options.max_bond":[null],
-		"module.options.max_bond":[2,3,4,6,8,16,32,64],
-		"module.options.cutoff":[0],
-		"module.options.contract":["swap+split"],
+		"module.measure.options":[{}],
+		"module.options":[{"eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","scheme":"nmf","seed":null}],
+		"module.options.S":[2,3,4,6,8,16,32,64],
+		"module.options.S":[2],
 		"module.configuration":[{
 			"key":"src.functions.brickwork",
 			"sort":null,
@@ -51,20 +51,22 @@
 
 		"model.data.noise.operator":[["depolarize"]],
 		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
+		"model.data.noise.parameters":[1e-8],
 		"model.data.noise.where":["||i.j||"],
 
 		"state.string":["psi"],
 		"state.operator":["zero"],
 		"state.local":[false],
+		"state.tensor":[true],
 		"state.D":[2],
 		"state.ndim":[2],
 		"state.parameters":[null],
 
-		"jobs.job.cwd":["scratch/test"],
-		"jobs.postprocess.cwd":["scratch/test"],
+		"jobs.job.cwd":["scratch/tmp"],
+		"jobs.postprocess.cwd":["scratch/tmp"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
-		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/src/config"],
+		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],
@@ -96,7 +98,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
-	"groups":[["module.N","model.N"]],
+	"groups":null,
 	"filters":null,
 	"func":null,
 	"index":null
@@ -114,7 +116,7 @@
 	"d":1,
 	"seed":null,
 	"string":"module",
-	"measure":{"string":"povm","operator":"pauli","D":2,"seed":null,"architecture":"tensor","options":{"periodic":false}},
+	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
 	"configuration":{},
 	"options":{}		
 },
@@ -140,7 +142,7 @@
 	"seed":null
 	},
 "state": {
-	"operator":["zero"],
+	"operator":"haar",
 	"where":null,
 	"string":"psi",
 	"parameters":null,
@@ -203,6 +205,7 @@
 		"execute":1,
 		"verbose":"info"
 		},
+	"job":null,
 	"postprocess":{
 		"jobs":"postprocess.slurm",
 		"args":{
@@ -281,7 +284,7 @@
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
 	"options":{
-		"contract":true,"max_bond":null,"cutoff":0
+		"S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"scheme":"svd"
 	}
 },
 "workflow": {

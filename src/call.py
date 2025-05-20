@@ -1246,7 +1246,7 @@ def init(key,
 			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
 			value = (task[subattr] in [0,None]) and all([*({
 					'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
+					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or (task['dependencies'] is not None and not len(task['dependencies'])) or
 						(task['dependencies'] and all(i is not None for i in task['dependencies']))),
 				}.get(pattern,True) for pattern in task['patterns']),
 				])

@@ -2630,7 +2630,7 @@ def test_class(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			{"S":None,"eps":1e-20,"iters":5e4,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
+			{"S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvdr","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":5e-6,"iters":1e5,"parameters":None,"method":"mu","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
 			# {"S":None,"eps":1e-16,"iters":5e4,"parameters":1e-4,"method":"hals","initialize":"nndsvda","scheme":"nmf","key":seeder(123)},
@@ -2686,7 +2686,7 @@ def test_class(*args,**kwargs):
 				# },
 				"XX":{
 					"operator":["X","X"],"where":"||ij||","string":"XX",
-					"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
+					"parameters":"random","variable":False,"constant":None,"ndim":2,"seed":123456789
 				},				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
