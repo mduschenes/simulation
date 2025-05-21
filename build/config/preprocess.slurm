@@ -32,7 +32,7 @@
 function RUN(){
 
 	TASK=$(realpath ${1:-"."})
-	shift 1;
+	shift 1;	
 	CMDS=${@}
 	CWD=$(pwd)
 
@@ -70,6 +70,7 @@ export JOB_STEP=${SLURM_ARRAY_TASK_STEP}
 export JOB_COUNT=${SLURM_ARRAY_TASK_COUNT}
 export JOB_SLICE=${SLURM_ARRAY_TASK_SLICE}
 export JOB_SIZE=${SLURM_ARRAY_TASK_SIZE}
+export JOB_DATA=${SLURM_ARRAY_TASK_DATA}
 
 
 # Variables
@@ -101,12 +102,12 @@ module purge &>/dev/null 2>&1
 source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
+CMD=()
 if ([ ! -z ${JOB_SRC} ] && [ ! -z ${JOB_CMD} ])
 then
-	CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
-else
-	CMD=(${JOB_ARGS[@]})
+	CMD+=(${JOB_SRC}/${JOB_CMD})
 fi
+CMD+=(${JOB_ARGS[@]})
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 # Processes
@@ -118,7 +119,15 @@ EXE=()
 EXE+=(parallel)
 EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD})
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
-EXE+=(RUN {} ${CMD[@]} :::)
+EXE+=(RUN)
+if [ ! -z ${JOB_DATA} ]
+then
+	EXE+=(${JOB_DATA}/{})
+else
+	EXE+=({})
+fi
+EXE+=(${CMD[@]})
+EXE+=(:::)
 
 # Run
 echo $(pwd) ${EXE[@]} ${TASKS[@]}

@@ -98,6 +98,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),
 					} if len(kwargs) else {}
 					),
 				**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
@@ -120,6 +121,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				**({
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),					
 				} if len(kwargs) else {}),
 				},
 			**env
@@ -143,7 +145,8 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
+					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),								
 				} if len(kwargs) else {}),
 			},
 			**env,			
@@ -923,7 +926,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
 					ext=(split(value,ext=True) if value is not None else 
 						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
-					root=None)
+					root=kwargs.get('data'))
 			value = value.replace('.%a','') if ((kwargs['count'] is None)) else value
 		else:
 			value = value
@@ -1195,12 +1198,13 @@ def init(key,
 			count = None
 
 		if size > 1:
+			data = 'data'
 			path = indices.index(key)
 		else:
+			data = None
 			path = None
 
-		path = join(path,root=cwd[key])
-
+		path = join(data,path,root=cwd[key])
 
 		def updates(task):
 
@@ -1260,6 +1264,7 @@ def init(key,
 			'key':key,
 			'path':path,
 			'name':name,
+			'data':data,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
