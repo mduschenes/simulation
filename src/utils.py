@@ -6071,15 +6071,31 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				return x
 		elif method in ['kl']:
 			@jit
-			def func(i,x):
+			def func(x):
 
-				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
-				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+				v = dot(x['v'],x['c'])
+				x['u'] = ((dot(
+					x['a']*reciprocal(dot(dot(x['b'],x['u']),v)),
+					v.T*reciprocal(addition(v,-1))
+					))[None,:,:])*x['u']
+				u = dot(x['b'],x['u'])
+				x['v'] = ((dot(
+					(x['a']*reciprocal(dot(u,dot(x['v'],x['c'])))).T,
+					u*reciprocal(addition(u,0))
+					).T)[:,:,None])*x['v']
+
+
+				# x['u'] = einsum('g,gvb,b,uv->ug',reciprocal(dot(addition(x['v'],1),x['c'])),x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])))[None,:,:]*x['u']
+				# x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+
+				# x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
+				# x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+
 
 				x['i'] += 1
 
-				# x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				# x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
 
 
 				# a,b,c,d,e,u,v,stats,i = x
@@ -6238,8 +6254,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		# 		return absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
 
 		def condition(x):
-			return x['i'] <= iters
-			# return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
+			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
 			
 		# def condition(x):
 		# 	a,b,c,d,e,u,v,stats,i = x			
@@ -6264,10 +6279,29 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			if attr in ['error']:
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
 
-		# loop = partial(whileloop,condition,func)
-		loop = partial(forloop,int(0),int(iters),func)
-		
-		x = loop(x)
+
+		# func = jax.profiler.annotate_function(func)
+
+		loop = partial(whileloop,condition,func)
+
+		# trace = dict(
+		# 	log_dir=os.environ['PERFETTO_DIR'],
+		# 	create_perfetto_link=True
+		# 	)
+		# trace = dict(
+		# 	log_dir=os.environ['TENSORBOARD_DIR'],
+		# 	create_perfetto_link=False
+		# 	)
+
+		# with jax.profiler.trace(**trace):
+		with jax.log_compiles():
+			x = loop(x)
+			for key in x:
+				if isinstance(x[key],arrays):
+					x[key].block_until_ready()
+				else:
+					for attr in x[key]:
+						x[key][attr].block_until_ready()
 
 		u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
 		s = reciprocal(sqrt(addition(dot(u,v))))

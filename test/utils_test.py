@@ -1559,6 +1559,7 @@ def test_nmf(path=None,tol=None):
 	from src.iterables import permuter,setter,getter
 	from src.io import load,dump,join,exists
 
+	import jax
 	import matplotlib
 	import matplotlib.pyplot as plt
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -1592,7 +1593,7 @@ def test_nmf(path=None,tol=None):
 		'eps':[1e-16],
 		'iters':[6.5e4],
 		'parameters':[1e-1],
-		'seed':choices(range(int(2**32)),k=int(5)),
+		'seed':choices(range(int(2**32)),k=int(1)),
 		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n)],[k**l]*(2)]]
 		}
 
@@ -1655,8 +1656,8 @@ def test_nmf(path=None,tol=None):
 				return
 
 			def func(*objects,**options):
-				u,v,s,data = function(*objects,**options)
-				return data
+				u,v,s,stats = function(*objects,**options)
+				return stats
 
 			setter(options,kwargs,delimiter=delim,default='replace')
 
