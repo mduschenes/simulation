@@ -1744,11 +1744,17 @@ class Measure(System):
 
 			data = state
 
+			data = absolute(data)
+			data /= addition(data)
+
 			data = -addition(data*log(data))
 
 		elif isinstance(state,tensors):
 
 			data = state.array()
+
+			data = absolute(data)
+			data /= addition(data)
 
 			data = -addition(data*log(data))
 

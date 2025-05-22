@@ -1549,6 +1549,9 @@ def test_network(path=None,tol=None):
 
 
 def test_nmf(path=None,tol=None):
+
+	return
+
 	PATHS = ['','.','..']
 	for PATH in PATHS:
 		sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))

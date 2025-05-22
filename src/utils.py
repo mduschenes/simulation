@@ -3154,7 +3154,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			func = self.func if self.func is not None else None
 			if func is None:
 				func = {}
-				for L in range(self.N):
+				for L in range(self.N+1):
 					subscripts = '%s,%s->%s%s%s'%(
 						''.join((
 							''.join(symbols(i) for i in range(L)),
@@ -5970,13 +5970,12 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))			
-			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['rand']:
@@ -5987,17 +5986,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))					
-			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))		
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
@@ -6006,12 +6004,11 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))				
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
 			options = dict(u=u,v=v,rank=rank,eps=eps)
-			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
@@ -6024,18 +6021,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))		
-			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)*addition(a)))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif u is None or v is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			# a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,s,v = svd(a,**options)
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
 			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			u,v = dotl(u,reciprocal(data[0])),dotr(v,reciprocal(data[-1]))
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z	
 		return u,v
@@ -6073,23 +6068,23 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			@jit
 			def func(x):
 
-				v = dot(x['v'],x['c'])
-				x['u'] = ((dot(
-					x['a']*reciprocal(dot(dot(x['b'],x['u']),v)),
-					v.T*reciprocal(addition(v,-1))
-					))[None,:,:])*x['u']
-				u = dot(x['b'],x['u'])
-				x['v'] = ((dot(
-					(x['a']*reciprocal(dot(u,dot(x['v'],x['c'])))).T,
-					u*reciprocal(addition(u,0))
-					).T)[:,:,None])*x['v']
+				# v = dot(x['v'],x['c'])
+				# x['u'] = ((dot(
+				# 	x['a']*reciprocal(dot(dot(x['b'],x['u']),v)),
+				# 	v.T*reciprocal(addition(v,-1))
+				# 	))[None,:,:])*x['u']
+				# u = dot(x['b'],x['u'])
+				# x['v'] = ((dot(
+				# 	(x['a']*reciprocal(dot(u,dot(x['v'],x['c'])))).T,
+				# 	u*reciprocal(addition(u,0))
+				# 	).T)[:,:,None])*x['v']
 
 
 				# x['u'] = einsum('g,gvb,b,uv->ug',reciprocal(dot(addition(x['v'],1),x['c'])),x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])))[None,:,:]*x['u']
 				# x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
 
-				# x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
-				# x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
+				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
 
 
 				x['i'] += 1
@@ -6280,9 +6275,20 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
 
 
+		loop = partial(whileloop,condition,func)
+
+		x = loop(x)
+
+		u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
+		s = reciprocal(sqrt(addition(dot(u,v))))
+		u,v = u*s,v*s
+
+		stats = x['stats']
+
+
 		# func = jax.profiler.annotate_function(func)
 
-		loop = partial(whileloop,condition,func)
+		# loop = partial(whileloop,condition,func)
 
 		# trace = dict(
 		# 	log_dir=os.environ['PERFETTO_DIR'],
@@ -6294,20 +6300,23 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		# 	)
 
 		# with jax.profiler.trace(**trace):
-		with jax.log_compiles():
-			x = loop(x)
-			for key in x:
-				if isinstance(x[key],arrays):
-					x[key].block_until_ready()
-				else:
-					for attr in x[key]:
-						x[key][attr].block_until_ready()
+		# with jax.log_compiles():
+		# 	x = loop(x)
+		# 	for key in x:
+		# 		if isinstance(x[key],arrays):
+		# 			x[key].block_until_ready()
+		# 		else:
+		# 			for attr in x[key]:
+		# 				x[key][attr].block_until_ready()
 
-		u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
-		s = reciprocal(sqrt(addition(dot(u,v))))
-		u,v = u*s,v*s
 
-		stats = x['stats']
+		# x = loop(x)
+
+		# u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
+		# s = reciprocal(sqrt(addition(dot(u,v))))
+		# u,v = u*s,v*s
+
+		# stats = x['stats']
 
 		# a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
 		# e = a-dot(dot(b,dot(u,v)),c)
@@ -7220,7 +7229,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		grad (callable): Metric gradient with signature grad(*operands,label,weights,*gradients)
 		grad_analytical (callable): Metric analytical gradient with signature grad_analytical(*operands,label,weights,*gradients)
 	'''
-	
+
 	if shapes:
 		size = sum(int(prod(shape)**(1/min(2,len(shape)))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
 		ndim = min([min(2,len(shape)) for shape in shapes[:2] if shape is not None])
@@ -11371,7 +11380,7 @@ def is_hermitian(obj,*args,**kwargs):
 		out (bool): If object is hermitian
 	'''
 	try:
-		out = allclose(obj,conjugate(transpose(obj)))
+		out = allclose(obj,dagger(obj))
 	except:
 		out = False
 	return out
@@ -11389,9 +11398,12 @@ def is_unitary(obj,*args,**kwargs):
 	'''
 	try:
 		if obj.ndim == 1:
-			out = allclose(ones(1,dtype=obj.dtype),dot(obj,conjugate(transpose(obj))))
+			out = allclose(ones(1,dtype=obj.dtype),dot(obj,dagger(obj)))
+		elif obj.ndim == 2:
+			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
 		else:
-			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,conjugate(transpose(obj))))
+			obj = reshape(obj,(prod(obj.shape[:obj.ndim//2]),prod(obj.shape[obj.ndim//2:])))
+			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
 	except:
 		out = False
 	return out
