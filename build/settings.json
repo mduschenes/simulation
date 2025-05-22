@@ -118,7 +118,7 @@
 	"string":"module",
 	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
 	"configuration":{},
-	"options":{}		
+	"options":{"scheme":null,"S":null}		
 },
 "model":{
 	"data":{

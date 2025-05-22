@@ -36,14 +36,17 @@ delimiter = '.'
 
 class Lock(object):
 	
-	ext = 'lock'
+	lock = None
+	path = 'lock'
+	timeout = -1
 	
-	def __new__(cls,lock,path,*args,**kwargs):
+	def __new__(cls,lock,path=None,timeout=None,**kwargs):
 		if not lock or not path:
-			self = super().__new__(cls,*args,**kwargs)
+			self = super().__new__(cls,**kwargs)
 		else:
-			path = delimiter.join([path,cls.ext])
-			self = 	FileLock(path,*args,**kwargs)
+			path = delimiter.join([path if path is not None else cls.path,cls.path])
+			timeout = timeout if timeout is not None else cls.timeout
+			self = 	FileLock(path,timeout=timeout,**kwargs)
 		return self
 	def __init__(self,*args,**kwargs):
 		return
@@ -765,7 +768,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -775,6 +778,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,ver
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		lock (bool): Lock file when loading
+		timeout (int): Timeout when loading
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -820,7 +824,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,ver
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 
-		with Lock(lock=lock,path=path):
+		with Lock(lock=lock,path=path,timeout=timeout):
 			for wr in wrs:
 				try:
 					datum = _load(path,wr=wr,ext=ext,**kwargs)
@@ -1028,7 +1032,7 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1037,7 +1041,8 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,verbose=Fal
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
-		lock (bool): Lock file when loading
+		lock (bool): Lock file when dumping
+		timeout (int): Timeout when dumping
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
@@ -1111,7 +1116,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,verbose=Fal
 		for wrapper in wrappers:
 			data = wrapper(data)
 
-		with Lock(lock=lock,path=path):
+		with Lock(lock=lock,path=path,timeout=timeout):
 
 			for wr in wrs:	
 				try:
