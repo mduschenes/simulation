@@ -7967,7 +7967,7 @@ class Module(System):
 		'''
 		Save class data		
 		Args:
-			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
+			path (str): Path to dump class data
 		'''
 
 		# Set path
@@ -7982,15 +7982,19 @@ class Module(System):
 		# Set do
 		do = (callback is not None) and ((not exists(path)) or ())
 
+		# Dump data
 		if do:
 			parameters = self.parameters()
 			state = self.state()
 			model = self
 			data = data
 			lock = self.lock
+			key = self.key if self.key is not None else None
 			kwargs = {}
 
 			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
+
+			data = {key:data}
 
 			dump(data,path,lock=lock)
 		
@@ -8739,35 +8743,3 @@ class Callback(System):
 			model.log(msg)
 
 		return status
-
-
-def main(settings,*args,**kwargs):
-
-	default = {}
-	if settings is None:
-		settings = default
-	elif isinstance(settings,str):
-		settings = load(settings,default=default)
-
-	settings = Dict(settings)
-
-	model = load(settings.cls.model)
-	system = settings.system
-	model = model(**{**settings.model,**dict(system=system)})
-
-	parameters = model.parameters()
-
-	obj = model(parameters=parameters)
-
-	return
-
-
-if __name__ == '__main__':
-
-	arguments = 'settings'
-
-	from src.utils import argparser
-
-	args = argparser(arguments)
-
-	main(*args,**args)

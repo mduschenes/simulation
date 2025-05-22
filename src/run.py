@@ -140,6 +140,78 @@ def formatter(key,shape,value,settings,default):
 	return string
 
 
+def iterate(settings,index=None):
+	'''
+	Iterate settings
+	Args:
+		settings (dict,str): settings
+		index (int): settings index
+	Returns:
+		settings (dict): settings
+	Yields:
+		key (str): settings key
+		setting (dict): settings values
+	'''
+
+	i = -1
+
+	# Get permutations of settings
+	permutations = permute(settings)
+
+	for instance,permutation in enumerate(permutations):
+
+		if not allow(permutation,permutations,settings):
+			continue
+
+		# Update settings with permutation
+		setting = copy(settings)
+		boolean = lambda attr,permutation: attr.split(delim)[0] in ['seed']
+		setter(setting,{attr: permutation[attr] for attr in permutation if boolean(attr,permutation)},delimiter=delim,copy=True)
+
+		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
+		seed,seeds,seedlings = spawn(setting)
+
+		# Get shape and default key of permutations
+		shape = (len(permutations),len(seeds))
+		default = getter(setting,'system.key',delimiter=delim)
+
+		# Get all allowed enumerated keys and seeds for permutations and seedlings of settings
+		for number,seedling in enumerate(seeds):
+
+			i += 1
+
+			if index is not None and i != index:
+				continue
+
+			key = (instance,number)
+			value = (permutation,seedling)
+
+			key = formatter(key,shape,value,setting,default)
+
+			options = {
+					'system.key':key,
+					'system.instance':number if key is not None else None,
+					'system.instances':{seedling: number for seedling in seedlings},
+					'system.seed':seed,
+					'system.seeding':seed
+				}
+
+			value = {
+				**permutation,
+				**seedling,
+				**options,
+			}
+
+			setting = copy(settings)
+
+			setter(setting,value,delimiter=delim,copy=True)
+
+			if index is not None and i == index:
+				return setting
+
+			yield key,setting
+
+
 def setup(settings):
 	'''
 	Setup settings
@@ -165,67 +237,19 @@ def setup(settings):
 
 	setter(settings,load(path,default=default),default=False)
 
-
-	# Get permutations of settings
-	permutations = permute(settings)
-
-	keys = {}
-
-	for instance,permutation in enumerate(permutations):
-
-		if not allow(permutation,permutations,settings):
-			continue
-
-		# Update settings with permutation
-		setting = copy(settings)
-		boolean = lambda attr,permutation: attr.split(delim)[0] in ['seed']
-		setter(setting,{attr: permutation[attr] for attr in permutation if boolean(attr,permutation)},delimiter=delim,copy=True)
-
-		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
-		seed,seeds,seedlings = spawn(setting)
-
-		# Get shape and default key of permutations
-		shape = (len(permutations),len(seeds))
-		default = getter(setting,'system.key',delimiter=delim)
-
-		# Get all allowed enumerated keys and seeds for permutations and seedlings of settings
-		for index,seedling in enumerate(seeds):
-
-			key = (instance,index)
-			value = (permutation,seedling)
-
-			key = formatter(key,shape,value,setting,default)
-
-			options = {
-				'system.key':key,
-				'system.instance':index if key is not None else None,
-				'system.instances':{seedling: index for seedling in seedlings},
-				'system.seed':seed,
-				'system.seeding':seed
-				}
-
-			keys[key] = {}
-
-			for value in [permutation,seedling,options]:
-				for attr in value:
-					keys[key][attr] = value[attr]
-
-	
-	# Set settings with key and seed instances
-	settings = {key: copy(settings) for key in keys}
-
-	for key in keys:
-		setter(settings[key],keys[key],delimiter=delim,copy=True)
+	# Iterate settings with permutations, seeds and options
+	settings = {key:setting for key,setting in iterate(settings)}
 
 	# Set job
 	jobs = {}
 
-	names = union(*(settings[key]['jobs'] for key in keys),sort=True)
+	names = union(*(settings[key]['jobs'] for key in settings),sort=True)
 
 	for name in names:
+		
 		jobs[name] = {}
 
-		for key in keys:
+		for key in settings:
 			
 			job = settings[key]['jobs'].get(name)
 
@@ -277,17 +301,16 @@ def setup(settings):
 
 
 
-def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,verbose=None):
+def run(settings,device=None,job=None,path=None,env=None,execute=False,verbose=None):
 	'''
 	Run simulations
 	Args:
 		settings (dict,str): settings for simulations
 		device (str): Name of device to submit to
 		job (str): Name of job to run simulations
-		cmd (str): Name of command to run simulations
 		path (str): Path where to submit job
 		env (str): Name of environment to run simulations
-		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		execute (bool,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
 	Returns:
 		results (iterable[str]): Return of commands for each job		
@@ -296,11 +319,12 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,
 	device = None if device is None else device
 	job = 'job.slurm' if job is None else job
 	settings = join(settings,abspath=True)
-	cmd = funcpath(run) if cmd is None else cmd
 	path = join(path,abspath=True)	
 	env = environ().get('CONDA_PREFIX',environ().get('VIRTUAL_ENV')) if env is None else env
 	execute = True if execute is None else execute
 	verbose = True if verbose is None else verbose
+
+	cmd = funcpath(run)
 
 	if device is not None:
 
@@ -361,12 +385,6 @@ if __name__ == '__main__':
 			'default':None,
 			'nargs':'?'
 		},	
-		'--cmd':{
-			'help':'Command',
-			'type':str,
-			'default':None,
-			'nargs':'?'
-		},
 		'--path':{
 			'help':'Path',
 			'type':str,

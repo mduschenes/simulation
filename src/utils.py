@@ -217,8 +217,10 @@ if backend in ['jax','jax.autograd','quimb']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	booleans = (bool,np.bool_,)
 	strings = (str,)
-	scalars = (*integers,*floats,str,type(None))
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,)
 
 	iterables = (*arrays,list,tuple,set,range)
@@ -257,8 +259,10 @@ elif backend in ['autograd']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	booleans = (bool,np.bool_,)
 	strings = (str,)
-	scalars = (*integers,*floats,str,type(None))	
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,)
 	
 	iterables = (*arrays,list,tuple,set,range)
@@ -288,8 +292,10 @@ elif backend in ['numpy']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
-	strings = (str,)	
-	scalars = (*integers,*floats,str,type(None))	
+	booleans = (bool,np.bool_,)
+	strings = (str,)
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,)
 	
 	iterables = (*arrays,list,tuple,set,range)
@@ -370,10 +376,16 @@ class argparser(argparse.ArgumentParser):
 				if not iterable:
 					values = [values]
 				for value in values:
-					for val in str(value).split(delimiter):
-						_values.append(self.type(val))
-					if iterable:
-						setattr(namespace,self.dest,_values)
+					if isinstance(value,str):
+						for val in str(value).split(delimiter):
+							_values.append(self.type(val))
+						if iterable:
+							setattr(namespace,self.dest,_values)
+					else:
+						try:
+							_values.append(self.type(value))
+						except:
+							_values.append(value)
 				if not iterable:
 					setattr(namespace,self.dest,_values[-1])
 
@@ -429,11 +441,10 @@ class argparser(argparse.ArgumentParser):
 					if null in options:
 						for option in nulls[null]:
 							options.pop(option,None);
-
 				options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 				options.update({
 					**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
-					**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+					**{option: argparse.SUPPRESS if options.get('type') in ['str',str] else None for option in ['default'] if option in options}
 					})
 				names = [name]
 				self.add_argument(*names,**options)

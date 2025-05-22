@@ -9,18 +9,26 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,delim
-from src.io import load,glob
-from src.iterables import Dict,namespace,setter
+from src.utils import argparser,copy,delim
+from src.io import load,dump,glob
+from src.run import iterate
+from src.iterables import Dict,namespace,setter,getter
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
 
-def setup(settings,*args,**kwargs):
+def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,execute=None,verbose=None,**kwargs):
 	'''
 	Setup settings
 	Args:
 		settings (dict,str): settings
+		index (int): settings index
+		device (str): settings device
+		job (str): settings job
+		path (str): settings path
+		env (int): settings environment
+		execute (bool,int): settings execution
+		verbose (int,str,bool): settings verbosity
 		args (iterable): settings positional arguments
 		kwargs (dict): settings keyword arguments
 	Returns:
@@ -43,6 +51,9 @@ def setup(settings,*args,**kwargs):
 
 	setter(settings,kwargs,delimiter=delim,default=True)
 	setter(settings,defaults,delimiter=delim,default=False)
+
+	if index is not None:
+		settings = iterate(settings,index=index)
 
 	return settings
 
@@ -228,7 +239,58 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = 'settings'
-	args = argparser(arguments)
+	arguments = {
+		'--settings':{
+			'help':'Settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--index':{
+			'help':'Index',
+			'type':int,
+			'default':None,
+			'nargs':'?'
+		},
+		'--device':{
+			'help':'Device',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--job':{
+			'help':'Job',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--path':{
+			'help':'Path',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--env':{
+			'help':'Environment',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
+		},										
+		}		
+
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}
+
+	args = argparser(arguments,wrappers)
 
 	main(*args,**args)

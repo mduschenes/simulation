@@ -39,12 +39,6 @@ if __name__ == '__main__':
 			'default':None,
 			'nargs':'?'
 		},	
-		'--cmd':{
-			'help':'Command',
-			'type':str,
-			'default':None,
-			'nargs':'?'
-		},
 		'--path':{
 			'help':'Path',
 			'type':str,

@@ -12,7 +12,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,rand,allclose,scalars
+from src.utils import array,rand,allclose,scalars,prod,nan,is_naninf
 from src.io import load,dump,join,split,edit,dirname,exists,glob,rm
 
 # Logging
@@ -140,17 +140,17 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	g = 3
 	n = 2
-	shape = (7,3)
+	shape = (2,3)
 	groups = ['%d'%(i) for i in range(g)]
 	instances = ['%d'%(i) for i in range(n)]
 	datasets = ['data','values','parameters']
-	attributes = ['n','m','k']
+	attributes = {'scalar':0.12321312,'integer':123,'string':'hello world --- goodbye','bool':True,'None':nan}
 	attrs = [*datasets,*attributes]
 	data = {
 		group: {
 			instance:{
 				**{attr: rand(shape) for attr in datasets},
-				**{attr: rand() for attr in attributes}
+				**{attr: attributes[attr] for attr in attributes}
 				}
 			for instance in instances
 			}
@@ -177,7 +177,10 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 			for attr in attrs:
 				msg = "group: %s, instance: %s, attr: %s Unequal"%(group,instance,attr)
 				if isinstance(data[group][instance][attr],scalars):
-					assertion = data[group][instance][attr] == new[group][instance][attr]
+					if is_naninf(data[group][instance][attr]):
+						assertion = is_naninf(data[group][instance][attr]) and is_naninf(new[group][instance][attr])
+					else:
+						assertion = data[group][instance][attr] == new[group][instance][attr]
 				else:
 					assertion = allclose(data[group][instance][attr],new[group][instance][attr])
 				assert assertion,msg
@@ -185,9 +188,36 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	path = dirname(path)
 
-	rm(path)
+	# rm(path)
+
+	print('Passed')
 
 	return
+
+def test_pandas(path='.tmp.tmp/data.hdf5'):
+	shape = (3,4)
+	paths = 4
+	indices = 3
+	data = {
+		join(split(path,directory=True),str(i),split(path,file_ext=True)):{
+			str(j):dict(data=rand(shape),scalar=j+0.34343,string='hello worlds',boolean=i%2==0,none=nan)
+			for j in range(indices)
+			}
+		for i in range(paths)
+		}
+
+	for string in data:
+		dump(data[string],string)
+
+	string = join(split(path,directory=True),'**',split(path,file_ext=True))
+
+	new = load(string,wrapper='df')
+
+	print(new)
+
+	return
+
+
 
 def test_importlib(path=None,**kwargs):
 
@@ -278,8 +308,9 @@ def test_lock(*args,**kwargs):
 
 if __name__ == '__main__':
 	# test_load()
-	test_dump()
+	# test_dump()
 	# test_importlib()
 	# test_glob()
 	# test_lock(*sys.argv[1:])
 	# test_hdf5()
+	test_pandas()

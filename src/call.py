@@ -1006,19 +1006,13 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		destination = join(path,root=cwd)
 
 		# Update and Dump files
-		if execute and isinstance(data,dict):
-			data,source,destination = load(source),copy(data),destination
-			setter(source,data,default=False)
-			dump(source,destination)
-
-			source = source
-			destination = join(cwd,abspath=True)
-			if not exists(destination):
+		if execute and not exists(destination):
+			if isinstance(data,dict):
+				data,source,destination = load(source),copy(data),destination
+				setter(source,data,default=False)
 				dump(source,destination)
-
-		elif execute:
-			cp(source,destination,default=path,execute=execute,verbose=verbose)
-
+			else:
+				cp(source,destination,default=path,execute=execute,verbose=verbose)
 
 	return
 

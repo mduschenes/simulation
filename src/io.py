@@ -676,8 +676,12 @@ def _dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 		for name in names:
 			key = name
 			if isinstance(obj[name],dict):
-				path.create_group(key)
-				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
+				try:
+					path.create_group(key)
+					data = path[key]
+				except:
+					data = path
+				_dump_hdf5(obj[name],data,wr=wr,ext=ext,**kwargs)
 			elif isinstance(obj[name],scalars):
 				try:
 					path.attrs[key] = obj[name]
@@ -880,8 +884,9 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,tim
 					data['__path__'] = [path]*size
 					return data
 				try:
-					data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
+					data = pd.concat((pd.DataFrame(func(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
 				except Exception as exception:
+					print(exception)
 					data = default
 				return data
 		elif wrapper in ['np']:
