@@ -670,17 +670,14 @@ def _dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 		ext (str): Extension type of object
 		kwargs (dict): Additional loading keyword arguments
 	'''		
-
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
 			key = name
 			if isinstance(obj[name],dict):
-				try:
+				if key not in path:
 					path.create_group(key)
-					data = path[key]
-				except:
-					data = path
+				data = path[key]
 				_dump_hdf5(obj[name],data,wr=wr,ext=ext,**kwargs)
 			elif isinstance(obj[name],scalars):
 				try:
@@ -789,7 +786,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,tim
 		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
 	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
-	wrs = [wr,'r','rb']
+	wrs = [wr,'r','rb'] if not lock else ['r','rb']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
 	args = {'path':path,'wrapper':wrapper}
@@ -886,7 +883,6 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,tim
 				try:
 					data = pd.concat((pd.DataFrame(func(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
 				except Exception as exception:
-					print(exception)
 					data = default
 				return data
 		elif wrapper in ['np']:
@@ -1051,7 +1047,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,timeout=Non
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
-	wrs = [wr,'w','wb']
+	wrs = [wr,'w','wb'] if not lock else ['a','ab']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
 	args = {'path':path,'wrapper':wrapper}

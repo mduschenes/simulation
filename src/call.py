@@ -98,6 +98,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),
 					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),
 					} if len(kwargs) else {}
 					),
@@ -121,6 +122,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				**({
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),					
 					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),					
 				} if len(kwargs) else {}),
 				},
@@ -146,6 +148,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),					
 					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),								
 				} if len(kwargs) else {}),
 			},
@@ -1016,7 +1019,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 
 	return
 
-def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,local=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Status of job
 	Args:
@@ -1029,6 +1032,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task
+		local (bool): Subtasks in local paths versus global path
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
@@ -1133,7 +1137,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 def init(key,
 		keys=None,
 		name=None,jobs=None,args=None,paths=None,patterns=None,dependencies=None,
-		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
+		pwd=None,cwd=None,pool=None,local=None,resume=None,pause=None,file=None,
 		env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 		'''
 		Process job commands as tasks to command line
@@ -1150,6 +1154,7 @@ def init(key,
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task
+			local (bool): Subtasks in local paths versus global path
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file		
@@ -1161,11 +1166,16 @@ def init(key,
 		Returns:
 			task (dict[str,str]): Task for job
 		'''
+
+		local = local if local is True else None
+		
 		pool = 1 if pool is None else pool
+		
 		verbose = False
 		execution = True if execute == -1 else execute
 		execute = False if execute == -1 else execute
 
+		key = key
 		indices = [subkey for subkey in keys if cwd[subkey] == cwd[key]]
 		size = len(indices)
 
@@ -1191,12 +1201,12 @@ def init(key,
 			step = None
 			count = None
 
-		if size > 1:
-			data = 'data'
+		if size > 1 and local:
 			path = indices.index(key)
+			data = 'data'
 		else:
-			data = None
 			path = None
+			data = None
 
 		path = join(data,path,root=cwd[key])
 
@@ -1222,9 +1232,8 @@ def init(key,
 			task[attr] = value
 
 			attr = 'destination'
-			value = task[attr]		
-			value = join(job,root=task['path'],abspath=True)
-			task[attr] = value			
+			value = task['path']		
+			task[attr] = value	
 
 			attr = 'resume'
 			subattr = attr
@@ -1271,6 +1280,7 @@ def init(key,
 			'env':env,
 			'process':process,
 			'pool':pool,
+			'local':local,
 			'size':size,
 			'index': index,
 			'mod':mod,
@@ -1301,8 +1311,9 @@ def init(key,
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-			msg = 'Job : %s'%(key)
-			logger.log(info,msg)
+			msg = 'Job : %s'%(path)
+
+			logger.log(info,msg)	
 		
 		return task
 
@@ -1317,7 +1328,7 @@ def callback(task,key,keys):
 	keys[key] = task
 	return
 
-def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,local=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -1330,6 +1341,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task
+		local (bool): Subtasks in local paths versus global path
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
@@ -1352,7 +1364,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	queue = status(
 		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
+		pwd=pwd,cwd=cwd,pool=pool,local=local,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	if isinstance(jobs,str):
@@ -1407,7 +1419,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	kwds = dict(
 		keys=keys,
 		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
+		pwd=pwd,cwd=cwd,pool=pool,local=local,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
 	)
 	callback_kwds = {'keys':keys}
@@ -1415,6 +1427,9 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	for key in iterable:
 		task = init(key,**kwds)
 		callback(task,key,keys)
+
+		if not local:
+			break
 
 	# parallelize = Pooler(processes)
 
@@ -1474,6 +1489,7 @@ def launch(jobs={},wrapper=None,execute=False,verbose=None):
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task
+			local (bool): Subtasks in local paths versus global path
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			

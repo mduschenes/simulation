@@ -3391,9 +3391,10 @@ def plotter(plots,processes,verbose=None):
 			attr = 'fname'
 			for data in search(plots[instance][subinstance]['fig'].get(prop)):
 
-				value = [split(path,directory_file=True),instance,data[attr]]
+				value = [split(path,file=True),instance,data[attr]]
 				value = [i for i in value if i is not None]
-				value = join(delim.join(value),ext=split(path,ext=True))
+				value = [split(path,directory=True),'plot',delim.join(value)]
+				value = join(*value,ext=split(path,ext=True))
 				
 				data[attr] = value
 

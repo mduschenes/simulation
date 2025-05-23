@@ -75,7 +75,7 @@ class Dict(Dictionary):
 
 		for key in kwargs:
 			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
-				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else kwargs[key]
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else Dictionary(kwargs[key])
 
 		super().__init__(**kwargs)
 

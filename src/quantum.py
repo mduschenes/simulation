@@ -7282,8 +7282,8 @@ class Objects(Object):
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.path
 			path = join(file,root=root)
-			lock = self.lock
-			dump(data[attr],path,lock=lock)
+			options = dict(lock=self.lock)
+			dump(data[attr],path,**options)
 		
 		return
 
@@ -7976,11 +7976,14 @@ class Module(System):
 		# Set data
 		data = {}
 
+		# Set key
+		key = self.key if self.key is not None else None
+
 		# Set callback
 		callback = self.callback if self.callback is not None else None
 
 		# Set do
-		do = (callback is not None) and ((not exists(path)) or ())
+		do = (path is not None) and (callback is not None) and ((not exists(path)) or (exists(path) and ((key is None) or (key not in load(path)))))
 
 		# Dump data
 		if do:
@@ -7988,15 +7991,15 @@ class Module(System):
 			state = self.state()
 			model = self
 			data = data
-			lock = self.lock
 			key = self.key if self.key is not None else None
 			kwargs = {}
+			options = dict(lock=self.lock)
 
 			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
 
 			data = {key:data}
 
-			dump(data,path,lock=lock)
+			dump(data,path,**options)
 		
 		return
 

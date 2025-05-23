@@ -140,12 +140,13 @@ def formatter(key,shape,value,settings,default):
 	return string
 
 
-def iterate(settings,index=None):
+def iterate(settings,index=None,wrapper=None):
 	'''
 	Iterate settings
 	Args:
 		settings (dict,str): settings
 		index (int): settings index
+		wrapper (callable): settings wrapper
 	Returns:
 		settings (dict): settings
 	Yields:
@@ -202,12 +203,15 @@ def iterate(settings,index=None):
 				**options,
 			}
 
-			setting = copy(settings)
+			setting = copy(setting)
 
 			setter(setting,value,delimiter=delim,copy=True)
 
+			if wrapper is not None:
+				setting = wrapper(setting)
+
 			if index is not None and i == index:
-				return setting
+				yield key,setting
 
 			yield key,setting
 

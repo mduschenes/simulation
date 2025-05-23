@@ -28,28 +28,81 @@
 
 # Run Parallel tasks
 
-# Function
-function RUN(){
+# Job
+JOB_NAME=${SLURM_JOB_NAME}
+JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+JOB_TASK=${SLURM_ARRAY_TASK_ID}
+JOB_MIN=${SLURM_ARRAY_TASK_MIN}
+JOB_MAX=${SLURM_ARRAY_TASK_MAX}
+JOB_STEP=${SLURM_ARRAY_TASK_STEP}
+JOB_COUNT=${SLURM_ARRAY_TASK_COUNT}
+JOB_SLICE=${SLURM_ARRAY_TASK_SLICE}
+JOB_SIZE=${SLURM_ARRAY_TASK_SIZE}
+JOB_LOCAL=${SLURM_ARRAY_TASK_LOCAL}
+JOB_DATA=${SLURM_ARRAY_TASK_DATA}
 
-	TASK=$(realpath ${1:-"."})
-	shift 1;	
-	CMDS=${@}
-	CWD=$(pwd)
+# Variables
+JOB_CWD=${1:-${JOB_CWD}}
+JOB_ENV=${2:-${JOB_ENV}}
+JOB_SRC=${3:-${JOB_SRC}}
+JOB_CMD=${4:-${JOB_CMD}}
+JOB_PROCESSES=${5:-${JOB_PROCESSES}}
+shift 5;
+JOB_ARGS=${@:-${JOB_ARGS}}
 
-	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+JOB_PATH=$(pwd)
 
-	cd ${TASK}
 
-	${CMDS[@]}
+# Functions
+if [ ! -z ${JOB_LOCAL} ]
+then
+	function RUN(){
 
-	cd ${CWD}
+		TASK=${1:-"."}
+		shift 1;	
+		CMDS=()
+		CMDS+=(${@})
 
-	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+		CWD=$(realpath ${TASK})	
+		PWD=$(pwd)
+		cd ${CWD}
 
-}
+
+		echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+
+
+		${CMDS[@]}
+
+
+		echo ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+
+
+		cd ${PWD}
+
+	}
+
+else
+
+	function RUN(){
+
+		TASK=${1:-"."}
+		shift 1;	
+		CMDS=()
+		CMDS+=(${@})
+
+
+		echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+
+
+		${CMDS[@]} ${TASK}
+
+
+		echo ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
+
+	}
+fi
 export -f RUN
 
-# Queue
 function QUEUE(){
 
 	job=${BASH_SOURCE[0]}
@@ -60,27 +113,6 @@ function QUEUE(){
 }
 export -f QUEUE
 
-# Job
-export JOB_NAME=${SLURM_JOB_NAME}
-export JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-export JOB_TASK=${SLURM_ARRAY_TASK_ID}
-export JOB_MIN=${SLURM_ARRAY_TASK_MIN}
-export JOB_MAX=${SLURM_ARRAY_TASK_MAX}
-export JOB_STEP=${SLURM_ARRAY_TASK_STEP}
-export JOB_COUNT=${SLURM_ARRAY_TASK_COUNT}
-export JOB_SLICE=${SLURM_ARRAY_TASK_SLICE}
-export JOB_SIZE=${SLURM_ARRAY_TASK_SIZE}
-export JOB_DATA=${SLURM_ARRAY_TASK_DATA}
-
-
-# Variables
-export JOB_CWD=${1:-${JOB_CWD}}
-export JOB_ENV=${2:-${JOB_ENV}}
-export JOB_SRC=${3:-${JOB_SRC}}
-export JOB_CMD=${4:-${JOB_CMD}}
-export JOB_PROCESSES=${5:-${JOB_PROCESSES}}
-shift 5;
-export JOB_ARGS=${@:-${JOB_ARGS}}
 
 # Directory
 if ([ ! -z ${JOB_SLICE} ] && [ ! -z ${JOB_SIZE} ]) && ([ -z ${JOB_CWD} ] || [ ! -z ${JOB_TASK} ])
@@ -89,17 +121,19 @@ then
 	END=$(( (${JOB_TASK}+1)*${JOB_SLICE} ))
 	if [ ${START} -lt 0 ];then START=0;fi; START=$(( ${START} ));
 	if [ ${END} -gt ${JOB_SIZE} ];then END=${JOB_SIZE};fi; END=$(( ${END} - 1 ));
-	export JOB_CWD=($(seq ${START} ${END}))
+	JOB_CWD=($(seq ${START} ${END}))
 else
-	export JOB_CWD=($(echo ${JOB_CWD[@]/\~/"${HOME}"} | envsubst))
-	export JOB_CWD=(${JOB_CWD[@]:-"."})
+	JOB_CWD=($(echo ${JOB_CWD[@]/\~/"${HOME}"} | envsubst))
+	JOB_CWD=(${JOB_CWD[@]:-"."})
 fi
-export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
+JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
+
 
 # Environment
 module purge &>/dev/null 2>&1
 # conda activate ${JOB_ENV} &>/dev/null 2>&1
 source activate ${JOB_ENV} &>/dev/null 2>&1
+
 
 # Command
 CMD=()
@@ -110,28 +144,41 @@ fi
 CMD+=(${JOB_ARGS[@]})
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
+
 # Processes
 TASKS=(${JOB_CWD[@]})
 JOBS=${JOB_PROCESSES:-1}
 
+
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD})
+EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${JOB_PATH})
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN)
-if [ ! -z ${JOB_DATA} ]
-then
-	EXE+=(${JOB_DATA}/{})
-else
-	EXE+=({})
-fi
+EXE+=({})
 EXE+=(${CMD[@]})
 EXE+=(:::)
 
+
 # Run
+
+if [ ! -z ${JOB_DATA} ]
+then
+	cd ${JOB_DATA}
+else
+	cd ${JOB_PATH}
+fi
+
 echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
+
+cd ${JOB_PATH}
+
+
+# Cleanup
+find ${JOB_PATH} -type d -name "tmp[a-z,0-9,_]*" -delete
+
 
 # Status
 # squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}

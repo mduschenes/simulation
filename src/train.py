@@ -53,7 +53,9 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 	setter(settings,defaults,delimiter=delim,default=False)
 
 	if index is not None:
-		settings = iterate(settings,index=index)
+		for key,setting in iterate(settings,index=index,wrapper=wrapper):
+			settings = setting
+			break
 
 	return settings
 

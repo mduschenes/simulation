@@ -8,11 +8,11 @@ import pandas as pd
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','..','..']
+PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,rand,allclose,scalars,prod,nan,is_naninf
+from src.utils import array,rand,allclose,arrays,scalars,seeder,prod,nan,is_naninf
 from src.io import load,dump,join,split,edit,dirname,exists,glob,rm
 
 # Logging
@@ -188,35 +188,125 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	path = dirname(path)
 
-	# rm(path)
+	rm(path)
 
 	print('Passed')
 
 	return
 
 def test_pandas(path='.tmp.tmp/data.hdf5'):
-	shape = (3,4)
-	paths = 4
-	indices = 3
-	data = {
-		join(split(path,directory=True),str(i),split(path,file_ext=True)):{
-			str(j):dict(data=rand(shape),scalar=j+0.34343,string='hello worlds',boolean=i%2==0,none=nan)
-			for j in range(indices)
+
+	directory = split(path,directory=True)
+	file = split(path,file_ext=True)
+
+	shape = (2,3)
+	paths = 2
+	indices = 4
+	copies = 3
+
+	data = {}
+
+	for k in range(copies):
+
+		data[k] = {
+			join(directory,str(i),file):{
+				str(k*(paths*indices)+i*indices+j):dict(data=[rand(shape,key=seeder(123+k))],scalar=k*10+j+0.34343,string='hello worlds',boolean=j%2==0,none=nan)
+				for j in range(indices)
+				}
+			for i in range(paths)
 			}
-		for i in range(paths)
-		}
 
-	for string in data:
-		dump(data[string],string)
+		for string in data[k]:
+			dump(data[k][string],string,wr='a')
 
-	string = join(split(path,directory=True),'**',split(path,file_ext=True))
+	string = join(directory,'**',file)
 
 	new = load(string,wrapper='df')
 
 	print(new)
 
+	new = {attr: [*new[attr]] if not any(isinstance(i,tuple) for i in new[attr]) else [[array([[k for k in j] if isinstance(j,tuple) else j for j in i])] for i in new[attr]] for attr in new}
+	old = {attr: [data[k][i][j][attr] for k in data for i in data[k] for j in data[k][i] if attr in data[k][i][j]] for attr in set(attr for k in data for i in data[k] for j in data[k][i] for attr in data[k][i][j])}
+
+
+	for attr in old:
+		assert all((not isinstance(i,arrays) and not isinstance(j,arrays)) or (is_naninf(i) and is_naninf(j)) for i,j in zip(old[attr],new[attr])) or (old[attr]==new[attr]),"\n%r\n%r"%(old[attr],new[attr])
+
+
+	key = str((copies//2)*(paths*indices)+(paths//2)*indices+(indices//2))
+
+	assert exists(join(directory,str(paths//2),file)) and key in load(join(directory,str(paths//2),file))
+
+	rm(directory)
+
+	print('Passed')
+
 	return
 
+
+def test_parallel(path='.tmp.tmp/data.hdf5'):
+
+	rm(path)
+
+	n = 24
+	j = n//3
+	time = 1
+
+	file = join(split(path,directory=True),'func.py')
+	text = '\n'.join([
+		"#!/usr/bin/env python",
+		"import os,sys,time,datetime",
+		"",
+		"ROOT = os.path.dirname(os.path.abspath(__file__))",
+		"PATHS = ['','.','..','../..']",
+		"for PATH in PATHS:",
+		"\t"+"sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))",
+		"from src.utils import rand",
+		"from src.io import dump",
+		"",
+		"index = sys.argv[1]",
+		"",
+		f"path = '{path}'",
+		"func = lambda index: float(index)",
+		"timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')",
+		"",
+		"key = index",
+		"value = dict(data=[rand((3,4))+int(index)*10],scalar=float(index),string=timestamp,boolean=True)",
+		"",
+		"data = {key:value}",
+		"options = dict(wr='a',lock=True)",
+		"",
+		"dump(data,path,**options)",
+		"",
+		"print(key,timestamp)",
+		"",
+		f"time.sleep({time})"
+		])
+	string = f'echo "{text}" > {file}'
+	os.system(string)
+
+	string = f'chmod +x {file}'
+	os.system(string)
+
+
+	string = f'parallel -j {j} ./{file} {{}} ::: $(seq 0 {n-1})'
+
+	os.system(string)
+
+
+	options = dict(wr='r',lock=True)
+	data = load(path,**options)
+
+	assert (
+		(len(data) == n) and 
+		all(int(i) in range(n) for i in data) and
+		all(data[i]['scalar']==float(i) for i in data)
+		)
+
+	rm(path)
+	rm(file)
+
+	return
 
 
 def test_importlib(path=None,**kwargs):
@@ -301,7 +391,6 @@ def test_lock(*args,**kwargs):
 	if key == None:
 		rm(path)
 
-	# rm job/data.hdf5* -rf && parallel ./io_test.py ::: $(seq 1 10)
 	return
 
 
@@ -313,4 +402,5 @@ if __name__ == '__main__':
 	# test_glob()
 	# test_lock(*sys.argv[1:])
 	# test_hdf5()
-	test_pandas()
+	# test_pandas()
+	test_parallel()
