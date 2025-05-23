@@ -1500,11 +1500,12 @@ class Measure(System):
 
 			if model is not None and where:
 			
-				options = {**options,**dict(max_bond=options.pop('S',options.get('max_bond')))} if options is not None else {}
+				options = options if options is not None else {}
 
 				shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
+					options.update(dict(max_bond=options.pop('S',options.get('max_bond'))))
 					return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
 		
 			else:

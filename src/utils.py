@@ -3144,7 +3144,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			self.N = max(N,max(self)+1)
 			self.D = max(D,max((max(self[i].shape[1:-1],default=1) for i in self),default=D))
-			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=D))
+			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=S))
 			
 			self.strings = strings
 
