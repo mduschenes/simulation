@@ -17,12 +17,13 @@ from src.system import Lattice
 
 def test_lattice(path,tol):
 
-	N = 11
+	N = 4
 	d = 2
 	lattice = 'square'
-	vertices = ['i','ij','i<j','<ij>','>ij<']
 
 	lattice = Lattice(N,d,lattice)
+
+	vertices = lattice.structures
 
 	for vertex in vertices:
 		edges = lattice(vertex)

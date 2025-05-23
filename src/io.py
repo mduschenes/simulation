@@ -35,8 +35,16 @@ debug = int(os.environ.get("PY_DEBUG",0))
 delimiter = '.'
 
 class Lock(object):
+	'''
+	Lock file class
+	Args:
+		lock (bool,str): Lock file path or extension
+		path (str): File path
+		timeout (int): Timeout (seconds)
+		kwargs (dict): Additional keyword arguments
+	'''
 	
-	lock = None
+	lock = 'lock'
 	path = 'lock'
 	timeout = -1
 	
@@ -44,19 +52,51 @@ class Lock(object):
 		if not lock or not path:
 			self = super().__new__(cls,**kwargs)
 		else:
-			path = delimiter.join([path if path is not None else cls.path,cls.path])
+			lock = delimiter.join([path if path is not None else cls.path,lock if isinstance(lock,str) else cls.path])
 			timeout = timeout if timeout is not None else cls.timeout
-			self = 	FileLock(path,timeout=timeout,**kwargs)
+			self = 	FileLock(lock,timeout=timeout,**kwargs)
 		return self
 	def __init__(self,*args,**kwargs):
 		return
 	def __enter__(self):
 		return
-	def __exit__(self,etype, value, traceback):
+	def __exit__(self,etype,value,traceback):
 		return
 	def acquire(self,*args,**kwargs):
 		return
 	def release(self,*args,**kwargs):
+		return
+
+class Backup(object):
+	'''
+	Backup file class
+	Args:
+		backup (bool,str): Backup file path
+		path (str): File path
+		boolean (callable): Delete backup file, with signature boolean(etype,value,traceback) -> bool
+		kwargs (dict): Additional keyword arguments
+	'''
+
+	backup = 'bkp'
+	path = None
+	def boolean(self,etype,value,traceback):
+		return etype is None
+	
+	def __init__(self,backup,path=None,boolean=None,**kwargs):
+		self.backup = backup if isinstance(backup,str) else delimiter.join([path,self.backup]) if backup else None
+		self.path = path if path is not None else self.path
+		self.boolean = boolean if boolean is not None else self.boolean
+		return
+	def __enter__(self):
+		if self.backup is not None:
+			if exists(self.path):
+				cp(self.path,self.backup)
+			elif exists(self.backup):
+				cp(self.backup,self.path)
+		return
+	def __exit__(self,etype,value,traceback):
+		if self.boolean(etype,value,traceback) and self.backup is not None:
+			rm(self.backup)
 		return
 
 class cd(object):
@@ -79,7 +119,7 @@ class cd(object):
 		except:
 			pass
 		return
-	def __exit__(self,etype, value, traceback):
+	def __exit__(self,etype,value,traceback):
 		os.chdir(self.cwd)
 		return
 
@@ -153,7 +193,7 @@ def dirname(path,abspath=False,delimiter=delimiter):
 
 	exts = [
 		'py','ipynb',
-		'tmp',
+		'tmp','bkp',
 		'cpp','o','out','err','obj',
 		'csv','txt',
 		'npy','npz',
@@ -677,8 +717,7 @@ def _dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 			if isinstance(obj[name],dict):
 				if key not in path:
 					path.create_group(key)
-				data = path[key]
-				_dump_hdf5(obj[name],data,wr=wr,ext=ext,**kwargs)
+				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
 			elif isinstance(obj[name],scalars):
 				try:
 					path.attrs[key] = obj[name]
@@ -769,7 +808,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,timeout=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -778,7 +817,8 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,tim
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
-		lock (bool): Lock file when loading
+		lock (bool,str): Lock file when loading
+		backup (bool,str): Backup file when loading
 		timeout (int): Timeout when loading
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
@@ -826,19 +866,22 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,tim
 		ext = split(path,ext=True,delimiter=delimiter)
 
 		with Lock(lock=lock,path=path,timeout=timeout):
-			for wr in wrs:
-				try:
-					datum = _load(path,wr=wr,ext=ext,**kwargs)
-					break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
-					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+			
+			with Backup(backup=backup,path=path):
+
+				for wr in wrs:
 					try:
-						with open(path,wr) as obj:
-							datum = _load(obj,wr=wr,ext=ext,**kwargs)
-							break
-					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+						datum = _load(path,wr=wr,ext=ext,**kwargs)
+						break
+					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-						pass
+						try:
+							with open(path,wr) as obj:
+								datum = _load(obj,wr=wr,ext=ext,**kwargs)
+								break
+						except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+							pass
 
 		data[name] = datum
 
@@ -1033,7 +1076,7 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,timeout=None,verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1042,7 +1085,8 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,timeout=Non
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
-		lock (bool): Lock file when dumping
+		lock (bool,str): Lock file when dumping
+		backup (bool,str): Backup file when dumping
 		timeout (int): Timeout when dumping
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
@@ -1119,19 +1163,21 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,timeout=Non
 
 		with Lock(lock=lock,path=path,timeout=timeout):
 
-			for wr in wrs:	
-				try:
-					_dump(data,path,wr=wr,ext=ext,**kwargs)
-					break
-				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-					logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+			with Backup(backup=backup,path=path):
+
+				for wr in wrs:	
 					try:
-						with open(path,wr) as obj:
-							_dump(data,obj,wr=wr,ext=ext,**kwargs)
+						_dump(data,path,wr=wr,ext=ext,**kwargs)
 						break
 					except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-						pass
+						try:
+							with open(path,wr) as obj:
+								_dump(data,obj,wr=wr,ext=ext,**kwargs)
+							break
+						except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+							pass
 		
 		logger.log(info*verbose,'Dump : %s'%(relpath(paths[name])))
 
@@ -1449,8 +1495,8 @@ class popen(object):
 			return self.cls.__enter__(*args,**kwargs)
 		except:
 			return self.cls
-	def __exit__(self,etype, value, traceback):
+	def __exit__(self,etype,value,traceback):
 		try:
-			return self.cls.__exit__(etype, value, traceback)
+			return self.cls.__exit__(etype,value,traceback)
 		except:
 			return

@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,allclose,arrays,scalars,seeder,prod,nan,is_naninf
-from src.io import load,dump,join,split,edit,dirname,exists,glob,rm
+from src.io import load,dump,join,split,edit,dirname,exists,glob,rm,mkdir
 
 # Logging
 # from src.utils import logconfig
@@ -194,7 +194,7 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	return
 
-def test_pandas(path='.tmp.tmp/data.hdf5'):
+def test_pd(path='.tmp.tmp/data.hdf5'):
 
 	directory = split(path,directory=True)
 	file = split(path,file_ext=True)
@@ -203,6 +203,8 @@ def test_pandas(path='.tmp.tmp/data.hdf5'):
 	paths = 2
 	indices = 4
 	copies = 3
+
+	options = dict(wr='a')
 
 	data = {}
 
@@ -217,11 +219,13 @@ def test_pandas(path='.tmp.tmp/data.hdf5'):
 			}
 
 		for string in data[k]:
-			dump(data[k][string],string,wr='a')
+			dump(data[k][string],string,**options)
 
 	string = join(directory,'**',file)
 
-	new = load(string,wrapper='df')
+	options = dict(wrapper='df')
+
+	new = load(string,**options)
 
 	print(new)
 
@@ -244,15 +248,17 @@ def test_pandas(path='.tmp.tmp/data.hdf5'):
 	return
 
 
-def test_parallel(path='.tmp.tmp/data.hdf5'):
+def test_parallel(path='.tmp.parallel/data.hdf5'):
 
+	directory = split(path,directory=True)
+	mkdir(directory)
 	rm(path)
 
 	n = 24
 	j = n//3
-	time = 1
+	time = 2
 
-	file = join(split(path,directory=True),'func.py')
+	file = join(directory,'func.py')
 	text = '\n'.join([
 		"#!/usr/bin/env python",
 		"import os,sys,time,datetime",
@@ -274,7 +280,7 @@ def test_parallel(path='.tmp.tmp/data.hdf5'):
 		"value = dict(data=[rand((3,4))+int(index)*10],scalar=float(index),string=timestamp,boolean=True)",
 		"",
 		"data = {key:value}",
-		"options = dict(wr='a',lock=True)",
+		"options = dict(lock=True,backup=True)",
 		"",
 		"dump(data,path,**options)",
 		"",
@@ -294,7 +300,7 @@ def test_parallel(path='.tmp.tmp/data.hdf5'):
 	os.system(string)
 
 
-	options = dict(wr='r',lock=True)
+	options = dict(lock=True,backup=True)
 	data = load(path,**options)
 
 	assert (
@@ -305,6 +311,7 @@ def test_parallel(path='.tmp.tmp/data.hdf5'):
 
 	rm(path)
 	rm(file)
+	rm(directory)
 
 	return
 
@@ -369,38 +376,11 @@ def test_glob(path=None,**kwargs):
 	return
 
 
-def test_lock(*args,**kwargs):
-
-	key = str(args[0]) if args and args[0].isdigit() else None
-	value = [1,2,3]
-
-	path = './job/data.hdf5'
-	kwargs = dict(
-		default = {},
-		lock = True
-		)
-
-	data = load(path,**kwargs)
-
-	data.update({key:value})
-
-	print(data)
-
-	dump(data,path,**kwargs)
-
-	if key == None:
-		rm(path)
-
-	return
-
-
-
 if __name__ == '__main__':
 	# test_load()
 	# test_dump()
 	# test_importlib()
 	# test_glob()
-	# test_lock(*sys.argv[1:])
 	# test_hdf5()
-	# test_pandas()
+	# test_pd()
 	test_parallel()

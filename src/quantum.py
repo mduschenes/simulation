@@ -873,7 +873,7 @@ class Measure(System):
 			data (str,array,tensor,mps,Measure): data of measure
 			operator (str): name of measure basis
 			string (str): string label of measure
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 			args (iterable): Additional class positional arguments
 			kwargs (dict): Additional class keyword arguments
 		'''
@@ -1679,7 +1679,6 @@ class Measure(System):
 		elif isinstance(state,matrices_quimb):
 
 			where = min(N-2,max(1,(min(where)-1) if min(where) > 0 else (max(where)+1))) if where is not None and (L) and (N-L) else None
-			
 			data = state.singular_values(where) if where is not None else array([])
 
 		elif isinstance(state,tensors_quimb):
@@ -3684,7 +3683,7 @@ class MPS(mps):
 		N (int): Tensor system size
 		D (int): Tensor physical bond dimension
 		S (int): Tensor virtual bond dimension
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)		
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		kwargs (dict): Additional keyword arguments
 	'''
 
@@ -4099,7 +4098,7 @@ class Object(System):
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -4784,7 +4783,7 @@ class Object(System):
 			N (int): Size of system
 			D (int): Local dimension of system
 			space (str,dict,Space): Type of local space
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''
 
 		space = self.space if space is None else space
@@ -4822,7 +4821,7 @@ class Object(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,dict,Time): Type of time evolution						
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''
 
 		time = self.time if time is None else time
@@ -4862,7 +4861,7 @@ class Object(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
@@ -5394,7 +5393,7 @@ class Data(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5507,7 +5506,7 @@ class Gate(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5627,7 +5626,7 @@ class Pauli(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5772,7 +5771,7 @@ class Haar(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5962,7 +5961,7 @@ class Noise(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -6119,7 +6118,7 @@ class State(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -6354,7 +6353,7 @@ class Operator(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -6431,7 +6430,7 @@ class Objects(Object):
 		time (str,dict,Time): Type of time evolution						
 		lattice (str,dict,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -7263,9 +7262,6 @@ class Objects(Object):
 			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
 		'''
 
-		# Set data
-		data = {}
-
 		# Set path
 		paths = {}
 		if path is None:
@@ -7277,12 +7273,17 @@ class Objects(Object):
 
 		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
 
+		# Set data
+		data = {}
+
+		# Set options
+		options = dict(lock=self.lock,backup=self.backup)
+
 		# Dump data
 		for attr in paths:
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.path
 			path = join(file,root=root)
-			options = dict(lock=self.lock)
 			dump(data[attr],path,**options)
 		
 		return
@@ -7292,9 +7293,9 @@ class Objects(Object):
 		Load class data		
 		Args:
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
+		Returns:
+			data (object): Class data
 		'''
-
-		# TODO: Determine dump/load model (.pkl?)
 
 		# Set data
 		data = {}
@@ -7320,7 +7321,7 @@ class Objects(Object):
 			data[attr] = load(path,default=default)
 			setter(default,data[attr],default=func)
 
-		return
+		return data
 
 class Channel(Objects):
 	default = 'I'
@@ -7515,7 +7516,7 @@ class Module(System):
 		M (int): Duration of system
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -7976,6 +7977,9 @@ class Module(System):
 		# Set data
 		data = {}
 
+		# Set options
+		options = dict(lock=self.lock,backup=self.backup)
+
 		# Set key
 		key = self.key if self.key is not None else None
 
@@ -7983,7 +7987,7 @@ class Module(System):
 		callback = self.callback if self.callback is not None else None
 
 		# Set do
-		do = (path is not None) and (callback is not None) and ((not exists(path)) or (exists(path) and ((key is None) or (key not in load(path)))))
+		do = (path is not None) and (callback is not None) and ((not exists(path)) or (self.load(path) is None))
 
 		# Dump data
 		if do:
@@ -7991,13 +7995,11 @@ class Module(System):
 			state = self.state()
 			model = self
 			data = data
-			key = self.key if self.key is not None else None
 			kwargs = {}
-			options = dict(lock=self.lock)
 
 			status = callback(parameters=parameters,state=state,model=model,data=data,**kwargs)
 
-			data = {key:data}
+			data = {key:data} if key is not None else data
 
 			dump(data,path,**options)
 		
@@ -8008,15 +8010,31 @@ class Module(System):
 		Load class data		
 		Args:
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
+		Returns:
+			data (object): Class data		
 		'''
 
 		# Set path
 		path = join(self.path,root=self.cwd) if path is None else path
 
 		# Set data
-		data = load(path)
+		data = {}
 
-		return
+		# Set options
+		options = dict(default=data,lock=self.lock,backup=self.backup)
+
+		# Set key
+		key = self.key if self.key is not None else None
+
+		# Set do
+		do = (path is not None) and (exists(path))
+
+		# Load data
+		data = load(path,**options)
+
+		data = data.get(key) if key is not None else data if data else None
+
+		return data
 
 class Label(Operator):
 

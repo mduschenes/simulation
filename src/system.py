@@ -52,7 +52,8 @@ class System(Dictionary):
 
 		path (str): Path to load and dump class data
 		cwd (str): Directory to dump class data	
-		lock (bool): Lock file for load and dump
+		lock (bool,str): Lock file for load and dump
+		backup (bool,str): Backup file for load and dump
 		timestamp (str): Timestamp for load and dump
 
 		conf (str): Configuration path for class logging
@@ -92,6 +93,7 @@ class System(Dictionary):
 			'path':None,
 			'cwd':None,
 			'lock':None,
+			'backup':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
 
 			'conf':None,
@@ -585,7 +587,7 @@ class Lattice(object):
 				vertices = ((k,) for i in self.vertices for j in self.vertices if (i!=j) for k in (i,j))				
 			elif structure in ['i<j']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if (i<j))
-			elif structure in ['i.<j.']:
+			elif structure in ['i.<.j']:
 				vertices = ((k,) for i in self.vertices for j in self.vertices if (i<j) for k in (i,j))
 			elif structure in ['<ij>']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)))

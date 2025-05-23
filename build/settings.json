@@ -70,7 +70,7 @@
 
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],
-		"jobs.job.process":["series"],
+		"jobs.job.process":[null],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
@@ -120,7 +120,7 @@
 	"string":"module",
 	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
 	"configuration":{},
-	"options":{"scheme":null,"S":null}		
+	"options":{}		
 },
 "model":{
 	"data":{
@@ -166,6 +166,8 @@
 	"instance":null,
 	"cwd":null,
 	"path":"data.hdf5",
+	"lock":true,
+	"backup":true,
 	"conf":"logging.conf",
 	"logger":"log.log",
 	"cleanup":false,
@@ -287,9 +289,7 @@
 		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
-	"options":{
-		"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null
-	}
+	"options":{}
 },
 "workflow": {
 	"path":{

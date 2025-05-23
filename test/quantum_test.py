@@ -2147,7 +2147,14 @@ def test_calculate(*args,**kwargs):
 		}	
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
-	filters = None
+	filters = lambda kwargs:[i for i in kwargs if (
+		i['module.measure.architecture'] in [
+			"tensor",
+			"tensor_quimb",
+			"array",
+			] 
+		)
+		]
 	func = None
 
 	data = {}
@@ -2268,7 +2275,7 @@ def test_calculate(*args,**kwargs):
 			"conf":"logging.conf",
 			"logger":None,
 			"cleanup":False,
-			"verbose":False
+			"verbose":"info"
 			}
 		})
 
@@ -2630,9 +2637,9 @@ def test_class(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			{"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"div","key":seeder(123)},
 			# {"scheme":"nmf","S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			# {"scheme":"svd","S":None},
+			{"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
 			],
