@@ -1232,7 +1232,7 @@ def init(key,
 			task[attr] = value
 
 			attr = 'destination'
-			value = task['path']		
+			value = join(task['path'],split(task['source'],file_ext=True),abspath=True)
 			task[attr] = value	
 
 			attr = 'resume'
