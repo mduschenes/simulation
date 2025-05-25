@@ -354,6 +354,10 @@ def test_importlib(path=None,**kwargs):
 def test_glob(path=None,**kwargs):
 
 	directory = 'config'
+	variables = {'TEST_VARIABLE':'test'}
+
+	for variable in variables:
+		os.environ[variable] = variables[variable]
 
 	paths = {
 		os.path.join(directory,'*.json'):
@@ -362,6 +366,7 @@ def test_glob(path=None,**kwargs):
 		os.path.join(directory,'{job.slurm,logging.conf}'):
 			[os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),directory,path))
 			for path in  ['job.slurm','logging.conf']],		
+		**{os.path.join(directory,f'${variable}.json'):[os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),directory,f'{variables[variable]}.json'))] for variable in variables}
 		}
 
 	for path in paths:
@@ -370,6 +375,11 @@ def test_glob(path=None,**kwargs):
 			print(i)
 			assert i in paths[path], "Incorrect glob(%r)"%(path)
 		print()
+
+
+	for variable in variables:
+		del os.environ[variable]
+
 
 	print('Passed')
 
@@ -380,7 +390,7 @@ if __name__ == '__main__':
 	# test_load()
 	# test_dump()
 	# test_importlib()
-	# test_glob()
+	test_glob()
 	# test_hdf5()
 	# test_pd()
-	test_parallel()
+	# test_parallel()

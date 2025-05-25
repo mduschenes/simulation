@@ -1566,36 +1566,41 @@ def test_nmf(path=None,tol=None):
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
 	from random import choices,seed	as seeds
 
-	from build.utils import pnmf as function
-	from src.utils import pnmf as function
-
 	seed = 0
-	n = 3
+	n = 6
 	d = 2
 	l = 2
+	q = n//2 + n%2
 	k = d**2
 	seeds(0)
 
 	data = {}
 	kwargs = {
 		'method':[
-			# 'mu',
+			'mu',
 			'kl',
 			# 'als'
 			# 'hals'
 			],
 		'initialize':['nndsvda'],
 		'metric':[
-			# 'norm',
+			'norm',
 			'div',
-			# 'abs',
+			'abs',
 			],
 		'rank':[None],
 		'eps':[1e-16],
 		'iters':[6.5e4],
 		'parameters':[1e-1],
-		'seed':choices(range(int(2**32)),k=int(1)),
-		'shapes':[[[k**(n),k,k**(n+1)],[k**(n+1),k,k**(n)],[k**l]*(2)]]
+		'seed':choices(range(int(2**32)),k=int(3)),
+		'function':['pnmf'],
+		'shapes':[[
+			[k**(q-1),k,k**(q)],
+			[k**(q),k,k**(q-1)],
+			[k**l]*(2),
+			[k**(q-1),k**(q-1)],
+			[k**(q-1),k**(n-q-1)]
+			]]
 		}
 
 	directory = 'data'
@@ -1629,24 +1634,41 @@ def test_nmf(path=None,tol=None):
 			def init(index,data,options):
 
 				options['key'] = seeder(options['seed'])
-				options['keys'] = seeder(options['seed'],size=3)
+				options['keys'] = seeder(options['seed'],size=len(options['shapes']))
 
 				shapes = options.pop('shapes')
 				keys = options.pop('keys')
+				function = options.pop('function')
 
-				u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
-				# d = ones(d.shape)/d.shape[0]
-				p,q = random(shapes[0][:1],key=keys[0]),random(shapes[1][-1:],key=keys[1])
-				a = einsum('awb,bzc,uvwz->auvc',u,v,d)
-				a = dotr(dotl(a,p),q)
-				a /= addition(a)
-				objects = a,u,v,(p,q)
-				return objects
+				if function in ['pnmf']:
+				
+					from build.utils import pnmf as function
+					from src.utils import pnmf as function
+
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
+					x,y = random(shapes[-2][-1:],key=keys[-2]),random(shapes[-1][:1],key=keys[-1])
+					a = einsum('awb,bzc,uvwz->auvc',u,v,d)
+					a = dotr(dotl(a,x),y)
+					a /= addition(a)
+					objects = a,u,v,(x,y)
+
+				elif function in ['xnmf']:
+				
+					from src.utils import xnmf as function
+
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
+					x,y = random(shapes[-2],key=keys[-2]),random(shapes[-1],key=keys[-1])
+					a = einsum('awb,bzc,uvwz->auvc',u,v,d)
+					a = dotr(dotl(a,p),q)
+					a /= addition(a)
+					objects = a,u,v,(p,q)
+
+				return function,objects,options
 
 			def process(index,data,options,stats):
 				if boolean(index,data,options):
 					for i in data:
-						if options==data[i]['options']:
+						if boolean(i,{i:data[i]},options):
 							index = i
 							break
 				else:
@@ -1656,22 +1678,24 @@ def test_nmf(path=None,tol=None):
 				data[index].update({**dict(options=options),**stats})
 				return
 
-			def func(*objects,**options):
+			def func(function,objects,options):
 				u,v,s,stats = function(*objects,**options)
 				return stats
 
+			print(kwargs)
+
 			setter(options,kwargs,delimiter=delim,default='replace')
 
-			objects = init(index,data,options)
+			kwargs = copy(options)
+
+			function,objects,options = init(index,data,options)
 
 			if boolean(index,data,options):
 				continue
 
-			print(kwargs)
-			
-			stats = func(*objects,**options)
+			stats = func(function,objects,options)
 
-			process(index,data,options,stats)
+			process(index,data,kwargs,stats)
 
 		dump(data,path)
 
@@ -1715,7 +1739,7 @@ def test_nmf(path=None,tol=None):
 						size = max(len(data[i][attr['y']]) for i in data)	
 					else:
 						size = len(data[index][attr['y']])
-					size = min(size,15000)
+					size = min(size,25000)
 					indices = slice(0,size,1 if size < 1000 else 100)
 					if wrapper is not None:
 						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)

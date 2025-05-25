@@ -422,51 +422,6 @@ def wildcard(path,pattern='*'):
 		path = '.'
 	return path
 			
-def glob(path,include=None,recursive=False,default=None,**kwargs):
-
-	'''
-	Expand path
-	Args:
-		path (str): Path to expand
-		include (str,callable): Type of paths to expand, allowed ['directory','file'] or callable with signature include(path)
-		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
-		default (str): Default path to return
-		kwargs (dict): Additional glob keyword arguments
-	Yields:
-		path (str): Expanded, absolute paths
-	'''
-
-	if include in ['file']:
-		include = os.path.isfile
-	elif include in ['directory']:
-		include = os.path.isdir
-	elif isinstance(include,str):
-		include = lambda path,include=include: contains(path,include)
-
-	if not isinstance(recursive,str):
-		if recursive:
-			recursive = '**'
-		else:
-			recursive = None
-
-	path = join(path,recursive)
-
-	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
-
-	path,pattern = os.path.dirname(path),os.path.basename(path)
-	path = wildcard(path)
-
-	if ('*' not in path) and (not exists(path)):
-		path = (path for path in [default])
-	else:
-		path = scan(path,pattern=pattern,**kwargs)
-		# path = globber.iglob(path,recursive=True,**kwargs)
-
-	if include is not None:
-		path = natsorted(filter(include,path))
-
-	yield from path
-
 
 def glob(path,include=None,recursive=False,default=None,**kwargs):
 	'''
@@ -510,6 +465,25 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path = list(natsorted(filter(include,path)))
 
 	return path
+
+	# path = join(path,recursive)
+
+	# path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+
+	# path,pattern = os.path.dirname(path),os.path.basename(path)
+	# path = wildcard(path)
+
+	# if ('*' not in path) and (not exists(path)):
+	# 	path = (path for path in [default])
+	# else:
+	# 	path = scan(path,pattern=pattern,**kwargs)
+	# 	# path = globber.iglob(path,recursive=True,**kwargs)
+
+	# if include is not None:
+	# 	path = natsorted(filter(include,path))
+
+	# yield from path
+
 
 def edit(path,directory=None,file=None,ext=None,delimiter=delimiter):
 	'''

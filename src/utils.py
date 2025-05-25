@@ -6373,6 +6373,430 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 	return u,v,s,stats
 
+
+def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	'''
+	Non-negative matrix factor decomposition for probability tensor trains
+	Args:
+		a (array): Array for pnmf of shape (n,p,q,m)
+		u (array): u array of pnmf of shape (n,p,k)
+		v (array): v array of pnmf of shape (k,q,m)	
+		data (array,iterable[array]): Data for pnmf
+		rank (int): Rank of nmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int,float): Number of iterations, defaults to 1e7		
+		parameters (int,float,array,dict,object): Parameters for nmf method
+		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
+		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
+		kwargs (dict): Additional keyword arguments	
+	Returns:
+		u (array): u array of pnmf of shape (n,p,k)
+		v (array): v array of pnmf of shape (k,q,m)
+		s (array): s array of pnmf of shape (k,)
+	'''	
+
+	data = [ones(a.shape[0],dtype=a.dtype),ones(a.shape[-1],dtype=a.dtype)] if data is None else data
+	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
+	eps = epsilon(a.dtype) if eps is None else eps
+	iters = iters if iters is not None else int(1e7)
+
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+		shape,dtype = a.shape,a.dtype
+		if initialize is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['rand']:
+			options = {**dict(dtype=dtype),**kwargs}
+			u = random(shape=[*shape[:len(shape)//2],rank],**options)
+			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z		
+		elif initialize in ['nndsvd']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))					
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvda']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)	
+
+			x = addition(a)/a.size
+			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvdr']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			
+			options = {**dict(dtype=dtype),**kwargs}
+			i = u<=eps
+			j = v<=eps
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
+			u,v = inplace(u,i,x),inplace(v,j,y)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))		
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif u is None or v is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = dotr(dotl(a,reciprocal(data[0])),reciprocal(data[-1]))			
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z	
+		return u,v
+	
+	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		if method is None:
+			def func(x):
+				return x		
+		elif method in ['mu']:
+			def func(x):
+
+				x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['b'],x['v'],x['c'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['b'],x['v'],x['c'],x['b'],x['v'],x['c']))*x['u']
+				x['v'] = einsum('a,aug,b,uv->gvb',x['b'],x['u'],x['c'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['b'],x['u'],x['c'],x['b'],x['u'],x['c'],x['v']))*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%100),error,null,x))
+				
+
+				# a,b,c,d,e,u,v,stats,i = x
+				
+				# u = einsum('uv,a,gvb,b->aug',a,b,v,c)*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',u,b,v,c,b,v,c))*u
+				# v = einsum('a,aug,b,uv->gvb',b,u,c,a)*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',b,u,c,b,u,c,v))*v
+
+				# i += 1
+
+				# x = a,b,c,d,e,u,v,stats,i
+
+				# stats['iteration'] = inplace(stats['iteration'],i,i)
+				# stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+				
+				return x
+		elif method in ['kl']:
+			@jit
+			def func(x):
+
+				# v = dot(x['v'],x['c'])
+				# x['u'] = ((dot(
+				# 	x['a']*reciprocal(dot(dot(x['b'],x['u']),v)),
+				# 	v.T*reciprocal(addition(v,-1))
+				# 	))[None,:,:])*x['u']
+				# u = dot(x['b'],x['u'])
+				# x['v'] = ((dot(
+				# 	(x['a']*reciprocal(dot(u,dot(x['v'],x['c'])))).T,
+				# 	u*reciprocal(addition(u,0))
+				# 	).T)[:,:,None])*x['v']
+
+
+				# x['u'] = einsum('g,gvb,b,uv->ug',reciprocal(dot(addition(x['v'],1),x['c'])),x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])))[None,:,:]*x['u']
+				# x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+
+				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['b'],x['v'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,gc,c->ag',x['b'],addition(x['v'],1),x['c'])))*x['u']
+				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['b'],x['u'],x['c'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['b'],x['v'],x['c'])),reciprocal(einsum('a,ag,b->gb',x['b'],addition(x['u'],1),x['c'])))*x['v']
+
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
+
+
+				# a,b,c,d,e,u,v,stats,i = x
+
+				# u = einsum('a,gvb,b,uv,ag->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,gc,c->ag',b,addition(v,1),c)))*u
+				# v = einsum('a,aug,b,uv,gb->gvb',b,u,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c)),reciprocal(einsum('a,ag,b->gb',b,addition(u,1),c)))*v
+
+				# i += 1
+
+				# x = a,b,c,d,e,u,v,stats,i
+
+				# stats['iteration'] = inplace(stats['iteration'],i,i)
+				# stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x
+		elif method in ['als']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+				
+				g = reshape(transpose(einsum('a,gvb,b->avg',b,v,c),(1,0,2)),(v.shape[1],u.shape[0]*u.shape[2]))
+				u = transpose(reshape(
+						solve(dot(transpose(g),g)+parameters*identity(g.shape[-1]),dot(transpose(g),transpose(a))),
+						(u.shape[1],u.shape[0],u.shape[2])),(1,0,2))
+				u = maximums(u,eps)
+
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
+
+				h = reshape(transpose(einsum('a,aug,b->gub',b,u,c),(1,0,2)),(u.shape[1],v.shape[0]*v.shape[2]))
+				v = transpose(reshape(
+						solve(dot(transpose(h),h)+parameters*identity(h.shape[-1]),dot(transpose(h),a)),
+						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
+				v = maximums(v,eps)
+
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x
+		elif method in ['hals']:
+			size = rank*(a.shape[0]*a.shape[-1])
+			iters = iters*size if iters is not None else iters
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+
+				q = i%size
+				l = q%rank
+				k = (q%(rank*c.size))//rank
+				j = (q)//(rank*c.size)
+
+				s = (l,slice(None),k)
+				h = c[k]*dot(u[:,:,l].T,b)
+				e += out(h,v[s])
+				v = inplace(v,s,maximums((dot(e.T,h)+parameters*v[s])*reciprocal(dot(h,h)+parameters),eps))
+				# v = inplace(v,s,v[s]*addition(a-e)/(addition(v)*addition(h)))
+
+				e -= out(h,v[s])
+
+				s = (j,slice(None),l)
+				h = b[j]*dot(v[l,:,:],c)
+				e += out(u[s],h)
+				u = inplace(u,s,maximums((dot(e,h)+parameters*u[s])*reciprocal(dot(h,h)+parameters),eps))
+				# u = inplace(u,s,u[s]*addition(a-e)/(addition(u)*addition(h)))
+
+				e -= out(u[s],h)
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x						
+		elif method in ['gd']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+				
+				g = einsum('a,gvb,b,t,lvk,k,tul->aug',b,v,c,b,v,c,u) - einsum('a,gvb,b,uv->aug',b,v,c,a)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = einsum('n,nug,b,k,kul,t,lvt->gvb',b,u,c,b,u,c,v) - einsum('n,nug,b,uv->gvb',b,u,c,a)
+				v = v - parameters*h
+				v = maximums(v,eps)
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x
+		elif method in ['kld']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+
+				g = -einsum('a,gvb,b,uv->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c))) + einsum('a,gb,b,u->aug',b,addition(v,1),c,w)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = -einsum('a,aug,b,uv->gvb',b,u,c,a*reciprocal(einsum('n,nuk,l,kvl->uv',b,u,c,v))) + einsum('a,ag,b,v->gvb',b,addition(u,1),c,z)
+				v = v - parameters*h
+				v = maximums(v,eps)
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x								
+		else:
+			def func(x):
+				return x	
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+		
+		def null(*args,**kwargs):
+			return nan
+
+		if metric is None or metric in ['norm']:
+			def error(x):
+				return norm(x['a']-dot(dot(x['b'],dot(x['u'],x['v'])),x['c']))/norm(x['a'])
+		elif metric in ['abs']:
+			def error(x):
+				return norm(addition(absolute(x['d']-dotr(dotl(dot(x['u'],x['v']),x['b']),x['c'])),(0,-1)))/norm(x['a'])
+		elif metric in ['div']:
+			def error(x):
+				return absolute(-addition(x['a']*log(dot(dot(x['b'],dot(x['u'],x['v'])),x['c'])*reciprocal(x['a']))))
+
+		# if metric is None or metric in ['norm']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x
+		# 		return norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
+		# elif metric in ['abs']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x			
+		# 		return norm(addition(absolute(d-dotr(dotl(dot(u,v),b),c)),(0,-1)))/norm(a)
+		# elif metric in ['div']:
+		# 	def error(x):
+		# 		a,b,c,d,e,u,v,stats,i = x			
+		# 		return absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
+
+		def condition(x):
+			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
+			
+		# def condition(x):
+		# 	a,b,c,d,e,u,v,stats,i = x			
+		# 	return (stats['error'][i] > eps) & (i <= iters)
+
+		x = {}
+		x['a'] = addition(a,(0,-1))
+		x['b'] = data[0]
+		x['c'] = data[-1]
+		x['d'] = a
+		x['u'] = u
+		x['v'] = v
+		x['e'] = x['a']-dot(dot(x['b'],dot(x['u'],x['v'])),x['c'])
+		x['stats'] = {}
+		x['i'] = 0
+
+		x['stats'].update({attr:None for attr in ['iteration','error']})
+		for attr in x['stats']:
+			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
+			if attr in ['iteration']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
+			if attr in ['error']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
+
+
+		loop = partial(whileloop,condition,func)
+
+		x = loop(x)
+
+		u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
+		s = reciprocal(sqrt(addition(dot(u,v))))
+		u,v = u*s,v*s
+
+		stats = x['stats']
+
+
+		# func = jax.profiler.annotate_function(func)
+
+		# loop = partial(whileloop,condition,func)
+
+		# trace = dict(
+		# 	log_dir=os.environ['PERFETTO_DIR'],
+		# 	create_perfetto_link=True
+		# 	)
+		# trace = dict(
+		# 	log_dir=os.environ['TENSORBOARD_DIR'],
+		# 	create_perfetto_link=False
+		# 	)
+
+		# with jax.profiler.trace(**trace):
+		# with jax.log_compiles():
+		# 	x = loop(x)
+		# 	for key in x:
+		# 		if isinstance(x[key],arrays):
+		# 			x[key].block_until_ready()
+		# 		else:
+		# 			for attr in x[key]:
+		# 				x[key][attr].block_until_ready()
+
+
+		# x = loop(x)
+
+		# u,v = dotl(x['u'],x['b']),dotr(x['v'],x['c'])
+		# s = reciprocal(sqrt(addition(dot(u,v))))
+		# u,v = u*s,v*s
+
+		# stats = x['stats']
+
+		# a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
+		# e = a-dot(dot(b,dot(u,v)),c)
+
+		# i = 0
+
+		# stats = {}
+
+		# x = a,b,c,d,e,u,v,stats,i
+
+		# stats.update({attr:None for attr in ['iteration','error']})
+		# for attr in stats:
+		# 	stats[attr] = nan*ones(int(max(iters,eps))+1)
+		# 	if attr in ['iteration']:
+		# 		stats[attr] = inplace(stats[attr],i,i)
+		# 	if attr in ['error']:
+		# 		stats[attr] = inplace(stats[attr],i,error(x))
+
+		# loop = partial(whileloop,condition,func)
+		
+		# x = loop(x)
+
+		# a,b,c,d,e,u,v,stats,i = x
+
+		# u,v = dotl(u,b),dotr(v,c)
+		# s = reciprocal(sqrt(addition(dot(u,v))))
+		# u,v = u*s,v*s
+
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
+		for attr in stats:
+			stats[attr] = stats[attr][indices]
+
+		print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+
+		return u,v,stats
+
+	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
+	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
+	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
+
+	return u,v,s,stats
+
 def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors of a function
