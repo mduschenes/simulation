@@ -1011,7 +1011,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},local=None,env=None,process=No
 
 		# Update and Dump files
 		if execute and not exists(destination):
-			if not isinstance(data,str):
+			if data is not None and not isinstance(data,str):
 				data,source,destination = load(source),copy(data),destination
 				setter(source,data,default=False)
 				dump(source,destination)
