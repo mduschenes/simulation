@@ -225,21 +225,15 @@ def setup(settings):
 		jobs (dict): Job submission dictionary
 	'''
 
-	# Default settings
-	path = 'config/settings.json'
-
-	# Load default settings
+	# Load settings
+	path = settings if isinstance(settings,str) else None
 	default = {}
 	if settings is None:
-		defaults = path
 		settings = default
 	elif isinstance(settings,str):
-		defaults = settings
-		settings = load(settings,default=default)
+		settings = load(path,default=default)
 	else:
 		settings = default
-
-	setter(settings,load(path,default=default),default=False)
 
 	# Iterate settings with permutations, seeds and options
 	settings = {key:setting for key,setting in iterate(settings)}
@@ -268,12 +262,12 @@ def setup(settings):
 					value = job[attr]
 				elif attr in ['paths']:
 					value = {
-						**{job[attr][path]: None
-							for path in job[attr]},
-						**{job[attr][path]: settings[key] 
-							for path in ['settings'] if path in job[attr]},
-						**{job[attr][path]: settings[key].get(path,{}) 
-							for path in ['plot','process'] if path in job[attr]},
+						**{job[attr][string]: None
+							for string in job[attr]},
+						**{job[attr][string]: settings[key] if job.get('local') else path
+							for string in ['settings'] if string in job[attr]},
+						**{job[attr][string]: settings[key].get(string,{}) 
+							for string in ['plot','process'] if string in job[attr]},
 						}
 				elif attr in ['patterns']:
 					value = job[attr]

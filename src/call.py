@@ -974,7 +974,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def configure(paths,pwd=None,cwd=None,patterns={},local=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -982,6 +982,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
+		local (bool): Subtasks in local paths versus global path
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per system call		
@@ -1005,12 +1006,12 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		data = paths[path] if isinstance(paths,dict) else None
 
 		# Set sources and destinations of files
-		source = join(path,root=pwd)
+		source = join(path,root=pwd) if not isinstance(data,str) else data
 		destination = join(path,root=cwd)
 
 		# Update and Dump files
 		if execute and not exists(destination):
-			if isinstance(data,dict):
+			if not isinstance(data,str):
 				data,source,destination = load(source),copy(data),destination
 				setter(source,data,default=False)
 				dump(source,destination)
@@ -1309,7 +1310,7 @@ def init(key,
 
 		if boolean:
 
-			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],local=local,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 			msg = 'Job : %s'%(path)
 
