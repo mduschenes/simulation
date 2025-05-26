@@ -3,7 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy,warnings
+import itertools,functools,warnings
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +16,7 @@ os.environ['NUMPY_BACKEND'] = 'JAX'
 
 
 from src.utils import np,onp,backend
-from src.utils import jit,partial,vmap
+from src.utils import jit,partial,vmap,copy
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod,maximum,minimum
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
@@ -364,7 +364,7 @@ def test_setter(path=None,tol=None):
 	test = lambda value,element,iterable,elements: value==elements[element]
 	
 	for element in elements:
-		iterable = copy.deepcopy(iterables)
+		iterable = copy(iterables)
 		setter(iterable,element,delimiter=delim,default='replace')
 		print(element)
 		print(iterables)
@@ -582,7 +582,7 @@ def test_pytree(path=None,tol=None):
 							tree[tree.index(key)] = leaf
 			return
 
-		trees = (*copy.deepcopy(trees[:1]),*trees[1:])
+		trees = (*copy(trees[:1]),*trees[1:])
 		mapper(*trees,func=func,is_leaf=is_leaf,**kwargs)
 		tree = trees[0]
 
@@ -682,7 +682,7 @@ def test_pytree(path=None,tol=None):
 
 	def test(*trees,func=None,**kwargs):
 
-		trees = copy.deepcopy(trees)
+		trees = copy(trees)
 
 		default = None
 		test = load('src.utils.tree_%s'%(func),default=default)
@@ -1567,7 +1567,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 6
+	n = 4
 	d = 2
 	l = 2
 	q = n//2 + n%2
@@ -1582,7 +1582,7 @@ def test_nmf(path=None,tol=None):
 			# 'als'
 			# 'hals'
 			],
-		'initialize':['nndsvda'],
+		'initialize':['nndsvdr'],
 		'metric':[
 			'norm',
 			'div',
@@ -1590,10 +1590,13 @@ def test_nmf(path=None,tol=None):
 			],
 		'rank':[None],
 		'eps':[1e-16],
-		'iters':[6.5e4],
+		'iters':[6e5],
 		'parameters':[1e-1],
 		'seed':choices(range(int(2**32)),k=int(3)),
-		'function':['pnmf'],
+		'function':[
+			'pnmf',
+			# 'xnmf',
+			],
 		'shapes':[[
 			[k**(q-1),k,k**(q)],
 			[k**(q),k,k**(q-1)],
@@ -1642,12 +1645,14 @@ def test_nmf(path=None,tol=None):
 
 				if function in ['pnmf']:
 				
-					from build.utils import pnmf as function
 					from src.utils import pnmf as function
 
-					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
-					x,y = random(shapes[-2][-1:],key=keys[-2]),random(shapes[-1][:1],key=keys[-1])
-					a = einsum('awb,bzc,uvwz->auvc',u,v,d)
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[2],key=keys[2]),(k,)*(2*l))
+					x,y = addition(random(shapes[-2],key=keys[-2]),0),addition(random(shapes[-1],key=keys[-1]),-1)
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
 					a = dotr(dotl(a,x),y)
 					a /= addition(a)
 					objects = a,u,v,(x,y)
@@ -1656,12 +1661,14 @@ def test_nmf(path=None,tol=None):
 				
 					from src.utils import xnmf as function
 
-					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[-1],key=keys[-1]),(k,)*(2*l))
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[2],key=keys[2]),(k,)*(2*l))
 					x,y = random(shapes[-2],key=keys[-2]),random(shapes[-1],key=keys[-1])
-					a = einsum('awb,bzc,uvwz->auvc',u,v,d)
-					a = dotr(dotl(a,p),q)
-					a /= addition(a)
-					objects = a,u,v,(p,q)
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a /= addition(dot(x,dot(a,y)))
+					objects = a,u,v,(x,y)
 
 				return function,objects,options
 
@@ -1706,27 +1713,33 @@ def test_nmf(path=None,tol=None):
 		data = load(path)
 
 		attrs = [
-			*[dict(x='iteration',y=attr,label=['method','metric','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
+			*[dict(x='iteration',y=attr,label=['function','method','metric','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
 		]
 		texify = {
 			'method':'$\\textnormal{Method}$',
 			'initialize':'$\\textnormal{Initialize}$',
 			'metric':'$\\textnormal{Metric}$',
 			'seed':'$\\textnormal{Seed}$',
+			'function':'$\\textnormal{Function}$',
 			'iteration':'$\\textnormal{Iteration}$',
 			'error':'$\\textnormal{Error}~\\mathcal{L}(A,UV)$',
 			'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
 			'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
 			'nmf':'$\\textnormal{NMF}$',
+			'pnmf':'$\\textnormal{Marginal-NMF}$',
+			'xnmf':'$\\textnormal{Joint-NMF}$',
 			'mu':'$\\textnormal{MU}$',
 			'kl':'$\\textnormal{KL}$',
 			'als':'$\\textnormal{ALS}$',
 			'hals':'$\\textnormal{H-ALS}$',
 			'gd':'$\\textnormal{GD}$',
 			'kld':'$\\textnormal{KL-GD}$',
-			'norm':'$\\norm{A-UV}/\\norm{A}',
-			'abs':'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
-			'div':'$\\mathcal{D}(A,UV)',
+			('norm','pnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('norm','xnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('abs','pnmf'):'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
+			('abs','xnmf'):'$\\norm{X_{x \\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta y}}/\\norm{A}',
+			('div','pnmf'):'$\\mathcal{D}(A,UV)',
+			('div','xnmf'):'$\\mathcal{D}(A,UV)',
 			}
 		mplstyle = 'config/plot.mplstyle'
 		with matplotlib.style.context(mplstyle):
@@ -1739,8 +1752,10 @@ def test_nmf(path=None,tol=None):
 						size = max(len(data[i][attr['y']]) for i in data)	
 					else:
 						size = len(data[index][attr['y']])
-					size = min(size,25000)
-					indices = slice(0,size,1 if size < 1000 else 100)
+					size = min(size,6500000)
+					indices = slice(0,size,1 if size < 1000 else 5000)
+					size = min(size,1000)
+					indices = slice(0,size,1 if size < 1000 else 500)					
 					if wrapper is not None:
 						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)
 					return indices
@@ -1750,8 +1765,8 @@ def test_nmf(path=None,tol=None):
 				x = {index:data[index][attr['x']][boolean(data,index=index)] for index in data}
 				y = {index:data[index][attr['y']][boolean(data,index=index)] for index in data}
 				options = {index:{**options,**dict(
-					label='$%s$'%('~,~'.join(str(texify.get(data[index]['options'][label],data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
-					color=plt.get_cmap('viridis')((indices.index(data[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
+					label='$%s$'%('~,~'.join(str(texify.get(data[index]['options'][label] if label not in ['metric'] else (data[index]['options'][label],data[index]['options']['function']),data[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
+					color=plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(data[index]['options']['function']))((indices.index(data[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
 					alpha=0.6,
 					marker={'norm':'o','abs':'s','div':'^'}.get(data[index]['options']['metric']),
 					linestyle={'mu':'-','kl':'--',}.get(data[index]['options']['method']),
@@ -1762,16 +1777,36 @@ def test_nmf(path=None,tol=None):
 				for index in data:
 					plot[index] = ax.plot(x[index],y[index],**options[index])
 
-				options = dict(position='right',size="3%",pad=0.1)
+				options = dict(position='right',size="3%",pad=-0.527535)
 				number = 6
-				colors = [plt.get_cmap('viridis')((index+1)/(len(data)+1)) for index in data]
-				cax,options = make_axes_locatable(ax).append_axes(**options),dict()
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
-				options = {**options,**dict(orientation='vertical')}
-				cbar = matplotlib.colorbar.ColorbarBase(cax,**options)
-				cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
-				cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
-				cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+				functions = sorted(set(data[i]['options']['function'] for i in data))
+				for i,function in enumerate(functions):
+					colors = [plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
+					opts = {**options,**dict(pad=options['pad']+i*0.065)}
+					# cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
+					cax,opts = fig.add_axes([
+						ax.get_position().x1+opts['pad'],
+						ax.get_position().y0,
+						0.01,
+						(ax.get_position().y1-ax.get_position().y0)*1.1075
+						]),dict()
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
+					opts = {**opts,**dict(cmap=cmap,orientation='vertical')}
+					cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
+					if i == (len(functions)-1):
+						cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+					else:
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])						
+						# cbar.ax.set_yticks(ticks=[])
+						# cbar.ax.set_yticklabels(labels=[])
+
+					if len(functions)>1:
+						cbar.ax.set_xlabel(xlabel=texify.get(function))
+
+
 
 				options = dict()
 				ax.set_xlabel(xlabel=texify.get(attr['x']),**options)
@@ -1789,12 +1824,17 @@ def test_nmf(path=None,tol=None):
 				ax.set_yscale(value='log')
 
 				options = dict(
-					title='$%s ~:~ %s$'%(
+					title=(
+						'$%s ~:~ %s$'%(
 						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
 						'$A_{\\mu\\nu} = X_{\\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$','')
+						) if any(data[i]['options']['function'] in ['pnmf'] for i in data) else
+						'$%s ~:~ %s$'%(
+						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
+						'$A_{x \\mu\\nu y} = X_{x \\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta y} \\approx X_{x \\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta y} = U_{x \\mu\\gamma}V_{\\gamma\\nu y}$'.replace('$',''))
 						),
 					ncol=1,
-					loc=(1.1,0.3095),
+					loc=(1.4175,0.1985) if len(functions)>1 else (1.1,0.3095),
 					)
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
@@ -1802,14 +1842,14 @@ def test_nmf(path=None,tol=None):
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
-				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[0 for i in sorted(set(labels),key=lambda i:labels.index(i))]
-				handles,labels = [copy.deepcopy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
-				for handle in handles:
-					handle.set_color('gray')
+				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[len([j for j in labels if j==i])//2 for i in sorted(set(labels),key=lambda i:labels.index(i))]
+				handles,labels = [copy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
+				# for handle in handles:
+				# 	handle.set_color('gray')
 				leg = ax.legend(handles,labels,**options)
 
 				options = dict(
-					w=30,
+					w=42,
 					h=14
 					)
 				fig.set_size_inches(**options)

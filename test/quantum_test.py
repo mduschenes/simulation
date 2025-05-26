@@ -2632,14 +2632,14 @@ def test_class(*args,**kwargs):
 
 	kwargs = {
 		"module.M":[4],"module.measure.operator":["tetrad"],
-		"model.N":[3],"model.D":[2],"model.M":[4],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"model.N":[4],"model.D":[2],"model.M":[4],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
 			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			# {"scheme":"nmf","S":None,"eps":1e-14,"iters":1e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			{"scheme":"svd","S":None},
+			{"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
 			],
@@ -2651,8 +2651,8 @@ def test_class(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
 			"tensor",
-			"tensor_quimb",
-			"array",
+			# "tensor_quimb",
+			# "array",
 			] 
 		)
 		]
@@ -2688,7 +2688,7 @@ def test_class(*args,**kwargs):
 				# },
 				"XX":{
 					"operator":["X","X"],"where":"||ij||","string":"XX",
-					"parameters":"random","variable":False,"constant":None,"ndim":2,"seed":123456789
+					"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
@@ -2756,7 +2756,7 @@ def test_class(*args,**kwargs):
 
 		parse = lambda data: data.round(precision)
 
-		test = True
+		test = 0
 
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default="replace")
