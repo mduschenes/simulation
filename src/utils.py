@@ -7,7 +7,7 @@ from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
 from math import prod
 
 import inspect
-from functools import partial,wraps
+from functools import partial,wraps,reduce
 from natsort import natsorted
 from random import choices
 import hashlib,datetime
@@ -2141,7 +2141,7 @@ if backend in ['jax','quimb']:
 		Returns:
 			tree_map (pytree): Return pytree of function call
 		'''	
-		return dot(a.ravel(),b.ravel())
+		return dot(ravel(a),ravel(b))
 
 	@tree_func
 	def tree_add(a,b):
@@ -2190,7 +2190,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				yield from tree_ravel(node,is_leaf=is_leaf)
 		else:
 			try:
-				yield from tree.ravel()
+				yield from ravel(tree)
 			except:
 				yield tree
 
@@ -2228,7 +2228,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Returns:
 			tree_map (pytree): Return pytree of function call
 		'''	
-		return dot(a.ravel(),b.ravel())
+		return dot(ravel(a),ravel(b))
 
 	@tree_func
 	def tree_add(a,b):
@@ -3307,25 +3307,21 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					if index == 0:
 						if i > 0:
 							# objects[index] = addition(data[i-1],range(0,data[i-1].ndim-1))
-							# objects[index] = addition(data[i-1],0)
-							objects[index] = addition(data[0],0)
-							for j in range(1,i,1):
-								objects[index] = dot(objects[index],data[j])
-							objects[index] = reshape(objects[index],(-1,objects[index].shape[-1]))
+							objects[index] = addition(data[i-1],0)
+							# objects[index] = reshape(addition(reduce(dot,(data[j] for j in range(0,i))),0),(-1,data[i].shape[0]))
 						else:
 							# objects[index] = ones(data[i].shape[:1],dtype=data[i].dtype)
 							objects[index] = ones((1,*data[i].shape[:1]),dtype=data[i].dtype)
+							# objects[index] = ones((1,*data[i].shape[:1]),dtype=data[i].dtype)
 					elif index == (len(objects)-1):
 						if i < (N-1):
 							# objects[index] = addition(data[i+1],range(1,data[i+1].ndim))
-							# objects[index] = addition(data[i+1],-1)
-							objects[index] = addition(data[N-1],-1)
-							for j in range(N-1-1,i,-1):
-								objects[index] = dot(data[j],objects[index])
-							objects[index] = reshape(objects[index],(objects[index].shape[0],-1))
+							objects[index] = addition(data[i+1],-1)
+							# objects[index] = reshape(addition(reduce(dot,(data[j] for j in range(i+1,N))),-1),(data[i].shape[-1],-1))
 						else:
 							# objects[index] = ones(data[i].shape[-1:],dtype=data[i].dtype)
 							objects[index] = ones((*data[i].shape[-1:],1),dtype=data[i].dtype)
+							# objects[index] = ones((*data[i].shape[-1:],1),dtype=data[i].dtype)
 
 			elif isinstance(data,(*arrays,*iterables)):
 
@@ -3344,6 +3340,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					data = self.organize(data,where=where,scheme=scheme,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
 					u,v,s = self.scheme[scheme](data,u,v,objects,**{**defaults,**kwargs,**options})
+
+					a,z = data,dot(u,v)
+					x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
+
+					z = dot(x,dot(z,y))
+					a = dot(x,dot(a,y))
+
+					print('diff',allclose(z,a),addition(abs2(z-a)))
 
 					data = self.organize((u,v),where=where,scheme=scheme,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
@@ -3588,7 +3592,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
 					u,v,s = u,v,rank
-					u,v,s = cmplx(u),cmplx(v),s					
+					u,v,s = cmplx(u),cmplx(v),s		
 					return u,v,s
 
 			def wrapper(func):
@@ -3904,7 +3908,7 @@ if backend in ['quimb']:
 
 		if to in ['array']:
 			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
 
 		elif to in ['tensor_quimb']:
 			axes = tuple(i 
@@ -3927,7 +3931,7 @@ if backend in ['quimb']:
 
 		elif to:
 			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
+			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
 		
 		if func is not None:
 			obj = func(obj)
@@ -5970,7 +5974,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 	return u,v,s
 
-def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
@@ -5997,7 +6001,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6090,6 +6094,36 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
 
 				return x
+		elif method in ['hals']:
+			size = rank*(a.shape[0]*a.shape[-1])
+			iters = min(iters*size if iters is not None else iters,1e4*size)
+			def func(x):
+
+				i = x['i']%size
+				l = i%rank
+				k = (i%(rank*x['y'].shape[0]))//rank
+				j = (i)//(rank*x['y'].shape[0])
+
+				s = (l,slice(None),k)
+				z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
+				x['e'] += einsum('u,v->uv',z,x['v'][s])
+				x['v'] = inplace(x['v'],s,maximums((einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps))
+				x['e'] -= einsum('u,v->uv',z,x['v'][s])
+
+
+				s = (j,slice(None),l)
+				z = x['x'][j]*einsum('vb,b->v',x['v'][l,:,:],x['y'])
+				x['e'] += einsum('v,u->uv',z,x['u'][s])
+				x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
+				x['e'] -= einsum('v,u->uv',z,x['u'][s])
+
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
+
+				return x				
 		elif method in ['als']:
 			def func(x):
 
@@ -6121,42 +6155,6 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
 
 				return x
-		elif method in ['hals']:
-			size = rank*(a.shape[0]*a.shape[-1])
-			iters = iters*size if iters is not None else iters
-			def func(x):
-
-				a,b,c,d,e,u,v,stats,i = x
-
-				q = i%size
-				l = q%rank
-				k = (q%(rank*c.size))//rank
-				j = (q)//(rank*c.size)
-
-				s = (l,slice(None),k)
-				h = c[k]*dot(u[:,:,l].T,b)
-				e += out(h,v[s])
-				v = inplace(v,s,maximums((dot(e.T,h)+parameters*v[s])*reciprocal(dot(h,h)+parameters),eps))
-				# v = inplace(v,s,v[s]*addition(a-e)/(addition(v)*addition(h)))
-
-				e -= out(h,v[s])
-
-				s = (j,slice(None),l)
-				h = b[j]*dot(v[l,:,:],c)
-				e += out(u[s],h)
-				u = inplace(u,s,maximums((dot(e,h)+parameters*u[s])*reciprocal(dot(h,h)+parameters),eps))
-				# u = inplace(u,s,u[s]*addition(a-e)/(addition(u)*addition(h)))
-
-				e -= out(u[s],h)
-
-				i += 1
-
-				x = a,b,c,d,e,u,v,stats,i
-
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
-
-				return x						
 		elif method in ['gd']:
 			def func(x):
 
@@ -6238,7 +6236,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['iteration']:
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
-			if attr in ['error']:
+			elif attr in ['error']:
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
 
 
@@ -6298,7 +6296,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		# 	stats[attr] = nan*ones(int(max(iters,eps))+1)
 		# 	if attr in ['iteration']:
 		# 		stats[attr] = inplace(stats[attr],i,i)
-		# 	if attr in ['error']:
+		# 	elif attr in ['error']:
 		# 		stats[attr] = inplace(stats[attr],i,error(x))
 
 		# loop = partial(whileloop,condition,func)
@@ -6320,16 +6318,18 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		return u,v,stats
 
-	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
 
-	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
 	return u,v,s,stats
 
 
-def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
@@ -6356,7 +6356,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6433,7 +6433,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				x['i'] += 1
 
 				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%100),error,null,x))
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
 				
 				return x
 		elif method in ['kl']:
@@ -6446,43 +6446,37 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				x['i'] += 1
 
 				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
 
 				return x
 		elif method in ['hals']:
 			size = rank*(a.shape[0]*a.shape[-1])
-			iters = iters*size if iters is not None else iters
+			iters = min(iters*size if iters is not None else iters,1e4*size)
 			def func(x):
 
-				a,b,c,d,e,u,v,stats,i = x
-
-				q = i%size
-				l = q%rank
-				k = (q%(rank*c.size))//rank
-				j = (q)//(rank*c.size)
+				i = x['i']%size
+				l = i%rank
+				k = (i%(rank*x['y'].shape[0]))//rank
+				j = (i)//(rank*x['y'].shape[0])
 
 				s = (l,slice(None),k)
-				h = c[k]*dot(u[:,:,l].T,b)
-				e += out(h,v[s])
-				v = inplace(v,s,maximums((dot(e.T,h)+parameters*v[s])*reciprocal(dot(h,h)+parameters),eps))
-				# v = inplace(v,s,v[s]*addition(a-e)/(addition(v)*addition(h)))
+				z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
+				x['e'] += einsum('xuy,v->xuvy',z,x['v'][s])
+				x['v'] = inplace(x['v'],s,maximums((einsum('xuvy,xuy->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('xuy,xuy->',z,z)+parameters),eps))
+				x['e'] -= einsum('xuy,v->xuvy',z,x['v'][s])
 
-				e -= out(h,v[s])
 
 				s = (j,slice(None),l)
-				h = b[j]*dot(v[l,:,:],c)
-				e += out(u[s],h)
-				u = inplace(u,s,maximums((dot(e,h)+parameters*u[s])*reciprocal(dot(h,h)+parameters),eps))
-				# u = inplace(u,s,u[s]*addition(a-e)/(addition(u)*addition(h)))
+				z = einsum('x,vb,by->xvy',x['x'][:,j],x['v'][l,:,:],x['y'])
+				x['e'] += einsum('xvy,u->xuvy',z,x['u'][s])
+				x['u'] = inplace(x['u'],s,maximums((einsum('xuvy,xvy->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('xvy,xvy->',z,z)+parameters),eps))
+				x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
 
-				e -= out(u[s],h)
 
-				i += 1
+				x['i'] += 1
 
-				x = a,b,c,d,e,u,v,stats,i
-
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
 
 				return x						
 		else:
@@ -6505,26 +6499,9 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			def error(x):
 				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
 
-		# if metric is None or metric in ['norm']:
-		# 	def error(x):
-		# 		a,b,c,d,e,u,v,stats,i = x
-		# 		return norm(a-dot(dot(b,dot(u,v)),c))/norm(a)
-		# elif metric in ['abs']:
-		# 	def error(x):
-		# 		a,b,c,d,e,u,v,stats,i = x			
-		# 		return norm(addition(absolute(d-dotr(dotl(dot(u,v),b),c)),(0,-1)))/norm(a)
-		# elif metric in ['div']:
-		# 	def error(x):
-		# 		a,b,c,d,e,u,v,stats,i = x			
-		# 		return absolute(-addition(a*log(dot(dot(b,dot(u,v)),c)*reciprocal(a))))
-
 		def condition(x):
 			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
 			
-		# def condition(x):
-		# 	a,b,c,d,e,u,v,stats,i = x			
-		# 	return (stats['error'][i] > eps) & (i <= iters)
-
 		x = {}
 		x['x'] = data[0]
 		x['y'] = data[-1]
@@ -6544,19 +6521,22 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
 			if attr in ['iteration']:
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
-			if attr in ['error']:
+			elif attr in ['error']:
 				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
-
 
 		loop = partial(whileloop,condition,func)
 
 		x = loop(x)
 
-		u,v = dotl(x['u'],x['X']),dotr(x['v'],x['Y'])
-		s = reciprocal(sqrt(addition(dot(u,v))))
-		u,v = u*s,v*s
+		u,v,stats = x['u'],x['v'],x['stats']
 
-		stats = x['stats']
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
+		for attr in stats:
+			stats[attr] = stats[attr][indices]
+
+		if anything(indices):
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
 
 
 		# func = jax.profiler.annotate_function(func)
@@ -6582,55 +6562,13 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		# 			for attr in x[key]:
 		# 				x[key][attr].block_until_ready()
 
-
-		# x = loop(x)
-
-		# u,v = dotl(x['u'],x['x']),dotr(x['v'],x['y'])
-		# s = reciprocal(sqrt(addition(dot(u,v))))
-		# u,v = u*s,v*s
-
-		# stats = x['stats']
-
-		# a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
-		# e = a-dot(dot(b,dot(u,v)),c)
-
-		# i = 0
-
-		# stats = {}
-
-		# x = a,b,c,d,e,u,v,stats,i
-
-		# stats.update({attr:None for attr in ['iteration','error']})
-		# for attr in stats:
-		# 	stats[attr] = nan*ones(int(max(iters,eps))+1)
-		# 	if attr in ['iteration']:
-		# 		stats[attr] = inplace(stats[attr],i,i)
-		# 	if attr in ['error']:
-		# 		stats[attr] = inplace(stats[attr],i,error(x))
-
-		# loop = partial(whileloop,condition,func)
-		
-		# x = loop(x)
-
-		# a,b,c,d,e,u,v,stats,i = x
-
-		# u,v = dotl(u,b),dotr(v,c)
-		# s = reciprocal(sqrt(addition(dot(u,v))))
-		# u,v = u*s,v*s
-
-		attribute = 'error'
-		indices = ~is_nan(stats[attribute])
-		for attr in stats:
-			stats[attr] = stats[attr][indices]
-
-		if indices.any():
-			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
-
 		return u,v,stats
 
-	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
 
-	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
 	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
 
@@ -9525,7 +9463,7 @@ def commutes(a,b):
 	Returns:
 		commutes (bool): Boolean of a and b commuting
 	'''	
-	return bool(~(commutator(a,b).any()))
+	return bool(~(anything(commutator(a,b))))
 
 @jit
 def anticommutator(a,b):
@@ -9550,7 +9488,7 @@ def anticommutes(a,b):
 	Returns:
 		commutes (bool): Boolean of a and b anticommuting
 	'''	
-	return bool(~(anticommutator(a,b).any()))
+	return bool(~(anything(anticommutator(a,b))))
 
 
 @partial(jit,static_argnums=(1,))
@@ -11292,6 +11230,25 @@ def isinstances(obj,instances,reverse=False,args=(),kwargs={}):
 			pass
 	return boolean
 
+def allthing(a):
+	'''
+	Check if all of array a is True
+	Args:
+		a (array[bool]): Array of booleans
+	Returns:
+		out (bool): Array all of a is True
+	'''
+	return a.all()	
+
+def anything(a):
+	'''
+	Check if any of array a is True
+	Args:
+		a (array[bool]): Array of booleans
+	Returns:
+		out (bool): Array any of a is True
+	'''
+	return a.any()	
 
 # @partial(jit,static_argnums=(2,3,4,))
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
@@ -11365,7 +11322,7 @@ def is_diag(a):
 	'''	
 	n,m = a.shape
 	assert n == m
-	return ~a.ravel()[:-1].reshape(n-1,m+1)[:,1:].any()
+	return ~anything(reshape(ravel(a)[:-1],(n-1,m+1))[:,1:])
 
 
 

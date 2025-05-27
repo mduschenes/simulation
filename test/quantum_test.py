@@ -2631,14 +2631,15 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[4],"module.measure.operator":["tetrad"],
+		"module.M":[2],"module.measure.operator":["tetrad"],
 		"model.N":[4],"model.D":[2],"model.M":[4],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
-			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			{"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			{"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
 			# {"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{"periodic":False}
@@ -2682,14 +2683,14 @@ def test_class(*args,**kwargs):
 		},
 		"model":{
 			"data":{
-				# "unitary":{
-				# 	"operator":"unitary","where":"||ij||","string":"unitary",
-				# 	"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },
-				"XX":{
-					"operator":["X","X"],"where":"||ij||","string":"XX",
-					"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				},				
+				"unitary":{
+					"operator":"unitary","where":"||ij||","string":"unitary",
+					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				},
+				# "XX":{
+				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
+				# 	"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
+				# },				
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
 				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789
