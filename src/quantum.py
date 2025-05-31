@@ -4523,7 +4523,6 @@ class Object(System):
 			random=self.random,seed=seeder(self.seed),
 			dtype=self.dtype,system=self.system
 			) if not self.null() else None
-		
 
 		if tensor not in [None,False]:
 			if not callable(tensor):
@@ -4660,7 +4659,6 @@ class Object(System):
 		data = self.tensor(data,N=self.locality if self.local else self.N,D=self.D,d=self.ndim) if self.tensor is not None else data
 
 		self.data = data
-
 
 		if self.func is None:
 			def func(parameters=None,state=None,**kwargs):
@@ -7724,9 +7722,9 @@ class Module(System):
 		def func(parameters,state,options=options,**kwargs):
 			M,N,size = self.M,self.N,len(self.data)
 			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
+			attrs = copy(kwargs)
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
-
 			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
 			state = self.measure.transform(parameters=parameters,state=state)
 
@@ -7738,18 +7736,18 @@ class Module(System):
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 					
-					print('index',l,i)					
-					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					trace = self.measure.trace(parameters=parameters,state=state)
-					if self.measure.architecture in ['tensor']:					
-						trace = trace.array().item()
-					elif self.measure.architecture in ['tensor_quimb']:
-						trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					trace = trace.real-1
-					data = state
-					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					print('trace',trace)
+					# print('index',l,i)					
+					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					# trace = self.measure.trace(parameters=parameters,state=state)
+					# if self.measure.architecture in ['tensor']:					
+					# 	trace = trace.array().item()
+					# elif self.measure.architecture in ['tensor_quimb']:
+					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
+					# trace = trace.real-1
+					# data = state
+					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					# print('trace',trace)
 					# where = [i,i+1]
 					# for i in data:
 					# 	if i < min(where):
@@ -7758,7 +7756,7 @@ class Module(System):
 					# 		print(i,addition(data[i].data,(-2,-1)))
 					# print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
 					# print('data',data)
-					print()
+					# print()
 
 			return state
 
@@ -8614,11 +8612,10 @@ class Callback(System):
 
 		if options is None:
 			options = {attr: {} for attr in attributes}
-		elif any(attr in options for attr in [*attributes,*defaults]):
+		elif all(attr in options for attr in [*attributes,*defaults]):
 			options = {attr: options.get(attr,{}) for attr in attributes}
 		else:
 			options = {attr: {**options} for attr in attributes}
-
 
 		setter(kwargs,dict(attributes=attributes,keywords=keywords,options=options),delimiter=delim,default=False)
 
@@ -8658,13 +8655,18 @@ class Callback(System):
 			} if model.options is not None else {}
 		_options = {
 			**options,
-			**{key: getattr(self,key) for key in options if hasattr(self,key)},
-			**{key: self.options.get(attr,[]).get(key) for key in options if self.options is not None and key in self.options},
+			**{key: self.options.get(attr,{}).get(key) for key in options if key in self.options.get(attr,{})},
 			**{key: kwargs.get(key) for key in kwargs if key in options},
 			}
 
+		print(options)
+		print(_options)
+
 		obj = model(parameters=parameters,state=state,options=options)
+
 		_obj = model(parameters=parameters,state=state,options=_options)
+
+		print(allclose(obj.array(),_obj.array()))
 
 
 		for attr in attributes:
@@ -8685,16 +8687,6 @@ class Callback(System):
 				]:
 				
 				keywords = self.keywords.get(attr,{})
-
-				options = {
-					**{key: model.options[key] for key in model.options}
-					} if model.options is not None else {}
-				_options = {
-					**options,
-					**{key: getattr(self,key) for key in options if hasattr(self,key)},
-					**{key: self.options.get(attr,[]).get(key) for key in options if self.options is not None and key in self.options},
-					**{key: kwargs.get(key) for key in kwargs if key in options},
-					}
 
 				if attr in [
 					'objective','infidelity',

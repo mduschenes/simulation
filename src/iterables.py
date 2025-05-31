@@ -74,7 +74,7 @@ class Dict(Dictionary):
 				kwargs.update(arg)
 
 		for key in kwargs:
-			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
+			if isinstance(kwargs[key],dict):
 				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else Dictionary(kwargs[key])
 
 		super().__init__(**kwargs)
@@ -187,13 +187,13 @@ def getattrs(obj,attr,default=None,delimiter=None):
 
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
-				return getattr(obj,attr)
+				return getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				return getattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				return getattrs(obj,attr,default=default,delimiter=delimiter)
 	
 	return default
 
@@ -219,14 +219,17 @@ def setattrs(obj,attr,value,delimiter=None):
 
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
-				setattr(obj,attr,value)
-				return True
+				if hasattr(obj,attr):
+					setattr(obj,attr,value)
+				else:
+					obj[attr] = value
+				return
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				setattrs(getattr(obj,attr),attribute,value=value,delimiter=delimiter)
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				setattrs(obj,attr,value=value,delimiter=delimiter)
 				return
 
 	attr = attrs[-1]
@@ -253,16 +256,16 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 	attrs = attr.split(delimiter)
 	
 	n = len(attrs)
-	
+
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
 				return True
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				return hasattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
-	
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				return hasattrs(obj,attr,default=default,delimiter=delimiter)
 	return False
 
 def contains(string,pattern):

@@ -1705,9 +1705,9 @@ def test_module(*args,**kwargs):
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
-		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
-		"measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"module.measure.options":[{},{},{}],
+		"measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
@@ -1732,7 +1732,7 @@ def test_module(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{"periodic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{}},
 			"options":{},
 			"configuration":{
 				"key":"src.functions.brickwork",
@@ -1744,7 +1744,7 @@ def test_module(*args,**kwargs):
 			"operator":"tetrad",
 			"D":2,"dtype":"complex",
 			"architecture":"tensor",
-			"options":{"periodic":False},
+			"options":{},
 		},		
 		"model":{
 			"data":{
@@ -2141,8 +2141,8 @@ def test_calculate(*args,**kwargs):
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{"periodic":False}],
-		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"module.measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		}	
 
@@ -2175,7 +2175,7 @@ def test_calculate(*args,**kwargs):
 				"operator":"tetrad",
 				"D":2,"dtype":"complex","seed":13579,
 				"architecture":"tensor",
-				"options":{"periodic":False},
+				"options":{},
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
 			"configuration":{
@@ -2631,8 +2631,8 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[2],"module.measure.operator":["tetrad"],
-		"model.N":[4],"model.D":[2],"model.M":[4],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[1],"module.measure.operator":["tetrad"],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2642,9 +2642,9 @@ def test_class(*args,**kwargs):
 			{"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
 			# {"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
-			{"periodic":False}
+			{}
 			],
-		"module.measure.options":[{"periodic":False},{"periodic":False},{"periodic":False}],
+		"module.measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None,"eps":None,"parameters":None,"method":None,"initialize":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
@@ -2673,10 +2673,10 @@ def test_class(*args,**kwargs):
 			"N":3,
 			"M":1,
 			"string":"module",
-			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{"periodic":False}},
+			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{}},
 			"options":{},
 			"configuration":{
-				"key":"src.functions.nearestneighbour",
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}			
@@ -2697,7 +2697,7 @@ def test_class(*args,**kwargs):
 				# },								
 				# "noise":{
 				# 	"operator":["depolarize"],"where":"||i.j||","string":"noise",
-				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+				# 	"parameters":1e-2,"variable":False,"ndim":3,"seed":123456789
 				# },
 			},
 			"N":4,
@@ -2708,7 +2708,7 @@ def test_class(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":"src.functions.nearestneighbour",
+				"key":"src.functions.brickwork",
 				"sort":None,
 				"reverse":False
 				}
@@ -2752,12 +2752,12 @@ def test_class(*args,**kwargs):
 
 		data[index] = {}
 
-		verbose = False
+		verbose = 0
 		precision = 8
 
 		parse = lambda data: data.round(precision)
 
-		test = 0
+		test = 0  # TODO: Ensure scheme.svd = qr in update() for S < max, also ensure module.M=model.M
 
 		# Settings
 		setter(settings,kwargs,delimiter=delim,default="replace")
@@ -2832,21 +2832,11 @@ def test_class(*args,**kwargs):
 			key = 'model'
 			data[index][key] = value
 
-
-			if verbose:
-				print(module.measure.architecture)
-				print(parse(value))
-
-
 			model.init(state=module.state @ module.N)
 			_value = model(parameters=module.parameters(),state=model.state())
 
 			value = value.ravel()
 			_value = _value.ravel()
-
-			if verbose or 1:
-				print(parse(value))
-				print(parse(_value))
 
 			assert allclose(value,_value),"Incorrect Module <-> Model conversion"
 

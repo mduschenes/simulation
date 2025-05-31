@@ -1168,10 +1168,6 @@ def init(key,
 			task (dict[str,str]): Task for job
 		'''
 
-		local = local if local is True else None
-		
-		pool = 1 if pool is None else pool
-		
 		verbose = False
 		execution = True if execute == -1 else execute
 		execute = False if execute == -1 else execute
@@ -1180,7 +1176,11 @@ def init(key,
 		indices = [subkey for subkey in keys if cwd[subkey] == cwd[key]]
 		size = len(indices)
 
-		if size > 1 and process not in ['serial']:
+		if process not in ['serial',None]:
+
+			pool = size if pool is None else pool
+			local = local if local is True else None
+
 			index = indices.index(key)
 			mod = index%pool			
 			slice = pool
@@ -1192,6 +1192,10 @@ def init(key,
 			count = (max - min + 1)//step
 			
 		else:
+
+			pool = 1 if pool is None else pool
+			local = local if local is True else None
+
 			index = None
 			mod = None
 			slice = None
@@ -1520,9 +1524,9 @@ def launch(jobs={},wrapper=None,execute=False,verbose=None):
 
 		wrapper(name,jobs,results)
 
-		options = {key:value for key,value in dict(execute=execute,verbose=verbose).items() if value is not None}
+		options = {**jobs[name],**{key:value for key,value in dict(execute=execute,verbose=verbose).items() if (value is not None) and (value and jobs[name].get(key))}}
 
-		result = submit(**{**jobs[name],**options})
+		result = submit(**options)
 
 		results[name] = result
 

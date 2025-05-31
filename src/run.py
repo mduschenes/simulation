@@ -41,11 +41,17 @@ def permute(settings):
 		permutations (iterable[dict]): Permutations of settings
 	'''
 	
-	permutations = settings['permutations'].get('permutations')
+	attr = 'permutations'
+
+	if settings.get(attr) is None:
+		permutations = []
+		return permutations
+
+	permutations = settings.get(attr,{}).get('permutations')
 	
-	groups = settings['permutations'].get('groups')
-	filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
-	func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
+	groups = settings.get(attr,{}).get('groups')
+	filters = load(settings.get(attr,{}).get('filters'),default=settings.get(attr,{}).get('filters'))
+	func = load(settings.get(attr,{}).get('func'),default=settings.get(attr,{}).get('func'))
 	
 	permutations = permuter(permutations,groups=groups,filters=filters,func=func)
 
@@ -64,9 +70,18 @@ def spawn(settings):
 	'''
 
 	# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
-	seed = settings['seed'].get('seed')
-	size = settings['seed'].get('size')
-	groups = settings['seed'].get('groups')
+
+	attr = 'seed'
+
+	if settings.get(attr) is None:
+		seed = None
+		seeds = []
+		seedlings = {}
+		return seed,seeds,seedlings
+
+	seed = settings.get(attr,{}).get('seed')
+	size = settings.get(attr,{}).get('size')
+	groups = settings.get(attr,{}).get('groups')
 
 	# Find keys of seeds in settings
 	items = ['seed']

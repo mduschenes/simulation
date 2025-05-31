@@ -3239,7 +3239,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			scheme = options.get('scheme')
 			defaults = {}
 
-			if scheme is None:
+			if scheme is False:
 				return
 
 			if isinstance(data,dict):
@@ -3341,13 +3341,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					u,v,s = self.scheme[scheme](data,u,v,objects,**{**defaults,**kwargs,**options})
 
-					a,z = data,dot(u,v)
-					x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
-
-					z = dot(x,dot(z,y))
-					a = dot(x,dot(a,y))
-
-					print('diff',allclose(z,a),addition(abs2(z-a)))
+					try:
+						a,z = data,dot(u,v)
+						x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
+						z = dot(x,dot(z,y))
+						a = dot(x,dot(a,y))
+						print('diff',allclose(z,a),addition(abs2(z-a)))
+					except:
+						pass
 
 					data = self.organize((u,v),where=where,scheme=scheme,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
 
@@ -3559,7 +3560,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
 					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
 					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					u,v,s = u*s,v,rank
+					u,v,s = u,dotl(v,s),rank
+					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
+					# u,v,s = dotr(u,s),dotl(v,s),rank
 					return u,v,s				
 			elif scheme in ['svd']:
 				@wrapper
@@ -3726,7 +3729,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			func = self.func[len(where)]
 
-			scheme = {'svd':'qr','nmf':'stq'}.get(options.get('scheme'))
+			scheme = {'svd':False,'nmf':'stq'}.get(options.get('scheme'))
 			objects = state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			data = func(data,state,where=where)
