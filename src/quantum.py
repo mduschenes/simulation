@@ -8659,15 +8659,9 @@ class Callback(System):
 			**{key: kwargs.get(key) for key in kwargs if key in options},
 			}
 
-		print(options)
-		print(_options)
-
 		obj = model(parameters=parameters,state=state,options=options)
 
 		_obj = model(parameters=parameters,state=state,options=_options)
-
-		print(allclose(obj.array(),_obj.array()))
-
 
 		for attr in attributes:
 
