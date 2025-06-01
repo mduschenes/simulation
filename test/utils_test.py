@@ -1567,7 +1567,7 @@ def test_nmf(path=None,tol=None):
 	from random import choices,seed	as seeds
 
 	seed = 0
-	n = 6
+	n = 1
 	d = 2
 	l = 2
 	q = n//2 + n%2

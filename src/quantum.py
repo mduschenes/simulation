@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
-from src.utils import array,empty,identity,ones,zeros,rand,random,haar,arange
+from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange
 from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product
@@ -251,6 +251,10 @@ class Basis(Dict):
 			locality = 1
 		elif attr in ['CNOT']:
 			locality = 2
+		elif attr in ['gate']:
+			locality = options.N
+		elif attr in ['clifford']:
+			locality = options.N
 		elif attr in ['unitary']:
 			locality = options.N
 		elif attr in ['state']:
@@ -321,6 +325,10 @@ class Basis(Dict):
 			dimension = 2
 		elif attr in ['CNOT']:
 			dimension = 2
+		elif attr in ['gate']:
+			dimension = 2
+		elif attr in ['clifford']:
+			dimension = 2			
 		elif attr in ['unitary']:
 			dimension = 2
 		elif attr in ['state']:
@@ -406,8 +414,12 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['CNOT']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['unitary']:
+		elif attr in ['gate']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
+		elif attr in ['clifford']:
+			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
+		elif attr in ['unitary']:
+			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['state']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
@@ -570,12 +582,46 @@ class Basis(Dict):
 		return data
 
 	@classmethod
+	@decorator	
+	def T(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+		data = array([[1,0,],[0,(1+1j)/sqrt(2)]],dtype=kwargs.dtype)
+		return data
+
+	@classmethod
 	@decorator
 	def CNOT(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=kwargs.dtype)
 		return data
 
+	@classmethod
+	# @decorator	
+	def gate(cls,*args,**kwargs):
+		data = {1:[cls.I,cls.H,cls.S,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']] 
+		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
+		index = choice(
+			data=len(data),
+			shape=(),
+			seed=kwargs['seed'],
+			dtype=int			
+			)
+		data = switch(index,data)
+		return data
+
+	@classmethod
+	# @decorator	
+	def clifford(cls,*args,**kwargs):
+		data = {1:[cls.I,cls.H,cls.S],2:[cls.identity,cls.CNOT]}[kwargs['N']] 
+		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
+		index = choice(
+			data=len(data),
+			shape=(),
+			seed=kwargs['seed'],
+			dtype=int			
+			)
+		data = switch(index,data)
+		return data
 
 	# Unitary
 	@classmethod
@@ -589,9 +635,9 @@ class Basis(Dict):
 		data = haar(
 			shape=kwargs['shape'],
 			seed=kwargs['seed'],
-			dtype=kwargs['dtype'])		
+			dtype=kwargs['dtype']
+			)		
 		return data
-
 
 	# State
 	@classmethod
@@ -5521,7 +5567,10 @@ class Gate(Object):
 		**{attr: Basis.Z for attr in ['z']},
 		**{attr: Basis.H for attr in ['HADAMARD','H']},
 		**{attr: Basis.S for attr in ['PHASE','S']},
+		**{attr: Basis.T for attr in ['TEE','T']},
 		**{attr: Basis.CNOT for attr in ['CNOT','C','cnot']},
+		**{attr: Basis.gate for attr in ['gate']},
+		**{attr: Basis.clifford for attr in ['clifford']},
 		**{attr: Basis.identity for attr in ['IDENTITY','identity']},
 		}
 	
@@ -5546,7 +5595,7 @@ class Gate(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = []
+		functions = ['gate','clifford']
 
 		do = not self.null()
 
@@ -5555,14 +5604,88 @@ class Gate(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system)
+				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,dtype=self.dtype,system=self.system)
+
+				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
+				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
+
+				shape = Basis.shapes(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
+				axes = [*self.where,*(() if self.local else set(range(self.N))-set(self.where))] if data is not None else None
+				ndim = Basis.dimensions(attr=Basis.string,operator=[self.basis.get(i) for i in [*data,*_data]],**options) if data is not None else None
+				dtype = self.dtype
+
+				shape = {axis: [shape[axis][axes.index(i)] for i in range(max(axes)+1) if i in axes] for axis in shape} if data is not None else None
+				axes = [[i] for i in axes] if data is not None else None
+				ndim = ndim if data is not None else None
+				dtype = dtype
+
+				local = self.local
+				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+
+				data = [*data,*_data] if not self.local else data
 
 				seed = seeder(self.seed)
 
-				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
-
-				def function(parameters,state,options=options,**kwargs):
-					return None
+				if self.local:
+					options = Dictionary(
+						D=self.D,N=self.locality//self.number,ndim=ndim,
+						local=local,tensor=tensor,							
+						random=self.random,seed=seed,
+						dtype=self.dtype,system=self.system,
+						data=self.data,operator=data,
+						basis=self.basis,axes=axes,shapes=shape,
+						)
+					data = options.operator
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])														
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})							
+				else:
+					options = Dictionary(
+						D=self.D,N=self.locality//self.number,ndim=ndim,							
+						local=local,tensor=tensor,						
+						random=self.random,seed=seed,
+						dtype=self.dtype,system=self.system,
+						data=self.data,operator=data,
+						basis=self.basis,axes=axes,shapes=shape,
+						)
+					data = options.operator
+					if len(data)>1:
+						options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
+						for index,i in zip(options,data):
+							options[index].basis = options[index].basis.get(i)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+					else:
+						for i in data:
+							options = Dictionary(Basis.opts(options.basis.get(i),options))
+							options.basis = options.basis.get(i)
+						if self.tensor is not None:
+							def function(parameters,state,options=options,**kwargs):
+								return options.tensor(options.basis(**{**options,**kwargs}))
+						else:
+							def function(parameters,state,options=options,**kwargs):
+								return options.basis(**{**options,**kwargs})													
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -5575,7 +5698,7 @@ class Gate(Object):
 			else:
 			
 				data = self.data if data is None else data
-			
+
 		else:
 
 			data = None
@@ -7733,21 +7856,23 @@ class Module(System):
 
 			for l in range(M):
 				for i,data in enumerate(self.data):
+
+					print('index',l,i)					
+
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 					
-					# print('index',l,i)					
-					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					# trace = self.measure.trace(parameters=parameters,state=state)
-					# if self.measure.architecture in ['tensor']:					
-					# 	trace = trace.array().item()
-					# elif self.measure.architecture in ['tensor_quimb']:
-					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					# trace = trace.real-1
-					# data = state
-					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					# print('trace',trace)
+					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					trace = self.measure.trace(parameters=parameters,state=state)
+					if self.measure.architecture in ['tensor']:					
+						trace = trace.array().item()
+					elif self.measure.architecture in ['tensor_quimb']:
+						trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
+					trace = trace.real-1
+					data = state
+					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					print('trace',trace)
 					# where = [i,i+1]
 					# for i in data:
 					# 	if i < min(where):
@@ -7756,7 +7881,7 @@ class Module(System):
 					# 		print(i,addition(data[i].data,(-2,-1)))
 					# print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
 					# print('data',data)
-					# print()
+					print()
 
 			return state
 

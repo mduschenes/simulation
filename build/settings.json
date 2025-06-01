@@ -173,7 +173,7 @@
 	"lock":true,
 	"backup":true,
 	"conf":"logging.conf",
-	"logger":"log.log",
+	"logger":null,
 	"cleanup":false,
 	"verbose":"info"
 	},

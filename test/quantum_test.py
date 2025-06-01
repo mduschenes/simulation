@@ -10,7 +10,7 @@ PATHS = ["",".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,allclose,asscalar,is_array,is_nan,product
+from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,choice,allclose,asscalar,is_array,is_nan,product
 from src.utils import einsum,symbols,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
@@ -237,13 +237,13 @@ def test_operator(*args,**kwargs):
 		"operator.local":[True,False],
 		"operator.tensor":[True,False],
 		"state.tensor":[True,False],
-		"operator.data":[None,None,None,None,None,None,None],
-		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"]],
-		"operator.where":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1]],
-		"operator.string":["test","xz","Haar","haar","U","u","noise"],
-		"operator.parameters":[None,0.25,None,None,None,None,1e-6],
-		"operator.variable":[False,False,False,False,False,False,False,False],
-		"operator.constant":[True,False,False,False,False,False,True,True],
+		"operator.data":[None,None,None,None,None,None,None,None,None],
+		"operator.operator":["CNOT.H",["X","Z"],"haar","haar",["U","U"],["u"],["depolarize","amplitude","dephase"],"gate","clifford.clifford"],
+		"operator.where":[[3,0,1],[0,2],None,[1,2,0],[3,1],[0],[0,2,1],[0,2],[1,3]],
+		"operator.string":["test","xz","Haar","haar","U","u","noise","gate","clifford"],
+		"operator.parameters":[None,0.25,None,None,None,None,1e-6,None,None],
+		"operator.variable":[False,False,False,False,False,False,False,False,False,False],
+		"operator.constant":[True,False,False,False,False,False,True,True,False,False],
 		"state.local":[False],
 		"state.data":[None],
 		"state.operator":["state"],
@@ -270,6 +270,7 @@ def test_operator(*args,**kwargs):
 		]
 	filters = lambda kwargs:[i for i in kwargs if all([
 		# i['operator.string'] in ["noise","xz"],
+		# i['operator.string'] in ["gate","clifford"],
 		# i['state.ndim'] in [2],
 		# i['operator.local'] in [False],
 		# i['operator.tensor'] in [False],
@@ -289,7 +290,7 @@ def test_operator(*args,**kwargs):
 			"operator":{
 				"data":None,"operator":None,"where":None,"string":None,
 				"N":2,"D":2,"ndim":2,"tensor":False,"local":True,"variable":True,"constant":False,
-				"system":{"seed":123,"dtype":"complex","architecture":None}				
+				"system":{"seed":1234355,"dtype":"complex","architecture":None}				
 			},	
 			"state": {
 				"data":None	,
@@ -373,6 +374,37 @@ def test_operator(*args,**kwargs):
 				for i in range(operator.ndim-2)},
 			 **{i:[operator.D]*(operator.locality if operator.local else operator.N) for i in range(operator.ndim-2,operator.ndim)},
 				})
+		elif operator.string in ["gate"]:
+			obj = {	
+					1: [
+						array([[1,0],[0,1]],**options),
+						(1/sqrt(2))*array([[1,1],[1,-1]],**options),
+						array([[1,0,],[0,1j]],**options),
+						array([[1,0,],[0,(1+1j)/sqrt(2)]],**options),
+						],
+					2: [
+						array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],**options),
+						array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options)
+						],
+				}
+			index = [choice(data=len(obj[operator.locality//len(operator.operator) if not isinstance(operator.operator,str) else operator.locality]),shape=(),seed=seeder(operator.seed),dtype=int).item() for i in range(len(operator.operator) if not isinstance(operator.operator,str) else 1)]
+			obj = [obj[operator.locality//len(operator.operator) if not isinstance(operator.operator,str) else operator.locality][i] for i in index]
+		elif operator.string in ["clifford"]:
+			obj = {	
+					1: [
+						array([[1,0],[0,1]],**options),
+						(1/sqrt(2))*array([[1,1],[1,-1]],**options),
+						array([[1,0,],[0,1j]],**options),
+						],
+					2: [
+						array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],**options),
+						array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],**options)
+						],
+				}
+			index = [choice(data=len(obj[operator.locality//len(operator.operator) if not isinstance(operator.operator,str) else operator.locality]),shape=(),seed=seeder(operator.seed),dtype=int).item() for i in range(len(operator.operator) if not isinstance(operator.operator,str) else 1)]
+			obj = [obj[operator.locality//len(operator.operator) if not isinstance(operator.operator,str) else operator.locality][i] for i in index]
+
+
 
 		obj = [*obj,*[reshape(identity(operator.D),[*[1]*(operator.ndim-l),*[operator.D]*l])]*(operator.N-operator.locality)] if not operator.local else obj
 
@@ -380,7 +412,7 @@ def test_operator(*args,**kwargs):
 			obj = swap(tensorprod(obj),axes=axes,shape=shape)
 		else:
 			obj = tensorprod(obj)
-
+		
 		if operator.tensor:
 			_shape = [*([-1] if operator.ndim>2 else []),*[operator.D]*(l*(operator.locality if operator.local else operator.N))]
 			obj = reshape(obj,_shape)
@@ -390,7 +422,6 @@ def test_operator(*args,**kwargs):
 			_identity = operator.identity(operator.locality if operator.local else operator.N)
 			_parameters = operator.parameters(operator.parameters())
 			obj = cos(_parameters)*_identity + -1j*sin(_parameters)*obj
-
 
 		print(
 			'operator',{attr:getattr(operator,attr) for attr in ['local','tensor','shape','N','locality','string']},
@@ -2631,16 +2662,18 @@ def test_function(*args,**kwargs):
 def test_class(*args,**kwargs):
 
 	kwargs = {
-		"module.M":[1],"module.measure.operator":["tetrad"],
-		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
+		"module.M":[2],"module.measure.operator":["tetrad"],
+		"model.N":[4],"model.D":[2],"model.M":[2],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[
 			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","key":seeder(123)},
-			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e6,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			{"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
-			# {"scheme":"svd","S":None},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"pnmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
+			# {"scheme":"pnmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
+			{"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{}
 			],
@@ -2652,8 +2685,8 @@ def test_class(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
 			"tensor",
-			# "tensor_quimb",
-			# "array",
+			"tensor_quimb",
+			"array",
 			] 
 		)
 		]
@@ -2676,7 +2709,7 @@ def test_class(*args,**kwargs):
 			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{}},
 			"options":{},
 			"configuration":{
-				"key":"src.functions.brickwork",
+				"key":"src.functions.nearestneighbour",
 				"sort":None,
 				"reverse":False
 				}			
@@ -2708,7 +2741,7 @@ def test_class(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":"src.functions.brickwork",
+				"key":"src.functions.nearestneighbour",
 				"sort":None,
 				"reverse":False
 				}
@@ -2867,7 +2900,7 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_function(*args,**args)
-	# test_basis(*args,**args)
+	test_basis(*args,**args)
 	# test_component(*args,**args)
 	# test_operator(*args,**args)
 	# test_null(*args,**args)
@@ -2885,4 +2918,4 @@ if __name__ == "__main__":
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
-	test_class(*args,**args)
+	# test_class(*args,**args)

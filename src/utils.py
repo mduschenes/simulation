@@ -3239,6 +3239,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			scheme = options.get('scheme')
 			defaults = {}
 
+			objects = None
+
 			if scheme is False:
 				return
 
@@ -3302,30 +3304,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							elif u.ndim == 1:
 								data[i-1] = dotr(data[i-1],u)
 
-				objects = [min(where),max(where)]
-				for index,i in enumerate(objects):
-					if index == 0:
-						if i > 0:
-							# objects[index] = addition(data[i-1],range(0,data[i-1].ndim-1))
-							objects[index] = addition(data[i-1],0)
-							# objects[index] = reshape(addition(reduce(dot,(data[j] for j in range(0,i))),0),(-1,data[i].shape[0]))
-						else:
-							# objects[index] = ones(data[i].shape[:1],dtype=data[i].dtype)
-							objects[index] = ones((1,*data[i].shape[:1]),dtype=data[i].dtype)
-							# objects[index] = ones((1,*data[i].shape[:1]),dtype=data[i].dtype)
-					elif index == (len(objects)-1):
-						if i < (N-1):
-							# objects[index] = addition(data[i+1],range(1,data[i+1].ndim))
-							objects[index] = addition(data[i+1],-1)
-							# objects[index] = reshape(addition(reduce(dot,(data[j] for j in range(i+1,N))),-1),(data[i].shape[-1],-1))
-						else:
-							# objects[index] = ones(data[i].shape[-1:],dtype=data[i].dtype)
-							objects[index] = ones((*data[i].shape[-1:],1),dtype=data[i].dtype)
-							# objects[index] = ones((*data[i].shape[-1:],1),dtype=data[i].dtype)
-
 			elif isinstance(data,(*arrays,*iterables)):
 
-				data = (data,{i:None for i in where},[None]*2) if isinstance(data,arrays) else (*data,)
+				data = (data,{i:None for i in where}) if isinstance(data,arrays) else (*data,)
 
 				if len(where) == 1:
 
@@ -3333,9 +3314,42 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 				elif len(where) == 2:
 
-					data,state,objects = data
+					data,state = data
+
+					state = state.tensor()
 
 					u,v = [state[i] for i in where]
+
+					objects = [min(where),max(where)]
+
+					if scheme in ['nmf']:
+						for index,i in enumerate(objects):
+							if index == 0:
+								if i > 0:
+									objects[index] = addition(state[i-1],0)
+									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(0,i))),0),(-1,state[i].shape[0]))
+								else:
+									objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
+									# objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
+							elif index == (len(objects)-1):
+								if i < (N-1):
+									objects[index] = addition(state[i+1],-1)
+									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(i+1,N))),-1),(state[i].shape[-1],-1))
+								else:
+									objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
+									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)	
+					elif scheme in ['pnmf']:
+						for index,i in enumerate(objects):
+							if index == 0:
+								if i > 0:
+									objects[index] = addition(state[i-1],range(0,state[i-1].ndim-1))
+								else:
+									objects[index] = ones(state[i].shape[:1],dtype=state[i].dtype)
+							elif index == (len(objects)-1):
+								if i < (N-1):
+									objects[index] = addition(state[i+1],range(1,state[i+1].ndim))
+								else:
+									objects[index] = ones(state[i].shape[-1:],dtype=state[i].dtype)
 
 					data = self.organize(data,where=where,scheme=scheme,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
 
@@ -3374,7 +3388,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Axes order of data
 				conj (bool): Conjugate of class data
-				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
+				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
 				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
 				kwargs (dict): Additional class keyword arguments		
@@ -3384,7 +3398,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			if scheme is None or scheme in ['svd','qr','eig','spectrum']:
 				pass
-			elif scheme in ['nmf','stq','probability']:
+			elif scheme in ['nmf','pnmf','stq','probability']:
 				return data
 
 			data = self if data is None else data
@@ -3528,7 +3542,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				options (dict): Class options
 				kwargs (dict): Additional class keyword arguments
-					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
+					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
 					eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 			Returns:
 				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options)
@@ -3538,7 +3552,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			scheme = options.get('scheme',kwargs.get('scheme'))
 			eps = options.get('eps') if options.get('eps') is not None else epsilon()
 
-			schemes = [None,'svd','nmf','qr','stq','eig','spectrum','probability']
+			schemes = [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
 
 			if isinstance(scheme,bool):
 				return schemes
@@ -3591,6 +3605,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
 					data = [real(i) for i in data] if data is not None else data
 					u,v,s,stats = xnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
+					u,v,s = u,v,rank
+					u,v,s = cmplx(u),cmplx(v),s		
+					return u,v,s
+			elif scheme in ['pnmf']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					data = [real(i) for i in data] if data is not None else data
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
 					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
 					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
@@ -3729,13 +3754,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			func = self.func[len(where)]
 
-			scheme = {'svd':False,'nmf':'stq'}.get(options.get('scheme'))
-			objects = state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
+			scheme = {'svd':False,'nmf':'stq','pnmf':'stq'}.get(options.get('scheme'))
+			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
 
 			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
-			data = state.update((data,state.tensor(),objects),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
 
 			data = self
 
@@ -4970,6 +4995,25 @@ if backend in ['jax','quimb']:
 
 		return astype(generator(key,shape),dtype=dtype)
 
+	def choice(data,shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random choice of array
+		Args:
+			data (array): Array to choose
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.choice
+
+		return astype(generator(key,data,shape),dtype=dtype)
+
 	def characters(n=16,**kwargs):
 		'''
 		Get random string
@@ -5364,6 +5408,25 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		generator = rng.permutation
 
 		return astype(generator(shape),dtype=dtype)
+
+	def choice(data,shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random choice of array
+		Args:
+			data (array): Array to choose
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.choice
+
+		return astype(generator(data,shape),dtype=dtype)
 
 	def characters(n=16,**kwargs):
 		'''
@@ -5813,6 +5876,24 @@ def pnmfd(u,v,rank=None,eps=None):
 	print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
+def xnmfd(u,v,rank=None,eps=None):
+	'''
+	Non-negative matrix factor decomposition of xnmf
+	Args:
+		u (array): Array for xnmf of shape (n,p,k)
+		v (array): Array for xnmf of shape (k,q,m)
+		rank (int): Rank of xnmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
+	Returns:
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)
+		s (array): s array of xnmf of shape (k,)
+	'''
+	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
+	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
+	print('xy',addition(s),s.min()/s.max())
+	return u,v,s
+
 def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for matrices
@@ -6109,15 +6190,19 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				s = (l,slice(None),k)
 				z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
+				# w = einsum('u,v->uv',z,x['v'][s])
 				x['e'] += einsum('u,v->uv',z,x['v'][s])
 				x['v'] = inplace(x['v'],s,maximums((einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps))
+				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('u,v->uv',z,x['v'][s]))))
 				x['e'] -= einsum('u,v->uv',z,x['v'][s])
 
 
 				s = (j,slice(None),l)
 				z = x['x'][j]*einsum('vb,b->v',x['v'][l,:,:],x['y'])
+				# w = einsum('v,u->uv',z,x['u'][s])
 				x['e'] += einsum('v,u->uv',z,x['u'][s])
 				x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
+				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))			
 				x['e'] -= einsum('v,u->uv',z,x['u'][s])
 
 
@@ -6249,75 +6334,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		u,v,stats = x['u'],x['v'],x['stats']
 
-		# u,v = dotl(u,x['x']),dotr(v,x['y'])
-		# s = reciprocal(sqrt(addition(dot(u,v))))
-		# u,v = u*s,v*s
-
-		# func = jax.profiler.annotate_function(func)
-
-		# loop = partial(whileloop,condition,func)
-
-		# trace = dict(
-		# 	log_dir=os.environ['PERFETTO_DIR'],
-		# 	create_perfetto_link=True
-		# 	)
-		# trace = dict(
-		# 	log_dir=os.environ['TENSORBOARD_DIR'],
-		# 	create_perfetto_link=False
-		# 	)
-
-		# with jax.profiler.trace(**trace):
-		# with jax.log_compiles():
-		# 	x = loop(x)
-		# 	for key in x:
-		# 		if isinstance(x[key],arrays):
-		# 			x[key].block_until_ready()
-		# 		else:
-		# 			for attr in x[key]:
-		# 				x[key][attr].block_until_ready()
-
-
-		# x = loop(x)
-
-		# u,v = dotl(x['u'],x['x']),dotr(x['v'],x['y'])
-		# s = reciprocal(sqrt(addition(dot(u,v))))
-		# u,v = u*s,v*s
-
-		# stats = x['stats']
-
-		# a,b,c,d,u,v = addition(a,(0,-1)),*data,a,u,v
-		# e = a-dot(dot(b,dot(u,v)),c)
-
-		# i = 0
-
-		# stats = {}
-
-		# x = a,b,c,d,e,u,v,stats,i
-
-		# stats.update({attr:None for attr in ['iteration','error']})
-		# for attr in stats:
-		# 	stats[attr] = nan*ones(int(max(iters,eps))+1)
-		# 	if attr in ['iteration']:
-		# 		stats[attr] = inplace(stats[attr],i,i)
-		# 	elif attr in ['error']:
-		# 		stats[attr] = inplace(stats[attr],i,error(x))
-
-		# loop = partial(whileloop,condition,func)
-		
-		# x = loop(x)
-
-		# a,b,c,d,e,u,v,stats,i = x
-
-		# u,v = dotl(u,b),dotr(v,c)
-		# s = reciprocal(sqrt(addition(dot(u,v))))
-		# u,v = u*s,v*s
+		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		u,v = u*z,v*z
 
 		attribute = 'error'
 		indices = ~is_nan(stats[attribute])
 		for attr in stats:
 			stats[attr] = stats[attr][indices]
 
-		print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+		if anything(indices):
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
 
 		return u,v,stats
 
@@ -6336,10 +6362,10 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
-		a (array): Array for pnmf of shape (n,p,q,m)
-		u (array): u array of pnmf of shape (n,p,k)
-		v (array): v array of pnmf of shape (k,q,m)	
-		data (array,iterable[array]): Data for pnmf
+		a (array): Array for xnmf of shape (n,p,q,m)
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)	
+		data (array,iterable[array]): Data for xnmf
 		rank (int): Rank of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (int,float): Number of iterations, defaults to 1e7		
@@ -6349,9 +6375,9 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
 		kwargs (dict): Additional keyword arguments	
 	Returns:
-		u (array): u array of pnmf of shape (n,p,k)
-		v (array): v array of pnmf of shape (k,q,m)
-		s (array): s array of pnmf of shape (k,)
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)
+		s (array): s array of xnmf of shape (k,)
 	'''	
 
 	data = [ones((a.shape[0],u.shape[0]),dtype=a.dtype),ones((v.shape[-1],a.shape[-1]),dtype=a.dtype)] if data is None else data
@@ -6464,15 +6490,19 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				s = (l,slice(None),k)
 				z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
+				# w = einsum('xuy,v->xuvy',z,x['v'][s])
 				x['e'] += einsum('xuy,v->xuvy',z,x['v'][s])
 				x['v'] = inplace(x['v'],s,maximums((einsum('xuvy,xuy->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('xuy,xuy->',z,z)+parameters),eps))
+				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('xuy,v->xuvy',z,x['v'][s]))))
 				x['e'] -= einsum('xuy,v->xuvy',z,x['v'][s])
 
 
 				s = (j,slice(None),l)
 				z = einsum('x,vb,by->xvy',x['x'][:,j],x['v'][l,:,:],x['y'])
+				# w = einsum('xvy,u->xuvy',z,x['u'][s])
 				x['e'] += einsum('xvy,u->xuvy',z,x['u'][s])
 				x['u'] = inplace(x['u'],s,maximums((einsum('xuvy,xvy->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('xvy,xvy->',z,z)+parameters),eps))
+				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
 				x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
 
 
@@ -6533,6 +6563,9 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		u,v,stats = x['u'],x['v'],x['stats']
 
+		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		u,v = u*z,v*z
+
 		attribute = 'error'
 		indices = ~is_nan(stats[attribute])
 		for attr in stats:
@@ -6573,7 +6606,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
-	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
+	u,v,s = xnmfd(u,v,rank=rank,eps=eps)
 
 	return u,v,s,stats
 
