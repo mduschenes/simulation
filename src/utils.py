@@ -2319,6 +2319,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			string (str): Class string
 			kwargs (dict): Additional class keyword arguments
 		'''
+
+		defaults = dict()
+
 		def __init__(self,data,indices=None,parameters=None,string=None,**kwargs):
 
 			self.data = data
@@ -2389,7 +2392,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			elif setup is False:
 
-				def setup(index,data,indices,parameters,string,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,**kwargs):
 					
 					classes = self.__class__
 
@@ -2675,6 +2678,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			kwargs (dict): Additional keyword arguments
 		'''
 
+		defaults = dict()
+
 		def __init__(self,data=None,indices=None,parameters=None,string=None,**kwargs):
 
 			super().__init__()
@@ -2732,7 +2737,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			elif setup is False:
 
-				def setup(index,data,indices,parameters,string,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,**kwargs):
 					
 					classes = self.__class__
 
@@ -3060,6 +3065,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			S (int): Class approximation
 			kwargs (dict): Additional keyword arguments
 		'''
+
+		defaults = dict(strings=None,orientation=None,scheme=None,func=None)
 		
 		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
 
@@ -3067,8 +3074,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.D = D
 			self.S = S
 
-			for key,value in dict(strings=None,orientation=None,scheme=None,func=None).items():
-				setattr(self,key,kwargs.get(key,value))
+			for key in self.defaults:
+				setattr(self,key,kwargs.get(key,self.defaults[key]))
 
 			super().__init__(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
 
@@ -3098,7 +3105,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			D = self.D if self.D is not None else 0
 			S = self.S if self.S is not None else 0
 
-			strings = self.strings if callable(self.strings) else lambda index=None,string=None,strings='|':(f'{strings}{characters(4) if string is None else string}{strings}' if index is None or index.startswith(strings) and index.endswith(strings) else index)
+			if callable(self.strings):
+				strings = self.strings
+			else:
+				def strings(index=None,string=None,strings=None):
+					strings = '|' if strings is None else strings
+					if (index is None) or (index.startswith(strings) and index.endswith(strings)):
+						string = f'{strings}{characters(4) if string is None else string}{strings}'
+					else:
+						string = index
+					return string
 
 			if setup is None or setup is True:
 				
@@ -3117,11 +3133,12 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						axes = range(data.ndim+2)
 						
 						data = transpose(reshape(data,shape),axes)
-						indices = [
-							strings(string=symbols(index)),
-							*(indices if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
-							strings(string=symbols(index+1)),
-							]
+
+					indices = [
+						strings(string=symbols(index)),
+						*((indices[max(1,(data.ndim-2)//2):min(-1,-(data.ndim-2)//2)] if len(indices)==3 else indices) if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
+						strings(string=symbols(index+1)),
+						]
 
 					parameters = parameters if parameters is not None else parameters
 
@@ -3699,6 +3716,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					return s
 			
 			return scheme
+
+		def array(self):
+			return super().array()
 
 		def matrix(self,indices=None):
 			
@@ -5488,6 +5508,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		out = abs2(out)
 
 		return out
+
+
+def reduce(func,data,*args,**kwargs):
+	return getattr(np,func).reduce(data,*args,**kwargs)
 
 @jit
 def inv(a):

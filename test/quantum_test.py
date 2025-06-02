@@ -246,7 +246,7 @@ def test_operator(*args,**kwargs):
 		"operator.constant":[True,False,False,False,False,False,True,True,False,False],
 		"state.local":[False],
 		"state.data":[None],
-		"state.operator":["state"],
+		"state.operator":["ghz"],
 		"state.where":[None],
 		"state.string":["state"],
 		"state.parameters":[None],
@@ -269,11 +269,10 @@ def test_operator(*args,**kwargs):
 		],		
 		]
 	filters = lambda kwargs:[i for i in kwargs if all([
-		# i['operator.string'] in ["noise","xz"],
-		# i['operator.string'] in ["gate","clifford"],
+		# i['operator.string'] in ["gate"],
 		# i['state.ndim'] in [2],
-		# i['operator.local'] in [False],
-		# i['operator.tensor'] in [False],
+		# i['operator.local'] in [True],
+		# i['operator.tensor'] in [True],
 		])]
 	func = None
 
@@ -281,6 +280,8 @@ def test_operator(*args,**kwargs):
 
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups,filters=filters,func=func)):
 	
+		print(kwargs)
+
 		settings = Dict({
 			"cls":{
 				"operator":"src.quantum.Operator",
@@ -296,7 +297,7 @@ def test_operator(*args,**kwargs):
 				"data":None	,
 				"operator":"state",
 				"where":None,
-				"string":"psi",
+				"string":"state",
 				"parameters":True,
 				"N":3,"D":2,"ndim":1,
 				"system":{"seed":123,"dtype":"complex","architecture":None}
@@ -461,7 +462,6 @@ def test_operator(*args,**kwargs):
 
 		data = operator(parameters=operator.parameters(),state=operator.state(),**dict())
 
-
 		test = obj
 
 		if operator.local:
@@ -573,7 +573,6 @@ def test_data(path,tol):
 
 	label.init(state=state)	
 	model.init(state=state)
-
 
 	basis = {
 		"I":array([[1,0],[0,1]],dtype=model.dtype),
@@ -1731,10 +1730,11 @@ def test_module(*args,**kwargs):
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.operator":["mps"],
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"state.architecture":["tensor","array","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		"module.measure.options":[{},{},{}],
@@ -1742,8 +1742,14 @@ def test_module(*args,**kwargs):
 		"callback.options":[{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}	
 
-	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options"]
-	filters = lambda kwargs:[i for i in kwargs if i['module.measure.architecture'] in ["tensor","tensor_quimb","array"]]
+	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options","state.architecture"]
+	filters = lambda kwargs:[i for i in kwargs if 
+		(i['module.measure.architecture'] in [
+			"tensor",
+			"tensor_quimb",
+			"array"
+			])
+		]
 	func = None
 
 	data = {}
@@ -1811,10 +1817,11 @@ def test_module(*args,**kwargs):
 			"N":4,
 			"D":2,
 			"local":True,
+			"tensor":True,
+			"architecture":"array",		
 			"space":"spin",
 			"time":"linear",
 			"lattice":"square",
-			"architecture":"array",
 			"configuration":{
 				"key":"src.functions.brickwork",
 				"sort":None,
@@ -1828,7 +1835,9 @@ def test_module(*args,**kwargs):
 			"parameters":None,
 			"D":2,
 			"ndim":2,
-			"local":False
+			"local":None,
+			"tensor":None,
+			"architecture":None
 			},
 		"callback":{
 			"attributes":{
@@ -1886,6 +1895,7 @@ def test_module(*args,**kwargs):
 
 		# State
 		state = load(settings.cls.state)
+
 		settings.state = [
 			{
 			**settings.state,
@@ -1893,6 +1903,9 @@ def test_module(*args,**kwargs):
 				if not isinstance(settings.state.operator,str) 
 				else settings.state.operator)
 			} for i in range(model.N)]
+
+		_state = [state(**{**settings.model,**i,**dict(architecture=None,system=system)})
+				for i in settings.state]
 		
 		state = [state(**{**settings.model,**i,**dict(system=system)})
 				for i in settings.state]
@@ -1911,21 +1924,25 @@ def test_module(*args,**kwargs):
 		# Test
 
 		objs = state
+		_objs = _state
 
 		obj = None
 		for i in objs:
 			obj = i if obj is None else obj @ i
+		_obj = None
+		for i in _objs:
+			_obj = i if _obj is None else _obj @ i
 
 		if verbose and model.N in [1]:
 			basis = 'tetrad'
 			components = ['I','X','Y','Z']
 
-			print(obj())
+			print(_obj())
 
 			for component in components:
-				print(component,obj.component(basis=basis,index=component))
+				print(component,_obj.component(basis=basis,index=component))
 			
-			model.init(state=obj)
+			model.init(state=_obj)
 			
 			print(model())
 
@@ -1983,7 +2000,7 @@ def test_module(*args,**kwargs):
 			print(measure.architecture,parse(value),trace(value))
 
 		tmp = value
-		_tmp = tensorprod([i() for i in objs]) 
+		_tmp = tensorprod([i() for i in _objs]) 
 
 		if verbose:
 			print(measure.architecture)
@@ -1994,7 +2011,7 @@ def test_module(*args,**kwargs):
 
 		# Operator
 		parameters = model.parameters()
-		state = obj
+		state = _obj
 
 		model.init(state=state)
 
@@ -2058,7 +2075,7 @@ def test_module(*args,**kwargs):
 
 		model.init(samples=None,local=True,tensor=True)
 
-		_tmp = model(parameters=parameters,state=obj())
+		_tmp = model(parameters=parameters,state=_obj())
 
 		if measure.architecture in ['array']:
 			tmp = array(tmp)
@@ -2088,6 +2105,7 @@ def test_module(*args,**kwargs):
 		system = settings.system
 
 		model = model(**{**settings.model,**dict(system=system)})
+		_state = state(**{**settings.state[0],**dict(architecture=None,system=system)})
 		state = state(**{**settings.state[0],**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
 	
@@ -2122,7 +2140,7 @@ def test_module(*args,**kwargs):
 		
 		tmp = value
 		
-		model.init(state=module.state @ module.N)
+		model.init(state=_state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=model.state())
 
 		if verbose:
@@ -2136,6 +2154,18 @@ def test_module(*args,**kwargs):
 
 
 	print({i:list(data[i]) for i in data})
+
+	# for i in data:
+	# 	for j in data:
+	# 		if i >= j:
+	# 			continue
+	# 		for attr in data[i]:
+	# 			boolean = equalizer(data[i][attr],data[j][attr])
+	# 			if not boolean:
+	# 				print(attr,i,j)
+	# 				print(data[i][attr])
+	# 				print(data[j][attr])
+	# 				print()
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent models"
 
@@ -2900,9 +2930,9 @@ if __name__ == "__main__":
 
 	# main(*args,**args)
 	# test_function(*args,**args)
-	test_basis(*args,**args)
+	# test_basis(*args,**args)
 	# test_component(*args,**args)
-	# test_operator(*args,**args)
+	test_operator(*args,**args)
 	# test_null(*args,**args)
 	# test_data(*args,**args)
 	# test_copy(*args,**args)
