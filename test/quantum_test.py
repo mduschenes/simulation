@@ -1730,7 +1730,7 @@ def test_module(*args,**kwargs):
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.operator":["mps"],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.operator":["zero"],
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
@@ -2932,7 +2932,7 @@ if __name__ == "__main__":
 	# test_function(*args,**args)
 	# test_basis(*args,**args)
 	# test_component(*args,**args)
-	test_operator(*args,**args)
+	# test_operator(*args,**args)
 	# test_null(*args,**args)
 	# test_data(*args,**args)
 	# test_copy(*args,**args)
@@ -2945,7 +2945,7 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
+	test_module(*args,**args)
 	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)

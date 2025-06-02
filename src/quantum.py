@@ -206,7 +206,7 @@ class Basis(Dict):
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else 
 					  (options.D**options.N,)*options.ndim)
 				))	
-		elif attr in ['mps','ghz']:
+		elif attr in ['ghz']:
 			options.update(dict(
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else 
 					  (options.D**options.N,)*options.ndim)
@@ -268,10 +268,10 @@ class Basis(Dict):
 			locality = options.N
 		elif attr in ['state']:
 			locality = options.N	
-		elif attr in ['mps','ghz']:
-			locality = options.N			
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			locality = 1
+		elif attr in ['ghz']:
+			locality = options.N
 		elif attr in ['element']:
 			locality = 1
 		elif attr in ['projector']:
@@ -344,12 +344,12 @@ class Basis(Dict):
 			dimension = 2
 		elif attr in ['state']:
 			dimension = options.ndim
-		elif attr in ['mps','ghz']:
+		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			dimension = max(
 				options.ndim if options.ndim is not None else 0,
 				len(options.shape) if options.shape is not None and not isinstance(options.shape,int) else 0
-				) if options.ndim is not None or options.shape is not None else 1			
-		elif attr in ['zero','one','plus','minus','plusi','minusi']:
+				) if options.ndim is not None or options.shape is not None else 1
+		elif attr in ['ghz']:
 			dimension = max(
 				options.ndim if options.ndim is not None else 0,
 				len(options.shape) if options.shape is not None and not isinstance(options.shape,int) else 0
@@ -438,9 +438,9 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['state']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['mps','ghz']:
-			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
+			shape = {i: [options.D]*options.N for i in range(options.ndim)}
+		elif attr in ['ghz']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['element']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
@@ -675,57 +675,18 @@ class Basis(Dict):
 
 	@classmethod
 	@decorator	
-	def mps(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)		
-		data = [array([1,*[0]*(kwargs.D-1)],dtype=kwargs.dtype),*[array([*[0]*(kwargs.D)],dtype=kwargs.dtype)]*(kwargs.D-1)]
-		size = len(data)		
-		if kwargs.architecture is None or kwargs.architecture in ['array']:
-			data = sum(data)
-			if data is not None and data.ndim < max(
-				kwargs.ndim if kwargs.ndim is not None else 0,
-				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
-				):
-				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
-			data = array([outer(i,i) for i in data])
-			if data is not None and 1 < max(
-				kwargs.ndim if kwargs.ndim is not None else 0,
-				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
-				):
-				data = tensorprod([data,conjugate(data)])
-			data = transpose(reshape(data,(*[size]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
-		return data
-
-	@classmethod
-	@decorator	
-	def ghz(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)		
-		data = [ravel((1/sqrt(kwargs.D))*cls.element(D=kwargs.D,data=[i]*kwargs.N,dtype=kwargs.dtype)) for i in range(kwargs.D)]
-		size = len(data)
-		if kwargs.architecture is None or kwargs.architecture in ['array']:
-			data = sum(data)
-			if data is not None and data.ndim < max(
-				kwargs.ndim if kwargs.ndim is not None else 0,
-				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
-				):
-				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
-			data = array([outer(i,i) for i in data])
-			if data is not None and 1 < max(
-				kwargs.ndim if kwargs.ndim is not None else 0,
-				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
-				):
-				data = tensorprod([data,conjugate(data)])
-			data = transpose(reshape(data,(*[size]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
-		return data
-
-	@classmethod
-	@decorator	
 	def zero(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([1,*[0]*(kwargs.D-1)],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -733,8 +694,15 @@ class Basis(Dict):
 	def one(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([*[0]*(kwargs.D-1),1],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -742,8 +710,15 @@ class Basis(Dict):
 	def plus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -751,8 +726,15 @@ class Basis(Dict):
 	def minus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -760,8 +742,15 @@ class Basis(Dict):
 	def plusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1j],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -769,10 +758,40 @@ class Basis(Dict):
 	def minusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1j],dtype=kwargs.dtype)
-		if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-			data = outer(data,data)		
-		return data		
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)		
+		elif kwargs.architecture in ['tensor']:
+			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
+			data = array([outer(i,i) for i in data])
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
+		return data	
 
+	@classmethod
+	@decorator	
+	def ghz(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)		
+		data = [ravel((1/sqrt(kwargs.D))*cls.element(D=kwargs.D,data=[i]*kwargs.N,dtype=kwargs.dtype)) for i in range(kwargs.D)]
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			data = sum(data)
+			if data is not None and data.ndim < max(
+				kwargs.ndim if kwargs.ndim is not None else 0,
+				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
+				):
+				data = outer(data,data)
+		elif kwargs.architecture in ['tensor']:
+			data = array([outer(i,i) for i in data])
+			if data is not None and 1 < max(
+				kwargs.ndim if kwargs.ndim is not None else 0,
+				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
+				):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
+		return data
+
+	# Operator
 	@classmethod
 	@decorator	
 	def element(cls,*args,**kwargs):
@@ -782,8 +801,6 @@ class Basis(Dict):
 		data = inplace(data,index,1) if index is not None else data
 		return data
 
-
-	# Operator
 	@classmethod
 	@decorator
 	def projector(cls,*args,**kwargs):
@@ -3828,14 +3845,13 @@ class MPS(mps):
 				**{attr: Basis.state for attr in ['state','psi']},
 				**{attr: Basis.state for attr in ['haar']},
 				**{attr: Basis.rand for attr in ['random','rand']},
-				**{attr: Basis.mps for attr in ['mps']},
-				**{attr: Basis.ghz for attr in ['ghz']},
 				**{attr: Basis.zero for attr in ['zero','zeros','0']},
 				**{attr: Basis.one for attr in ['one','ones','1']},
 				**{attr: Basis.plus for attr in ['plus','+']},
 				**{attr: Basis.minus for attr in ['minus','-']},
 				**{attr: Basis.plusi for attr in ['plusi','+i']},
 				**{attr: Basis.minusi for attr in ['minusi','-i']},	
+				**{attr: Basis.ghz for attr in ['ghz']},
 			}
 			options = dict(D=D,**kwargs)
 			data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
@@ -3896,14 +3912,13 @@ if backend in ['quimb']:
 					**{attr: Basis.state for attr in ['state','psi']},
 					**{attr: Basis.state for attr in ['haar']},
 					**{attr: Basis.rand for attr in ['random','rand']},
-					**{attr: Basis.mps for attr in ['mps']},
-					**{attr: Basis.ghz for attr in ['ghz']},
 					**{attr: Basis.zero for attr in ['zero','zeros','0']},
 					**{attr: Basis.one for attr in ['one','ones','1']},
 					**{attr: Basis.plus for attr in ['plus','+']},
 					**{attr: Basis.minus for attr in ['minus','-']},
 					**{attr: Basis.plusi for attr in ['plusi','+i']},
 					**{attr: Basis.minusi for attr in ['minusi','-i']},	
+					**{attr: Basis.ghz for attr in ['ghz']},					
 				}
 				options = dict(D=D,**kwargs)
 				data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
@@ -6318,14 +6333,13 @@ class State(Object):
 		**{attr: Basis.state for attr in ['state','psi']},
 		**{attr: Basis.state for attr in ['haar']},
 		**{attr: Basis.rand for attr in ['random','rand']},
-		**{attr: Basis.mps for attr in ['mps']},		
-		**{attr: Basis.ghz for attr in ['ghz']},		
 		**{attr: Basis.zero for attr in ['zero','zeros','0']},
 		**{attr: Basis.one for attr in ['one','ones','1']},
 		**{attr: Basis.plus for attr in ['plus','+']},
 		**{attr: Basis.minus for attr in ['minus','-']},
 		**{attr: Basis.plusi for attr in ['plusi','+i']},
 		**{attr: Basis.minusi for attr in ['minusi','-i']},		
+		**{attr: Basis.ghz for attr in ['ghz']},
 		}
 	
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
