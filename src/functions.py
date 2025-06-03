@@ -28,7 +28,7 @@ from src.utils import grouper,conditions
 from src.utils import orng as rng
 from src.utils import arrays,scalars,nonzero,delim
 
-from src.iterables import permuter,setter,getter
+from src.iterables import permuter,setter,getter,Dictionary
 
 from src.io import load,dump
 
@@ -542,7 +542,7 @@ def permutations(dictionaries,*args,**kwargs):
 		delim = '.'
 		settings = {key: getter(dictionary,attr,delimiter=delim) for key,attr in []}
 		setter(dictionary,settings,delimiter=delim,default=None)
-	return 
+	return 	
 
 
 def state(*args,**kwargs):
@@ -569,66 +569,55 @@ def key(iterable,sort=False,group=False):
 
 	return key
 
-def brickwork(iterable,sort=False,group=False):
+def layout(iterable,sort=False,group=False,options=None):
 
-	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
+	if not options:
 
-	indexes = [*range(0,N-1,2),*range(1,N-1,2)]
-	attrs = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
-	boolean = lambda i,index,attribute,attributes: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute,attributes: len(attributes)*index+attributes.index(attribute)
+		N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
 
-	indices = {}
-	for index in indexes:
-		attributes = attrs(index)
-		for attribute in attributes:
-			for i in iterable:
-				if i in indices:
-					continue
-				if boolean(i,index,attribute,attributes):
-					indices[i] = groups(i,index,attribute,attributes)
-					break
-
-	iterable = indices
-
-	def key(key,iterable=iterable,sort=sort,group=group):
-
-		if sort and group:
-			index = (list(iterable).index(key),iterable[key])
-		elif sort:
-			index = list(iterable).index(key)
-		elif group:
-			index = iterable[key]
+		if options.get('layout') is None:
+			indexes = [*range(0,N-1,1)]
+		elif options.get('layout') in ['nearestneighbour']:
+			indexes = [*range(0,N-1,1)]
+		elif options.get('layout') in ['brickwork']:
+			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
 		else:
-			index = key
+			indexes = [*range(0,N-1,1)]
 
-		return index
 
-	return key
-
-def nearestneighbour(iterable,sort=False,group=False):
-
-	N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
-
-	indexes = [*range(0,N-1,1),]
-	attrs = lambda index: [i for where in [(index,index+1),(index,),(index+1,)] for i in ([where]*([tuple(iterable[i].where) for i in iterable].count(where)) if len(where)>1 else [where])]
-	boolean = lambda i,index,attribute,attributes: tuple(iterable[i].where)==tuple(attribute)
-	groups = lambda i,index,attribute,attributes: len(attributes)*index+attributes.index(attribute)
-
-	indices = {}
-	for index in indexes:
-		attributes = attrs(index)
-		for attribute in attributes:
-			for i in iterable:
-				if i in indices:
+		for number,option in enumerate(options):
+			for attr in option:
+				if callable(option[attr]):
 					continue
-				if boolean(i,index,attribute,attributes):
-					indices[i] = groups(i,index,attribute,attributes)
-					break
+				if attr in ['where']:
+					option[attr] = lambda index,indexes,number=number,attr=attr,options=options: [tuple(index+i for i in obj) for obj in options[number][attr]]
+				elif attr in ['unitary']:
+					option[attr] = lambda index,indexes,number=number,attr=attr,options=options: [obj for obj in options[number][attr]]
+				else:
+					option[attr] = lambda index,indexes,number=number,attr=attr,options=options: [obj for obj in options[number][attr]]
 
-	iterable = indices
+		def attrs(index,indexes):
+			return [{attr:option[attr](index,indexes) for attr in option} for option in options]
+		def boolean(i,index,indexes,attribute,attributes):
+			return all(type(attribute[attr])(getattr(iterable[i],attr))==attribute[attr] for attr in attributes)
+		def groups(i,index,indexes,attribute,attributes):
+			return len(attributes)*index+attributes.index(attribute)
+
+		indices = {}
+		for index in indexes:
+			attributes = attrs(index,indexes)
+			for attribute in attributes:
+				for i in iterable:
+					if i in indices:
+						continue
+					if boolean(i,index,indexes,attribute,attributes):
+						indices[i] = groups(i,index,indexes,attribute,attributes)
+						break
+
+		iterable = indices
 
 	def key(key,iterable=iterable,sort=sort,group=group):
+
 		if sort and group:
 			index = (list(iterable).index(key),iterable[key])
 		elif sort:

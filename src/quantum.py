@@ -8087,7 +8087,7 @@ class Module(System):
 		configuration = self.configuration if configuration is None else configuration
 
 		model = {index: model for index,model in enumerate(model for index in self.model for model in self.model[index])}
-		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None).items()} if configuration is not None else {}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,options=None).items()} if configuration is not None else {}
 
 		model = {index: [model[i] for i in group] for index,group in enumerate(groupby(model,**options))}
 

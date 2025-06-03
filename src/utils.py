@@ -10735,40 +10735,42 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
-def sortby(iterable,key=None):
+def sortby(iterable,key=None,options=None):
 	'''
 	Sort dictionary
 	Args:
 		iterable (dict): dictionary to be sorted
-		key (str,callable): sort iterable, with signature key(iterable,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		key (str,callable): sort iterable, with signature key(iterable,sort=True,options=None) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		options (dict): options
 	Returns:
 		iterable (dict): Sorted iterable keys
 	'''
 	
-	def default(iterable=None,sort=None,group=None):
+	def default(iterable=None,sort=None,group=None,options=options):
 		iterable = {i:id(iterable[i]) for i in iterable}
 		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
 		return key
 
 	key = load(key,default=default) if isinstance(key,str) else key if callable(key) else default
 
-	key = key(iterable=iterable,sort=True)
+	key = key(iterable=iterable,sort=True,options=options)
 
 	iterable = [index for index in sorted(iterable,key=key)]
 
 	return iterable
 
-def groupby(iterable,key=None):
+def groupby(iterable,key=None,options=None):
 	'''
 	Group dictionary
 	Args:
 		iterable (iterable): dictionary to be grouped
-		key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		key (str,callable): group iterable, with signature key(iterable,group=True,sort=True,options=None) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		iterable (iterable[group]): grouped iterable key groups
 	'''
 
-	def default(iterable,group=None,sort=None):
+	def default(iterable,group=None,sort=None,options=None):
 		iterable = {i:id(iterable[i]) for i in iterable}
 		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
 		return key
@@ -10777,7 +10779,7 @@ def groupby(iterable,key=None):
 	
 	iterable = {index: iterable[index] for index in sortby(iterable,key=key)}
 
-	key = key(iterable=iterable,group=True)
+	key = key(iterable=iterable,group=True,options=options)
 
 	iterable = [[*group] for index,(name,group) in enumerate(itertools.groupby(iterable,key=key))]
 

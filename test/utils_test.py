@@ -1284,35 +1284,37 @@ def test_sortgroupby(path=None,tol=None):
 	from src.utils import sortby,groupby
 
 	class obj(object):
-		def __init__(self,where):
+		def __init__(self,where,unitary):
 			self.where = (*where,) if isinstance(where,iterables) else (where,)
+			self.unitary = unitary
 			return
 
 		def __repr__(self):
 			return str(self)
 
 		def __str__(self):
-			return str(self.where)
+			return f'{str(self.where)}-{str(self.unitary)}'
 
 	sizes = range(3,8)
 	keys = {
-		'src.functions.brickwork':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],
-		'src.functions.nearestneighbour':lambda N:[*range(0,N-1,1),],
+		'brickwork':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],'where':lambda i=None: ([(i,i+1),(i,),(i+1,)] if i is not None else 3)},
+		'nearestneighbour':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,1),],'where':lambda i=None: ([(i,i+1),(i,),(i+1,)] if i is not None else 3)},
+		'brickwork_local':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],'where':lambda i=None: ([(i,i+1),(i,),(i+1,),(i,),(i+1,)] if i is not None else 5)},
+		# 'nearestneighbour_local':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,1),],'where':lambda i=None: ([(i,i+1),(i,),(i+1,),(i,),(i+1,)] if i is not None else 5)},
 		}
 
 	for N in sizes:
 		for key in keys:
-			iterable = {index:obj(where) for index,where in enumerate(where for i in keys[key](N) for where in [(i,i+1),(i,),(i+1,)])}
+			iterable = {index:obj(where=where,unitary=((index%keys[key]['where']()) < (keys[key]['where']()-2))) for index,where in enumerate(where for i in keys[key]['indices'](N) for where in keys[key]['where'](i))}
+			tmp = copy(iterable)
 
-			iterable = {index: iterable[i] for index,i in enumerate(sortby(iterable,key=key))}
+			iterable = {index: iterable[i] for index,i in enumerate(sortby(iterable,key=keys[key]['key']))}
 
-			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,key=key))}
+			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,key=keys[key]['key']))}
 
 			print(key,N,len(iterable))
-			if key in ['src.functions.brickwork']:
-				assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in [*range(0,N-1,2),*range(1,N-1,2)] for j in [(i,i+1),(i,),(i+1,)]]))
-			elif key in ['src.functions.nearestneighbour']:
-				assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in [*range(0,N-1,1)] for j in [(i,i+1),(i,),(i+1,)]]))
+
+			assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in keys[key]['indices'](N) for j in keys[key]['where'](i)]))
 
 	print('Passed')
 
@@ -1918,8 +1920,8 @@ if __name__ == '__main__':
 	# test_stability(path,tol)
 	# test_seed(path,tol)
 	# test_sortby(path,tol)
-	# test_sortgroupby(path,tol)
+	test_sortgroupby(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)
-	test_nmf(path,tol)
+	# test_nmf(path,tol)
