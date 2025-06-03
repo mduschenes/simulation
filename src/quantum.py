@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,wraps,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
+from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange
 from src.utils import tensor,matrix,mps,context
 from src.utils import contraction,gradient_contraction
@@ -260,9 +260,7 @@ class Basis(Dict):
 			locality = 1
 		elif attr in ['CNOT']:
 			locality = 2
-		elif attr in ['gate']:
-			locality = options.N
-		elif attr in ['clifford']:
+		elif attr in ['gate','clifford']:
 			locality = options.N
 		elif attr in ['unitary']:
 			locality = options.N
@@ -336,10 +334,8 @@ class Basis(Dict):
 			dimension = 2
 		elif attr in ['CNOT']:
 			dimension = 2
-		elif attr in ['gate']:
+		elif attr in ['gate','clifford']:
 			dimension = 2
-		elif attr in ['clifford']:
-			dimension = 2			
 		elif attr in ['unitary']:
 			dimension = 2
 		elif attr in ['state']:
@@ -430,10 +426,8 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['CNOT']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['gate']:
+		elif attr in ['gate','clifford']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['clifford']:
-			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['unitary']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
 		elif attr in ['state']:
@@ -1000,7 +994,7 @@ class Measure(System):
 			data (str,array,tensor,mps,Measure): data of measure
 			operator (str): name of measure basis
 			string (str): string label of measure
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 			args (iterable): Additional class positional arguments
 			kwargs (dict): Additional class keyword arguments
 		'''
@@ -3824,7 +3818,7 @@ class MPS(mps):
 		N (int): Tensor system size
 		D (int): Tensor physical bond dimension
 		S (int): Tensor virtual bond dimension
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		kwargs (dict): Additional keyword arguments
 	'''
 
@@ -4241,7 +4235,7 @@ class Object(System):
 		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -4319,7 +4313,7 @@ class Object(System):
 		identity = self.identity
 		basis = self.basis
 		default = self.default
-		
+
 		parameters = self.parameters() if callable(self.parameters) else self.parameters if self.parameters is not None else None
 		system = self.system if self.system is not None else None
 
@@ -4328,7 +4322,7 @@ class Object(System):
 			D=D,ndim=ndim,
 			data=self.data,
 			random=self.random,seed=seeder(self.seed),
-			architecture=self.architecture,dtype=self.dtype,system=self.system
+			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
 		number = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in (operator if isinstance(operator,iterables) else operator.split(delim))],**options) if operator is not None else None if not self.null() else None
@@ -4341,7 +4335,7 @@ class Object(System):
 			ndim=ndim,
 			data=self.data,
 			random=self.random,seed=seeder(self.seed),
-			architecture=self.architecture,dtype=self.dtype,system=self.system
+			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
 		# Set tenor, local, locality, where
@@ -4466,7 +4460,7 @@ class Object(System):
 			D=D,N=locality//number,ndim=ndim,
 			data=self.data,			
 			random=self.random,seed=seeder(self.seed),
-			architecture=self.architecture,dtype=self.dtype,system=self.system
+			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
 		assert ( self.null() or (operator is None and where is None and not locality) or (
@@ -4663,7 +4657,7 @@ class Object(System):
 			D=self.D,N=self.locality//self.number,ndim=self.ndim,
 			data=self.data,			
 			random=self.random,seed=seeder(self.seed),
-			architecture=self.architecture,dtype=self.dtype,system=self.system
+			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
 		if tensor not in [None,False]:
@@ -4685,7 +4679,7 @@ class Object(System):
 			N = self.N if N is None else N
 			D = self.D if D is None else D
 			d = Basis.dimensions(cls)
-			options = dict(architecture=self.architecture,dtype=self.dtype,system=self.system)
+			options = dict(index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 			if not memory(D**N):
 				return data
@@ -4933,7 +4927,7 @@ class Object(System):
 			N (int): Size of system
 			D (int): Local dimension of system
 			space (str,dict,Space): Type of local space
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''
 
 		space = self.space if space is None else space
@@ -4971,7 +4965,7 @@ class Object(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,dict,Time): Type of time evolution						
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''
 
 		time = self.time if time is None else time
@@ -5011,7 +5005,7 @@ class Object(System):
 			N (int): Size of system
 			d (int): Spatial dimension of system
 			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
 		'''		
 
 		lattice = self.lattice if lattice is None else lattice
@@ -5270,7 +5264,7 @@ class Object(System):
 
 		basis = 'pauli' if basis is None else basis
 
-		options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
+		options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,seed=seeder(self.seed),system=self.system)
 
 		basis = Basis.basis(basis,**options) if basis is not None else None
 
@@ -5564,7 +5558,7 @@ class Data(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5607,7 +5601,7 @@ class Data(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
 
@@ -5666,7 +5660,7 @@ class Gate(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5719,7 +5713,7 @@ class Gate(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
@@ -5747,7 +5741,7 @@ class Gate(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,
 							local=local,tensor=tensor,							
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -5777,7 +5771,7 @@ class Gate(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,							
 							local=local,tensor=tensor,						
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -5855,7 +5849,7 @@ class Pauli(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -5901,7 +5895,7 @@ class Pauli(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
 
@@ -5989,7 +5983,7 @@ class Haar(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -6033,7 +6027,7 @@ class Haar(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
@@ -6061,7 +6055,7 @@ class Haar(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,
 							local=local,tensor=tensor,							
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -6091,7 +6085,7 @@ class Haar(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,							
 							local=local,tensor=tensor,						
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -6171,7 +6165,7 @@ class Noise(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -6230,7 +6224,7 @@ class Noise(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
 
@@ -6240,7 +6234,7 @@ class Noise(Object):
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=self.ndim,						
 						random=self.random,bounds=[-1,1],seed=seed,
-						architecture=self.architecture,dtype=self.dtype,system=self.system,
+						index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 						data=self.data,operator=None,
 						basis=self.basis,axes=axes,shapes=shape,
 						)					
@@ -6250,7 +6244,7 @@ class Noise(Object):
 					options = Dictionary(
 						D=self.D,N=self.locality//self.number,ndim=self.ndim,						
 						random=self.random,bounds=[-1,1],seed=seed,
-						architecture=self.architecture,dtype=self.dtype,system=self.system,
+						index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 						data=self.data,operator=tensorprod([diag((1+self.parameters())**(arange(D)+2) - 1) for i in range(self.locality if self.local else self.N)]),
 						basis=self.basis,axes=axes,shapes=shape,
 						)						
@@ -6318,7 +6312,7 @@ class State(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -6372,7 +6366,7 @@ class State(Object):
 			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
 				
-				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,architecture=self.architecture,dtype=self.dtype,system=self.system)
+				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
 				_data = [] if self.local else [self.default]*(self.N-self.locality) if data is not None else None
@@ -6400,7 +6394,7 @@ class State(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,							
 							local=local,tensor=tensor,						
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -6430,7 +6424,7 @@ class State(Object):
 							D=self.D,N=self.locality//self.number,ndim=ndim,							
 							local=local,tensor=tensor,						
 							random=self.random,seed=seed,
-							architecture=self.architecture,dtype=self.dtype,system=self.system,
+							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
 							basis=self.basis,axes=axes,shapes=shape,
 							)
@@ -6556,7 +6550,7 @@ class Operator(Object):
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -6633,7 +6627,7 @@ class Objects(Object):
 		time (str,dict,Time): Type of time evolution						
 		lattice (str,dict,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -6791,16 +6785,18 @@ class Objects(Object):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
-			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(**{**dict(index=self.data[i].index,seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
+					kwargs[i%size].index = i
 					out = self.data[i%size](parameters=parameters[i//size],state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
+					kwargs[i%size].index = i					
 					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
@@ -6812,11 +6808,12 @@ class Objects(Object):
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
 			size = shape[1]
-			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(**{**dict(index=self.data[i].index,seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
+					kwargs[i%size].index = i					
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
@@ -6827,6 +6824,7 @@ class Objects(Object):
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
 			else:
 				for i in indexes:
+					kwargs[i%size].index = i					
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
@@ -7629,16 +7627,18 @@ class Operators(Objects):
 			shape = (self.M,len([i for i in self.data if self.data[i] is not None]))
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			size = shape[1]
-			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(**{**dict(index=self.data[i].index,seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
+					kwargs[i%size].index = i					
 					out = self.data[i%size](parameters=parameters[i//size],state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
+					kwargs[i%size].index = i					
 					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
@@ -7650,11 +7650,12 @@ class Operators(Objects):
 			indices = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None]
 			indexes = [j*shape[1]+i for j in range(shape[0]) for i in self.data if self.data[i] is not None and self.data[i].variable]
 			size = shape[1]
-			kwargs = [Dictionary(**{**dict(seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
+			kwargs = [Dictionary(**{**dict(index=self.data[i].index,seed=self.data[i].seed),**kwargs}) for i in self.data if self.data[i] is not None]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
+					kwargs[i%size].index = i
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
@@ -7665,6 +7666,7 @@ class Operators(Objects):
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
 			else:
 				for i in indexes:
+					kwargs[i%size].index = i					
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
@@ -7719,7 +7721,7 @@ class Module(System):
 		M (int): Duration of system
 		state (array,State): state for module			
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -7924,8 +7926,8 @@ class Module(System):
 		options = self.options
 
 		def func(parameters,state,options=options,**kwargs):
-			M,N,size = self.M,self.N,len(self.data)
-			kwargs = [Dictionary(**{**dict(seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
+			M,N,index,size = self.M,self.N,None,len(self.data)
+			kwargs = [Dictionary(**{**dict(index=index,seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
 			attrs = copy(kwargs)
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
@@ -7938,32 +7940,31 @@ class Module(System):
 			for l in range(M):
 				for i,data in enumerate(self.data):
 
-					print('index',l,i)					
-
+					# print('index',l,i)					
+					kwargs[i].index = (l,i)
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-					
-					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					trace = self.measure.trace(parameters=parameters,state=state)
+					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					# trace = self.measure.trace(parameters=parameters,state=state)
 
-					if self.measure.architecture in ['tensor']:					
-						trace = trace.array().item()
-					elif self.measure.architecture in ['tensor_quimb']:
-						trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					trace = trace.real-1
-					data = state
-					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					print('trace',trace)
-					# where = [i,i+1]
-					# for i in data:
-					# 	if i < min(where):
-					# 		print(i,addition(data[i].data,(0,1)))
-					# 	elif i > max(where):
-					# 		print(i,addition(data[i].data,(-2,-1)))
-					# print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
-					# print('data',data)
-					print()
+					# if self.measure.architecture in ['tensor']:					
+					# 	trace = trace.array().item()
+					# elif self.measure.architecture in ['tensor_quimb']:
+					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
+					# trace = trace.real-1
+					# data = state
+					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					# print('trace',trace)
+					# # where = [i,i+1]
+					# # for i in data:
+					# # 	if i < min(where):
+					# # 		print(i,addition(data[i].data,(0,1)))
+					# # 	elif i > max(where):
+					# # 		print(i,addition(data[i].data,(-2,-1)))
+					# # print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
+					# # print('data',data)
+					# print()
 
 			return state
 

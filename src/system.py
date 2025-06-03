@@ -40,6 +40,7 @@ class System(Dictionary):
 		configuration (object): configuration for class
 
 		key (object): key for class
+		index (object): index for class
 		seed (array,int): Seed for random number generation
 		seeding (array,int): Seed for random number generation
 		random (str): Type of random number generation
@@ -80,6 +81,7 @@ class System(Dictionary):
 			'configuration':None,
 
 			'key':None,
+			'index':None,
 			'seed':None,
 			'seedling':None,
 			'random':None,

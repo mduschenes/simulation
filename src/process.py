@@ -1513,14 +1513,11 @@ def apply(keys,data,plots,processes,verbose=None):
 				except:
 					pass
 
-
-
 		attributes = list(set((
 			*[attr for attr in data],
 			*[attr for attr in analyses if any(i in attr for i in data)],
 			*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
 			)))
-
 
 		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 			key,value = name,None
@@ -1563,7 +1560,10 @@ def apply(keys,data,plots,processes,verbose=None):
 			groups = groups.groupby(by=by,**options)
 
 
-		if not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes):
+		if (
+			(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
+			(not all(attr in data for attr in [*independent,*dependent]))
+			):
 			key,value = name,None
 			setter(plots,{key:value},delimiter=delim,default=True)
 			continue
