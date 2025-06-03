@@ -94,7 +94,7 @@
 						"ax.set_title.size": 36,
 						"ax.set_ylabel.size": 36,
 						"ax.set_xlabel.size": 36,
-						"ax.set_ylabel.y": 1.1,
+						"ax.set_ylabel.y": null,
 						"ax.set_yticklabels": null,
 						"ax.set_xticklabels": null,
 						"ax.tick_params.left": true,
@@ -105,10 +105,7 @@
 						"ax.set_colorbar.aspect": 40,
 						"ax.set_colorbar.pad": 0.02,
 						"ax.set_colorbar.ax.tick_params.labelsize": 36,
-						"ax.legend.loc": [
-							1.5,
-							3.375
-						],
+						"ax.legend.loc": null,
 						"ax.legend.title_fontsize": 36,
 						"ax.legend.fontsize": 36,
 						"ax.legend.prop.size": 36,

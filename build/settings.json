@@ -7,7 +7,7 @@
 	},
 "seed":{
 	"seed":123,
-	"size":3,
+	"size":12,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -15,8 +15,7 @@
 "permutations":{
 	"permutations":{	
 
-		"module.M":[1,2,5,10,20,50],
-		"module.M":[4],
+		"module.M":[1,2,4,8,10,12,14,16,18,20,24,26,26,30,32,40,50],
 		"model.N":[4,6,8],
 		"model.N":[4],
 		"model.M":[1],
@@ -37,8 +36,8 @@
 		"module.measure.options":[{}],
 		"module.options":[{"scheme":"nmf","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","metric":"div","seed":null}],
 		"module.options":[{"scheme":"svd","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","metric":"div","seed":null}],
-		"module.options.S":[2,4,8,16,32,64,128,256],
-		"module.options.S":[2],
+		"module.options.S":[4,16,64,256],
+		"module.options.S":[16],
 		"module.configuration":[{
 			"key":"src.functions.brickwork",
 			"sort":null,
@@ -50,12 +49,11 @@
 		"model.data.unitary.where":["||ij||"],
 
 		"model.data.noise.operator":[["depolarize"]],
-		"model.data.noise.parameters":[1e-4,1e-3,1e-2,1e-1],
-		"model.data.noise.parameters":[1e-2],
+		"model.data.noise.parameters":[1e-4,1e-3,5e-3,1e-2,5e-2,1e-1],
 		"model.data.noise.where":["||i.j||"],
 
 		"state.string":["psi"],
-		"state.operator":["zero"],
+		"state.operator":["haar"],
 		"state.local":[false],
 		"state.tensor":[true],
 		"state.D":[2],
@@ -64,19 +62,19 @@
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
 
-		"jobs.job.cwd":["~/scratch/tmp"],
-		"jobs.postprocess.cwd":["~/scratch/tmp"],
+		"jobs.job.cwd":["~/scratch/probability"],
+		"jobs.postprocess.cwd":["~/scratch/probability"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],
-		"jobs.job.process":[null],
+		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[null],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.local":[null],
 		"jobs.postprocess.local":[null],
@@ -293,7 +291,52 @@
 		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
-	"options":{}
+	"options":{},
+	"attributes":{
+		"N":"N","M":"M","d":"d","D":"D",
+		"key":"key","instance":"instance","timestamp":"timestamp",
+		"seed":"seed","seeding":"seeding",
+		"noise.parameters":"noise.parameters",
+		"operator":"measure.operator",
+		"S":"options.S",
+		"scheme":"options.scheme",		
+		"periodic":"measure.options.periodic",
+		
+		"infidelity.quantum":null,
+		"infidelity.classical":"measure.infidelity_classical",
+		"infidelity.pure":null,
+		"norm.quantum":null,
+		"norm.classical":"measure.norm_classical",
+		"norm.pure":null,
+
+		"entanglement.quantum":null,
+		"entanglement.classical":"measure.entanglement_classical",
+		"entanglement.renyi":null,
+		"entangling.quantum":null,
+		"entangling.classical":null,
+		"entangling.renyi":null,
+		
+		"mutual.quantum":null,
+		"mutual.measure":null,
+		"mutual.classical":"measure.mutual_classical",
+		"mutual.renyi":null,
+		"discord.quantum":null,
+		"discord.classical":null,
+		"discord.renyi":null,
+		
+		"spectrum.quantum":null,
+		"spectrum.classical":"measure.spectrum_classical",
+		"rank.quantum":null,
+		"rank.classical":"measure.rank_classical"
+	},
+	"keywords": {
+		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
+		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
+		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
+	},
+	"options":{}	
 },
 "workflow": {
 	"path":{

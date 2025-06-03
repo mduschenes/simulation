@@ -850,7 +850,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		return _layout_
 
 	def _position(layout):
-		if all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
+		if all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,LAYOUT[:2])]):
 			position = ((((layout['index']-1)//layout['ncols'])%layout['nrows'])+1,((layout['index']-1)%layout['ncols'])+1)
 		else:
 			position = (1,1)
@@ -868,7 +868,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'top_right':(None,None),'bottom_right':(None,None),'middle_right':(None,None),
 				'top_centre':(None,None),'bottom_centre':(None,None),'middle_centre':(None,None),
 				}
-		elif all([kwarg == _kwarg and _kwarg in layout for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
+		elif all(layout.get(kwarg) in [1,None] for kwarg in LAYOUT[:2]):
+			positions = {
+				'top':(1,None),'bottom':(1,None),'middle':(None,None),
+				'left':(None,1),'right':(None,1),'centre':(None,None),
+				'top_left':(None,None),'bottom_left':(None,None),'middle_left':(None,None),
+				'top_right':(None,None),'bottom_right':(None,None),'middle_right':(None,None),
+				'top_centre':(None,None),'bottom_centre':(None,None),'middle_centre':(None,None),
+				}			
+		elif all([kwarg == _kwarg and _kwarg in layout for kwarg,_kwarg in zip(LAYOUT,LAYOUT[:2])]):
 			
 			if layout.get(attr):
 				positions = [((((i-1)//layout['ncols'])%layout['nrows'])+1,((i-1)%layout['ncols'])+1) for i in layout[attr]]
@@ -1845,6 +1853,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				call = True
 
+			elif attr in ['set_%slabel'%(axes) for axes in AXES]:
+				for axes in AXES:
+					if attr in ['set_%slabel'%(axes)]:
+						break
+				if (axes in kwargs[attr]) and (kwargs[attr].get(axes) is None) and all(kwargs.get('layout',{}).get(k) in [1,None] for k in LAYOUT[:2]):
+					kwargs[attr][axes] = 0.5
 
 			elif attr in ['%saxis.set_%s_%s'%(axes,which,formatter) for axes in AXES for which in WHICH for formatter in FORMATTER]:
 				
@@ -2187,7 +2201,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					break			
 
 
-			# try:
 			if args != []:
 				_attr = _obj(*args,**_kwargs_)
 			else:
@@ -2202,13 +2215,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							_attr = None
 					except Exception as exception:
 						logger.log(debug,'%r'%(exception))
+						logger.log(debug,'%s'%(traceback.format_exc()))
 						_attr = None
-						# exit()
-			# except Exception as exception:
-			# 	_attr = None
-			# 	if not isinstance(exception,AttributeError):
-			# 		logger.log(debug,'%r %r %s %r %r'%(exception,_obj,attr,args,_kwargs_))
-			# 		logger.log(debug,'%r'%(traceback.format_exc()))
+
 			for k in _kwds:
 				_attr_ = _attr
 				for a in k.split(delimiter)[:-1]:

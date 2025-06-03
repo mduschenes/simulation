@@ -1521,6 +1521,7 @@ def apply(keys,data,plots,processes,verbose=None):
 			*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
 			)))
 
+
 		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 			key,value = name,None
 			setter(plots,{key:value},delimiter=delim,default=True)
@@ -2089,7 +2090,7 @@ def plotter(plots,processes,verbose=None):
 
 			
 			data = [{attr: data[OTHER][attr] for attr in data[OTHER] if attr not in [*ALL,OTHER]}
-				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop])]
+				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if data]
 			data = {attr:[i[attr] if isinstance(i[attr],scalars) else tuple(i[attr]) for i in data] for attr in set(attr for i in data for attr in i if all(attr in i for i in data))}
 			data = {attr: sorted(set(data[attr]),key=lambda i:data[attr].index(i)) for attr in data}
 			data = {attr: [i if isinstance(i,scalars) else [*i] for i in data[attr]] for attr in data}
