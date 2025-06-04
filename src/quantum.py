@@ -2669,7 +2669,7 @@ class Measure(System):
 
 			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
-			state = state.array()
+			state = state.array().ravel()
 
 			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
 
@@ -3080,7 +3080,7 @@ class Measure(System):
 		'''
 		
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(real(data)/log(self.D**N))
+		func = lambda data,func=func: func(real(data)/log(self.D**(2*N)))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -3162,7 +3162,7 @@ class Measure(System):
 		'''
 		
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(real(data)/log(self.D**N))
+		func = lambda data,func=func: func(real(data)/log(self.D**(2*N)))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
@@ -3291,7 +3291,7 @@ class Measure(System):
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(real(data)/log(self.K**N))
+		func = lambda data,func=func: func(real(data)/log(self.K**L))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
