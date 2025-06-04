@@ -1298,7 +1298,7 @@ def test_sortgroupby(path=None,tol=None):
 	sizes = range(3,8)
 	keys = {
 		'brickwork':{
-			'iterable':(lambda N:
+			'func':(lambda N:
 					[obj
 					for index in [*range(0,N-1,2),*range(1,N-1,2)]
 					for obj in [
@@ -1310,8 +1310,8 @@ def test_sortgroupby(path=None,tol=None):
 					]
 					]),
 			'options':{
-				'string':'brickwork',
-				'attr':[
+				'layout':'brickwork',
+				'attribute':[
 					{"where":"ij","unitary":True},
 					{"where":"i","unitary":True},
 					{"where":"j","unitary":True},
@@ -1321,46 +1321,42 @@ def test_sortgroupby(path=None,tol=None):
 				}
 			},
 		'nearestneighbour':{
-			'iterable':(lambda N:
+			'func':(lambda N:
 					[obj
 					for index in [*range(0,N-1,1),]
 					for obj in [
 					{"where":(index+0,index+1),"unitary":True},
-					{"where":(index+0,),"unitary":True},
-					{"where":(index+1,),"unitary":True},
-					{"where":(index+0,),"unitary":False},
-					{"where":(index+1,),"unitary":False}
+					{"where":(index+0,index+1),"unitary":False},
 					]
 					]),
 			'options':{
-				'string':'nearestneighbour',
-				'attr':[
+				'layout':'nearestneighbour',
+				'attribute':[
 					{"where":"ij","unitary":True},
-					{"where":"i","unitary":True},
-					{"where":"j","unitary":True},
-					{"where":"i","unitary":False},
-					{"where":"j","unitary":False}
+					{"where":"ij","unitary":False},
 					]
 				}
 			},		
 		}
 
-	for N in sizes:
-		for key in keys:
+	for key in keys:
 
-			iterable = {index:Obj(**obj) for index,obj in enumerate(keys[key].pop('iterable')(N))}
+		func = keys[key].pop('func')
+		
+		for N in sizes:
+
+			iterable = {index:Obj(**obj) for index,obj in enumerate(func(N)) if obj is not None}
 			
+			print(key,N,len(iterable))
+			print(iterable)
+
 			tmp = copy(iterable)
 
 			iterable = {index:iterable[index] for index in samples(list(iterable),k=len(iterable))}
 
-			print(iterable)
-
 			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,**keys[key]))}
 
-			print(key,N,len(iterable))
-
-			assert all(i==j for i,j in zip([i for index in iterable for i in iterable[index]],[tmp[index] for index in tmp]))
+			assert all(all(getattr(i,attr)==getattr(j,attr) for attr in j.__dict__) for i,j in zip([i for index in iterable for i in iterable[index]],[tmp[index] for index in tmp]))
 
 	print('Passed')
 

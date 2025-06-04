@@ -25,7 +25,7 @@
 		"model.tensor":[true],
 		"model.configuration":[{
 			"key":null,
-			"options":{"string":"brickwork","attr":[{"where":"ij","unitary":true},{"where":"i","unitary":true},{"where":"j","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
+			"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 		
 		"module.measure.string":["povm"],
@@ -39,7 +39,7 @@
 		"module.options.S":[16],
 		"module.configuration":[{
 			"key":null,
-			"options":{"string":"brickwork","attr":[{"where":"ij","unitary":true},{"where":"i","unitary":true},{"where":"j","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
+			"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 
 		"model.data.unitary.operator":["haar"],
@@ -253,6 +253,7 @@
 		"operator":"measure.operator",
 		"S":"options.S",
 		"scheme":"options.scheme",		
+		"layout":"configuration.options.layout",
 		"periodic":"measure.options.periodic",
 		
 		"infidelity.quantum":"measure.infidelity_quantum",
@@ -298,6 +299,7 @@
 		"operator":"measure.operator",
 		"S":"options.S",
 		"scheme":"options.scheme",		
+		"layout":"configuration.options.layout",		
 		"periodic":"measure.options.periodic",
 		
 		"infidelity.quantum":null,

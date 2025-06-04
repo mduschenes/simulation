@@ -16,7 +16,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import asscalar,prod
+from src.utils import asscalar,prod,copy
 
 from src.utils import integers,delim,datatype
 
@@ -706,3 +706,94 @@ class Lattice(object):
 			boundary (bool): Edge is across boundary
 		'''
 		return self.boundary(edge)
+
+def layout(iterable,sort=False,group=False,options=None):
+	'''
+	Set layout of iterable
+	Args:
+		iterable (dict[str,object]): Iterable to sort and group
+		sort (bool): Sort iterable
+		group (bool): Group iterable
+		options (dict): Additional keyword arguments
+			'layout' (str): layout type for indexes corresponding to layout blocks
+			'attribute' (iterable[dict]): Iterable of attributes to sort/group by for each object in block
+				[{'where':'ij','unitary':True},{'where':'i','unitary':False},{'where':'j','unitary':False}]
+	Returns:
+		key (callable): sorting key function, with signature key(key) -> sortable object i.e) int,float,str,tuple
+	'''
+
+	if options:
+
+		options = copy(options)
+
+		objects = dict(
+			where =  {'ij':[0,1],'i':[0],'j':[1]},
+			unitary = {True:True,False:False},
+			)
+		defaults = dict(layout=None,attribute=[])
+
+		options.update({option:defaults[option] for option in defaults if options.get(option) is None})
+
+		N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
+
+		name = 'layout'
+		if options[name] is None:
+			indexes = [*range(0,N-1,1)]
+
+		elif options[name] in ['nearestneighbour']:
+			indexes = [*range(0,N-1,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)
+		elif options[name] in ['brickwork']:
+			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)			
+		else:
+			indexes = [*range(0,N-1,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)			
+
+		name = 'attribute'
+		for item,option in enumerate(options[name]):
+			for attr in option:
+				if callable(option[attr]):
+					continue
+				if attr in ['where']:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): tuple(index+i for i in objects.get(obj,obj))
+				elif attr in ['unitary']:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): objects.get(obj,obj)
+				else:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): objects.get(obj,obj)
+
+		def attrs(index,indexes,name=name):
+			return [{attr:option[attr](index,indexes) for attr in option} for option in options[name]]
+		def boolean(i,index,indexes,attribute,attributes,name=name):
+			return all(type(attribute[attr])(getattr(iterable[i],attr))==attribute[attr] for attr in attribute)
+
+		indices = {}
+		for index in indexes:
+			attributes = attrs(index,indexes)
+			for attribute in attributes:
+				for i in iterable:
+					if i in indices:
+						continue
+					if boolean(i,index,indexes,attribute,attributes):
+						indices[i] = groups(i,index,indexes,attribute,attributes)
+						break
+
+		iterable = {**indices,**{i:iterable[i] for i in iterable if i not in indices}}
+
+	def key(key,iterable=iterable,sort=sort,group=group):
+
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
+
+		return index
+
+	return key

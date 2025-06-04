@@ -10749,7 +10749,9 @@ def sortby(iterable,key=None,options=None):
 		iterable (dict): Sorted iterable keys
 	'''
 	
-	key = load(key) if isinstance(key,str) else key if callable(key) else layout
+	key = load(key) if isinstance(key,str) else key if callable(key) else None
+
+	key = layout if not callable(key) else key
 
 	key = key(iterable=iterable,sort=True,options=options)
 
@@ -10768,9 +10770,11 @@ def groupby(iterable,key=None,options=None):
 		iterable (iterable[group]): grouped iterable key groups
 	'''
 
-	iterable = {index: iterable[index] for index in sortby(iterable,key=key)}
+	iterable = {index: iterable[index] for index in sortby(iterable,key=key,options=options)}
 
-	key = load(key) if isinstance(key,str) else key if callable(key) else layout
+	key = load(key) if isinstance(key,str) else key if callable(key) else None
+
+	key = layout if not callable(key) else key
 
 	key = key(iterable=iterable,group=True,options=options)
 
@@ -10778,90 +10782,6 @@ def groupby(iterable,key=None,options=None):
 
 	return iterable
 
-
-def layout(iterable,sort=False,group=False,options=None):
-	'''
-	Set layout of iterable
-	Args:
-		iterable (dict[str,object]): Iterable to sort and group
-		sort (bool): Sort iterable
-		group (bool): Group iterable
-		options (dict): Additional keyword arguments
-			'string' (str): layout type for indexes corresponding to layout blocks
-			'attr' (iterable[dict]): Iterable of attributes to sort/group by for each object in block
-				[{'where':'ij','unitary':True},{'where':'i','unitary':False},{'where':'j','unitary':False}]
-	Returns:
-		key (callable): sorting key function, with signature key(key) -> sortable object i.e) int,float,str,tuple
-	'''
-
-	if options:
-
-		objects = dict(
-			where =  {'ij':[0,1],'i':[0],'j':[1]},
-			unitary = {True:True,False:False},
-			)
-		defaults = dict(layout=None,attr=[])
-
-		options.update({option:defaults[option] for option in defaults if options.get(option) is None})
-
-		N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
-
-		name = 'string'
-		if options[name] is None:
-			indexes = [*range(0,N-1,1)]
-		elif options[name] in ['nearestneighbour']:
-			indexes = [*range(0,N-1,1)]
-		elif options[name] in ['brickwork']:
-			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
-		else:
-			indexes = [*range(0,N-1,1)]
-
-		name = 'attr'
-		for item,option in enumerate(options[name]):
-			for attr in option:
-				if callable(option[attr]):
-					continue
-				if attr in ['where']:
-					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [tuple(index+objects.get(attr,{}).get(i) for i in obj) for obj in options[item][attr]]
-				elif attr in ['unitary']:
-					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [objects.get(attr,{}).get(obj) for obj in options[item][attr]]
-				else:
-					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [objects.get(attr,{}).get(obj) for obj in options[item][attr]]
-
-		def attrs(index,indexes):
-			return [{attr:option[attr](index,indexes) for attr in option} for option in options]
-		def boolean(i,index,indexes,attribute,attributes):
-			return all(type(attribute[attr])(getattr(iterable[i],attr))==attribute[attr] for attr in attributes)
-		def groups(i,index,indexes,attribute,attributes):
-			return len(attributes)*index+attributes.index(attribute)
-
-		indices = {}
-		for index in indexes:
-			attributes = attrs(index,indexes)
-			for attribute in attributes:
-				for i in iterable:
-					if i in indices:
-						continue
-					if boolean(i,index,indexes,attribute,attributes):
-						indices[i] = groups(i,index,indexes,attribute,attributes)
-						break
-
-		iterable = indices
-
-	def key(key,iterable=iterable,sort=sort,group=group):
-
-		if sort and group:
-			index = (list(iterable).index(key),iterable[key])
-		elif sort:
-			index = list(iterable).index(key)
-		elif group:
-			index = iterable[key]
-		else:
-			index = key
-
-		return index
-
-	return key
 
 def convert(iterable,type=list,types=(list,),default=None):
 	'''
@@ -13131,3 +13051,4 @@ def bloch(state,path=None):
 
 
 from src.io import load,dump,exists
+from src.system import layout

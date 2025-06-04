@@ -50,9 +50,10 @@ def test_basis(*args,**kwargs):
 	operator="zero.depolarize.X"
 	key = 123456789
 	delim = "."
+	architecture = None
 	dtype = "complex"
 
-	options = Dict(D=D,N=N,ndim=ndim,shape=shape,operator=operator,key=key,dtype=dtype)
+	options = Dict(D=D,N=N,ndim=ndim,shape=shape,operator=operator,key=key,architecture=architecture,dtype=dtype)
 
 	operators = {
 		"rand":Dict(localities=L,shapes={i:[options.D]*L for i in range(K if ndim is None else ndim)},dimensions=2),
@@ -183,9 +184,8 @@ def test_null(*args,**kwargs):
 				"lattice":"square",
 				"architecture":"array",
 				"configuration":{
-					"key":"src.functions.layout",
-					"sort":None,
-					"reverse":False
+					"key":None,
+					"options":None
 					}
 			},			
 			"operator":{
@@ -1014,7 +1014,11 @@ def test_tensorproduct(*args,**kwargs):
 			"N":4,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":123,"dtype":"complex",
-				"architecture":None,"configuration":{"key":["where"]},
+				"architecture":None,
+				"configuration":{
+					"key":None,
+					"options":None
+				},
 				}
 		},	
 		"state": {
@@ -1316,11 +1320,12 @@ def test_layout(*args,**kwargs):
 			"N":6,"D":2,"ndim":2,"local":True,
 			"system":{
 				"seed":123,"dtype":"complex",
-				"architecture":None,"configuration":{
-					"key":"src.functions.brickwork",
-					"sort":None,
-					"reverse":False
+				"architecture":None,
+				"configuration":{
+					"key":None,
+					"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":True},{"where":"i","unitary":False},{"where":"j","unitary":False}]}
 					},
+				# "configuration":None
 				}
 		},	
 		"state": {
@@ -1357,6 +1362,8 @@ def test_layout(*args,**kwargs):
 			for attr in attrs}
 			)
 
+	print('Passed')
+
 	return
 
 
@@ -1382,6 +1389,7 @@ def test_measure(*args,**kwargs):
 				"string":"povm",
 				"N":3,
 				"D":2,
+				"architecture":None,
 				"dtype":"complex"
 			},
 			"state": {
@@ -1772,10 +1780,9 @@ def test_module(*args,**kwargs):
 			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{}},
 			"options":{},
 			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}			
+				"key":None,
+				"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":True},{"where":"i","unitary":False},{"where":"j","unitary":False}]}
+				},
 		},
 		"measure":{
 			"operator":"tetrad",
@@ -1823,10 +1830,9 @@ def test_module(*args,**kwargs):
 			"time":"linear",
 			"lattice":"square",
 			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}
+				"key":None,
+				"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":True},{"where":"i","unitary":False},{"where":"j","unitary":False}]}
+				},
 			},
 		"state": {
 			"operator":"haar",
@@ -2240,10 +2246,9 @@ def test_calculate(*args,**kwargs):
 				},	
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
 			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}
+				"key":None,
+				"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":True},{"where":"i","unitary":False},{"where":"j","unitary":False}]}
+				},
 		},
 		"model":{
 			"data":{
@@ -2272,10 +2277,9 @@ def test_calculate(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":"src.functions.brickwork",
-				"sort":None,
-				"reverse":False
-				}
+				"key":None,
+				"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":True},{"where":"i","unitary":False},{"where":"j","unitary":False}]}
+				},
 			},
 		"state": {
 			"operator":"state",
@@ -2587,7 +2591,7 @@ def test_mps(*args,**kwargs):
 			
 			arguments = tuple()
 			keywords = dict(
-				D=D**len(where),shape=(D**len(where),)*2,ndim=2,seed=seed,dtype=dtype,
+				D=D**len(where),shape=(D**len(where),)*2,ndim=2,seed=seed,architecture=None,dtype=dtype,
 				**kwargs
 				)
 			value = getattr(basis,value)(*arguments,**keywords)
@@ -2739,10 +2743,9 @@ def test_class(*args,**kwargs):
 			"measure":{"string":"tetrad","operator":"tetrad","D":2,"dtype":"complex","seed":13579,"architecture":"tensor","options":{}},
 			"options":{},
 			"configuration":{
-				"key":"src.functions.nearestneighbour",
-				"sort":None,
-				"reverse":False
-				}			
+				"key":None,
+				"options":{"layout":"nearestneighbour","attribute":[{"where":"ij","unitary":True}]}
+				},
 		},
 		"model":{
 			"data":{
@@ -2771,10 +2774,9 @@ def test_class(*args,**kwargs):
 			"lattice":"square",
 			"architecture":"array",
 			"configuration":{
-				"key":"src.functions.nearestneighbour",
-				"sort":None,
-				"reverse":False
-				}
+				"key":None,
+				"options":{"layout":"nearestneighbour","attribute":[{"where":"ij","unitary":True}]}
+				},
 			},
 		"state": {
 			"operator":"haar",
@@ -2947,5 +2949,5 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	# test_mps(*args,**args)
-	test_class(*args,**args)
+	test_mps(*args,**args)
+	# test_class(*args,**args)

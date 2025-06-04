@@ -71,6 +71,8 @@ class Basis(Dict):
 		ndim = None,
 		dtype = None,
 
+		architecture = None,
+
 		seed = None,
 		random = None,
 		bounds = [-1,1],
@@ -7262,7 +7264,7 @@ class Objects(Object):
 
 		configuration = self.configuration if configuration is None else configuration
 
-		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None).items()} if configuration is not None else {}
+		options = {attr: configuration.get(attr,default) for attr,default in dict(key=None,options=None).items()} if configuration is not None else {}
 
 		data = {index: data[i] for index,i in enumerate(sortby(data,**options))}
 
