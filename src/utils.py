@@ -9,7 +9,8 @@ from math import prod
 import inspect
 from functools import partial,wraps,reduce
 from natsort import natsorted
-from random import choices
+import random
+from random import choices,sample as samples
 import hashlib,datetime
 import argparse
 
@@ -37,6 +38,8 @@ class RNG(onp.random.RandomState):
 		return onp.full(shape,key)
 
 orng = RNG()
+
+random.seed(0)
 
 _partial = partial
 partial = lambda func,*args,**kwargs: wraps(func)(_partial(func,*args,**kwargs))
@@ -10746,12 +10749,7 @@ def sortby(iterable,key=None,options=None):
 		iterable (dict): Sorted iterable keys
 	'''
 	
-	def default(iterable=None,sort=None,group=None,options=options):
-		iterable = {i:id(iterable[i]) for i in iterable}
-		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
-		return key
-
-	key = load(key,default=default) if isinstance(key,str) else key if callable(key) else default
+	key = load(key) if isinstance(key,str) else key if callable(key) else layout
 
 	key = key(iterable=iterable,sort=True,options=options)
 
@@ -10765,25 +10763,105 @@ def groupby(iterable,key=None,options=None):
 	Args:
 		iterable (iterable): dictionary to be grouped
 		key (str,callable): group iterable, with signature key(iterable,group=True,sort=True,options=None) -> callable(key) -> sortable object i.e) int,float,str,tuple
-		kwargs (dict): Additional keyword arguments
+		options (dict): Additional keyword arguments
 	Returns:
 		iterable (iterable[group]): grouped iterable key groups
 	'''
 
-	def default(iterable,group=None,sort=None,options=None):
-		iterable = {i:id(iterable[i]) for i in iterable}
-		key = lambda key,iterable=iterable: [iterable[i] for i in iterable].index(iterable[key])
-		return key
-
-	key = load(key,default=default) if isinstance(key,str) else key if callable(key) else default
-	
 	iterable = {index: iterable[index] for index in sortby(iterable,key=key)}
+
+	key = load(key) if isinstance(key,str) else key if callable(key) else layout
 
 	key = key(iterable=iterable,group=True,options=options)
 
 	iterable = [[*group] for index,(name,group) in enumerate(itertools.groupby(iterable,key=key))]
 
 	return iterable
+
+
+def layout(iterable,sort=False,group=False,options=None):
+	'''
+	Set layout of iterable
+	Args:
+		iterable (dict[str,object]): Iterable to sort and group
+		sort (bool): Sort iterable
+		group (bool): Group iterable
+		options (dict): Additional keyword arguments
+			'string' (str): layout type for indexes corresponding to layout blocks
+			'attr' (iterable[dict]): Iterable of attributes to sort/group by for each object in block
+				[{'where':'ij','unitary':True},{'where':'i','unitary':False},{'where':'j','unitary':False}]
+	Returns:
+		key (callable): sorting key function, with signature key(key) -> sortable object i.e) int,float,str,tuple
+	'''
+
+	if options:
+
+		objects = dict(
+			where =  {'ij':[0,1],'i':[0],'j':[1]},
+			unitary = {True:True,False:False},
+			)
+		defaults = dict(layout=None,attr=[])
+
+		options.update({option:defaults[option] for option in defaults if options.get(option) is None})
+
+		N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
+
+		name = 'string'
+		if options[name] is None:
+			indexes = [*range(0,N-1,1)]
+		elif options[name] in ['nearestneighbour']:
+			indexes = [*range(0,N-1,1)]
+		elif options[name] in ['brickwork']:
+			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
+		else:
+			indexes = [*range(0,N-1,1)]
+
+		name = 'attr'
+		for item,option in enumerate(options[name]):
+			for attr in option:
+				if callable(option[attr]):
+					continue
+				if attr in ['where']:
+					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [tuple(index+objects.get(attr,{}).get(i) for i in obj) for obj in options[item][attr]]
+				elif attr in ['unitary']:
+					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [objects.get(attr,{}).get(obj) for obj in options[item][attr]]
+				else:
+					option[attr] = lambda index,indexes,item=item,attr=attr,options=options,objects=objects: [objects.get(attr,{}).get(obj) for obj in options[item][attr]]
+
+		def attrs(index,indexes):
+			return [{attr:option[attr](index,indexes) for attr in option} for option in options]
+		def boolean(i,index,indexes,attribute,attributes):
+			return all(type(attribute[attr])(getattr(iterable[i],attr))==attribute[attr] for attr in attributes)
+		def groups(i,index,indexes,attribute,attributes):
+			return len(attributes)*index+attributes.index(attribute)
+
+		indices = {}
+		for index in indexes:
+			attributes = attrs(index,indexes)
+			for attribute in attributes:
+				for i in iterable:
+					if i in indices:
+						continue
+					if boolean(i,index,indexes,attribute,attributes):
+						indices[i] = groups(i,index,indexes,attribute,attributes)
+						break
+
+		iterable = indices
+
+	def key(key,iterable=iterable,sort=sort,group=group):
+
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
+
+		return index
+
+	return key
 
 def convert(iterable,type=list,types=(list,),default=None):
 	'''

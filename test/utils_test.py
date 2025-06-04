@@ -23,7 +23,7 @@ from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
 from src.utils import shuffle,swap,transpose,reshape,contraction,seeder
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
-from src.utils import scinotation,delim
+from src.utils import scinotation,delim,choices,samples
 from src.utils import arrays,scalars,iterables,integers,floats,pi,asarray,asscalar
 
 from src.optimize import Metric
@@ -1283,7 +1283,7 @@ def test_sortgroupby(path=None,tol=None):
 
 	from src.utils import sortby,groupby
 
-	class obj(object):
+	class Obj(object):
 		def __init__(self,where,unitary):
 			self.where = (*where,) if isinstance(where,iterables) else (where,)
 			self.unitary = unitary
@@ -1293,28 +1293,74 @@ def test_sortgroupby(path=None,tol=None):
 			return str(self)
 
 		def __str__(self):
-			return f'{str(self.where)}-{str(self.unitary)}'
+			return '-'.join(map(str,self.__dict__.values()))
 
 	sizes = range(3,8)
 	keys = {
-		'brickwork':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],'where':lambda i=None: ([(i,i+1),(i,),(i+1,)] if i is not None else 3)},
-		'nearestneighbour':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,1),],'where':lambda i=None: ([(i,i+1),(i,),(i+1,)] if i is not None else 3)},
-		'brickwork_local':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,2),*range(1,N-1,2)],'where':lambda i=None: ([(i,i+1),(i,),(i+1,),(i,),(i+1,)] if i is not None else 5)},
-		# 'nearestneighbour_local':{'key':'src.functions.layout','indices':lambda N:[*range(0,N-1,1),],'where':lambda i=None: ([(i,i+1),(i,),(i+1,),(i,),(i+1,)] if i is not None else 5)},
+		'brickwork':{
+			'iterable':(lambda N:
+					[obj
+					for index in [*range(0,N-1,2),*range(1,N-1,2)]
+					for obj in [
+					{"where":(index+0,index+1),"unitary":True},
+					{"where":(index+0,),"unitary":True},
+					{"where":(index+1,),"unitary":True},
+					{"where":(index+0,),"unitary":False},
+					{"where":(index+1,),"unitary":False}
+					]
+					]),
+			'options':{
+				'string':'brickwork',
+				'attr':[
+					{"where":"ij","unitary":True},
+					{"where":"i","unitary":True},
+					{"where":"j","unitary":True},
+					{"where":"i","unitary":False},
+					{"where":"j","unitary":False}
+					]
+				}
+			},
+		'nearestneighbour':{
+			'iterable':(lambda N:
+					[obj
+					for index in [*range(0,N-1,1),]
+					for obj in [
+					{"where":(index+0,index+1),"unitary":True},
+					{"where":(index+0,),"unitary":True},
+					{"where":(index+1,),"unitary":True},
+					{"where":(index+0,),"unitary":False},
+					{"where":(index+1,),"unitary":False}
+					]
+					]),
+			'options':{
+				'string':'nearestneighbour',
+				'attr':[
+					{"where":"ij","unitary":True},
+					{"where":"i","unitary":True},
+					{"where":"j","unitary":True},
+					{"where":"i","unitary":False},
+					{"where":"j","unitary":False}
+					]
+				}
+			},		
 		}
 
 	for N in sizes:
 		for key in keys:
-			iterable = {index:obj(where=where,unitary=((index%keys[key]['where']()) < (keys[key]['where']()-2))) for index,where in enumerate(where for i in keys[key]['indices'](N) for where in keys[key]['where'](i))}
+
+			iterable = {index:Obj(**obj) for index,obj in enumerate(keys[key].pop('iterable')(N))}
+			
 			tmp = copy(iterable)
 
-			iterable = {index: iterable[i] for index,i in enumerate(sortby(iterable,key=keys[key]['key']))}
+			iterable = {index:iterable[index] for index in samples(list(iterable),k=len(iterable))}
 
-			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,key=keys[key]['key']))}
+			print(iterable)
+
+			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,**keys[key]))}
 
 			print(key,N,len(iterable))
 
-			assert all(i.where==j for i,j in zip([i for index in iterable for i in iterable[index]],[j for i in keys[key]['indices'](N) for j in keys[key]['where'](i)]))
+			assert all(i==j for i,j in zip([i for index in iterable for i in iterable[index]],[tmp[index] for index in tmp]))
 
 	print('Passed')
 

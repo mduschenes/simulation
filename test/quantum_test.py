@@ -183,7 +183,7 @@ def test_null(*args,**kwargs):
 				"lattice":"square",
 				"architecture":"array",
 				"configuration":{
-					"key":"src.functions.key",
+					"key":"src.functions.layout",
 					"sort":None,
 					"reverse":False
 					}

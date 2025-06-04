@@ -24,8 +24,8 @@
 		"model.local":[true],
 		"model.tensor":[true],
 		"model.configuration":[{
-			"key":"src.functions.layout",
-			"options":{"layout":"brickwork","attr":[{"where":[0,1],"unitary":true},{"where":[0,1],"unitary":true},{"where":[0,1],"unitary":true}]}
+			"key":null,
+			"options":{"string":"brickwork","attr":[{"where":"ij","unitary":true},{"where":"i","unitary":true},{"where":"j","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 		
 		"module.measure.string":["povm"],
@@ -38,8 +38,8 @@
 		"module.options.S":[4,16,64,256],
 		"module.options.S":[16],
 		"module.configuration":[{
-			"key":"src.functions.layout",
-			"options":{"layout":"brickwork","attr":[{"where":[0,1],"unitary":true},{"where":[0,1],"unitary":true},{"where":[0,1],"unitary":true}]}
+			"key":null,
+			"options":{"string":"brickwork","attr":[{"where":"ij","unitary":true},{"where":"i","unitary":true},{"where":"j","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 
 		"model.data.unitary.operator":["haar"],
