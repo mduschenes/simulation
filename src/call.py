@@ -926,10 +926,13 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 
 		
 		elif pattern in ['output','error']:
+			if value is not None:
+				mkdir(join(kwargs.get('data') if kwargs.get('data') is not None else 'log' if kwargs.get('device') in ['slurm'] else None,split(value,directory=True),root=kwargs.get('cwd')))
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
 					ext=(split(value,ext=True) if value is not None else 
 						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
-					root=kwargs.get('data'))
+					root=kwargs.get('data') if kwargs.get('data') is not None else 'log' if kwargs.get('device') in ['slurm'] else None
+					)
 			value = value.replace('.%a','') if ((kwargs['count'] is None)) else value
 		else:
 			value = value
@@ -1273,6 +1276,7 @@ def init(key,
 			'path':path,
 			'name':name,
 			'data':data,
+			'device':device,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
