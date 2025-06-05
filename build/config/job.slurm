@@ -15,7 +15,7 @@
 
 ##SBATCH --dependency=afterany:
 
-##SBATCH --signal=B:USRSIG@60
+#SBATCH --signal=B:SIGUSR1@60
 ##SBATCH --open-mode=append
 
 ##--nodelist=cpu[0-10]
@@ -42,21 +42,58 @@ JOB_LOCAL=${SLURM_ARRAY_TASK_LOCAL}
 JOB_DATA=${SLURM_ARRAY_TASK_DATA}
 
 # Variables
-JOB_CWD=${1:-${JOB_CWD}}
-JOB_ENV=${2:-${JOB_ENV}}
-JOB_SRC=${3:-${JOB_SRC}}
-JOB_CMD=${4:-${JOB_CMD}}
-JOB_PROCESSES=${5:-${JOB_PROCESSES}}
-shift 5;
+JOB_CWD="${1:-${JOB_CWD}}"
+JOB_ENV="${2:-${JOB_ENV}}"
+JOB_SRC="${3:-${JOB_SRC}}"
+JOB_CMD="${4:-${JOB_CMD}}"
+JOB_PROCESSES="${5:-${JOB_PROCESSES}}"
+JOB_CLEANUP="${6:-${JOB_CLEANUP}}"
+shift 6;
 JOB_ARGS=${@:-${JOB_ARGS}}
 
 JOB_PATH=$(pwd)
 
 
 # Functions
+if [ ! -z ${JOB_CLEANUP} ]
+then
+function CLEANUP(){
+	for path in ${JOB_CLEANUP[@]}
+	do
+		if [[ -f ${path} ]]
+		then
+			rm ${path}
+		fi
+	done
+}
+else
+function CLEANUP(){
+	for path in ${JOB_CLEANUP[@]}
+	do
+		if [[ -f ${path} ]]
+		then
+			rm ${path}
+		fi
+	done
+}
+fi
+export -f CLEANUP
+
+function QUEUE(){
+
+	job=${BASH_SOURCE[0]}
+	id=${SLURM_ARRAY_JOB_ID}
+
+	# scontrol requeue ${id}
+	# sbatch --export=ALL < ${job}
+}
+export -f QUEUE
+
 if [ ! -z ${JOB_LOCAL} ]
 then
 	function RUN(){
+
+		trap 'CLEANUP' SIGUSR1
 
 		TASK=${1:-"."}
 		shift 1;	
@@ -85,6 +122,8 @@ else
 
 	function RUN(){
 
+		trap 'CLEANUP' SIGUSR1
+
 		TASK=${1:-"."}
 		shift 1;	
 		CMDS=()
@@ -93,6 +132,13 @@ else
 
 		echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
+		# if [[ ${TASK} == -1 || ${TASK} == 1 || ${TASK} == 2 ]]
+		# then
+		# 	echo ERROR - ${TASK}
+		# 	touch ${JOB_CLEANUP}
+		# 	kill -SIGUSR1 $$
+		# 	return
+		# fi
 
 		${CMDS[@]} ${TASK}
 
@@ -102,16 +148,6 @@ else
 	}
 fi
 export -f RUN
-
-function QUEUE(){
-
-	job=${BASH_SOURCE[0]}
-	id=${SLURM_ARRAY_JOB_ID}
-
-	# scontrol requeue ${id}
-	# sbatch --export=ALL < ${job}
-}
-export -f QUEUE
 
 
 # Directory
@@ -160,6 +196,10 @@ EXE+=({})
 EXE+=(${CMD[@]})
 EXE+=(:::)
 
+# Trap
+trap 'CLEANUP' SIGUSR1
+# trap 'QUEUE' SIGUSR1
+
 
 # Run
 
@@ -184,6 +224,3 @@ find ${JOB_PATH} -type d -name "tmp[a-z,0-9,_]*" -delete
 # squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 # sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
-
-# Queue
-# trap 'QUEUE' SIGUSRSIG

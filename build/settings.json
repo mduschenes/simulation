@@ -87,6 +87,8 @@
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
 		"jobs.postprocess.args.JOB_ENV":["tensor"],
 		"jobs.postprocess.args.NUMPY_BACKEND":["jax"],
+		"jobs.job.args.JOB_CLEANUP":["data.hdf5.lock"],
+		"jobs.postprocess.args.JOB_CLEANUP":[null],
 		"jobs.job.args.JOB_PROCESSES":[8],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
@@ -183,6 +185,7 @@
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
+			"JOB_CLEANUP":"data.hdf5.lock",
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
@@ -217,7 +220,8 @@
 			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"process.py",
-			"JOB_PROCESSES":1,			
+			"JOB_PROCESSES":1,		
+			"JOB_CLEANUP":null,	
 			"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{

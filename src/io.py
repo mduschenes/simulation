@@ -5,7 +5,7 @@ import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 import glob as globber
 from braceexpand import braceexpand
-from filelock import FileLock as FileLock
+from filelock import SoftFileLock as FileLock
 import importlib
 import json,pickle,h5py
 import numpy as np
@@ -47,7 +47,7 @@ class Lock(object):
 	lock = 'lock'
 	path = 'lock'
 	timeout = -1
-	
+
 	def __new__(cls,lock,path=None,timeout=None,**kwargs):
 		if not lock or not path:
 			self = super().__new__(cls,**kwargs)
@@ -95,7 +95,7 @@ class Backup(object):
 				cp(self.backup,self.path)
 		return
 	def __exit__(self,etype,value,traceback):
-		if self.boolean(etype,value,traceback) and self.backup is not None:
+		if self.backup is not None and self.boolean(etype,value,traceback):
 			rm(self.backup)
 		return
 
