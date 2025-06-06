@@ -89,7 +89,7 @@ function QUEUE(){
 }
 export -f QUEUE
 
-if [ ! -z ${JOB_LOCAL} ]
+if ([ ! -z ${JOB_LOCAL} ]) || ([ -z ${JOB_SLICE} ] || [ -z ${JOB_SIZE} ]) || ([ ! -z ${JOB_CWD} ] && [ -z ${JOB_TASK} ])
 then
 	function RUN(){
 
