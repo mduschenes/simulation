@@ -24,21 +24,22 @@ def config(name=None,conf=None,**kwargs):
 
 	logger = logging.getLogger(name)
 
-	default = 'logging.conf'
+	default = 'log/logging.conf'
 	conf = default if conf is None else conf
+	existing = os.path.exists(conf) if conf is not None else None
+
 	file = kwargs.get('file')
 	path = os.path.abspath(os.path.expandvars(os.path.expanduser(file))) if file is not None else None
 	delim = '.'
 	ext = '%s.tmp'%(datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'))
-	existing = os.path.exists(conf)
 
 	props = ['loggers','handlers','formatters','keys']
 	keys  = {'class':'FileHandler'}
 	separator = '_'
 
 	if not existing:
-		source = os.path.join(os.path.abspath(os.path.dirname(__file__)),default)
-		destination = os.path.join(os.path.abspath(os.path.dirname(conf)) if conf is not None else os.getcwd(),delim.join([default,ext]))
+		source = os.path.join(os.path.abspath(os.path.dirname(__file__)),os.path.basename(default))
+		destination = os.path.join(os.path.abspath(os.path.dirname(conf)) if conf is not None else os.getcwd(),delim.join([os.path.basename(default),ext]))
 		directory = os.path.abspath(os.path.dirname(destination))
 		if directory not in ['',None] and not os.path.exists(directory):
 			os.makedirs(directory)
@@ -46,7 +47,7 @@ def config(name=None,conf=None,**kwargs):
 		conf = destination
 	else:
 		source = conf
-		destination = delim.join([default,ext])
+		destination = delim.join([os.path.basename(default),ext])
 		directory = os.path.abspath(os.path.dirname(destination))
 		if directory not in ['',None] and not os.path.exists(directory):
 			os.makedirs(directory)
@@ -150,6 +151,11 @@ def config(name=None,conf=None,**kwargs):
 
 	try:
 		os.remove(conf)
+		if (conf is not None) and ((file is None) or (os.path.dirname(conf) != os.path.dirname(file))) and (not os.listdir(os.path.dirname(conf))):
+			try:
+				os.rmdir(os.path.dirname(conf))
+			except:
+				pass
 	except:
 		pass
 
