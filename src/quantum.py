@@ -7946,31 +7946,31 @@ class Module(System):
 			for l in range(M):
 				for i,data in enumerate(self.data):
 
-					print('index',l,i)					
+					# print('index',l,i)					
 					kwargs[i].index = (l,i)
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					trace = self.measure.trace(parameters=parameters,state=state)
+					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					# trace = self.measure.trace(parameters=parameters,state=state)
 
-					if self.measure.architecture in ['tensor']:					
-						trace = trace.array().item()
-					elif self.measure.architecture in ['tensor_quimb']:
-						trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					trace = trace.real-1
-					data = state
-					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					print('trace',trace)
-					# where = [i,i+1]
-					# for i in data:
-					# 	if i < min(where):
-					# 		print(i,addition(data[i].data,(0,1)))
-					# 	elif i > max(where):
-					# 		print(i,addition(data[i].data,(-2,-1)))
-					# print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
-					# print('data',data)
-					print()
+					# if self.measure.architecture in ['tensor']:					
+					# 	trace = trace.array().item()
+					# elif self.measure.architecture in ['tensor_quimb']:
+					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
+					# trace = trace.real-1
+					# data = state
+					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					# print('trace',trace)
+					# # where = [i,i+1]
+					# # for i in data:
+					# # 	if i < min(where):
+					# # 		print(i,addition(data[i].data,(0,1)))
+					# # 	elif i > max(where):
+					# # 		print(i,addition(data[i].data,(-2,-1)))
+					# # print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
+					# # print('data',data)
+					# print()
 
 			return state
 
