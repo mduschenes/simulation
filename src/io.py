@@ -5,7 +5,7 @@ import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 import glob as globber
 from braceexpand import braceexpand
-from filelock import SoftFileLock as FileLock
+from filelock import FileLock as FileLock
 import importlib
 import json,pickle,h5py
 import numpy as np
