@@ -188,12 +188,20 @@ def func_spectrum_rank(data,attr=None,eps=None):
 		return
 	def func(data):
 		data = np.array(list(data))
-		data = asscalar(
-			nonzero(
-				sort(
-					np.abs(data[~is_nan(data)])/maximum(np.abs(data[~is_nan(data)]))
-				),eps=eps)
-			)
+		if data.size and data[~is_nan(data)].size:
+			data = asscalar(
+				nonzero(
+					sort(
+						np.abs(data[~is_nan(data)])/maximum(np.abs(data[~is_nan(data)]))
+					),eps=eps)
+				)
+		else:
+			data = asscalar(
+				nonzero(
+					sort(
+						np.abs(data[~is_nan(data)])/maximum(np.abs(data))
+					),eps=eps)
+				)			
 		return data
 	data = [func(i) for i in data[attr]]
 	data = data[0] if len(data) == 1 else data
@@ -235,33 +243,33 @@ def func_T_J(data):
 
 def func_variables_relative_mean(data):
 	out = np.array(data['variables.relative.mean'])
-	return out/max(1,maximum(out))
+	return (out/max(1,maximum(out)) if out.size else out)
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = sort(np.abs(out))
-	out = out/maximum(out)
+	out = (out/maximum(out) if out.size else out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
 	return out
 
 def func_fisher_eigenvalues(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = np.abs(out)
-	out = out/maximum(out)
+	out = (out/maximum(out) if out.size else out)
 	out = to_tuple(out)
 	return out
 
 def func_hessian_rank(data):
 	out = np.array(list(data['hessian.eigenvalues']))
 	out = sort(np.abs(out))
-	out = out/maximum(out)
+	out = (out/maximum(out) if out.size else out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-16))
 	return out
 
 def func_hessian_eigenvalues(data):
 	out = np.array(list(data['hessian.eigenvalues']))
 	out = np.abs(out)
-	out = out/maximum(out)
+	out = (out/maximum(out) if out.size else out)
 	out = to_tuple(out)
 	return out
 
