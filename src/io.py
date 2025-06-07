@@ -263,7 +263,10 @@ def mkdir(path):
 	directory = split(path,directory=True,abspath=True)
 
 	if directory not in ['',None] and not exists(directory):
-		os.makedirs(directory)
+		try:
+			os.makedirs(directory)
+		except FileExistsError:
+			pass
 
 	return
 

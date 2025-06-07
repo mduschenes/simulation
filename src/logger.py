@@ -150,7 +150,10 @@ def config(name=None,conf=None,**kwargs):
 
 
 	try:
-		os.remove(conf)
+		try:
+			os.remove(conf)
+		except:
+			pass
 		if (conf is not None) and ((file is None) or (os.path.dirname(conf) != os.path.dirname(file))) and (not os.listdir(os.path.dirname(conf))):
 			try:
 				os.rmdir(os.path.dirname(conf))
