@@ -2456,13 +2456,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			if data is not None:
 				self.data = data
 			if indices is not None:
+				indices = indices if not callable(indices) else indices(self)
 				self.indices = [indices.get(index,index) for index in self.indices]
 			if func is not None:
-				self.data = func(self.data)
+				self.data = func(self)
 			if shape is not None:
+				shape = shape if not callable(shape) else shape(self)
 				self.data = reshape(self.data,[shape[i] for i in shape])
 				self.indices = [i for i in shape]
 			if axes is not None:
+				axes = axes if not callable(axes) else axes(self)				
 				self.data = transpose(self.data,axes)
 				self.indices = [self.indices[i] for i in axes]
 			if conj is not None:
@@ -6970,16 +6973,21 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
 
+	shapes = Dictionary(
+		data=([*data.shape] if not isinstance(data.shape,dict) else [data.shape[i] for i in data.shape]) if data is not None else None,
+		state=([*state.shape] if not isinstance(state.shape,dict) else [state.shape[i] for i in state.shape]) if state is not None else None,
+		)
+
 	wrapper = jit
 
 	if attributes is not None:
 		N,D,d,s,samples = attributes.N,attributes.D,attributes.d,attributes.s,attributes.samples
 	elif data is not None and state is not None:
-		N,D,d,s,samples = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),data.ndim,state.ndim,(state.shape[:k] if state.ndim>k else None)
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),data.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
 	elif data is not None and state is None:
-		N,D,d,s,samples = int(log(prod(data.shape[-k:]))/log(max(data.shape[-k:]))/max(1,data.ndim-k)),max(data.shape[-k:]),data.ndim,data.ndim,None
+		N,D,d,s,samples = int(log(prod(shapes.data[-k:]))/log(max(shapes.data[-k:]))/max(1,data.ndim-k)),max(shapes.data[-k:]),data.ndim,data.ndim,None
 	elif data is None and state is not None:
-		N,D,d,s,samples = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),state.ndim,state.ndim,(state.shape[:k] if state.ndim>k else None)
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),state.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
 	else:
 		N,D,d,s,samples = None,None,None,None,None
 
@@ -6991,7 +6999,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	length = len(samples) if samples is not None else 0
 	string = [symbols(i) for i in range(length)] if samples is not None else []
 
-	shape = data.shape[:max(0,d-k)] if data is not None else []
+	shape = shapes.data[:max(0,d-k)] if data is not None else []
 	size = len(shape) if shape is not None else 0
 	strings = [symbols(length+i) for i in range(size)]
 
@@ -7241,16 +7249,21 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
 
+	shapes = Dictionary(
+		data=([*data.shape] if not isinstance(data.shape,dict) else [data.shape[i] for i in data.shape]) if data is not None else None,
+		state=([*state.shape] if not isinstance(state.shape,dict) else [state.shape[i] for i in state.shape]) if state is not None else None,
+		)
+
 	wrapper = jit
 
 	if attributes is not None:
 		N,D,d,s,samples = attributes.N,attributes.D,attributes.d,attributes.s,attributes.samples
 	elif data is not None and state is not None:
-		N,D,d,s,samples = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),data.ndim,state.ndim,(state.shape[:k] if state.ndim>k else None)
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),data.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
 	elif data is not None and state is None:
-		N,D,d,s,samples = int(log(prod(data.shape[-k:]))/log(max(data.shape[-k:]))/max(1,data.ndim-k)),max(data.shape[-k:]),data.ndim,data.ndim,None
+		N,D,d,s,samples = int(log(prod(shapes.data[-k:]))/log(max(shapes.data[-k:]))/max(1,data.ndim-k)),max(shapes.data[-k:]),data.ndim,data.ndim,None
 	elif data is None and state is not None:
-		N,D,d,s,samples = int(log(prod(state.shape[-k:]))/log(max(state.shape[-k:]))/max(1,state.ndim-k)),max(state.shape[-k:]),state.ndim,state.ndim,(state.shape[:k] if state.ndim>k else None)
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),state.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
 	else:
 		N,D,d,s,samples = None,None,None,None,None
 
@@ -7262,7 +7275,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 	length = len(samples) if samples is not None else 0
 	string = [symbols(i) for i in range(length)] if samples is not None else []
 
-	shape = data.shape[:max(0,d-k)] if data is not None else []
+	shape = shapes.data[:max(0,d-k)] if data is not None else []
 	size = len(shape) if shape is not None else 0
 	strings = [symbols(length+i) for i in range(size)]
 
@@ -8714,7 +8727,7 @@ def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	return out
 
 
-@jit
+@partial(jit,static_argnums=(2,))
 def dot(a,b,axes=1):
 	'''
 	Calculate dot product of arrays a and b
@@ -8738,6 +8751,24 @@ def out(a,b):
 		out (array): Outer product
 	'''	
 	return np.outer(a,b)
+
+@jit
+def dots(*a,axes=1):
+	'''
+	Calculate dot products of arrays a
+	Args:
+		a (array): Array to calculate dot product
+		b (array): Array to calculate dot product
+		axes (int,iterable[int]): Axes to calculate dot product
+	Returns:
+		out (array): Dot product
+	'''
+	if not a:
+		return a
+	out = a[0]
+	for i in a[1:]:
+		out = dot(out,i,axes=axes)
+	return out
 
 @jit
 def inner(a,b):
@@ -13051,4 +13082,4 @@ def bloch(state,path=None):
 
 
 from src.io import load,dump,exists
-from src.system import layout
+from src.system import layout,Dictionary

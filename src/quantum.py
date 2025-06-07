@@ -12,9 +12,9 @@ for PATH in PATHS:
 
 from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange
-from src.utils import tensor,matrix,mps,context
+from src.utils import tensor,matrix,network,mps,context
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
+from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
@@ -769,9 +769,9 @@ class Basis(Dict):
 	@decorator	
 	def ghz(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)		
-		data = [ravel((1/sqrt(kwargs.D))*cls.element(D=kwargs.D,data=[i]*kwargs.N,dtype=kwargs.dtype)) for i in range(kwargs.D)]
+		data = [ravel(cls.element(D=kwargs.D,data=[i]*kwargs.N,dtype=kwargs.dtype)) for i in range(kwargs.D)]
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
-			data = sum(data)
+			data = (1/sqrt(kwargs.D))*sum(data)
 			if data is not None and data.ndim < max(
 				kwargs.ndim if kwargs.ndim is not None else 0,
 				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
@@ -1376,7 +1376,8 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			
 			N = len(state)
-			d = 2
+			D = self.D			
+			ndim = 2
 
 			cls = array
 
@@ -1395,19 +1396,22 @@ class Measure(System):
 		elif self.architecture in ['tensor']:
 
 			N = len(state)
-			d = 2
+			D = self.D
+			ndim = 2
+
+			size = None
 
 			cls = tensor
 
 			for i in range(N):
 
 				data = state[i] if not callable(state[i]) else state[i]()
-				size = max(0,(data.ndim-d)//2)
+				size = max(0,(data.ndim-ndim)//2)
 
 				if size:
-					indices = [*[self.symbols[i] for i in range(size)],*self.indices[:d][::-1],*[self.symbols[size+i] for i in range(size)]]
+					indices = [*[self.symbols[i] for i in range(size)],*self.indices[:ndim][::-1],*[self.symbols[size+i] for i in range(size)]]
 				else:
-					indices = [*self.indices[:d][::-1]]
+					indices = [*self.indices[:ndim][::-1]]
 
 				data = cls(data=data,indices=indices)
 
@@ -1417,28 +1421,35 @@ class Measure(System):
 
 				if size:
 					data.transform(axes=[*[i for i in range(size)],-1,*[size+i for i in range(size)]])
-					if i in [0]:
-						data.transform(func=partial(addition,axis=0),shape={data.indices[0]:1,**dict(zip(data.indices[1:],data.shape[1:]))})
-					elif i in [N-1]:
-						data.transform(func=partial(addition,axis=-1),shape={**dict(zip(data.indices[:-1],data.shape[:-1])),data.indices[-1]:1})
 
 				state[i] = data
 
-			options = self.options
+
+			if size:
+				options = Dictionary(constant=addition(dots(*(state[i]() for i in range(N)))))
+				for i in [0,N-1]:
+					if i in [0]:
+						state[i].transform(func=lambda data,options=options:(1/sqrt(options.constant))*addition(data(),axis=0),shape=lambda data:{data.indices[0]:1,**dict(zip(data.indices[1:],data.shape[:]))})
+					elif i in [N-1]:
+						state[i].transform(func=lambda data,options=options:(1/sqrt(options.constant))*addition(data(),axis=-1),shape=lambda data:{**dict(zip(data.indices[:-1],data.shape[:])),data.indices[-1]:1})
+
+
+			options = {**(self.options if self.options is not None else {}),**{}}
 			
 			state = mps(state,**options)
 
 		elif self.architecture in ['tensor_quimb']:
 			
 			N = len(state)
-			d = 2
+			D = self.D		
+			ndim = 2
 
 			cls = tensor_quimb
 
 			for i in range(N):
 
 				data = state[i] if not callable(state[i]) else state[i]()
-				inds = (*self.indices[:d][::-1],)
+				inds = (*self.indices[:ndim][::-1],)
 				tags = (self.tag,*self.tags,)
 
 				data = cls(data=data,inds=inds,tags=tags)
@@ -1450,7 +1461,7 @@ class Measure(System):
 
 				state[i] = data
 
-			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**dict(cyclic=self.options.get('periodic',self.options.get('cyclic',None)))}
+			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**dict(cyclic=self.options.get('periodic',self.options.get('cyclic',None)) if self.options is not None else None)}
 			
 			state = mps_quimb(state,**options)
 
@@ -1529,7 +1540,7 @@ class Measure(System):
 
 		K = self.K
 		D = self.D
-		d = 2
+		ndim = 2
 		letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
 		if L:
@@ -1569,8 +1580,8 @@ class Measure(System):
 			inverse = reshape(inverse,shape)
 
 			subscripts = (
-				(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:d] for i in range(N) if i in where)),
-				(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:d] for i in range(N) if i in where)),
+				(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
+				(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
 				(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 				(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 				)
@@ -3860,7 +3871,7 @@ class MPS(mps):
 
 if backend in ['quimb']:
 
-	from src.utils import tensor_quimb,mps_quimb,representation_quimb,contract_quimb,fuse_quimb,context_quimb
+	from src.utils import tensor_quimb,network_quimb,mps_quimb,representation_quimb,contract_quimb,fuse_quimb,context_quimb
 	from src.utils import tensors_quimb,matrices_quimb,objects_quimb
 
 	objects = (*objects,*objects_quimb)
@@ -4747,12 +4758,11 @@ class Object(System):
 					data = tensorprod(data) if data is not None else None
 				else:
 					data = swap(tensorprod(data),axes=axes,shape=shape) if data is not None else None
+				data = array(data,dtype=dtype) if data is not None else None
 			elif self.architecture in ['tensor']:
 				data = tensorprod(data) if data is not None else None
 			elif self.architecture in ['tensor_quimb']:
 				data = tensorprod(data) if data is not None else None
-
-			data = array(data,dtype=dtype) if data is not None else None
 
 		else:
 			
@@ -4802,7 +4812,7 @@ class Object(System):
 			data = self.tensor(data,N=self.locality if self.local else self.N,D=self.D,d=self.ndim) if self.tensor is not None else data
 		elif self.architecture in ['tensor']:
 			data = data
-		elif self.architecture in ['tensor_quim']:
+		elif self.architecture in ['tensor_quimb']:
 			data = data
 
 		self.data = data
@@ -5048,12 +5058,6 @@ class Object(System):
 		
 		data = self(parameters=parameters,state=state,**kwargs)
 		
-		if self.architecture is None or self.architecture in ['array']:
-			data = data
-		elif self.architecture in ['tensor']:
-			data = data
-		elif self.architecture in ['tensor_quimb']:
-			data = data
 		return data
 
 	def __str__(self):
@@ -7942,31 +7946,31 @@ class Module(System):
 			for l in range(M):
 				for i,data in enumerate(self.data):
 
-					# print('index',l,i)					
+					print('index',l,i)					
 					kwargs[i].index = (l,i)
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					# trace = self.measure.trace(parameters=parameters,state=state)
+					spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
+					ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
+					trace = self.measure.trace(parameters=parameters,state=state)
 
-					# if self.measure.architecture in ['tensor']:					
-					# 	trace = trace.array().item()
-					# elif self.measure.architecture in ['tensor_quimb']:
-					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					# trace = trace.real-1
-					# data = state
-					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					# print('trace',trace)
-					# # where = [i,i+1]
-					# # for i in data:
-					# # 	if i < min(where):
-					# # 		print(i,addition(data[i].data,(0,1)))
-					# # 	elif i > max(where):
-					# # 		print(i,addition(data[i].data,(-2,-1)))
-					# # print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
-					# # print('data',data)
-					# print()
+					if self.measure.architecture in ['tensor']:					
+						trace = trace.array().item()
+					elif self.measure.architecture in ['tensor_quimb']:
+						trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
+					trace = trace.real-1
+					data = state
+					print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
+					print('trace',trace)
+					# where = [i,i+1]
+					# for i in data:
+					# 	if i < min(where):
+					# 		print(i,addition(data[i].data,(0,1)))
+					# 	elif i > max(where):
+					# 		print(i,addition(data[i].data,(-2,-1)))
+					# print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
+					# print('data',data)
+					print()
 
 			return state
 

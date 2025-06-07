@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,choice,allclose,asscalar,is_array,is_nan,product
-from src.utils import einsum,symbols,conjugate,dagger,dot,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
+from src.utils import einsum,symbols,conjugate,dagger,dot,addition,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
 from src.utils import shuffle,swap,seeder,rng,copy
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
@@ -246,12 +246,13 @@ def test_operator(*args,**kwargs):
 		"operator.constant":[True,False,False,False,False,False,True,True,False,False],
 		"state.local":[False],
 		"state.data":[None],
-		"state.operator":["ghz"],
+		"state.operator":["zero"],
 		"state.where":[None],
 		"state.string":["state"],
 		"state.parameters":[None],
 		"state.variable":[False],
 		"state.constant":[True],
+		"state.architecture":[None],
 
 
 		}
@@ -1742,7 +1743,7 @@ def test_module(*args,**kwargs):
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"state.architecture":["tensor","array","array"],
+		"state.architecture":["array","array","array"],
 		"measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		"module.measure.options":[{},{},{}],
@@ -1916,14 +1917,18 @@ def test_module(*args,**kwargs):
 		state = [state(**{**settings.model,**i,**dict(system=system)})
 				for i in settings.state]
 
-		obj = state
-
 		tmp = None
 		for i in state:
 			tmp = i if tmp is None else tmp @ i
 
-		tmp = tmp().ravel()
-		_tmp = tensorprod([i() for i in obj]).ravel()
+		if tmp.architecture is None or tmp.architecture in ['array']:
+			tmp = tmp().ravel()
+		elif tmp.architecture in ['tensor']:
+			tmp = tmp().ravel()
+		elif tmp.architecture in ['tensor_quimb']:
+			tmp = tmp().ravel()
+
+		_tmp = tensorprod([i() for i in _state]).ravel()
 
 		assert allclose(tmp,_tmp),"Incorrect state tensor product"
 
@@ -2701,6 +2706,7 @@ def test_class(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"state.architecture":["array","array","array"],
 		"module.options":[
 			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","key":seeder(123)},
 			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
@@ -2785,7 +2791,9 @@ def test_class(*args,**kwargs):
 			"parameters":None,
 			"D":2,
 			"ndim":2,
-			"local":False
+			"local":False,
+			"tensor":True,
+			"architecture":None
 			},
 		"callback":{
 			"attributes":{
@@ -2949,5 +2957,5 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
 	# test_calculate(*args,**args)
-	test_mps(*args,**args)
-	# test_class(*args,**args)
+	# test_mps(*args,**args)
+	test_class(*args,**args)
