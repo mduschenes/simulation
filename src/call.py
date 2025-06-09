@@ -558,7 +558,7 @@ def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,ve
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return
+	return stdout
 
 
 def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):

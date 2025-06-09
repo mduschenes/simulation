@@ -22,7 +22,7 @@ from src.utils import integers,delim,datatype
 
 from src.iterables import Dict,Dictionary,getter,setter
 from src.io import join,split,exists
-from src.call import rm,echo
+from src.call import rm
 from src.logger import Logger
 
 
@@ -57,7 +57,7 @@ class System(Dictionary):
 		backup (bool,str): Backup file for load and dump
 		timestamp (str): Timestamp for load and dump
 
-		conf (str): Configuration path for class logging
+		conf (str,dict): Configuration path or dictionary for class logging
 		logger (str): Log file path for class logging
 		cleanup (bool): Cleanup class log files
 		verbose (bool,str): Verbosity of class	
@@ -159,6 +159,7 @@ class System(Dictionary):
 			cleanup (bool,str,iterable[str]): Cleanup paths and attributes of class
 		'''
 
+
 		cleanup = self.cleanup if cleanup is None else cleanup
 
 		if cleanup is None:
@@ -171,7 +172,7 @@ class System(Dictionary):
 			paths = [getattr(self,path,path) for path in cleanup]
 
 		for path in paths:
-			echo(path,execute=False,verbose=False)
+			rm(path,execute=False,verbose=False)
 
 		return
 
@@ -191,6 +192,7 @@ class System(Dictionary):
 			cleanup = self.cleanup
 
 			self.logger = Logger(name,conf,file=file,cleanup=cleanup)
+
 
 		return
 

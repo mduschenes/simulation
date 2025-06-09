@@ -19,29 +19,38 @@ from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,absolute,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
 from src.iterables import getter,setter,permuter,namespace,getattrs,setattrs
-from src.io import load,dump,join,exists
+from src.io import load,dump,split,join,exists,rm
+from src.call import cat
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.system import Dictionary,Dict
 
 
 def test_logger(path,tol):
+
 	cls = load('src.system.System')
 
 	data = None
 	shape = None
-	system = {'logger':'log.txt','cleanup':1}
+	file = 'log/log.log'
+	system = {'logger':file,'verbose':'info'}
+	msg = 'TEST MESSAGE'
 
-	obj = cls(data,shape,system=system)
+	obj = cls(data,shape,**system)
 
+	print('Message')
+	print(msg)
 
-	data = None
-	shape = None
-	system = {'logger':'log.log','cleanup':1}
+	print('Log')
+	obj.log(msg)
 
-	obj = cls(data,shape,system=system)
+	print('Cat')
+	print(cat(file,execute=True,verbose=False))
 
-	# assert not exists(system['logger']), "Incorrect cleanup"
+	rm(split(file,file_ext=True))
+	rm(split(file,directory=True))
+
+	print('Passed')
 
 	return
 
@@ -532,10 +541,10 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	# test_object(path,tol)
-	# test_logger(path,tol)
+	test_logger(path,tol)
 	# test_data(path,tol)
 	# test_initialization(path,tol)
-	test_hessian(path,tol)
+	# test_hessian(path,tol)
 	# test_model(path,tol)
 
 	# test_fisher(path,tol)
