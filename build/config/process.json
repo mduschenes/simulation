@@ -53,11 +53,11 @@
 		"S.entangling.renyi.infidelity.classical.noise.parameters.N": 1,
 		"S.M.quantum.noise.parameters.N": 1,
 		"S.M.renyi.noise.parameters.N": 1,
-		"M.spectrum.quantum.M.noise.parameters.N":1,
+		"M.spectrum.quantum.M.noise.parameters.N": 1,
 		"None.spectrum.quantum.M.noise.parameters": 1,
 		"None.spectrum.classical.M.noise.parameters": 1,
 		"None.spectrum.quantum.classical.M.noise.parameters": 1
-	},        
+	},
 	"configuration": [
 		[
 			[
@@ -228,7 +228,10 @@
 			]
 		]
 	],
-	"patterns": {"max_bond":"S","cyclic":"periodic"},
+	"patterns": {
+		"max_bond": "S",
+		"cyclic": "periodic"
+	},
 	"texify": {
 		"iteration": "\\textrm{Iteration}",
 		"objective": "\\textrm{Infidelity}",
@@ -238,7 +241,7 @@
 		"beta": "$\\textrm{Conjugate Rate}",
 		"rank": "$\\textrm{Rank}$",
 		"Entropy": "\\textrm{Entropy}",
-		"None": "$0$",
+		"None": "$D^{N}$",
 		"key": "\\textrm{Key}",
 		"instance": "\\textrm{Instance}",
 		"instances.parameters.xy.seed": "\\textrm{Instance} \\theta^{xy}",
@@ -247,9 +250,9 @@
 		"instances.label.seed": "\\textrm{Instance} U",
 		"instances.noise.seed": "\\textrm{Instance} \\gamma",
 		"instances.state.seed": "\\textrm{Instance} \\psi",
-		"scheme":"\\textrm{Scheme}",
-		"svd":"\\textrm{SVD}",
-		"nmf":"\\textrm{NMF}",
+		"scheme": "\\textrm{Scheme}",
+		"svd": "\\textrm{SVD}",
+		"nmf": "\\textrm{NMF}",
 		"backend": "\\textrm{Backend}",
 		"jax": "\\textrm{Jax}",
 		"autograd": "\\textrm{Autograd}",
