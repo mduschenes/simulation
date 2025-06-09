@@ -56,6 +56,7 @@
 		"state.tensor":[true],
 		"state.D":[2],
 		"state.ndim":[2],
+		"state.architecture":[null],
 		"state.parameters":[null],
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
@@ -154,6 +155,7 @@
 	"ndim":2,
 	"local":null,
 	"tensor":true,	
+	"architecture":null,
 	"seed":null	
 	},
 "system":{
