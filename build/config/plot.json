@@ -3059,6 +3059,23 @@
 					1
 				]
 			},
+			"set_ylim": {
+				"ymin": -0.01,
+				"ymax": 0.21
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.04,
+					0.08,
+					0.12,
+					0.16,
+					0.20
+				]
+			},     			
 			"yaxis.set_major_formatter": {
 				"ticker": {}
 			},
