@@ -260,6 +260,9 @@
 		"layout":"configuration.options.layout",
 		"periodic":"measure.options.periodic",
 		
+		"array":"measure.array",
+		"state":"measure.state",
+		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":"measure.infidelity_pure",
@@ -306,6 +309,9 @@
 		"layout":"configuration.options.layout",		
 		"periodic":"measure.options.periodic",
 		
+		"array":"measure.array",
+		"state":"measure.state",
+
 		"infidelity.quantum":null,
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":null,

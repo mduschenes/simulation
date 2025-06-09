@@ -26,7 +26,7 @@ from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import grouper,conditions
 from src.utils import orng as rng
-from src.utils import arrays,scalars,nonzero,delim
+from src.utils import arrays,scalars,nonzero,delim,nan
 
 from src.iterables import permuter,setter,getter,Dictionary
 
@@ -168,6 +168,17 @@ def func_xlabel(data,metadata):
 def func_ylabel(data,metadata):
 	attr = 'N'
 	return 2 if (data.get(attr) == max((i for key in metadata if attr in metadata[key] for i in metadata[key].get(attr)),default=None)) else None
+
+
+def func_array(data,eps=1e-15):
+	data = np.array(data['y'])
+	data[data<=eps] = nan
+	return np.abs(data)
+
+def func_state(data,eps=1e-15):
+	data = np.array(data['y'])
+	data[data<=eps] = nan
+	return np.abs(data)
 
 
 def func_spectrum(data,attr=None):

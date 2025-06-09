@@ -56,7 +56,10 @@
 		"M.spectrum.quantum.M.noise.parameters.N": 1,
 		"None.spectrum.quantum.M.noise.parameters": 1,
 		"None.spectrum.classical.M.noise.parameters": 1,
-		"None.spectrum.quantum.classical.M.noise.parameters": 1
+		"None.spectrum.quantum.classical.M.noise.parameters": 1,
+		"None.array.M.noise.parameters": 1,
+		"None.state.M.noise.parameters": 1
+
 	},
 	"configuration": [
 		[
@@ -216,7 +219,9 @@
 				"S.M.renyi.noise.parameters.N",
 				"None.spectrum.quantum.M.noise.parameters",
 				"None.spectrum.classical.M.noise.parameters",
-				"None.spectrum.quantum.classical.M.noise.parameters"
+				"None.spectrum.quantum.classical.M.noise.parameters",
+				"None.array.M.noise.parameters",
+				"None.state.M.noise.parameters"
 			],
 			[
 				{

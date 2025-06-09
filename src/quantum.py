@@ -1927,6 +1927,91 @@ class Measure(System):
 
 		return data
 
+	def array(self,parameters=None,state=None,where=None,func=None,**kwargs):
+		'''
+		Class data
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (float,int,iterable[int]): indices of function		
+			func (callable): function to apply to data		
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(ravel(data)))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
+		where = tuple(i for i in range(N) if i not in where)
+
+		state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+		where = tuple(i for i in range(N) if i not in where)
+
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = state
+
+		elif self.architecture in ['tensor']:
+
+			data = state.array()
+
+		elif self.architecture in ['tensor_quimb']:
+			
+			data = representation_quimb(contract_quimb(state),contraction=True)
+
+		data = func(data)
+
+		return data
+
+	def state(self,parameters=None,state=None,where=None,func=None,**kwargs):
+		'''
+		Class state
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (float,int,iterable[int]): indices of function		
+			func (callable): function to apply to data		
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+		
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(diag(data)))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+
+		where = tuple(i for i in range(N) if i not in where)
+
+		state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+
+		where = tuple(i for i in range(N) if i not in where)
+
+		options = dict(transformation=False)
+		state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+
+		if self.architecture is None or self.architecture in ['array']:
+			
+			data = array(state)
+
+		elif self.architecture in ['tensor']:
+
+			data = state.matrix()
+
+		elif self.architecture in ['tensor_quimb']:
+
+			data = representation_quimb(state,**{**dict(to=self.architecture,contraction=True),**kwargs})
+
+		data = func(data)
+
+		return data	
+
 	def trace(self,parameters=None,state=None,where=None,func=None,**kwargs):
 		'''
 		Trace for POVM probability measure
@@ -8810,7 +8895,7 @@ class Callback(System):
 		'''
 
 		defaults = [
-			'objective','infidelity','norm','entanglement','entangling','trace',
+			'objective','infidelity','norm','entanglement','entangling','trace','array','state',
 			'infidelity.quantum','infidelity.classical','infidelity.pure',
 			'norm.quantum','norm.classical','norm.pure',
 			'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -8895,7 +8980,7 @@ class Callback(System):
 				data[attr] = []
 
 			if attr in [
-				'objective','infidelity','norm','entanglement','entangling','trace',
+				'objective','infidelity','norm','entanglement','entangling','trace','array','state',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -8918,7 +9003,7 @@ class Callback(System):
 						other=_obj,
 						**keywords)
 				elif attr in [
-					'norm','entanglement','entangling','trace',
+					'norm','entanglement','entangling','trace','array','state',
 					'norm.quantum','norm.classical','norm.pure',
 					'entanglement.quantum','entanglement.classical','entanglement.renyi',
 					'entangling.quantum','entangling.classical','entangling.renyi',
@@ -8951,14 +9036,14 @@ class Callback(System):
 				value = getattrs(model,attributes[attr],delimiter=delim)
 
 				if callable(value):
-					value = value(parameters=parameters,state=state,**kwargs)
+					value = value(parameters=parameters,state=obj,**kwargs)
 
 			elif hasattrs(optimizer,attributes[attr],delimiter=delim):
 
 				value = getattrs(optimizer,attributes[attr],delimiter=delim)
 
 				if callable(value):
-					value = value(parameters=parameters,state=state,**kwargs)
+					value = value(parameters=parameters,state=obj,**kwargs)
 
 			else:
 

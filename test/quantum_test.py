@@ -2304,6 +2304,8 @@ def test_calculate(*args,**kwargs):
 				"trace":"trace",
 				"vectorize":"vectorize",
 				"measure":"measure",
+				"array":"array",
+				"state":"state",
 				"norm_quantum":"norm_quantum",
 				"norm_classical":"norm_classical",
 				"norm_pure":"norm_pure",
@@ -2345,7 +2347,7 @@ def test_calculate(*args,**kwargs):
 			"conf":"logging.conf",
 			"logger":None,
 			"cleanup":False,
-			"verbose":"info"
+			"verbose":None
 			}
 		})
 
@@ -2355,6 +2357,8 @@ def test_calculate(*args,**kwargs):
 			'vectorize',
 			'measure',
 			'square',
+			'array',
+			'state',
 			'norm_quantum',
 			'norm_classical',
 			'norm_pure',
@@ -2486,6 +2490,14 @@ def test_calculate(*args,**kwargs):
 
 				kwargs = dict()
 				where = None
+
+			elif attr in [
+				'array','state',
+				]:
+
+				kwargs = dict()
+				where = None
+
 
 			else:
 
@@ -2956,6 +2968,6 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_module(*args,**args)
-	# test_calculate(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)
-	test_class(*args,**args)
+	# test_class(*args,**args)
