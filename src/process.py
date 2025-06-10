@@ -19,7 +19,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
-from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
+from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
@@ -702,14 +702,14 @@ def parse(key,value,data,verbose=None):
 								out = conditions([data[key]==data[value] for value in values if value in data],op='or')
 
 						elif delimiter in ['#']: # Index value: i,j,k,...
-							parser = lambda value: (to_int(value) if len(value)>0 else null)
+							parser = lambda value: ((to_int(value) if is_int(value) and (str(value) != '1.0') else to_float(value)) if len(value)>0 else null)
 							values = [parser(value) for value in values]
 							values = [value for value in values if (value is not null)]
 
 							if values and (values is not null):
 								try:
 									out = np.sort(data[key].unique())
-									out = data[key].isin(out[[value if value >=0 else len(out)+value for value in values if value < len(out)]])
+									out = data[key].isin(out[[int(len(out)*value) if isinstance(value,float) else value if value >=0 else len(out)+value for value in values if value < len(out)]])
 								except:
 									if isinstance(default,bool):
 										out = not default

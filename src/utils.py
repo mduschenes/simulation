@@ -12519,6 +12519,21 @@ def to_int(a,**kwargs):
 		integer = a
 	return integer
 
+def to_float(a,**kwargs):
+	'''
+	Convert object to float
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		floating (float): float representation of object
+	'''
+
+	try:
+		floating = float(a)
+	except:
+		floating = a
+	return floating
 
 def to_str(a,**kwargs):
 	'''

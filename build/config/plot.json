@@ -16407,7 +16407,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": null,
+							"M": "#0.0,0.5,1.0#",
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
@@ -16711,7 +16711,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": null,
+							"M": "#0.0,0.5,1.0#",
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
@@ -16843,10 +16843,10 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "\\textrm{Probability}~~ p_{\\mu}$"
+				"ylabel": "\\textrm{State}~\\rho_{\\sigma\\sigma}$"
 			},
 			"set_xlabel": {
-				"xlabel": "$\\textrm{Probability Index} ~~ \\mu$"
+				"xlabel": "$\\textrm{State Index} ~~ \\sigma$"
 			},
 			"yaxis.offsetText.set_fontsize": {
 				"fontsize": 20
