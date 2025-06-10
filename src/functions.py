@@ -180,6 +180,23 @@ def func_state(data,eps=1e-15):
 	data[data<=eps] = nan
 	return np.abs(data)
 
+def func_kurtosis(data,attr=None):
+	if attr not in data:
+		raise ValueError("Incorrect attribute %s"%(attr))
+		return
+	def func(data):
+		data = np.array(list(data))
+		indices = np.arange(len(data))
+		data /= np.sum(data)
+		mean = np.sum(data*((indices)*1))
+		variance = np.sum(data*((indices-mean)**2))
+		quartic = np.sum(data*((indices-mean)**4))
+		data = quartic/variance
+		return data
+	data = [func(i) for i in data[attr]]
+	data = (data-min(data))/(max(data)-min(data))
+	data = data[0] if len(data) == 1 else data
+	return data
 
 def func_spectrum(data,attr=None):
 	if attr not in data:

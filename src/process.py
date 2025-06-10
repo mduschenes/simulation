@@ -531,6 +531,7 @@ def find(dictionary,verbose=None):
 				'exclude':None,
 				'slice':None,
 				'labels':None,
+				'indexing':0,
 				'analysis':{
 					# 'zscore':[{'objective':0.5}],
 					# 'quantile':{'objective':None}
@@ -705,11 +706,10 @@ def parse(key,value,data,verbose=None):
 							parser = lambda value: ((to_int(value) if is_int(value) and (str(value) != '1.0') else to_float(value)) if len(value)>0 else null)
 							values = [parser(value) for value in values]
 							values = [value for value in values if (value is not null)]
-
 							if values and (values is not null):
 								try:
 									out = np.sort(data[key].unique())
-									out = data[key].isin(out[[int(len(out)*value) if isinstance(value,float) else value if value >=0 else len(out)+value for value in values if value < len(out)]])
+									out = data[key].isin(out[[max(0,int(len(out)*value-1)) if isinstance(value,float) else value if value >=0 else len(out)+value for value in values if value < len(out)]])
 								except:
 									if isinstance(default,bool):
 										out = not default
@@ -1386,11 +1386,17 @@ def apply(keys,data,plots,processes,verbose=None):
 		label = keys[name][other].get(other,{})
 		include = keys[name][other].get('include')
 		exclude = keys[name][other].get('exclude')
+		indexing = keys[name][other].get('indexing',0)
+		legend = keys[name][other].get('legend',{})
 		funcs = keys[name][other].get('func',{})
 		analyses = keys[name][other].get('analysis',{})
 		wrappers = keys[name][other].get('wrapper',{})
 		args = keys[name][other].get('args',None)
 		kwargs = keys[name][other].get('kwargs',None)
+
+		include = include if include is not None else None
+		exclude = exclude if exclude is not None else None
+		indexing = indexing if indexing is not None else 0
 
 		funcs = copy(funcs)
 		stat = 'stat'
@@ -1527,7 +1533,7 @@ def apply(keys,data,plots,processes,verbose=None):
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
-		labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+		labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
@@ -1703,7 +1709,7 @@ def apply(keys,data,plots,processes,verbose=None):
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(1,len(grouping[source].iloc[0])+1)
+								value[destination] = np.arange(indexing,len(grouping[source].iloc[0])+indexing)
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
@@ -1861,6 +1867,7 @@ def plotter(plots,processes,verbose=None):
 						continue
 
 					shapes = data[OTHER][OTHER].get('shape')
+					indexing = data[OTHER][OTHER].get('indexing') if data[OTHER][OTHER].get('indexing') is not None else 0
 					dimensions = [axes for axes in AXES if axes in data]
 					independent = [axes for axes in ALL 
 						for variable in VARIABLES 
@@ -1966,7 +1973,7 @@ def plotter(plots,processes,verbose=None):
 							if axes.endswith('err'):
 								data[axes][...] = 0
 							else:
-								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
+								data[axes][...,:] = np.arange(indexing,data[AXES[dim-1]].shape[-1]+indexing)
 
 	# Set layout from data
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
