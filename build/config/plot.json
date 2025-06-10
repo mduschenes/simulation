@@ -16416,8 +16416,8 @@
 						},
 						"wrapper": {
 							"array.kurtosis":{"src.functions.func_kurtosis":{"attr":"array"}},
-							"y": "src.functions.func_y",
-							"yerr": "src.functions.func_yerr"
+							"y": "src.functions.func_y_scale",
+							"yerr": "src.functions.func_yerr_scale"							
 						},
 						"scinotation": {
 							"scilimits": [
@@ -16731,8 +16731,8 @@
 						},
 						"wrapper": {
 							"state.kurtosis":{"src.functions.func_kurtosis":{"attr":"state"}},
-							"y": "src.functions.func_y",
-							"yerr": "src.functions.func_yerr"
+							"y": "src.functions.func_y_scale",
+							"yerr": "src.functions.func_yerr_scale"
 						},
 						"scinotation": {
 							"scilimits": [

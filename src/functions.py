@@ -131,6 +131,21 @@ def func_y(data):
 def func_yerr(data):
 	return np.abs(np.array(data['yerr']))#*(data['N']*log(data['D']))/log(2)
 
+def func_y_scale(data):
+	y = np.array(data['y'])
+	i,j = np.argmax(y),np.argmin(y)
+	y = (y-min(y))/(max(y)-min(y))
+	print(y)
+	return y
+
+def func_yerr_scale(data):
+	y = np.array(data['y'])
+	z = np.array(data['yerr'])
+	i,j = np.argmax(y),np.argmin(y)
+	y = ((z-z[j]) - (y-y[j])*(z[i]-z[j])/(y[i]-y[j]))/(y[i]-y[j])
+	print(y)
+	return y
+
 def func_line(data,attr=None):
 	if attr not in data:
 		return data
@@ -194,7 +209,6 @@ def func_kurtosis(data,attr=None):
 		data = quartic/variance
 		return data
 	data = [func(i) for i in data[attr]]
-	data = (np.array(data)-min(data))/(max(data)-min(data))
 	data = data[0] if len(data) == 1 else data
 	return data
 
