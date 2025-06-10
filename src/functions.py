@@ -194,7 +194,7 @@ def func_kurtosis(data,attr=None):
 		data = quartic/variance
 		return data
 	data = [func(i) for i in data[attr]]
-	data = (data-min(data))/(max(data)-min(data))
+	data = (np.array(data)-min(data))/(max(data)-min(data))
 	data = data[0] if len(data) == 1 else data
 	return data
 
