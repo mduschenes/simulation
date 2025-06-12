@@ -3481,7 +3481,7 @@ def plotter(plots,processes,verbose=None):
 						if not isinstance(joins[instance][subinstance][obj],dict):
 							joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
 						else:
-							joins[instance][subinstance][obj] = {i: {**joins[instance][subinstance][obj][i]} if isinstance(joins[instance][subinstance][obj][i],dict) else True if joins[instance][subinstance][obj][i] else {} for i in joins[instance][subinstance][obj]}
+							joins[instance][subinstance][obj] = {i: {**joins[instance][subinstance][obj][i]} if isinstance(joins[instance][subinstance][obj][i],dict) else True if joins[instance][subinstance][obj][i] is True else {attr:True for attr in joins[instance][subinstance][obj][i]} for i in joins[instance][subinstance][obj]}
 
 					for prop in list(joins[instance][subinstance][obj]):
 						
@@ -3499,8 +3499,9 @@ def plotter(plots,processes,verbose=None):
 							pass
 						elif joins[instance][subinstance][obj][prop] is True:
 							plots[instance][subinstance][obj][prop] = [{
-								**{attr:[data[index].get(attr) for index in data]
-									if attr not in SPECIAL else 
+								**{attr:
+									[data[index].get(attr) for index in data]
+									if (attr not in SPECIAL) or (attr.count(delim) and attr.split(delim)[-1] in PLOTS) else 
 									[data[index].get(attr) for index in data if attr in data[index]][0]
 									for attr in kwargs},
 								}]
@@ -3508,16 +3509,23 @@ def plotter(plots,processes,verbose=None):
 							if all(isinstance(i,int) for i in joins[instance][subinstance][obj][prop]):
 								plots[instance][subinstance][obj][prop] = [
 									*[{
-										**{attr:[data[index].get(attr) for index in joins[instance][subinstance][obj][prop]]
-											if attr not in SPECIAL else 
+										**{attr:
+											[data[index].get(attr) for index in joins[instance][subinstance][obj][prop]]
+											if ((attr not in SPECIAL) or 
+												(attr.count(delim) and attr.split(delim)[-1] in PLOTS)) else 
 											[data[index].get(attr) for index in joins[instance][subinstance][obj][prop] if attr in data[index]][0]
 											for attr in kwargs},
 									}],
 									*[data[index] for index in data if index not in joins[instance][subinstance][obj][prop]],
 									]
-							elif all(i in kwargs for i in joins[instance][subinstance][obj][prop]):
+							elif all(i in ALL or i in kwargs for i in joins[instance][subinstance][obj][prop]):
 								plots[instance][subinstance][obj][prop] = [{
-									**{attr:[data[index].get(attr) for index in data] if attr in joins[instance][subinstance][obj][prop] and attr not in SPECIAL else [data[index].get(attr) for index in data if attr in data][0] for attr in kwargs},
+									**{attr:
+										[data[index].get(attr) for index in data] 
+										if ((attr in ALL) or ((attr in joins[instance][subinstance][obj][prop]) and (attr not in SPECIAL)) or 
+											(attr.count(delim) and attr.split(delim)[-1] in PLOTS)) else 
+										[data[index].get(attr) for index in data if attr in data[index]][0] 
+										for attr in kwargs},
 									}]
 
 

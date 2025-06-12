@@ -241,7 +241,7 @@
 			]
 		]
 	],
-	"join":{"hist.array.M.noise.parameters":{"ax":["hist"]}},
+	"join":{"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}}},
 	"patterns": {
 		"max_bond": "S",
 		"cyclic": "periodic"

@@ -1194,6 +1194,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwargs.extend([kwarg for i in nullkwargs for kwarg in [i,*[delimiter.join([i,plot]) for plot in PLOTS]]])
 			nullkwargs.extend([kwarg for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)])
 
+
 			if attr in ['legend']:
 
 				if kwargs[attr].get('merge') is not None:
@@ -1666,6 +1667,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				call = len(args)>0			
 
 			elif attr in ['hist']:
+			
 				dim = 2
 
 				subattrs = 'set_%sscale'
@@ -1704,13 +1706,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100
 									)
 								value = None if any(value[i] is None for i in value) else value
-								value = np.linspace(**value) if value is not None else None								
+								value = np.linspace(**value)
 								kwargs[attr][prop] = value
 							elif axes in AXES[dim-1:dim]:
 								prop = 'log'
 								value = True
 								kwargs[attr][prop] = kwargs[attr].get(prop,value)
-
 
 				prop = 'density'
 				if prop in kwargs[attr] and kwargs[attr].get(prop) in ['probability']:
@@ -1728,32 +1729,35 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							y /= scale
 						return
 					
-					def func(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
-						y,x,plot = objs[-1]['obj']
-						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
-						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-
-							kwargs = {**kwargs,**{attr:(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {})}}
-
-							x = (x[:-1]+x[1:])/2
-							xerr = None
-							y = y
-							yerr = np.sqrt(y)
-
-							kwargs[attr]['x'] = x
-							kwargs[attr]['y'] = y
-							kwargs[attr]['xerr'] = xerr
-							kwargs[attr]['yerr'] = yerr
-							kwargs[attr].update({kwarg:plots[attr][kwarg][i] for kwarg in plots[attr]} if all(isinstance(plots[attr][kwarg],list) for kwarg in plots[attr]) else plots[attr])
-							
-							attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs)
-						return
-
-					for plot in plots:
-						functions[plot] = func
-
 					value = False
 					kwargs[attr][prop] = value
+
+				def func(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
+					y,x,plot = objs[-1]['obj']
+					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
+					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
+
+						kwds = {**kwargs,**{attr:(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {})}}
+
+						x = (x[:-1]+x[1:])/2
+						xerr = None
+						y = y
+						yerr = np.sqrt(y)
+
+						updates = {kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]}
+
+						kwds[attr]['x'] = x
+						kwds[attr]['y'] = y
+						kwds[attr]['xerr'] = xerr
+						kwds[attr]['yerr'] = yerr
+						kwds[attr].update(updates)
+						
+						attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwds)
+
+					return
+
+				for plot in plots:
+					functions[plot] = func
 
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
@@ -2263,68 +2267,92 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# linestyle index[-6]
 			for field in fields:
 				
-				value = _kwargs_.get(field)
+				values = _kwargs_.get(field)
 
-				if value is None:
-					continue
+				size = len(values) if isinstance(values,list) else None
 
-				if value == '__cycle__':
-					try:
-						_obj = [i for i in objs if i is not None][-1]['obj'][-1]
-					except:
+				values = [values] if not isinstance(values,list) else values
+
+				for number,value in enumerate(values):
+
+					if value is None:
+						continue
+
+					if value == '__cycle__':
 						try:
-							_obj = [i for i in objs if i is not None][-1]['obj']
+							_obj = [i for i in objs if i is not None][-1]['obj'][-1]
 						except:
-							_obj = objs
-					values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
-					_kwargs_[field] = values[-1]
-				
-				elif value == '__lines__':
-					_obj = getattr(obj,'get_lines')()[-1]
-					_kwargs_[field] = getattr(_obj,'get_%s'%(field))()
-			
-				elif isinstance(value,(dict,str)):
+							try:
+								_obj = [i for i in objs if i is not None][-1]['obj']
+							except:
+								_obj = objs
 
-					if field in ['color','ecolor','c']:
+						value = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)[-1]
+						if size is None:
+							_kwargs_[field] = value
+						else:
+							_kwargs_[field][number] = value
+					
+					elif value == '__lines__':
+						_obj = getattr(obj,'get_lines')()[-1]
 
-						kwds = ['value','values','color','norm','scale','base','alpha']
+						value = getattr(_obj,'get_%s'%(field))()
 
-						kwds = {prop: None	for prop in kwds}
+						if size is None:
+							_kwargs_[field] = value
+						else:
+							_kwargs_[field][number] = value
 
-						if isinstance(value,dict):
-							kwds.update(value)
-						elif isinstance(value,str):
-							kwds.update({'color':value})
+					elif isinstance(value,(dict,str)):
 
-						if isinstance(kwds.get('value'),dict):
-							kwds.update(kwds.pop('value',{}))
+						if field in ['color','ecolor','c']:
 
-						value = 'values'
-						values = 'value'
-						if kwds.get(value) is None and kwds.get(values) is None:
-							kwds[value] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
-							kwds[values] = [i/max(1,prod(shape[fields[field]])-1) for i in range(prod(shape[fields[field]]))]
-						elif kwds.get(value) is None and kwds.get(values) is not None:
-							kwds[value] = kwds[values]
-						elif kwds.get(value) is not None and kwds.get(values) is None:
-							kwds[values] = kwds[value]
-						elif kwds.get(value) is not None and kwds.get(values) is not None:
-							pass
+							kwds = ['value','values','color','norm','scale','base','alpha']
 
-						value,color,values,colors,norm = set_color(**kwds)
+							kwds = {prop: None	for prop in kwds}
 
-						value = color
+							if isinstance(value,dict):
+								kwds.update(value)
+							elif isinstance(value,str):
+								kwds.update({'color':value})
 
-					replacements = {'c':'color'}
-					if field in replacements:
-						if not isinstance(value,scalars) or isinstance(value,tuple) or len(value) == 1:
-							_kwargs_.pop(field);
-							field = replacements[field]
+							if isinstance(kwds.get('value'),dict):
+								kwds.update(kwds.pop('value',{}))
 
-					_kwargs_[field] = value
-				
-				else:
-					continue
+							value = 'values'
+							string = 'value'
+							if kwds.get(value) is None and kwds.get(string) is None:
+								kwds[value] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
+								kwds[string] = [i/max(1,prod(shape[fields[field]])-1) for i in range(prod(shape[fields[field]]))]
+							elif kwds.get(value) is None and kwds.get(string) is not None:
+								kwds[value] = kwds[string]
+							elif kwds.get(value) is not None and kwds.get(string) is None:
+								kwds[string] = kwds[value]
+							elif kwds.get(value) is not None and kwds.get(string) is not None:
+								pass
+
+							value = 'alpha'
+							if value in _kwargs_:
+								kwds[value] = _kwargs_[value][number] if isinstance(_kwargs_[value],list) else _kwargs_[value]
+								_kwargs_.pop(value)
+
+							value,color,values,colors,norm = set_color(**kwds)
+
+							value = color
+
+						replacements = {'c':'color'}
+						if field in replacements:
+							if not isinstance(value,scalars) or isinstance(value,tuple) or len(value) == 1:
+								_kwargs_.pop(field);
+								field = replacements[field]
+
+						if size is None:
+							_kwargs_[field] = value
+						else:
+							_kwargs_[field][number] = value
+					
+					else:
+						continue
 
 
 			_obj = obj

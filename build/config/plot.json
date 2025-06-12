@@ -17692,6 +17692,14 @@
 					"range":[0,1],
 					"density":"probability",
 					"log":true,
+					"alpha": {
+						"@M@": [
+							0.4,
+							0.6,
+							0.8,
+							1
+						]
+					},
 					"alpha.errorbar": {
 						"@M@": [
 							0.4,
@@ -17884,6 +17892,7 @@
 				"set_color": "black",
 				"set_linestyle": "-",
 				"set_marker": "s",
+				"set_alpha": 0.5,
 				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.3}},
 				"keep":["marker","linestyle","alpha"],
 				"ncol": 1,
