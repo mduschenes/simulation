@@ -125,6 +125,14 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
+def func_samples(data):
+	data = tuple((j for i in data for j in i))
+	return data
+
+def func_samples_err(data):
+	data = tuple((0 for i in data for j in i))
+	return data
+
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
 

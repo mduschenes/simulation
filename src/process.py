@@ -25,7 +25,7 @@ from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,OBJS
 
 # Logging
 from src.logger	import Logger
@@ -396,6 +396,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'reset':None,
 		'convert':None,
 		'patterns':None,
+		'join':None,
 		'plot':None,
 		'process':None,
 		'postprocess':None,
@@ -1481,8 +1482,6 @@ def apply(keys,data,plots,processes,verbose=None):
 
 					funcs[function][axes][func] = obj
 
-
-
 		wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
 
 		for attr in list(wrappers):
@@ -1591,13 +1590,25 @@ def apply(keys,data,plots,processes,verbose=None):
 					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
 					  for attr in attributes},
 			**{attr : [(delim.join(((attr,function,func))),
-						{'array':{'':mean,'err':std}[func],
-						 'object':{'':'first','err':none}[func],
-						 'dtype':funcs[function][axes][func]
-						}[dtypes[attr]]) 
+						{
+						'array':{
+							'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else mean,
+							'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else std,
+							}[func],
+						'object':{
+						 	'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
+						 	'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
+						 	}[func],
+						'dtype':{
+						 	'':funcs[function][axes][func],
+						 	'err':funcs[function][axes][func],						 
+						 	}[func],
+						}[dtypes[attr]])
 						for function in funcs for func in funcs[function][axes]
 						if delim.join(((attr,function,func))) not in data] 
-						for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])						
+						for axes in dimensions
+						for attr in [keys[name][axes]]
+						if attr is not None and attr in attributes
 						},
 		}
 
@@ -1610,7 +1621,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		options = dict(level=0,axis=1)
 
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
-	
+		
 		groups = groups.agg(agg).droplevel(**options).astype(dtype)
 
 		# agg = {
@@ -1659,10 +1670,11 @@ def apply(keys,data,plots,processes,verbose=None):
 		else:
 			groups = GroupBy(groups,by=by,**options)
 
+
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
-			
+
 			logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
 			
 			for j,function in enumerate(funcs):
@@ -1703,13 +1715,13 @@ def apply(keys,data,plots,processes,verbose=None):
 
 						if grouping.shape[0]:
 							if source in grouping:
-								if dtypes[attr] in ['array']:
+								if dtypes[attr] in ['array'] or any(isinstance(i,tuple) for i in grouping[source]):
 									value[destination] = np.array([np.array(i) for i in grouping[source]])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(indexing,len(grouping[source].iloc[0])+indexing)
+								value[destination] = np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
@@ -1726,6 +1738,7 @@ def apply(keys,data,plots,processes,verbose=None):
 				data.drop(columns=attr)
 			else:
 				data[attr] = tmp[attr]
+
 
 	return
 
@@ -1815,8 +1828,10 @@ def plotter(plots,processes,verbose=None):
 						independent = [axes for axes in ALL 
 							for variable in VARIABLES 
 							if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) < (len(dimensions)-1)]
+						dependent = [axes for axes in ALL 
+							for variable in VARIABLES 
+							if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) >= (len(dimensions)-1)]
 						dim = len(dimensions)
-
 						for attr in ALL:
 							
 							if attr not in data:
@@ -1825,7 +1840,7 @@ def plotter(plots,processes,verbose=None):
 							if attr in independent:
 								if attr.endswith('err'):
 									continue
-								if (data.get(attr) is None) or isinstance(data.get(attr),str):
+								if ((data.get(attr) is None) and all(data.get(attr) is None for attr in dependent if attr in data)) or isinstance(data.get(attr),str):
 									data.clear()
 
 		if all((not data) for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop])):
@@ -3157,8 +3172,7 @@ def plotter(plots,processes,verbose=None):
 									value = data[attr]['__value__']
 
 
-								if attr in ['alpha','zorder','marker','linestyle']:
-
+								if attr in [string for i in ['alpha','zorder','marker','linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									if isinstance(value,dict):
 										value = [i for i in value if all(
 											((not isinstance(value[i][attr],iterables) and 
@@ -3171,16 +3185,16 @@ def plotter(plots,processes,verbose=None):
 										if data[attr]['__index__'] is not None:
 											value = value[data[attr]['__index__']%len(value)] 
 
-								if attr in ['color','ecolor']:
+								if attr in [string for i in ['color','ecolor'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
-								elif attr in ['alpha']:
+								elif attr in [string for i in ['alpha'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									if not isinstance(value,scalars):
 										value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
-								elif attr in ['zorder']:
+								elif attr in [string for i in ['zorder'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									value = 1000*data[attr]['__index__']
-								elif attr in ['marker']:
+								elif attr in [string for i in ['marker'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
-								elif attr in ['linestyle']:
+								elif attr in [string for i in ['linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
 								else:
 									pass
@@ -3406,6 +3420,110 @@ def plotter(plots,processes,verbose=None):
 				
 				data[attr] = value
 
+
+	# Join data
+
+	attr = 'join'
+	objs = ['ax']
+	joins = processes.get(attr)
+
+
+	if joins:
+
+		if joins is None or joins is False:
+			joins = {}
+		elif joins is True:
+			joins = {instance: True for instance in plots}
+		else:
+			if not isinstance(joins,dict):
+				joins = {instance:True for instance in joins} 
+			else:
+				joins = {**joins}
+		
+		for instance in list(joins):
+			
+			if instance not in plots:
+				joins.pop(instance)
+				continue
+			
+			print(joins)
+			# {'hist.array.M.noise.parameters': {'ax': ['hist']}}
+
+			if joins[instance] is None or joins[instance] is False:
+				joins[instance] = {}
+			elif joins[instance] is True:
+				joins[instance] = {subinstance:{i:True for i in objs} for subinstance in plots[instance]} 
+			elif all(i in OBJS and i not in plots[instance] for i in joins[instance]):
+				if not isinstance(joins[instance],dict):
+					joins[instance] = {subinstance:{i:True for i in joins[instance]} for subinstance in plots[instance]}
+				else:
+					joins[instance] = {subinstance:{i:{**joins[instance][i]} if isinstance(joins[instance][i],dict) else True if joins[instance][i] is True else {j:True for j in joins[instance][i]} if (joins[instance][i] is not None and joins[instance][i] is not False) else {} for i in joins[instance]} for subinstance in plots[instance]}
+			else:
+				if not isinstance(joins[instance],dict):
+					joins[instance] = {subinstance:{i:True for i in objs} for subinstance in joins[instance]}
+				else:
+					joins[instance] = {subinstance:{**joins[instance][subinstance]} if isinstance(joins[instance][subinstance],dict) else True if joins[instance][subinstance] is True else {i:True for i in joins[instance][subinstance]} if (joins[instance][subinstance] is not None and joins[instance][subinstance] is not False) else {} for subinstance in joins[instance]}
+		
+			for subinstance in list(joins[instance]):
+				
+				if subinstance not in plots[instance]:
+					joins[instance].pop(subinstance)
+					continue
+	
+				for obj in list(joins[instance][subinstance]):
+
+					if obj not in plots[instance][subinstance]:
+						joins[instance][subinstance].pop(obj)
+						continue
+
+						if joins[instance][subinstance][obj] is None or joins[instance][subinstance][obj] is False:
+							joins[instance][subinstance][obj] = {}
+						elif joins[instance][subinstance][obj] is True:
+							joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
+						else:
+							if not isinstance(joins[instance][subinstance][obj],dict):
+								joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
+							else:
+								joins[instance][subinstance][obj] = {i: {**joins[instance][subinstance][obj][i]} if isinstance(joins[instance][subinstance][obj][i],dict) else True if joins[instance][subinstance][obj][i] else {} for i in joins[instance][subinstance][obj]}
+
+						print(joins)
+						exit()
+
+						for prop in list(joins[instance][subinstance][prop]):
+							
+							if prop not in plots[instance][subinstance]:
+								joins[instance][subinstance][obj].pop(prop)
+								continue
+
+								data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if data}
+								
+								kwarg = []
+								for index in data:
+									for kwarg in data[index]:
+										if attr not in kwargs and all(attr in data[index] for index in data):
+											kwargs.append(attr)
+
+								print(instance,subinstance,obj,prop)
+								print(list(data),kwargs)
+
+								exit()
+
+								# if joins[instance][subinstance][obj][prop] is None or joins[instance][subinstance][obj][prop] is False:
+								# 	joins[instance][subinstance][obj][prop] = {}
+								# elif joins[instance][subinstance][obj][prop] is True:
+								# 	joins[instance][subinstance][obj][prop] = {i: kwargs for i in data}
+								# else:
+								# 	if not isinstance(joins[instance][subinstance][obj][prop],dict):
+								# 		joins[instance][subinstance][obj] = {i: kwargs for i in data}
+								# 	else:
+								# 		joins[instance][subinstance][obj] = {i: {j:joins[instance][subinstance][obj][prop][i] for j in } if isinstance(joins[instance][subinstance][obj].get(i),dict) else True if joins[instance][subinstance][obj].get(i) else {} for i in joins[instance][subinstance][obj]}
+
+
+
+
+		# instance,subinstance,obj,prop,data,kwarg
+		# "x.y","None.0.0","ax","errorbar",index,"label"
+		
 
 	# Plot data
 	for instance in plots:

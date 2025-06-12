@@ -60,8 +60,11 @@
 		"None.spectrum.classical.M.noise.parameters": 1,
 		"None.spectrum.quantum.classical.M.noise.parameters": 1,
 		"None.array.M.noise.parameters": 1,
-		"None.state.M.noise.parameters": 1
-
+		"None.state.M.noise.parameters": 1,
+		"hist.array.M.noise.parameters": 1
+	},
+	"instance":{
+		"hist.array.M.noise.parameters": 1
 	},
 	"configuration": [
 		[
@@ -225,7 +228,8 @@
 				"None.spectrum.classical.M.noise.parameters",
 				"None.spectrum.quantum.classical.M.noise.parameters",
 				"None.array.M.noise.parameters",
-				"None.state.M.noise.parameters"
+				"None.state.M.noise.parameters",
+				"hist.array.M.noise.parameters"
 			],
 			[
 				{
@@ -237,6 +241,7 @@
 			]
 		]
 	],
+	"join":{"hist.array.M.noise.parameters":{"ax":["hist"]}},
 	"patterns": {
 		"max_bond": "S",
 		"cyclic": "periodic"
