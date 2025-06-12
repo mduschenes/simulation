@@ -17037,7 +17037,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": "#0.0,0.5,1.0#",
+							"M": "$0,10,25,50$",
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
@@ -17342,7 +17342,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": "#0.0,0.5,1.0#",
+							"M": "$0,10,25,50$",
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
@@ -17652,7 +17652,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": [0,3],
+							"M": "$0,10,25,50$",
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
