@@ -63,9 +63,6 @@
 		"None.state.M.noise.parameters": 1,
 		"hist.array.M.noise.parameters": 1
 	},
-	"instance":{
-		"hist.array.M.noise.parameters": 1
-	},
 	"configuration": [
 		[
 			[
