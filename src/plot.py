@@ -40,16 +40,17 @@ VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
-CHILDREN = ['twin']
+OBJS = ['ax','fig','style']
+OBJ = 'ax'
 OTHER = 'label'
+SPECIAL = ['obj','plots']
+CHILDREN = ['twin']
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
 CAXES = ['colorbar']
 PLOTS = ['plot','scatter','errorbar','hist','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf','imshow','matshow']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
-OBJS = ['ax','fig','style']
-OBJ = 'ax'
 PATHS = {
 	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
 	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
@@ -1133,18 +1134,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 	def attr_wrap(obj,attr,objs,settings,**kwargs):
 
 		def attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
+			
 			call = True
 			
 			args = []
-			
 			kwds = {}
 			
 			_args = []
 			_kwds = {}
 
-			plots = {}
-
 			function = None
+			functions = {}
 
 			fields = {
 				'set_colorbar':slice(-2,None),
@@ -1162,17 +1162,34 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwarg = []
 
 
-			plots = kwargs[attr].get('plots')
-			plots = {} if plots is None else {plots:{}} if isinstance(plots,str) else {plot:{} for plot in plots} if not isinstance(plots,dict) else {**plots}
-			plots = {plot:{plots[plot]:None} if isinstance(plots[plot],str) else {**plots[plot]} for plot in plots}
-
-			nullkwargs.extend(['plots'])
-
-
 			attribute = kwargs[attr].get('obj')
 			obj = get_obj(obj,attribute)
 
 			nullkwargs.extend(['obj'])
+
+
+			plots = kwargs[attr].get('plots')
+			plots = {} if plots is None else {plots:{}} if isinstance(plots,str) else {plot:{} for plot in plots} if not isinstance(plots,dict) else {**plots}
+			plots = {plot:{plots[plot]:None} if isinstance(plots[plot],str) else {**plots[plot]} for plot in plots}
+
+			for plot in (*(plot for plot in plots),*(plot for plot in PLOTS if plot not in plots)):
+
+				if plot not in plots:
+					plots[plot] = {}
+
+				for prop in list(plots[plot]):
+					if prop in kwargs[attr]:
+						value = kwargs[attr].pop(prop)
+						kwargs[attr][delimiter.join([prop,plot])] = value
+						plots[plot].pop(prop)
+
+				plots[plot].update({prop.split(delimiter)[0]:kwargs[attr][prop] for prop in kwargs[attr] if prop.count(delimiter) and prop.split(delimiter)[-1] == plot})
+
+				if not plots[plot]:
+					plots.pop(plot)
+
+			nullkwargs.extend(['plots'])
+
 
 			nullkwargs.extend([kwarg for i in nullkwargs for kwarg in [i,*[delimiter.join([i,plot]) for plot in PLOTS]]])
 			nullkwargs.extend([kwarg for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)])
@@ -1697,11 +1714,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				if prop in kwargs[attr] and kwargs[attr].get(prop) in ['probability']:
-					def function(obj,args,kwargs):
+					def function(obj,attr,arguments,keywords,kwargs):
 						y,x,plot = obj
 						y,x,plot = ([y],[z],[plot]) if not isinstance(plot,list) else (y,x,plot)
-						for y,x,plot in zip(y,x,plot):
-							if kwargs.get('log'):
+						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
+							if keywords.get('log'):
 								scale = abs(y.sum())
 							else:
 								scale = y.sum()
@@ -1710,21 +1727,38 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							plot.datavalues /= plot.datavalues/scale
 							y /= scale
 						return
+					
+					def func(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
+						y,x,plot = objs[-1]['obj']
+						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
+						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
+
+							kwargs = {**kwargs,**{attr:(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {})}}
+
+							x = (x[:-1]+x[1:])/2
+							xerr = None
+							y = y
+							yerr = np.sqrt(y)
+
+							kwargs[attr]['x'] = x
+							kwargs[attr]['y'] = y
+							kwargs[attr]['xerr'] = xerr
+							kwargs[attr]['yerr'] = yerr
+							kwargs[attr].update({kwarg:plots[attr][kwarg][i] for kwarg in plots[attr]} if all(isinstance(plots[attr][kwarg],list) for kwarg in plots[attr]) else plots[attr])
+							
+							attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs)
+						return
+
+					for plot in plots:
+						functions[plot] = func
+
 					value = False
 					kwargs[attr][prop] = value
-
-				prop = 'label'
-				if prop in kwargs[attr] and any(prop in plots[plot] for plot in plots):
-					value = kwargs[attr].pop(prop)
-					for plot in plots:
-						if prop in plots[plot]:
-							kwargs[attr][delimiter.join([prop,plot])] = value
-							plots[plot].pop(prop)
 
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['label']])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
 				call = len(args)>0	
 
@@ -2187,6 +2221,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwargs.extend([kwarg for i in nullkwargs for kwarg in [i,*[delimiter.join([i,plot]) for plot in PLOTS]]])
 			nullkwargs.extend([kwarg for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)])
 
+
 			try:
 				_kwargs_ = deepcopy(kwargs[attr])
 			except:
@@ -2318,7 +2353,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			if function is not None:
 				try:
-					function(_obj_,args,_kwargs_)
+					function(_obj_,attr,args,_kwargs_,kwargs)
 				except Exception as exception:
 					pass
 
@@ -2388,51 +2423,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			objs.append(_obj)
 
-
-			for _attr in [*plots,*PLOTS]:
-
-				if _attr not in plots:
-					plots[_attr] = {}
-
-				plots[_attr].update({kwarg.split(delimiter)[0]:kwargs[attr][kwarg] for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)})
-
-				if not plots[_attr]:
-					plots.pop(_attr)
-
-			for _attr in plots:
-
-				if not plots[_attr]:
-					continue
-
-				if attr is None:
-					pass
-				elif attr in ['hist'] and _attr in ['errorbar']:
-					def func(attr,obj,objs,kwargs,plots):
-						y,x,plot = objs[-1]['obj']
-						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
-						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-
-							kwargs = {**kwargs,**{attr:(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {})}}
-
-							x = (x[:-1]+x[1:])/2
-							xerr = None
-							y = y
-							yerr = np.sqrt(y)
-
-							kwargs[attr]['x'] = x
-							kwargs[attr]['y'] = y
-							kwargs[attr]['xerr'] = xerr
-							kwargs[attr]['yerr'] = yerr
-							kwargs[attr].update(plots[attr])
-							
-							attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs)
-						
-						return
-				else:
-					continue
-
+			for plot in functions:
 				try:
-					func(_attr,obj,objs,kwargs,plots)	
+					functions[plot](obj,plot,objs,index,indices,shape,count,_kwargs,kwargs)	
 				except Exception as exception:
 					pass
 

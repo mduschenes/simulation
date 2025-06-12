@@ -25,7 +25,7 @@ from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,OBJS
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,OBJS,SPECIAL
 
 # Logging
 from src.logger	import Logger
@@ -3428,7 +3428,7 @@ def plotter(plots,processes,verbose=None):
 	joins = processes.get(attr)
 
 
-	if joins:
+	if joins and 1:
 
 		if joins is None or joins is False:
 			joins = {}
@@ -3439,16 +3439,13 @@ def plotter(plots,processes,verbose=None):
 				joins = {instance:True for instance in joins} 
 			else:
 				joins = {**joins}
-		
+
 		for instance in list(joins):
 			
 			if instance not in plots:
 				joins.pop(instance)
 				continue
 			
-			print(joins)
-			# {'hist.array.M.noise.parameters': {'ax': ['hist']}}
-
 			if joins[instance] is None or joins[instance] is False:
 				joins[instance] = {}
 			elif joins[instance] is True:
@@ -3469,61 +3466,60 @@ def plotter(plots,processes,verbose=None):
 				if subinstance not in plots[instance]:
 					joins[instance].pop(subinstance)
 					continue
-	
+
 				for obj in list(joins[instance][subinstance]):
 
 					if obj not in plots[instance][subinstance]:
 						joins[instance][subinstance].pop(obj)
 						continue
 
-						if joins[instance][subinstance][obj] is None or joins[instance][subinstance][obj] is False:
-							joins[instance][subinstance][obj] = {}
-						elif joins[instance][subinstance][obj] is True:
+					if joins[instance][subinstance][obj] is None or joins[instance][subinstance][obj] is False:
+						joins[instance][subinstance][obj] = {}
+					elif joins[instance][subinstance][obj] is True:
+						joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
+					else:
+						if not isinstance(joins[instance][subinstance][obj],dict):
 							joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
 						else:
-							if not isinstance(joins[instance][subinstance][obj],dict):
-								joins[instance][subinstance][obj] = {i: True for i in plots[instance][subinstance][obj]}
-							else:
-								joins[instance][subinstance][obj] = {i: {**joins[instance][subinstance][obj][i]} if isinstance(joins[instance][subinstance][obj][i],dict) else True if joins[instance][subinstance][obj][i] else {} for i in joins[instance][subinstance][obj]}
+							joins[instance][subinstance][obj] = {i: {**joins[instance][subinstance][obj][i]} if isinstance(joins[instance][subinstance][obj][i],dict) else True if joins[instance][subinstance][obj][i] else {} for i in joins[instance][subinstance][obj]}
 
-						print(joins)
-						exit()
+					for prop in list(joins[instance][subinstance][obj]):
+						
+						if prop not in plots[instance][subinstance][obj]:
+							joins[instance][subinstance][obj].pop(prop)
+							continue
 
-						for prop in list(joins[instance][subinstance][prop]):
-							
-							if prop not in plots[instance][subinstance]:
-								joins[instance][subinstance][obj].pop(prop)
-								continue
+						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if data}
+						kwargs = sorted(set(attr for index in data for attr in data[index]),key=lambda attr:tuple(list(data[index]).index(attr) if attr in data[index] else len(data[index]) for index in data))
 
-								data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if data}
-								
-								kwarg = []
-								for index in data:
-									for kwarg in data[index]:
-										if attr not in kwargs and all(attr in data[index] for index in data):
-											kwargs.append(attr)
+						if not data or not kwargs:
+							continue
 
-								print(instance,subinstance,obj,prop)
-								print(list(data),kwargs)
+						if joins[instance][subinstance][obj][prop] is None or joins[instance][subinstance][obj][prop] is False:
+							pass
+						elif joins[instance][subinstance][obj][prop] is True:
+							plots[instance][subinstance][obj][prop] = [{
+								**{attr:[data[index].get(attr) for index in data]
+									if attr not in SPECIAL else 
+									[data[index].get(attr) for index in data if attr in data[index]][0]
+									for attr in kwargs},
+								}]
+						else:
+							if all(isinstance(i,int) for i in joins[instance][subinstance][obj][prop]):
+								plots[instance][subinstance][obj][prop] = [
+									*[{
+										**{attr:[data[index].get(attr) for index in joins[instance][subinstance][obj][prop]]
+											if attr not in SPECIAL else 
+											[data[index].get(attr) for index in joins[instance][subinstance][obj][prop] if attr in data[index]][0]
+											for attr in kwargs},
+									}],
+									*[data[index] for index in data if index not in joins[instance][subinstance][obj][prop]],
+									]
+							elif all(i in kwargs for i in joins[instance][subinstance][obj][prop]):
+								plots[instance][subinstance][obj][prop] = [{
+									**{attr:[data[index].get(attr) for index in data] if attr in joins[instance][subinstance][obj][prop] and attr not in SPECIAL else [data[index].get(attr) for index in data if attr in data][0] for attr in kwargs},
+									}]
 
-								exit()
-
-								# if joins[instance][subinstance][obj][prop] is None or joins[instance][subinstance][obj][prop] is False:
-								# 	joins[instance][subinstance][obj][prop] = {}
-								# elif joins[instance][subinstance][obj][prop] is True:
-								# 	joins[instance][subinstance][obj][prop] = {i: kwargs for i in data}
-								# else:
-								# 	if not isinstance(joins[instance][subinstance][obj][prop],dict):
-								# 		joins[instance][subinstance][obj] = {i: kwargs for i in data}
-								# 	else:
-								# 		joins[instance][subinstance][obj] = {i: {j:joins[instance][subinstance][obj][prop][i] for j in } if isinstance(joins[instance][subinstance][obj].get(i),dict) else True if joins[instance][subinstance][obj].get(i) else {} for i in joins[instance][subinstance][obj]}
-
-
-
-
-		# instance,subinstance,obj,prop,data,kwarg
-		# "x.y","None.0.0","ax","errorbar",index,"label"
-		
 
 	# Plot data
 	for instance in plots:

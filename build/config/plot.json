@@ -17686,11 +17686,12 @@
 							null
 						]
 					},
+					"obj":null,
+					"plots":{"errorbar":"label"},
 					"bins":100,
 					"range":[0,1],
 					"density":"probability",
 					"log":true,
-					"plots":{"errorbar":"label"},
 					"alpha.errorbar": {
 						"@M@": [
 							0.4,
