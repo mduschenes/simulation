@@ -3381,7 +3381,6 @@ def plotter(plots,processes,verbose=None):
 							  (label not in data[OTHER][OTHER]['legend'].get('exclude')))
 							))))
 							]
-
 					if any(isinstance(i,tuple) for i in value) and any(isinstance(i,str) for i in value):
 						value = ': '.join([
 							separator.join([j for i in value if isinstance(i,tuple) for j in i]),
@@ -3416,7 +3415,7 @@ def plotter(plots,processes,verbose=None):
 
 				value = [split(path,file=True),instance,data[attr]]
 				value = [i for i in value if i is not None]
-				value = [split(path,directory=True),'plot',delim.join(value)]
+				value = [split(path,directory=True),*(['plot'] if len(plots)>1 else []),delim.join(value)]
 				value = join(*value,ext=split(path,ext=True))
 				
 				data[attr] = value

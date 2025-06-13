@@ -982,6 +982,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 	def attr_texify(string,attr,kwarg,obj=None,texify=None,**kwargs):
 		def _texify(string):
 
+			if string is None:
+				return string
+
 			string = str(string)
 				
 			substring = '\n'.join(['%s'%(substring.replace('$','')) if (len(substring.replace('$',''))>0) else r'~' for substring in string.split('\n')])
@@ -1024,19 +1027,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			((isinstance(attrs[attr],list) and (kwarg in attrs[attr])) or 
 			 (isinstance(attrs[attr],dict) and (kwarg in attrs[attr])))):
 			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
-				string = [scinotation(substring,decimals=1,usetex=True) if '$' not in substring else substring for substring in string]
+				string = [scinotation(substring,decimals=1,usetex=True) if '$' not in substring else substring for substring in string] if string is not None else None
 			elif isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(string)
 				if len(string.replace('$','')) == 0:
 					string = ''
 			elif isinstance(string,list):
-				string = [texify(substring) for substring in string]
-				string = ['' if len(substring.replace('$','')) == 0 else substring for substring in string]
+				string = [texify(substring) if substring is not None else None for substring in string]
+				string = ['' if substring is not None and len(substring.replace('$','')) == 0 else substring for substring in string]
 		if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 			if isinstance(string,str) and len(string.replace('$','')) == 0:
 				string = ''
 		elif isinstance(string,list):
-			string = ['' if isinstance(substring,str) and len(substring.replace('$','')) == 0 else substring for substring in string]
+			string = ['' if substring is not None and isinstance(substring,str) and len(substring.replace('$','')) == 0 else substring for substring in string]
 
 		return string
 
@@ -1169,25 +1172,31 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			plots = kwargs[attr].get('plots')
-			plots = {} if plots is None else {plots:{}} if isinstance(plots,str) else {plot:{} for plot in plots} if not isinstance(plots,dict) else {**plots}
-			plots = {plot:{plots[plot]:None} if isinstance(plots[plot],str) else {**plots[plot]} for plot in plots}
 
-			for plot in (*(plot for plot in plots),*(plot for plot in PLOTS if plot not in plots)):
+			if plots is not False:
+				plots = {} if plots is None or plots is True else {plots:{}} if isinstance(plots,str) else {plot:{} for plot in plots} if not isinstance(plots,dict) else {**plots}
+				plots = {plot:{plots[plot]:None} if isinstance(plots[plot],str) else {**plots[plot]} for plot in plots}
+				for plot in (
+					*(plot for plot in plots),
+					*(plot for plot in PLOTS if plot not in plots)
+					):
 
-				if plot not in plots:
-					plots[plot] = {}
+					if plot not in plots:
+						plots[plot] = {}
 
-				for prop in list(plots[plot]):
-					if prop in kwargs[attr]:
-						value = kwargs[attr].pop(prop)
-						kwargs[attr][delimiter.join([prop,plot])] = value
-						plots[plot].pop(prop)
+					for prop in list(plots[plot]):
+						if prop in kwargs[attr]:
+							value = kwargs[attr].pop(prop)
+							kwargs[attr][delimiter.join([prop,plot])] = value
+							plots[plot].pop(prop)
 
-				plots[plot].update({prop.split(delimiter)[0]:kwargs[attr][prop] for prop in kwargs[attr] if prop.count(delimiter) and prop.split(delimiter)[-1] == plot})
+					plots[plot].update({prop.split(delimiter)[0]:kwargs[attr][prop] for prop in kwargs[attr] if prop.count(delimiter) and prop.split(delimiter)[-1] == plot})
 
-				if not plots[plot]:
-					plots.pop(plot)
-
+					if not plots[plot]:
+						plots.pop(plot)
+			else:
+				plots = {}
+			print(plots)
 			nullkwargs.extend(['plots'])
 
 
@@ -1203,11 +1212,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				else:
 					handles_labels = getattr(obj,'get_legend_handles_labels')()
 
+				def func(i,handles,labels):
+					if isinstance(handles[i],matplotlib.container.ErrorbarContainer):
+						handles[i] = handles[i][0]
+					if labels[i] is None:
+						handles.pop(i)
+						labels.pop(i)
+					return
+				
 				handles,labels = handles_labels
-				handles,labels = (
-					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
-					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
-					)
+				
+				for i in range(len(handles_labels)-1,-1,-1):
+					func(i,handles,labels)
+
 				handler_map = {}
 
 				if len(handles)>0 and len(labels)>0:
@@ -1532,6 +1549,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									}
 									}),					
 							})
+
 
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
 				
@@ -2202,8 +2220,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if path is not None:
 					dirname = os.path.abspath(os.path.dirname(path))
 					if not os.path.exists(dirname):
-						os.makedirs(dirname)		
-					kwargs[attr]['fname'] = os.path.abspath(os.path.expanduser(path))
+						os.makedirs(dirname)	
+					path = os.path.abspath(os.path.expanduser(path))
+					print(path)	
+					kwargs[attr]['fname'] = path
 					call = True
 				else:
 					call = False
