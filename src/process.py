@@ -2747,6 +2747,7 @@ def plotter(plots,processes,verbose=None):
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
 						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
+
 						if isinstance(data[attr%(axes)].get(kwarg),integers):
 							
 							size = data[attr%(axes)][kwarg]
@@ -2759,7 +2760,7 @@ def plotter(plots,processes,verbose=None):
 								value = np.linspace(*value,size,endpoint=True)
 							elif scale in ['log','symlog']:
 								base = 10 if base is None else base
-								value = np.log10(value)/np.log(base)
+								value = np.log(value)/np.log(base)
 								value = np.logspace(*value,size,base=base,endpoint=True)
 							else:
 								value = np.array(value)

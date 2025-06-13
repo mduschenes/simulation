@@ -11236,6 +11236,18 @@ def edging(data,constants=None,dtype=None,**kwargs):
 	return data
 
 
+def mesh(shape):
+	'''
+	Get mesh with shape
+	Args:
+		shape (int,iterable[int]): Shape of mesh
+	Returns:
+		data (array): Mesh with shape shape
+	'''
+	integer = isinstance(shape,int)
+	shape = [shape] if integer else shape
+	data = reshape(transpose(np.meshgrid([arange(i) for i in shape])),(-1,len(shape)) if integer else -1)
+	return data
 
 def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	'''

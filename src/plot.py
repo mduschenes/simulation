@@ -1688,6 +1688,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								value = False
 								kwargs[attr][prop] = kwargs[attr].get(prop,value)
 						elif any(i.get('value') in ['log','symlog'] for i in scale):
+							base = max((i.get('base') for i in scale if i.get('base') is not None),default=None)
 							if axes in AXES[0:dim-1]:
 								prop = 'bins'
 								value = dict(
@@ -1703,10 +1704,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										max((j for i in value['lim'] for j in (i.get('%smax'%(axes)),) if j is not None),default=None),
 										max((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
 										if i is not None),default=None),									
-									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100
+									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100,
+									base=base if base is not None else 10,
 									)
-								value = None if any(value[i] is None for i in value) else value
-								value = np.linspace(**value)
+								value = None if any(value[i] is None for i in value) else {**value,**{i:int(np.log10(value[i])/np.log10(base)) for i in dict(start=None,stop=None) if value.get(i) is not None},**{i:int(value[i])+1 for i in dict(num=None) if value.get(i) is not None}}
+								value = np.logspace(**value)
 								kwargs[attr][prop] = value
 							elif axes in AXES[dim-1:dim]:
 								prop = 'log'
@@ -1717,7 +1719,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if prop in kwargs[attr] and kwargs[attr].get(prop) in ['probability']:
 					def function(obj,attr,arguments,keywords,kwargs):
 						y,x,plot = obj
-						y,x,plot = ([y],[z],[plot]) if not isinstance(plot,list) else (y,x,plot)
+						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
 							if keywords.get('log'):
 								scale = abs(y.sum())
