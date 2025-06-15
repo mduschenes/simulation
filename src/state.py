@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser
+from src.utils import argparser,progressbar
 from src.utils import array,rand,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,iterables
 from src.io import load,dump,split,join
@@ -55,7 +55,7 @@ class Model(object):
 		def func(state,**kwargs):
 			return -(1/sqrt(self.N))*einsum('i,ij,j',state,self.parameters,state)
 		def weight(state,*args,**kwargs):
-			return exp(-(1/self.T)*func(state,**kwargs))
+			return exp(-(1/self.T)*func(state,**kwargs) + 1)
 		def normalization(*args,**kwargs):
 			return sum(weight(state,*args,**kwargs) for state in states(*args,**kwargs))
 		def probability(*args,**kwargs):
@@ -124,8 +124,7 @@ class Model(object):
 
 	def __call__(self,*args,**kwargs):
 
-		for seed in range(self.samples):
-			print(seed)
+		for seed in progressbar(range(self.samples)):
 			self.init(seed=seed,**kwargs)
 			data = self.run(*args,**kwargs)
 			self.append(data=data)

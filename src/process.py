@@ -19,7 +19,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
-from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
+from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
@@ -725,7 +725,7 @@ def parse(key,value,data,verbose=None):
 							if values and (values is not null):
 								try:
 									out = np.sort(data[key].unique())
-									out = data[key].isin(out[slice(*values)])
+									out = data[key].isin(out[slice(*to_slice(values))])
 								except:
 									if isinstance(default,bool):
 										out = not default
@@ -3011,13 +3011,13 @@ def plotter(plots,processes,verbose=None):
 								subslice = [
 									conditions([parse(axes,subslice[axes],{axes: np.array(data[axes])},verbose=verbose) 
 									for axes in subslice if isinstance(subslice[axes],str)],op='and'),
-									*[slice(*subslice[axes]) for axes in subslice 
+									*[slice(*to_slice(subslice[axes])) for axes in subslice 
 									 if not isinstance(subslice[axes],str)]
 									]
 							else:
 								subslice = [slice(None)]
 						else:
-							subslice = [slice(*subslice)]
+							subslice = [slice(*to_slice(subslice))]
 						
 						slices.extend(subslice)
 

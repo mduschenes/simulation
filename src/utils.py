@@ -13,6 +13,7 @@ import random
 from random import choices,sample as samples
 import hashlib,datetime
 import argparse
+from tqdm import tqdm as progressbar
 
 import traceback
 import warnings
@@ -12425,6 +12426,19 @@ def to_repr(a,represent=True):
 	'''
 	return repr(a) if represent else a
 
+
+def to_slice(a,dtype=None,exceptions=(str,),**kwargs):
+	'''
+	Convert iterable to slice type
+	Args:
+		a (iterable): Iterable to convert to iterable
+		dtype (datatype): Type of iterable
+		exceptions (tuple[datatype]): Exception types not to update
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (slice): Slice representation of iterable
+	'''
+	return map(lambda i:int(i) if i is not None else i,a)
 
 def to_iterable(a,dtype=None,exceptions=(str,),**kwargs):
 	'''

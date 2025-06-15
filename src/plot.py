@@ -1196,7 +1196,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						plots.pop(plot)
 			else:
 				plots = {}
-			print(plots)
+
 			nullkwargs.extend(['plots'])
 
 
@@ -1215,14 +1215,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				def func(i,handles,labels):
 					if isinstance(handles[i],matplotlib.container.ErrorbarContainer):
 						handles[i] = handles[i][0]
-					if labels[i] is None:
+					if (kwargs[attr].get('none') is False) and (labels[i] is None or labels[i] in [str(None)]):
 						handles.pop(i)
 						labels.pop(i)
 					return
 				
 				handles,labels = handles_labels
 				
-				for i in range(len(handles_labels)-1,-1,-1):
+				for i in range(min(len(handles),len(labels))-1,-1,-1):
 					func(i,handles,labels)
 
 				handler_map = {}
@@ -1583,7 +1583,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(kwargs[attr].get('set_label',True)))
 					)
 
-				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','set_marker','set_linestyle','title','get_title','get_texts','get_frame','set_label','set_title_col','set_title_row'])
+				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','none','texify','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','set_marker','set_linestyle','title','get_title','get_texts','get_frame','set_label','set_title_col','set_title_row'])
 
 			elif attr in ['plot']:
 				dim = 2
@@ -1687,6 +1687,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['hist']:
 			
 				dim = 2
+
+				prop = 'label'
+				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
+					kwargs[attr][prop] = None
 
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
@@ -2222,7 +2226,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if not os.path.exists(dirname):
 						os.makedirs(dirname)	
 					path = os.path.abspath(os.path.expanduser(path))
-					print(path)	
 					kwargs[attr]['fname'] = path
 					call = True
 				else:
