@@ -23,6 +23,10 @@ from src.logger	import Logger
 logger = Logger()
 info = 100	
 debug = 100
+def log(exception):
+	logger.log(debug,'%r'%(exception))
+	logger.log(debug,'%s'%(traceback.format_exc()))
+	return
 
 # Import user modules
 paths = set([os.getcwd(),os.path.abspath(os.path.dirname(__file__)),os.path.abspath(os.path.join(os.path.dirname(__file__),'..'))])
@@ -1004,10 +1008,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		attrs = {
 			**{'set_%slabel'%(axes):['%slabel'%(axes)]
 				for axes in AXES},
-			# **{'set_%sticks'%(axes):['ticks']
-			# 	for axes in AXES},				
 			**{'set_%sticklabels'%(axes):['labels']
-				for axes in AXES},	
+				for axes in AXES},
+			**{'%saxis.set_ticklabels'%(axes):['labels']
+				for axes in AXES},					
 			**{k:[OTHER] for k in PLOTS},								
 			**{'set_title':[OTHER],'suptitle':['t'],
 			'annotate':['s'],
@@ -1026,8 +1030,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if ((attr in attrs) and 
 			((isinstance(attrs[attr],list) and (kwarg in attrs[attr])) or 
 			 (isinstance(attrs[attr],dict) and (kwarg in attrs[attr])))):
-			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
-				string = [scinotation(substring,decimals=1,usetex=True) if '$' not in substring else substring for substring in string] if string is not None else None
+			if attr in [string%(axes) for string in ['set_%sticklabels','%saxis.set_ticklabels'] for axes in AXES]:
+				string = [scinotation(substring,decimals=1,usetex=True) if (substring is not None and (not isinstance(substring,str) or '$' not in substring)) else substring for substring in string] if string is not None else None
 			elif isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(string)
 				if len(string.replace('$','')) == 0:
@@ -1050,7 +1054,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for axes in AXES 
 				for key,label in [('%slabel'%(axes),'%slabel'%(axes)),
 								  ('%sticks'%(axes),'ticks'),
-								  ('%sticklabels'%(axes),'labels')]},
+								  ('%sticklabels'%(axes),'labels')]
+				},
+			**{'%saxis.%s'%(axes,key):['labels']
+				for axes in AXES
+				for key in ['set_ticklabels']
+				},
 			**{'%saxis.%s'%(axes,key):['labelsize']
 				for axes in AXES
 				for key in ['set_tick_params']
@@ -1079,7 +1088,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			}
 
 		def returns(value,attr,kwarg,obj):
-			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
+			if attr in [string%(axes) for string in ['set_%sticklabels','%saxis.set_ticklabels'] for axes in AXES]:
 				if kwarg in ['labels']:
 					return []
 				else:
@@ -1738,7 +1747,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								kwargs[attr][prop] = kwargs[attr].get(prop,value)
 
 				prop = 'density'
-				if prop in kwargs[attr] and kwargs[attr].get(prop) in ['probability']:
+				if kwargs[attr].get(prop) in ['probability']:
 					def function(obj,attr,arguments,keywords,kwargs):
 						y,x,plot = obj
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
@@ -2068,8 +2077,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
 				pass
 
-			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
-				pass				
+			elif attr in ['set_%sticklabels'%(axes) for axes in AXES]:
+				pass	
+
+			elif attr in ['%saxis.set_ticklabels'%(axes) for axes in AXES]:
+				pass			
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
@@ -2392,6 +2404,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					_obj_ = _obj(**_kwargs_)
 				except Exception as exception:
+					log(exception)
 					try:
 						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
 						if _kwargs_:
@@ -2399,8 +2412,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						else:
 							_obj_ = None
 					except Exception as exception:
-						logger.log(debug,'%r'%(exception))
-						logger.log(debug,'%s'%(traceback.format_exc()))
+						log(exception)
 						_obj_ = None
 
 			if function is not None:
@@ -2471,21 +2483,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										except Exception as exception:
 											pass	
 				
-
-			attributes = ['grid']
-			for attribute in attributes:
-				if attribute in ['grid'] and attribute in kwargs:
-					for kwds in search(kwargs.get(attribute)):
-						if kwds.get('visible'):
-							if kwds.get('which') in ['major','minor']:
-								for axes in [axes for axes in AXES if kwds.get('axis') in [axes,'both']]:
-									try:
-										for grid in getattr(obj,"get_%sgridlines"%(axes))():
-											grid.set_visible(True)
-									except Exception as exception:
-										pass
-
-
 			_obj = {'obj':_obj_,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count}
 			
 			objs.append(_obj)
@@ -2576,7 +2573,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			props = list(settings[key][attr])
 
-			ordering = {'close':-1,'savefig':-2}
+			ordering = {'fig':{'close':-1,'savefig':-2},'ax':{string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels']) for axes in AXES}}.get(attr,{})
 			for prop in ordering:
 				if prop in settings[key][attr]:
 					if ordering[prop] == -1:

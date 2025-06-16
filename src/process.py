@@ -2766,7 +2766,7 @@ def plotter(plots,processes,verbose=None):
 								value = np.array(value)
 								value = np.linspace(*value,size,endpoint=True)
 						else:
-							value = data[attr%(axes)][kwarg]
+							value = data[attr%(axes)].get(kwarg)
 
 						if isinstance(value,arrays):
 							value = value.tolist()
@@ -2816,7 +2816,60 @@ def plotter(plots,processes,verbose=None):
 								else:
 									value = [i for i in value]
 						else:
-							value = data[attr%(axes)][kwarg]
+							value = data[attr%(axes)].get(kwarg)
+
+						options = {attr: data.pop(attr,dict()) 
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+							}
+
+						if value is not None:
+							data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
+						else:
+							data[attr%(axes)][kwarg] = value
+
+				attr = '%saxis.set_ticklabels'
+				kwargs = ['labels','ticklabels']
+				for axes in ['',*AXES]:
+					if data.get(attr%(axes)) is None:
+						continue
+
+					for kwarg in kwargs:
+
+						if data[attr%(axes)].get(kwarg) is None:
+							continue
+
+						scale = data.get('scale')
+						base = data.get('base')
+						value = items
+						
+						if isinstance(data[attr%(axes)].get(kwarg),integers):
+
+							length = len(value)
+							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
+							if size == 1:
+								value = [(value[0]+value[-1])/2]
+							elif ((length+1)%size) == 0:
+								value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
+							else:
+								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
+								if scale in ['log','symlog']:
+									base = 10 if base is None else base
+									value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
+								elif scale in ['linear']:
+									value = np.linspace(min(value),max(value),size,endpoint=True)
+								else:
+									value = None
+
+								if value is None:
+									pass
+								elif any(isinstance(i,integers) for i in items):
+									value = [int(i) for i in value]
+								else:
+									value = [i for i in value]
+						else:
+							value = data[attr%(axes)].get(kwarg)
 
 						options = {attr: data.pop(attr,dict()) 
 							for attr,default in {
@@ -3244,6 +3297,33 @@ def plotter(plots,processes,verbose=None):
 
 			# Set tick labels
 			attr = 'set_%sticklabels'
+			kwargs = ['labels','ticklabels']
+			for axes in ['',*AXES]:
+				
+				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
+				
+					if data is None:
+						continue
+
+					for kwarg in kwargs:
+
+						if data.get(kwarg) is None:
+							continue
+
+						value = data[kwarg]
+
+						options = {attr: data.pop(attr,default) 
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+							}
+
+						if value is not None:
+							data[kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
+						else:
+							data[kwarg] = value
+
+			attr = '%saxis.set_ticklabels'
 			kwargs = ['labels','ticklabels']
 			for axes in ['',*AXES]:
 				

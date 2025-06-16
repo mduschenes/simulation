@@ -74,10 +74,11 @@ class Model(object):
 
 		self.setup(*args,**kwargs)
 
+		key = seeder(self.seed)		
 		shape = self.shape
-		key = seeder(self.seed)
+		random = self.random
 		dtype = self.dtype
-		parameters = rand(key=key,shape=shape,dtype=dtype)
+		parameters = rand(key=key,shape=shape,random=random,dtype=dtype)
 		self.parameters = parameters
 
 		return
