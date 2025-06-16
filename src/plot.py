@@ -2218,7 +2218,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								except Exception as exception:
 									continue									
 				
-
 			elif attr in ['savefig']:
 				path = kwargs[attr].get('fname')
 				if path is not None:
@@ -2392,7 +2391,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			else:
 				try:
 					_obj_ = _obj(**_kwargs_)
-				except:
+				except Exception as exception:
 					try:
 						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
 						if _kwargs_:
@@ -2472,6 +2471,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										except Exception as exception:
 											pass	
 				
+
+			attributes = ['grid']
+			for attribute in attributes:
+				if attribute in ['grid'] and attribute in kwargs:
+					for kwds in search(kwargs.get(attribute)):
+						if kwds.get('visible'):
+							if kwds.get('which') in ['major','minor']:
+								for axes in [axes for axes in AXES if kwds.get('axis') in [axes,'both']]:
+									try:
+										for grid in getattr(obj,"get_%sgridlines"%(axes))():
+											grid.set_visible(True)
+									except Exception as exception:
+										pass
+
+
 			_obj = {'obj':_obj_,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count}
 			
 			objs.append(_obj)

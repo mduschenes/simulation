@@ -11,13 +11,14 @@ for PATH in PATHS:
 
 from src.utils import argparser,progressbar
 from src.utils import array,rand,seeder,permutations
-from src.utils import einsum,exp,sqrt,prod,iterables
+from src.utils import einsum,exp,sqrt,prod,iterables,scalars
 from src.io import load,dump,split,join
 from src.iterables import permuter,Dict
 
 # Logging
 from src.logger	import Logger
 logger = Logger()
+verbose = True
 
 
 class Model(object):
@@ -47,15 +48,15 @@ class Model(object):
 		samples = int(self.samples) if isinstance(self.samples,(int,float)) else 0
 		self.samples = samples
 
-		data = {attr:[] if not isinstance(self.data[attr],list) else self.data[attr] for attr in self.data} if isinstance(self.data,dict) else {attr:[] for attr in self.data} if self.data is not None else {}
+		data = self.data if isinstance(self.data,dict) else {None:{attr:None for attr in self.data}} if self.data is not None else {}
 		self.data = data
 
 		def states(*args,**kwargs):
 			yield from (array(i) for i in permutations(range(-self.D//2,self.D//2),repeat=self.N))
 		def func(state,**kwargs):
-			return -(1/sqrt(self.N))*einsum('i,ij,j',state,self.parameters,state)
+			return einsum('i,ij,j',state,self.parameters,state)
 		def weight(state,*args,**kwargs):
-			return exp(-(1/self.T)*func(state,**kwargs) + 1)
+			return exp(-(1/self.T)*func(state,**kwargs))
 		def normalization(*args,**kwargs):
 			return sum(weight(state,*args,**kwargs) for state in states(*args,**kwargs))
 		def probability(*args,**kwargs):
@@ -83,15 +84,15 @@ class Model(object):
 		
 	@property
 	def shape(self):
-		return self.parameters.shape if self.parameters is not None else (self.N,self.N)
+		return (self.N,self.N) if self.N else None
 
 	@property
 	def size(self):
-		return self.parameters.size if self.parameters is not None else prod(self.shape)
+		return prod(self.shape) if self.shape else None
 
 	@property
 	def ndim(self):
-		return self.parameters.ndim if self.parameters is not None else len(self.shape)
+		return len(self.shape) if self.shape else None
 
 	def load(self,path):
 		data = self.data
@@ -105,9 +106,21 @@ class Model(object):
 		return
 
 	def append(self,*args,**kwargs):
-		for attr in self.data:
+		if all(i is None for i in self.data):
+			attrs = self.data.pop(None)
+		elif self.data:
+			attrs = self.data[list(self.data)[-1]]
+		else:
+			attrs = []
+
+		index = str(len(self.data))
+		self.data[index] = {}
+
+		for attr in attrs:
 			data = kwargs.get(attr,getattr(self,attr))
-			self.data[attr].append(data)
+			data = [data] if not isinstance(data,scalars) else data
+			self.data[index][attr] = data
+
 		return
 
 	def run(self,*args,**kwargs):
@@ -123,9 +136,9 @@ class Model(object):
 		return str(self)
 
 	def __call__(self,*args,**kwargs):
-
-		for seed in progressbar(range(self.samples)):
-			self.init(seed=seed,**kwargs)
+		for sample in progressbar(range(self.samples)):
+			kwargs = {**kwargs,**dict(seed=sample)}
+			self.init(**kwargs)
 			data = self.run(*args,**kwargs)
 			self.append(data=data)
 
@@ -146,6 +159,7 @@ def main(settings,*args,**kwargs):
 		model.load(path)
 
 	for options in permuter(permutations):
+		logger.log(verbose,options)
 		model(**options)
 
 	if boolean.dump:

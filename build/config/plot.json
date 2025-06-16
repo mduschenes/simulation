@@ -17796,7 +17796,7 @@
 				"label": "N"
 			},
 			"set_ylabel": {
-				"ylabel": "\\textrm{Count}$"
+				"ylabel": "$\\textrm{Count}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Probability}~~ p$"

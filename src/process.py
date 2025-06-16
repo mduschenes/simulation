@@ -3217,18 +3217,19 @@ def plotter(plots,processes,verbose=None):
 							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if OTHER in data]
 
 							data[attr%(axes)] = data[attr%(axes)][0] if data[attr%(axes)] else None
-					
+
 					if isinstance(data[attr%(axes)],list):
 						if not all(isinstance(i,list) for i in data[attr%(axes)]):
 							data[attr%(axes)] = [[i] for i in data[attr%(axes)]]
 						data[attr%(axes)] = data[attr%(axes)][position[0]%len(data[attr%(axes)])][position[1]%len(data[attr%(axes)][position[0]%len(data[attr%(axes)])])]
 
-					if isinstance(data[attr%(axes)],str):
+					if isinstance(data[attr%(axes)],(str,list)):
+						if isinstance(data[attr%(axes)],str):
+							data[attr%(axes)] = [data[attr%(axes)]]
 						if axes in AXES:
-							data[attr%(axes)] = data[attr%(axes)]%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(data[attr%(axes)].count('%s'))))
+							data[attr%(axes)] = [string%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(string.count('%s')))) for string in data[attr%(axes)]]
 						else:
 							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if data and OTHER in data for i in data[OTHER]}
-
 							if metadata[instance].get(subinstance) is not None:
 								for i in metadata[instance][subinstance]:
 									if isinstance(metadata[instance][subinstance][i],list):
@@ -3236,8 +3237,8 @@ def plotter(plots,processes,verbose=None):
 									elif i not in objs:
 										objs[i] = metadata[instance][subinstance][i]
 
-							if data[attr%(axes)] in objs:
-								data[attr%(axes)] = "%s = %s"%(data[attr%(axes)],objs[data[attr%(axes)]])
+						separator = '~,~'
+						data[attr%(axes)] = separator.join(["%s = %s"%(string,objs.get(string)) if string in objs else string for string in data[attr%(axes)]])
 
 					data[attr%(axes)] = texify(data[attr%(axes)])
 
