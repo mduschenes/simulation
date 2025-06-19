@@ -3523,7 +3523,7 @@
 							"yerr": "src.functions.func_yerr"
 						},
 						"analysis":{
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -3863,7 +3863,7 @@
 							"yerr": null							
 						},
 						"analysis":{
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -3950,12 +3950,15 @@
 							"max_bond": null
 						},
 						"wrapper": {
-							"discord.quantum": null,
+							"mutual.quantum": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr",
 							"y": null,
 							"yerr": null							
 						},
+						"analysis":{
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}							
+						},								
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -4029,7 +4032,7 @@
 				},
 				{
 					"x": "M",
-					"y": "mutual.quantum",
+					"y": "mutual.measure",
 					"label": {
 						"label": {
 							"N": null,
@@ -4040,8 +4043,11 @@
 						"labels": {
 							"max_bond": null
 						},
+						"analysis":{
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}							
+						},		
 						"wrapper": {
-							"mutual.quantum": "src.functions.func_mutual_measure",
+							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr",
 							"y": null,
@@ -17665,6 +17671,9 @@
                                 }
                             }
                         },
+						"analysis":{
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":null,"dependent":["discord.quantum"]}}							
+						},                        
 						"wrapper":{
 						},
 						"scinotation": {
