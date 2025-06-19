@@ -17672,8 +17672,9 @@
                             }
                         },
 						"analysis":{
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":null,"dependent":["discord.quantum"]}}							
-						},                        
+							"array":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":null,"dependent":["array"]}}							
+						},  
+						"analysis":{},                      
 						"wrapper":{
 						},
 						"scinotation": {
