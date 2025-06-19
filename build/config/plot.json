@@ -17639,14 +17639,14 @@
 		"fig": {
 			"set_size_inches": {
 				"w": 32,
-				"h": 16
+				"h": 32
 			},
 			"subplots_adjust": {},
 			"tight_layout": {},
 			"savefig": {
 				"fname": null,
 				"bbox_inches": "tight",
-				"pad_inches": 0.2
+				"pad_inches": 0.35
 			},
 			"close": {}
 		},
@@ -17658,7 +17658,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"M": "$0,10,25,50$",
+							"M": null,
 							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
@@ -17698,7 +17698,8 @@
 					},
 					"obj":null,
 					"plots":{"errorbar":"label"},
-					"bins":100,
+					"plots":false,
+					"bins":1000,
 					"range":[0,1],
 					"density":"probability",
 					"log":true,
@@ -17851,7 +17852,65 @@
 					1e-2,
 					1e0
 				]
-			},									
+			},	
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-17,
+				"xmax": 2e0
+			},
+			"set_xnbins": {
+				"nbins": 5
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},
+			"set_xticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-17,
+				"ymax": 2e0
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},	
+			"set_yticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},											
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}
@@ -17901,7 +17960,6 @@
 				],
 				"set_color": "black",
 				"set_linestyle": "-",
-				"set_marker": "s",
 				"set_alpha": 0.5,
 				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.3}},
 				"keep":["marker","linestyle","alpha"],
@@ -17932,9 +17990,11 @@
 					},
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
+					"set_xticks": true,                    
+					"set_xticklabels": true,                    
 					"set_ylabel": "left",
 					"set_yticks": true,
-					"set_yticklabels": "left",
+					"set_yticklabels": true,
 					"set_colorbar": "right"
 				}
 			}

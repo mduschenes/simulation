@@ -225,8 +225,7 @@
 				"None.spectrum.classical.M.noise.parameters",
 				"None.spectrum.quantum.classical.M.noise.parameters",
 				"None.array.M.noise.parameters",
-				"None.state.M.noise.parameters",
-				"hist.array.M.noise.parameters"
+				"None.state.M.noise.parameters"
 			],
 			[
 				{
@@ -236,7 +235,26 @@
 					}
 				}
 			]
-		]
+		],
+		[
+			[
+				"hist.array.M.noise.parameters"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+						"M": [0,10,20,30,40,50]
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+						"noise.parameters":[1e-4,5e-3,1e-2,2.5e-2,1e-1]
+					}
+				}				
+			]
+		]		
 	],
 	"join":{"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}}},
 	"patterns": {
