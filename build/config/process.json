@@ -251,6 +251,23 @@
 					"position": "row",
 					"value": {
 						"noise.parameters":[1e-4,5e-3,1e-2,2.5e-2,1e-1]
+					},
+					"kwargs": {
+						"ax.set_title.label":"M",
+						"ax.set_ylabel.label":"noise.parameters",
+						"ax.set_colorbar.share":true,
+						"ax.legend":null,
+						"style.legend.title":false,
+						"style.legend.handles":false,
+						"style.legend.labels":false,
+						"style.set_title": "top",
+						"style.set_xlabel": "bottom",                    
+						"style.set_xticks": true,                    
+						"style.set_xticklabels": true,                    
+						"style.set_ylabel": "left",
+						"style.set_yticks": true,
+						"style.set_yticklabels": true,
+						"style.set_colorbar": "bottom_right"
 					}
 				}				
 			]
