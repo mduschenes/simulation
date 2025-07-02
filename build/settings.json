@@ -187,7 +187,7 @@
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
-			"JOB_CLEANUP":"data.hdf5.lock",
+			"JOB_CLEANUP":null,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{

@@ -2083,11 +2083,10 @@ def plotter(plots,processes,verbose=None):
 				information[instance][subinstance][prop] = {}
 
 			for prop in information[instance][subinstance]:
-
 				data = list(natsorted(set(label
 					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
 					for data in search(plots[instance][subinstance][obj][prop])
-					if (data)
+					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
 					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
 					)))
@@ -2112,7 +2111,7 @@ def plotter(plots,processes,verbose=None):
 
 			
 			data = [{attr: data[OTHER][attr] for attr in data[OTHER] if attr not in [*ALL,OTHER]}
-				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if data]
+				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))]
 			data = {attr:[i[attr] if isinstance(i[attr],scalars) else tuple(i[attr]) for i in data] for attr in set(attr for i in data for attr in i if all(attr in i for i in data))}
 			data = {attr: sorted(set(data[attr]),key=lambda i:data[attr].index(i)) for attr in data}
 			data = {attr: [i if isinstance(i,scalars) else [*i] for i in data[attr]] for attr in data}
@@ -2324,7 +2323,7 @@ def plotter(plots,processes,verbose=None):
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
-							if (data) 
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) 
 							)
 					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort') if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
 								data[OTHER][OTHER]['legend'].get('include')
@@ -2334,7 +2333,7 @@ def plotter(plots,processes,verbose=None):
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
-							if (data) and (
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) and (
 								(data[OTHER][OTHER]['legend'].get('sort') is not None) or 
 								((data[OTHER][OTHER]['legend'].get('sort') is None) and 
 								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))))
@@ -2352,7 +2351,7 @@ def plotter(plots,processes,verbose=None):
 							(label in data[OTHER][OTHER][OTHER]) and 
 							(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
 							for data in search(plots[instance][subinstance][obj][prop]) 
-							if (data)
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							)
 					value['other'] = any((
 							(label in data[OTHER][OTHER][OTHER]) and 
@@ -2360,12 +2359,12 @@ def plotter(plots,processes,verbose=None):
 							((data[OTHER][OTHER][OTHER].get(label) is not None) and
 							(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
 							for data in search(plots[instance][subinstance][obj][prop])
-							if (data)
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							)
 					value['title'] = any((
 							(label in data[OTHER][OTHER][OTHER]))
 							for data in search(plots[instance][subinstance][obj][prop])
-							if (data)
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							)
 					value['legend'] = any((
 							(label in data[OTHER][OTHER][OTHER]) #and 
@@ -2375,11 +2374,11 @@ def plotter(plots,processes,verbose=None):
 							# (data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER]))
 							)
 							for data in search(plots[instance][subinstance][obj][prop])
-							if (data)
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							)
 					value['labels'] = {attr: value
 							for data in search(plots[instance][subinstance][obj][prop])
-							if data 
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) 
 							for attr,value in (data[OTHER][OTHER]['legend'].get('label') if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
 								).items()							
 							if attr not in information[instance][subinstance][prop]
@@ -2420,12 +2419,12 @@ def plotter(plots,processes,verbose=None):
 
 				labels = list(natsorted(set(label
 					for data in search(plots[instance][subinstance][obj][prop])
-					if (data)
+					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 					for label in data
 					if ((data) and (label in [*ALL]))
 					)))
 				tmp = {label:list(realsorted(set(i
-							for data in search(plots[instance][subinstance][obj][prop]) if (data)
+							for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							for i in data.get(label,[])))) for label in labels}
 				for label in labels:
 					value = {}
@@ -2435,7 +2434,7 @@ def plotter(plots,processes,verbose=None):
 							for i in PLOTS
 							if i in plots[instance][subinstance][obj]
 							for data in search(plots[instance][subinstance][obj][i])
-							if (data) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
+							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
 							for k in data[OTHER][OTHER]['legend'].get('sort')]),key=lambda i: i[-1].index(i[0]))]
 					value['axes'] = True				
 					value['label'] = False
@@ -2638,7 +2637,7 @@ def plotter(plots,processes,verbose=None):
 											item = None
 											items = [list(range(shape[INDEXES.index(label)])) 
 													for prop in PLOTS if plots[instance][subinstance][obj].get(prop)
-													for item,shape,data in search(plots[instance][subinstance][obj][prop],returns=True) if data][0]
+													for item,shape,data in search(plots[instance][subinstance][obj][prop],returns=True) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))][0]
 											value[label] = {
 												'__item__': item,
 												'__items__': items,
@@ -3282,7 +3281,7 @@ def plotter(plots,processes,verbose=None):
 						if axes in AXES:
 							data[attr%(axes)] = [string%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(string.count('%s')))) for string in data[attr%(axes)]]
 						else:
-							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if data and OTHER in data for i in data[OTHER]}
+							objs = {i: data[OTHER][i] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if (data and OTHER in data) for i in data[OTHER]}
 							if metadata[instance].get(subinstance) is not None:
 								for i in metadata[instance][subinstance]:
 									if isinstance(metadata[instance][subinstance][i],list):
@@ -3359,7 +3358,7 @@ def plotter(plots,processes,verbose=None):
 
 				for data in search(plots[instance][subinstance][obj][prop]):
 
-					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
+					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER) or not data[OTHER][OTHER].get(OTHER):
 						continue
 
 
@@ -3570,7 +3569,7 @@ def plotter(plots,processes,verbose=None):
 							joins[instance][subinstance][obj].pop(prop)
 							continue
 
-						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if data}
+						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if ((data) and (OTHER in data))}
 						kwargs = sorted(set(attr for index in data for attr in data[index]),key=lambda attr:tuple(list(data[index]).index(attr) if attr in data[index] else len(data[index]) for index in data))
 
 						if not data or not kwargs:
@@ -3608,6 +3607,16 @@ def plotter(plots,processes,verbose=None):
 										[data[index].get(attr) for index in data if attr in data[index]][0] 
 										for attr in kwargs},
 									}]
+
+	# Filter data
+	objs = ['ax']	
+	boolean = lambda data: (data) and all((data.get(attr) is not None) and not isinstance(data.get(attr),str) for attr in ALL if attr in data)
+	for instance in list(plots):
+		for subinstance in list(plots[instance]):
+			if not any(boolean(data) for obj in objs for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if data):
+				plots[instance].pop(subinstance)
+		if not plots[instance]:
+			plots.pop(instance)
 
 
 	# Plot data

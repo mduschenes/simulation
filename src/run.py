@@ -82,12 +82,14 @@ def spawn(settings):
 	seed = settings.get(attr,{}).get('seed')
 	size = settings.get(attr,{}).get('size')
 	groups = settings.get(attr,{}).get('groups')
+	attributes = settings.get(attr,{}).get('attributes')
 
 	# Find keys of seeds in settings
 	items = ['seed']
 	types = (list,dict,)
 	exclude = ['seed','seed.seed','system.seed',
 		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim)],
+		*(attributes if attributes is not None else [])
 		]
 	seedlings = search(settings,items=items,returns=True,types=types)
 

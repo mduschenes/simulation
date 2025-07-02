@@ -552,6 +552,7 @@ class funcclass(object):
 	'''	
 	def __init__(self,func=lambda x:x):
 		self.func = func
+		return
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
@@ -696,11 +697,15 @@ def _dump_hdf5(obj,path,wr='w',ext='hdf5',**kwargs):
 					path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
 			elif isinstance(obj[name],scalars):
+				if key in path.attrs:
+					del path.attrs[key]
 				try:
 					path.attrs[key] = obj[name]
 				except TypeError:
 					pass
 			else:
+				if key in path:
+					del path[key]
 				try:
 					path[key] = obj[name]
 				except:
@@ -785,7 +790,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -794,6 +799,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		func (callable): Function for data
 		lock (bool,str): Lock file when loading
 		backup (bool,str): Backup file when loading
 		timeout (int): Timeout when loading
@@ -826,12 +832,16 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 		for name in paths
 		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
 		}
+	
+	funcs = {name:func if callable(func) else func.get(paths[name]) if isinstance(func,dict) else None for name in paths}
 
 	data = {}
 
 	for name in paths:
 
 		path = paths[name]
+
+		func = funcs[name]
 
 		datum = default
 
@@ -859,6 +869,12 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 						except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
+
+				if callable(func):
+					try:
+						datum = func(datum)
+					except Exception as exception:
+						pass
 
 		data[name] = datum
 
@@ -893,7 +909,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 					return not isinstance(data,scalars) and getattr(data,'size',len(data)) > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
 				def scalar(data):
 					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1				
-				def func(path,data):
+				def function(path,data):
 					for attr in data:
 						if iterable(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
@@ -901,7 +917,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 					data['__path__'] = [path]*size
 					return data
 				try:
-					data = pd.concat((pd.DataFrame(func(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
+					data = pd.concat((pd.DataFrame(function(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
 				except Exception as exception:
 					data = default
 				return data
@@ -958,10 +974,10 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,lock=None,bac
 		elif wrapper in ['pd']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
-				def func(path,data):
+				def function(path,data):
 					return data
 				try:
-					data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path] is not None),**options)
+					data = pd.concat((pd.DataFrame(function(path,data[path])) for path in data if data[path] is not None),**options)
 				except Exception as exception:
 					data = default
 				return data
@@ -1053,7 +1069,7 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,func=None,lock=None,backup=None,timeout=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1062,6 +1078,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,backup=None
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		func (callable): Function for data		
 		lock (bool,str): Lock file when dumping
 		backup (bool,str): Backup file when dumping
 		timeout (int): Timeout when dumping
@@ -1127,13 +1144,23 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,lock=None,backup=None
 	else:
 		paths = path
 
+	funcs = {name:func if callable(func) else func.get(paths[name]) if isinstance(func,dict) else None for name in paths}
+
 	for name in paths:
 		
 		path = paths[name]
 		
+		func = funcs[name]
+
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 		mkdir(path)
+
+		if callable(func):
+			try:
+				data = func(data)
+			except Exception as exception:
+				pass
 
 		for wrapper in wrappers:
 			data = wrapper(data)
@@ -1214,7 +1241,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 
 	return
 
-def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
+def append(data,path,wr='r',delimiter=delimiter,wrapper=None,func=None,verbose=False,**kwargs):
 	'''
 	Append objects to path
 	Args:
@@ -1223,6 +1250,7 @@ def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwa
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		func (callable): Function for data		
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1262,7 +1290,7 @@ def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwa
 
 		path = paths[name]
 
-		obj = load(path,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+		obj = load(path,wr=wr,delimiter=delimiter,wrapper=wrapper,func=func,verbose=verbose,**kwargs)
 		
 		obj = _append(path,obj)
 
@@ -1271,7 +1299,7 @@ def append(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwa
 	return
 
 
-def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
+def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,func=None,verbose=False,**kwargs):
 	'''
 	Convert objects to path
 	Args:
@@ -1280,6 +1308,7 @@ def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kw
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		func (callable): Function for data		
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1309,9 +1338,9 @@ def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kw
 	def _convert(path,data):
 		try:
 			try:
-				data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+				data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,func=func,verbose=verbose,**kwargs)
 			except Exception as exception:
-				data = load(data,wr=wr,delimiter=delimiter,wrapper=None,verbose=verbose,**kwargs)
+				data = load(data,wr=wr,delimiter=delimiter,wrapper=None,func=func,verbose=verbose,**kwargs)
 
 			dump(data,path,delimiter=delimiter,verbose=verbose,**kwargs)
 		except Exception as exception:
@@ -1329,7 +1358,7 @@ def convert(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kw
 	return
 
 
-def merge(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwargs):
+def merge(data,path,wr='r',delimiter=delimiter,wrapper=None,func=None,verbose=False,**kwargs):
 	'''
 	Merge objects to path
 	Args:
@@ -1338,6 +1367,7 @@ def merge(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwar
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
+		func (callable): Function for data
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1347,7 +1377,7 @@ def merge(data,path,wr='r',delimiter=delimiter,wrapper=None,verbose=False,**kwar
 	wrapper = [wrapper,*wrappers] if not isinstance(wrapper,iterables) else [*wrapper,*wrappers]
 
 	wr = wr
-	data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+	data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,func=func,verbose=verbose,**kwargs)
 
 	wr = 'w'
 	dump(data,path,wr=wr,delimiter=delimiter,verbose=verbose,**kwargs)
