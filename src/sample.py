@@ -25,7 +25,7 @@ verbose = True
 
 class Model(object):
 
-	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,random=None,seed=None,dtype=None,path=None,key=None,system=None,**kwargs):
+	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,model=None,random=None,seed=None,dtype=None,path=None,cwd=None,key=None,system=None,**kwargs):
 		
 		self.N = N
 		self.D = D
@@ -34,10 +34,12 @@ class Model(object):
 		self.data = data
 		self.parameters = parameters
 		self.samples = samples
+		self.model = model
 		self.random = random
 		self.seed = seed
 		self.dtype = dtype
 		self.path = path
+		self.cwd = cwd
 		self.key = key
 
 		if system is not None:
@@ -65,12 +67,19 @@ class Model(object):
 		data = self.data if isinstance(self.data,dict) else {}
 		self.data = data
 
-		self.attributes = dict(N=None,D=None,d=None,T=None,random=None,seed=None,data=None)
+		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,random=None,seed=None,data=None)
 
+		if self.model is None or self.model in ['sk']:
+			def func(state,**kwargs):
+				return -einsum('i,ij,j',state,self.parameters['J'],state)
+		elif self.model in ['ask']:
+			def func(state,**kwargs):
+				return einsum('i,ij,j',state,self.parameters['J'],state)
+		elif self.model in ['ising']:
+			def func(state,**kwargs):
+				return -einsum('i,ij,j',state,self.parameters['J'],state) + einsum('i,i',self.parameters['h'],state)								
 		def states(*args,**kwargs):
 			yield from (array(i) for i in permutations(range(-self.D//2,self.D//2),repeat=self.N))
-		def func(state,**kwargs):
-			return einsum('i,ij,j',state,self.parameters,state)
 		def weight(state,*args,**kwargs):
 			return exp(-(1/self.T)*func(state,**kwargs))
 		def normalization(*args,**kwargs):
@@ -90,29 +99,39 @@ class Model(object):
 
 		self.setup(*args,**kwargs)
 
-		key = seeder(self.seed)		
 		shape = self.shape
-		random = self.random
-		dtype = self.dtype
-		parameters = rand(key=key,shape=shape,random=random,dtype=dtype)
+		key = dict(zip(self.shape,seeder(self.seed,len(self.shape))))		
+		random = {string:self.random.get(string) if isinstance(self.random,dict) else self.random if self.random is not None else None for string in self.shape}
+		scale = {string:self.parameters.get(string) if isinstance(self.parameters,dict) else self.parameters if self.parameters is not None else None for string in self.shape}
+		dtype = {string:self.dtype.get(string) if isinstance(self.dtype,dict) else self.dtype if self.dtype is not None else None for string in self.shape}
+
+		parameters = {string:rand(key=key[string],shape=shape[string],random=random[string],scale=scale[string],dtype=dtype[string]) for string in shape}
+		
 		self.parameters = parameters
 
 		return
 		
 	@property
 	def shape(self):
-		return (self.N,self.N) if self.N else None
+		if self.model is None:
+			shape = dict(J=(self.N,self.N)) if self.N else None
+		elif self.model in ['sk','ask']:
+			shape = dict(J=(self.N,self.N)) if self.N else None
+		elif self.model in ['ising']:
+			shape = dict(J=(self.N,self.N),h=(self.N,)) if self.N else None
+		shape = {string:shape.get(string) for string in self.parameters} if self.parameters is not None and shape is not None else shape if shape is not None else None
+		return shape
 
 	@property
 	def size(self):
-		return prod(self.shape) if self.shape else None
+		return {string:prod(self.shape[string]) for string in self.shape} if self.shape else None
 
 	@property
 	def ndim(self):
-		return len(self.shape) if self.shape else None
+		return {string:len(self.shape[string]) for string in self.shape} if self.shape else None
 
 	def load(self,path=None):
-		path = self.path if path is None else path
+		path = join(self.path,root=self.cwd) if path is None else path
 		data = self.data
 		options = dict(default=data,lock=True,backup=True)
 		data = load(path,**options)
@@ -120,7 +139,7 @@ class Model(object):
 		return
 
 	def dump(self,path=None):
-		path = self.path if path is None else path
+		path = join(self.path,root=self.cwd) if path is None else path
 		data = self.data
 		options = dict(lock=True,backup=True)
 		dump(data,path,**options)
@@ -162,7 +181,7 @@ class Model(object):
 				data[index][attr].append(value(index,attr,self,*args,**kwargs))
 
 
-			# path = self.path
+			# path = join(self.path,root=self.cwd)
 			# options = dict(func=None,lock=None,backup=None)
 			# dump(data,path)
 			# print('-------',path,index,max(len(data[index][attr]) for attr in data[index]))
@@ -173,7 +192,7 @@ class Model(object):
 		data = self.data
 		func(data)
 
-		# path = self.path
+		# path = join(self.path,root=self.cwd)
 		# options = dict(func=func,lock=True,backup=True)	
 		# data = load(path,**options)
 
@@ -257,8 +276,7 @@ def main(settings,*args,**kwargs):
 	boolean = settings.boolean
 	options = settings.options
 	model = settings.model
-	
-	system = {**settings.system,**dict(path=join(settings.system.model,root=settings.system.path),key=settings.system.key)}
+	system = settings.system	
 
 	model = Model(**{**model,**system})
 
