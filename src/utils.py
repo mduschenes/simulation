@@ -13,7 +13,7 @@ import random
 from random import choices,sample as samples
 import hashlib,datetime
 import argparse
-from tqdm import tqdm as progressbar
+from tqdm import tqdm
 
 import traceback
 import warnings
@@ -313,6 +313,12 @@ elif backend in ['numpy']:
 	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
+
+
+
+def progress(*args,**kwargs):
+	options = dict(file=sys.stdout)
+	return tqdm(*args,**{**kwargs,**options})
 
 
 # Libraries

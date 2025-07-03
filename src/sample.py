@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,progressbar
+from src.utils import argparser,progress
 from src.utils import array,rand,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,iterables,scalars,integers,floats,delim
 from src.io import load,dump,split,join
@@ -198,7 +198,7 @@ class Model(object):
 			keywords = {**kwargs,**dict(seed=self.seed if isinstance(self.seed,iterables) else sample)}
 			return arguments,keywords
 		
-		for sample in progressbar(range(self.samples)):
+		for sample in progress(range(self.samples)):
 			arguments,keywords = options(self,sample,args,kwargs)
 			self.init(*arguments,**keywords)
 			data = self.run(*arguments,**keywords)
