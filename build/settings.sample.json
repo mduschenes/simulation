@@ -21,8 +21,6 @@
 			"model.model":["ising"],
 			"model.random":["normal"],
 
-			"system.path":["."],
-
 			"options":[null],
 
 			"jobs.job.cwd":["~/scratch/test.hist"],
@@ -72,7 +70,8 @@
 		"index":null		
 	},
 	"system": {
-		"cwd": "~/scratch/test.hist",
+		"key":null,
+		"cwd": null,
 		"path": "data.hdf5"
 	},
 	"options":{
@@ -81,7 +80,6 @@
 		"D": [2],
 		"d": [1],
 		"T": [0.1,0.25,0.5,0.75,5],
-		"T": [0.1,5],
 		"model":[null],
 		"random":["normal"]
 	},
