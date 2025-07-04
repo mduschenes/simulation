@@ -23,11 +23,15 @@
 
 			"options":[null],
 
-			"jobs.job.cwd":["~/scratch/test.hist"],
-			"jobs.postprocess.cwd":["~/scratch/test.hist"],
+			"jobs.job.cwd":["~/scratch/test"],
+			"jobs.postprocess.cwd":["~/scratch/test"],
 
 			"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 			"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
+
+			"jobs.job.paths.settings":[{"settings.sample.json":"settings.json"}],
+			"jobs.postprocess.paths.plot":[{"plot.sample.json":"plot.json"}],
+			"jobs.postprocess.paths.process":[{"process.sample.json":"process.json"}],
 
 			"jobs.job.device":["local"],
 			"jobs.postprocess.device":["local"],
@@ -107,10 +111,10 @@
 				"JOB_CMD":"sample.py",
 				"JOB_PROCESSES":1,
 				"JOB_CLEANUP":null,
-				"JOB_ARGS":"settings.sample.json"
+				"JOB_ARGS":"settings.json"
 				},
 			"paths":{
-				"settings":"settings.sample.json"
+				"settings":"settings.json"
 				},
 			"patterns":{
 				"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -143,11 +147,11 @@
 				"JOB_CMD":"process.py",
 				"JOB_PROCESSES":1,		
 				"JOB_CLEANUP":null,	
-				"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.sample.json","--processes=process.sample.json","--pwd=.","--cwd=.","--verbose"]
+				"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=.","--verbose"]
 				},
 			"paths":{
-				"plot":"plot.sample.json",
-				"process":"process.sample.json",
+				"plot":"plot.json",
+				"process":"process.json",
 				"mplstyle":"plot.mplstyle"
 			},
 			"patterns":{

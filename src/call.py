@@ -1003,23 +1003,25 @@ def configure(paths,pwd=None,cwd=None,patterns={},local=None,env=None,process=No
 	if patterns is None:
 		patterns = {}
 
-	for path in paths:
+	for name in paths:
 
-		# Set data to update
-		data = paths[path] if isinstance(paths,dict) else None
+		for path in paths[name]:
 
-		# Set sources and destinations of files
-		source = join(path,root=pwd) if not isinstance(data,str) else data
-		destination = join(path,root=cwd)
+			# Set data to update
+			data = paths[name][path] if isinstance(paths[name],dict) else None
 
-		# Update and Dump files
-		if execute and not exists(destination):
-			if data is not None and not isinstance(data,str):
-				data,source,destination = load(source),copy(data),destination
-				setter(source,data,default=False)
-				dump(source,destination)
-			else:
-				cp(source,destination,default=path,execute=execute,verbose=verbose)
+			# Set sources and destinations of files
+			source = join(name,root=pwd) if not isinstance(data,str) else data
+			destination = join(path,root=cwd)
+
+			# Update and Dump files
+			if execute and not exists(destination):
+				if data is not None and not isinstance(data,str):
+					data,source,destination = load(source),copy(data),destination
+					setter(source,data,default=False)
+					dump(source,destination)
+				else:
+					cp(source,destination,default=path,execute=execute,verbose=verbose)
 
 	return
 

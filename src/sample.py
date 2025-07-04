@@ -9,12 +9,12 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,progress
+from src.utils import progress
 from src.utils import array,rand,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,iterables,scalars,integers,floats,delim
 from src.io import load,dump,split,join
-from src.run import iterate
-from src.iterables import Dict,namespace,setter,getter,permuter
+from src.run import argparse,setup
+from src.iterables import permuter
 
 
 # Logging
@@ -226,49 +226,6 @@ class Model(object):
 		return
 
 
-def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,execute=None,verbose=None,**kwargs):
-	'''
-	Setup settings
-	Args:
-		settings (dict,str): settings
-		index (int): settings index
-		device (str): settings device
-		job (str): settings job
-		path (str): settings path
-		env (int): settings environment
-		execute (bool,int): settings execution
-		verbose (int,str,bool): settings verbosity
-		args (iterable): settings positional arguments
-		kwargs (dict): settings keyword arguments
-	Returns:
-		settings (dict): settings
-	'''
-
-	default = {}
-	wrapper = Dict
-	defaults = Dict(
-		boolean=dict(call=None,optimize=None,load=None,dump=None),
-		cls=dict(module=None,model=None,state=None,label=None,callback=None),
-		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
-		optimize=dict(),seed=dict(),system=dict(),
-		)
-
-	if settings is None:
-		settings = default
-	elif isinstance(settings,str):
-		settings = load(settings,default=default,wrapper=wrapper)
-
-	setter(settings,kwargs,delimiter=delim,default=True)
-	setter(settings,defaults,delimiter=delim,default=False)
-
-	if index is not None:
-		for key,setting in iterate(settings,index=index,wrapper=wrapper):
-			settings = setting
-			break
-
-	return settings
-
-
 def main(settings,*args,**kwargs):
 
 	settings = setup(settings,*args,**kwargs)
@@ -293,24 +250,6 @@ def main(settings,*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = {
-		'--settings':{
-			'help':'Settings',
-			'type':str,
-			'default':None,
-			'nargs':'?'
-		},
-		'--index':{
-			'help':'Index',
-			'type':int,
-			'default':None,
-			'nargs':'?'
-		},		
-		}		
-
-	wrappers = {
-		}
-
-	args = argparser(arguments,wrappers)
+	args = argparse()
 
 	main(*args,**args)

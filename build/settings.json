@@ -67,6 +67,10 @@
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 
+		"jobs.job.paths.settings":[{"settings.json":"settings.json"}],
+		"jobs.postprocess.paths.plot":[{"plot.json":"plot.json"}],
+		"jobs.postprocess.paths.process":[{"process.json":"process.json"}],
+
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],
 		"jobs.job.process":["array"],

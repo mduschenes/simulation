@@ -10,8 +10,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import copy,seeder,delim,union,is_equal,funcpath,argparser
-from src.iterables import getter,setter,permuter,search
-from src.io import load,dump,join,split,environ
+from src.iterables import Dict,getter,setter,permuter,search
+from src.io import load,dump,join,split,basename,dirname,environ
 from src.call import launch,call,command
 
 def allow(value,values,settings):
@@ -233,9 +233,52 @@ def iterate(settings,index=None,wrapper=None):
 			yield key,setting
 
 
-def setup(settings):
+def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,execute=None,verbose=None,**kwargs):
 	'''
 	Setup settings
+	Args:
+		settings (dict,str): settings
+		index (int): settings index
+		device (str): settings device
+		job (str): settings job
+		path (str): settings path
+		env (int): settings environment
+		execute (bool,int): settings execution
+		verbose (int,str,bool): settings verbosity
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments
+	Returns:
+		settings (dict): settings
+	'''
+
+	default = {}
+	wrapper = Dict
+	defaults = Dict(
+		boolean=dict(call=None,optimize=None,load=None,dump=None),
+		cls=dict(module=None,model=None,state=None,label=None,callback=None),
+		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
+		optimize=dict(),seed=dict(),system=dict(),
+		)
+
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default,wrapper=wrapper)
+
+	setter(settings,kwargs,delimiter=delim,default=True)
+	setter(settings,defaults,delimiter=delim,default=False)
+
+	if index is not None:
+		for key,setting in iterate(settings,index=index,wrapper=wrapper):
+			settings = setting
+			break
+
+	return settings
+
+
+def init(settings):
+	'''
+	initialize settings
 	Args:
 		settings (dict,str): settings
 	Returns:
@@ -279,12 +322,12 @@ def setup(settings):
 					value = job[attr]
 				elif attr in ['paths']:
 					value = {
-						**{job[attr][string]: None
-							for string in job[attr]},
-						**{job[attr][string]: settings[key] if job.get('local') else path
-							for string in ['settings'] if string in job[attr]},
-						**{job[attr][string]: settings[key].get(string,{}) 
-							for string in ['plot','process'] if string in job[attr]},
+						**{variable: {data:None}
+							for string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items() if data is not None},
+						**{variable if variable is not None else basename(path):{data if data is not None else basename(path): settings[key] if job.get('local') else path}
+							for string in ['settings'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
+						**{variable:{data:settings[key].get(string,{})}
+							for string in ['plot','process'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
 						}
 				elif attr in ['patterns']:
 					value = job[attr]
@@ -366,11 +409,78 @@ def run(settings,device=None,job=None,path=None,env=None,execute=False,verbose=N
 
 	else:
 
-		jobs = setup(settings)
+		jobs = init(settings)
 
 		results = launch(jobs,execute=execute,verbose=verbose)
 
 	return results
+
+
+def argparse(*args,**kwargs):
+	'''
+	Parse arguments
+	Args:
+		args (iterable): positional arguments
+		kwargs (dict): keyword arguments
+	Returns:
+		args (iterable): arguments
+	'''
+
+	arguments = {
+		'--settings':{
+			'help':'Settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--index':{
+			'help':'Index',
+			'type':int,
+			'default':None,
+			'nargs':'?'
+		},
+		'--device':{
+			'help':'Device',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--job':{
+			'help':'Job',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--path':{
+			'help':'Path',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--env':{
+			'help':'Environment',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
+		},										
+		}		
+
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}
+
+	args = argparser(arguments,wrappers)
+
+	return args
 
 
 def main(*args,**kwargs):
@@ -378,6 +488,7 @@ def main(*args,**kwargs):
 	run(*args,**kwargs)
 
 	return
+
 
 if __name__ == '__main__':
 
