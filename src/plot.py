@@ -1101,8 +1101,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if obj is not None:
 			attr = delimiter.join([attr,obj])
 
-		if ((attr in attrs) and (kwarg not in attrs[attr])):
+		if ((attr in attrs) and (((share is None) or (isinstance(share.get(attr),dict))) and (kwarg not in attrs[attr]))):
 			return value
+
+		print(attr,kwarg,attrs.get(attr),share.get(attr))
 
 		if share is None:
 			return value
@@ -1172,6 +1174,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			kwargs = deepcopy(kwargs)
 			nullkwargs = []				
 			nullkwarg = []
+
+
+			nullwargs.extend(['texify','scinotation'])
 
 
 			attribute = kwargs[attr].get('obj')

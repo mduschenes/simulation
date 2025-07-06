@@ -20,7 +20,7 @@ for PATH in PATHS:
 from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
-from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,nulls,null,Null,scinotation
+from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,null,Null,scinotation
 from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
 from src.fit import fit
@@ -2720,7 +2720,13 @@ def plotter(plots,processes,verbose=None):
 						if data[attr%(axes)].get(kwarg%(axes)) is None:
 							continue
 
-						value = texify(data[attr%(axes)][kwarg%(axes)])
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+							}
+
+						value = texify(data[attr%(axes)][kwarg%(axes)],**options['texify'])
 
 						data[attr%(axes)][kwarg%(axes)] = value
 
@@ -2817,7 +2823,7 @@ def plotter(plots,processes,verbose=None):
 						else:
 							value = data[attr%(axes)].get(kwarg)
 
-						options = {attr: data.pop(attr,dict()) 
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
 								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
@@ -2870,7 +2876,7 @@ def plotter(plots,processes,verbose=None):
 						else:
 							value = data[attr%(axes)].get(kwarg)
 
-						options = {attr: data.pop(attr,dict()) 
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
 								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
@@ -2890,25 +2896,30 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				separator = ',~'
-				texifies = data.get('texify')
+
+				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+					for attr,default in {
+						'texify':dict(),
+						'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+					}
 
 				value = [
 					{
-						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>=1))))))},
-						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>=1))))))},
-						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})})) 
+						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']})) 
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 					
@@ -2918,8 +2929,8 @@ def plotter(plots,processes,verbose=None):
 					},					
 					{
 						**{(prop,label):'%s%s%s'%(
-							texify(label),' : ' if label else '',
-							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}) 
+							texify(label,**options['texify']),' : ' if label else '',
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}) 
 									for value in list(realsorted(set(values[prop][label]['value'])))]))
 							for prop in values 
 							for label in natsorted(set((
@@ -2928,8 +2939,8 @@ def plotter(plots,processes,verbose=None):
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (
 								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))<1))))))},
 						**{(prop,label):'%s%s%s'%(
-							texify(label),' : ' if label else '',
-							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}) 
+							texify(label,**options['texify']),' : ' if label else '',
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}) 
 									for value in list(realsorted(set(values[prop][label]['value'])))]))
 							for prop in values 
 							for label in natsorted(set((
@@ -2939,7 +2950,7 @@ def plotter(plots,processes,verbose=None):
 								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))<1))))))},
 					},
 					{
-						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**(texifies if isinstance(texifies,dict) else {})}))
+						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}))
 							for prop,attr in natsorted(set((
 							(prop,attr)
 							for prop in values 
@@ -3288,11 +3299,17 @@ def plotter(plots,processes,verbose=None):
 										objs.pop(i,None);
 									elif i not in objs:
 										objs[i] = metadata[instance][subinstance][i]
+						
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+							for attr,default in {
+								'texify':dict(),
+								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+							}
 
 						separator = '~,~'
-						data[attr%(axes)] = separator.join(["%s = %s"%(string,objs.get(string)) if string in objs else string for string in data[attr%(axes)]])
+						data[attr%(axes)] = separator.join(["%s = %s"%(texify(string,**options['texify']),texify(scinotation(objs.get(string),**options['scinotation']),**options['texify'])) if string in objs else string for string in data[attr%(axes)]])
 
-					data[attr%(axes)] = texify(data[attr%(axes)])
+					data[attr%(axes)] = texify(data[attr%(axes)],**options['texify'])
 
 			# Set tick labels
 			attr = 'set_%sticklabels'
@@ -3311,7 +3328,7 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
-						options = {attr: data.pop(attr,default) 
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
 								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
@@ -3338,7 +3355,7 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
-						options = {attr: data.pop(attr,default) 
+						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
 								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
@@ -3609,10 +3626,19 @@ def plotter(plots,processes,verbose=None):
 									}]
 
 	# Filter data
-	objs = ['ax']	
+	objs = ['ax']
+	nulls = ['texify','scinotation']	
 	boolean = lambda data: (data) and all((data.get(attr) is not None) and not isinstance(data.get(attr),str) for attr in ALL if attr in data)
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
+			for obj in plots[instance][subinstance]:
+				for prop in plots[instance][subinstance][obj] 
+					for data in search(plots[instance][subinstance][obj][prop]):
+						if not data:
+							continue
+						for kwarg in nulls:
+							if kwarg in data:
+								data.pop(kwarg);
 			if not any(boolean(data) for obj in objs for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if data):
 				plots[instance].pop(subinstance)
 		if not plots[instance]:
