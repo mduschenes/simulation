@@ -266,13 +266,16 @@
 						]
 					},
 					"kwargs": {
+						"fig.set_size_inches":{"w":43,"h":43},
+						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
 						"ax.set_ylabel.ylabel": "noise.parameters",
+						"ax.hist.label.labels": {"N":[4,6,8]},
 						"ax.hist.color": {
 							"@N@": {
 								"value": {
 									"value": null,
-									"color": "gray",
+									"color": "viridis",
 									"values": [],
 									"norm": null,
 									"scale": "linear",
@@ -283,10 +286,7 @@
 						},
 						"ax.hist.alpha": {
 							"@N@": [
-								0.4,
-								0.6,
-								0.8,
-								1
+								0.8
 							]
 						},
 						"ax.set_colorbar.value": {
@@ -296,13 +296,16 @@
 							}
 						},
 						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
-						"ax.set_colorbar.set_ticks": {"ticks": 1},
-						"ax.set_colorbar.set_ticklabels": {
-							"ticklabels": [
-								4
-							],
-							"size": 50
-						},
+						"ax.set_colorbar.share": true,
+						"ax.set_colorbar.location": "right",
+						"ax.set_colorbar.orientation": "vertical",
+						"ax.set_colorbar.fraction": 0.02,
+						"ax.set_colorbar.size": "1.5%",
+						"ax.set_colorbar.pad": 0.5,
+						"ax.set_colorbar.aspect": 62,
+						"ax.set_colorbar.anchor": [10,0.5],
+						"ax.set_colorbar.set_ticks.ticks":3,
+						"ax.set_colorbar.set_ticklabels.ticklabels": [4,6,8],
 						"ax.legend": null,
 						"style.share.ax.legend.title": false,
 						"style.share.ax.legend.handles": false,

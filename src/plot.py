@@ -1101,7 +1101,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if obj is not None:
 			attr = delimiter.join([attr,obj])
 
-		if ((attr in attrs) and (((share is None) or (isinstance(share.get(attr),dict))) and (kwarg not in attrs[attr]))):
+		if ((attr in attrs) and (kwarg not in attrs[attr])):# (((share is None) or (isinstance(share.get(attr),dict))) and (kwarg not in attrs[attr]))):
 			return value
 
 		if share is None:
@@ -2167,12 +2167,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
 					share = kwargs[attr].get('share')
 
-					options = {option:kwargs[attr].get(option) for option in ['fraction','shrink','aspect','pad','anchor','panchor'] if option in kwargs[attr]}
+					options = {option:kwargs[attr].get(option) for option in ['location','fraction','shrink','aspect','pad','anchor','panchor'] if option in kwargs[attr]}
 
 					for option in options:
-						if options.get(option) is None:
-							continue
-						if option in ['anchor','panchor']:
+						if option in ['anchor','panchor'] and options.get(option) is not None:
 							options[option] = tuple(options[option])
 
 					nullkwargs.extend(options)
@@ -2278,7 +2276,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for _prop in _props:
 					if attr in [_attr] and _prop in _kwargs_:
 						if _kwargs_.get(_prop) is None:
-							_kwargs_.pop(_prop)
+							nullkwargs.extend([_prop])
 
 				if all(kwarg in nullkwargs for kwarg in _kwargs_):
 					call = False
@@ -2287,17 +2285,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwarg in ['linestyle']:
 					if not isinstance(_kwargs_[kwarg],str):
 						_kwargs_[kwarg] = tuple((i if isinstance(i,int) else tuple(i) for i in _kwargs_[kwarg]))
-
-			for kwarg in nullkwargs:
-				_kwargs_.pop(kwarg,None)
-
-			if not call:	
-		
-				_obj = None
-
-				objs.append(_obj)
-
-				return
 
 			# Set fields as per index
 			# color,ecolor: index[-3],
@@ -2373,7 +2360,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							value = 'alpha'
 							if value in _kwargs_:
 								kwds[value] = _kwargs_[value][number] if isinstance(_kwargs_[value],list) else _kwargs_[value]
-								_kwargs_.pop(value)
+								nullkwargs.extend([value])
 
 							value,color,values,colors,norm = set_color(**kwds)
 
@@ -2382,7 +2369,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						replacements = {'c':'color'}
 						if field in replacements:
 							if not isinstance(value,scalars) or isinstance(value,tuple) or len(value) == 1:
-								_kwargs_.pop(field);
+								nullkwargs.extend([field])
 								field = replacements[field]
 
 						if size is None:
@@ -2393,6 +2380,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						continue
 
+
+			for kwarg in nullkwargs:
+				_kwargs_.pop(kwarg,None)
+
+			if not call:	
+		
+				_obj = None
+
+				objs.append(_obj)
+
+				return
 
 			_obj = obj
 			for a in attr_.split(delimiter):

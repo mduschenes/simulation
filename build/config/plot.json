@@ -17646,7 +17646,7 @@
 			"savefig": {
 				"fname": null,
 				"bbox_inches": "tight",
-				"pad_inches": 0.35
+				"pad_inches": 0.4
 			},
 			"close": {}
 		},
@@ -17690,11 +17690,7 @@
 							"exclude":{"scheme":null}
 						},
 						"indexing":1,
-						"slice": [
-							0,
-							2000,
-							null
-						]
+						"slice": null
 					},
 					"obj":null,
 					"plots":{"errorbar":"label"},
@@ -17777,7 +17773,7 @@
 				"set_label": {
 					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
 					"labelpad": 10,
-					"size": 30
+					"size": 40
 				},
 				"set_ticks": {
 					"ticks": 5
@@ -17790,13 +17786,13 @@
 						0.1,
 						1
 					],
-					"size": 50
+					"size": 40
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
 				"ax.tick_params": {
-					"labelsize": 30,
+					"labelsize": 40,
 					"which": "major",
 					"size": 10,
 					"length": 8,
@@ -17804,16 +17800,19 @@
 				}
 			},
 			"set_title": {
-				"label": "N"
+				"label": "N",
+				"size": 40
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Count}$"
+				"ylabel": "$\\textrm{Count}$",
+				"size": 40
 			},
 			"set_xlabel": {
-				"xlabel": "$\\textrm{Probability}~~ p$"
+				"xlabel": "$\\textrm{Probability}~~ p$",
+				"size": 40
 			},			
 			"yaxis.offsetText.set_fontsize": {
-				"fontsize": 20
+				"fontsize": 40
 			},
 			"set_xscale": {
 				"value": "log",
@@ -17880,7 +17879,8 @@
 					1e-8,
 					1e-4,
 					1e0
-				]
+				],
+				"size": 36
 			},
 			"set_yscale": {
 				"value": "log",
@@ -17909,7 +17909,8 @@
 					1e-8,
 					1e-4,
 					1e0
-				]
+				],
+				"size": 36
 			},											
 			"xaxis.set_major_formatter": {
 				"ticker": {
@@ -17974,7 +17975,7 @@
 			"texify": null,
 			"mplstyle": "plot.mplstyle",
 			"rcParams": {
-				"font.size": 25
+				"font.size": 40
 			},
 			"layout": {
 				"nrows": 1,

@@ -42,6 +42,8 @@ GRIDDIM = len(GRID)
 INDEXDIM = len(INDEXES)
 AXISDIM = GRIDDIM - 1 - LAYOUTDIM
 
+SYMBOL = '@'
+
 class GroupBy(object):
 	def __init__(self,df,by=[],**kwargs):
 		'''
@@ -2095,10 +2097,10 @@ def plotter(plots,processes,verbose=None):
 								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
 							to_tuple(data[OTHER][label]) if (
 								(label in data[OTHER])) else 
-							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
+							data[OTHER][data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'')] if (
 								(label in data[OTHER][OTHER][OTHER] and 
 								(data[OTHER][OTHER][OTHER].get(label) is not None) and
-								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
+								data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
 						for subinstance in plots[instance] if obj in plots[instance][subinstance]
 						for prop in PLOTS
 						if prop in plots[instance][subinstance][obj]
@@ -2178,7 +2180,7 @@ def plotter(plots,processes,verbose=None):
 					if prop not in plts[obj]:
 						continue
 					
-					for index,shape,data in search(copy(plts[obj][prop]),returns=True):
+					for index,shape,data in search(plts[obj][prop],returns=True):
 					
 						if not data:
 							continue
@@ -2234,11 +2236,14 @@ def plotter(plots,processes,verbose=None):
 						if not data:
 							continue
 
-						for item in list(items):
-							if isinstance(items[item],dict) and all(i.startswith('@') and i.endswith('@') for i in items[item]):
-								data[item] = copy(items.pop(item))
+						nulls = []
+
+						for item in items:
+							if item in data and isinstance(items[item],dict) and any(i.startswith(SYMBOL) and i.endswith(SYMBOL) for i in items[item]):
+								data[item] = copy(items.get(item)) 
+								nulls.append(item)
 						
-						setter(data,copy(items),delimiter=delim)
+						setter(data,copy({item:items[item] for item in items if item not in nulls}),delimiter=delim)
 
 	for instance in list(plots):
 
@@ -2276,7 +2281,7 @@ def plotter(plots,processes,verbose=None):
 				})
 
 		for index,subinstance in enumerate(plots[instance]):
-			
+
 			config = copy(layout[instance])
 
 			index = min(config['nrows']*config['ncols']-1,config['index']-1 if config['index'] is not None else grid[instance][subinstance][-1]-1 if grid[instance].get(subinstance) else index)
@@ -2360,7 +2365,7 @@ def plotter(plots,processes,verbose=None):
 							(label in data[OTHER][OTHER][OTHER]) and 
 							(label not in data[OTHER]) and 
 							((data[OTHER][OTHER][OTHER].get(label) is not None) and
-							(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
+							(data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') in data[OTHER])))
 							for data in search(plots[instance][subinstance][obj][prop])
 							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							)
@@ -2374,7 +2379,7 @@ def plotter(plots,processes,verbose=None):
 							# (label not in data[OTHER]) and 
 							# (
 								# (data[OTHER][OTHER][OTHER].get(label) is not None) and
-							# (data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER]))
+							# (data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') not in data[OTHER]))
 							)
 							for data in search(plots[instance][subinstance][obj][prop])
 							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
@@ -2426,9 +2431,11 @@ def plotter(plots,processes,verbose=None):
 					for label in data
 					if ((data) and (label in [*ALL]))
 					)))
+
 				tmp = {label:list(realsorted(set(i
 							for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 							for i in data.get(label,[])))) for label in labels}
+
 				for label in labels:
 					value = {}
 					value['value'] = tmp[label]
@@ -2486,7 +2493,7 @@ def plotter(plots,processes,verbose=None):
 
 
 			# setup values based attrs
-			delimiters = ['@','__']
+			delimiters = [SYMBOL,'__']
 			for prop in plots[instance][subinstance][obj]:
 
 				if not plots[instance][subinstance][obj].get(prop):
@@ -2524,7 +2531,7 @@ def plotter(plots,processes,verbose=None):
 
 								label,val = label.replace(delimiter,''),value.pop(label)
 
-								if delimiter in ['@']:
+								if delimiter in [SYMBOL]:
 
 									if not any(label in values[prop] for prop in values):
 										continue
@@ -2726,7 +2733,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						value = texify(data[attr%(axes)][kwarg%(axes)],**options['texify'])
@@ -2829,7 +2836,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -2882,7 +2889,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -2903,7 +2910,7 @@ def plotter(plots,processes,verbose=None):
 				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 					for attr,default in {
 						'texify':dict(),
-						'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
+						'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 					}
 
 				value = [
@@ -3306,7 +3313,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						separator = '~,~'
@@ -3388,8 +3395,8 @@ def plotter(plots,processes,verbose=None):
 							if values[prop][label]['label']:
 								string = data[OTHER][label]
 							else:
-								string = data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace('@',''),
-									data[OTHER][OTHER][OTHER][label].replace('@',''))
+								string = data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace(SYMBOL,''),
+									data[OTHER][OTHER][OTHER][label].replace(SYMBOL,''))
 						else:
 							string = None
 
@@ -3459,8 +3466,8 @@ def plotter(plots,processes,verbose=None):
 
 					separator = ',~'
 
-					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace('@',''),
-						data[OTHER][OTHER][OTHER][label].replace('@',''))] 
+					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace(SYMBOL,''),
+						data[OTHER][OTHER][OTHER][label].replace(SYMBOL,''))] 
 						for label in value if label is not None})
 
 					value = [(value[label],) if label is None else value[label] for label in value
@@ -3589,7 +3596,7 @@ def plotter(plots,processes,verbose=None):
 							joins[instance][subinstance][obj].pop(prop)
 							continue
 
-						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if ((data) and (OTHER in data))}
+						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if ((data) and (OTHER in data) and any(data.get(i) is not None for i in ALL if i in data))}
 						kwargs = sorted(set(attr for index in data for attr in data[index]),key=lambda attr:tuple(list(data[index]).index(attr) if attr in data[index] else len(data[index]) for index in data))
 
 						if not data or not kwargs:
