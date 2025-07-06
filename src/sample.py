@@ -26,7 +26,26 @@ verbose = True
 class Model(object):
 
 	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,model=None,random=None,seed=None,dtype=None,path=None,cwd=None,key=None,system=None,**kwargs):
-		
+		'''
+		Model Class
+		Args:
+			N (int): System size
+			D (int): System dimension
+			d (int): Spatial dimension
+			T (float): System temperature
+			data (dict): System data
+			parameters (object): System parameters
+			samples (int): System samples
+			model (str): System model, allowed strings in ['sk','ask','ising']
+			random (str): System randomness, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			seed (int,key): System seed
+			dtype (datatype): System datatype
+			path (str): System path
+			cwd (str): System directory
+			key (str): System key
+			system (dict): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		'''
+
 		self.N = N
 		self.D = D
 		self.d = d
@@ -69,7 +88,10 @@ class Model(object):
 
 		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,random=None,seed=None,data=None)
 
-		if self.model is None or self.model in ['sk']:
+		if self.model is None:
+			def func(state,**kwargs):
+				return -einsum('i,ij,j',state,self.parameters['J'],state)
+		elif self.model in ['sk']:
 			def func(state,**kwargs):
 				return -einsum('i,ij,j',state,self.parameters['J'],state)
 		elif self.model in ['ask']:
@@ -115,7 +137,9 @@ class Model(object):
 	def shape(self):
 		if self.model is None:
 			shape = dict(J=(self.N,self.N)) if self.N else None
-		elif self.model in ['sk','ask']:
+		elif self.model in ['sk']:
+			shape = dict(J=(self.N,self.N)) if self.N else None
+		elif self.model in ['ask']:
 			shape = dict(J=(self.N,self.N)) if self.N else None
 		elif self.model in ['ising']:
 			shape = dict(J=(self.N,self.N),h=(self.N,)) if self.N else None

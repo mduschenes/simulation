@@ -1284,9 +1284,10 @@ def test_sortgroupby(path=None,tol=None):
 	from src.utils import sortby,groupby
 
 	class Obj(object):
-		def __init__(self,where,unitary):
-			self.where = (*where,) if isinstance(where,iterables) else (where,)
-			self.unitary = unitary
+		def __init__(self,**kwargs):
+			defaults = dict(where=lambda obj:(*obj,) if isinstance(obj,iterables) else (obj,))
+			for kwarg in kwargs:
+				setattr(self,kwarg,defaults[kwarg](kwargs[kwarg]) if kwarg in defaults else kwargs[kwarg])
 			return
 
 		def __repr__(self):
@@ -1336,7 +1337,22 @@ def test_sortgroupby(path=None,tol=None):
 					{"where":"ij","unitary":False},
 					]
 				}
-			},		
+			},	
+		'local':{
+			'func':(lambda N:
+					[obj
+					for index in [*range(0,N,1),]
+					for obj in [
+					{"where":(index+0,)},
+					]
+					]),
+			'options':{
+				'layout':'local',
+				'attribute':[
+					{"where":"i"},
+					]
+				}
+			},
 		}
 
 	for key in keys:
@@ -1355,6 +1371,8 @@ def test_sortgroupby(path=None,tol=None):
 			iterable = {index:iterable[index] for index in samples(list(iterable),k=len(iterable))}
 
 			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,**keys[key]))}
+
+			print(iterable)
 
 			assert all(all(getattr(i,attr)==getattr(j,attr) for attr in j.__dict__) for i,j in zip([i for index in iterable for i in iterable[index]],[tmp[index] for index in tmp]))
 

@@ -717,7 +717,7 @@ def layout(iterable,sort=False,group=False,options=None):
 		sort (bool): Sort iterable
 		group (bool): Group iterable
 		options (dict): Additional keyword arguments
-			'layout' (str): layout type for indexes corresponding to layout blocks
+			'layout' (str): layout type for indexes corresponding to layout blocks, allowed strings in ['nearestneighbour','brickwork','local']
 			'attribute' (iterable[dict]): Iterable of attributes to sort/group by for each object in block
 				[{'where':'ij','unitary':True},{'where':'i','unitary':False},{'where':'j','unitary':False}]
 	Returns:
@@ -749,7 +749,11 @@ def layout(iterable,sort=False,group=False,options=None):
 		elif options[name] in ['brickwork']:
 			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
 			def groups(i,index,indexes,attribute,attributes):
-				return len(attributes)*index+attributes.index(attribute)			
+				return len(attributes)*index+attributes.index(attribute)
+		elif options[name] in ['local']:
+			indexes = [*range(0,N,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)							
 		else:
 			indexes = [*range(0,N-1,1)]
 			def groups(i,index,indexes,attribute,attributes):
