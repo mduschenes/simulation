@@ -1104,8 +1104,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if ((attr in attrs) and (((share is None) or (isinstance(share.get(attr),dict))) and (kwarg not in attrs[attr]))):
 			return value
 
-		print(attr,kwarg,attrs.get(attr),share.get(attr))
-
 		if share is None:
 			return value
 		elif ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str,list,tuple))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
@@ -1176,7 +1174,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwarg = []
 
 
-			nullwargs.extend(['texify','scinotation'])
+			nullkwargs.extend(['texify','scinotation'])
 
 
 			attribute = kwargs[attr].get('obj')

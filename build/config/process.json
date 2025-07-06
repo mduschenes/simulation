@@ -244,32 +244,79 @@
 				{
 					"position": "col",
 					"value": {
-						"M": [0,10,20,30,40,50]
+						"M": [
+							0,
+							10,
+							20,
+							30,
+							40,
+							50
+						]
 					}
 				},
 				{
 					"position": "row",
 					"value": {
-						"noise.parameters":[1e-4,5e-3,1e-2,2.5e-2,1e-1]
+						"noise.parameters": [
+							0.0001,
+							0.005,
+							0.01,
+							0.025,
+							0.1
+						]
 					},
 					"kwargs": {
-						"ax.set_title.label":"M",
-						"ax.set_ylabel.ylabel":"noise.parameters",
-						"ax.set_colorbar.share":true,
-						"ax.legend":null,
-						"style.legend.title":false,
-						"style.legend.handles":false,
-						"style.legend.labels":false,
-						"style.set_title": "top",
-						"style.set_xlabel": "bottom",                    
-						"style.set_xticks": true,                    
-						"style.set_xticklabels": true,                    
-						"style.set_ylabel": "left",
-						"style.set_yticks": true,
-						"style.set_yticklabels": true,
-						"style.set_colorbar": "bottom_right"
+						"ax.set_title.label": "M",
+						"ax.set_ylabel.ylabel": "noise.parameters",
+						"ax.hist.color": {
+							"@N@": {
+								"value": {
+									"value": null,
+									"color": "gray",
+									"values": [],
+									"norm": null,
+									"scale": "linear",
+									"alpha": 1
+								},
+								"type": "value"
+							}
+						},
+						"ax.hist.alpha": {
+							"@N@": [
+								0.4,
+								0.6,
+								0.8,
+								1
+							]
+						},
+						"ax.set_colorbar.value": {
+							"@N@": {
+								"value": null,
+								"type": "index"
+							}
+						},
+						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
+						"ax.set_colorbar.set_ticks": {"ticks": 1},
+						"ax.set_colorbar.set_ticklabels": {
+							"ticklabels": [
+								4
+							],
+							"size": 50
+						},
+						"ax.legend": null,
+						"style.share.ax.legend.title": false,
+						"style.share.ax.legend.handles": false,
+						"style.share.ax.legend.labels": false,
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_xticklabels": true,
+						"style.share.ax.set_ylabel": "left",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_colorbar": "bottom_right"
 					}
-				}				
+				}
 			]
 		]		
 	],

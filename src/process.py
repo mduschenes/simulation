@@ -2234,8 +2234,11 @@ def plotter(plots,processes,verbose=None):
 						if not data:
 							continue
 
+						for item in list(items):
+							if isinstance(items[item],dict) and all(i.startswith('@') and i.endswith('@') for i in items[item]):
+								data[item] = copy(items.pop(item))
+						
 						setter(data,copy(items),delimiter=delim)
-
 
 	for instance in list(plots):
 
@@ -2723,7 +2726,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
 							}
 
 						value = texify(data[attr%(axes)][kwarg%(axes)],**options['texify'])
@@ -2826,7 +2829,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -2879,7 +2882,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -2900,7 +2903,7 @@ def plotter(plots,processes,verbose=None):
 				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 					for attr,default in {
 						'texify':dict(),
-						'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+						'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
 					}
 
 				value = [
@@ -3303,7 +3306,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=1,scilimits=[0,4])}.items()
 							}
 
 						separator = '~,~'
@@ -3331,7 +3334,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -3358,7 +3361,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
 							}
 
 						if value is not None:
@@ -3632,9 +3635,9 @@ def plotter(plots,processes,verbose=None):
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			for obj in plots[instance][subinstance]:
-				for prop in plots[instance][subinstance][obj] 
+				for prop in plots[instance][subinstance][obj]:
 					for data in search(plots[instance][subinstance][obj][prop]):
-						if not data:
+						if not isinstance(data,dict):
 							continue
 						for kwarg in nulls:
 							if kwarg in data:
