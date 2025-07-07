@@ -1599,13 +1599,13 @@ def apply(keys,data,plots,processes,verbose=None):
 							'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else std,
 							}[func],
 						'object':{
-						 	'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
-						 	'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
-						 	}[func],
+							'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
+							'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
+							}[func],
 						'dtype':{
-						 	'':funcs[function][axes][func],
-						 	'err':funcs[function][axes][func],						 
-						 	}[func],
+							'':funcs[function][axes][func],
+							'err':funcs[function][axes][func],						 
+							}[func],
 						}[dtypes[attr]])
 						for function in funcs for func in funcs[function][axes]
 						if delim.join(((attr,function,func))) not in data] 
@@ -2005,7 +2005,7 @@ def plotter(plots,processes,verbose=None):
 	# for position (row,col) in layout
 	# where data in search(plots[instance][subinstance][obj][prop]
 	# for each instance,subinstance,position is itself a set of data to plot of arbitrary shape [*labels,]
-
+	print('done shape')
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			
@@ -2063,6 +2063,7 @@ def plotter(plots,processes,verbose=None):
 			plots[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
 
+	print('done grid')
 
 	# Set layout from configuration
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
@@ -2128,7 +2129,7 @@ def plotter(plots,processes,verbose=None):
 
 			metadata[instance][subinstance] = data
 
-	
+	print('done metadata')
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2253,6 +2254,8 @@ def plotter(plots,processes,verbose=None):
 						
 						setter(data,copy({item:items[item] for item in items if item not in nulls}),delimiter=delim)
 
+	print('done configu')
+
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2310,6 +2313,7 @@ def plotter(plots,processes,verbose=None):
 
 			grid[instance][subinstance] = [*[config['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)],index+1]
 
+	print('setting kwargs')
 
 	# Set kwargs
 
@@ -2442,9 +2446,11 @@ def plotter(plots,processes,verbose=None):
 
 				tmp = {label:list(realsorted(set(i
 							for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							for i in data.get(label,[])))) if data.get(label) is not None else [] 
+							for i in (data.get(label,[]) if data.get(label) is not None else []))))
 							for label in labels
 							}
+
+				print('sorted tmp',subinstance)
 
 				for label in labels:
 
