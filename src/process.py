@@ -3607,7 +3607,7 @@ def plotter(plots,processes,verbose=None):
 							joins[instance][subinstance][obj].pop(prop)
 							continue
 
-						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if ((data) and (OTHER in data) and any(data.get(i) is not None for i in ALL if i in data))}
+						data = {index:data for index,data in enumerate(search(plots[instance][subinstance][obj][prop])) if ((data) and (OTHER in data) and any((data.get(i) is not None) and not isinstance(data.get(i),str) for i in ALL if i in data))}
 						kwargs = sorted(set(attr for index in data for attr in data[index]),key=lambda attr:tuple(list(data[index]).index(attr) if attr in data[index] else len(data[index]) for index in data))
 
 						if not data or not kwargs:
@@ -3649,7 +3649,14 @@ def plotter(plots,processes,verbose=None):
 	# Filter data
 	objs = ['ax']
 	nulls = ['texify','scinotation']	
-	boolean = lambda data: (data) and any((data.get(attr) is not None) for attr in ALL if attr in data)
+	boolean = lambda data: (
+			(data) and 
+			any((
+				((data.get(attr) is not None) and (not isinstance(data.get(attr),str))) or 
+				(isinstance(data.get(attr),list) and all(i is not None and not isinstance(i,str) for i in data.get(attr))) 
+				)
+				for attr in ALL if attr in data)
+			)
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			for obj in plots[instance][subinstance]:
