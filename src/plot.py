@@ -2702,13 +2702,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			if not all([kwarg in settings[key][attr]['layout'] for kwarg in LAYOUT[:LAYOUTDIM+1]]):
 				settings[key][attr]['layout'].update(dict(zip([*LAYOUT[:LAYOUTDIM],LAYOUT[LAYOUTDIM]],_index(i,len(y),'row'))))
 		
+
 		for key in y:
 
 			_settings = load(PATHS['plot'])
 			setter(_settings,settings[key],default=True)
 
 			_settings[attr].update({
-				'layout':{kwarg:settings[key][attr].get('layout',{}).get(kwarg,_defaults[attr]['layout'][kwarg])
+				'layout':{kwarg:deepcopy(settings[key][attr].get('layout',{}).get(kwarg,_defaults[attr]['layout'][kwarg]))
 							if settings[key][attr].get('layout',{}).get(kwarg) is None else settings[key][attr].get('layout',{}).get(kwarg) 
 							for kwarg in LAYOUT}
 				})
@@ -2721,9 +2722,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					**settings[key].get(OBJ,{}), 
 					})
 
-			for attr in settings[key]:
-				if attr in _settings:
-					_settings[attr].update(settings[key][attr])
+			for prop in settings[key]:
+				if prop in _settings:
+					_settings[prop].update(settings[key][prop])
 
 			setter(settings[key],_settings,default=True)
 

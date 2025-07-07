@@ -21,7 +21,7 @@ from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,null,Null,scinotation
-from src.iterables import search,inserter,indexer,sizer,permuter,regex,Dict
+from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
 from src.io import load,dump,join,split,exists,glob
 from src.fit import fit
 from src.postprocess import postprocess
@@ -1993,7 +1993,10 @@ def plotter(plots,processes,verbose=None):
 
 						if shapes and (axes in independent) and (data.get(axes) is not None):
 							
-							data[axes] = data[AXES[dim-1]].copy()
+							if axes != AXES[dim-1]:
+								data[axes] = data[AXES[dim-1]].copy()
+							else:
+								data[axes] = data[AXES[dim-1]]
 
 							if axes.endswith('err'):
 								data[axes][...] = 0
@@ -2005,15 +2008,16 @@ def plotter(plots,processes,verbose=None):
 	# for position (row,col) in layout
 	# where data in search(plots[instance][subinstance][obj][prop]
 	# for each instance,subinstance,position is itself a set of data to plot of arbitrary shape [*labels,]
-	print('done shape')
+	
+	print('Done: Shape')
+	
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			
 			if not plots[instance][subinstance].get(obj):
 				continue
 
-			plts = copy(plots[instance][subinstance])
-			grd = [i for i in grid[instance][subinstance]][:LAYOUTDIM]
+			print('Grid: ',subinstance,[i for i in grid[instance][subinstance]],grid[instance][subinstance][:LAYOUTDIM],grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])
 
 			for index,position in enumerate(itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM]))):
 				
@@ -2022,8 +2026,11 @@ def plotter(plots,processes,verbose=None):
 
 				key = delim.join([str(key),*[str(i) for i in coordinate]])
 				
-				plots[instance][key] = copy(plts)
-				grid[instance][key] = [*[i for i in grd][:LAYOUTDIM],index+1]
+				plots[instance][key] = {
+					**{i:copy(plots[instance][subinstance][i]) for i in plots[instance][subinstance] if i != obj},
+					**{obj:{i:copy(plots[instance][subinstance][obj][i]) for i in plots[instance][subinstance][obj] if i not in PLOTS}}
+					}
+				grid[instance][key] = [*[i for i in grid[instance][subinstance]][:LAYOUTDIM],index+1]
 
 				boolean = lambda data: any(data[axes] is not None for axes in ALL if axes in data)
 
@@ -2033,9 +2040,13 @@ def plotter(plots,processes,verbose=None):
 						
 						if prop not in plots[instance][subinstance][obj]:
 							continue
-						
-						for index,shape,data in search(copy(plots[instance][subinstance][obj][prop]),returns=True):
-						
+
+						for index,shape,data in search(plots[instance][subinstance][obj][prop],returns=True):
+
+							if prop not in plots[instance][key][obj]:
+								types,default = type(plots[instance][subinstance][obj][prop]),None
+								plots[instance][key][obj][prop] = constructor(shape,types=types,default=default)
+
 							if not data:
 								continue
 
@@ -2055,15 +2066,16 @@ def plotter(plots,processes,verbose=None):
 								if isinstance(data.get(axes),arrays):
 									data[axes] = data[axes].tolist()
 
-							index = [*index[:-len(axis)],*axis]
-							item = data if boolean(data) else None
-							iterable = plots[instance][key][obj][prop]
-							inserter(index,item,iterable)
+							if boolean(data):
+								index = [*index[:-len(axis)],*axis]
+								item = data
+								iterable = plots[instance][key][obj][prop]
+								inserter(index,item,iterable)
 							
 			plots[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
 
-	print('done grid')
+	print('Done: Grid')
 
 	# Set layout from configuration
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
@@ -2129,7 +2141,7 @@ def plotter(plots,processes,verbose=None):
 
 			metadata[instance][subinstance] = data
 
-	print('done metadata')
+	print('Done: Metadata')
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2156,8 +2168,8 @@ def plotter(plots,processes,verbose=None):
 
 			shapes = [len(layout),max(len(i) for i in layout)]
 
-			plts = plots[instance].pop(subinstance)
-			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
+			plts = plots[instance].pop(subinstance);
+			grd = grid[instance].pop(subinstance);
 
 			inf = information[instance].pop(subinstance)			
 			meta = metadata[instance].pop(subinstance)
@@ -2166,46 +2178,6 @@ def plotter(plots,processes,verbose=None):
 				for position in ['row','col'][:LAYOUTDIM]}
 			options = {position:[{}] if not len(options[position]) else [i for kwargs in options[position] for i in (kwargs if not isinstance(kwargs,dict) else [kwargs])] for position in options}
 			options = [[{**options[['row','col'][0]][i%len(options[['row','col'][0]])],**options[['row','col'][1]][j%len(options[['row','col'][1]])]} for j in range(shapes[1])] for i in range(shapes[0])]
-
-			print('setting data in grid')
-			for prop in PLOTS:
-						
-				if prop not in plts[obj]:
-					continue
-				
-				for pointer,shape,data in search(plts[obj][prop],returns=True):
-
-					if not data:
-						continue
-
-					for index,position in enumerate(itertools.product(*(range(i) for i in shapes[:LAYOUTDIM]))):
-
-						if indexer(position,layout) is None:
-							continue
-
-						print(index,position)
-
-						key,coordinate = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
-						key,coordinate = key,[position[i]*grd[i]+coordinate[i] for i in range(LAYOUTDIM)]
-						key,coordinate = delim.join([str(key),*[str(i) for i in coordinate]]),coordinate
-
-						if key not in grid:
-							plots[instance][key] = copy(plts)
-							grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index+1]
-
-							information[instance][key] = inf				
-							metadata[instance][key] = {**meta,**indexer(position,layout)}
-
-
-						boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER] if not isinstance(item[attr],list))
-
-						pointer = pointer
-						item = copy(data) if boolean(data) else None
-						iterable = plots[instance][key][obj][prop]
-						inserter(pointer,item,iterable)
-
-
-			print('setting kwargs in grid')
 
 			for index,position in enumerate(itertools.product(*(range(i) for i in shapes[:LAYOUTDIM]))):
 
@@ -2216,7 +2188,38 @@ def plotter(plots,processes,verbose=None):
 				key,coordinate = key,[position[i]*grd[i]+coordinate[i] for i in range(LAYOUTDIM)]
 				key,coordinate = delim.join([str(key),*[str(i) for i in coordinate]]),coordinate
 
-				print()
+				plots[instance][key] = {
+					**{i:copy(plts[i]) for i in plts if i != obj},
+					**{obj:{i:copy(plts[obj][i]) for i in plts[obj] if i not in PLOTS}}
+					}
+
+				grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index+1]
+
+				information[instance][key] = inf				
+				metadata[instance][key] = {**meta,**indexer(position,layout)}
+
+				boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER] if not isinstance(item[attr],list))
+
+				for prop in PLOTS:
+							
+					if prop not in plts[obj]:
+						continue
+					
+					for index,shape,data in search(plts[obj][prop],returns=True):
+
+						if prop not in plots[instance][key][obj]:
+							types,default = type(plts[obj][prop]),None
+							plots[instance][key][obj][prop] = constructor(shape,types=types,default=default)
+					
+						if not data:
+							continue
+
+						if boolean(data):
+							index = index
+							item = data
+							iterable = plots[instance][key][obj][prop]
+							inserter(index,item,iterable)
+
 				opts = indexer(position,options)
 				vals = indexer(position,layout)
 				for attr in list(opts):
@@ -2271,8 +2274,8 @@ def plotter(plots,processes,verbose=None):
 								nulls.append(item)
 						
 						setter(data,copy({item:items[item] for item in items if item not in nulls}),delimiter=delim)
-
-	print('done configu')
+	
+	print('Done: Config')
 
 	for instance in list(plots):
 
@@ -2331,7 +2334,7 @@ def plotter(plots,processes,verbose=None):
 
 			grid[instance][subinstance] = [*[config['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)],index+1]
 
-	print('setting kwargs')
+	print('Setting: Kwargs')
 
 	# Set kwargs
 
@@ -2468,7 +2471,7 @@ def plotter(plots,processes,verbose=None):
 							for label in labels
 							}
 
-				print('sorted tmp',subinstance)
+				print('Configuring',subinstance)
 
 				for label in labels:
 

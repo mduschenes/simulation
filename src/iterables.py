@@ -628,6 +628,7 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 			yield from search(item,index=[*index,i],shape=[*shape,size],
 				returns=returns,items=items,types=types,exceptions=exceptions)
 
+
 def finder(item,iterable,types=(list,),exceptions=()):
 	'''
 	Search for index of item in iterable
@@ -643,7 +644,6 @@ def finder(item,iterable,types=(list,),exceptions=()):
 		if key == item:
 			return index
 	return None
-
 
 
 def indexer(index,iterable,types=(list,),exceptions=()):
@@ -663,6 +663,28 @@ def indexer(index,iterable,types=(list,),exceptions=()):
 
 	return item
 
+def constructor(shape,types=None,default=None):
+	'''
+	Construct iterable of shape
+	Args:
+		shape (iterable[iterable[int]]): Shape of iterable
+		types (type): Type to construct
+		default (object): Default object in iterable
+	Returns:
+		iterable (iterable): Nested iterable
+	'''
+
+	if types is None:
+		types = list
+	elif isinstance(types,iterables):
+		types = type(types)
+
+	if shape:
+		iterable = types((constructor(shape[1:],types=types,default=default) for i in range(shape[0])))
+	else:
+		iterable = default
+
+	return iterable
 
 def inserter(index,item,iterable,types=(list,),exceptions=()):
 	'''
