@@ -1668,6 +1668,8 @@ def apply(keys,data,plots,processes,verbose=None):
 
 		options = dict(as_index=False,dropna=False)
 
+		nulls = [0]
+
 		if by:
 			groups = groups.groupby(by=by,**options)
 		else:
@@ -1718,21 +1720,25 @@ def apply(keys,data,plots,processes,verbose=None):
 
 						if grouping.shape[0]:
 							if source in grouping:
-								if dtypes[attr] in ['array'] or any(isinstance(i,tuple) for i in grouping[source]):
+								if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
 									value[destination] = np.array([np.array(i) for i in grouping[source]])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
+								value[destination] = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
 							else:
-								value[destination] = grouping.reset_index().index.to_numpy()
+								value[destination] = None #grouping.reset_index().index.to_numpy()
 
 							if isinstance(value[destination],arrays):
 								value[destination] = value[destination].tolist()
 
 						else:
 							value[destination] = None
+
+						if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and any(np.allclose(value[destination],i) for i in nulls):
+							value[destination] = None
+
 						
 				setter(plots,{key:value},delimiter=delim,default=True)
 
@@ -1843,7 +1849,7 @@ def plotter(plots,processes,verbose=None):
 							if attr in independent:
 								if attr.endswith('err'):
 									continue
-								if ((data.get(attr) is None) and all(data.get(attr) is None for attr in dependent if attr in data)) or isinstance(data.get(attr),str):
+								if all(data.get(attr) is None for attr in dependent if attr in data) or isinstance(data.get(attr),str):
 									data.clear()
 
 		if all((not data) for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop])):
@@ -1894,7 +1900,7 @@ def plotter(plots,processes,verbose=None):
 
 					for axes in ALL:
 						
-						if axes not in data or isinstance(data[axes],scalars):
+						if axes not in data or data[axes] is None or isinstance(data[axes],scalars):
 							continue
 
 						data[axes] = np.array(data[axes])
@@ -1985,7 +1991,8 @@ def plotter(plots,processes,verbose=None):
 						if axes not in data or isinstance(data[axes],scalars):
 							continue
 
-						if shapes and (axes in independent):
+						if shapes and (axes in independent) and (data.get(axes) is not None):
+							
 							data[axes] = data[AXES[dim-1]].copy()
 
 							if axes.endswith('err'):
@@ -2435,9 +2442,12 @@ def plotter(plots,processes,verbose=None):
 
 				tmp = {label:list(realsorted(set(i
 							for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							for i in data.get(label,[])))) for label in labels}
+							for i in data.get(label,[])))) if data.get(label) is not None else [] 
+							for label in labels
+							}
 
 				for label in labels:
+
 					value = {}
 					value['value'] = tmp[label]
 					value['include'] = True
@@ -3639,7 +3649,7 @@ def plotter(plots,processes,verbose=None):
 	# Filter data
 	objs = ['ax']
 	nulls = ['texify','scinotation']	
-	boolean = lambda data: (data) and all((data.get(attr) is not None) and not isinstance(data.get(attr),str) for attr in ALL if attr in data)
+	boolean = lambda data: (data) and any((data.get(attr) is not None) for attr in ALL if attr in data)
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			for obj in plots[instance][subinstance]:

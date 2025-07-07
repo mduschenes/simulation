@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# improt matplotlib.lines import Line2D
 
 # Logging
 from src.logger	import Logger
@@ -633,19 +632,20 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 			colors = color
 			color = color
 		
-		if isinstance(color,tuple):
-			color = list(color)
-			color[-1] = alpha
-			color = tuple(color)
-		elif isinstance(color,np.ndarray):
-			color[:,-1] = alpha
+		if alpha is not None:
+			if isinstance(color,tuple):
+				color = list(color)
+				color[-1] = alpha
+				color = tuple(color)
+			elif isinstance(color,np.ndarray):
+				color[:,-1] = alpha
 
-		if isinstance(colors,tuple):
-			colors = list(colors)
-			colors[-1] = alpha
-			colors = tuple(colors)
-		elif isinstance(colors,np.ndarray):
-			colors[:,-1] = alpha	
+			if isinstance(colors,tuple):
+				colors = list(colors)
+				colors[-1] = alpha
+				colors = tuple(colors)
+			elif isinstance(colors,np.ndarray):
+				colors[:,-1] = alpha	
 
 	else:
 		colors = color
@@ -1616,7 +1616,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = data
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
+
+				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
@@ -1690,7 +1692,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					kwargs[attr][prop] = err
 
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim]])
+
+				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args)  if (arg is not None) or (i==0)]
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 				
@@ -1796,7 +1800,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					functions[plot] = func
 
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim]])
+
+				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
@@ -1864,6 +1870,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				else:
 					args.extend([])
 					call = False
+
+				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
+
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXES],*[OTHER]])
 
 
@@ -1887,7 +1896,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = data
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
+
+				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				replacements = {'color':'c','markersize':'s'}
 				for replacement in replacements:
@@ -1902,7 +1913,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['plot_surface','contour','contourf','tricontour','tricontourf']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
+
+				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				props = ['color']
 				for prop in props:
@@ -2094,7 +2107,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][prop] = getattr(obj,kwargs[attr].get(prop))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
+
+				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['transform']])
 
