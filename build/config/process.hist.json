@@ -1,7 +1,7 @@
 {
 	"load": 0,
 	"dump": 1,
-	"tmp": 1,
+	"tmp": 0,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
@@ -62,6 +62,9 @@
 		"None.spectrum.quantum.classical.M.noise.parameters": 1,
 		"None.array.M.noise.parameters": 1,
 		"None.state.M.noise.parameters": 1,
+		"hist.array.M.noise.parameters": 1
+	},
+	"instance": {
 		"hist.array.M.noise.parameters": 1
 	},
 	"configuration": [

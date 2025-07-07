@@ -395,6 +395,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'path':{},
 		'load':None,
 		'dump':None,
+		'tmp':True,
 		'reset':None,
 		'convert':None,
 		'patterns':None,
@@ -1210,7 +1211,7 @@ def loader(data,plots,processes,verbose=None):
 
 		new = tmp is not None and data is not None
 
-		if new and processes['dump']:
+		if new and processes['tmp']:
 			path = processes['path']['tmp']
 			wrapper = processes['convert'] if isinstance(processes['convert'],str) else 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
