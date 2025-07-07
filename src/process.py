@@ -2156,7 +2156,7 @@ def plotter(plots,processes,verbose=None):
 
 			shapes = [len(layout),max(len(i) for i in layout)]
 
-			plts = copy(plots[instance].pop(subinstance))
+			plts = plots[instance].pop(subinstance)
 			grd = [i for i in grid[instance].pop(subinstance)][:LAYOUTDIM]
 
 			inf = information[instance].pop(subinstance)			
@@ -2167,6 +2167,46 @@ def plotter(plots,processes,verbose=None):
 			options = {position:[{}] if not len(options[position]) else [i for kwargs in options[position] for i in (kwargs if not isinstance(kwargs,dict) else [kwargs])] for position in options}
 			options = [[{**options[['row','col'][0]][i%len(options[['row','col'][0]])],**options[['row','col'][1]][j%len(options[['row','col'][1]])]} for j in range(shapes[1])] for i in range(shapes[0])]
 
+			print('setting data in grid')
+			for prop in PLOTS:
+						
+				if prop not in plts[obj]:
+					continue
+				
+				for pointer,shape,data in search(plts[obj][prop],returns=True):
+
+					if not data:
+						continue
+
+					for index,position in enumerate(itertools.product(*(range(i) for i in shapes[:LAYOUTDIM]))):
+
+						if indexer(position,layout) is None:
+							continue
+
+						print(index,position)
+
+						key,coordinate = delim.join(subinstance.split(delim)[:-LAYOUTDIM]),[int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
+						key,coordinate = key,[position[i]*grd[i]+coordinate[i] for i in range(LAYOUTDIM)]
+						key,coordinate = delim.join([str(key),*[str(i) for i in coordinate]]),coordinate
+
+						if key not in grid:
+							plots[instance][key] = copy(plts)
+							grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index+1]
+
+							information[instance][key] = inf				
+							metadata[instance][key] = {**meta,**indexer(position,layout)}
+
+
+						boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER] if not isinstance(item[attr],list))
+
+						pointer = pointer
+						item = copy(data) if boolean(data) else None
+						iterable = plots[instance][key][obj][prop]
+						inserter(pointer,item,iterable)
+
+
+			print('setting kwargs in grid')
+
 			for index,position in enumerate(itertools.product(*(range(i) for i in shapes[:LAYOUTDIM]))):
 
 				if indexer(position,layout) is None:
@@ -2176,29 +2216,7 @@ def plotter(plots,processes,verbose=None):
 				key,coordinate = key,[position[i]*grd[i]+coordinate[i] for i in range(LAYOUTDIM)]
 				key,coordinate = delim.join([str(key),*[str(i) for i in coordinate]]),coordinate
 
-				plots[instance][key] = copy(plts)
-				grid[instance][key] = [*[i*j for i,j in zip(grd,shapes)][:LAYOUTDIM],index+1]
-
-				information[instance][key] = inf				
-				metadata[instance][key] = {**meta,**indexer(position,layout)}
-
-				boolean = lambda data,item=indexer(position,layout): (item is not None) and all(data[OTHER][attr]==item[attr] for attr in item if attr in data[OTHER] if not isinstance(item[attr],list))
-
-				for prop in PLOTS:
-							
-					if prop not in plts[obj]:
-						continue
-					
-					for index,shape,data in search(plts[obj][prop],returns=True):
-					
-						if not data:
-							continue
-
-						index = index
-						item = data if boolean(data) else None
-						iterable = plots[instance][key][obj][prop]
-						inserter(index,item,iterable)
-
+				print()
 				opts = indexer(position,options)
 				vals = indexer(position,layout)
 				for attr in list(opts):
