@@ -1730,8 +1730,8 @@ def apply(keys,data,plots,processes,verbose=None):
 							else:
 								value[destination] = None #grouping.reset_index().index.to_numpy()
 
-							if isinstance(value[destination],arrays):
-								value[destination] = value[destination].tolist()
+							# if isinstance(value[destination],arrays):
+							# 	value[destination] = value[destination].tolist()
 
 						else:
 							value[destination] = None
@@ -2595,8 +2595,6 @@ def plotter(plots,processes,verbose=None):
 					if not data:
 						continue
 
-					print('----',prop,index,shape)
-
 					for attr in data:
 
 						if (prop in PLOTS) and (attr in [*ALL,OTHER]):
@@ -3269,32 +3267,21 @@ def plotter(plots,processes,verbose=None):
 						
 						elif attr in ALL:
 							
-							print('processing',attr,type(value),len(value),slices,options,normalize.get(attr))
-
 							if isinstance(data.get(attr),scalars):
 								continue							
-
-							if (
-								(not normalize.get(attr)) and 
-								all(((subslice is None) or (
-									isinstance(subslice,slice) and 
-									(subslice.start in [0,None]) and 
-									(subslice.stop in [None]) and 
-									(subslice.step in [1,None])))
-									for subslice in slices) and 
-								all(not options[option] for option in options)
-								):
-								continue
-
-							value = np.array(value)
 
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)
 
 							for subslice in slices:
-								value = value[subslice]
+								if (isinstance(subslice,slice) and 
+									(subslice.start not in [0,None]) or 
+									(subslice.stop not in [None]) or 
+									(subslice.step not in [1,None])):
+									value = value[subslice]
 
-							value = np.array([valify(i,**options) for i in value])
+							if any(options[option] for option in options):
+								value = [valify(i,**options) for i in value]
 
 						else:
 							

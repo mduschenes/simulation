@@ -680,8 +680,12 @@ def set_data(data=None,scale=None,base=None,**kwargs):
 	
 	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):
 
-		data = np.array(data)
-		data[data==0] = np.nan
+		if not isinstance(data,np.ndarray):
+			for i,value in enumerate(data):
+				if value == 0:
+					data[i] = np.nan
+		else:
+			data[data==0] = np.nan
 
 	return data
 
@@ -1674,7 +1678,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = data
 
-
 				props = '%serr'
 				subprops ='%s'
 				subattrs = 'set_%sscale'
@@ -1710,6 +1713,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
+					
 					subattr = subattrs%(axes)
 					
 					if not kwargs.get(subattr):
