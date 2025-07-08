@@ -2488,7 +2488,6 @@ def plotter(plots,processes,verbose=None):
 					key = 'sort'
 					values[prop][label][key] = [k for (k,j) in sorted(set(values[prop][label][key]),key=lambda i: i[-1].index(i[0]))]
 
-				print('start')
 				labels = {}
 				for data in search(plots[instance][subinstance][obj][prop]):
 					if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
@@ -2499,12 +2498,9 @@ def plotter(plots,processes,verbose=None):
 						if label not in labels:
 							labels[label] = []
 						labels[label].extend(data.get(label,[]))
-				# labels = {label: list(realsorted(set(labels[label]))) for label in natsorted(labels)}
-				# labels = {label: list(set(labels[label])) for label in natsorted(labels)}
-				print('end')
 
 				for label in labels:
-					
+
 					values[prop][label] = {}
 
 					key = 'value'
@@ -2587,7 +2583,6 @@ def plotter(plots,processes,verbose=None):
 					if any(label in values[i] for i in values if i not in [prop]):
 						values[prop].pop(label);
 
-
 			# setup values based attrs
 			delimiters = [SYMBOL,'__']
 			for prop in plots[instance][subinstance][obj]:
@@ -2600,12 +2595,14 @@ def plotter(plots,processes,verbose=None):
 					if not data:
 						continue
 
+					print(prop,index,shape)
+
 					for attr in data:
 
 						if (prop in PLOTS) and (attr in [*ALL,OTHER]):
 							continue
 
-						value = copy(data[attr])
+						value = data[attr]
 
 						if value is None:
 							continue
