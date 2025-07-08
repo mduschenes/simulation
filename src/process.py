@@ -2488,7 +2488,7 @@ def plotter(plots,processes,verbose=None):
 					key = 'sort'
 					values[prop][label][key] = [k for (k,j) in sorted(set(values[prop][label][key]),key=lambda i: i[-1].index(i[0]))]
 
-
+				print('start')
 				labels = {}
 				for data in search(plots[instance][subinstance][obj][prop]):
 					if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
@@ -2499,7 +2499,9 @@ def plotter(plots,processes,verbose=None):
 						if label not in labels:
 							labels[label] = []
 						labels[label].extend(data.get(label,[]))
-				labels = {label: list(realsorted(set(labels[label]))) for label in natsorted(labels)}
+				# labels = {label: list(realsorted(set(labels[label]))) for label in natsorted(labels)}
+				# labels = {label: list(set(labels[label])) for label in natsorted(labels)}
+				print('end')
 
 				for label in labels:
 					
@@ -2621,7 +2623,6 @@ def plotter(plots,processes,verbose=None):
 								
 								if not (label.startswith(delimiter) and label.endswith(delimiter)):
 									continue
-
 
 								label,val = label.replace(delimiter,''),value.pop(label)
 
@@ -3015,20 +3016,20 @@ def plotter(plots,processes,verbose=None):
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>=1))))))},
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>=1))))))},
 						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>=1))))))},
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])>=1))))))},
 						**{(prop,label):'%s'%(texify(label,texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']})) 
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 					
 							for label in values[prop] 
-							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(set(values[prop][label]['value']))>=1)) and 
+							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>=1)) and 
 								not (values[prop][label]['other']))))))},
 					},					
 					{
@@ -3041,7 +3042,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))<1))))))},
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])<1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label,**options['texify']),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}) 
@@ -3051,7 +3052,7 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))<1))))))},
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])<1))))))},
 					},
 					{
 						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}))
@@ -3106,7 +3107,7 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				value = list(set(label for value in (data[attr] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))
-				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>=1))})
+				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(values[prop][label]['value'])>=1))})
 
 				def func(value,attrs=None):
 
@@ -3132,7 +3133,7 @@ def plotter(plots,processes,verbose=None):
 					continue
 
 				value = list(set(label for value in ([i['value'] for i in data[attr]] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))
-				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(set(values[prop][label]['value']))>=1))})
+				value = dataframe({label: values[prop][label]['value'] for prop in values for label in values[prop] if (((label in value) or ('%s_'%(label) in value)) and (label not in [*ALL,OTHER]) and (len(values[prop][label]['value'])>=1))})
 
 				def func(value,attrs=None):
 
@@ -3531,19 +3532,19 @@ def plotter(plots,processes,verbose=None):
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['legend']) and (len(set(values[prop][label]['value']))>1))))))},
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>1))))))},
 						**{label: label
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
-								(values[prop][label]['other']) and (len(set(values[prop][label]['value']))>=1))))))},
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])>=1))))))},
 						**{label: label 
 							for label in natsorted(set((
 							label 
 							for label in values[prop] 
 							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and 
-								(len(set(values[prop][label]['value']))>=1)) and 
+								(len(values[prop][label]['value'])>=1)) and 
 								not (values[prop][label]['other'])))))))},							
 						**({label: label
 							for label in data[OTHER][OTHER]['legend'].get('label')} 
