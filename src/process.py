@@ -335,7 +335,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		}
 
 
-	logger.log(info*verbose,'Paths: pwd: %s , cwd: %s'%(pwd,cwd))
+	logger.log(info,'Paths: pwd: %s , cwd: %s'%(pwd,cwd))
 
 	# Load process plots
 	path = join(plots,root=pwd) if isinstance(plots,str) else None
@@ -1781,7 +1781,9 @@ def plotter(plots,processes,verbose=None):
 
 	# Check data
 	for instance in list(plots):
+		
 		for subinstance in list(plots[instance]):
+		
 			for prop in plots[instance][subinstance][obj]:
 
 				if isinstance(plots[instance][subinstance][obj].get(prop),dict):
@@ -1866,8 +1868,6 @@ def plotter(plots,processes,verbose=None):
 	grid = {}
 
 	for instance in list(plots):
-
-		logger.log(info*verbose,"Setting : %s"%(instance))
 
 		for subinstance in list(plots[instance]):
 			
@@ -2009,15 +2009,11 @@ def plotter(plots,processes,verbose=None):
 	# where data in search(plots[instance][subinstance][obj][prop]
 	# for each instance,subinstance,position is itself a set of data to plot of arbitrary shape [*labels,]
 	
-	print('Done: Shape')
-	
 	for instance in list(plots):
 		for subinstance in list(plots[instance]):
 			
 			if not plots[instance][subinstance].get(obj):
 				continue
-
-			print('Grid: ',subinstance,[i for i in grid[instance][subinstance]],grid[instance][subinstance][:LAYOUTDIM],grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])
 
 			for index,position in enumerate(itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM]))):
 				
@@ -2075,8 +2071,6 @@ def plotter(plots,processes,verbose=None):
 			plots[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
 
-	print('Done: Grid')
-
 	# Set layout from configuration
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
 
@@ -2106,6 +2100,7 @@ def plotter(plots,processes,verbose=None):
 				information[instance][subinstance][prop] = {}
 
 			for prop in information[instance][subinstance]:
+
 				data = list(natsorted(set(label
 					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
 					for data in search(plots[instance][subinstance][obj][prop])
@@ -2113,6 +2108,7 @@ def plotter(plots,processes,verbose=None):
 					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
 					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
 					)))
+
 				data = {label: [
 						(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else to_tuple(data[OTHER][label])) if (
 								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
@@ -2141,7 +2137,6 @@ def plotter(plots,processes,verbose=None):
 
 			metadata[instance][subinstance] = data
 
-	print('Done: Metadata')
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2275,8 +2270,6 @@ def plotter(plots,processes,verbose=None):
 						
 						setter(data,copy({item:items[item] for item in items if item not in nulls}),delimiter=delim)
 	
-	print('Done: Config')
-
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2334,12 +2327,12 @@ def plotter(plots,processes,verbose=None):
 
 			grid[instance][subinstance] = [*[config['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)],index+1]
 
-	print('Setting: Kwargs')
-
 	# Set kwargs
 
 	for instance in list(plots):
-	
+
+		logger.log(info,"Setting : %s"%(instance))
+
 		for subinstance in list(plots[instance]):
 			
 			if not plots[instance][subinstance].get(obj):
@@ -2349,181 +2342,244 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
+			logger.log(info,"\tConfiguring : %s"%(subinstance))
+
 			for prop in information[instance][subinstance]:
+				
+				
 				values[prop] = {}
-				for label in information[instance][subinstance][prop]:
-					value = {}
-					value['value'] = information[instance][subinstance][prop][label]
-					value['include'] = any((
-							(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
-							(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
-							(((not data[OTHER][OTHER]['legend'].get('include')) or (label in data[OTHER][OTHER]['legend'].get('include'))) and
-							 ((not data[OTHER][OTHER]['legend'].get('exclude')) or (label not in data[OTHER][OTHER]['legend'].get('exclude')))
-							))
-							)
-							for i in PLOTS
-							if i in plots[instance][subinstance][obj]
-							for data in search(plots[instance][subinstance][obj][i])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) 
-							)
-					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort') if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
-								data[OTHER][OTHER]['legend'].get('include')
-								if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
-								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
-								[]))							
-							for i in PLOTS
-							if i in plots[instance][subinstance][obj]
-							for data in search(plots[instance][subinstance][obj][i])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) and (
-								(data[OTHER][OTHER]['legend'].get('sort') is not None) or 
-								((data[OTHER][OTHER]['legend'].get('sort') is None) and 
-								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))))
-							for k in (
-								data[OTHER][OTHER]['legend'].get('sort') 
-								if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
-								data[OTHER][OTHER]['legend'].get('include')
-								if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
-								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
-								[]
-								)
-								]),key=lambda i: i[-1].index(i[0]))]
-					value['axes'] = False				
-					value['label'] = any((
-							(label in data[OTHER][OTHER][OTHER]) and 
-							(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
-							for data in search(plots[instance][subinstance][obj][prop]) 
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							)
-					value['other'] = any((
-							(label in data[OTHER][OTHER][OTHER]) and 
-							(label not in data[OTHER]) and 
-							((data[OTHER][OTHER][OTHER].get(label) is not None) and
-							(data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') in data[OTHER])))
-							for data in search(plots[instance][subinstance][obj][prop])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							)
-					value['title'] = any((
-							(label in data[OTHER][OTHER][OTHER]))
-							for data in search(plots[instance][subinstance][obj][prop])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							)
-					value['legend'] = any((
-							(label in data[OTHER][OTHER][OTHER]) #and 
-							# (label not in data[OTHER]) and 
-							# (
-								# (data[OTHER][OTHER][OTHER].get(label) is not None) and
-							# (data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') not in data[OTHER]))
-							)
-							for data in search(plots[instance][subinstance][obj][prop])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							)
-					value['labels'] = {attr: value
-							for data in search(plots[instance][subinstance][obj][prop])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) 
-							for attr,value in (data[OTHER][OTHER]['legend'].get('label') if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
-								).items()							
-							if attr not in information[instance][subinstance][prop]
-							}
-					value['attr'] = {
-							**{attr: {string:  data[OTHER][OTHER][attr][string]
-								for data in search(plots[instance][subinstance][obj][prop]) 
-								if ((data) and (data[OTHER][OTHER].get(attr) is not None))
-								for string in data[OTHER][OTHER][attr]}
-								for attr in ['texify','valify']},
-							**{attr: {
-								**{kwarg:[
-								min((data[OTHER][OTHER][attr][kwarg][0]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0),
-								max((data[OTHER][OTHER][attr][kwarg][1]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0),											
-								] for kwarg in ['scilimits']},
-								**{kwarg: 
-									max((data[OTHER][OTHER][attr][kwarg]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0) 
-									for kwarg in ['decimals']},
-								**{kwarg: 
-									any((data[OTHER][OTHER][attr][kwarg]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))))
-									for kwarg in ['one']},										
-								}
-								for attr in ['scinotation']},
-							}
 
-					values[prop][label] = value
 
-				labels = list(natsorted(set(label
-					for data in search(plots[instance][subinstance][obj][prop])
-					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-					for label in data
-					if ((data) and (label in [*ALL]))
-					)))
-
-				tmp = {label:list(realsorted(set(i
-							for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
-							for i in (data.get(label,[]) if data.get(label) is not None else []))))
-							for label in labels
-							}
-
-				print('Configuring',subinstance)
+				labels = information[instance][subinstance][prop]
 
 				for label in labels:
 
-					value = {}
-					value['value'] = tmp[label]
-					value['include'] = True
-					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort')))							
-							for i in PLOTS
-							if i in plots[instance][subinstance][obj]
-							for data in search(plots[instance][subinstance][obj][i])
-							if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
-							for k in data[OTHER][OTHER]['legend'].get('sort')]),key=lambda i: i[-1].index(i[0]))]
-					value['axes'] = True				
-					value['label'] = False
-					value['other'] = False
-					value['legend'] = False
-					value['labels'] = {}
-					value['attr'] = {
-							**{attr: {string:  data[OTHER][OTHER][attr][string]
-								for data in search(plots[instance][subinstance][obj][prop]) 
-								if ((data) and data[OTHER][OTHER].get(attr) is not None)
-								for string in data[OTHER][OTHER][attr]}
-								for attr in ['texify','valify']},
-							**{attr: {
-								**{kwarg:[
-								min((data[OTHER][OTHER][attr][kwarg][0]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0),
-								max((data[OTHER][OTHER][attr][kwarg][1]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0),											
-								] for kwarg in ['scilimits']},
-								**{kwarg: 
-									max((data[OTHER][OTHER][attr][kwarg]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))),
-									default=0) 
-									for kwarg in ['decimals']},
-								**{kwarg: 
-									any((data[OTHER][OTHER][attr][kwarg]
-									for data in search(plots[instance][subinstance][obj][prop]) 
-									if ((data) and (data[OTHER][OTHER].get(attr) is not None) and (kwarg in data[OTHER][OTHER][attr]))))
-									for kwarg in ['one']},										
-								}
-								for attr in ['scinotation']},
+					values[prop][label] = {}
+					
+					key = 'value'
+					values[prop][label][key] = list(sorted(set([tuple(i.tolist()) if isinstance(i,arrays) else i for i in labels[label]])))
+
+					for key in ['include']:
+						values[prop][label][key] = False
+
+					for key in ['sort']:
+						values[prop][label][key] = []
+
+					for key in ['axes']:
+						values[prop][label][key] = False
+
+					for key in ['label','other','title','legend']:
+						values[prop][label][key] = False				
+
+					for key in ['labels']:
+						values[prop][label][key] = {}	
+
+					for key in ['attr']:
+						values[prop][label][key] = {
+							**{subkey:{} for subkey in ['texify','valify']},
+							**{subkey:{
+								**{kwarg:[0,0] for kwarg in ['scilimits']},
+								**{kwarg: 0 for kwarg in ['decimals']},
+								**{kwarg: False for kwarg in ['one']},
+								} for subkey in ['scinotation']}
 							}
 
-					values[prop][label] = value
+					for i in PLOTS:
+						
+						if plots[instance][subinstance][obj].get(i) is None:
+							continue
 
-					values[prop][label] = value
+						for data in search(plots[instance][subinstance][obj][i]):
+
+							if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
+								continue
+
+							key = 'include'
+							values[prop][label][key] = values[prop][label][key] or (
+								(((data[OTHER][OTHER]['legend'].get('include') is not False) and (data[OTHER][OTHER]['legend'].get('exclude') is not True))) and (
+								(((not data[OTHER][OTHER]['legend'].get('include')) and (not data[OTHER][OTHER]['legend'].get('exclude')))) or
+								(((not data[OTHER][OTHER]['legend'].get('include')) or (label in data[OTHER][OTHER]['legend'].get('include'))) and
+								 ((not data[OTHER][OTHER]['legend'].get('exclude')) or (label not in data[OTHER][OTHER]['legend'].get('exclude')))
+								))
+								)
+
+							key = 'sort'
+							if (
+								(data[OTHER][OTHER]['legend'].get('sort') is not None) or 
+								((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+								 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables)))
+								):
+								values[prop][label][key].extend(
+									[(k,j) for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort') if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
+										data[OTHER][OTHER]['legend'].get('include')
+										if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+										 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
+										[]))		
+											for k in (
+												data[OTHER][OTHER]['legend'].get('sort') 
+												if (data[OTHER][OTHER]['legend'].get('sort') is not None) else
+												data[OTHER][OTHER]['legend'].get('include')
+												if ((data[OTHER][OTHER]['legend'].get('sort') is None) and 
+												 (isinstance(data[OTHER][OTHER]['legend'].get('include'),iterables))) else 
+												[]
+												)
+										]),key=lambda i: i[-1].index(i[0]))
+									])
+
+							if i == prop:
+
+								key = 'label'
+								values[prop][label][key] = values[prop][label][key] or (
+									(label in data[OTHER][OTHER][OTHER]) and 
+									(label in data[OTHER])
+									)# and (data[OTHER][OTHER][OTHER][label] is None))
+
+								key = 'other'
+								values[prop][label][key] = values[prop][label][key] or (
+										(label in data[OTHER][OTHER][OTHER]) and 
+										(label not in data[OTHER]) and 
+										((data[OTHER][OTHER][OTHER].get(label) is not None) and
+										(data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') in data[OTHER]))
+									)
+
+								key = 'title'
+								values[prop][label][key] = values[prop][label][key] or (
+									(label in data[OTHER][OTHER][OTHER])
+									)
+
+								key = 'legend'
+								values[prop][label][key] = values[prop][label][key] or (
+									(label in data[OTHER][OTHER][OTHER]) #and 
+									# (label not in data[OTHER]) and 
+									# (
+										# (data[OTHER][OTHER][OTHER].get(label) is not None) and
+									# (data[OTHER][OTHER][OTHER][label].replace(SYMBOL,'') not in data[OTHER]))
+									)
+
+								key = 'labels'
+								values[prop][label][key].update({key: val
+										for key,val in (data[OTHER][OTHER]['legend'].get('label') if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}).items()
+										if key not in labels
+										})
+
+								key = 'attr'
+								for subkey in values[prop][label][key]:
+									if (data[OTHER][OTHER].get(subkey) is None):
+										continue
+									if subkey in ['texify','valify']:
+										values[prop][label][key][subkey].update({
+											kwarg: data[OTHER][OTHER][subkey][kwarg]
+											for kwarg in data[OTHER][OTHER][subkey]
+											})
+									elif subkey in ['scinotation']:
+										for kwarg in values[prop][label][key][subkey]:
+											if (kwarg not in data[OTHER][OTHER][subkey]):
+												continue
+											if kwarg in ['scilimits']:
+												values[prop][label][key][subkey][kwarg] = [
+													min((*values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg][0]),default=0),
+													max((*values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg][1]),default=0)
+													]
+											elif kwarg in ['decimals']:
+												values[prop][label][key][subkey][kwarg] = max((values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg]),default=0)
+											elif kwarg in ['one']:
+												values[prop][label][key][subkey][kwarg] = values[prop][label][key][subkey][kwarg] or data[OTHER][OTHER][subkey][kwarg]
+
+					key = 'sort'
+					values[prop][label][key] = [k for (k,j) in sorted(set(values[prop][label][key]),key=lambda i: i[-1].index(i[0]))]
+
+
+				labels = {}
+				for data in search(plots[instance][subinstance][obj][prop]):
+					if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
+						continue
+					for label in data:
+						if label not in [*ALL] or data.get(label) is None:
+							continue
+						if label not in labels:
+							labels[label] = []
+						labels[label].extend(data.get(label,[]))
+				labels = {label: list(realsorted(set(labels[label]))) for label in natsorted(labels)}
+
+				for label in labels:
+					
+					values[prop][label] = {}
+
+					key = 'value'
+					values[prop][label][key] = labels[label]
+
+					for key in ['include']:
+						values[prop][label][key] = True
+
+					for key in ['sort']:
+						values[prop][label][key] = []
+
+					for key in ['axes']:
+						values[prop][label][key] = True
+
+					for key in ['label','other','title','legend']:
+						values[prop][label][key] = False				
+
+					for key in ['labels']:
+						values[prop][label][key] = {}
+
+					for key in ['attr']:
+						values[prop][label][key] = {
+							**{subkey:{} for subkey in ['texify','valify']},
+							**{subkey:{
+								**{kwarg:[0,0] for kwarg in ['scilimits']},
+								**{kwarg: 0 for kwarg in ['decimals']},
+								**{kwarg: False for kwarg in ['one']},
+								} for subkey in ['scinotation']}
+							}
+
+					for i in PLOTS:
+						
+						if plots[instance][subinstance][obj].get(i) is None:
+							continue
+
+						for data in search(plots[instance][subinstance][obj][i]):
+
+							if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
+								continue
+
+							key = 'sort'
+
+							if ((data[OTHER][OTHER]['legend'].get('sort') is not None)):
+								values[prop][label][key].extend(
+									[(k,j) for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend'].get('sort')))
+											for k in data[OTHER][OTHER]['legend'].get('sort')
+											]),key=lambda i: i[-1].index(i[0]))
+									])
+
+							if i == prop:
+
+								key = 'attr'
+								for subkey in values[prop][label][key]:
+									if (data[OTHER][OTHER].get(subkey) is None):
+										continue
+									if subkey in ['texify','valify']:
+										values[prop][label][key][subkey].update({
+											kwarg: data[OTHER][OTHER][subkey][kwarg]
+											for kwarg in data[OTHER][OTHER][subkey]
+											})
+									elif subkey in ['scinotation']:
+										for kwarg in values[prop][label][key][subkey]:
+											if (kwarg not in data[OTHER][OTHER][subkey]):
+												continue
+											if kwarg in ['scilimits']:
+												values[prop][label][key][subkey][kwarg] = [
+													min((*values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg][0]),default=0),
+													max((*values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg][1]),default=0)
+													]
+											elif kwarg in ['decimals']:
+												values[prop][label][key][subkey][kwarg] = max((values[prop][label][key][subkey][kwarg],data[OTHER][OTHER][subkey][kwarg]),default=0)
+											elif kwarg in ['one']:
+												values[prop][label][key][subkey][kwarg] = values[prop][label][key][subkey][kwarg] or data[OTHER][OTHER][subkey][kwarg]
+
+					key = 'sort'
+					values[prop][label][key] = [k for (k,j) in sorted(set(values[prop][label][key]),key=lambda i: i[-1].index(i[0]))]
+
 
 				for label in list(values[prop]):
 					if any(label in values[i] for i in values if i not in [prop]):
@@ -2585,24 +2641,24 @@ def plotter(plots,processes,verbose=None):
 
 										if prop not in PLOTS:
 											item = None
-											items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 										elif callable(func):
 											item = func({
 												**{attr:data[attr] for attr in ALL if attr in data},
 												**{attr:data[OTHER][attr] for attr in data[OTHER] for prop in values if label in values[prop] and attr in values[prop]}
 												})
 											items = func({
-												**{attr:np.array([list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]) for attr in ALL if attr in data},
+												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in ALL if attr in data},
 												**{attr:data[OTHER][attr] for attr in [label]},
-												**{attr:np.array([list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
+												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
 												})											
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
-												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 											else:
 												item = data[OTHER].get(label)
-												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 										else:
 											continue
 
@@ -2612,14 +2668,14 @@ def plotter(plots,processes,verbose=None):
 
 										if prop not in PLOTS:
 											item = None
-											items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
-												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 											else:
 												item = data[OTHER].get(label)
-												items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 										else:
 											continue
 
@@ -2629,11 +2685,11 @@ def plotter(plots,processes,verbose=None):
 											items = [i for i in data[label]]
 										else:
 											item = data[OTHER].get(label)
-											items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
 									else:
 										item = None
-										items = [list(realsorted(set(values[prop][label]['value']))) for prop in values if label in values[prop]][0]
+										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
 									if isinstance(item,arrays):
 										item = item.tolist()
@@ -2979,7 +3035,7 @@ def plotter(plots,processes,verbose=None):
 						**{(prop,label):'%s%s%s'%(
 							texify(label,**options['texify']),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}) 
-									for value in list(realsorted(set(values[prop][label]['value'])))]))
+									for value in values[prop][label]['value']]))
 							for prop in values 
 							for label in natsorted(set((
 							label 
@@ -2989,7 +3045,7 @@ def plotter(plots,processes,verbose=None):
 						**{(prop,label):'%s%s%s'%(
 							texify(label,**options['texify']),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify']}) 
-									for value in list(realsorted(set(values[prop][label]['value'])))]))
+									for value in values[prop][label]['value']]))
 							for prop in values 
 							for label in natsorted(set((
 							label 
@@ -3009,8 +3065,7 @@ def plotter(plots,processes,verbose=None):
 					},					
 					]
 
-				def func(value,key=None):
-					index = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
+				def func(value,index):
 					if index:
 						index = sorted(set(value),key=lambda i,index=index: index.index(i[-1]) if i[-1] in index else len(index))
 					else:
@@ -3023,11 +3078,10 @@ def plotter(plots,processes,verbose=None):
 					separator = '~,~'
 				delimiter = ',~'
 
-
 				indexes = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
-				index = [[k for k in func(i)] for i in value if i]
+				index = [[k for k in func(i,indexes)] for i in value if i]
 				index = sorted(range(len(index)),key=lambda i,indexes=indexes: sum(indexes.index(j[-1]) if j[-1] in indexes else len(indexes) for j in index[i]))
-				value = [[i[k] for k in func(i)] for i in value if i]
+				value = [[i[k] for k in func(i,indexes)] for i in value if i]
 				value = [value[i] for i in index]
 				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):

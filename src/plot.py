@@ -1012,7 +1012,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for axes in AXES},
 			**{'%saxis.set_ticklabels'%(axes):['labels']
 				for axes in AXES},					
-			**{k:[OTHER] for k in PLOTS},								
+			**{k:[OTHER] for k in PLOTS},		
 			**{'set_title':[OTHER],'suptitle':['t'],
 			'annotate':['s'],
 			'legend':['title','set_title']},
@@ -1269,7 +1269,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							getattr(matplotlib.container,'%sContainer'%('Errorbar'.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%('Errorbar'.capitalize()))
 							}
 						for container in ['cmap']
-						},						
+						},
 						}
 					for handler in handlers:
 						for _obj in [i for i in objs if i is not None]:
@@ -1291,7 +1291,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwargs[attr].get('keep') is not None:
 					keep = kwargs[attr]['keep']
 					if (keep in ['unique']) or (isinstance(keep,list) and all(isinstance(i,str) for i in keep)):
-						
+
 						if isinstance(keep,str):
 							keep = ['marker','linestyle','alpha','color']
 
@@ -1446,7 +1446,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					def func(attr,obj):
 						return 'left'
-					funcs['labels']['ha'] = func																
+					funcs['labels']['ha'] = func
 					
 					def func(attr,obj):
 						x = -max([0.95*label.get_window_extent().width for label in obj.get_texts()])
@@ -1461,15 +1461,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									**({
 										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_col') is not None else {}),							
+										} if kwargs[attr].get('set_title_col') is not None else {}),	
 									}
 									}),
 							**({'legendLabels': {
-									**_kwds.get('legendLabels',{}),						
+									**_kwds.get('legendLabels',{}),
 									**({
 										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_col') is not None else {}),							
+										} if kwargs[attr].get('set_title_col') is not None else {}),	
 									}
 									}),					
 							})
@@ -1534,7 +1534,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					def func(attr,obj):
 						return 'right'
-					funcs['labels']['ha'] = func																
+					funcs['labels']['ha'] = func										
 					
 					def func(attr,obj):
 						x = max([0*label.get_window_extent().width for label in obj.get_texts()])
@@ -1549,15 +1549,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									**({
 										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_row') is not None else {}),							
+										} if kwargs[attr].get('set_title_row') is not None else {}),	
 									}
 									}),
 							**({'legendLabels': {
-									**_kwds.get('legendLabels',{}),						
+									**_kwds.get('legendLabels',{}),
 									**({
 										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_row') is not None else {}),							
+										} if kwargs[attr].get('set_title_row') is not None else {}),	
 									}
 									}),					
 							})
@@ -1575,7 +1575,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts','get_frame']},
 					**({'legendHandles': {
-							**_kwds.get('legendHandles',{}),												
+							**_kwds.get('legendHandles',{}),						
 							**({'set_%s'%(prop): [kwargs[attr]['set_%s'%(prop)]]*len(handles) if isinstance(kwargs[attr]['set_%s'%(prop)],scalars) else kwargs[attr]['set_%s'%(prop)]
 							for prop in ['alpha','color','marker','linestyle']
 							if kwargs[attr].get('set_%s'%(prop)) is not None} 
@@ -1741,7 +1741,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									stop=min((i for i in (
 										max((j for i in value['lim'] for j in (i.get('%smax'%(axes)),) if j is not None),default=None),
 										max((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
-										if i is not None),default=None),									
+										if i is not None),default=None),			
 									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100,
 									base=base if base is not None else 10,
 									)
@@ -1791,7 +1791,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwds[attr]['xerr'] = xerr
 						kwds[attr]['yerr'] = yerr
 						kwds[attr].update(updates)
-						
+
 						attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwds)
 
 					return
@@ -1987,12 +1987,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if isinstance(kwargs[attr][prop],dict):
 
 							kwds = ['value','values','color','norm','scale','base','alpha']
-						
+
 							kwds = {kwd: kwargs[attr][prop].get(kwd,None) for kwd in kwds}
 
 							if isinstance(kwds.get('value'),dict):
 								kwds.update(kwds.pop('value',{}))
-							
+	
 							value = 'values'
 							values = 'value'
 							if kwds.get(value) is None and kwds.get(values) is None:
@@ -2084,7 +2084,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						for k in kwargs[attr]:
 							if k in replacements:
 								k,v = replacements[k](axes,k,attr,kwargs),kwargs[attr].pop(k)
-								
+		
 								if k is not None:
 									kwargs[attr][k] = v
 
@@ -2207,11 +2207,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							options = dict(size=sizing,pad=padding)
 							cax,options = make_axes_locatable(obj).append_axes(position,**options),dict()
 
-							# pos = obj.get_position()						
+							# pos = obj.get_position()
 							# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
 							# cax = plt.add_axes()
 							# cax.set_position(pos)
-						
+
 						options = {**options,**dict(cmap=cmap,norm=norm,orientation=orientation,
 							)}
 
@@ -2220,12 +2220,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						obj = colorbar	
 
 						for kwarg in kwargs[attr]:
-							
+	
 							if kwarg in nullkwargs:
 								continue
 
 							_obj = obj
-							
+	
 							for _kwarg in kwarg.split(delimiter):
 								try:
 									_obj = getattr(_obj,_kwarg)
@@ -2244,7 +2244,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								try:
 									getattr(_obj,'set_%s'%(kwarg))(kwargs[attr][kwarg])
 								except Exception as exception:
-									continue									
+									continue			
 				
 			elif attr in ['savefig']:
 				path = kwargs[attr].get('fname')
@@ -2537,7 +2537,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		for count,(index,shape,kwarg) in enumerate(finds):
 			
-			if not kwarg:
+			if not isinstance(kwarg,dict):
 				continue
 
 			attrs(obj,attr,objs,index,indices,shape,count,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
@@ -2588,8 +2588,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if obj is not None:
 			
 			props = list(settings[key][attr])
+			ordering = {'fig':{'close':-1,'savefig':-2,'tight_layout':-3,'subplots_adjust':-4,'set_size_inches':-5},'ax':{string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels']) for axes in AXES}}.get(attr,{})
+			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}
 
-			ordering = {'fig':{'close':-1,'savefig':-2},'ax':{string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels']) for axes in AXES}}.get(attr,{})
 			for prop in ordering:
 				if prop in settings[key][attr]:
 					if ordering[prop] == -1:
@@ -2598,11 +2599,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						ordering[prop] += 1
 					props.insert(ordering[prop],props.pop(props.index(prop)))
 
-			modify = {'savefig':-1}
 			for prop in modify:
 				if prop in settings[key][attr]:
-					if modify[prop] == -1:
-						modify[prop] = len(settings)-1
+					if modify[prop] < 0:
+						modify[prop] = len(settings) + modify[prop]
 					if list(settings).index(key) != modify[prop]:
 						props.pop(props.index(prop))
 
