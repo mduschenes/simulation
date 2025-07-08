@@ -3441,7 +3441,7 @@ def plotter(plots,processes,verbose=None):
 							data[kwarg] = value
 
 			attr = '%saxis.set_ticklabels'
-			kwargs = ['labels','ticklabels']
+			kwargs = ['ticklabels']
 			for axes in ['',*AXES]:
 				
 				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):

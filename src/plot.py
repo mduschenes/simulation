@@ -22,9 +22,10 @@ from src.logger	import Logger
 logger = Logger()
 info = 100	
 debug = 100
-def log(exception):
-	logger.log(debug,'%r'%(exception))
-	logger.log(debug,'%s'%(traceback.format_exc()))
+def log(exception,verbose=None):
+	verbose = debug if verbose is None else verbose
+	logger.log(verbose,'%r'%(exception))
+	logger.log(verbose,'%s'%(traceback.format_exc()))
 	return
 
 # Import user modules
@@ -1060,6 +1061,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								  ('%sticks'%(axes),'ticks'),
 								  ('%sticklabels'%(axes),'labels')]
 				},
+			**{'%saxis.%s'%(axes,key):['ticks']
+				for axes in AXES
+				for key in ['set_ticks']
+				},
 			**{'%saxis.%s'%(axes,key):['labels']
 				for axes in AXES
 				for key in ['set_ticklabels']
@@ -1763,13 +1768,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						y,x,plot = obj
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-							if keywords.get('log'):
-								scale = abs(y.sum())
-							else:
-								scale = y.sum()
+							scale = sum(abs(u) for u in y) if keywords.get('log') else y.sum()
 							for patch in plot.patches:
 								patch.set_height(patch.get_height()/scale)
-							plot.datavalues /= plot.datavalues/scale
+							plot.datavalues = plot.datavalues/scale
 							y /= scale
 						return
 					
@@ -2098,6 +2100,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sticklabels'%(axes) for axes in AXES]:
 				pass	
+
+			elif attr in ['%saxis.set_ticks'%(axes) for axes in AXES]:
+				pass
 
 			elif attr in ['%saxis.set_ticklabels'%(axes) for axes in AXES]:
 				pass			
@@ -2434,6 +2439,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						log(exception)
 						_obj_ = None
 
+
 			if function is not None:
 				try:
 					function(_obj_,attr,args,_kwargs_,kwargs)
@@ -2540,7 +2546,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		for count,(index,shape,kwarg) in enumerate(finds):
 			
-			if not isinstance(kwarg,dict):
+			if not kwarg:
 				continue
 
 			attrs(obj,attr,objs,index,indices,shape,count,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
@@ -2591,7 +2597,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if obj is not None:
 			
 			props = list(settings[key][attr])
-			ordering = {'fig':{'close':-1,'savefig':-2,'tight_layout':-3,'subplots_adjust':-4,'set_size_inches':-5},'ax':{string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels']) for axes in AXES}}.get(attr,{})
+			ordering = {
+				'fig':{
+					'close':-1,'savefig':-2,
+					'tight_layout':-3,'subplots_adjust':-4,'set_size_inches':-5
+					},
+				'ax':{
+					string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels'])
+					for axes in AXES
+					},
+				}.get(attr,{})
 			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}
 
 			for prop in ordering:
@@ -2608,6 +2623,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						modify[prop] = len(settings) + modify[prop]
 					if list(settings).index(key) != modify[prop]:
 						props.pop(props.index(prop))
+
+			props = [*[prop for prop in props if prop in PLOTS],*[prop for prop in props if prop not in PLOTS]]
 
 			for prop in props:
 
