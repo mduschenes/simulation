@@ -2489,15 +2489,15 @@ def plotter(plots,processes,verbose=None):
 					values[prop][label][key] = [k for (k,j) in sorted(set(values[prop][label][key]),key=lambda i: i[-1].index(i[0]))]
 
 				labels = {}
-				for data in search(plots[instance][subinstance][obj][prop]):
-					if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
-						continue
-					for label in data:
-						if label not in [*ALL] or data.get(label) is None:
-							continue
-						if label not in labels:
-							labels[label] = []
-						labels[label].extend(data.get(label,[]))
+				# for data in search(plots[instance][subinstance][obj][prop]):
+				# 	if not (((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))):
+				# 		continue
+				# 	for label in data:
+				# 		if label not in [*ALL] or data.get(label) is None:
+				# 			continue
+				# 		if label not in labels:
+				# 			labels[label] = []
+				# 		labels[label].extend(data.get(label,[]))
 
 				for label in labels:
 
@@ -2595,7 +2595,7 @@ def plotter(plots,processes,verbose=None):
 					if not data:
 						continue
 
-					print(prop,index,shape)
+					print('----',prop,index,shape)
 
 					for attr in data:
 
@@ -3245,6 +3245,11 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[attr]
 
+						if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])):
+							options = dict(valify=data[OTHER][OTHER].get('valify'))
+						else:
+							options = {}
+
 						if wrappers.get(attr) is not None:
 							value = {
 								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
@@ -3264,20 +3269,32 @@ def plotter(plots,processes,verbose=None):
 						
 						elif attr in ALL:
 							
+							print('processing',attr,type(value),len(value),slices,options,normalize.get(attr))
+
 							if isinstance(data.get(attr),scalars):
 								continue							
+
+							if (
+								(not normalize.get(attr)) and 
+								all(((subslice is None) or (
+									isinstance(subslice,slice) and 
+									(subslice.start in [0,None]) and 
+									(subslice.stop in [None]) and 
+									(subslice.step in [1,None])))
+									for subslice in slices) and 
+								all(not options[option] for option in options)
+								):
+								continue
 
 							value = np.array(value)
 
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)
 
-							l = len(value)
-
 							for subslice in slices:
 								value = value[subslice]
 
-							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
+							value = np.array([valify(i,**options) for i in value])
 
 						else:
 							
