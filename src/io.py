@@ -762,31 +762,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 	Returns:
 		isjsonable (bool): Whether object can be written to json
 	'''	
-
-	if isinstance(obj,dict):
-		jsonables = {k: jsonable(obj[k],path,callables=callables) for k in obj} 
-		for k in jsonables:
-			if (not isinstance(k,(str, int, float, bool))) or (not jsonables[k]) or (not callables and callable(obj[k])):
-				obj.pop(k);
-				jsonables[k] = True
-		isjsonable = all([jsonables[k] for k in jsonables])
-		return isjsonable
-
-	isjsonable = False
-	if path is None:
-		path  = '__tmp__.__tmp__.%d'%(np.random.randint(1,int(1e8)))
-	with open(path,'w') as fobj:
-		try:
-			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
-			# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-			json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
-			isjsonable = True
-		except Exception as exception:
-			pass
-	if exists(path):
-		rm(path)
-	return isjsonable
-
+	return
 
 
 
@@ -1039,24 +1015,31 @@ def _load(obj,wr,ext,**kwargs):
 			data = getattr(data,module)
 
 	if ext in ['npy']:
-		data = np.load(obj,**{'allow_pickle':True,**kwargs})
+		options = {'allow_pickle':True,**kwargs}
+		data = np.load(obj,**options)
 	elif ext in ['npz']:
-		data = np.load(obj,**{'allow_pickle':True,**kwargs})
+		options = {'allow_pickle':True,**kwargs}
+		data = np.load(obj,**options)
 	elif ext in ['csv']:
-		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
+		options = kwargs
+		data = getattr(pd,'read_%s'%ext)(obj,**options)
 	elif ext in ['txt','sh']:
-		data = obj.readlines()
+		options = {}
+		data = obj.readlines(**options)
 	elif ext in ['pickle','pkl']:
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
-		data = pickle.load(obj,**kwargs)
+		options = kwargs
+		data = pickle.load(obj,**options)
 	elif ext in ['json']:
-		data = json.load(obj,**{'cls':decode_json,'object_hook':load_json,**kwargs})
+		options = {'cls':decode_json,'object_hook':load_json,**kwargs}
+		data = json.load(obj,**options)
 	elif ext in ['hdf5','h5','ckpt']:
 		for wrapper in list(wrappers):
 			if wrapper in ['pd']:
 				try:
+					options = {'key':kwargs.get('key','data')}
 					ext = 'hdf'
-					data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+					data = getattr(pd,'read_%s'%ext)(obj,**options)
 					break
 				except:
 					data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
@@ -1206,38 +1189,49 @@ def _dump(data,obj,wr,ext,**kwargs):
 	assert ext in exts, "Cannot dump extension %s"%(ext)
 
 	if ext in ['npy']:
-		np.save(obj,data,**{'allow_pickle':True,**kwargs})
+		options = {'allow_pickle':True,**kwargs}
+		np.save(obj,data,**options)
 	if ext in ['npz']:
+		options = {}
 		if isinstance(data,dict):
-			np.savez(obj,**data)
+			np.savez(obj,**data,**options)
 		elif isinstance(data,(tuple)):
-			np.savez(obj,*data)
+			np.savez(obj,*data,**options)
 		else:
-			np.savez(obj,data)
+			np.savez(obj,data,**options)
 	elif ext in ['csv']:
-		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
+		options = {'index':False,**kwargs}
+		getattr(data,'to_%s'%ext)(obj,**options)
 	elif ext in ['txt','sh']:
-		obj.dumplines(data)
-	elif ext in ['pickle','pkl']:		
+		options = {}
+		obj.dumplines(data,**options)
+	elif ext in ['pickle','pkl']:	
+		options = {**dict(protocol=pickle.HIGHEST_PROTOCOL),**kwargs}	
 		pickleable(data,callables=kwargs.pop('callables',True))
-		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
+		pickle.dump(data,obj,**options)
 	elif ext in ['json']:
-		# jsonable(data,callables=kwargs.pop('callables',False))	
-		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
+		options = {'ensure_ascii':False,'indent':4,**kwargs}
+		try:
+			options.update({'cls':json.JSONEncoder})
+			json.dump(data,obj,**options)
+		except TypeError:
+			options.update({'cls':encode_json})
+			json.dump(data,obj,**options)
 	elif ext in ['tex']:
-		obj.write(data,**kwargs)
+		options = kwargs
+		obj.write(data,**options)
 	elif ext in ['hdf5','h5','ckpt']:
 		for wrapper in wrappers:
 			if wrapper in ['pd']:
+				options = {'key':kwargs.get('key','data'),'mode':'w'}
 				ext = 'hdf'
-				getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
+				getattr(data,'to_%s'%ext)(obj,**options)
 				break
 			else:
 				dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
-		data.savefig(obj,**{**kwargs})
+		options = kwargs
+		data.savefig(obj,**options)
 
 	return
 

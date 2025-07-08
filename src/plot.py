@@ -1803,7 +1803,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for plot in plots:
 					functions[plot] = func
 
-
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim]])
 
 				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]

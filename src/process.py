@@ -1845,7 +1845,7 @@ def plotter(plots,processes,verbose=None):
 						dim = len(dimensions)
 						for attr in ALL:
 							
-							if attr not in data:
+							if data.get(attr) is None:
 								continue
 
 							if attr in independent:
@@ -1903,7 +1903,8 @@ def plotter(plots,processes,verbose=None):
 						if axes not in data or data[axes] is None or isinstance(data[axes],scalars):
 							continue
 
-						data[axes] = np.array(data[axes])
+
+						# data[axes] = np.array(data[axes])
 
 						if shapes and (axes not in independent):
 
@@ -2056,11 +2057,10 @@ def plotter(plots,processes,verbose=None):
 									data[axes] = None
 								else:
 									slices = tuple((*position,*axis))
-
 									data[axes] = data[axes][slices]
-									
-								if isinstance(data.get(axes),arrays):
-									data[axes] = data[axes].tolist()
+
+								# if isinstance(data.get(axes),arrays):
+								# 	data[axes] = data[axes].tolist()
 
 							if boolean(data):
 								index = [*index[:-len(axis)],*axis]
@@ -2858,17 +2858,14 @@ def plotter(plots,processes,verbose=None):
 							size = data[attr%(axes)][kwarg]
 
 							if data[attr%(axes)][kwarg] == 1:
-								value = np.array(value)							
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
-								value = np.array(value)
 								value = np.linspace(*value,size,endpoint=True)
 							elif scale in ['log','symlog']:
 								base = 10 if base is None else base
 								value = np.log(value)/np.log(base)
 								value = np.logspace(*value,size,base=base,endpoint=True)
 							else:
-								value = np.array(value)
 								value = np.linspace(*value,size,endpoint=True)
 						else:
 							value = data[attr%(axes)].get(kwarg)
