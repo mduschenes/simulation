@@ -91,140 +91,113 @@
 			"yaxis.offsetText.set_fontsize": {
 				"fontsize": 20
 			},
-			"set_xscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_xlim": {
-				"xmin": 5e-7,
-				"xmax": 2e0
-			},
-			"set_xnbins": {
-				"nbins": 4
-			},
-			"set_xticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},
-			"set_xticklabels": {
-				"labels": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},			
-			"set_yscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_ylim": {
-				"ymin": 5e-7,
-				"ymax": 2e0
-			},
-			"set_ynbins": {
-				"nbins": 4
-			},
-			"set_yticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},	
-			"set_yticklabels": {
-				"labels": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},
-			"set_xscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_xlim": {
-				"xmin": 5e-17,
-				"xmax": 2e0
-			},
-			"set_xnbins": {
-				"nbins": 5
-			},
-			"set_xticks": {
-				"ticks": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},
-			"set_xticklabels": {
-				"labels": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},
-			"set_yscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_ylim": {
-				"ymin": 5e-17,
-				"ymax": 2e0
-			},
-			"set_ynbins": {
-				"nbins": 4
-			},
-			"set_yticks": {
-				"ticks": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},	
-			"set_yticklabels": {
-				"labels": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},				
-			"xaxis.set_major_formatter": {
-				"ticker": {
-					"LogFormatterMathtext": {"base": 10}
-				}
-			},
-			"xaxis.set_minor_locator": null,
-			"xaxis.set_minor_formatter": {
-				"ticker": {
-					"NullFormatter": {}
-				}
-			},
-			"yaxis.set_major_formatter": {
-				"ticker": {
-					"LogFormatterMathtext": {"base": 10}
-				}
-			},
-			"yaxis.set_minor_locator": null,
-			"yaxis.set_minor_formatter": {
-				"ticker": {
-					"NullFormatter": {}
-				}
-			},			
+            "set_xscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_xlim": {
+                "xmin": 5e-17,
+                "xmax": 2.0
+            },
+            "set_xnbins": {
+                "nbins": 4
+            },
+            "set_xticks": {
+                "ticks": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_xticklabels": {
+                "labels": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },            
+            "set_xscale": {
+                "value": "linear"
+            },
+            "set_xlim": {
+                "xmin": -0.1,
+                "xmax": 1.1
+            },
+            "set_xnbins": {
+                "nbins": 5
+            },
+            "set_xticks": {
+                "ticks": [
+                    0,0.2,0.4,0.6,0.8,1.0
+                ]
+            },
+            "set_xticklabels": {
+                "labels": [
+                    0,0.2,0.4,0.6,0.8,1.0
+                ]
+            },            
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 5e-17,
+                "ymax": 2.0
+            },
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_yticklabels": {
+                "labels": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "xaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {
+                        "base": 10
+                    }
+                }
+            },
+            "xaxis.set_minor_locator": null,
+            "xaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "xaxis.set_major_formatter": null,
+            "xaxis.set_minor_locator": null,
+            "xaxis.set_minor_formatter": null,
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {
+                        "base": 10
+                    }
+                }
+            },
+            "yaxis.set_minor_locator": null,
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },		
 			"legend": {
 				"title_fontsize": 25,
 				"fontsize": 25,

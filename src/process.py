@@ -1720,10 +1720,13 @@ def apply(keys,data,plots,processes,verbose=None):
 
 						if grouping.shape[0]:
 							if source in grouping:
-								if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
-									value[destination] = np.array([np.array(i) for i in grouping[source]])
-								else:
-									value[destination] = grouping[source].to_numpy()
+								try:
+									if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
+										value[destination] = np.array([np.array(i) for i in grouping[source]])
+									else:
+										value[destination] = grouping[source].to_numpy()
+								except:
+									value[destination] = None
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
 								value[destination] = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
@@ -1736,7 +1739,7 @@ def apply(keys,data,plots,processes,verbose=None):
 						else:
 							value[destination] = None
 
-						if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and any(np.allclose(value[destination],i) for i in nulls):
+						if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and (all(i is None for i in value[destination].flatten()) or any(np.allclose(value[destination],i) for i in nulls)):
 							value[destination] = None
 
 						

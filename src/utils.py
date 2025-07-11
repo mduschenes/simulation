@@ -4417,9 +4417,9 @@ if backend in ['jax','quimb']:
 		generator = rng
 
 		if is_key(seed):
-			return seed
-
-		if seed is None or isinstance(seed,integers):
+			if not size:
+				return seed
+		elif seed is None or isinstance(seed,integers):
 			seed = seeded(seed)
 		else:
 			seed = generator.wrap_key_data(asarray(seed,dtype=uint))
@@ -12397,6 +12397,10 @@ def replace(iterable,elements):
 
 	return iterable
 
+
+def flatten(iterable,types=iterables):
+	for obj in iterable:
+		yield from [obj] if not isinstance(obj,types) else flatten(obj,types=types)
 
 def to_eval(a,represent=True):
 	'''

@@ -24,7 +24,7 @@ for PATH in PATHS:
 from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
-from src.utils import grouper,conditions
+from src.utils import grouper,conditions,flatten
 from src.utils import orng as rng
 from src.utils import arrays,scalars,nonzero,delim,nan
 
@@ -126,11 +126,11 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 	return data
 
 def func_samples(data):
-	data = tuple((j for i in data for j in i))
+	data = tuple(j for i in data for j in flatten(i))
 	return data
 
 def func_samples_err(data):
-	data = tuple((0 for i in data for j in i))
+	data = tuple((None,))
 	return data
 
 def func_y(data):
