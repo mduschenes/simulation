@@ -1,11 +1,11 @@
 {
 	"load": 0,
-	"dump": 1,
-	"tmp": 1,
+	"dump": 0,
+	"tmp": 0,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
-	"reset": 1,
+	"reset": 0,
 	"usetex": true,
 	"useval": true,
 	"instance": {
