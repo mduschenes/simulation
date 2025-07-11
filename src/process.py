@@ -3432,7 +3432,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
 							}
 
 						if value is not None:
@@ -3459,7 +3459,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
 							}
 
 						if value is not None:
