@@ -65,7 +65,7 @@
 		"autograd": "\\textrm{Autograd}",
 		"S": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
 		"tau": "\\delta/T_{\\gamma}",
-		"T": "T/T_{\\gamma}",
+		"T": "T/J",
 		"architecture": "\\textrm{Architecture}",
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}",
