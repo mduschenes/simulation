@@ -17882,6 +17882,26 @@
 				],
 				"size": 36
 			},
+			"set_xscale": {
+			    "value": "linear"
+			},
+			"set_xlim": {
+			    "xmin": -0.1,
+			    "xmax": 1.1
+			},
+			"set_xnbins": {
+			    "nbins": 5
+			},
+			"set_xticks": {
+			    "ticks": [
+			        0,0.2,0.4,0.6,0.8,1.0
+			    ]
+			},
+			"set_xticklabels": {
+			    "labels": [
+			        0,0.2,0.4,0.6,0.8,1.0
+			    ]
+			},			
 			"set_yscale": {
 				"value": "log",
 				"base": 10
@@ -17923,6 +17943,9 @@
 					"NullFormatter": {}
 				}
 			},
+			"xaxis.set_major_formatter": null,
+			"xaxis.set_minor_locator": null,
+			"xaxis.set_minor_formatter": null,			
 			"yaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}

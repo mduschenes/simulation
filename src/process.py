@@ -1231,6 +1231,7 @@ def loader(data,plots,processes,verbose=None):
 				plots.pop(instance,None);
 				continue
 
+
 	# Dump plots
 	if processes['dump']:
 		path = metadata
@@ -1365,18 +1366,30 @@ def apply(keys,data,plots,processes,verbose=None):
 	def sem_bootstrap(obj,*args,**kwargs):
 		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
 
-	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
-	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
-	updates = {
-		'nan':Dict(
-			boolean=lambda attr,data: data[attr].isna().all(),
-			func = lambda attr,data: 'none'
-			)
-		}
+	updates = {}
+
+	def boolean(attr,data):
+		boolean = data[attr].isna().all()
+		return boolean
+	def func(attr,data):
+		data[attr] = 'none'
+		return
+	update = 'nan'
+	updates[update] = Dict(boolean=boolean,func=func)
+
+	def boolean(attr,data):
+		boolean = data[attr].isna().any() and data[attr][~data[attr].isna()].apply(lambda obj:isinstance(obj,str)).any()
+		return boolean
+	def func(attr,data):
+		data[attr][data[attr].isna()] = 'none'
+		return
+	update = 'str'
+	updates[update] = Dict(boolean=boolean,func=func)
+
 	for update in updates:
 		for attr in data:
 			if updates[update].boolean(attr,data):
-				data[attr] = updates[update].func(attr,data)
+				updates[update].func(attr,data)
 
 	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
 	data = data.astype(dtype)
@@ -3124,7 +3137,7 @@ def plotter(plots,processes,verbose=None):
 				if not data.get(attr):
 					continue
 
-				if isinstance(data[attr],str):
+				if isinstance(data[attr],str) or (isinstance(data[attr],dict) and all(isinstance(i,str) and isinstance(data[attr][i],str) for i in data[attr])):
 					continue
 
 				value = list(set(label for value in ([i['value'] for i in data[attr]] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))

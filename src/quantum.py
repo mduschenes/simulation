@@ -905,8 +905,8 @@ class Basis(Dict):
 		data = (1/(kwargs.D**2))*array([
 			sum(i*operator(*args,**kwargs)
 				for i,operator in 
-				zip(coefficient,(cls.I,cls.X,cls.Y,cls.Z)))
-			for coefficient in [
+				zip(parameters,(cls.I,cls.X,cls.Y,cls.Z)))
+			for parameters in [
 			(1,0,0,1),
 			(1,2*sqrt(2)/3,0,-1/3),
 			(1,-sqrt(2)/3,sqrt(2/3),-1/3),

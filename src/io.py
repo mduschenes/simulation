@@ -1211,12 +1211,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 		pickle.dump(data,obj,**options)
 	elif ext in ['json']:
 		options = {'ensure_ascii':False,'indent':4,**kwargs}
-		try:
-			options.update({'cls':json.JSONEncoder})
-			json.dump(data,obj,**options)
-		except TypeError:
-			options.update({'cls':encode_json})
-			json.dump(data,obj,**options)
+		options.update({'cls':encode_json})
+		json.dump(data,obj,**options)
 	elif ext in ['tex']:
 		options = kwargs
 		obj.write(data,**options)

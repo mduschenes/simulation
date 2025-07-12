@@ -8,6 +8,7 @@ from math import prod
 import json,glob
 import numpy as np
 import pandas as pd
+import scipy.stats,scipy.optimize
 from natsort import natsorted
 
 import matplotlib
@@ -15,7 +16,6 @@ matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 
 # Logging
 from src.logger	import Logger
@@ -146,6 +146,23 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			pass
 
 	return
+
+
+def getattrs(obj,attr,delimiter=delimiter):
+	if not hasattr(obj,attr.split(delimiter)[0]):
+		return None
+	elif attr.count(delimiter):
+		return getattrs(getattr(obj,attr.split(delimiter)[0]),delimiter.join(attr.split(delimiter)[1:]))
+	else:
+		return getattr(obj,attr,None)
+
+def hasattrs(obj,attr,delimiter=delimiter):
+	if not hasattr(obj,attr.split(delimiter)[0]):
+		return False
+	elif attr.count(delimiter):
+		return hasattrs(getattr(obj,attr.split(delimiter)[0]),delimiter.join(attr.split(delimiter)[1:]))
+	else:
+		return hasattr(obj,attr)
 
 
 def isiterable(obj,exceptions=()):
@@ -554,7 +571,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 	Set color
 	Args:
 		value (int,float,iterable[int,float]): Value to process color
-		color (str): color
+		color (str,iterable[str]): color
 		values (iterable[int,float]): Values to process colors
 		norm (iterable[int,float],dict[str,[int,float]]): Range of values, either iterable [vmin,vmax] or dictionary {'vmin':vmin,'vmax':vmax}
 		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
@@ -574,6 +591,12 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 	if isinstance(value,str):
 		value,color,values,colors,norm = None,None,None,None,None
 		return value,color,values,colors,norm
+
+	if isinstance(color,list) and isinstance(values,list) and value in values:
+		try:
+			color = color[values.index(value)%len(color)]
+		except Exception as exception:
+			color = None
 
 	if isinstance(color,str) and is_float(color.split(separator)[-1]):
 		value = float(color.split(separator)[-1]) if isinstance(value,scalars) else [float(color.split(separator)[-1])]
@@ -625,7 +648,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 		value = None
 		values = None
 
-	if hasattr(plt.cm,color):
+	if isinstance(color,str) and hasattr(plt.cm,color):
 		try:
 			colors = getattr(plt.cm,color)(values)
 			color = getattr(plt.cm,color)(value)
@@ -1220,7 +1243,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			nullkwargs.extend(['plots'])
 
-
 			nullkwargs.extend([kwarg for i in nullkwargs for kwarg in [i,*[delimiter.join([i,plot]) for plot in PLOTS]]])
 			nullkwargs.extend([kwarg for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)])
 
@@ -1285,6 +1307,64 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							func = funcs.get(handler)
 							if func is not None:
 								handler_map.update({types: func[types](**handlers[handler]) for types in func if isinstance(_obj,types)})
+
+				if kwargs[attr].get('set_color') is not None:
+
+					if isinstance(kwargs[attr].get('set_color'),dict): 
+
+						if all(isinstance(i,int) for i in kwargs[attr].get('set_color')):
+							funcs = {
+								**{
+								container.lower():{
+									getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+									}
+								for container in ['Errorbar']
+								},
+							}
+
+							indexes = [_obj['count'] for i,_obj in enumerate(objs) 
+								if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
+									(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
+									for handler in funcs for types in funcs[handler]))]
+							indexes = [kwargs[attr].get('set_color').get(i) for i in kwargs[attr].get('set_color') if kwargs[attr].get('set_color').get(i) in indexes]
+
+							kwargs[attr]['set_color'] = [
+								(set_color(**kwargs[attr].get('set_color')[i])[1] 
+								if isinstance(kwargs[attr].get('set_color')[i],dict) else kwargs[attr].get('set_color')[i])
+								if not isinstance(kwargs[attr].get('set_color'),scalars) 
+								else kwargs[attr].get('set_color')
+								for i in indexes
+								]
+
+						elif all((
+								isinstance(i,str) and hasattrs(matplotlib,i) and 
+								isinstance(kwargs[attr].get('set_color')[i],str) and hasattrs(matplotlib,i)
+								) for i in kwargs[attr].get('set_color')):
+
+							unique = {}
+							for label in set(labels):
+								unique[label] = [i for i,l in enumerate(labels) if l==label]
+								unique[label] = {
+									**{prop:[i for i in unique[label] if isinstance(handles[i],getattrs(matplotlib,prop))] for prop in [*kwargs[attr].get('set_color').keys(),*kwargs[attr].get('set_color').values()]},
+								}
+								if not all(unique[label][i] for i in unique[label]):
+									unique.pop(label)
+								else:
+									for i in unique[label]:
+										unique[label][i] = unique[label][i][0]
+							if unique:
+								indices = {unique[label][kwargs[attr]['set_color'][i]]:unique[label][i] for label in unique for i in kwargs[attr]['set_color']}
+								kwargs[attr]['set_color'] = []
+								for i in indices:
+									handle = handles[indices[i]]
+									try:
+										color = handle.get_color()
+									except AttributeError:
+										color = handle.get_facecolor()
+									kwargs[attr]['set_color'].append(color)
+								handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
+
+
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
 					k = kwargs[attr].get('join',1)
@@ -1364,32 +1444,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
 
-				if kwargs[attr].get('set_color') is not None:
-
-					if isinstance(kwargs[attr].get('set_color'),dict): 
-
-						funcs = {
-							**{
-							container.lower():{
-								getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
-								}
-							for container in ['Errorbar']
-							},
-						}
-
-						indexes = [_obj['count'] for i,_obj in enumerate(objs) 
-							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
-								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
-								for handler in funcs for types in funcs[handler]))]
-						indexes = [kwargs[attr].get('set_color').get(i) for i in kwargs[attr].get('set_color') if kwargs[attr].get('set_color').get(i) in indexes]
-
-						kwargs[attr]['set_color'] = [
-							(set_color(**kwargs[attr].get('set_color')[i])[1] 
-							if isinstance(kwargs[attr].get('set_color')[i],dict) else kwargs[attr].get('set_color')[i])
-							if not isinstance(kwargs[attr].get('set_color'),scalars) 
-							else kwargs[attr].get('set_color')
-							for i in indexes
-							]
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
@@ -1714,7 +1768,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'label'
 				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
-					kwargs[attr][prop] = None
+					nullkwargs.extend([prop])
 
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
@@ -1785,12 +1839,31 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						kwds = {**kwargs,**{attr:(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {})}}
 
+						parent = 'hist'
+						updates = {
+							**{kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]},
+							**{kwarg:kwargs[parent].get(kwarg)[i] if isinstance(kwargs[parent].get(kwarg),list) else kwargs[parent].get(kwarg) for kwarg in ['label'] if kwarg in kwargs[parent]}
+							}
+						
 						x = (x[:-1]+x[1:])/2
 						xerr = None
 						y = y
-						yerr = np.sqrt(y)
+						yerr = None
 
-						updates = {kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]}
+						func = lambda parameters,x: parameters[0]*np.exp(-parameters[1]*x)
+						delta = lambda parameters,x: np.array([np.exp(-parameters[1]*x),-x*parameters[0]*np.exp(-parameters[1]*x)])
+
+						objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)**2
+						error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
+						
+						parameters = [1,1]
+						options = dict(full_output=True)
+						parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
+
+						x = x
+						xerr = xerr
+						y = func(parameters,x)
+						yerr = None#error(parameters,x,y,err)
 
 						kwds[attr]['x'] = x
 						kwds[attr]['y'] = y
@@ -2516,6 +2589,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					functions[plot](obj,plot,objs,index,indices,shape,count,_kwargs,kwargs)	
 				except Exception as exception:
+					log(exception)
 					pass
 
 			return
