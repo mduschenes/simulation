@@ -10,6 +10,7 @@ import numpy as np
 import scipy as sp
 import scipy.stats
 import scipy.special
+import scipy.optimize
 import pandas as pd
 from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
@@ -126,7 +127,7 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 	return data
 
 def func_samples(data):
-	data = tuple(j for i in data for j in flatten(i))
+	data = tuple(k for i in data for j in i for k in flatten(j))
 	return data
 
 def func_samples_err(data):
@@ -382,6 +383,29 @@ def func_divergence_func(data):
 def func_divergence_func_err(data):
 	out = 0*np.array(data['M'])
 	return out		
+
+
+def func_fit_histogram(args,kwargs):
+	x,y,xerr,yerr = args
+
+	d = kwargs['D']**kwargs['N']
+
+	func = lambda parameters,x: parameters[0]*d*np.exp(-parameters[1]*d*x)
+	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
+
+	objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)**2
+	error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
+
+	parameters = [1,1]
+	options = dict(full_output=True)
+	parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
+
+	x = x
+	xerr = xerr
+	y = func(parameters,x)
+	yerr = None#error(parameters,x,y,err)
+	
+	return x,y,xerr,yerr	
 
 def label(string,label):
 	strings = {

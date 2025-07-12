@@ -1920,7 +1920,8 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 
-						# data[axes] = np.array(data[axes])
+						if not isinstance(data[axes],np.ndarray):
+							data[axes] = np.array(data[axes])
 
 						if shapes and (axes not in independent):
 
@@ -2839,7 +2840,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4],strip=False)}.items()
 							}
 
 						value = texify(data[attr%(axes)][kwarg%(axes)],**options['texify'])
@@ -2939,7 +2940,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4],strip=False)}.items()
 							}
 
 						if value is not None:
@@ -2992,7 +2993,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4],strip=False)}.items()
 							}
 
 						if value is not None:
@@ -3013,7 +3014,7 @@ def plotter(plots,processes,verbose=None):
 				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 					for attr,default in {
 						'texify':dict(),
-						'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+						'scinotation':dict(decimals=2,scilimits=[0,4],strip=False)}.items()
 					}
 
 				value = [
@@ -3420,7 +3421,7 @@ def plotter(plots,processes,verbose=None):
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[0,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[0,4],one=False,strip=False)}.items()
 							}
 
 						separator = '~,~'
@@ -3430,7 +3431,9 @@ def plotter(plots,processes,verbose=None):
 
 			# Set tick labels
 			attr = 'set_%sticklabels'
+			subattr = 'set_%sscale'
 			kwargs = ['labels','ticklabels']
+			subkwarg = 'value'
 			for axes in ['',*AXES]:
 				
 				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
@@ -3445,10 +3448,13 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
+						scale = [data.get(subkwarg) for data in search(plots[instance][subinstance][obj].get(subattr%(axes))) if data and subkwarg in data]
+						scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
+
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[-1,4] if scale in [None,'linear'] else [0,4],strip=True)}.items()
 							}
 
 						if value is not None:
@@ -3472,16 +3478,63 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
+
+						scale = [data.get(subkwarg) for data in search(plots[instance][subinstance][obj].get(subattr%(axes))) if data and subkwarg in data]
+						scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
+
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
 								'texify':dict(),
-								'scinotation':dict(decimals=2,scilimits=[-1,4])}.items()
+								'scinotation':dict(decimals=2,scilimits=[-1,4] if scale in [None,'linear'] else [0,4],strip=True)}.items()
 							}
 
 						if value is not None:
 							data[kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
 						else:
 							data[kwarg] = value
+
+
+			# set attributes
+			attr = 'attributes'
+			for prop in PLOTS:
+
+				if not plots[instance][subinstance][obj].get(prop):
+					continue
+
+				for data in search(plots[instance][subinstance][obj][prop]):
+
+					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER) or not data[OTHER][OTHER].get(OTHER):
+						continue
+
+					value = {label: data[OTHER][label] if label in data[OTHER] else data[OTHER][OTHER][OTHER][label] 
+							for label in values[prop] if label is not None and (label in data[OTHER] or label in data[OTHER][OTHER][OTHER])}
+					
+					data[attr] = value
+
+
+			# set function
+			attr = 'function'
+			for prop in PLOTS:
+
+				if not plots[instance][subinstance][obj].get(prop):
+					continue
+
+				for data in search(plots[instance][subinstance][obj][prop]):
+
+					if not data or data.get(attr) is None:
+						continue
+
+					value = data[attr]
+					default = None
+					if isinstance(value,str):
+						value = load(value,default=default)
+					elif callable(value):
+						value = lambda args,kwargs,func=value: func(args,kwargs)
+					else:
+						value = None
+
+					data[attr] = value
+
 
 			# set label
 			attr = 'label'

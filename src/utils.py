@@ -12399,8 +12399,11 @@ def replace(iterable,elements):
 
 
 def flatten(iterable,types=iterables):
-	for obj in iterable:
-		yield from [obj] if not isinstance(obj,types) else flatten(obj,types=types)
+	if not isinstance(iterable,types):
+		yield from [iterable]
+	else:
+		for obj in iterable:
+			yield from [obj] if not isinstance(obj,types) else flatten(obj,types=types)
 
 def to_eval(a,represent=True):
 	'''
@@ -12660,7 +12663,7 @@ def to_index(position,shape):
 	return index
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=True,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -12670,6 +12673,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
+		strip (bool): Remove trailing zeros in float representation
 		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
@@ -12682,6 +12686,11 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 	if scilimits is None:
 		scilimits = [-1,1]
+
+	if strip and decimals > 1:
+		stripper = lambda string: string.rstrip('0')
+	else:
+		stripper = lambda string: string
 
 	if not is_number(number):
 		return str(number)
@@ -12726,10 +12735,11 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		exp = str(int(string[1])*basechange)
 
 		if int(exp) in range(*scilimits):
-			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
+			flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
 			string = r'%s%%s%%s%%s'%(flt)
 		else:
-			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
+			string = r'%s%s%s%%s%%s%%s'%(
+				stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
 				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
 				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 				)

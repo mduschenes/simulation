@@ -889,8 +889,8 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 					for attr in data:
 						if iterable(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
-					size = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
-					data['__path__'] = [path]*size
+					# size = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
+					# data['__path__'] = [path]*size
 					return data
 				try:
 					data = pd.concat((pd.DataFrame(function(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()

@@ -8,7 +8,6 @@ from math import prod
 import json,glob
 import numpy as np
 import pandas as pd
-import scipy.stats,scipy.optimize
 from natsort import natsorted
 
 import matplotlib
@@ -47,7 +46,7 @@ VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] f
 OBJS = ['ax','fig','style']
 OBJ = 'ax'
 OTHER = 'label'
-SPECIAL = ['obj','plots']
+SPECIAL = ['obj','plots','attributes','function']
 CHILDREN = ['twin']
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
@@ -75,7 +74,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+		default(callable,None,bool,iterable): Callable with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
 	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
@@ -583,7 +582,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 		color (str,tuple,array): colors of value
 		values (int,float,iterable[int,float]): Normalized values corresponding to color
 		colors (str,tuple,array): colors of values
-		norm (callable): Normalization function, with signature norm(value)
+		norm (callable): Normalization, with signature norm(value)
 	'''
 
 	separator = '_'
@@ -858,7 +857,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		fig (dict,matplotlib.figure): Existing figure or dictionary of subplots of figures to plot to {key: figure}
 		ax (dict,matplotlib.axes): Existing axes or dictionary of subplots of axes to plot to {key: axes}
 		mplstyle (str): Path to mplstyle file
-		texify (dict,callable): Dictionary to initialize Texify class, or function to return texified string texify(string)
+		texify (dict,callable): Dictionary to initialize Texify class, or callable to return texified string texify(string)
 	Returns:
 		fig (dict): dictionary of subplots of figures of plots {key: figure}
 		ax (dict): dictionary of subplots of axes of plots {key: figure}
@@ -1187,7 +1186,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			_args = []
 			_kwds = {}
 
-			function = None
+			wrapper = None
 			functions = {}
 
 			fields = {
@@ -1209,10 +1208,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwargs.extend(['texify','scinotation'])
 
 
-			attribute = kwargs[attr].get('obj')
-			obj = get_obj(obj,attribute)
+			obj = get_obj(obj,kwargs[attr].get('obj'))
 
 			nullkwargs.extend(['obj'])
+
+
+			attributes = kwargs[attr].get('attributes')
+
+			nullkwargs.extend(['attributes'])
+
+
+			function = kwargs[attr].get('function')
+
+			nullkwargs.extend(['function'])
 
 
 			plots = kwargs[attr].get('plots')
@@ -1818,7 +1826,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
-					def function(obj,attr,arguments,keywords,kwargs):
+					def wrapper(obj,attr,arguments,keywords,kwargs):
 						y,x,plot = obj
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -1850,20 +1858,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						y = y
 						yerr = None
 
-						func = lambda parameters,x: parameters[0]*np.exp(-parameters[1]*x)
-						delta = lambda parameters,x: np.array([np.exp(-parameters[1]*x),-x*parameters[0]*np.exp(-parameters[1]*x)])
-
-						objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)**2
-						error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
-						
-						parameters = [1,1]
-						options = dict(full_output=True)
-						parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
-
-						x = x
-						xerr = xerr
-						y = func(parameters,x)
-						yerr = None#error(parameters,x,y,err)
+						if callable(function):
+							x,y,xerr,yerr = function(tuple((x,y,xerr,yerr)),dict(attributes))
 
 						kwds[attr]['x'] = x
 						kwds[attr]['y'] = y
@@ -2513,9 +2509,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						_obj_ = None
 
 
-			if function is not None:
+			if wrapper is not None:
 				try:
-					function(_obj_,attr,args,_kwargs_,kwargs)
+					wrapper(_obj_,attr,args,_kwargs_,kwargs)
 				except Exception as exception:
 					pass
 
