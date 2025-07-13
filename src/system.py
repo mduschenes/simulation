@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime,shutil,traceback
+import os,sys,itertools,functools,shutil,traceback
 from time import time as timer
 from functools import partial
 import atexit
@@ -18,7 +18,7 @@ for PATH in PATHS:
 
 from src.utils import asscalar,prod,copy
 
-from src.utils import integers,delim,datatype
+from src.utils import integers,delim,datatype,timestamp
 
 from src.iterables import Dict,Dictionary,getter,setter
 from src.io import join,split,exists
@@ -96,7 +96,7 @@ class System(Dictionary):
 			'cwd':None,
 			'lock':None,
 			'backup':None,
-			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+			'timestamp':timestamp(),
 
 			'conf':None,
 			'logger':None,

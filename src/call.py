@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime
+import os,sys,warnings,itertools,inspect,traceback
 from functools import partial
 import subprocess
 from natsort import natsorted

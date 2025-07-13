@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys
-import datetime
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -10,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import progress,forloop,vmap
+from src.utils import progress,forloop,vmap,timestamp
 from src.utils import array,rand,arange,logspace,transpose,reshape,addition,tensorprod,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,real,imag,iterables,scalars,integers,floats,datatype,e,pi,delim
 from src.io import load,dump,split,join
@@ -210,7 +209,7 @@ class Model(object):
 		index = self.key
 
 		if index is None:
-			index = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
+			index = timestamp()
 
 		if index not in data:
 			data[index] = {}

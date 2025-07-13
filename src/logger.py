@@ -9,6 +9,25 @@ import logging
 import logging.config,configparser
 
 
+def timestamp(format=None,time=None):
+	'''
+	Get timestamp
+	Args:
+		format (str): Format for timestamp
+		time (datetime): datetime
+	Returns:
+		timestamp (str): timestamp
+	'''
+	if format is None:
+		format = '%d.%M.%Y.%H.%M.%S.%f'
+	
+	if time is None:
+		time = datetime.datetime.now()
+
+	timestamp = time.strftime(format)
+	
+	return timestamp
+
 def config(name=None,conf=None,file=None,write=None,**kwargs):
 	'''
 	Configure logging
@@ -31,15 +50,15 @@ def config(name=None,conf=None,file=None,write=None,**kwargs):
 	existing = os.path.exists(conf) if isinstance(conf,str) else None
 
 	path = os.path.abspath(os.path.expandvars(os.path.expanduser(file))) if file is not None else None
-	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
+	time = timestamp()
 	delim = '.'
-	ext = '%s.tmp'%(timestamp) if write else None
+	ext = '%s.tmp'%(time) if write else None
 
 	props = ['loggers','handlers','formatters','keys']
 	keys  = {'class':'logging.FileHandler'}
 	args = {'stream':{'sys.stdout':'ext://sys.stdout','sys.stderr':'ext://sys.stderr'}}
 	options = dict(disable_existing_loggers=False)
-	defaults = {'__name__':timestamp}
+	defaults = {'__name__':time}
 	separator = '_'
 
 	if not existing:

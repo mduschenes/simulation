@@ -5522,6 +5522,24 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return out
 
+def timestamp(format=None,time=None):
+	'''
+	Get timestamp
+	Args:
+		format (str): Format for timestamp
+		time (datetime): datetime
+	Returns:
+		timestamp (str): timestamp
+	'''
+	if format is None:
+		format = '%d.%M.%Y.%H.%M.%S.%f'
+	
+	if time is None:
+		time = datetime.datetime.now()
+
+	timestamp = time.strftime(format)
+	
+	return timestamp
 
 def reduce(func,data,*args,**kwargs):
 	return getattr(np,func).reduce(data,*args,**kwargs)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime,re
+import os,sys,warnings,itertools,inspect,traceback,re
 import shutil
 import glob as globber
 from braceexpand import braceexpand

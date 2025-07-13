@@ -17,11 +17,10 @@
 			"model.D": [2],
 			"model.d": [1],
 			"model.T": [0.1,0.25,0.5,0.75,5],
-			"model.samples":[10],
-			"model.model":["ising"],
+			"model.samples":[1e4],
+			"model.model":["sk"],
 			"model.measure":["povm",null],
 			"model.random":["normal"],
-			"samples":[1e4],
 
 			"options":[null],
 
