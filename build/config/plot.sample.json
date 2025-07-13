@@ -22,7 +22,8 @@
 					"label": {
 						"label": {
 							"N": null,
-							"T": null
+							"T": null,
+							"measure":null
 						},
 						"func": {
 							"stat": {
@@ -43,26 +44,38 @@
 							"one": false
 						},
 						"legend": {
-							"include":false,
-							"exclude":true
+							"include":["measure"]
 						},
 						"indexing":1,
 						"slice": null
 					},
 					"obj":null,
-					"plots":false,
+					"plots":["errorbar"],
+					"function":"src.functions.func_fit_histogram",
 					"bins":1000,
 					"range":[0,1],
 					"density":"probability",
 					"log":true,
 					"alpha": 0.5,
 					"alpha.errorbar": 0.5,
-					"marker.errorbar": "o",
+					"marker.errorbar": {"@measure@":["o","s"]},
 					"markersize.errorbar": 10,
-					"linestyle.errorbar": "",
+					"linestyle.errorbar": "--",
 					"elinewidth.errorbar": 6,
 					"capsize.errorbar": 6,
-					"color": "viridis",
+					"color": {
+						"@measure@": {
+							"value": {
+								"value": null,
+								"color": ["viridis_0.25","viridis_0.75","viridis_0.5","viridis_0.0","viridis_1.0"],
+								"values": [],
+								"norm": null,
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
 					"color.errorbar": "black",
 					"ecolor.errorbar": "black"
 				}			                    
@@ -71,7 +84,15 @@
 				"label": [[["N"]]]
 			},
 			"set_ylabel": {
-				"ylabel": "T"
+				"ylabel": "T",
+				"scinotation": {
+					"scilimits": [
+						-1,
+						2
+					],
+					"decimals": 3,
+					"strip":true
+				}
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Probability}~~ p$"
@@ -87,35 +108,60 @@
 			"yaxis.offsetText.set_fontsize": {
 				"fontsize": 20
 			},
-            "set_xscale": {
-                "value": "log",
-                "base": 10
-            },
-            "set_xlim": {
-                "xmin": 5e-17,
-                "xmax": 2.0
-            },
-            "set_xnbins": {
-                "nbins": 4
-            },
-            "set_xticks": {
-                "ticks": [
-                    1e-16,
-                    1e-12,
-                    1e-08,
-                    0.0001,
-                    1.0
-                ]
-            },
-            "set_xticklabels": {
-                "labels": [
-                    1e-16,
-                    1e-12,
-                    1e-08,
-                    0.0001,
-                    1.0
-                ]
-            },            
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-7,
+				"xmax": 2e0
+			},
+			"set_xnbins": {
+				"nbins": 4
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},
+			"set_xticklabels": {
+				"labels": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},			
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-7,
+				"ymax": 2e0
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},	
+			"set_yticklabels": {
+				"labels": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},
             "set_xscale": {
                 "value": "linear"
             },
@@ -193,7 +239,7 @@
                 "ticker": {
                     "NullFormatter": {}
                 }
-            },		
+            },	
 			"legend": {
 				"title_fontsize": 25,
 				"fontsize": 25,
@@ -203,19 +249,15 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
-				"markerscale": 2,
+				"texify": {},				
+				"markerscale": 1.2,
 				"handlelength": 3,
 				"framealpha": 0.8,
-				"loc": [
-					1.15,
-					0.395
-				],
-				"set_color": "black",
+				"loc": "upper right",
 				"set_linestyle": "-",
-				"set_marker": "s",
+				"set_color": {"patches.Rectangle":"lines.Line2D"},
 				"set_alpha": 0.5,
-				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.3}},
+				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.8}},
 				"keep":["marker","linestyle","alpha"],
 				"none":false,
 				"ncol": 1,
