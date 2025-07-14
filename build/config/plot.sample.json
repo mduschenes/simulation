@@ -81,7 +81,7 @@
 				}			                    
 			],
 			"set_title": {
-				"label": [[["N"]]]
+				"label": "N"
 			},
 			"set_ylabel": {
 				"ylabel": "T",
@@ -282,7 +282,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": "bottom_right",
+					"legend": true,
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_xticks": true,                    
