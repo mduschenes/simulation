@@ -185,7 +185,7 @@ class Model(object):
 	def load(self,path=None):
 		path = join(self.path,root=self.cwd) if path is None else path
 		data = self.data
-		options = dict(default=data,lock=True,backup=True)
+		options = dict(default=data,lock=True,backup=False)
 		data = load(path,**options)
 		self.data = data
 		return
@@ -193,7 +193,7 @@ class Model(object):
 	def dump(self,path=None):
 		path = join(self.path,root=self.cwd) if path is None else path
 		data = self.data
-		options = dict(lock=True,backup=True)
+		options = dict(lock=True,backup=False)
 		dump(data,path,**options)
 		return
 

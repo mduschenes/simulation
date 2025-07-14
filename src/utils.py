@@ -12758,19 +12758,34 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 		else:
 			string = r'%s%s%s%%s%%s%%s'%(
 				stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
-				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+				r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
 				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
+			error = '%0.*e'%(decimals-1,error)
+			error = error.split('e')
+			basechange = log(10)/log(base)
+			basechange = int(basechange) if int(basechange) == basechange else basechange
+			flt = error[0]
+			exp = str(int(error[1])*basechange)
 			if int(exp) in range(*scilimits):
-				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+				flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
+				error = r'%s'%(flt)
 			else:
 				error = r'%s%s%s'%(
-					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-					r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+					stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
+					r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
 					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 					)
+			# if int(exp) in range(*scilimits):
+			# 	error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			# else:
+			# 	error = r'%s%s%s'%(
+			# 		'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
+			# 		r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+			# 		'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+			# 		)
 
 	if error is None:
 		error = ''
@@ -12801,7 +12816,7 @@ def texify(string,usetex=False):
 	'''
 
 	if isinstance(string,str):
-		string = '\\textrm{%s}'%(string)
+		string = '%s'%(string)
 	else:
 		string = str(string)
 

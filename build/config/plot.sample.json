@@ -241,6 +241,7 @@
                 }
             },	
 			"legend": {
+				"set_title":"%s",
 				"title_fontsize": 25,
 				"fontsize": 25,
 				"get_title": {
@@ -255,13 +256,14 @@
 				"framealpha": 0.8,
 				"loc": "upper right",
 				"set_linestyle": "-",
-				"set_color": {"patches.Rectangle":"lines.Line2D"},
+				"set_color": {"lines.Line2D":["patches.Rectangle"]},
 				"set_alpha": 0.5,
 				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.8}},
+				"legendLabels":{"set_ha":"left"},
 				"keep":["marker","linestyle","alpha"],
 				"none":false,
 				"ncol": 1,
-				"merge": true,
+				"merge": false,
 				"set_zorder": {
 					"level": 100
 				}
@@ -280,11 +282,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_xticks": true,                    

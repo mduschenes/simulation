@@ -612,11 +612,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -934,11 +930,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1249,11 +1241,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1564,11 +1552,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1879,11 +1863,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2194,11 +2174,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2509,11 +2485,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2825,11 +2797,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3157,11 +3125,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3472,11 +3436,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3810,11 +3770,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4351,11 +4307,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4666,11 +4618,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4981,11 +4929,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5303,11 +5247,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5625,11 +5565,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5940,11 +5876,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6255,11 +6187,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6583,11 +6511,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6894,11 +6818,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7201,11 +7121,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7512,11 +7428,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7824,11 +7736,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8135,11 +8043,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8446,11 +8350,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8777,11 +8677,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9088,11 +8984,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9399,11 +9291,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9913,11 +9801,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -10433,11 +10317,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -10776,11 +10656,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11096,11 +10972,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11416,11 +11288,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11737,11 +11605,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12057,11 +11921,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12377,11 +12237,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12717,11 +12573,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13037,11 +12889,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13357,11 +13205,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13668,11 +13512,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13979,11 +13819,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14313,11 +14149,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14635,11 +14467,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14890,11 +14718,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -15366,11 +15190,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -15681,11 +15501,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -15996,11 +15812,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -16374,11 +16186,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -16690,11 +16498,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -17005,11 +16809,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -17310,11 +17110,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -17620,11 +17416,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -17984,11 +17776,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_xticks": true,                    

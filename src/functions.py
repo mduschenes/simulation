@@ -22,14 +22,14 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,zeros,rand,random,randint,seeded,finfo,argparser
+from src.utils import array,zeros,rand,random,randint,seeded,finfo,texify,scinotation
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import grouper,conditions,flatten
 from src.utils import orng as rng
 from src.utils import arrays,scalars,nonzero,delim,nan
 
-from src.iterables import permuter,setter,getter,Dictionary
+from src.iterables import permuter,setter,getter,search,Dictionary
 
 from src.io import load,dump
 
@@ -127,7 +127,12 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 	return data
 
 def func_samples(data):
-	data = tuple(k for i in data for j in i for k in flatten(j))
+	for i in data:
+		if isinstance(i,tuple) and i and any(isinstance(j,tuple) for j in i):
+			data = tuple(k for i in data for j in i for k in j)
+		else:
+			data = tuple(j for i in data for j in i)
+		break
 	return data
 
 def func_samples_err(data):
@@ -385,10 +390,10 @@ def func_divergence_func_err(data):
 	return out		
 
 
-def func_fit_histogram(args,kwargs):
+def func_fit_histogram(args,kwargs,attributes):
 	x,y,xerr,yerr = args
 
-	d = kwargs['D']**kwargs['N']
+	d = attributes['D']**attributes['N']
 
 	func = lambda parameters,x: parameters[0]*d*np.exp(-parameters[1]*d*x)
 	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
@@ -397,6 +402,7 @@ def func_fit_histogram(args,kwargs):
 	error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
 
 	parameters = [1,1]
+	size = len(parameters)
 	options = dict(full_output=True)
 	parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
 
@@ -404,8 +410,34 @@ def func_fit_histogram(args,kwargs):
 	xerr = xerr
 	y = func(parameters,x)
 	yerr = None#error(parameters,x,y,err)
-	
-	return x,y,xerr,yerr	
+
+	attr = 'errorbar'
+	kwarg = 'label'
+	if kwargs.get(attr) and kwargs[attr].get(kwarg):
+		options = {
+			'texify':dict(usetex=True),
+			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
+			}
+		string = '\n'.join([
+				texify('%s = %s'%(
+				[r'\alpha',r'\beta'][i],
+				scinotation(parameters[i],error=err[i][i],**options['scinotation'])),
+				**options['texify']
+				)
+			for i in range(size)])
+		kwargs[attr][kwarg] = (kwargs[attr][kwarg] + '\n' + string) if isinstance(kwargs[attr].get(kwarg),str) else string
+
+	attr = 'legend'
+	kwarg = 'set_title'
+	if kwargs.get(attr):
+		for data in search(kwargs[attr]):
+			if not data or not data.get(kwarg):
+				continue
+			string = 'P(p) = \\alpha D^{N} e^{-\\beta D^{N} p}'
+			data[kwarg] = '%s ~:~ %s'%(data[kwarg],string) if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
+			data[kwarg] = texify(data[kwarg],**options['texify'])
+
+	return x,y,xerr,yerr
 
 def label(string,label):
 	strings = {
@@ -663,7 +695,6 @@ def layout(iterable,sort=False,group=False):
 # 	data.update({attr: [*data[attr]] for attr in data})
 
 # 	for i in kwargs.get('indexes'):
-# 		print(i)
 # 		data['index'].append(max(data['index'],default=-1)+1)
 # 		data['value'].append(i)
 

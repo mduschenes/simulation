@@ -904,4 +904,5 @@ class Texify(object):
 			String = '\n'.join([r'$%s$'%(s.replace('$','')) if len(s)>0 else s for s in String.split('\n')])
 		else:
 			String = '\n'.join([r'%s'%(s.replace('$','')) if len(s)>0 else s for s in String.split('\n')])
+	
 		return String    

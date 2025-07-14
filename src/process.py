@@ -3138,7 +3138,7 @@ def plotter(plots,processes,verbose=None):
 				if not data.get(attr):
 					continue
 
-				if isinstance(data[attr],str) or (isinstance(data[attr],dict) and all(isinstance(i,str) and isinstance(data[attr][i],str) for i in data[attr])):
+				if isinstance(data[attr],str) or (isinstance(data[attr],dict) and all(isinstance(i,str) and isinstance(data[attr][i],(str,list)) for i in data[attr])):
 					continue
 
 				value = list(set(label for value in ([i['value'] for i in data[attr]] if not isinstance(data[attr],dict) else [data[attr]]) for label in value))
