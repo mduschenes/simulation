@@ -1223,6 +1223,9 @@ def loader(data,plots,processes,verbose=None):
 		# Get functions of data
 		apply(keys,data,plots,processes,verbose=verbose)
 
+		# Delete data
+		del data
+
 	
 	# Check plots
 	attr = 'instance'
