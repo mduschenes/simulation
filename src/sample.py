@@ -70,6 +70,8 @@ class Model(object):
 		for attr in kwargs:
 			setattr(self,attr,kwargs[attr])
 
+		self.setup(*args,**kwargs)
+
 		return
 	
 	def setup(self,*args,**kwargs):
@@ -213,8 +215,6 @@ class Model(object):
 		return
 
 	def run(self,*args,**kwargs):
-
-		self.setup(*args,**kwargs)
 
 		index = self.index
 		if index in self.data:
