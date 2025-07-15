@@ -22,7 +22,7 @@
 			"model.measure":["povm",null],
 			"model.random":["normal"],
 
-			"options":[null],
+			"options":[{}],
 
 			"jobs.job.cwd":["~/scratch/test"],
 			"jobs.postprocess.cwd":["~/scratch/test"],
@@ -76,18 +76,18 @@
 	},
 	"system": {
 		"key":null,
-		"cwd": null,
-		"path": "data.hdf5"
+		"cwd":null,
+		"path":"data.hdf5"
 	},
-	"options":null,
+	"options":{},
 	"model": {
 		"N":null,
 		"D":null,
 		"d":null,
 		"T":null,
 		"data":null,
-		"parameters": null,
-		"samples": null,
+		"parameters":null,
+		"samples":null,
 		"model":null,
 		"measure":null,
 		"random":null,

@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import progress,forloop,vmap,timestamp
 from src.utils import array,rand,arange,logspace,transpose,reshape,addition,tensorprod,seeder,permutations
-from src.utils import einsum,exp,sqrt,prod,real,imag,iterables,scalars,integers,floats,datatype,e,pi,delim
+from src.utils import einsum,exp,sqrt,prod,real,imag,iterables,arrays,scalars,integers,floats,datatype,e,pi,delim
 from src.io import load,dump,split,join
 from src.run import argparse,setup
 from src.iterables import permuter
@@ -77,13 +77,13 @@ class Model(object):
 		for kwarg in kwargs:
 			setattr(self,kwarg,kwargs[kwarg])
 
-		samples = int(self.samples) if isinstance(self.samples,(*integers,*floats)) else 0
-		self.samples = samples
-
-		data = self.data if isinstance(self.data,dict) else {}
-		self.data = data
+		self.samples = int(self.samples) if isinstance(self.samples,(*integers,*floats)) else 0
 
 		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,measure=None,random=None,data=None)
+
+		self.index = self.key if self.key is not None else timestamp()
+
+		self.data = self.data if isinstance(self.data,dict) else {}
 
 		if self.model is None:
 			def func(parameters,state,*args,**kwargs):
@@ -201,21 +201,14 @@ class Model(object):
 
 		def value(index,attr,self,*args,**kwargs):
 			data = kwargs.get(attr,getattr(self,attr,None))
-			data = [data] if not isinstance(data,scalars) else data
+			data = [data] if isinstance(data,arrays) and not isinstance(data,scalars) else data
 			return data
 
 		data = self.data
-
-		index = self.key
-
-		if index is None:
-			index = timestamp()
+		index = self.index
 
 		if index not in data:
-			data[index] = {}
-
-		for attr in self.attributes:
-			data[index][attr] = value(index,attr,self,*args,**kwargs)
+			data[index] = {attr: value(index,attr,self,*args,**kwargs) for attr in self.attributes}
 
 		return
 
@@ -223,7 +216,13 @@ class Model(object):
 
 		self.setup(*args,**kwargs)
 
-		data = self.sample(*args,**kwargs)
+		index = self.index
+		if index in self.data:
+			data = self.data[index]
+			return data
+
+		data = dict(data=self.sample(*args,**kwargs))
+
 		return data
 
 	def __str__(self):
@@ -238,7 +237,7 @@ class Model(object):
 
 		data = self.run(*args,**kwargs)
 
-		self.append(data=data)
+		self.append(**data)
 
 		return
 
@@ -257,7 +256,7 @@ def main(settings,*args,**kwargs):
 	if boolean.load:
 		model.load()
 
-	for options in permuter(options):
+	if boolean.call:
 		model(**options)
 
 	if boolean.dump:
