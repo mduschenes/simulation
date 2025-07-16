@@ -258,7 +258,7 @@
 				"markerscale": 1.2,
 				"handlelength": 3,
 				"framealpha": 0.8,
-				"loc": "upper right",
+				"loc": "lower right",
 				"set_linestyle": "-",
 				"set_color": {"lines.Line2D":["patches.Rectangle"]},
 				"set_alpha": 0.5,
