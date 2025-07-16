@@ -3673,8 +3673,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -4192,8 +4192,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -8569,8 +8569,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -12465,8 +12465,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6

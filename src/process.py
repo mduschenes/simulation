@@ -1822,7 +1822,7 @@ def plotter(plots,processes,verbose=None):
 				if prop in PLOTS:
 					for data in search(plots[instance][subinstance][obj][prop]):
 
-						if data is None:
+						if not data:
 							continue
 
 						if OTHER in data and OTHER in data[OTHER]:
@@ -2095,7 +2095,7 @@ def plotter(plots,processes,verbose=None):
 
 							if boolean(data):
 								index = [*index[:-len(axis)],*axis]
-								item = data
+								item = {**{attr:data[attr] for attr in data if attr in ALL},**{attr:copy(data[attr]) for attr in data if attr not in ALL}} if data is not None else None
 								iterable = plots[instance][key][obj][prop]
 								inserter(index,item,iterable)
 							
@@ -3284,7 +3284,6 @@ def plotter(plots,processes,verbose=None):
 								value = wrappers[attr][func](value)
 
 						if attr in [OTHER]:
-						
 							if value[OTHER].get('labels') is not None:
 								for label in value[OTHER]['labels']:
 									if (label in value) and (label not in ALL) and not parse(label,value[OTHER]['labels'][label],value,verbose=verbose):
@@ -3394,6 +3393,7 @@ def plotter(plots,processes,verbose=None):
 
 						data[attr] = value
 
+
 			# set title and axes label
 			prop = 'set_%slabel'
 			attr = '%slabel'
@@ -3449,7 +3449,7 @@ def plotter(plots,processes,verbose=None):
 				
 				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
 				
-					if data is None:
+					if not data:
 						continue
 
 					for kwarg in kwargs:
@@ -3479,7 +3479,7 @@ def plotter(plots,processes,verbose=None):
 				
 				for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
 				
-					if data is None:
+					if not data:
 						continue
 
 					for kwarg in kwargs:
@@ -3706,7 +3706,7 @@ def plotter(plots,processes,verbose=None):
 	joins = processes.get(attr)
 
 
-	if joins and 1:
+	if joins:
 
 		if joins is None or joins is False:
 			joins = {}
