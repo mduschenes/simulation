@@ -2,8 +2,8 @@
 	"histogram":{
 		"fig": {
 			"set_size_inches": {
-				"w": 36,
-				"h": 36
+				"w": 72,
+				"h": 72
 			},
 			"subplots_adjust": {},
 			"tight_layout": {},
@@ -269,7 +269,7 @@
 				"ncol": 1,
 				"merge": false,
 				"set_zorder": {
-					"level": 100
+					"level": 1000000
 				}
 			}
 		},
