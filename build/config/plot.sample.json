@@ -46,6 +46,7 @@
 						"legend": {
 							"include":["measure"]
 						},
+						"sort":{"measure":["povm","none"]},				
 						"indexing":1,
 						"slice": null
 					},
@@ -57,6 +58,9 @@
 					"density":"probability",
 					"log":true,
 					"alpha": 0.5,
+					"zorder": {
+						"@measure@": [100,50]
+					},					
 					"alpha.errorbar": 0.5,
 					"marker.errorbar": {"@measure@":["o","s"]},
 					"markersize.errorbar": 10,

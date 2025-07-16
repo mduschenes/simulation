@@ -533,6 +533,7 @@ def find(dictionary,verbose=None):
 				'func':{}, 
 				'include':None,
 				'exclude':None,
+				'sort':None,
 				'slice':None,
 				'labels':None,
 				'indexing':0,
@@ -1406,6 +1407,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		label = keys[name][other].get(other,{})
 		include = keys[name][other].get('include')
 		exclude = keys[name][other].get('exclude')
+		sort = keys[name][other].get('sort')
 		indexing = keys[name][other].get('indexing',0)
 		legend = keys[name][other].get('legend',{})
 		funcs = keys[name][other].get('func',{})
@@ -1691,10 +1693,19 @@ def apply(keys,data,plots,processes,verbose=None):
 		else:
 			groups = GroupBy(groups,by=by,**options)
 
-
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
-		for i,group in enumerate(groups.groups):
+		if by and isinstance(sort,dict) and all(i in data for i in sort):
+			sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in data}
+			def sorter(group):
+				group = dict(zip(by,group))
+				key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
+				return key
+			sorts = sorted((group for group in groups.groups),key=sorter)
+		else:
+			sorts = groups.groups
+
+		for i,group in enumerate(sorts):
 
 			logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
 			
@@ -2119,14 +2130,12 @@ def plotter(plots,processes,verbose=None):
 
 				information[instance][subinstance][prop] = {}
 
-			for prop in information[instance][subinstance]:
-
 				data = list(natsorted(set(label
 					for subinstance in plots[instance] if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
 					for data in search(plots[instance][subinstance][obj][prop])
 					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
+					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels','include','exclude','sort'])
 					)))
 
 				data = {label: [
@@ -3330,7 +3339,6 @@ def plotter(plots,processes,verbose=None):
 										tmp = indices
 									else:
 										tmp = indices
-
 									if isinstance(value['value'],dict):
 										if value['type'] in ['value','index']:
 											prop = 'value'
@@ -3356,7 +3364,6 @@ def plotter(plots,processes,verbose=None):
 								else:
 									value = data[attr]['__value__']
 
-
 								if attr in [string for i in ['alpha','zorder','marker','linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									if isinstance(value,dict):
 										value = [i for i in value if all(
@@ -3376,7 +3383,8 @@ def plotter(plots,processes,verbose=None):
 									if not isinstance(value,scalars):
 										value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 								elif attr in [string for i in ['zorder'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
-									value = 1000*data[attr]['__index__']
+									if not isinstance(value,scalars):
+										value = 1000*data[attr]['__index__']
 								elif attr in [string for i in ['marker'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
 								elif attr in [string for i in ['linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
