@@ -112,7 +112,7 @@ class Model(object):
 				*[[parameters['alpha'],parameters['beta']*parameters['phi']**i] for i in range(self.D**2-1)],
 				])]*self.N)
 			def measurement(data,*args,**kwargs):
-				data = (1/self.D**self.N)*abs2(einsum('si,ui->su',data,measure))
+				data = (1/(self.D**self.N))*abs2(einsum('si,ui->su',data,measure))
 				return data
 
 		def probability(parameters,state,*args,**kwargs):
