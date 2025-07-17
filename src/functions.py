@@ -391,14 +391,32 @@ def func_divergence_func_err(data):
 
 
 def func_fit_histogram(args,kwargs,attributes):
-	x,y,xerr,yerr = args
 
-	d = attributes['D']**attributes['N']
+	def process(args,kwargs,attributes):
 
-	func = lambda parameters,x: parameters[0]*d*np.exp(-parameters[1]*d*x)
+		x,y,xerr,yerr = args
+
+		indices = (y != 0) if y is not None else None
+		x = x[indices] if x is not None else None
+		y = y[indices] if y is not None else None
+		xerr = xerr[indices] if xerr is not None else None
+		yerr = yerr[indices] if yerr is not None else None
+
+		window = lambda size: np.ones(size)/size
+		options = dict(mode='same')
+		size = max(10,len(y)//100)
+		y = np.convolve(y,window(size),**options)
+
+		attributes['d'] = attributes['D']**attributes['N']
+
+		return x,y,xerr,yerr
+
+	x,y,xerr,yerr = process(args,kwargs,attributes)
+
+	func = lambda parameters,x: parameters[0]*attributes['d']*np.exp(-parameters[1]*attributes['d']*x)
 	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
 
-	objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)**2
+	objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)
 	error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
 
 	parameters = [1,1]
@@ -407,9 +425,11 @@ def func_fit_histogram(args,kwargs,attributes):
 	parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
 
 	x = x
-	xerr = xerr
 	y = func(parameters,x)
+	xerr = None
 	yerr = None#error(parameters,x,y,err)
+
+	x,y,xerr,yerr = x[::10],y[::10],xerr,yerr
 
 	attr = 'errorbar'
 	kwarg = 'label'
@@ -426,6 +446,7 @@ def func_fit_histogram(args,kwargs,attributes):
 				)
 			for i in range(size)])
 		kwargs[attr][kwarg] = (kwargs[attr][kwarg] + '\n' + string) if isinstance(kwargs[attr].get(kwarg),str) else string
+
 
 	attr = 'legend'
 	kwarg = 'set_title'

@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import progress,forloop,vmap,timestamp
 from src.utils import array,rand,arange,logspace,transpose,reshape,addition,tensorprod,seeder,permutations
-from src.utils import einsum,exp,sqrt,prod,real,imag,iterables,arrays,scalars,integers,floats,datatype,e,pi,delim
+from src.utils import einsum,exp,sqrt,prod,real,imag,abs2,iterables,arrays,scalars,integers,floats,datatype,e,pi,delim
 from src.io import load,dump,split,join
 from src.run import argparse,setup
 from src.iterables import permuter
@@ -112,7 +112,7 @@ class Model(object):
 				*[[parameters['alpha'],parameters['beta']*parameters['phi']**i] for i in range(self.D**2-1)],
 				])]*self.N)
 			def measurement(data,*args,**kwargs):
-				data = real(einsum('si,ui->su',data,measure))
+				data = (1/self.D**self.N)*abs2(einsum('si,ui->su',data,measure))
 				return data
 
 		def probability(parameters,state,*args,**kwargs):
