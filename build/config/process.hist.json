@@ -248,33 +248,20 @@
 				{
 					"position": "col",
 					"value": {
-						"M": [
-							0,
-							10,
-							20,
-							30,
-							40,
-							50
-						]
+						"M": null
 					}
 				},
 				{
 					"position": "row",
 					"value": {
-						"noise.parameters": [
-							0.0001,
-							0.005,
-							0.01,
-							0.025,
-							0.1
-						]
+						"noise.parameters": null
 					},
 					"kwargs": {
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
 						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.hist.label.labels": {"N":[4,6,8]},
+						"ax.hist.label.labels": null,
 						"ax.hist.color": {
 							"@N@": {
 								"value": {
@@ -309,7 +296,7 @@
 						"ax.set_colorbar.aspect": 62,
 						"ax.set_colorbar.anchor": [10,0.5],
 						"ax.set_colorbar.set_ticks.ticks":3,
-						"ax.set_colorbar.set_ticklabels.ticklabels": [4,6,8],
+						"ax.set_colorbar.set_ticklabels.ticklabels": [4,6,8,10],
 						"ax.legend": null,
 						"style.share.ax.legend": false,
 						"style.share.ax.set_title": "top",
