@@ -429,7 +429,7 @@ def func_fit_histogram(args,kwargs,attributes):
 	xerr = None
 	yerr = None#error(parameters,x,y,err)
 
-	x,y,xerr,yerr = x[::10],y[::10],xerr,yerr
+	x,y,xerr,yerr = x[::10 if len(x)>10*10 else 1],y[::10 if len(y)>10*10 else 1],xerr,yerr
 
 	attr = 'errorbar'
 	kwarg = 'label'
