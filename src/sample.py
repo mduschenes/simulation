@@ -10,11 +10,12 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import progress,forloop,vmap,timestamp
-from src.utils import array,rand,arange,logspace,transpose,reshape,addition,tensorprod,seeder,permutations
+from src.utils import array,rand,arange,logspace,inplace,transpose,reshape,addition,tensorprod,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,real,imag,abs2,iterables,arrays,scalars,integers,floats,datatype,e,pi,delim
 from src.io import load,dump,split,join
 from src.run import argparse,setup
 from src.iterables import permuter
+from src.system import Lattice
 
 
 # Logging
@@ -36,7 +37,7 @@ class Model(object):
 			data (dict): System data
 			parameters (object): System parameters
 			samples (int): System samples
-			model (str): System model, allowed strings in ['sk','ask','ising']
+			model (str): System model, allowed strings in ['sk','ask','nn','ising']
 			measure (str): System measure, allowed strings in ['povm']
 			random (str): System randomness, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			seed (int,key): System seed
@@ -87,6 +88,36 @@ class Model(object):
 
 		self.data = self.data if isinstance(self.data,dict) else {}
 
+		self.initialize()
+
+		self.seed = seeder(self.seed)
+		self.parameters = self.init(self.seed)
+
+		msg = {key:getattr(self,key,value) for key,value in self.attributes.items() if isinstance(getattr(self,key,value),scalars)}
+		logger.log(verbose,msg)
+
+		return
+
+	def init(self,sample,*args,**kwargs):
+
+		strings = self.shape
+		size = len(self.shape)
+		shape = self.shape
+		key = dict(zip(strings,seeder(sample,size=size)))
+		random = {string:self.random.get(string) if isinstance(self.random,dict) else self.random if self.random is not None else None for string in strings}
+		scale = {string:self.parameters.get(string) if isinstance(self.parameters,dict) and isinstance(self.parameters.get(string),scalars) else self.parameters if self.parameters is not None and isinstance(self.parameters,scalars) else None for string in strings}
+		dtype = {string:datatype(self.dtype.get(string) if isinstance(self.dtype,dict) else self.dtype if self.dtype is not None else None) for string in strings}
+
+		initializer = self.initializer
+
+		string = list(strings)[0]
+
+		parameters = {string:initializer[string](key=key[string],shape=shape[string],random=random[string],scale=scale[string],dtype=dtype[string]) for string in strings}
+
+		return parameters
+
+	def initialize(self):
+
 		if self.model is None:
 			def func(parameters,state,*args,**kwargs):
 				return -einsum('i,ij,j',state,parameters['J'],state)
@@ -96,6 +127,9 @@ class Model(object):
 		elif self.model in ['ask']:
 			def func(parameters,state,*args,**kwargs):
 				return einsum('i,ij,j',state,parameters['J'],state)
+		elif self.model in ['nn']:
+			def func(parameters,state,*args,**kwargs):
+				return -einsum('i,ij,j',state,parameters['J'],state)				
 		elif self.model in ['ising']:
 			def func(parameters,state,*args,**kwargs):
 				return -einsum('i,ij,j',state,parameters['J'],state) + einsum('i,i',parameters['h'],state)								
@@ -138,30 +172,59 @@ class Model(object):
 
 			return data
 
-		self.seed = seeder(self.seed)
-		self.parameters = self.init(self.seed)
+		initializer = {}
+		if self.model is None:
+			name = 'J'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				parameters = (parameters + transpose(parameters))/2
+				return parameters
+			initializer[name] = init
+		elif self.model in ['sk']:
+			name = 'J'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				parameters = (parameters + transpose(parameters))/2
+				return parameters
+			initializer[name] = init			
+		elif self.model in ['ask']:
+			name = 'J'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				parameters = (parameters + transpose(parameters))/2
+				return parameters
+			initializer[name] = init
+		elif self.model in ['nn']:
+			lattice = Lattice(N=self.N,d=self.d)
+			indices = tuple(zip(*(i for i in lattice('ij') if i not in lattice('<ij>'))))
+			name = 'J'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				parameters = inplace(parameters,indices,0)
+				parameters = (parameters + transpose(parameters))/2
+				return parameters
+			initializer[name] = init
+		elif self.model in ['ising']:
+			name = 'J'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				parameters = (parameters + transpose(parameters))/2
+				return parameters
+			initializer[name] = init
+			
+			name = 'h'
+			def init(*args,**kwargs):
+				parameters = rand(*args,**kwargs)
+				return parameters
+			initializer[name] = init			
 
 		self.func = func
+		self.initializer = initializer
 		self.measurement = measurement
 		self.probability = probability
 		self.sample = sample
 
-		msg = {key:getattr(self,key,value) for key,value in self.attributes.items() if isinstance(getattr(self,key,value),scalars)}
-		logger.log(verbose,msg)
-
 		return
-
-	def init(self,sample,*args,**kwargs):
-
-		shape = self.shape
-		key = dict(zip(self.shape,seeder(sample,size=len(self.shape))))
-		random = {string:self.random.get(string) if isinstance(self.random,dict) else self.random if self.random is not None else None for string in self.shape}
-		scale = {string:self.parameters.get(string) if isinstance(self.parameters,dict) and isinstance(self.parameters.get(string),scalars) else self.parameters if self.parameters is not None and isinstance(self.parameters,scalars) else None for string in self.shape}
-		dtype = {string:datatype(self.dtype.get(string) if isinstance(self.dtype,dict) else self.dtype if self.dtype is not None else None) for string in self.shape}
-
-		parameters = {string:rand(key=key[string],shape=shape[string],random=random[string],scale=scale[string],dtype=dtype[string]) for string in shape}
-		
-		return parameters
 		
 	@property
 	def shape(self):
@@ -171,6 +234,8 @@ class Model(object):
 			shape = dict(J=(self.N,self.N)) if self.N else None
 		elif self.model in ['ask']:
 			shape = dict(J=(self.N,self.N)) if self.N else None
+		elif self.model in ['nn']:
+			shape = dict(J=(self.N,self.N)) if self.N else None		
 		elif self.model in ['ising']:
 			shape = dict(J=(self.N,self.N),h=(self.N,)) if self.N else None
 		shape = {string:shape.get(string) for string in self.parameters} if self.parameters is not None and shape is not None else shape if shape is not None else None

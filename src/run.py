@@ -257,7 +257,7 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 		boolean=dict(call=None,optimize=None,load=None,dump=None),
 		cls=dict(module=None,model=None,state=None,label=None,callback=None),
 		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
-		optimize=dict(),seed=dict(),system=dict(),
+		optimize=dict(),options=dict(),seed=dict(),system=dict(),
 		)
 
 	if settings is None:
