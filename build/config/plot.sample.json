@@ -186,9 +186,18 @@
 				"which": "major",
 				"axis": "both"
 			},					
-			"yaxis.offsetText.set_fontsize": {
-				"fontsize": 20
-			},
+			"yaxis.offsetText.set_fontsize": [
+				{
+					"fontsize": 30
+				}
+			],
+			"xaxis.offsetText.set_fontsize": [
+				null,
+				{
+					"fontsize": 30,
+					"obj":"twiny"
+				}
+			],			
 			"set_xscale": {
 				"value": "log",
 				"base": 10
@@ -260,8 +269,8 @@
                 {"ticks": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"obj":"twiny"}
             ],
             "set_xticklabels": [
-                {"labels": [0,0.2,0.4,0.6,0.8,1.0],"size":25},
-                {"labels": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"size":25,"obj":"twiny"}
+                {"labels": [0,0.2,0.4,0.6,0.8,1.0],"size": 30},
+                {"labels": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"size": 30,"obj":"twiny"}
             ],            
             "set_yscale": {
                 "value": "log",
@@ -290,9 +299,10 @@
                     1e-08,
                     0.0001,
                     1.0
-                ]
+                ],
+                "size": 30
             },
-            "invert_xaxis":[null,{"obj":"twiny"}],
+            "invert_xaxis":[null,null],
             "xaxis.set_major_formatter": {
                 "ticker": {
                     "LogFormatterMathtext": {
@@ -342,13 +352,13 @@
             },	
 			"legend": {
 				"set_title":"%s",
-				"title_fontsize": 25,
-				"fontsize": 25,
+				"title_fontsize": 30,
+				"fontsize": 30,
 				"get_title": {
 					"ha": "center"
 				},
 				"prop": {
-					"size": 25
+					"size": 30
 				},
 				"texify": {},				
 				"markerscale": 1.2,
@@ -373,7 +383,7 @@
 			"texify": null,
 			"mplstyle": "plot.mplstyle",
 			"rcParams": {
-				"font.size": 25
+				"font.size": 30
 			},
 			"layout": {
 				"nrows": 1,
