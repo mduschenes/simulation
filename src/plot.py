@@ -1253,10 +1253,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			if attr in ['legend']:
 
 				if kwargs[attr].get('merge'):
-					handles_labels = [getattr(ax,'get_legend_handles_labels')() for ax in obj.get_figure().axes]
+					objects = obj.get_figure().axes
+					handles_labels = [getattr(ax,'get_legend_handles_labels')() for ax in objects]
 					handles_labels = [sum(i, []) for i in zip(*handles_labels)]
 				else:
-					handles_labels = getattr(obj,'get_legend_handles_labels')()
+					objects = (get_obj(obj,i) for i in set(i.get('obj') for subattr in kwargs for i in search(kwargs[subattr]) if i is not None))
+					handles_labels = [getattr(ax,'get_legend_handles_labels')() for ax in objects]
+					handles_labels = [sum(i, []) for i in zip(*handles_labels)]					
 
 				def func(i,handles,labels):
 					if isinstance(handles[i],matplotlib.container.ErrorbarContainer):
@@ -2675,6 +2678,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			kwargs = {
 				'objects':{'fig':fig,'ax':ax},
 				'options':settings,
+				'key':key,
 				'texify':settings[key][obj].get('texify',defaults['texify']),
 				'share':settings[key][obj].get('share',{}).get(attr,defaults['share']),
 				'layout':_layout({

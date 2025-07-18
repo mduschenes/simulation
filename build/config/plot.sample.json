@@ -62,6 +62,7 @@
 						"@measure@": [100,50]
 					},
 					"zorder":1000,					
+					"obj.errorbar":null,					
 					"alpha.errorbar": 0.5,
 					"marker.errorbar": {"@measure@":["o","s"]},
 					"marker.errorbar": "o",
@@ -132,7 +133,8 @@
 					"zorder": {
 						"@measure@": [100,50]
 					},	
-					"zorder":50,				
+					"zorder":50,
+					"obj.errorbar":"twiny",									
 					"alpha.errorbar": 0.5,
 					"marker.errorbar": {"@measure@":["o","s"]},
 					"marker.errorbar": "s",

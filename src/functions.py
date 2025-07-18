@@ -31,6 +31,8 @@ from src.utils import arrays,scalars,nonzero,delim,nan
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
+from src.plot import AXES
+
 from src.io import load,dump
 
 # Processing
@@ -438,14 +440,28 @@ def func_fit_histogram(args,kwargs,attributes):
 			'texify':dict(usetex=True),
 			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
 			}
-		string = '\n'.join([
+		string = ''
+		for prop in ['set_%sscale'%(axes) for axes in AXES]:
+			if not kwargs.get(prop):
+				continue
+			values = [data for data in search(kwargs.get(prop)) if data]
+			if (len(set(data.get('value') for data in values)) == 1) or not any(data.get('value') not in [None,'linear'] or data.get('obj') not in [None] for data in values):
+				continue
+			values = [data.get('value') for data in values if data.get('obj')==kwargs[attr].get('obj')]
+			if not values:
+				continue
+			string = 'Linear' if all(data=='linear' for data in values) else 'Log'
+			string = '~(\\textrm{%s})'%(string)
+			break
+
+		strings = '\n'.join([
 				texify('%s = %s'%(
 				[r'\alpha',r'\beta'][i],
 				scinotation(parameters[i],error=err[i][i],**options['scinotation'])),
 				**options['texify']
 				)
 			for i in range(size)])
-		kwargs[attr][kwarg] = (kwargs[attr][kwarg] + '\n' + string) if isinstance(kwargs[attr].get(kwarg),str) else string
+		kwargs[attr][kwarg] = ('%s%s'%(kwargs[attr][kwarg],string) + '\n' + strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
 
 
 	attr = 'legend'
