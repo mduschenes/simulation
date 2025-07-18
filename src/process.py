@@ -3459,7 +3459,7 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
-						scale = [data.get(subkwarg) for data in search(plots[instance][subinstance][obj].get(subattr%(axes))) if data and subkwarg in data]
+						scale = [i.get(subkwarg) for i in search(plots[instance][subinstance][obj].get(subattr%(axes))) if i and subkwarg in i and i.get('obj')==data.get('obj')]
 						scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
 
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
@@ -3489,8 +3489,7 @@ def plotter(plots,processes,verbose=None):
 
 						value = data[kwarg]
 
-
-						scale = [data.get(subkwarg) for data in search(plots[instance][subinstance][obj].get(subattr%(axes))) if data and subkwarg in data]
+						scale = [i.get(subkwarg) for i in search(plots[instance][subinstance][obj].get(subattr%(axes))) if i and subkwarg in i and i.get('obj')==data.get('obj')]
 						scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
 
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default

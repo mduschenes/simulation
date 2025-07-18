@@ -23,7 +23,7 @@
 						"label": {
 							"N": null,
 							"T": null,
-							"measure":null
+							"measure":["none"]
 						},
 						"func": {
 							"stat": {
@@ -60,9 +60,11 @@
 					"alpha": 0.5,
 					"zorder": {
 						"@measure@": [100,50]
-					},					
+					},
+					"zorder":1000,					
 					"alpha.errorbar": 0.5,
 					"marker.errorbar": {"@measure@":["o","s"]},
+					"marker.errorbar": "o",
 					"markersize.errorbar": 10,
 					"linestyle.errorbar": "--",
 					"elinewidth.errorbar": 6,
@@ -80,9 +82,82 @@
 							"type": "index"
 						}
 					},
+					"color":"viridis_0.25",
 					"color.errorbar": "black",
-					"ecolor.errorbar": "black"
-				}			                    
+					"ecolor.errorbar": "black",
+					"zorder.errorbar": 100000					
+				},
+				{
+					"x": null,
+					"y": "data",
+					"label": {
+						"label": {
+							"N": null,
+							"T": null,
+							"measure":["povm"]
+						},
+						"func": {
+							"stat": {
+								"y": {
+									"": "src.functions.func_samples",
+									"err": "src.functions.func_samples_err"
+								}
+							}
+						},
+						"wrapper":{
+						},
+						"scinotation": {
+							"scilimits": [
+								-1,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":["measure"]
+						},
+						"sort":{"measure":["povm","none"]},				
+						"indexing":1,
+						"slice": null
+					},
+					"obj":"twiny",
+					"plots":["errorbar"],
+					"function":"src.functions.func_fit_histogram",
+					"bins":1000,
+					"range":[0,1],
+					"density":"probability",
+					"log":true,
+					"alpha": 0.5,
+					"zorder": {
+						"@measure@": [100,50]
+					},	
+					"zorder":50,				
+					"alpha.errorbar": 0.5,
+					"marker.errorbar": {"@measure@":["o","s"]},
+					"marker.errorbar": "s",
+					"markersize.errorbar": 10,
+					"linestyle.errorbar": "--",
+					"elinewidth.errorbar": 6,
+					"capsize.errorbar": 6,
+					"color": {
+						"@measure@": {
+							"value": {
+								"value": null,
+								"color": ["viridis_0.25","viridis_0.75","viridis_0.5","viridis_0.0","viridis_1.0"],
+								"values": [],
+								"norm": null,
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"color": "viridis_0.75",					
+					"color.errorbar": "black",
+					"ecolor.errorbar": "black",
+					"zorder.errorbar": 100000
+				}							                    
 			],
 			"set_title": {
 				"label": "N"
@@ -166,26 +241,26 @@
 					1e0
 				]
 			},
-            "set_xscale": {
-                "value": "linear"
-            },
-            "set_xlim": {
-                "xmin": -0.1,
-                "xmax": 1.1
-            },
-            "set_xnbins": {
-                "nbins": 5
-            },
-            "set_xticks": {
-                "ticks": [
-                    0,0.2,0.4,0.6,0.8,1.0
-                ]
-            },
-            "set_xticklabels": {
-                "labels": [
-                    0,0.2,0.4,0.6,0.8,1.0
-                ]
-            },            
+            "set_xscale": [
+	           	{"value":"linear"},
+	           	{"value":"log","base":10,"obj":"twiny"}
+            ],
+            "set_xlim": [
+            	{"xmin": -0.1,"xmax": 1.1},
+            	{"xmin": 1e-22,"xmax": 1e2,"obj":"twiny"}
+            ],
+            "set_xnbins": [
+                {"nbins": 5},
+                {"nbins": 5,"obj":"twiny"}
+            ],
+            "set_xticks": [
+                {"ticks": [0,0.2,0.4,0.6,0.8,1.0]},
+                {"ticks": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"obj":"twiny"}
+            ],
+            "set_xticklabels": [
+                {"labels": [0,0.2,0.4,0.6,0.8,1.0],"size":25},
+                {"labels": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"size":25,"obj":"twiny"}
+            ],            
             "set_yscale": {
                 "value": "log",
                 "base": 10
@@ -195,7 +270,7 @@
                 "ymax": 2.0
             },
             "set_ynbins": {
-                "nbins": 4
+                "nbins": 5
             },
             "set_yticks": {
                 "ticks": [
@@ -215,6 +290,7 @@
                     1.0
                 ]
             },
+            "invert_xaxis":[null,{"obj":"twiny"}],
             "xaxis.set_major_formatter": {
                 "ticker": {
                     "LogFormatterMathtext": {
@@ -228,9 +304,27 @@
                     "NullFormatter": {}
                 }
             },
-            "xaxis.set_major_formatter": null,
-            "xaxis.set_minor_locator": null,
-            "xaxis.set_minor_formatter": null,
+            "xaxis.set_major_formatter": [
+            	null,
+            	{
+	                "ticker": {
+	                    "LogFormatterMathtext": {
+	                        "base": 10
+	                    }
+	                },
+	            	"obj":"twiny"
+            	}
+            ],
+            "xaxis.set_minor_locator": [null,null],
+            "xaxis.set_minor_formatter": [
+            	null,
+            	{
+	                "ticker": {
+	                    "NullFormatter": {}
+	                },
+	            	"obj":"twiny"	                
+            	}
+            ],
             "yaxis.set_major_formatter": {
                 "ticker": {
                     "LogFormatterMathtext": {
@@ -262,7 +356,7 @@
 				"set_linestyle": "-",
 				"set_color": {"lines.Line2D":["patches.Rectangle"]},
 				"set_alpha": 0.5,
-				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.8}},
+				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":1}},
 				"legendLabels":{"set_ha":"left"},
 				"keep":["marker","linestyle","alpha"],
 				"none":false,

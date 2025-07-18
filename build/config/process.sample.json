@@ -33,6 +33,7 @@
 		]
 	],
 	"join":{"histogram":{"ax":{"hist":["label","color","alpha"]}}},
+	"join":null,	
 	"patterns": {
 		"max_bond": "S",
 		"cyclic": "periodic"

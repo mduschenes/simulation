@@ -790,6 +790,7 @@ def get_obj(obj,attr=None):
 
 	if attr is None:
 		instance = obj
+	
 	elif attr in ['%s%s'%(children,axes) for children in CHILDREN for axes in AXES]:
 		instance = None
 		axes = attr[-1]
@@ -1199,6 +1200,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'marker':slice(-4,-3),
 				'linestyle':slice(-5,-4),
 				'alpha':slice(-6,-5),
+				'zorder':slice(-2,None),
 				}
 
 			attr_ = attr
@@ -1674,7 +1676,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1701,7 +1703,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1733,7 +1735,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1749,7 +1751,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					err = kwargs[attr].get(prop)
 					value = kwargs[attr].get(subprop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					err = set_err(err=err,value=value,scale=scale)
 
@@ -1780,7 +1782,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if not kwargs.get(subattr):
 						continue
 
-					scale = [i[-1] for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1] for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 
 					if scale:
 						if any(i.get('value') in ['linear'] for i in scale):
@@ -1795,8 +1797,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if axes in AXES[0:dim-1]:
 								prop = 'bins'
 								value = dict(
-									lim=[i[-1] for i in search(kwargs.get('set_%slim'%(axes)),returns=True) if i is not None and i[-1] is not None],
-									ticks=[i[-1] for i in search(kwargs.get('set_%sticks'%(axes)),returns=True) if i is not None and i[-1] is not None]
+									lim=[i[-1] for i in search(kwargs.get('set_%slim'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],
+									ticks=[i[-1] for i in search(kwargs.get('set_%sticks'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 									)
 								value = dict(
 									start=max((i for i in (
@@ -1892,7 +1894,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -1908,7 +1910,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					err = kwargs[attr].get(prop)
 					value = kwargs[attr].get(subprop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 
 					err = set_err(err=err,value=value,scale=scale)
 
@@ -1960,7 +1962,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						continue
 
 					data = kwargs[attr].get(prop)
-					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None]
+					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
 					
 					data = set_data(data=data,scale=scale)
 
@@ -2172,6 +2174,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['%saxis.set_ticklabels'%(axes) for axes in AXES]:
 				pass			
 
+			elif attr in ['invert_%saxis'%(axes) for axes in AXES]:
+				call = True
+				pass
+
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
 				props = ['transform']
@@ -2320,6 +2326,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									continue			
 				
 			elif attr in ['savefig']:
+
+				if isinstance(_kwargs.get('options'),dict):
+					for option in _kwargs['options']:
+						key = 'ax'
+						field = 'zorder'
+						objects = [(i.get(field),i.get('obj')) for prop in _kwargs['options'][option].get(key,[]) for i in search(_kwargs['options'][option][key][prop]) if i is not None and i.get(field) is not None]
+						objects = {get_obj(_kwargs['objects'][key][option],child):min(field for field,obj in objects if obj==child) for child in set(obj for field,obj in objects)}
+						for i,child in enumerate(sorted(objects,key=lambda obj:objects[obj])):
+							getattr(child,'set_%s'%(field))(1000+i)
+							child.patch.set_visible(False)
+
 				path = kwargs[attr].get('fname')
 				if path is not None:
 					dirname = os.path.abspath(os.path.dirname(path))
@@ -2342,14 +2359,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			nullkwarg.extend(['call'])
 			if any(((kwargs[attr].get(kwarg) is not None) and (not kwargs[attr][kwarg]))
 				for kwarg in nullkwarg):
-
 				call = False
-
 			nullkwargs.extend(nullkwarg)
 
 			nullkwargs.extend([kwarg for i in nullkwargs for kwarg in [i,*[delimiter.join([i,plot]) for plot in PLOTS]]])
 			nullkwargs.extend([kwarg for kwarg in kwargs[attr] if kwarg.count(delimiter) and any(kwarg.split(delimiter)[-1] == plot for plot in PLOTS)])
-
 
 			try:
 				_kwargs_ = {
@@ -2371,9 +2385,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if attr in [_attr] and _prop in _kwargs_:
 						if _kwargs_.get(_prop) is None:
 							nullkwargs.extend([_prop])
-
-				if all(kwarg in nullkwargs for kwarg in _kwargs_):
-					call = False
 
 			for kwarg in _kwargs_:
 				if kwarg in ['linestyle']:
@@ -2477,6 +2488,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for kwarg in nullkwargs:
 				_kwargs_.pop(kwarg,None)
+
 
 			if not call:	
 		
@@ -2593,7 +2605,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										except Exception as exception:
 											pass	
 				
-			_obj = {'obj':_obj_,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count}
+			_obj = {'obj':_obj_,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count,'object':obj}
 			
 			objs.append(_obj)
 
@@ -2613,6 +2625,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						'legend': {'handles':True,'labels':True}
 						}.get(attr,{}))
 			kwarg[attr].update(updates)
+
 			obj = kwarg[attr].get('obj')
 			kwargs = {
 				**kwarg,
@@ -2655,9 +2668,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				}
 			}
 
+		objects = {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}
+
 		def attr_kwargs(attr,key,settings):
 			obj = 'style'
 			kwargs = {
+				'objects':{'fig':fig,'ax':ax},
+				'options':settings,
 				'texify':settings[key][obj].get('texify',defaults['texify']),
 				'share':settings[key][obj].get('share',{}).get(attr,defaults['share']),
 				'layout':_layout({
@@ -2667,11 +2684,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				}
 			return kwargs
 
-		obj = 'style'
-		matplotlib.rcParams.update(settings[key][obj].get('rcParams',{}))
-
-		obj = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}[attr]
-		obj = obj(attr,key,fig,ax)
+		obj = lambda attr,key,objects=objects: objects[attr]
+		obj = obj(attr,key)
 
 		objs = []
 
@@ -2689,8 +2703,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					'tight_layout':-3,'subplots_adjust':-4,'set_size_inches':-5
 					},
 				'ax':{
-					string%(axes):-1 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels'])
-					for axes in AXES
+					**{string%(axes):-2 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels'])
+						for axes in AXES},
+					**{string%(axes):-2 for i,string in enumerate(['invert_%saxis'])
+						for axes in AXES},						
 					},
 				}.get(attr,{})
 			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}
@@ -2711,6 +2727,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						props.pop(props.index(prop))
 
 			props = [*[prop for prop in props if prop in PLOTS],*[prop for prop in props if prop not in PLOTS]]
+
+			matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
 			for prop in props:
 
