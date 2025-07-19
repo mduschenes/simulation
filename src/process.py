@@ -2814,7 +2814,7 @@ def plotter(plots,processes,verbose=None):
 						items = [i[0] for i in data[attr]['__items__']]
 
 					value = data[attr]['__value__']
-					indices = [(data[attr]['__items__'].index(i)+(data[attr]['__size__']>1))/max(1,data[attr]['__size__']+(data[attr]['__size__']>1)) for i in data[attr]['__items__']]
+					indices = [(data[attr]['__items__'].index(i)+(data[attr]['__size__']==1))/max(1,data[attr]['__size__']-1+2*(data[attr]['__size__']==0)) for i in data[attr]['__items__']]
 
 					if isinstance(value,dict) and any(prop in value for prop in ['value','type','func']):
 						defaults = {'value':None,'type':None,'func':None}

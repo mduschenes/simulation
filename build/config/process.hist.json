@@ -35,10 +35,10 @@
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_ylabel.scinotation": {
 							"scilimits": [
-								-1,
+								1,
 								2
 							],
-							"decimals": 2,
+							"decimals": 1,
 							"strip":true
 						},
 						"ax.hist.label.labels": null,
