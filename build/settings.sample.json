@@ -8,8 +8,7 @@
 		"seed":123,
 		"size":5,
 		"reset":null,
-		"group":null,
-		"attributes":null
+		"group":null
 	},
 	"permutations":{
 		"permutations":{	
@@ -20,7 +19,7 @@
 			"model.samples":[1e4],
 			"model.model":["sk"],
 			"model.measure":["povm",null],
-			"model.random":["normal"],
+			"model.random":[{"random":"normal","bounds":[-1,-1]}],
 
 			"options":[{}],
 
