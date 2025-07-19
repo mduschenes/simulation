@@ -37,9 +37,9 @@ class Model(object):
 			data (dict): System data
 			parameters (object): System parameters
 			samples (int): System samples
-			model (str): System model, allowed strings in ['sk','ask','nn','ising']
+			model (str): System model, allowed strings in ['sk','ask','nn','ann','ising']
 			measure (str): System measure, allowed strings in ['povm']
-			random (str): System randomness, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			random (dict,str): System randomness, rand options, or allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			seed (int,key): System seed
 			dtype (datatype): System datatype
 			path (str): System path
@@ -82,7 +82,9 @@ class Model(object):
 
 		self.samples = int(self.samples) if isinstance(self.samples,(*integers,*floats)) else 0
 
-		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,measure=None,random=None,data=None)
+		self.random = dict(random=self.random) if not isinstance(self.random,dict) else self.random
+
+		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,measure=None,data=None)
 
 		self.index = self.key if self.key is not None else timestamp()
 
@@ -102,17 +104,23 @@ class Model(object):
 
 		strings = self.shape
 		size = len(self.shape)
-		shape = self.shape
-		key = dict(zip(strings,seeder(sample,size=size)))
-		random = {string:self.random.get(string) if isinstance(self.random,dict) else self.random if self.random is not None else None for string in strings}
+
+		key = {string:key for string,key in zip(strings,seeder(sample,size=size))}
+		shape = {string:self.shape[string] for string in strings}
 		scale = {string:self.parameters.get(string) if isinstance(self.parameters,dict) and isinstance(self.parameters.get(string),scalars) else self.parameters if self.parameters is not None and isinstance(self.parameters,scalars) else None for string in strings}
 		dtype = {string:datatype(self.dtype.get(string) if isinstance(self.dtype,dict) else self.dtype if self.dtype is not None else None) for string in strings}
 
+		random = {
+			string:{
+				**(self.random.get(string) if isinstance(self.random,dict) and all(string in self.random for string in strings) else self.random if self.random is not None else {}),
+				**dict(key=key[string],shape=shape[string],scale=scale[string],dtype=dtype[string]),
+				}
+			for string in strings
+			}
+
 		initializer = self.initializer
 
-		string = list(strings)[0]
-
-		parameters = {string:initializer[string](key=key[string],shape=shape[string],random=random[string],scale=scale[string],dtype=dtype[string]) for string in strings}
+		parameters = {string:initializer[string](**random[string]) for string in strings}
 
 		return parameters
 
@@ -129,7 +137,10 @@ class Model(object):
 				return einsum('i,ij,j',state,parameters['J'],state)
 		elif self.model in ['nn']:
 			def func(parameters,state,*args,**kwargs):
-				return -einsum('i,ij,j',state,parameters['J'],state)				
+				return -einsum('i,ij,j',state,parameters['J'],state)
+		elif self.model in ['ann']:
+			def func(parameters,state,*args,**kwargs):
+				return einsum('i,ij,j',state,parameters['J'],state)								
 		elif self.model in ['ising']:
 			def func(parameters,state,*args,**kwargs):
 				return -einsum('i,ij,j',state,parameters['J'],state) + einsum('i,i',parameters['h'],state)								
@@ -235,7 +246,9 @@ class Model(object):
 		elif self.model in ['ask']:
 			shape = dict(J=(self.N,self.N)) if self.N else None
 		elif self.model in ['nn']:
-			shape = dict(J=(self.N,self.N)) if self.N else None		
+			shape = dict(J=(self.N,self.N)) if self.N else None
+		elif self.model in ['ann']:
+			shape = dict(J=(self.N,self.N)) if self.N else None					
 		elif self.model in ['ising']:
 			shape = dict(J=(self.N,self.N),h=(self.N,)) if self.N else None
 		shape = {string:shape.get(string) for string in self.parameters} if self.parameters is not None and shape is not None else shape if shape is not None else None
