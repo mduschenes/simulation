@@ -299,7 +299,9 @@ class Model(object):
 			data = self.data[index]
 			return data
 
-		data = dict(data=self.sample(*args,**kwargs))
+		data=self.sample(*args,**kwargs)
+
+		data = dict(data=data)
 
 		return data
 

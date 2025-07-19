@@ -399,6 +399,10 @@ def func_fit_histogram(args,kwargs,attributes):
 		x,y,xerr,yerr = args
 
 		indices = (y != 0) if y is not None else None
+
+		if not indices.any():
+			return x,y,xerr,yerr
+
 		x = x[indices] if x is not None else None
 		y = y[indices] if y is not None else None
 		xerr = xerr[indices] if xerr is not None else None
@@ -457,7 +461,7 @@ def func_fit_histogram(args,kwargs,attributes):
 		strings = '\n'.join([
 				texify('%s = %s'%(
 				[r'\alpha',r'\beta'][i],
-				scinotation(parameters[i],error=err[i][i],**options['scinotation'])),
+				scinotation(parameters[i],error=err[i][i] if err is not None else None,**options['scinotation'])),
 				**options['texify']
 				)
 			for i in range(size)])
