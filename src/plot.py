@@ -593,9 +593,14 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 		value,color,values,colors,norm = None,None,None,None,None
 		return value,color,values,colors,norm
 
-	if isinstance(color,list) and isinstance(values,list) and value in values:
+	if isinstance(color,list) and isinstance(values,list) and (not isinstance(value,list) and value in values):
 		try:
 			color = color[values.index(value)%len(color)]
+		except Exception as exception:
+			color = None
+	if isinstance(color,list) and isinstance(values,list) and (isinstance(value,list) and all(i in values for i in value)):
+		try:
+			color = [color[values.index(i)%len(color)] for i in value]
 		except Exception as exception:
 			color = None
 
@@ -603,6 +608,10 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 		value = float(color.split(separator)[-1]) if isinstance(value,scalars) else [float(color.split(separator)[-1])]
 		values = [0,1]
 		color = separator.join(color.split(separator)[:-1])
+	elif isinstance(color,list) and all(is_float(i.split(separator)[-1]) for i in color):
+		value = [float(i.split(separator)[-1]) for i in color] if isinstance(value,scalars) else [float(i.split(separator)[-1]) for i in color]
+		values = value
+		color = [separator.join(i.split(separator)[:-1]) for i in color]
 
 	if value is None:
 		value = values
@@ -671,6 +680,28 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 				colors = tuple(colors)
 			elif isinstance(colors,np.ndarray):
 				colors[:,-1] = alpha	
+
+	elif isinstance(color,list) and all(isinstance(i,str) and hasattr(plt.cm,i) for i in color):
+		try:
+			colors = np.concatenate([getattr(plt.cm,i)(j) for i,j in zip(color,values)] if isinstance(values,list) else [getattr(plt.cm,i)(values) for i in color])
+			color = np.concatenate([getattr(plt.cm,i)(j) for i,j in zip(color,value)] if isinstance(value,list) else [getattr(plt.cm,i)(value) for i in color])
+		except:
+			colors = color
+			color = color
+		
+		if isinstance(color,tuple):
+			color = list(color)
+			color[-1] = alpha
+			color = tuple(color)
+		elif isinstance(color,np.ndarray):
+			color[:,-1] = alpha
+
+		if isinstance(colors,tuple):
+			colors = list(colors)
+			colors[-1] = alpha
+			colors = tuple(colors)
+		elif isinstance(colors,np.ndarray):
+			colors[:,-1] = alpha	
 
 	else:
 		colors = color
@@ -2250,7 +2281,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						pass
 
 					value,color,values,colors,norm = set_color(**kwds)
-					
 
 					name = 'colorbar'				
 					colors = list([list(i) for i in zip([i for i in values],[tuple(i) for i in colors])])

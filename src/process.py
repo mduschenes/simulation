@@ -2790,6 +2790,7 @@ def plotter(plots,processes,verbose=None):
 
 						data[attr] = value
 
+
 			# set colorbar
 			prop = 'set_colorbar'
 			for data in search(plots[instance][subinstance][obj].get(prop)):
@@ -2813,7 +2814,7 @@ def plotter(plots,processes,verbose=None):
 						items = [i[0] for i in data[attr]['__items__']]
 
 					value = data[attr]['__value__']
-					indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+					indices = [(data[attr]['__items__'].index(i)+(data[attr]['__size__']>1))/max(1,data[attr]['__size__']+(data[attr]['__size__']>1)) for i in data[attr]['__items__']]
 
 					if isinstance(value,dict) and any(prop in value for prop in ['value','type','func']):
 						defaults = {'value':None,'type':None,'func':None}
@@ -2880,11 +2881,13 @@ def plotter(plots,processes,verbose=None):
 						else:
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
-						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
+						value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
 
 						if isinstance(data[attr%(axes)].get(kwarg),integers):
 							
 							size = data[attr%(axes)][kwarg]
+
+							size = min(size,len(data.get('value',[])))
 
 							if data[attr%(axes)][kwarg] == 1:
 								value = [(value[0]+value[1])/2]
@@ -2907,111 +2910,63 @@ def plotter(plots,processes,verbose=None):
 						else:
 							data[attr%(axes)][kwarg] = value
 
-				attr = 'set_%sticklabels'
+
+				attrs = ['set_%sticklabels','%saxis.set_ticklabels']
 				kwargs = ['labels','ticklabels']
-				for axes in ['',*AXES]:
-					if data.get(attr%(axes)) is None:
-						continue
-
-					for kwarg in kwargs:
-
-						if data[attr%(axes)].get(kwarg) is None:
+				for attr in attrs:
+					for axes in ['',*AXES]:
+						if data.get(attr%(axes)) is None:
 							continue
 
-						scale = data.get('scale')
-						base = data.get('base')
-						value = items
-						
-						if isinstance(data[attr%(axes)].get(kwarg),integers):
+						for kwarg in kwargs:
 
-							length = len(value)
-							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
-							if size == 1:
-								value = [(value[0]+value[-1])/2]
-							elif ((length+1)%size) == 0:
-								value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
+							if kwarg not in data[attr%(axes)]:
+								continue
+
+							scale = data.get('scale')
+							base = data.get('base')
+							value = items
+
+							if isinstance(data[attr%(axes)].get(kwarg),integers):
+
+								length = len(value)
+								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
+								if size == 1:
+									value = [value[len(value)//2]]
+								elif ((length+1)%size) == 0:
+									value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
+								else:
+									size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
+									if scale in ['log','symlog']:
+										base = 10 if base is None else base
+										value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
+									elif scale in ['linear']:
+										value = np.linspace(min(value),max(value),size,endpoint=True)
+									else:
+										value = None
+
+									if value is None:
+										pass
+									elif any(isinstance(i,integers) for i in items):
+										value = [int(i) for i in value]
+									else:
+										value = [i for i in value]
+							elif data[attr%(axes)].get(kwarg) is not None:
+								value = data[attr%(axes)].get(kwarg)
 							else:
-								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
-								if scale in ['log','symlog']:
-									base = 10 if base is None else base
-									value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
-								elif scale in ['linear']:
-									value = np.linspace(min(value),max(value),size,endpoint=True)
-								else:
-									value = None
+								value = [i for i in value]
 
-								if value is None:
-									pass
-								elif any(isinstance(i,integers) for i in items):
-									value = [int(i) for i in value]
-								else:
-									value = [i for i in value]
-						else:
-							value = data[attr%(axes)].get(kwarg)
+							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+								for attr,default in {
+									'texify':dict(),
+									'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
+								}
 
-						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
-							for attr,default in {
-								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
-							}
-
-						if value is not None:
-							data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
-						else:
-							data[attr%(axes)][kwarg] = value
-
-				attr = '%saxis.set_ticklabels'
-				kwargs = ['labels','ticklabels']
-				for axes in ['',*AXES]:
-					if data.get(attr%(axes)) is None:
-						continue
-
-					for kwarg in kwargs:
-
-						if data[attr%(axes)].get(kwarg) is None:
-							continue
-
-						scale = data.get('scale')
-						base = data.get('base')
-						value = items
-						
-						if isinstance(data[attr%(axes)].get(kwarg),integers):
-
-							length = len(value)
-							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
-							if size == 1:
-								value = [(value[0]+value[-1])/2]
-							elif ((length+1)%size) == 0:
-								value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
+							if value is not None:
+								data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
 							else:
-								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
-								if scale in ['log','symlog']:
-									base = 10 if base is None else base
-									value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
-								elif scale in ['linear']:
-									value = np.linspace(min(value),max(value),size,endpoint=True)
-								else:
-									value = None
+								data[attr%(axes)][kwarg] = value
 
-								if value is None:
-									pass
-								elif any(isinstance(i,integers) for i in items):
-									value = [int(i) for i in value]
-								else:
-									value = [i for i in value]
-						else:
-							value = data[attr%(axes)].get(kwarg)
-
-						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
-							for attr,default in {
-								'texify':dict(),
-								'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
-							}
-
-						if value is not None:
-							data[attr%(axes)][kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
-						else:
-							data[attr%(axes)][kwarg] = value
 
 			# set legend
 			prop = 'legend'
@@ -3321,7 +3276,7 @@ def plotter(plots,processes,verbose=None):
 									items = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
 								else:
 									items = [i[0] for i in data[attr]['__items__']]
-								
+
 								value = data[attr]['__value__']
 								indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
 
@@ -3473,6 +3428,7 @@ def plotter(plots,processes,verbose=None):
 								data[kwarg] = [texify(scinotation(i,**options['scinotation']),**options['texify']) for i in value]
 							else:
 								data[kwarg] = value
+
 
 			# set attributes
 			attr = 'attributes'
