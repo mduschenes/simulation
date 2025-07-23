@@ -105,9 +105,10 @@ def test_load_dump_merge(path='.tmp'):
 
 	n = 3
 	g = 4
-	attrs = ['data','values','parameters']
+	l = 3
+	attrs = ['data','values','parameters'][:l]
 	shape = (2,3)
-	key = seeder(123)
+	key = seeder(123,size=(n,g,l))
 	directory = '.tmp'
 	paths = ['settings.json','data.hdf5']
 	options = dict(verbose=True)
@@ -119,7 +120,7 @@ def test_load_dump_merge(path='.tmp'):
 		for path in paths:
 			
 			obj = {join(i,path):{
-					f'{i}.{j}':{attr:rand(shape,key=key) for attr in attrs}
+					f'{i}.{j}':{attr:rand(shape,key=key[i][j][k]) for k,attr in enumerate(attrs)}
 					for j in range(g)
 					}
 				for i in range(n)
@@ -134,9 +135,56 @@ def test_load_dump_merge(path='.tmp'):
 			data = join('*',path)
 			merge(data,path,**options)
 
-			data = load(path)
+			data = load(path,**options)
+
+			data = {j:data[i] for i,j in zip(data,obj)}
 
 			assert equalizer(data,obj)
+
+	rm(directory)
+	
+	print('Passed')
+
+	return
+
+
+def test_load_dump_execute(path='.tmp'):
+
+	n = 3
+	g = 4
+	l = 3
+	attrs = ['data','values','parameters'][:l]
+	shape = (3,2)
+	key = seeder(123,size=(g,n,l))
+	directory = '.tmp'
+	paths = ['data.hdf5']
+	options = dict(verbose=True)
+	opts = dict(wrapper='df')
+
+	mkdir(directory)
+
+	with cd(directory):
+
+		for path in paths:
+			
+			obj = {join(i,path):{
+					f'{i}.{j}':{attr:rand(shape,key=key[i][j][k]) for k,attr in enumerate(attrs)}
+					for j in range(g)
+					}
+				for i in range(n)
+			}
+
+			for i in obj:
+				dump(obj[i],i,**options)
+
+			data = join('*',path)
+			merge(data,path,**options)
+
+			data = load(path,**{**options,**opts})
+
+			print(data)
+
+			# assert equalizer(data,obj)
 
 
 	rm(directory)
@@ -402,7 +450,8 @@ def test_glob(path=None,**kwargs):
 
 if __name__ == '__main__':
 	# test_load_dump()
-	test_load_dump_merge()
+	# test_load_dump_merge()
+	test_load_dump_execute()
 	# test_importlib()
 	# test_glob()
 	# test_hdf5()

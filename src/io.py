@@ -589,8 +589,10 @@ def serialize_json(obj,key='py/object',wr='r',ext=None,options=None,execute=None
 	Returns:
 		obj (object): Serialized object
 	'''	
+	
 	if isinstance(obj,dict) and key in obj:
 		obj = pickle.loads(str(obj[key]))
+	
 	return obj
 
 def deserialize_json(obj,key='py/object',wr='w',ext=None,options=None,execute=None,verbose=None,**kwargs):
@@ -668,22 +670,18 @@ def merge_json(data,path,wr='a',ext=None,options=None,execute=None,verbose=None,
 		kwargs (dict): Additional loading keyword arguments
 	'''
 
-	if isinstance(path,str):
-	
-		wr = 'r%s'%(wr[1:]) if wr is not None else wr
-		with open(path,wr) as obj:
-			try:
-				tmp = load_json(obj,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
-			except:
-				tmp = {}	
+	wr = 'r%s'%(wr[1:]) if wr is not None else wr
+	with (open(path,wr) if isinstance(path,str) else path) as obj:
+		try:
+			tmp = load_json(obj,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
+		except:
+			tmp = {}	
 
-		_merge_json(data,tmp,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
+	_merge_json(data,tmp,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
 
-		wr = 'w%s'%(wr[1:]) if wr is not None else wr
-		with open(path,wr) as obj:
-			dump_json(tmp,obj,wr=wr,ext=ext,options=options['dump'],execute=execute,verbose=verbose,**kwargs)
-	else:
-		raise ValueError
+	wr = 'w%s'%(wr[1:]) if wr is not None else wr
+	with (open(path,wr) if isinstance(path,str) else path) as obj:
+		dump_json(tmp,obj,wr=wr,ext=ext,options=options['dump'],execute=execute,verbose=verbose,**kwargs)
 
 	return	
 
@@ -702,13 +700,10 @@ def _merge_json(data,path,wr='a',ext=None,options=None,execute=None,verbose=None
 	'''	
 	
 	wr = 'r'
-	if isinstance(data,str):
-		with open(data,wr) as obj:
-			obj = load_json(obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
-			for key in obj:
-				path[key] = obj[key]
-	else:
-		raise ValueError
+	with (open(data,wr) if isinstance(data,str) else data) as obj:
+		obj = load_json(obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
+		for index,key in enumerate(obj):
+			path[key] = obj[key]
 	
 	return	
 
@@ -727,11 +722,7 @@ def load_hdf5(path,wr='r',ext=None,options=None,execute=None,verbose=None,**kwar
 		data (object): Object
 	'''	
 
-	if isinstance(path,str):
-		with h5py.File(path,wr) as obj:
-			data = _load_hdf5(obj,wr=wr,ext=ext,**kwargs)
-	else:
-		obj = path
+	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		data = _load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 	
 	return data
@@ -789,11 +780,7 @@ def dump_hdf5(data,path,wr='w',ext=None,options=None,execute=None,verbose=None,*
 		kwargs (dict): Additional loading keyword arguments
 	'''	
 
-	if isinstance(path,str):
-		with h5py.File(path,wr) as obj:
-			_dump_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
-	else:	
-		obj = path
+	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		_dump_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
 
 	return
@@ -853,14 +840,7 @@ def merge_hdf5(data,path,wr='a',ext=None,options=None,execute=None,verbose=None,
 		kwargs (dict): Additional loading keyword arguments
 	'''	
 
-	if isinstance(path,str):
-		with h5py.File(path,wr) as obj:
-			try:
-				_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
-			except:
-				pass
-	else:	
-		obj = path
+	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
 
 	return
@@ -881,14 +861,11 @@ def _merge_hdf5(data,path,wr='a',ext=None,options=None,execute=None,verbose=None
 	'''	
 	
 	wr = 'r'
-	if isinstance(data,str):
-		with h5py.File(data,wr) as obj:
-			for key in obj:
-				obj.copy(key,path)
-	else:
-		obj = data
-		for key in obj:
-			obj.copy(key,path)
+	size = len(path)
+	with (h5py.File(data,wr) if isinstance(data,str) else data) as obj:
+		for index,key in enumerate(obj):
+			name = str(size + index)
+			obj.copy(key,path,name)
 	
 	return	
 
@@ -1511,7 +1488,7 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
 
-		logger.log(info*verbose,'Merge : %s'%(relpath(name)))
+		logger.log(info*verbose,'Merge : %s -> %s'%(relpath(name),relpath(path)))
 
 	return
 
