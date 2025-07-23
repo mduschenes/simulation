@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,allclose,arrays,scalars,seeder,prod,nan,is_naninf
-from src.io import load,dump,join,split,edit,dirname,exists,glob,rm,mkdir
+from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,rm,mkdir
 
 # Logging
 # from src.utils import logconfig
@@ -134,6 +134,27 @@ def test_dump(path=None):
 
 	return
 
+
+def test_merge(path='.tmp.tmp'):
+
+	n = 3
+	g = 4
+	attrs = ['data','values','parameters']
+	shape = (2,3)
+	directory = '.tmp.tmp'
+
+	path = 'data.hdf5'
+	data = {join(directory,i,path):{
+			f'{i}.{j}':{attr:rand(shape) for attr in attrs}
+			for j in range(g)
+			}
+		for i in range(n)
+	}
+
+	for i in data:
+		dump(data[i],i)
+
+	return
 
 
 def test_hdf5(path='.tmp.tmp/data.hdf5'):
@@ -386,11 +407,15 @@ def test_glob(path=None,**kwargs):
 	return
 
 
+
+
+
 if __name__ == '__main__':
 	# test_load()
 	# test_dump()
+	test_merge()
 	# test_importlib()
-	test_glob()
+	# test_glob()
 	# test_hdf5()
 	# test_pd()
 	# test_parallel()
