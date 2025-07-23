@@ -12,13 +12,24 @@ PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,rand,allclose,arrays,scalars,seeder,prod,nan,is_naninf
-from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,rm,mkdir
+from src.utils import array,rand,allclose,arrays,iterables,scalars,seeder,prod,nan,is_naninf,is_scalar
+from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,rm,mkdir,cd
 
 # Logging
 # from src.utils import logconfig
 # conf = 'config/logging.conf'
 # logger = logconfig(__name__,conf=conf)
+
+def equalizer(a,b):
+
+	if isinstance(a,dict) and isinstance(b,dict):
+		return all(equalizer(a[i],b[j]) for i,j in zip(a,b) if i==j)
+	elif isinstance(a,iterables) and isinstance(b,iterables):
+		return all(equalizer(i,j) for i,j in zip(a,b))
+	elif (isinstance(a,scalars) or is_scalar(a)) and (isinstance(b,scalars) or is_scalar(b)):
+		return a == b
+	else:
+		return False
 
 
 def test_path(path='.tmp.tmp/data.hdf5'):
@@ -34,108 +45,64 @@ def test_path(path='.tmp.tmp/data.hdf5'):
 
 	return
 
-def test_load(path=None):
+def test_load_dump(path=None):
+
+	folder = '.tmp.tmp'
+	options = dict(verbose=True)
 	
-	#TODO: Add data/ directory for test data to load 
-	return
+	mkdir(folder)
 
-	kwargs = [
-		{
-		'path':'data/test/**/data.hdf5',
-		'default':{},
-		'wrapper':'df',
-		'type':pd.DataFrame,
-		},
-		{
-		'path':{'path':'data/test/-1/data.hdf5'},
-		'default':None,
-		'wrapper':'df',
-		'type':None,		
-		},
-		{
-		'path':{'path':'data/test/-1/data.hdf5'},
-		'default':{},
-		'wrapper':'df',
-		'type':dict,		
-		},		
-		{
-		'path':['data/test/**/data.hdf5'],
-		'default':{},
-		'wrapper':'df',
-		'type':pd.DataFrame,		
-		},
-		{
-		'path':['config/plot.json','config/process.json'],
-		'default':{},
-		'wrapper':None,
-		'type':list,
-		'subtype':dict,				
-		},						
-	]
-
-	for kwarg in kwargs:
-		typing = kwarg.pop('type')
-		subtyping = kwarg.pop('subtype',None)
-		data = load(**kwarg)
-		print(kwarg,type(data))
-		assert (typing is None and data is None) or isinstance(data,typing), "Incorrect loading %r"%(kwarg)
-		if isinstance(data,(list,dict)):
-			assert all(isinstance(datum,subtyping) for datum in data), "Incorrect multiple loading %r" %(kwarg)
-
-	return
-
-
-
-
-
-def test_dump(path=None):
-
-	kwargs = [
-		{
-		'data':load('data/data/0/data.hdf5'),
-		'path':'config/tmp/data.hdf5',
-		'default':{},
-		'wrapper':None,
-		},
-		{
-		'data':load('data/data/0/data.hdf5'),
-		'path':{'name':'config/tmp/data.hdf5','test':'config/tmp/tmp/test.hdf5'},
-		'default':{},
-		'wrapper':None,
-		},		
-		{
-		'data':load('config/plot.json'),
-		'path':['config/tmp/data.json','config/tmp/test.json'],
-		'default':{},
-		'wrapper':None,
-		},				
-	]
-
-
-
-	for kwarg in kwargs:
-
-		data = kwarg.pop('data',None)
-		path = kwarg.get('path',None)
-		dump(data,**kwarg)
-
-
-		msg = "Incorrect dumping %r"%(kwarg)
-
-		if isinstance(path,str):
-			assert exists(path),msg
-		elif isinstance(path,list):
-			assert all(exists(subpath) for subpath in path),msg
-		elif isinstance(path,dict):
-			assert all(exists(path[subpath]) for subpath in path),msg
+	with cd(folder):	
 	
-	path = 'config/tmp'
-	rm(path)
+
+		# module
+		path = 'src.functions.test'
+
+		obj = load(path,**options)
+
+		args = (1,2,3)
+		kwargs = dict(test='test')
+		assert callable(obj) and equalizer(obj(*args,**kwargs),(args,kwargs))
+
+
+		# json
+		path =  'settings.json'
+
+		obj = {'hi':[1.23e-12,False,None,'test string',[1,2,3],{'bye':array([1,2,3.])}],'other':[array([[1,-2,3]])]}
+
+		dump(obj,path,**options)
+
+		tmp = load(path,**options)
+
+		assert equalizer(tmp,obj)
+
+		rm(path)
+
+
+		# hdf5
+		path =  'data.hdf5'
+
+		obj = {'hi':rand((1,2,3)),'by':[array([[1,-2,3]])]}
+
+		dump(obj,path,**options)
+
+		tmp = load(path,**options)
+
+		assert equalizer(tmp,obj)
+
+		rm(path)
+
+
+	rm(folder)
+
+	print('Passed')
 
 	return
 
 
-def test_merge(path='.tmp.tmp'):
+
+def test_load_dump_merge(path='.tmp.tmp'):
+
 
 	n = 3
 	g = 4
@@ -153,6 +120,32 @@ def test_merge(path='.tmp.tmp'):
 
 	for i in data:
 		dump(data[i],i)
+
+
+	tmp = {}
+	for i in data:
+		tmp[i] = load(i)
+
+		assert equalizer(data[i],tmp[i])
+
+
+	path = 'settings.json'
+	data = {join(directory,i,path):{
+			f'{i}.{j}':{attr:rand(shape) for attr in attrs}
+			for j in range(g)
+			}
+		for i in range(n)
+	}
+
+	for i in data:
+		dump(data[i],i)
+
+
+	tmp = {}
+	for i in data:
+		tmp[i] = load(i)
+
+		assert equalizer(data[i],tmp[i])
 
 	return
 
@@ -411,9 +404,8 @@ def test_glob(path=None,**kwargs):
 
 
 if __name__ == '__main__':
-	# test_load()
-	# test_dump()
-	test_merge()
+	test_load_dump()
+	# test_load_dump_merge()
 	# test_importlib()
 	# test_glob()
 	# test_hdf5()

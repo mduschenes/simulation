@@ -725,6 +725,10 @@ def layout(iterable,sort=False,group=False):
 
 	return key
 
+
+def test(*args,**kwargs):
+	return args,kwargs
+
 # def func(data,*args,**kwargs):
 # 	if data is None:
 # 		data = {}

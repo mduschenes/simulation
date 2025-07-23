@@ -703,7 +703,7 @@ def _merge_json(data,path,wr='a',ext=None,options=None,execute=None,verbose=None
 		with open(data,wr) as obj:
 			obj = load_json(obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
 			for key in obj:
-				path[key] = file[key]
+				path[key] = obj[key]
 	else:
 		raise ValueError
 	
@@ -755,20 +755,20 @@ def _load_hdf5(path,wr='r',ext=None,options=None,execute=None,verbose=None,**kwa
 		names = path
 		for name in names:
 			key = name
-			if isinstance(obj[name], h5py._hl.group.Group):	
-				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
+			if isinstance(path[name], h5py._hl.group.Group):	
+				data[key] = _load_hdf5(path[name],wr=wr,ext=ext,**kwargs)
 			else:
-				data[key] = obj[name][...]
+				data[key] = path[name][...]
 				if data[key].dtype.kind in ['S','O']:
 					data[key] = data[key].astype(str)
 				
-		names = obj.attrs
+		names = path.attrs
 		for name in names:
 			key = name
-			data[key] = obj.attrs[name]
+			data[key] = path.attrs[name]
 
 	else:
-		data = obj.value
+		data = path.value
 	
 	return data
 
@@ -960,6 +960,8 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 	wrs = [wr,'r','rb'] if not lock else ['r','rb']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
+	verbose = verbose if verbose is not None else False
+
 	if execute is not False:
 		def decorator(func):
 			def wrapper(data,*args,**kwargs):
@@ -1038,7 +1040,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 
 		data[name] = datum
 
-		logger.log(info,'Load : %s'%(relpath(paths[name])))
+		logger.log(info*verbose,'Load : %s'%(relpath(paths[name])))
 
 	wrappers = []
 	for wrapper in kwargs['wrapper']:
@@ -1176,6 +1178,9 @@ def _load(path,wr,ext,options=None,execute=None,verbose=None,**kwargs):
 	Returns:
 		data (object): Object
 	'''	
+	
+	verbose = verbose if verbose is not None else False
+
 	wrappers = kwargs.pop('wrapper',None)
 
 	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
@@ -1191,7 +1196,7 @@ def _load(path,wr,ext,options=None,execute=None,verbose=None,**kwargs):
 			obj = os.path.basename(path).strip(delimiter)
 			data = getattr(importlib.import_module(obj),module)
 		except (SyntaxError,) as exception:
-			logger.log(info,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+			logger.log(info*verbose,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 			exception = SyntaxError
 			raise exception
 		except Exception as exception:
@@ -1260,6 +1265,8 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,func=None,lock=None,b
 	'''
 	wrs = [wr,'w','wb'] if not lock else ['a','ab']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
+
+	verbose = verbose if verbose is not None else False
 
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})
@@ -1356,7 +1363,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,func=None,lock=None,b
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
 		
-		logger.log(info,'Dump : %s'%(relpath(paths[name])))
+		logger.log(info*verbose,'Dump : %s'%(relpath(paths[name])))
 
 	return
 
@@ -1447,6 +1454,8 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 	wrs = [wr,'a','ab'] if not lock else ['a','ab']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
+	verbose = verbose if verbose is not None else False
+
 	if data is None or not isinstance(data,(str,)):
 		return default
 
@@ -1493,7 +1502,7 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
 
-		logger.log(info,'Merge : %s'%(relpath(data[name])))
+		logger.log(info*verbose,'Merge : %s'%(relpath(data[name])))
 
 	return
 
