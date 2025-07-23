@@ -406,7 +406,7 @@ def test_scinotation(path=None,tol=None):
 	assert string == _string, "%s != %s"%(string,_string)
 
 	number = 2.1e-5
-	_string = r'2.1\cdot10^{-5}'
+	_string = r'2.1 \cdot 10^{-5}'
 	kwargs = dict(decimals=2,base=10,order=20,zero=True,one=False,scilimits=[-1,5],error=None,usetex=False)
 	string = scinotation(number,**kwargs)
 	assert string == _string, "%s != %s"%(string,_string)

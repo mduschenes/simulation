@@ -32,7 +32,7 @@ def equalizer(a,b):
 		return False
 
 
-def test_path(path='.tmp.tmp/data.hdf5'):
+def test_path(path='.tmp/data.hdf5'):
 	new = edit(
 			path=path,
 			directory=None,
@@ -47,12 +47,12 @@ def test_path(path='.tmp.tmp/data.hdf5'):
 
 def test_load_dump(path=None):
 
-	folder = '.tmp.tmp'
+	directory = '.tmp'
 	options = dict(verbose=True)
 	
-	mkdir(folder)
+	mkdir(directory)
 
-	with cd(folder):	
+	with cd(directory):	
 	
 
 		# module
@@ -93,7 +93,7 @@ def test_load_dump(path=None):
 		rm(path)
 
 
-	rm(folder)
+	rm(directory)
 
 	print('Passed')
 
@@ -101,60 +101,57 @@ def test_load_dump(path=None):
 
 
 
-def test_load_dump_merge(path='.tmp.tmp'):
-
+def test_load_dump_merge(path='.tmp'):
 
 	n = 3
 	g = 4
 	attrs = ['data','values','parameters']
 	shape = (2,3)
-	directory = '.tmp.tmp'
+	key = seeder(123)
+	directory = '.tmp'
+	paths = ['settings.json','data.hdf5']
+	options = dict(verbose=True)
 
-	path = 'data.hdf5'
-	data = {join(directory,i,path):{
-			f'{i}.{j}':{attr:rand(shape) for attr in attrs}
-			for j in range(g)
+	mkdir(directory)
+
+	with cd(directory):
+
+		for path in paths:
+			
+			obj = {join(i,path):{
+					f'{i}.{j}':{attr:rand(shape,key=key) for attr in attrs}
+					for j in range(g)
+					}
+				for i in range(n)
 			}
-		for i in range(n)
-	}
 
-	for i in data:
-		dump(data[i],i)
-
-
-	tmp = {}
-	for i in data:
-		tmp[i] = load(i)
-
-		assert equalizer(data[i],tmp[i])
+			for i in obj:
+				dump(obj[i],i,**options)
+				tmp = load(i,**options)
+				assert equalizer(obj[i],tmp)
 
 
-	path = 'settings.json'
-	data = {join(directory,i,path):{
-			f'{i}.{j}':{attr:rand(shape) for attr in attrs}
-			for j in range(g)
-			}
-		for i in range(n)
-	}
+			data = join('*',path)
+			merge(data,path,**options)
 
-	for i in data:
-		dump(data[i],i)
+			data = load(path)
+
+			assert equalizer(data,obj)
 
 
-	tmp = {}
-	for i in data:
-		tmp[i] = load(i)
-
-		assert equalizer(data[i],tmp[i])
+	rm(directory)
+	
+	print('Passed')
 
 	return
 
 
-def test_hdf5(path='.tmp.tmp/data.hdf5'):
+def test_hdf5(path='.tmp/data.hdf5'):
 
 	g = 3
 	n = 2
 	shape = (2,3)
+	key = seeder(123)
 	groups = ['%d'%(i) for i in range(g)]
 	instances = ['%d'%(i) for i in range(n)]
 	datasets = ['data','values','parameters']
@@ -163,7 +160,7 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 	data = {
 		group: {
 			instance:{
-				**{attr: rand(shape) for attr in datasets},
+				**{attr: rand(shape,key=key) for attr in datasets},
 				**{attr: attributes[attr] for attr in attributes}
 				}
 			for instance in instances
@@ -208,7 +205,7 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
 	return
 
-def test_pd(path='.tmp.tmp/data.hdf5'):
+def test_pd(path='.tmp/data.hdf5'):
 
 	directory = split(path,directory=True)
 	file = split(path,file_ext=True)
@@ -404,8 +401,8 @@ def test_glob(path=None,**kwargs):
 
 
 if __name__ == '__main__':
-	test_load_dump()
-	# test_load_dump_merge()
+	# test_load_dump()
+	test_load_dump_merge()
 	# test_importlib()
 	# test_glob()
 	# test_hdf5()

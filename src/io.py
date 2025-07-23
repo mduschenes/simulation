@@ -667,16 +667,19 @@ def merge_json(data,path,wr='a',ext=None,options=None,execute=None,verbose=None,
 		verbose (bool,int): Verbosity		
 		kwargs (dict): Additional loading keyword arguments
 	'''
-	
+
 	if isinstance(path,str):
 	
-		wr = 'r'
+		wr = 'r%s'%(wr[1:]) if wr is not None else wr
 		with open(path,wr) as obj:
-			tmp = load_json(obj,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
-	
+			try:
+				tmp = load_json(obj,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
+			except:
+				tmp = {}	
+
 		_merge_json(data,tmp,wr=wr,ext=ext,options=options['load'],execute=execute,verbose=verbose,**kwargs)
 
-		wr = 'w'
+		wr = 'w%s'%(wr[1:]) if wr is not None else wr
 		with open(path,wr) as obj:
 			dump_json(tmp,obj,wr=wr,ext=ext,options=options['dump'],execute=execute,verbose=verbose,**kwargs)
 	else:
@@ -849,10 +852,13 @@ def merge_hdf5(data,path,wr='a',ext=None,options=None,execute=None,verbose=None,
 		verbose (bool,int): Verbosity		
 		kwargs (dict): Additional loading keyword arguments
 	'''	
-	
+
 	if isinstance(path,str):
 		with h5py.File(path,wr) as obj:
-			_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
+			try:
+				_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
+			except:
+				pass
 	else:	
 		obj = path
 		_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
@@ -1473,12 +1479,12 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 		for name in data
 		for path in natsorted(glob(data[name],default=(None if split(data[name],ext=True) in exts else data[name])))
 		}
-	
+
 	for name in data:
 
 		name = data[name]
 
-		if not isinstance(data,str):
+		if not isinstance(name,str):
 			continue
 	
 		name = os.path.abspath(os.path.expandvars(os.path.expanduser(name)))
@@ -1489,6 +1495,9 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 			with Backup(backup=backup,path=path):
 
 				for wr in wrs:
+
+					wr = wr if exists(path) else 'w%s'%(wr[1:]) if wr is not None else wr
+
 					try:
 						_merge(name,path,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
 						break
@@ -1502,7 +1511,7 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
 
-		logger.log(info*verbose,'Merge : %s'%(relpath(data[name])))
+		logger.log(info*verbose,'Merge : %s'%(relpath(name)))
 
 	return
 
