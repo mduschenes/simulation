@@ -4,7 +4,10 @@
 import pytest
 import os,sys
 
-import pandas as pd
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -12,8 +15,8 @@ PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,rand,allclose,arrays,iterables,scalars,seeder,prod,nan,is_naninf,is_scalar
-from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,rm,mkdir,cd
+from src.utils import array,nparray,rand,allclose,linspace,logspace,absolute,difference,log,arrays,dicts,iterables,scalars,seeder,prod,nan,is_naninf,is_scalar,nan
+from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,cp,rm,mkdir,cd
 
 # Logging
 # from src.utils import logconfig
@@ -22,7 +25,7 @@ from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,rm,mkdir,
 
 def equalizer(a,b):
 
-	if isinstance(a,dict) and isinstance(b,dict):
+	if isinstance(a,dicts) and isinstance(b,dicts):
 		return all(equalizer(a[i],b[j]) for i,j in zip(a,b) if i==j)
 	elif isinstance(a,iterables) and isinstance(b,iterables):
 		return all(equalizer(i,j) for i,j in zip(a,b))
@@ -148,18 +151,31 @@ def test_load_dump_merge(path='.tmp'):
 	return
 
 
-def test_load_dump_execute(path='.tmp'):
+def test_load_dump_df(path='.tmp'):
 
-	n = 3
-	g = 4
-	l = 3
-	attrs = ['data','values','parameters'][:l]
-	shape = (3,2)
-	key = seeder(123,size=(g,n,l))
+	n = 6
+	g = 6
+	l = 2
+
+	scale = 'log'
+	base = 10
+	number = 10
+
+	attrs = dict(
+		data=lambda index,shape,key:rand(shape,random='choice',array=array({'linear':linspace(0,1,number),'log':logspace(-20,0,number)}[scale]),key=key,dtype=float),
+		parameters=lambda index,shape,key:rand(shape,random='randint',bounds=[0,g],key=key,dtype=int)
+		)
+	shape = dict(data=(3,100),parameters=(3,))
+	key = seeder(123,size=(n,g,l))
 	directory = '.tmp'
 	paths = ['data.hdf5']
-	options = dict(verbose=True)
-	opts = dict(wrapper='df')
+	options = dict(verbose=False)
+	opts = dict(chunk=2,wrapper='df')
+
+	func = load('src.functions.func_hist')
+	arguments = tuple()
+	keywords = dict(bins=2*number,range={'linear':[0,1],'log':[1e-20,1e0]}[scale],scale=scale,base=base,density='probability')
+	variables = dict(x='data',label='parameters')
 
 	mkdir(directory)
 
@@ -168,7 +184,7 @@ def test_load_dump_execute(path='.tmp'):
 		for path in paths:
 			
 			obj = {join(i,path):{
-					f'{i}.{j}':{attr:rand(shape,key=key[i][j][k]) for k,attr in enumerate(attrs)}
+					f'{i}.{j}':{attr:attrs[attr](i,shape=shape[attr],key=key[i][j][k]) for k,attr in enumerate(attrs)}
 					for j in range(g)
 					}
 				for i in range(n)
@@ -177,17 +193,100 @@ def test_load_dump_execute(path='.tmp'):
 			for i in obj:
 				dump(obj[i],i,**options)
 
-			data = join('*',path)
-			merge(data,path,**options)
+			plots = {}
+			for data in load(join('*',path),**{**options,**opts}):
+				groups = data.groupby(variables['label'])
+				for group in groups.groups:
+					key = group
+					value = groups.get_group(group)
+					x,y = func(value[variables['x']],*arguments,**keywords)
+					if key not in plots:
+						plots[key] = {}
+						plots[key]['x'] = x
+						plots[key]['y'] = y
+						plots[key]['label'] = key
+					plots[key]['x'] = x
+					plots[key]['y'] += y
 
-			data = load(path,**{**options,**opts})
+			mplstyle = '../config/plot.mplstyle'
+			with matplotlib.style.context(mplstyle):
 
-			print(data)
+				fig,ax = plt.subplots()
 
-			# assert equalizer(data,obj)
+				for index,key in enumerate(plots):
+
+					x = plots[key]['x']
+					y = plots[key]['y']
+
+					size = len(plots)
+
+					if scale in ['linear']:
+						z = array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
+						w = 1/size
+						
+						diff = difference(z[:-1])
+						step = diff*(-1/2 + index*w)
+						
+						x += step
+						width = diff*w
+					
+					elif scale in ['log']:
+						z = array([*log(2*x[:1]/x[1:2]),*log(x),*log(2*x[-2:-1]/x[-1:])])/log(base)
+
+						print(z)
+
+						w = 1/size
+
+						diff = difference(z[:-1])
+						step = base**(diff*(-1/2 + index*w))
+						
+						x *= step
+						width = base**(z[1:-1]*(1 - w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
+						# width = 0.3  # 1 for full width, closer to 0 for thinner bars
+						# lefts = [x1 ** (1 - width / 2) * x0 ** (width / 2) for x0, x1 in zip(padded_x[:-2], padded_x[1:-1])]
+						# rights = [x0 ** (1 - width / 2) * x1 ** (width / 2) for x0, x1 in zip(padded_x[1:-1], padded_x[2:])]
+						# widths = [r - l for l, r in zip(lefts, rights)]
 
 
-	rm(directory)
+					y = y
+
+					args = (x,y)
+					kwargs = dict(
+						label='$%s$'%(plots[key]['label']),
+						color=getattr(plt.cm,'viridis')((index+1)/(len(plots)+1)),
+						width=width,
+						linewidth=2,
+						edgecolor='black',
+						align='center'
+						)
+					ax.bar(*args,**kwargs)
+
+				ax.set_xlabel(xlabel='$\\textrm{Probability}$')
+				ax.set_ylabel(ylabel='$\\textrm{Count}$')
+
+				if scale in ['linear']:
+					ax.set_xscale(value=scale)
+					ax.set_xlim(xmin=-0.05,xmax=1.05)
+					ax.set_xticks(ticks=[i for i in [0,0.2,0.4,0.6,0.8,1]])
+					ax.set_xticklabels(labels=['$%s$'%(i) for i in [0,0.2,0.4,0.6,0.8,1]])
+				elif scale in ['log']:
+					ax.set_xscale(value=scale)
+					ax.set_xlim(xmin=1e-21,xmax=5e0)
+					ax.set_xticks(ticks=[i for i in [1e-20,1e-16,1e-12,1e-8,1e-4,1e0]])
+					ax.set_xticklabels(labels=['$%s^{%s}$'%(base,i) for i in [-20,-16,-12,-8,-4,0]])
+				ax.set_ylim(ymin=-0.05,ymax=1.05)
+				ax.set_yticks(ticks=[0,0.2,0.4,0.6,0.8,1])
+				ax.set_yticklabels(labels=['$%s$'%(i) for i in [0,0.2,0.4,0.6,0.8,1]])					
+
+				ax.legend(title='$\\textrm{Parameter}$',ncol=1,loc='upper right')
+
+				fig.set_size_inches(w=20,h=16)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname='plot.bar.pdf',bbox_inches='tight',pad_inches=0.5)
+
+
+	# rm(directory)
 	
 	print('Passed')
 
@@ -451,7 +550,7 @@ def test_glob(path=None,**kwargs):
 if __name__ == '__main__':
 	# test_load_dump()
 	# test_load_dump_merge()
-	test_load_dump_execute()
+	test_load_dump_df()
 	# test_importlib()
 	# test_glob()
 	# test_hdf5()

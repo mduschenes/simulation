@@ -1870,8 +1870,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value = False
 					kwargs[attr][prop] = value
 
-				def func(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
-					instance = 'hist'
+				def func(obj,attr,instance,objs,index,indices,shape,count,_kwargs,kwargs):
 					y,x,plot = objs[-1]['obj']
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -1886,9 +1885,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 							}
 
-						x = (x[:-1]+x[1:])/2
-						xerr = None
+						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+						if any(i is None or i in ['linear']):
+							x = (x[:-1]+x[1:])/2
+						elif any(i in ['log','symlog']):
+							x = (x[:-1]*x[1:])**(1/2)
 						y = y
+						xerr = None
 						yerr = None
 
 						if callable(function):
@@ -1906,11 +1909,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for plot in plots:
 					functions[plot] = func
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[dim-1:dim]])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if '%s%s'%(k,s) in kwargs[attr]])
 
 				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES,'height']],*[]])
 
 				call = len(args)>0	
 
@@ -2644,7 +2647,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for plot in functions:
 				try:
-					functions[plot](obj,plot,objs,index,indices,shape,count,_kwargs,kwargs)	
+					functions[plot](obj,plot,attr,objs,index,indices,shape,count,_kwargs,kwargs)	
 				except Exception as exception:
 					log(exception)
 					pass

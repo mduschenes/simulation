@@ -22,12 +22,12 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,zeros,rand,random,randint,seeded,finfo,texify,scinotation
+from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import grouper,conditions,flatten
 from src.utils import orng as rng
-from src.utils import arrays,scalars,nonzero,delim,nan
+from src.utils import arrays,scalars,integers,floats,nonzero,delim,nan
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
@@ -128,7 +128,7 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
-def func_samples(data):
+def func_samples(data,*args,**kwargs):
 	for i in data:
 		if isinstance(i,tuple) and i and any(isinstance(j,tuple) for j in i):
 			data = tuple(k for i in data for j in i for k in j)
@@ -137,8 +137,34 @@ def func_samples(data):
 		break
 	return data
 
-def func_samples_err(data):
+def func_samples_err(data,*args,**kwargs):
 	data = tuple((None,))
+	return data
+
+
+def func_hist(data,*args,**kwargs):
+	data = func_samples(data,*args,**kwargs)
+	x,y = histogram(data,*args,**kwargs)
+	return x,y
+
+def func_hist_err(data,*args,**kwargs):
+	data = tuple((None,))
+	return data
+
+def func_hist_x(data,*args,**kwargs):
+	x,y = func_hist(data,*args,**kwargs)
+	return x
+
+def func_hist_y(data,*args,**kwargs):
+	x,y = func_hist(data,*args,**kwargs)
+	return y
+
+def func_hist_xerr(data,*args,**kwargs):
+	data = func_hist_err(data,*args,**kwargs)
+	return data
+
+def func_hist_yerr(data,*args,**kwargs):
+	data = func_hist_err(data,*args,**kwargs)
 	return data
 
 def func_y(data):

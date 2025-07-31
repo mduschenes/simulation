@@ -19,7 +19,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,concatenate,padding
+from src.utils import array,concatenate,padding,slicer
 from src.utils import to_repr,to_eval
 from src.utils import returnargs,isinstances
 from src.utils import arrays,scalars,iterables,nan,delim
@@ -300,7 +300,6 @@ def cp(source,destination):
 	'''
 	mkdir(destination)
 	shutil.copy2(source,destination)
-
 	return
 
 def split(path,directory=False,file=False,ext=False,directory_file_ext=False,directory_file=False,file_ext=False,abspath=None,delimiter=delimiter):
@@ -702,8 +701,9 @@ def _merge_json(data,path,wr='a',ext=None,options=None,execute=None,verbose=None
 	wr = 'r'
 	with (open(data,wr) if isinstance(data,str) else data) as obj:
 		obj = load_json(obj,wr=wr,ext=ext,options=options,execute=execute,verbose=verbose,**kwargs)
-		for index,key in enumerate(obj):
-			path[key] = obj[key]
+		for key in obj:
+			name = key
+			path[name] = obj[key]
 	
 	return	
 
@@ -863,8 +863,10 @@ def _merge_hdf5(data,path,wr='a',ext=None,options=None,execute=None,verbose=None
 	wr = 'r'
 	size = len(path)
 	with (h5py.File(data,wr) if isinstance(data,str) else data) as obj:
-		for index,key in enumerate(obj):
-			name = str(size + index)
+		for key in obj:
+			name = key
+			if name in path:
+				del path[name]
 			obj.copy(key,path,name)
 	
 	return	
@@ -919,7 +921,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
+def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
 	'''
 	Load objects from path
 	Args:
@@ -927,6 +929,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
+		chunk (int): Size of chunks of paths
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		func (callable): Function for data
 		lock (bool,str): Lock file of loading
@@ -939,23 +942,18 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 	Returns:
 		data (object,iterable[object],dict[str,object]): Object
 	'''
+
+	if chunk:
+		return (
+			load(path,wr=wr,default=default,delimiter=delimiter,chunk=None,wrapper=wrapper,func=func,lock=lock,backup=backup,timeout=timeout,options=options,execute=execute,verbose=verbose,**kwargs) 
+			for path in slicer((name for names in ([path] if isinstance(path,str) else path) for name in glob(names)),chunk)
+			)
+
 	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb'] if not lock else ['r','rb']
 	wrapper = wrapper if isinstance(wrapper,iterables) else [wrapper]
 
 	verbose = verbose if verbose is not None else False
-
-	if execute is not False:
-		def decorator(func):
-			def wrapper(data,*args,**kwargs):
-				return func(data,*args,**kwargs)
-			return wrapper
-	else:
-		def decorator(func):
-			def wrapper(data,*args,**kwargs):
-				data = {path:data[path]() if callable(data[path]) else data[path] for path in data}
-				return func(data,*args,**kwargs)
-			return wrapper
 
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})	
@@ -977,7 +975,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,wrapper=None,func=None,loc
 		for name in paths
 		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
 		}
-	
+
 	funcs = {name:func if callable(func) else func.get(paths[name]) if isinstance(func,dict) else None for name in paths}
 
 	data = {}
@@ -1228,7 +1226,7 @@ def _load(path,wr,ext,options=None,execute=None,verbose=None,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
+def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
 	'''
 	Dump objects to path
 	Args:
@@ -1236,6 +1234,7 @@ def dump(data,path,wr='w',delimiter=delimiter,wrapper=None,func=None,lock=None,b
 		path (str,iterable[str],dict[str,str]): Path
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
+		chunk (int): Size of chunks of paths		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		func (callable): Function for data		
 		lock (bool,str): Lock file of dumping
@@ -1414,7 +1413,7 @@ def _dump(data,path,wr,ext,options=None,execute=None,verbose=None,**kwargs):
 	return
 
 
-def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
+def merge(data,path,wr='a',delimiter=delimiter,chunk=None,wrapper=None,func=None,lock=None,backup=None,timeout=None,options=None,execute=None,verbose=None,**kwargs):
 	'''
 	Merge objects to path
 	Args:
@@ -1422,6 +1421,7 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 		path (str): Path to merge object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
+		chunk (int): Size of chunks of paths		
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		func (callable): Function for data
 		lock (bool,str): Lock file of merging
@@ -1439,8 +1439,8 @@ def merge(data,path,wr='a',delimiter=delimiter,wrapper=None,func=None,lock=None,
 
 	verbose = verbose if verbose is not None else False
 
-	if data is None or not isinstance(data,(str,)):
-		return default
+	if data is None or not isinstance(data,(str,iterables)):
+		return
 
 	if isinstance(data,str):
 		data = [data]

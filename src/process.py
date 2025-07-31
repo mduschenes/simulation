@@ -1454,8 +1454,13 @@ def apply(keys,data,plots,processes,verbose=None):
 				for func in funcs[function][axes]:
 					
 					obj = funcs[function][axes][func]
-					
-					if isinstance(obj,str):
+					arguments = []
+					keywords = {}
+
+					if isinstance(obj,(str,dict)):
+
+						if isinstance(obj,dict):
+							obj,arguments,keywords = obj['func'],obj['args'],obj['kwargs']
 						
 						if callable(getattr(data,obj,None)):
 							pass
@@ -1466,9 +1471,7 @@ def apply(keys,data,plots,processes,verbose=None):
 
 					if callable(obj):
 
-						if args is None:
-							arguments = ()
-						else:
+						if not arguments and args is not None:
 							arguments = args
 						
 						if isinstance(arguments,dict) and any(i in arguments for i in funcs):
@@ -1481,9 +1484,7 @@ def apply(keys,data,plots,processes,verbose=None):
 						if isinstance(arguments,dict):
 							arguments = ()
 						
-						if kwargs is None:
-							keywords = {}
-						else:
+						if not keywords and kwargs is not None:
 							keywords = kwargs
 
 						if isinstance(keywords,dict) and any(i in keywords for i in funcs):

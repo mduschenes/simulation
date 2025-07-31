@@ -7,6 +7,7 @@ from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
 from math import prod
 
 import inspect
+import typing
 from functools import partial,wraps,reduce
 from natsort import natsorted
 import random
@@ -225,10 +226,11 @@ if backend in ['jax','jax.autograd','quimb']:
 	strings = (str,)
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
-	arrays = (np.ndarray,onp.ndarray,)
+	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)	
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,pd.DataFrame)	
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -267,10 +269,11 @@ elif backend in ['autograd']:
 	strings = (str,)
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
-	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,)
+	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
 	
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)	
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,pd.DataFrame,)	
 	nulls = (Null,)
 	
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -300,10 +303,11 @@ elif backend in ['numpy']:
 	strings = (str,)
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
-	arrays = (np.ndarray,onp.ndarray,)
+	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 	
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,pd.DataFrame,)
 	nulls = (Null,)
 	
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -4769,9 +4773,9 @@ if backend in ['jax','quimb']:
 				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
-				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
 				kwds = {**dict(key=key,shape=shape),
-						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
 				return out			
@@ -5184,9 +5188,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
-				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
 				kwds = {**dict(key=key,shape=shape),
-						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
 				return out					
@@ -10521,6 +10525,20 @@ def vstack(a):
 	'''
 	return np.vstack(a)
 
+def concat(df,*args,**kwargs):
+	'''
+	Concatenate dataframes
+	Args:
+		df (dataframe): dataframes to concatenate
+		args (iterable): Positional arguments
+		kwargs (dict): Keyword arguments
+	Returns:
+		df (dataframe): Concatenated dataframe
+	'''
+	options = dict(ignore_index=True)
+	options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+	return pd.concat(df,**options)
+
 def roll(a,shift,axis=0):
 	'''
 	Shift array along axis (periodically)
@@ -10606,7 +10624,7 @@ def interleaver(*iterable):
 
 
 @jit
-def difference(a,n=1,axis=-1):
+def difference(a,n=1,axis=-1,**kwargs):
 	'''
 	Get difference of array elements
 	Args:
@@ -10614,7 +10632,7 @@ def difference(a,n=1,axis=-1):
 		n (int): Step of differences
 		axis (int): Axis of differences
 	'''
-	return np.diff(a,n=n,axis=axis)
+	return np.diff(a,n=n,axis=axis,**kwargs)
 
 @jit
 def diag(a):
@@ -10793,6 +10811,22 @@ def permutations(*iterables,repeat=None):
 		repeat = 1
 
 	return itertools.product(*iterables,repeat=repeat)
+
+def slicer(iterable,size):
+	'''
+	Get slices of iterable
+	Args:
+		iterable (iterable): Iterables to slice
+		size (int): Slice size of iterable
+	Returns:
+		slice (generator): slice of iterable
+	'''
+	for item in iterable:
+		def iterate(item):
+			yield item
+			for item in itertools.islice(iterable,size-1):
+				yield item
+		yield iterate(item)
 
 def sortby(iterable,key=None,options=None):
 	'''
@@ -13096,6 +13130,51 @@ def projector(i,shape):
 	projector = inplace(projector,i,1)
 
 	return projector
+
+
+def histogram(a,bins=None,range=None,scale=None,base=None,density=None,**kwargs):
+	'''
+	Get histogram of array
+	Args:
+		a (array): array of data
+		bins (int,iterable): bins of data, default 100
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		density (str): density of data, allowed strings in ['probability']
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (array): bins
+		y (array): counts
+	'''
+
+	if bins is None or isinstance(bins,integers):
+		bins = 100 if bins is None else bins
+		bins += 1
+		if scale is None or scale in ['linear']:
+			base = 10 if base is None else base
+			range = [0,1] if range is None else range
+			bins = linspace(*range,bins)[:]
+		elif scale in ['log','symlog']:
+			base = 10 if base is None else base
+			range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
+			bins = logspace(*range,bins,base=base)
+
+	y,x = np.histogram(asarray(a),bins=bins,range=range,**kwargs)
+
+	if scale is None or scale in ['linear']:
+		x = array((x[:-1]+x[1:])/2)
+	elif scale in ['log','symlog']:
+		x = array((x[:-1]*x[1:])**(1/2))
+
+	if density is None:
+		pass
+	elif density in ['probability']:
+		y /= maximums(addition(y),1)
+	
+	y = inplace(y,y==0,nan)
+
+	return x,y
 
 def bloch(state,path=None):
 	'''
