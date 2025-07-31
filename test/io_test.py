@@ -15,7 +15,7 @@ PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,nparray,rand,allclose,linspace,logspace,absolute,difference,log,arrays,dicts,iterables,scalars,seeder,prod,nan,is_naninf,is_scalar,nan
+from src.utils import array,nparray,rand,allclose,linspace,logspace,absolute,difference,maximums,addition,inplace,log,arrays,dicts,iterables,scalars,seeder,prod,nan,is_naninf,is_scalar,nan
 from src.io import load,dump,merge,join,split,edit,dirname,exists,glob,cp,rm,mkdir,cd
 
 # Logging
@@ -154,12 +154,14 @@ def test_load_dump_merge(path='.tmp'):
 def test_load_dump_df(path='.tmp'):
 
 	n = 6
-	g = 6
+	g = 4
 	l = 2
 
 	scale = 'log'
+	scale = 'linear'
 	base = 10
-	number = 10
+	number = 5
+	density = 'probability'
 
 	attrs = dict(
 		data=lambda index,shape,key:rand(shape,random='choice',array=array({'linear':linspace(0,1,number),'log':logspace(-20,0,number)}[scale]),key=key,dtype=float),
@@ -174,7 +176,7 @@ def test_load_dump_df(path='.tmp'):
 
 	func = load('src.functions.func_hist')
 	arguments = tuple()
-	keywords = dict(bins=2*number,range={'linear':[0,1],'log':[1e-20,1e0]}[scale],scale=scale,base=base,density='probability')
+	keywords = dict(bins=2*number,range={'linear':[0,1],'log':[1e-20,1e0]}[scale],scale=scale,base=base,density=density)
 	variables = dict(x='data',label='parameters')
 
 	mkdir(directory)
@@ -207,6 +209,7 @@ def test_load_dump_df(path='.tmp'):
 						plots[key]['label'] = key
 					plots[key]['x'] = x
 					plots[key]['y'] += y
+				del data,groups
 
 			mplstyle = '../config/plot.mplstyle'
 			with matplotlib.style.context(mplstyle):
@@ -219,44 +222,47 @@ def test_load_dump_df(path='.tmp'):
 					y = plots[key]['y']
 
 					size = len(plots)
+					length = size//2
 
-					if scale in ['linear']:
-						z = array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
-						w = 1/size
+					if size > 1:
+						if scale in ['linear']:
+							z = array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
+							w = 1/(size+2*length)
+							
+							diff = difference(z[:-1])
+							step = diff*(-1/2 + (index+length)*w)
+							
+							x += step
+							width = diff*w
 						
-						diff = difference(z[:-1])
-						step = diff*(-1/2 + index*w)
-						
-						x += step
-						width = diff*w
-					
-					elif scale in ['log']:
-						z = array([*log(2*x[:1]/x[1:2]),*log(x),*log(2*x[-2:-1]/x[-1:])])/log(base)
+						elif scale in ['log']:
+							z = array([*log(x[:1]**2/x[1:2]),*log(x),*log(x[-2:-1]**2/x[-1:])])/log(base)
 
-						print(z)
+							w = 1/(size+2*length)
 
-						w = 1/size
+							diff = difference(z[:-1])
+							step = base**(diff*(-1/2 + (index+length)*w))
+							
+							x *= step
 
-						diff = difference(z[:-1])
-						step = base**(diff*(-1/2 + index*w))
-						
-						x *= step
-						width = base**(z[1:-1]*(1 - w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
-						# width = 0.3  # 1 for full width, closer to 0 for thinner bars
-						# lefts = [x1 ** (1 - width / 2) * x0 ** (width / 2) for x0, x1 in zip(padded_x[:-2], padded_x[1:-1])]
-						# rights = [x0 ** (1 - width / 2) * x1 ** (width / 2) for x0, x1 in zip(padded_x[1:-1], padded_x[2:])]
-						# widths = [r - l for l, r in zip(lefts, rights)]
+							z = array([*log(x[:1]**2/x[1:2]),*log(x),*log(x[-1:]**2/x[-2:-1])])/log(base)
 
+							width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
 
-					y = y
+					if density is None:
+						pass
+					elif density in ['probability']:
+						y /= maximums(addition(y),1)
+					y = inplace(y,y==0,nan)
 
 					args = (x,y)
 					kwargs = dict(
 						label='$%s$'%(plots[key]['label']),
 						color=getattr(plt.cm,'viridis')((index+1)/(len(plots)+1)),
+						alpha=0.7,
 						width=width,
 						linewidth=2,
-						edgecolor='black',
+						edgecolor=matplotlib.colors.colorConverter.to_rgba('black', alpha=0.6),
 						align='center'
 						)
 					ax.bar(*args,**kwargs)
@@ -278,15 +284,18 @@ def test_load_dump_df(path='.tmp'):
 				ax.set_yticks(ticks=[0,0.2,0.4,0.6,0.8,1])
 				ax.set_yticklabels(labels=['$%s$'%(i) for i in [0,0.2,0.4,0.6,0.8,1]])					
 
+				ax.grid(visible=True,which='major',zorder=0)
+				ax.set_axisbelow(b=True)
+
 				ax.legend(title='$\\textrm{Parameter}$',ncol=1,loc='upper right')
 
-				fig.set_size_inches(w=20,h=16)
+				fig.set_size_inches(w=20,h=20)
 				fig.subplots_adjust()
 				fig.tight_layout()
 				fig.savefig(fname='plot.bar.pdf',bbox_inches='tight',pad_inches=0.5)
 
 
-	# rm(directory)
+	rm(directory)
 	
 	print('Passed')
 

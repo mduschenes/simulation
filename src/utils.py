@@ -13171,8 +13171,6 @@ def histogram(a,bins=None,range=None,scale=None,base=None,density=None,**kwargs)
 		pass
 	elif density in ['probability']:
 		y /= maximums(addition(y),1)
-	
-	y = inplace(y,y==0,nan)
 
 	return x,y
 
