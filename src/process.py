@@ -20,9 +20,9 @@ for PATH in PATHS:
 from src.utils import argparser,copy
 from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
-from src.utils import e,pi,nan,scalars,integers,floats,iterables,arrays,delim,null,Null,scinotation
+from src.utils import e,pi,nan,arrays,scalars,integers,floats,iterables,dicts,delim,null,Null,scinotation
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
-from src.io import load,dump,join,split,exists,glob
+from src.io import load,dump,merge,join,split,exists,glob
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,OBJS,SPECIAL
@@ -339,15 +339,23 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 	# Load process plots
 	path = join(plots,root=pwd) if isinstance(plots,str) else None
-	default = None if isinstance(plots,str) else plots
-	wrapper = None	
-	plots = load(path,default=default,wrapper=wrapper,verbose=verbose)
+	options = dict(
+		default = None if isinstance(plots,str) else plots,
+		wrapper = None,
+		transform = None,
+		verbose = verbose,
+		)
+	plots = load(path,**options)
 
 	# Load process processes
 	path = join(processes,root=pwd) if isinstance(processes,str) else None
-	default = None if isinstance(processes,str) else processes
-	wrapper = None
-	processes = load(path,default=default,wrapper=wrapper,verbose=verbose)
+	options = dict(
+		default = None if isinstance(processes,str) else processes,
+		wrapper = None,
+		transform = None,
+		verbose = verbose,
+		)
+	processes = load(path,**options)
 	
 
 	# Parse process processes and plots
@@ -397,7 +405,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'dump':None,
 		'tmp':True,
 		'reset':None,
-		'convert':None,
+		'chunk':None,
 		'patterns':None,
 		'join':None,
 		'plot':None,
@@ -409,12 +417,13 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 	# Get paths
 	path = data if isinstance(data,str) else processes.get('path') if isinstance(processes.get('path'),str) else None
+	ext = {'merge':None}.get(processes['tmp'],'tmp')
 	processes['path'] = {} if not isinstance(processes.get('path'),dict) else processes.get('path')
 	processes['file'],processes['directory'],processes['ext'] = {},{},{}
 	processes['cwd'],processes['pwd'] = cwd,pwd
 	defaults = {
-		'data': 	join(cwd,'**',join(split(path,file=True),ext='tmp'),ext=split(data,ext=True) if isinstance(data,str) else 'hdf5'),
-		'tmp': 	join(cwd,join(split(path,file=True),ext='tmp'),ext=split(data,ext=True) if isinstance(data,str) else 'hdf5'),
+		'data': 	join(cwd,'**',join(split(path,file=True),ext=ext),ext=split(data,ext=True) if isinstance(data,str) else 'hdf5'),
+		'tmp': 		join(cwd,join(split(path,file=True),ext=ext),ext=split(data,ext=True) if isinstance(data,str) else 'hdf5'),
 		'metadata': join(cwd,join(split(path,file=True),ext=None),ext=split(plots,ext=True) if isinstance(plots,str) else 'json'),
 	}
 	processes['path'].update({attr:defaults[attr] for attr in defaults if processes['path'].get(attr) is None})
@@ -671,7 +680,7 @@ def parse(key,value,data,verbose=None):
 			pass
 	elif isinstance(value,str):
 		try:
-			func = load(value,default=None)
+			func = load(value)
 			out = func(data)
 		except:
 			outs = [default]
@@ -943,8 +952,7 @@ def analyse(data,analyses=None,verbose=None):
 					for attr in attrs:
 						for kwarg in kwargs[attr]:
 							function = kwargs[attr][kwarg]
-							default = None
-							function = load(function,default=default)
+							function = load(function)
 							if function is not None:
 								out = function(data,**kwargs[attr])
 					return out
@@ -962,8 +970,7 @@ def analyse(data,analyses=None,verbose=None):
 					for attr in attrs:
 						for kwarg in kwargs[attr]:
 							function = value[attr][kwarg]
-							default = None
-							function = load(function,default=default)
+							function = load(function)
 							if function is not None:
 								out = function(data,**kwargs[attr][kwarg])
 					return out					
@@ -1178,8 +1185,12 @@ def loader(data,plots,processes,verbose=None):
 
 		# Load plots
 		path = metadata
-		default = None
-		tmp = load(path,default=default,verbose=verbose)
+		options = dict(
+			default = None,
+			transform = None,			
+			verbose = verbose,
+			)
+		tmp = load(path,**options)
 
 		new = exists(path) and tmp is not None
 
@@ -1187,6 +1198,7 @@ def loader(data,plots,processes,verbose=None):
 			new = copy(plots)
 			plots.update(tmp)
 			tmp = new
+			options = dict(default=func)
 			setter(plots,tmp,default=func)
 
 		patterns = processes.get('patterns')
@@ -1197,32 +1209,60 @@ def loader(data,plots,processes,verbose=None):
 		# Load data
 		path = data
 		tmp = processes['path']['data'] if not exists(processes['path']['tmp']) else processes['path']['tmp']
-		
+
 		try:
-			assert any(exists(i) for i in glob(tmp)) and not processes['reset']
+			assert (
+				(not processes['reset']) and 
+				((processes['tmp'] in ['merge'] and exists(processes['path']['tmp'])) or 
+				 (processes['tmp'] not in ['merge'] and any(exists(i) for i in glob(tmp)))
+				)
+				)
 			path = tmp
-			wrapper = 'pd'
-			default = None
-			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+			options = dict(
+				default = None,
+				wrapper = {'merge':'df'}.get(processes['tmp'],'pd'),
+				transform = None,
+				chunk = processes['chunk'],
+				verbose = verbose,
+				)
+			data = load(path,**options)
+			tmp = False
 		except:
 			path = data
-			wrapper = 'df'			
-			default = None
-			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+			options = dict(
+				default = None,
+				wrapper = 'df',
+				transform = None,
+				chunk = processes['chunk'],
+				verbose = verbose,
+				)
+			data = load(path,**options)
+			tmp = True
 
-		new = tmp is not None and data is not None
+		new = tmp and data is not None and not processes['chunk']
 
-		if new and processes['tmp']:
+		if new and processes['tmp'] in ['merge']:
+			tmp = processes['path']['data']
 			path = processes['path']['tmp']
-			wrapper = processes['convert'] if isinstance(processes['convert'],str) else 'pd'
-			dump(data,path,wrapper=wrapper,verbose=verbose)
+			options = dict(
+				wrapper = 'df',
+				transform = True,
+				verbose = verbose,
+				)
+			merge(tmp,path,**options)
+		elif new and processes['tmp']:
+			tmp = data
+			path = processes['path']['tmp']
+			options = dict(
+				wrapper = 'pd',
+				transform = None,
+				verbose = verbose,
+				)			
+			dump(tmp,path,**options)				
 
-
-		# Get keys
-		keys = find(plots)
 
 		# Get functions of data
-		apply(keys,data,plots,processes,verbose=verbose)
+		apply(data,plots,processes,verbose=verbose)
 
 		# Delete data
 		del data
@@ -1239,24 +1279,27 @@ def loader(data,plots,processes,verbose=None):
 	# Dump plots
 	if processes['dump']:
 		path = metadata
-		wrapper = None
-		dump(plots,path,wrapper=wrapper,verbose=verbose)
+		options = dict(
+			wrapper = None,
+			transform = None,
+			verbose = verbose,
+			)	
+		dump(plots,path,**options)
 
 	return
 
 
-def apply(keys,data,plots,processes,verbose=None):
+def apply(data,plots,processes,verbose=None):
 	'''
 	Apply functions based on keys to data
 	Args:
-		keys (dict): Keys of functions to apply
 		data (dataframe): dataframe
 		plots (dict): plots
 		processes (dict): processes
 		verbose (bool): Verbosity		
 	'''
 
-	if (keys is None) or (data is None) or (plots is None) or (processes is None):
+	if (data is None) or (plots is None) or (processes is None):
 		return
 
 	if not processes['process']:
@@ -1370,414 +1413,421 @@ def apply(keys,data,plots,processes,verbose=None):
 	def sem_bootstrap(obj,*args,**kwargs):
 		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
 
-	updates = {}
+	keys = find(plots)
 
-	def boolean(attr,data):
-		boolean = data[attr].isna().all()
-		return boolean
-	def func(attr,data):
-		data[attr] = 'none'
-		return
-	update = 'nan'
-	updates[update] = Dict(boolean=boolean,func=func)
+	values = [data] if isinstance(data,dicts) else data
+	
+	for data in values:
 
-	def boolean(attr,data):
-		boolean = data[attr].isna().any() and data[attr][~data[attr].isna()].apply(lambda obj:isinstance(obj,str)).any()
-		return boolean
-	def func(attr,data):
-		data[attr][data[attr].isna()] = 'none'
-		return
-	update = 'str'
-	updates[update] = Dict(boolean=boolean,func=func)
+		updates = {}
 
-	for update in updates:
-		for attr in data:
-			if updates[update].boolean(attr,data):
-				updates[update].func(attr,data)
+		def boolean(attr,data):
+			boolean = data[attr].isna().all()
+			return boolean
+		def func(attr,data):
+			data[attr] = 'none'
+			return
+		update = 'nan'
+		updates[update] = Dict(boolean=boolean,func=func)
 
-	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
-	data = data.astype(dtype)
+		def boolean(attr,data):
+			boolean = data[attr].isna().any() and data[attr][~data[attr].isna()].apply(lambda obj:isinstance(obj,str)).any()
+			return boolean
+		def func(attr,data):
+			data[attr][data[attr].isna()] = 'none'
+			return
+		update = 'str'
+		updates[update] = Dict(boolean=boolean,func=func)
 
-	for name in keys:
+		for update in updates:
+			for attr in data:
+				if updates[update].boolean(attr,data):
+					updates[update].func(attr,data)
 
-		logger.log(info,"Processing : %r"%(name,))
+		dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
+		data = data.astype(dtype)
 
-		dimensions = [axes for axes in AXES if axes in keys[name]]
-		other = OTHER
-		label = keys[name][other].get(other,{})
-		include = keys[name][other].get('include')
-		exclude = keys[name][other].get('exclude')
-		sort = keys[name][other].get('sort')
-		indexing = keys[name][other].get('indexing',0)
-		legend = keys[name][other].get('legend',{})
-		funcs = keys[name][other].get('func',{})
-		analyses = keys[name][other].get('analysis',{})
-		wrappers = keys[name][other].get('wrapper',{})
-		args = keys[name][other].get('args',None)
-		kwargs = keys[name][other].get('kwargs',None)
+		for name in keys:
 
-		include = include if include is not None else None
-		exclude = exclude if exclude is not None else None
-		indexing = indexing if indexing is not None else 0
+			logger.log(info,"Processing : %r"%(name,))
 
-		funcs = copy(funcs)
-		stat = 'stat'
-		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
-		funcs = {} if not isinstance(funcs,dict) else funcs
-		analyses = {} if not isinstance(analyses,dict) else analyses
-		wrappers = {} if not isinstance(wrappers,dict) else wrappers
-		functions = {
-			'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log',
-			'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
-			'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
-			'mean_bootstrap':mean_bootstrap,'std_bootstrap':std_bootstrap,'sem_bootstrap':sem_bootstrap,
-			}
+			dimensions = [axes for axes in AXES if axes in keys[name]]
+			other = OTHER
+			label = keys[name][other].get(other,{})
+			include = keys[name][other].get('include')
+			exclude = keys[name][other].get('exclude')
+			sort = keys[name][other].get('sort')
+			indexing = keys[name][other].get('indexing',0)
+			legend = keys[name][other].get('legend',{})
+			funcs = keys[name][other].get('func',{})
+			analyses = keys[name][other].get('analysis',{})
+			wrappers = keys[name][other].get('wrapper',{})
+			args = keys[name][other].get('args',None)
+			kwargs = keys[name][other].get('kwargs',None)
 
-		if not funcs:
-			funcs = {stat:None}
-		
-		for function in funcs:
+			include = include if include is not None else None
+			exclude = exclude if exclude is not None else None
+			indexing = indexing if indexing is not None else 0
+
+			funcs = copy(funcs)
+			stat = 'stat'
+			stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
+			funcs = {} if not isinstance(funcs,dict) else funcs
+			analyses = {} if not isinstance(analyses,dict) else analyses
+			wrappers = {} if not isinstance(wrappers,dict) else wrappers
+			functions = {
+				'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log',
+				'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
+				'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
+				'mean_bootstrap':mean_bootstrap,'std_bootstrap':std_bootstrap,'sem_bootstrap':sem_bootstrap,
+				}
+
+			if not funcs:
+				funcs = {stat:None}
 			
-			if funcs[function] is None:
-				funcs[function] = {}
-			
-			for axes in stats:
+			for function in funcs:
+				
+				if funcs[function] is None:
+					funcs[function] = {}
+				
+				for axes in stats:
 
-				if funcs[function].get(axes) is None:
-					funcs[function][axes] = {}
+					if funcs[function].get(axes) is None:
+						funcs[function][axes] = {}
 
-				for func in stats[axes]:
+					for func in stats[axes]:
 
-					if func not in funcs[function][axes]:
-						funcs[function][axes][func] = stats[axes][func]
-			
-				for func in funcs[function][axes]:
-					
-					obj = funcs[function][axes][func]
-					arguments = []
-					keywords = {}
-
-					if isinstance(obj,(str,dict)):
-
-						if isinstance(obj,dict):
-							obj,arguments,keywords = obj['func'],obj['args'],obj['kwargs']
+						if func not in funcs[function][axes]:
+							funcs[function][axes][func] = stats[axes][func]
+				
+					for func in funcs[function][axes]:
 						
-						if callable(getattr(data,obj,None)):
-							pass
-						elif obj in functions:
-							obj = functions[obj]
-						else:
-							obj = load(obj,default=default)
+						obj = funcs[function][axes][func]
+						arguments = []
+						keywords = {}
 
-					if callable(obj):
+						if isinstance(obj,(str,dict)):
 
-						if not arguments and args is not None:
-							arguments = args
-						
-						if isinstance(arguments,dict) and any(i in arguments for i in funcs):
-							arguments = arguments.get(arguments,arguments)
-						if isinstance(arguments,dict) and any(i in arguments for i in stats):
-							arguments = arguments.get(axes,arguments)
-						if isinstance(arguments,dict) and any(i in arguments for i in stats[axes]):
-							arguments = arguments.get(func,arguments)
+							if isinstance(obj,dict):
+								obj,arguments,keywords = obj['func'],obj['args'],obj['kwargs']
+							
+							if callable(getattr(data,obj,None)):
+								pass
+							elif obj in functions:
+								obj = functions[obj]
+							else:
+								options = dict(default=default)
+								obj = load(obj,**options)
 
-						if isinstance(arguments,dict):
-							arguments = ()
-						
-						if not keywords and kwargs is not None:
-							keywords = kwargs
+						if callable(obj):
 
-						if isinstance(keywords,dict) and any(i in keywords for i in funcs):
-							keywords = keywords.get(function,keywords)
-						if isinstance(keywords,dict) and any(i in keywords for i in stats):
-							keywords = keywords.get(axes,keywords)
-						if isinstance(keywords,dict) and any(i in keywords for i in stats[axes]):
-							keywords = keywords.get(func,keywords)
+							if not arguments and args is not None:
+								arguments = args
+							
+							if isinstance(arguments,dict) and any(i in arguments for i in funcs):
+								arguments = arguments.get(arguments,arguments)
+							if isinstance(arguments,dict) and any(i in arguments for i in stats):
+								arguments = arguments.get(axes,arguments)
+							if isinstance(arguments,dict) and any(i in arguments for i in stats[axes]):
+								arguments = arguments.get(func,arguments)
 
-						if not isinstance(keywords,dict):
-							keywords = {}
+							if isinstance(arguments,dict):
+								arguments = ()
+							
+							if not keywords and kwargs is not None:
+								keywords = kwargs
 
-						try:
-							obj = wraps(obj)(partial(obj,*arguments,**keywords))
-						except:
-							pass
+							if isinstance(keywords,dict) and any(i in keywords for i in funcs):
+								keywords = keywords.get(function,keywords)
+							if isinstance(keywords,dict) and any(i in keywords for i in stats):
+								keywords = keywords.get(axes,keywords)
+							if isinstance(keywords,dict) and any(i in keywords for i in stats[axes]):
+								keywords = keywords.get(func,keywords)
 
-					funcs[function][axes][func] = obj
+							if not isinstance(keywords,dict):
+								keywords = {}
 
-		wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+							try:
+								obj = wraps(obj)(partial(obj,*arguments,**keywords))
+							except:
+								pass
 
-		for attr in list(wrappers):
+						funcs[function][axes][func] = obj
 
-			if wrappers[attr] is None:
-				wrappers.pop(attr)
-				continue
-			elif isinstance(wrappers[attr],str):
-				wrappers[attr] = {wrappers[attr]:{}}
-			elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
-				wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
-			else:
-				continue
+			wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
 
-			for func in list(wrappers[attr]):
-				try:
-					wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
-				except:
-					wrappers[attr].pop(func)
+			for attr in list(wrappers):
+
+				if wrappers[attr] is None:
+					wrappers.pop(attr)
+					continue
+				elif isinstance(wrappers[attr],str):
+					wrappers[attr] = {wrappers[attr]:{}}
+				elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
+					wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+				else:
 					continue
 
-		tmp = {}
+				for func in list(wrappers[attr]):
+					try:
+						wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+					except:
+						wrappers[attr].pop(func)
+						continue
 
-		for attr in wrappers:
+			tmp = {}
 
-			if attr in data:
-				tmp[attr] = data[attr]
-			else:
-				tmp[attr] = None
+			for attr in wrappers:
 
-			for func in wrappers[attr]:
-				try:
-					data[attr] = wrappers[attr][func](data)
-				except:
-					pass
+				if attr in data:
+					tmp[attr] = data[attr]
+				else:
+					tmp[attr] = None
 
-		attributes = list(set((
-			*[attr for attr in data],
-			*[attr for attr in analyses if any(i in attr for i in data)],
-			*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
-			)))
+				for func in wrappers[attr]:
+					try:
+						data[attr] = wrappers[attr][func](data)
+					except:
+						pass
 
-		if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
-			key,value = name,None
-			setter(plots,{key:value},delimiter=delim,default=True)
-			continue
+			attributes = list(set((
+				*[attr for attr in data],
+				*[attr for attr in analyses if any(i in attr for i in data)],
+				*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
+				)))
 
-
-		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
-		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
-		labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
-
-		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
-		boolean = conditions(boolean,op='and')
-		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
-
-		by = [*labels,*independent]
-
-		if not by:
-			key,value = name,None
-			setter(plots,{key:value},delimiter=delim,default=True)
-			continue
-
-		options = dict(as_index=False,dropna=False)
-		groups = data[boolean].groupby(by=by,**options)
-
-		properties = {}
-		variables = independent
-		func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
-		for group in groups.groups:
-			prop = func(group,variables)
-			if prop in properties:
-				continue
-			properties[prop] = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
-			properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
-
-		
-		if analyses:
-			options = dict(as_index=False,dropna=False)
-			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
-			groups = groups.groupby(by=by,**options)
-
-
-		if (
-			(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
-			(not all(attr in data for attr in [*independent,*dependent]))
-			):
-			key,value = name,None
-			setter(plots,{key:value},delimiter=delim,default=True)
-			continue
-
-
-		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
-								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
-					for i in range(groups.ndim)))
-					for prop in properties}
-		shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
-
-		dtypes = {attr: (
-				('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
-				if attr in data else 'dtype') 
-				for attr in attributes}
-
-		agg = {
-			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
-					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
-					  for attr in attributes},
-			**{attr : [(delim.join(((attr,function,func))),
-						{
-						'array':{
-							'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else mean,
-							'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else std,
-							}[func],
-						'object':{
-							'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
-							'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
-							}[func],
-						'dtype':{
-							'':funcs[function][axes][func],
-							'err':funcs[function][axes][func],						 
-							}[func],
-						}[dtypes[attr]])
-						for function in funcs for func in funcs[function][axes]
-						if delim.join(((attr,function,func))) not in data] 
-						for axes in dimensions
-						for attr in [keys[name][axes]]
-						if attr is not None and attr in attributes
-						},
-		}
-
-		variables = [
-			*independent,
-			*dependent,
-			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
-			]
-
-		options = dict(level=0,axis=1)
-
-		dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
-		
-		groups = groups.agg(agg).droplevel(**options).astype(dtype)
-
-		# agg = {
-		# 	**{attr : {attr: pd.NamedAgg(
-		# 				column=attr,
-		# 				aggfunc={
-		# 					'array':mean,'object':'first','dtype':'mean'
-		# 					}[dtypes[attr]] 
-		# 		  		if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])
-		# 				}						
-		# 			  for attr in data},
-		# 	**{attr : {delim.join(((attr,function,func))): pd.NamedAgg(
-		# 				column=attr,
-		# 				aggfunc= {
-		# 					'array':{'':mean,'err':std}[func],
-		# 				 	'object':{'':'first','err':none}[func],
-		# 				 	'dtype':funcs[function][axes][func]
-		# 					}[dtypes[attr]]) 
-		# 				for function in funcs for func in funcs[function][axes]} 
-		# 				for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
-		# 				},
-		# }		
-
-		# by = [*labels]
-	
-		# variables = [
-		# 	*independent,
-		# 	*dependent,
-		# 	*[agg[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in agg[attr]]
-		# 	]
-		# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
-		
-		# droplevel = dict(level=0,axis=1)
-
-		# dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
-	
-		# groups = groups.agg(**agg).astype(dtype)
-
-
-		by = [*labels]
-
-		options = dict(as_index=False,dropna=False)
-
-		nulls = [0]
-
-		if by:
-			groups = groups.groupby(by=by,**options)
-		else:
-			groups = GroupBy(groups,by=by,**options)
-
-		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
-
-		if by and isinstance(sort,dict) and all(i in data for i in sort):
-			sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in data}
-			def sorter(group):
-				group = dict(zip(by,group))
-				key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
-				return key
-			sorts = sorted((group for group in groups.groups),key=sorter)
-		else:
-			sorts = groups.groups
-
-		for i,group in enumerate(sorts):
-
-			logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
-			
-			for j,function in enumerate(funcs):
-
-				grouping = groups.get_group(group)
-
-				key = (*name[:-3],i,j,*name[-1:])
-				value = copy(getter(plots,name,delimiter=delim))
-
-				source = [attr for attr in attributes if attr not in variables]
-				destination = other
-
-				value[destination] = {
-					**{attr: grouping[attr].to_list()[0] for attr in source if len(grouping[attr])},
-					**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
-						{
-						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
-						'func':[j,function],
-						'label':keys[name][axes] if keys[name][axes] is not null else None
-						} 
-						for axes in dimensions 
-						for func in funcs[function][axes]
-						},
-					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
-						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
-						if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] 
-						for attr in keys[name][other]}
-						},
-					}
-
-				for axes in dimensions:
-					for func in funcs[function][axes]:	
-						
-						attr = keys[name][axes]
-
-						source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
-						destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
-
-						if grouping.shape[0]:
-							if source in grouping:
-								try:
-									if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
-										value[destination] = np.array([np.array(i) for i in grouping[source]])
-									else:
-										value[destination] = grouping[source].to_numpy()
-								except:
-									value[destination] = None
-							elif source is null:
-								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
-							else:
-								value[destination] = None #grouping.reset_index().index.to_numpy()
-
-							# if isinstance(value[destination],arrays):
-							# 	value[destination] = value[destination].tolist()
-
-						else:
-							value[destination] = None
-
-						if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and (all(i is None for i in value[destination].flatten()) or any(np.allclose(value[destination],i) for i in nulls)):
-							value[destination] = None
-
-						
+			if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
+				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
+				continue
 
-		for attr in tmp:
-			if tmp[attr] is None and attr in data:
-				data.drop(columns=attr)
+
+			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
+			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
+			labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+
+			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
+			boolean = conditions(boolean,op='and')
+			boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
+
+			by = [*labels,*independent]
+
+			if not by:
+				key,value = name,None
+				setter(plots,{key:value},delimiter=delim,default=True)
+				continue
+
+			options = dict(as_index=False,dropna=False)
+			groups = data[boolean].groupby(by=by,**options)
+
+			properties = {}
+			variables = independent
+			func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
+			for group in groups.groups:
+				prop = func(group,variables)
+				if prop in properties:
+					continue
+				properties[prop] = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
+				properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
+
+			
+			if analyses:
+				options = dict(as_index=False,dropna=False)
+				groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
+				groups = groups.groupby(by=by,**options)
+
+
+			if (
+				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
+				(not all(attr in data for attr in [*independent,*dependent]))
+				):
+				key,value = name,None
+				setter(plots,{key:value},delimiter=delim,default=True)
+				continue
+
+
+			shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
+									max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
+						for i in range(groups.ndim)))
+						for prop in properties}
+			shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
+
+			dtypes = {attr: (
+					('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
+					if attr in data else 'dtype') 
+					for attr in attributes}
+
+			agg = {
+				**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
+						  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
+						  for attr in attributes},
+				**{attr : [(delim.join(((attr,function,func))),
+							{
+							'array':{
+								'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else mean,
+								'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else std,
+								}[func],
+							'object':{
+								'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
+								'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
+								}[func],
+							'dtype':{
+								'':funcs[function][axes][func],
+								'err':funcs[function][axes][func],						 
+								}[func],
+							}[dtypes[attr]])
+							for function in funcs for func in funcs[function][axes]
+							if delim.join(((attr,function,func))) not in data] 
+							for axes in dimensions
+							for attr in [keys[name][axes]]
+							if attr is not None and attr in attributes
+							},
+			}
+
+			variables = [
+				*independent,
+				*dependent,
+				*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
+				]
+
+			options = dict(level=0,axis=1)
+
+			dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+			
+			groups = groups.agg(agg).droplevel(**options).astype(dtype)
+
+			# agg = {
+			# 	**{attr : {attr: pd.NamedAgg(
+			# 				column=attr,
+			# 				aggfunc={
+			# 					'array':mean,'object':'first','dtype':'mean'
+			# 					}[dtypes[attr]] 
+			# 		  		if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])
+			# 				}						
+			# 			  for attr in data},
+			# 	**{attr : {delim.join(((attr,function,func))): pd.NamedAgg(
+			# 				column=attr,
+			# 				aggfunc= {
+			# 					'array':{'':mean,'err':std}[func],
+			# 				 	'object':{'':'first','err':none}[func],
+			# 				 	'dtype':funcs[function][axes][func]
+			# 					}[dtypes[attr]]) 
+			# 				for function in funcs for func in funcs[function][axes]} 
+			# 				for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
+			# 				},
+			# }		
+
+			# by = [*labels]
+		
+			# variables = [
+			# 	*independent,
+			# 	*dependent,
+			# 	*[agg[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in agg[attr]]
+			# 	]
+			# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
+			
+			# droplevel = dict(level=0,axis=1)
+
+			# dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+		
+			# groups = groups.agg(**agg).astype(dtype)
+
+
+			by = [*labels]
+
+			options = dict(as_index=False,dropna=False)
+
+			nulls = [0]
+
+			if by:
+				groups = groups.groupby(by=by,**options)
 			else:
-				data[attr] = tmp[attr]
+				groups = GroupBy(groups,by=by,**options)
+
+			assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
+
+			if by and isinstance(sort,dict) and all(i in data for i in sort):
+				sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in data}
+				def sorter(group):
+					group = dict(zip(by,group))
+					key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
+					return key
+				sorts = sorted((group for group in groups.groups),key=sorter)
+			else:
+				sorts = groups.groups
+
+			for i,group in enumerate(sorts):
+
+				logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
+				
+				for j,function in enumerate(funcs):
+
+					grouping = groups.get_group(group)
+
+					key = (*name[:-3],i,j,*name[-1:])
+					value = copy(getter(plots,name,delimiter=delim))
+
+					source = [attr for attr in attributes if attr not in variables]
+					destination = other
+
+					value[destination] = {
+						**{attr: grouping[attr].to_list()[0] for attr in source if len(grouping[attr])},
+						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
+							{
+							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
+							'func':[j,function],
+							'label':keys[name][axes] if keys[name][axes] is not null else None
+							} 
+							for axes in dimensions 
+							for func in funcs[function][axes]
+							},
+						**{other: {attr: {subattr: keys[name][other][attr][subattr] 
+							if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
+							if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] 
+							for attr in keys[name][other]}
+							},
+						}
+
+					for axes in dimensions:
+						for func in funcs[function][axes]:	
+							
+							attr = keys[name][axes]
+
+							source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
+							destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
+
+							if grouping.shape[0]:
+								if source in grouping:
+									try:
+										if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
+											value[destination] = np.array([np.array(i) for i in grouping[source]])
+										else:
+											value[destination] = grouping[source].to_numpy()
+									except:
+										value[destination] = None
+								elif source is null:
+									source = delim.join(((dependent[-1],function,func)))
+									value[destination] = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
+								else:
+									value[destination] = None #grouping.reset_index().index.to_numpy()
+
+								# if isinstance(value[destination],arrays):
+								# 	value[destination] = value[destination].tolist()
+
+							else:
+								value[destination] = None
+
+							if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and (all(i is None for i in value[destination].flatten()) or any(np.allclose(value[destination],i) for i in nulls)):
+								value[destination] = None
+
+							
+					setter(plots,{key:value},delimiter=delim,default=True)
+
+			for attr in tmp:
+				if tmp[attr] is None and attr in data:
+					data.drop(columns=attr)
+				else:
+					data[attr] = tmp[attr]
 
 
 	return
@@ -2261,7 +2311,7 @@ def plotter(plots,processes,verbose=None):
 
 					if isinstance(tmp,str):
 						try:
-							function = load(tmp,default=None)
+							function = load(tmp)
 						except:
 							function = lambda data,plots,tmp=tmp:tmp
 					else:
@@ -2661,7 +2711,7 @@ def plotter(plots,processes,verbose=None):
 										val.update({prop: val.get(prop,defaults[prop]) for prop in defaults})
 
 										if isinstance(val['func'],str):
-											func = load(val['func'],default=None)
+											func = load(val['func'])
 										else:
 											func = val['func']
 
@@ -3462,9 +3512,9 @@ def plotter(plots,processes,verbose=None):
 						continue
 
 					value = data[attr]
-					default = None
+
 					if isinstance(value,str):
-						value = load(value,default=default)
+						value = load(value)
 					elif callable(value):
 						value = lambda args,kwargs,func=value: func(args,kwargs)
 					else:
@@ -3508,11 +3558,13 @@ def plotter(plots,processes,verbose=None):
 							strings = {string: strings}
 
 						func = strings.get(string,strings.get(str(string),string))
-						default = (lambda string,label,func=func: (
-							(func%(string) if func.count('%s') else func) if isinstance(func,str) else func)
-						)
+						options = dict(
+							default = (lambda string,label,func=func: (
+								(func%(string) if func.count('%s') else func) if isinstance(func,str) else func)
+								)
+							)
 
-						func = load(func,default=default)
+						func = load(func,**options)
 						string = func(string,label)
 
 						string = texify(

@@ -1885,10 +1885,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 							}
 
-						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-						if any(i is None or i in ['linear']):
+						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs.get(attr,{}).get('obj')==i[-1].get('obj')]
+						if any(i is None or i in ['linear'] for i in scale):
 							x = (x[:-1]+x[1:])/2
-						elif any(i in ['log','symlog']):
+						elif any(i in ['log','symlog'] for i in scale):
 							x = (x[:-1]*x[1:])**(1/2)
 						y = y
 						xerr = None
@@ -1909,7 +1909,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for plot in plots:
 					functions[plot] = func
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if '%s%s'%(k,s) in kwargs[attr]])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
 				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
