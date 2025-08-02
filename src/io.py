@@ -1086,10 +1086,17 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 				def function(path,data):
 					return data
-				try:
-					data = pd.concat((pd.DataFrame(function(path,data[path])) for path in data if data[path] is not None),**options)
-				except Exception as exception:
-					data = default
+				if len(data)>1:
+					try:
+						data = pd.concat((function(path,data[path]) for path in data if data[path] is not None),**options)
+					except Exception as exception:
+						data = default
+				else:
+					try:
+						for path in list(data):
+							data = function(path,data[path])
+					except Exception as exception:
+						data = default
 				return data	
 		elif wrapper in ['np']:
 			def wrapper(data):
@@ -1228,11 +1235,11 @@ def _load(path,wr,ext,options=None,transform=None,execute=None,verbose=None,**kw
 		for wrapper in list(wrappers):
 			if wrapper in ['pd']:
 				try:
-					options = {'key':kwargs.get('key','data')}
+					options = {**{'key':kwargs.get('key','data')},**(options if isinstance(options,dict) else {})}
 					ext = 'hdf'
 					data = getattr(pd,'read_%s'%ext)(path,**options)
 					break
-				except:
+				except Exception as exception:
 					data = load_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 					wrappers.append('df')
 					break

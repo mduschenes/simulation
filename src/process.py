@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,copy
-from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
+from src.utils import array,dataframe,concatenate,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,arrays,scalars,integers,floats,iterables,dicts,delim,null,Null,scinotation
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
@@ -558,6 +558,7 @@ def find(dictionary,verbose=None):
 				'legend': {
 					'label':None,'include':None,'exclude':None,'sort':None,'parse':None,
 				},
+				'process':None,
 				'wrapper':{},
 				'texify':{},
 				'valify': {},		
@@ -1227,7 +1228,7 @@ def loader(data,plots,processes,verbose=None):
 				)
 			data = load(path,**options)
 			tmp = False
-		except:
+		except Exception as exception:
 			path = data
 			options = dict(
 				default = None,
@@ -1239,7 +1240,7 @@ def loader(data,plots,processes,verbose=None):
 			data = load(path,**options)
 			tmp = True
 
-		new = tmp and data is not None and not processes['chunk']
+		new = tmp and data is not None and not exists(processes['path']['tmp']) and not processes['chunk']
 
 		if new and processes['tmp'] in ['merge']:
 			tmp = processes['path']['data']
@@ -1416,7 +1417,11 @@ def apply(data,plots,processes,verbose=None):
 	keys = find(plots)
 
 	values = [data] if isinstance(data,dicts) else data
-	
+
+	properties = {}	
+	groupings = ()
+	bys = {}
+
 	for data in values:
 
 		updates = {}
@@ -1456,9 +1461,9 @@ def apply(data,plots,processes,verbose=None):
 			label = keys[name][other].get(other,{})
 			include = keys[name][other].get('include')
 			exclude = keys[name][other].get('exclude')
-			sort = keys[name][other].get('sort')
 			indexing = keys[name][other].get('indexing',0)
 			legend = keys[name][other].get('legend',{})
+			process = keys[name][other].get('process')
 			funcs = keys[name][other].get('func',{})
 			analyses = keys[name][other].get('analysis',{})
 			wrappers = keys[name][other].get('wrapper',{})
@@ -1620,17 +1625,27 @@ def apply(data,plots,processes,verbose=None):
 			options = dict(as_index=False,dropna=False)
 			groups = data[boolean].groupby(by=by,**options)
 
-			properties = {}
 			variables = independent
 			func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
+			props = []
 			for group in groups.groups:
 				prop = func(group,variables)
-				if prop in properties:
-					continue
-				properties[prop] = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
-				properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
+				property = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
+				property = {grouping: Dict({attr: getattr(property[grouping],attr) if hasattr(property[grouping],attr) else None for attr in ['shape','size','ndim','SHAPE','SIZE','NDIM']}) for grouping in property}
+				if prop not in properties:
+					properties[prop] = property
+				if prop not in props:
+					for grouping in property:
+						properties[prop][grouping].update(dict(
+							shape=properties[prop][grouping].shape,
+							SHAPE=tuple(sum((i,j)) if index == 0 else max(i,j) for index,(i,j) in enumerate(zip(properties[prop][grouping].shape,properties[prop][grouping].SHAPE))) if properties[prop][grouping].SHAPE is not None else properties[prop][grouping].shape,
+							size=properties[prop][grouping].size,
+							SIZE=sum((properties[prop][grouping].size,properties[prop][grouping].SIZE)) if properties[prop][grouping].SIZE is not None else properties[prop][grouping].size,
+							ndim=properties[prop][grouping].ndim,
+							NDIM=max((properties[prop][grouping].ndim,properties[prop][grouping].NDIM)) if properties[prop][grouping].NDIM is not None else properties[prop][grouping].ndim,
+							))
+				props.append(prop)
 
-			
 			if analyses:
 				options = dict(as_index=False,dropna=False)
 				groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
@@ -1645,6 +1660,23 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
+			if process is None or callable(process) or isinstance(process,str):
+				process = load(process) if isinstance(process,str) else process
+				process = {function:{axes:{func:process for func in funcs[function][axes]} for axes in funcs[function]} for function in funcs}
+			elif isinstance(process,dict):
+				for function in funcs:
+					if process.get(function) is None or callable(process.get(function)) or isinstance(process.get(function),str):
+						process[function] = load(process.get(function)) if isinstance(process.get(function),str) else process.get(function)
+						process[function] = {axes:{func:process.get(function) for func in funcs[function][axes]} for axes in funcs[function]}
+					elif isinstance(process.get(function),dict):
+						for axes in funcs[function]:
+							if process[function].get(axes) is None or callable(process[function].get(axes)) or isinstance(process[function].get(axes),str):
+								process[function][axes] = load(process[function].get(axes)) if isinstance(process[function].get(axes),str) else process[function].get(axes)
+								process[function][axes] = {func:process[function].get(axes) for func in funcs[function][axes]}
+							elif isinstance(process[function].get(axes),dict):
+								for func in funcs[function][axes]:
+									if process[function][axes].get(func) is None or callable(process[function][axes].get(func)) or isinstance(process[function][axes].get(func),str):
+										process[function][axes][func] = load(process[function][axes].get(func)) if isinstance(process[function][axes].get(func),str) else process[function][axes].get(func)
 
 			shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 									max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -1746,32 +1778,39 @@ def apply(data,plots,processes,verbose=None):
 
 			assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
-			if by and isinstance(sort,dict) and all(i in data for i in sort):
-				sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in data}
-				def sorter(group):
-					group = dict(zip(by,group))
-					key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
-					return key
-				sorts = sorted((group for group in groups.groups),key=sorter)
-			else:
-				sorts = groups.groups
+			groupings = (*groupings,*(group for group in groups.groups if group not in groupings))
 
-			for i,group in enumerate(sorts):
+			bys[name] = by
+
+			plot = copy(plots)
+
+			for i,group in enumerate(groupings):
+
+				try:
+					grouping = groups.get_group(group)
+				except:
+					continue
+
+				for prop in properties:
+					if group in properties[prop]:
+						property = properties[prop][group]
+						break
 
 				logger.log(info,"Group : %r %r %r -> %r"%(group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
 				
 				for j,function in enumerate(funcs):
 
-					grouping = groups.get_group(group)
-
 					key = (*name[:-3],i,j,*name[-1:])
-					value = copy(getter(plots,name,delimiter=delim))
+					value = copy(getter(plot,key,delimiter=delim))
+
+					if value is None:
+						value = copy(getter(plot,name,delimiter=delim))
 
 					source = [attr for attr in attributes if attr not in variables]
 					destination = other
 
-					value[destination] = {
-						**{attr: grouping[attr].to_list()[0] for attr in source if len(grouping[attr])},
+					obj = {
+						**{attr: grouping[attr].iloc[0] for attr in source if len(grouping[attr])},
 						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
@@ -1788,6 +1827,8 @@ def apply(data,plots,processes,verbose=None):
 							},
 						}
 
+					value[destination] = obj
+
 					for axes in dimensions:
 						for func in funcs[function][axes]:	
 							
@@ -1800,27 +1841,31 @@ def apply(data,plots,processes,verbose=None):
 								if source in grouping:
 									try:
 										if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
-											value[destination] = np.array([np.array(i) for i in grouping[source]])
+											obj = np.array([np.array(i) for i in grouping[source]])
 										else:
-											value[destination] = grouping[source].to_numpy()
+											obj = grouping[source].to_numpy()
 									except:
-										value[destination] = None
+										obj = None
 								elif source is null:
 									source = delim.join(((dependent[-1],function,func)))
-									value[destination] = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
+									obj = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
 								else:
-									value[destination] = None #grouping.reset_index().index.to_numpy()
+									obj = None #grouping.reset_index().index.to_numpy()
 
-								# if isinstance(value[destination],arrays):
-								# 	value[destination] = value[destination].tolist()
+								# if isinstance(obj,arrays):
+								# 	obj = obj.tolist()
 
 							else:
-								value[destination] = None
+								obj = None
 
-							if ((func in ['err']) or (attr in independent)) and (value[destination] is not None) and (all(i is None for i in value[destination].flatten()) or any(np.allclose(value[destination],i) for i in nulls)):
-								value[destination] = None
+							if ((func in ['err']) or (attr in independent)) and (obj is not None) and (all(i is None for i in obj.flatten()) or any(np.allclose(obj,i) for i in nulls)):
+								obj = None
 
-							
+							if process.get(function,{}).get(axes,{}).get(func) is not None:
+								value[destination] = process[function][axes][func](obj,value.get(destination),property)
+							else:
+								value[destination] = obj
+
 					setter(plots,{key:value},delimiter=delim,default=True)
 
 			for attr in tmp:
@@ -1829,6 +1874,31 @@ def apply(data,plots,processes,verbose=None):
 				else:
 					data[attr] = tmp[attr]
 
+		del data
+
+
+	for name in keys:
+		
+		other = OTHER
+		sort = keys[name][other].get('sort')
+		by = bys[name]
+
+		if by and isinstance(sort,dict) and all(i in by for i in sort):
+			sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in by}
+			def sorter(group):
+				group = dict(zip(by,group))
+				key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
+				return key
+
+			indices = [groupings.index(group) for group in sorted(groupings,key=sorter)]
+
+			key = name[:-3]
+			
+			value = getter(plots,key,delimiter=delim)
+
+			value = [value[i] for i in indices if i < len(value)]
+
+			setter(plots,{key:value},delimiter=delim)
 
 	return
 

@@ -10824,8 +10824,12 @@ def slicer(iterable,size):
 	for item in iterable:
 		def iterate(item):
 			yield item
-			for item in itertools.islice(iterable,size-1):
-				yield item
+			if size > 0:
+				for item in itertools.islice(iterable,size-1):
+					yield item
+			else:
+				for item in iterable:
+					yield item
 		yield iterate(item)
 
 def sortby(iterable,key=None,options=None):

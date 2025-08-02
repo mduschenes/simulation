@@ -25,7 +25,7 @@ for PATH in PATHS:
 from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
-from src.utils import grouper,conditions,flatten
+from src.utils import grouper,conditions,flatten,concatenate
 from src.utils import orng as rng
 from src.utils import arrays,scalars,integers,floats,nonzero,delim,nan
 
@@ -139,6 +139,15 @@ def func_samples(data,*args,**kwargs):
 
 def func_samples_err(data,*args,**kwargs):
 	data = tuple((None,))
+	return data
+
+def func_samples_process(data,values,properties,*args,**kwargs):
+	if isinstance(values,arrays):
+		data = concatenate((values,data),axis=1)
+	return data
+
+def func_samples_process_err(data,values,properties,*args,**kwargs):
+	data = values
 	return data
 
 
