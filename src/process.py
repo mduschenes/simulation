@@ -1418,8 +1418,9 @@ def apply(data,plots,processes,verbose=None):
 
 	values = [data] if isinstance(data,dicts) else data
 
+	groupings = {}
 	properties = {}	
-	groupings = ()
+	sortings = {}
 	bys = {}
 
 	for data in values:
@@ -1606,7 +1607,6 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
-
 			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
 			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
 			labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
@@ -1778,13 +1778,15 @@ def apply(data,plots,processes,verbose=None):
 
 			assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
-			groupings = (*groupings,*(group for group in groups.groups if group not in groupings))
-
+			groupings[name] = (*groupings.get(name,()),*(group for group in groups.groups if group not in groupings.get(name,())))
+			sortings[name] = keys[name][OTHER].get('sort')
 			bys[name] = by
 
 			plot = copy(plots)
 
-			for i,group in enumerate(groupings):
+			for i,group in enumerate(groupings[name]):
+
+				group = tuple(group)
 
 				try:
 					grouping = groups.get_group(group)
@@ -1879,8 +1881,7 @@ def apply(data,plots,processes,verbose=None):
 
 	for name in keys:
 		
-		other = OTHER
-		sort = keys[name][other].get('sort')
+		sort = sortings[name]
 		by = bys[name]
 
 		if by and isinstance(sort,dict) and all(i in by for i in sort):
@@ -1890,7 +1891,7 @@ def apply(data,plots,processes,verbose=None):
 				key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
 				return key
 
-			indices = [groupings.index(group) for group in sorted(groupings,key=sorter)]
+			indices = [groupings[name].index(group) for group in sorted(groupings[name],key=sorter)]
 
 			key = name[:-3]
 			
