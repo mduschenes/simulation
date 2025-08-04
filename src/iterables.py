@@ -704,9 +704,9 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 	for j,i in enumerate(index):
 		default = None if (j==(len(index)-1)) else {} if isinstance(index[j+1],str) else []
 		if isinstance(iterable,dictionaries) and i not in iterable:
-			iterable[i] = default
+			iterable[i] = deepcopy(default)
 		elif not isinstance(iterable,dictionaries) and isinstance(i,int) and (len(iterable) <= i):
-			iterable.extend((default for j in range(i+1-len(iterable))))
+			iterable.extend((deepcopy(default) for j in range(i+1-len(iterable))))
 		
 		if j < (len(index)-1):
 			iterable = iterable[i]

@@ -674,6 +674,11 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 				color = tuple(color)
 			elif isinstance(color,np.ndarray):
 				color[:,-1] = alpha
+			elif isinstance(color,str):
+				try:
+					color = matplotlib.colors.colorConverter.to_rgba(color,alpha=alpha)
+				except:
+					pass
 
 			if isinstance(colors,tuple):
 				colors = list(colors)
@@ -681,6 +686,11 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 				colors = tuple(colors)
 			elif isinstance(colors,np.ndarray):
 				colors[:,-1] = alpha	
+			elif isinstance(colors,str):
+				try:
+					colors = matplotlib.colors.colorConverter.to_rgba(colors,alpha=alpha)
+				except:
+					pass				
 
 	elif isinstance(color,list) and all(isinstance(i,str) and hasattr(plt.cm,i) for i in color):
 		try:
@@ -705,8 +715,34 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 			colors[:,-1] = alpha	
 
 	else:
+
 		colors = color
 		color = color		
+
+		if alpha is not None:
+			if isinstance(color,tuple):
+				color = list(color)
+				color[-1] = alpha
+				color = tuple(color)
+			elif isinstance(color,np.ndarray):
+				color[:,-1] = alpha
+			elif isinstance(color,str):
+				try:
+					color = matplotlib.colors.colorConverter.to_rgba(color,alpha=alpha)
+				except:
+					pass
+
+			if isinstance(colors,tuple):
+				colors = list(colors)
+				colors[-1] = alpha
+				colors = tuple(colors)
+			elif isinstance(colors,np.ndarray):
+				colors[:,-1] = alpha	
+			elif isinstance(colors,str):
+				try:
+					colors = matplotlib.colors.colorConverter.to_rgba(colors,alpha=alpha)
+				except:
+					pass
 
 	return value,color,values,colors,norm
 
@@ -740,9 +776,9 @@ def set_data(data=None,scale=None,base=None,**kwargs):
 		if not isinstance(data,np.ndarray):
 			for i,value in enumerate(data):
 				if value == 0:
-					data[i] = np.nan
+					data[i] = nan
 		else:
-			data[data==0] = np.nan
+			data[data==0] = nan
 
 	return data
 
@@ -1398,10 +1434,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									if not unique[i]:
 										continue
 									unique[i] = unique[i][index]
-									try:
-										attribute = handles[unique[i]].get_color()
-									except AttributeError:
-										attribute = handles[unique[i]].get_facecolor()
+									attribute = [handles[unique[i]]] if not isinstance(handles[unique[i]],matplotlib.container.Container) else handles[unique[i]]
+									for j in attribute:
+										try:
+											attribute = j.get_color()
+											break
+										except AttributeError:
+											try:
+												attribute = j.get_facecolor()
+												break
+											except AttributeError:
+												continue
 									kwargs[attr][prop].append(attribute)
 								handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
 							else:
@@ -1928,74 +1971,63 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				dim = 2
 
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim]]])
+
+				x,y = args
+
 				prop = 'label'
 				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
 					nullkwargs.extend([prop])
 
-				subattrs = 'set_%sscale'
-				for axes in AXES[:dim]:
-					
-					subattr = subattrs%(axes)
-					
-					if not kwargs.get(subattr):
-						continue
+				prop = 'width'
+				if kwargs[attr].get(prop) is True:
 
-					scale = [i[-1] for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+					size = shape[0]
+					length = size//2
+					scale = kwargs[attr].get('scale')
+					base = kwargs[attr].get('base')
 
-					if scale:
-						if any(i.get('value') in ['linear'] for i in scale):
-							if axes in AXES[0:dim-1]:
-								pass
-							elif axes in AXES[dim-1:dim]:
-								prop = 'log'
-								value = False
-								kwargs[attr][prop] = kwargs[attr].get(prop,value)
-						elif any(i.get('value') in ['log','symlog'] for i in scale):
-							base = max((i.get('base') for i in scale if i.get('base') is not None),default=None)
-							if axes in AXES[0:dim-1]:
-								prop = 'bins'
-								value = dict(
-									lim=[i[-1] for i in search(kwargs.get('set_%slim'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],
-									ticks=[i[-1] for i in search(kwargs.get('set_%sticks'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-									)
-								value = dict(
-									start=max((i for i in (
-										min((j for i in value['lim'] for j in (i.get('%smin'%(axes)),) if j is not None),default=None),
-										min((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
-										if i is not None),default=None),
-									stop=min((i for i in (
-										max((j for i in value['lim'] for j in (i.get('%smax'%(axes)),) if j is not None),default=None),
-										max((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
-										if i is not None),default=None),			
-									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100,
-									base=base if base is not None else 10,
-									)
-								value = None if any(value[i] is None for i in value) else {**value,**{i:int(np.log10(value[i])/np.log10(base)) for i in dict(start=None,stop=None) if value.get(i) is not None},**{i:int(value[i])+1 for i in dict(num=None) if value.get(i) is not None}}
-								value = np.logspace(**value)
-								kwargs[attr][prop] = value
-							elif axes in AXES[dim-1:dim]:
-								prop = 'log'
-								value = True
-								kwargs[attr][prop] = kwargs[attr].get(prop,value)
+					if size > 1:
+						if scale is None or scale in ['linear']:
+							z = np.array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
+							w = 1/(size+2*length)
+							
+							diff = np.diff(z[:-1])
+							step = diff*(-1/2 + (count+length)*w)
+							
+							x += step
+							width = diff*w
+						
+						elif scale in ['log','symlog']:
+
+							z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-2:-1]**2/x[-1:])])/np.log(base)
+
+							w = 1/(size+2*length)
+
+							diff = np.diff(z[:-1])
+							step = base**(diff*(-1/2 + (count+length)*w))
+							
+							x *= step
+
+							z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-1:]**2/x[-2:-1])])/np.log(base)
+
+							width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
+
+						kwargs[attr][prop] = width
 
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
-					def wrapper(obj,attr,arguments,keywords,kwargs):
-						y,x,plot = obj
-						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
-						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-							scale = sum(abs(u) for u in y) if keywords.get('log') else y.sum()
-							for patch in plot.patches:
-								patch.set_height(patch.get_height()/scale)
-							plot.datavalues = plot.datavalues/scale
-							y /= scale
-						return
-					
-					value = False
-					kwargs[attr][prop] = value
+					y /= np.maximum(np.sum(y),1)
+				y[y==0] = nan
+
+				prop = 'edgecolor'
+				if isinstance(kwargs[attr].get(prop),dict):
+					value,color,values,colors,norm = set_color(**kwargs[attr][prop])
+					kwargs[attr][prop] = color
 
 				def func(obj,attr,instance,objs,index,indices,shape,count,_kwargs,kwargs):
-					y,x,plot = objs[-1]['obj']
+					plot = objs[-1]['obj']
+					x,y = np.array([i.get_x()+{'center':i.get_width()//2,'xy':0,None:0}.get(i.rotation_point,0) for i in plot.patches]),np.array([i.get_y()+i.get_height() for i in plot.patches])
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
 
@@ -2009,11 +2041,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 							}
 
-						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs.get(attr,{}).get('obj')==i[-1].get('obj')]
-						if any(i is None or i in ['linear'] for i in scale):
-							x = (x[:-1]+x[1:])/2
-						elif any(i in ['log','symlog'] for i in scale):
-							x = (x[:-1]*x[1:])**(1/2)
+						x = x
 						y = y
 						xerr = None
 						yerr = None
@@ -2033,13 +2061,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for plot in plots:
 					functions[plot] = func
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args = [x,y]
 
-				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES]],*[]])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES,'height']],*[]])
-
-				nullkwargs.extend(['bins','log','density','range'])
+				nullkwargs.extend(['bins','range','scale','base','density'])
 
 				call = len(args)>0	
 
@@ -2440,10 +2466,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if N > 1:
 
 						cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
+						children = []
+						for ax in AXES:
+							try:
+								children.extend(getattr(obj,'get_shared_%s_axes'%(axes))().get_siblings(obj))
+							except:
+								pass
 
 						if share:
 							options = dict(options)
-							cax,options = matplotlib.colorbar.make_axes([ax for ax in obj.get_figure().axes],**options)
+							cax,options = matplotlib.colorbar.make_axes([ax for ax in obj.get_figure().axes if ax not in children],**options)
 						else:
 							options = dict(size=sizing,pad=padding)
 							cax,options = make_axes_locatable(obj).append_axes(position,**options),dict()
@@ -2869,7 +2901,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					**{string%(axes):-2 for i,string in enumerate(['%saxis.set_ticklabels','set_%sticklabels'])
 						for axes in AXES},
 					**{string%(axes):-2 for i,string in enumerate(['invert_%saxis'])
-						for axes in AXES},						
+						for axes in AXES},	
+					**{string:-2 for i,string in enumerate(['set_colorbar'])},
 					},
 				}.get(attr,{})
 			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}

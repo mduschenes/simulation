@@ -442,7 +442,7 @@ def func_fit_histogram(args,kwargs,attributes):
 
 		x,y,xerr,yerr = args
 
-		indices = (y != 0) if y is not None else None
+		indices = (y != 0) & (~is_nan(y)) if y is not None else None
 
 		if not indices.any():
 			return x,y,xerr,yerr
@@ -466,13 +466,13 @@ def func_fit_histogram(args,kwargs,attributes):
 	func = lambda parameters,x: parameters[0]*attributes['d']*np.exp(-parameters[1]*attributes['d']*x)
 	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
 
+	model = scipy.optimize.leastsq
 	objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)
 	error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
-
 	parameters = [1,1]
-	size = len(parameters)
 	options = dict(full_output=True)
-	parameters,err,info,msg,code = scipy.optimize.leastsq(objective,parameters,(x,y),**options)
+
+	parameters,err,info,msg,code = model(objective,parameters,(x,y),**options)
 
 	x = x
 	y = func(parameters,x)
@@ -508,7 +508,7 @@ def func_fit_histogram(args,kwargs,attributes):
 				scinotation(parameters[i],error=err[i][i] if err is not None else None,**options['scinotation'])),
 				**options['texify']
 				)
-			for i in range(size)])
+			for i in range(len(parameters))])
 		kwargs[attr][kwarg] = ('%s%s'%(kwargs[attr][kwarg],string) + '\n' + strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
 
 

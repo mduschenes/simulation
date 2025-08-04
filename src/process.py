@@ -1273,8 +1273,7 @@ def loader(data,plots,processes,verbose=None):
 	attr = 'instance'
 	for instance in list(plots):
 		if (not processes.get(attr,{}).get(instance)) or (not plots[instance]):
-				plots.pop(instance,None);
-				continue
+			plots.pop(instance,None);
 
 
 	# Dump plots
@@ -1516,7 +1515,7 @@ def apply(data,plots,processes,verbose=None):
 
 							if isinstance(obj,dict):
 								obj,arguments,keywords = obj['func'],obj['args'],obj['kwargs']
-							
+
 							if callable(getattr(data,obj,None)):
 								pass
 							elif obj in functions:
@@ -1617,7 +1616,7 @@ def apply(data,plots,processes,verbose=None):
 
 			by = [*labels,*independent]
 
-			if not by:
+			if not by or (not dependent and not independent):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
@@ -1660,6 +1659,7 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
+			process = copy(process)
 			if process is None or callable(process) or isinstance(process,str):
 				process = load(process) if isinstance(process,str) else process
 				process = {function:{axes:{func:process for func in funcs[function][axes]} for axes in funcs[function]} for function in funcs}
@@ -1782,7 +1782,8 @@ def apply(data,plots,processes,verbose=None):
 			sortings[name] = keys[name][OTHER].get('sort')
 			bys[name] = by
 
-			plot = copy(plots)
+			key = name[:-3]
+			plts = copy(getter(plots,key,delimiter=delim))
 
 			for i,group in enumerate(groupings[name]):
 
@@ -1803,10 +1804,10 @@ def apply(data,plots,processes,verbose=None):
 				for j,function in enumerate(funcs):
 
 					key = (*name[:-3],i,j,*name[-1:])
-					value = copy(getter(plot,key,delimiter=delim))
+					value = copy(getter(plts,key[-3:],delimiter=delim))
 
 					if value is None:
-						value = copy(getter(plot,name,delimiter=delim))
+						value = copy(getter(plts,name[-3:],delimiter=delim))
 
 					source = [attr for attr in attributes if attr not in variables]
 					destination = other
@@ -1895,11 +1896,11 @@ def apply(data,plots,processes,verbose=None):
 
 	for name in keys:
 		
-		sort = sortings[name]
-		groups = groupings[name]
-		by = bys[name]
+		sort = sortings.get(name)
+		groups = groupings.get(name)
+		by = bys.get(name)
 
-		if by and isinstance(sort,dict) and all(i in by for i in sort):
+		if by and groups and sort and isinstance(sort,dict) and all(i in by for i in sort):
 			sort = {i: sort[i] if not isinstance(sort[i],scalars) else [sort[i]] for i in sort if i in by}
 			def sorter(group):
 				group = dict(zip(by,group))
@@ -2021,16 +2022,20 @@ def plotter(plots,processes,verbose=None):
 							for variable in VARIABLES 
 							if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) >= (len(dimensions)-1)]
 						dim = len(dimensions)
-						for attr in ALL:
-							
-							if data.get(attr) is None:
-								continue
 
-							if attr in independent:
-								if attr.endswith('err'):
+						if all(data.get(attr) is None for attr in ALL):
+							data.clear()
+						else:
+							for attr in ALL:
+								
+								if data.get(attr) is None:
 									continue
-								if all(data.get(attr) is None for attr in dependent if attr in data) or isinstance(data.get(attr),str):
-									data.clear()
+
+								if attr in independent:
+									if attr.endswith('err'):
+										continue
+									if all(data.get(attr) is None for attr in dependent if attr in data) or isinstance(data.get(attr),str):
+										data.clear()
 
 		if all((not data) for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop])):
 			plots[instance].pop(subinstance);
@@ -2246,9 +2251,10 @@ def plotter(plots,processes,verbose=None):
 								item = {**{attr:data[attr] for attr in data if attr in ALL},**{attr:copy(data[attr]) for attr in data if attr not in ALL}} if data is not None else None
 								iterable = plots[instance][key][obj][prop]
 								inserter(index,item,iterable)
-							
+
 			plots[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
+
 
 	# Set layout from configuration
 	# Each plot in grid as a separate subinstance with key (subinstance,*position)
@@ -2503,6 +2509,7 @@ def plotter(plots,processes,verbose=None):
 			plots[instance][subinstance]['style']['layout'] = config
 
 			grid[instance][subinstance] = [*[config['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)],index+1]
+
 
 	# Set kwargs
 
@@ -3632,7 +3639,6 @@ def plotter(plots,processes,verbose=None):
 					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER) or not data[OTHER][OTHER].get(OTHER):
 						continue
 
-
 					def func(label,labels):
 
 						if label in data[OTHER][OTHER][OTHER]:
@@ -3906,7 +3912,6 @@ def plotter(plots,processes,verbose=None):
 				plots[instance].pop(subinstance)
 		if not plots[instance]:
 			plots.pop(instance)
-
 
 	# Plot data
 	for instance in plots:

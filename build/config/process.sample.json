@@ -1,7 +1,8 @@
 {
 	"load": 0,
-	"dump": 0,
-	"tmp": 0,
+	"dump": 1,
+	"tmp": "merge",
+	"chunk":2,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
@@ -9,12 +10,13 @@
 	"usetex": true,
 	"useval": true,
 	"instance": {
-		"histogram": 1
+		"hist": 0,
+		"bar": 1
 	},
 	"configuration": [
 		[
 			[
-				"histogram"
+				"hist"
 			],
 			[
 				{
@@ -30,10 +32,32 @@
 					}
 				}				
 			]
-		]
+		],
+		[
+			[
+				"bar"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+						"N": null
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+						"T": null
+					}
+				}				
+			]
+		]		
 	],
-	"join":{"histogram":{"ax":{"hist":["label","color","alpha"]}}},
-	"join":null,	
+	"join":{
+		"hist":{"ax":{"hist":["label","color","alpha"]}},
+		"bar":{"ax":{"bar":["label","color","alpha"]}}
+	},
+	"join":null,
 	"patterns": {
 		"max_bond": "S",
 		"cyclic": "periodic"
