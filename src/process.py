@@ -1607,8 +1607,8 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
-			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes]
 			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
+			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent]
 			labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 
 			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
@@ -1811,6 +1811,18 @@ def apply(data,plots,processes,verbose=None):
 					source = [attr for attr in attributes if attr not in variables]
 					destination = other
 
+					indexes = {}
+					for axes in keys[name]:
+						attr = keys[name][axes]
+						if axes not in AXES or attr is null:
+							continue
+						if attr not in indexes:
+							indexes[attr] = []
+						indexes[attr].append(axes)
+					for attr in indexes:
+						if len(indexes[attr]) == 1:
+							indexes[attr] = None
+
 					obj = {
 						**{attr: grouping[attr].iloc[0] for attr in source if len(grouping[attr])},
 						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
@@ -1832,8 +1844,8 @@ def apply(data,plots,processes,verbose=None):
 					value[destination] = obj
 
 					for axes in dimensions:
-						for func in funcs[function][axes]:	
-							
+						for func in funcs[function][axes]:
+
 							attr = keys[name][axes]
 
 							source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
@@ -1846,7 +1858,9 @@ def apply(data,plots,processes,verbose=None):
 											obj = np.array([np.array(i) for i in grouping[source]])
 										else:
 											obj = grouping[source].to_numpy()
-									except:
+										if indexes.get(attr) is not None:
+											obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
+									except Exception as exception:
 										obj = None
 								elif source is null:
 									source = delim.join(((dependent[-1],function,func)))
@@ -1882,6 +1896,7 @@ def apply(data,plots,processes,verbose=None):
 	for name in keys:
 		
 		sort = sortings[name]
+		groups = groupings[name]
 		by = bys[name]
 
 		if by and isinstance(sort,dict) and all(i in by for i in sort):
@@ -1891,15 +1906,26 @@ def apply(data,plots,processes,verbose=None):
 				key = tuple(sort[i].index(group[i]) if i in group and group[i] in sort[i] else len(sort[i]) for i in sort)
 				return key
 
-			indices = [groupings[name].index(group) for group in sorted(groupings[name],key=sorter)]
+			indices = [groups.index(group) for group in sorted(groups,key=sorter)]
 
-			key = name[:-3]
-			
-			value = getter(plots,key,delimiter=delim)
+			for instance in plots:
+				if instance != name[0]:
+					continue
+				for subinstance in plots[instance]:
+					if subinstance != name[1]:
+						continue
+					for obj in plots[instance][subinstance]:
+						if obj != name[2]:
+							continue
+						for prop in plots[instance][subinstance][obj]:
+							if prop != name[3]:
+								continue
 
-			value = [value[i] for i in indices if i < len(value)]
+							key = name[4]
+							value = plots[instance][subinstance][obj][prop][key]
 
-			setter(plots,{key:value},delimiter=delim)
+							value = [value[i] for i in indices if i < len(value)]
+							plots[instance][subinstance][obj][prop][key] = value
 
 	return
 

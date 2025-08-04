@@ -150,14 +150,23 @@ def func_samples_process_err(data,values,properties,*args,**kwargs):
 	data = values
 	return data
 
-
 def func_hist(data,*args,**kwargs):
 	data = func_samples(data,*args,**kwargs)
 	x,y = histogram(data,*args,**kwargs)
+	x,y = to_tuple(x),to_tuple(y)
 	return x,y
 
 def func_hist_err(data,*args,**kwargs):
-	data = tuple((None,))
+	data = tuple((None,None))
+	return data
+
+def func_hist_process(data,values,properties,*args,**kwargs):
+	if isinstance(values,arrays):
+		data += values
+	return data
+
+def func_hist_process_err(data,values,properties,*args,**kwargs):
+	data = values
 	return data
 
 def func_hist_x(data,*args,**kwargs):

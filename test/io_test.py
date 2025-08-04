@@ -202,6 +202,7 @@ def test_load_dump_df(path='.tmp'):
 					key = group
 					value = groups.get_group(group)
 					x,y = func(value[variables['x']],*arguments,**keywords)
+					x,y = array(x),array(y)
 					if key not in plots:
 						plots[key] = {}
 						plots[key]['x'] = x

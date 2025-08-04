@@ -42,6 +42,7 @@ LAYOUTDIM = 2
 AXES = ['x','y','z']
 VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
+DELIMITERS = ['','_']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
 OBJS = ['ax','fig','style']
@@ -49,11 +50,11 @@ OBJ = 'ax'
 OTHER = 'label'
 SPECIAL = ['obj','plots','attributes','function']
 NOTATION = ['texify','scinotation']
-CHILDREN = ['twin']
+CHILDREN = ['twin','secondary']
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
 CAXES = ['colorbar']
-PLOTS = ['plot','scatter','errorbar','hist','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf','imshow','matshow']
+PLOTS = ['plot','scatter','errorbar','hist','bar','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf','imshow','matshow']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
 PATHS = {
@@ -809,7 +810,7 @@ def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 
 	return err
 
-def get_obj(obj,attr=None):
+def get_obj(obj,attr=None,**kwargs):
 	'''
 	Return object relative to to obj
 	Args:
@@ -824,14 +825,20 @@ def get_obj(obj,attr=None):
 	
 	elif attr in ['%s%s'%(children,axes) for children in CHILDREN for axes in AXES]:
 		instance = None
-		axes = attr[-1]
+		attr,axes = attr[:-1],attr[-1]
+		kwargs = {('secondary','x'):dict(location='bottom'),('secondary','y'):dict(location='left')}.get((attr,axes),{})
 		siblings = getattr(obj,'get_shared_%s_axes'%(axes))().get_siblings(obj)
 		for sibling in siblings:
 			if sibling.bbox.bounds == obj.bbox.bounds and sibling is not obj:
 				instance = sibling
 				break
 		if instance is None:
-			instance = getattr(obj,attr)()
+			for attr in ['%s%s'%(attr,axes),'%s_%saxis'%(attr,axes)]:
+				if hasattr(obj,attr):
+					instance = getattr(obj,attr)(**kwargs)
+					break
+				else:
+					instance = obj
 	else:
 		instance = obj
 
@@ -1914,6 +1921,125 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES,'height']],*[]])
+
+				call = len(args)>0	
+
+			elif attr in ['bar']:
+			
+				dim = 2
+
+				prop = 'label'
+				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
+					nullkwargs.extend([prop])
+
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					
+					subattr = subattrs%(axes)
+					
+					if not kwargs.get(subattr):
+						continue
+
+					scale = [i[-1] for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+
+					if scale:
+						if any(i.get('value') in ['linear'] for i in scale):
+							if axes in AXES[0:dim-1]:
+								pass
+							elif axes in AXES[dim-1:dim]:
+								prop = 'log'
+								value = False
+								kwargs[attr][prop] = kwargs[attr].get(prop,value)
+						elif any(i.get('value') in ['log','symlog'] for i in scale):
+							base = max((i.get('base') for i in scale if i.get('base') is not None),default=None)
+							if axes in AXES[0:dim-1]:
+								prop = 'bins'
+								value = dict(
+									lim=[i[-1] for i in search(kwargs.get('set_%slim'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],
+									ticks=[i[-1] for i in search(kwargs.get('set_%sticks'%(axes)),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+									)
+								value = dict(
+									start=max((i for i in (
+										min((j for i in value['lim'] for j in (i.get('%smin'%(axes)),) if j is not None),default=None),
+										min((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
+										if i is not None),default=None),
+									stop=min((i for i in (
+										max((j for i in value['lim'] for j in (i.get('%smax'%(axes)),) if j is not None),default=None),
+										max((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
+										if i is not None),default=None),			
+									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100,
+									base=base if base is not None else 10,
+									)
+								value = None if any(value[i] is None for i in value) else {**value,**{i:int(np.log10(value[i])/np.log10(base)) for i in dict(start=None,stop=None) if value.get(i) is not None},**{i:int(value[i])+1 for i in dict(num=None) if value.get(i) is not None}}
+								value = np.logspace(**value)
+								kwargs[attr][prop] = value
+							elif axes in AXES[dim-1:dim]:
+								prop = 'log'
+								value = True
+								kwargs[attr][prop] = kwargs[attr].get(prop,value)
+
+				prop = 'density'
+				if kwargs[attr].get(prop) in ['probability']:
+					def wrapper(obj,attr,arguments,keywords,kwargs):
+						y,x,plot = obj
+						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
+						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
+							scale = sum(abs(u) for u in y) if keywords.get('log') else y.sum()
+							for patch in plot.patches:
+								patch.set_height(patch.get_height()/scale)
+							plot.datavalues = plot.datavalues/scale
+							y /= scale
+						return
+					
+					value = False
+					kwargs[attr][prop] = value
+
+				def func(obj,attr,instance,objs,index,indices,shape,count,_kwargs,kwargs):
+					y,x,plot = objs[-1]['obj']
+					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
+					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
+
+						kwds = {
+							**kwargs,
+							**{attr:{
+								**(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {}),
+								**{kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]},
+								**{kwarg:kwargs[instance].get(kwarg)[i] if isinstance(kwargs[instance].get(kwarg),list) else kwargs[instance].get(kwarg) for kwarg in ['label'] if kwarg in kwargs[instance]},
+								},
+							}
+							}
+
+						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs.get(attr,{}).get('obj')==i[-1].get('obj')]
+						if any(i is None or i in ['linear'] for i in scale):
+							x = (x[:-1]+x[1:])/2
+						elif any(i in ['log','symlog'] for i in scale):
+							x = (x[:-1]*x[1:])**(1/2)
+						y = y
+						xerr = None
+						yerr = None
+
+						if callable(function):
+							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,attributes=attributes)
+
+						kwds[attr]['x'] = x
+						kwds[attr]['y'] = y
+						kwds[attr]['xerr'] = xerr
+						kwds[attr]['yerr'] = yerr
+
+						attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwds)
+
+					return
+
+				for plot in plots:
+					functions[plot] = func
+
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+
+				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
+
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES,'height']],*[]])
+
+				nullkwargs.extend(['bins','log','density','range'])
 
 				call = len(args)>0	
 
