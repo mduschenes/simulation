@@ -496,7 +496,7 @@
 								}
 							}
 						},
-						"application":true,							
+						"application":"apply",							
 						"wrapper":null,
 						"scinotation": {
 							"scilimits": [

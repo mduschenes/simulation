@@ -1752,7 +1752,7 @@ def apply(data,plots,processes,verbose=None):
 
 			dtype = {attr: data[attr].dtype for attr in applications if attr in label or attr not in variables}
 			
-			if not application:
+			if application is None or application in ['agg']:
 
 				agg = applications
 
@@ -1760,7 +1760,7 @@ def apply(data,plots,processes,verbose=None):
 
 				groups = groups.agg(agg).droplevel(**options).astype(dtype)
 
-			else:
+			elif application in ['apply']:
 
 				def func(obj):
 					data = {}
@@ -1782,6 +1782,12 @@ def apply(data,plots,processes,verbose=None):
 				options = dict(include_groups=True)
 
 				groups = groups.apply(func,**options).astype(dtype)
+
+			else:
+				
+				options = dict(level=0,axis=1)
+
+				groups = groups.droplevel(**options).astype(dtype)
 
 			# applications = {
 			# 	**{attr : {attr: pd.NamedAgg(
