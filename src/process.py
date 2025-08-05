@@ -2287,7 +2287,6 @@ def plotter(plots,processes,verbose=None):
 					if (attr in data and data[attr] in [None,True,False])
 					}
 				}
-			print(data)
 			sorting[instance][subinstance] = data
 
 
@@ -2528,11 +2527,11 @@ def plotter(plots,processes,verbose=None):
 
 	for instance in plots:
 		
-		if not any(sorting[instance].get(subinstance) for subinstance in plots):
+		if not any(sorting[instance].get(subinstance) for subinstance in plots[instance]):
 			continue
 
 		def sorter(subinstance):
-			return tuple(map(min,(tuple(
+			return tuple(map(min,*zip(tuple(
 				sorting[instance][subinstance][attr].index(data[OTHER][attr]) 
 				if attr in data[OTHER] and data[OTHER][attr] in sorting[instance][subinstance][attr]
 				else len(sorting[instance][subinstance][attr])
@@ -2542,11 +2541,11 @@ def plotter(plots,processes,verbose=None):
 				for prop in PLOTS
 				if sorting[instance].get(subinstance) and plots[instance][subinstance][obj].get(prop)
 				for data in search(plots[instance][subinstance][obj][prop])
-				)))#,default=tuple(len(sorting[instance][subinstance][attr]) for attr in sorting[instance][subinstance]))
+				)))
 
 		data = sorted(plots[instance],key=sorter)
 		plots[instance] = {subinstance:plots[instance][subinstance] for subinstance in data}
-		grid[instance] = {subinstance:grid[instance][_subinstance] for subinstance,_subinstance in zip(data,grid[instance])}
+		grid[instance] = {subinstance:[*grid[instance][_subinstance][:-1],i+1] for i,(subinstance,_subinstance) in enumerate(zip(data,grid[instance]))}
 
 	# Set layout
 	
@@ -2616,12 +2615,11 @@ def plotter(plots,processes,verbose=None):
 			for prop in PLOTS:
 				if not plots[instance][subinstance][obj].get(prop):
 					continue
+
 				plots[instance][subinstance][obj][prop] = list(
 					sorted(search(plots[instance][subinstance][obj][prop]),
 					key=sorter)
 					)
-
-				print(subinstance,[{attr:data[OTHER][attr] for attr in sorting[instance][subinstance]} if data is not None else None for data in search(plots[instance][subinstance][obj][prop])])
 
 	# Set kwargs
 
@@ -2638,7 +2636,7 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
-			logger.log(info,"\tConfiguring : %s"%(subinstance))
+			logger.log(info,"\tConfiguring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not isinstance(metadata[instance][subinstance][attr],list)}))
 
 			for prop in information[instance][subinstance]:
 				
@@ -4029,6 +4027,7 @@ def plotter(plots,processes,verbose=None):
 				plots[instance].pop(subinstance)
 		if not plots[instance]:
 			plots.pop(instance)
+
 
 	# Plot data
 	for instance in plots:

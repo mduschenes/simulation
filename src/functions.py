@@ -152,17 +152,15 @@ def func_samples_process_err(data,values,properties,*args,**kwargs):
 
 def func_hist(data,*args,attr=None,**kwargs):
 
-	obj = data['measure'].iloc[0]
 	try:
 		kwargs.update({
 			'none':dict(scale='linear',range=[0,1]),
 			'povm':dict(scale='log',range=[1e-20,1e0]),
 			}.get(data['measure'].iloc[0])
 			)
+		data = data[attr]
 	except:
 		pass
-
-	data = data[attr]
 
 	data = func_samples(data,*args,**kwargs)
 	x,y = histogram(data,*args,**kwargs)

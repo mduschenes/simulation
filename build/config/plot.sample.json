@@ -478,12 +478,12 @@
 						"label": {
 							"N": null,
 							"T": null,
-							"measure":["povm"]
+							"measure":null
 						},
 						"func": {
 							"stat": {
 								"y": {
-									"": {"func":"src.functions.func_hist","args":[],"kwargs":{"bins":1000,"range":[1e-20,1e0],"scale":"log","base":10,"density":"probability"}},
+									"": {"func":"src.functions.func_hist","args":[],"kwargs":{"attr":"data","bins":1000,"range":[1e-20,1e0],"scale":"log","base":10,"density":"probability"}},
 									"err": "src.functions.func_hist_err"
 								}
 							}
@@ -495,9 +495,9 @@
 									"err": "src.functions.func_hist_process_err"
 								}
 							}
-						},							
-						"wrapper":{
 						},
+						"application":true,							
+						"wrapper":null,
 						"scinotation": {
 							"scilimits": [
 								-1,
@@ -509,133 +509,34 @@
 						"legend": {
 							"include":["measure"]
 						},
-						"sort":null,				
-						"indexing":1,
+						"sort":{"T":null,"N":null,"measure":["none","povm"]},				
+						"indexing":null,
 						"slice": null
 					},
-					"obj":"twiny",
+					"obj": {"@measure@":{"povm":"twiny","none":null}},
 					"plots":["errorbar"],
 					"function":"src.functions.func_fit_histogram",
 					"alpha": 0.5,
-					"scale":"log",
+					"scale": {"@measure@":{"povm":"log","none":null}},
 					"base":10,
 					"log":true,
 					"width":true,
 					"linewidth":2,
 					"edgecolor":{"color":"black","alpha":0},
 					"align":"center",
-					"zorder": {
-						"@measure@": [100,50]
-					},	
-					"zorder":50,
-					"obj.errorbar":"twiny",
+					"zorder": {"@measure@": {"povm":100,"none":50}},
+					"obj.errorbar": {"@measure@":{"povm":"twiny","none":null}},
 					"alpha.errorbar": 0.5,
-					"marker.errorbar": {"@measure@":["o","s"]},
-					"marker.errorbar": "s",
+					"marker.errorbar": {"@measure@":{"povm":"o","none":"s"}},
 					"markersize.errorbar": 10,
 					"linestyle.errorbar": "--",
 					"elinewidth.errorbar": 6,
 					"capsize.errorbar": 6,
-					"color": {
-						"@measure@": {
-							"value": {
-								"value": null,
-								"color": ["viridis_0.33","viridis_0.66","viridis_0.5","viridis_0.0","viridis_1.0"],
-								"values": [],
-								"norm": null,
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						}
-					},
-					"color": "viridis_0.66",					
+					"color": {"@measure@":{"povm":"viridis_0.66","none":"viridis_0.33"}},					
 					"color.errorbar": "black",
 					"ecolor.errorbar": "black",
 					"zorder.errorbar": 100000
-				},
-				{
-
-					"x": "data",
-					"y": "data",
-					"label": {
-						"label": {
-							"N": null,
-							"T": null,
-							"measure":["none"]
-						},
-						"func": {
-							"stat": {
-								"y": {
-									"": {"func":"src.functions.func_hist","args":[],"kwargs":{"bins":1000,"range":[0,1],"scale":"linear","base":10,"density":"probability"}},
-									"err": "src.functions.func_hist_err"
-								}
-							}
-						},
-						"process": {
-							"stat": {
-								"y": {
-									"": "src.functions.func_hist_process",
-									"err": "src.functions.func_hist_process_err"
-								}
-							}
-						},						
-						"wrapper":{
-						},
-						"scinotation": {
-							"scilimits": [
-								-1,
-								4
-							],
-							"decimals": 0,
-							"one": false
-						},
-						"legend": {
-							"include":["measure"]
-						},
-						"sort":null,				
-						"indexing":null,
-						"slice": null
-					},
-					"obj":null,
-					"plots":["errorbar"],
-					"function":"src.functions.func_fit_histogram",
-					"alpha": 0.5,
-					"log":true,
-					"width":true,
-					"linewidth":2,
-					"edgecolor":{"color":"black","alpha":0},
-					"align":"center",					
-					"zorder": {
-						"@measure@": [100,50]
-					},
-					"zorder":1000,					
-					"obj.errorbar":null,
-					"alpha.errorbar": 0.5,
-					"marker.errorbar": {"@measure@":["o","s"]},
-					"marker.errorbar": "o",
-					"markersize.errorbar": 10,
-					"linestyle.errorbar": "--",
-					"elinewidth.errorbar": 6,
-					"capsize.errorbar": 6,
-					"color": {
-						"@measure@": {
-							"value": {
-								"value": null,
-								"color": ["viridis_0.33","viridis_0.66","viridis_0.5","viridis_0.0","viridis_1.0"],
-								"values": [],
-								"norm": null,
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						}
-					},
-					"color":"viridis_0.33",
-					"color.errorbar": "black",
-					"ecolor.errorbar": "black",
-					"zorder.errorbar": 100000					
-				}							                    
+				}
 			],
 			"set_colorbar": {
 				"value": {
@@ -685,7 +586,8 @@
 					"length": 8,
 					"width": 1
 				}
-			},		
+			},
+			"set_colorbar":null,		
 			"set_title": {
 				"label": "N"
 			},

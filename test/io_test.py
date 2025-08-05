@@ -296,7 +296,7 @@ def test_load_dump_df(path='.tmp'):
 				fig.savefig(fname='plot.bar.pdf',bbox_inches='tight',pad_inches=0.5)
 
 
-	rm(directory)
+	# rm(directory)
 	
 	print('Passed')
 
