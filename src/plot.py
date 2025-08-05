@@ -1253,7 +1253,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def attr_wrap(obj,attr,objs,settings,**kwargs):
 
-		def attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
+		def attrs(obj,attr,objs,index,indices,shape,count,counts,_kwargs,kwargs):
 			
 			call = True
 			
@@ -1428,12 +1428,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop] = {i:[kwargs[attr][prop][i]] if isinstance(kwargs[attr][prop][i],str) else kwargs[attr][prop][i] for i in kwargs[attr][prop]}
 							unique = {i:tuple(getattrs(matplotlib,j) for j in kwargs[attr][prop][parser(i,handles,labels)]) for i,label in enumerate(labels) if any(isinstance(handles[i],getattrs(matplotlib,j)) for j in kwargs[attr][prop])}
 							unique = {i:[j for j,l in enumerate(labels) if isinstance(handles[j],unique[i])] for i in unique}
+							unique = {i:[j for k,j in enumerate(unique[i]) if labels[i].replace('$','').startswith(labels[j].replace('$',''))] for l,i in enumerate(unique)}
 							if any(unique[i] for i in unique):
 								kwargs[attr][prop] = []
 								for index,i in enumerate(unique):
 									if not unique[i]:
 										continue
-									unique[i] = unique[i][index]
+									unique[i] = unique[i][0]
 									attribute = [handles[unique[i]]] if not isinstance(handles[unique[i]],matplotlib.container.Container) else handles[unique[i]]
 									for j in attribute:
 										try:
@@ -1920,7 +1921,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value = False
 					kwargs[attr][prop] = value
 
-				def func(obj,attr,instance,objs,index,indices,shape,count,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,index,indices,shape,count,counts,_kwargs,kwargs):
 					y,x,plot = objs[-1]['obj']
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -1952,7 +1953,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwds[attr]['xerr'] = xerr
 						kwds[attr]['yerr'] = yerr
 
-						attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwds)
+						attrs(obj,attr,objs,index,indices,shape,count,counts,_kwargs,kwds)
 
 					return
 
@@ -1982,7 +1983,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'width'
 				if kwargs[attr].get(prop) is True:
 
-					size = shape[0]
+					size = counts
 					length = size//2
 					scale = kwargs[attr].get('scale')
 					base = kwargs[attr].get('base')
@@ -2025,7 +2026,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value,color,values,colors,norm = set_color(**kwargs[attr][prop])
 					kwargs[attr][prop] = color
 
-				def func(obj,attr,instance,objs,index,indices,shape,count,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,index,indices,shape,count,counts,_kwargs,kwargs):
 					plot = objs[-1]['obj']
 					x,y = np.array([i.get_x()+{'center':i.get_width()//2,'xy':0,None:0}.get(i.rotation_point,0) for i in plot.patches]),np.array([i.get_y()+i.get_height() for i in plot.patches])
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
@@ -2054,7 +2055,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwds[attr]['xerr'] = xerr
 						kwds[attr]['yerr'] = yerr
 
-						attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwds)
+						attrs(obj,attr,objs,index,indices,shape,count,counts,_kwargs,kwds)
 
 					return
 
@@ -2725,7 +2726,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for k in _kwds:
 
-
 				_attr_ = _obj_
 				for a in k.split(delimiter)[:-1]:
 					try:
@@ -2805,7 +2805,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for plot in functions:
 				try:
-					functions[plot](obj,plot,attr,objs,index,indices,shape,count,_kwargs,kwargs)	
+					functions[plot](obj,plot,attr,objs,index,indices,shape,count,counts,_kwargs,kwargs)	
 				except Exception as exception:
 					log(exception)
 					pass
@@ -2834,15 +2834,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if not isinstance(settings[attr],(dict,list)):
 			return
 
-		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,),returns=True)]
+		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,),returns=True) if setting]
 		indices = [index for index,shape,kwarg in finds]
-
+		counts = len(finds)
 		for count,(index,shape,kwarg) in enumerate(finds):
 			
 			if not kwarg:
 				continue
 
-			attrs(obj,attr,objs,index,indices,shape,count,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,indices,shape,count,counts,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
 
 		return
 
@@ -2902,7 +2902,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						for axes in AXES},
 					**{string%(axes):-2 for i,string in enumerate(['invert_%saxis'])
 						for axes in AXES},	
-					**{string:-2 for i,string in enumerate(['set_colorbar'])},
+					**{string:-2 for i,string in enumerate(['set_colorbar','legend'])},
 					},
 				}.get(attr,{})
 			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}

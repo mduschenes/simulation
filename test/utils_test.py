@@ -20,7 +20,7 @@ from src.utils import jit,partial,vmap,copy
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod,maximum,minimum
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
-from src.utils import shuffle,swap,transpose,reshape,contraction,seeder
+from src.utils import shuffle,swap,transpose,reshape,contraction,seeder,slicer
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim,choices,samples
@@ -1380,6 +1380,32 @@ def test_sortgroupby(path=None,tol=None):
 
 	return
 
+
+def test_slicer(path=None,tol=None):
+
+	def equalizer(a,b):
+		if not isinstance(a,int) and not isinstance(b,int):
+			return all(equalizer(i,j) for i,j in zip(a,b))
+		else:
+			return a==b
+
+	length = 10
+	size = 3
+	steps = [1,-1]
+
+	iterable = (i for i in range(length))
+
+	for step in steps:
+		key = lambda i,step=step: step*i
+		tmp = [[j for j in range(size*i,min(length,size*(i+1)))][::step] for i in range(length//size+((size%length)!=0))][::step]
+		assert equalizer(slicer(iterable,size),tmp)
+
+	print('Passed')
+
+	return
+
+
+
 def test_reshape(path=None,tol=None):
 
 	# ~transform: (zx,wu,y,v,s) ->
@@ -1980,7 +2006,8 @@ if __name__ == '__main__':
 	# test_stability(path,tol)
 	# test_seed(path,tol)
 	# test_sortby(path,tol)
-	test_sortgroupby(path,tol)
+	# test_sortgroupby(path,tol)
+	test_slicer(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)

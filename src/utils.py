@@ -227,10 +227,11 @@ if backend in ['jax','jax.autograd','quimb']:
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
+	dataframes = (pd.DataFrame,)
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,pd.DataFrame)	
+	dicts = (dict,dataframes)	
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -270,10 +271,11 @@ elif backend in ['autograd']:
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
-	
+	dataframes = (pd.DataFrame,)
+
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,pd.DataFrame,)	
+	dicts = (dict,dataframes,)	
 	nulls = (Null,)
 	
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -304,10 +306,11 @@ elif backend in ['numpy']:
 	nones = (type(None),)
 	scalars = (*integers,*floats,*booleans,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
-	
+	dataframes = (pd.DataFrame,)
+
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,pd.DataFrame,)
+	dicts = (dict,dataframes,)
 	nulls = (Null,)
 	
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -4289,11 +4292,22 @@ class dataframe(pd.DataFrame):
 		args (iterable): Dataframe arguments
 		kwargs (dict): Dataframe keyword arguments
 	Returns:
-		out (array): dataframe
+		out (dataframe): dataframe
 	'''
 	def __new__(cls,*args,**kwargs):
 		return pd.DataFrame(*args,**kwargs)
 
+class series(pd.Series):
+	'''
+	series class
+	Args:
+		args (iterable): Series arguments
+		kwargs (dict): Series keyword arguments
+	Returns:
+		out (series): series
+	'''
+	def __new__(cls,*args,**kwargs):
+		return pd.Series(*args,**kwargs)
 
 class identity(array):
 	'''
@@ -10821,16 +10835,18 @@ def slicer(iterable,size):
 	Returns:
 		slice (generator): slice of iterable
 	'''
-	for item in iterable:
-		def iterate(item):
+	if not size:
+		yield iterable
+	else:
+		def iterate(item,items):
 			yield item
-			if size > 0:
-				for item in itertools.islice(iterable,size-1):
-					yield item
-			else:
-				for item in iterable:
-					yield item
-		yield iterate(item)
+			yield from itertools.islice(items,size-1)
+		items = iter(iterable)
+		while True:
+			item = next(items,None)
+			if item is None:
+				break
+			yield iterate(item,items)
 
 def sortby(iterable,key=None,options=None):
 	'''

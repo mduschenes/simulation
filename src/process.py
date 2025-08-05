@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,copy
-from src.utils import array,dataframe,concatenate,expand_dims,conditions,prod,bootstrap
+from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,arrays,scalars,integers,floats,iterables,dicts,delim,null,Null,scinotation
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
@@ -559,6 +559,7 @@ def find(dictionary,verbose=None):
 					'label':None,'include':None,'exclude':None,'sort':None,'parse':None,
 				},
 				'process':None,
+				'application':None,
 				'wrapper':{},
 				'texify':{},
 				'valify': {},		
@@ -1320,6 +1321,9 @@ def apply(data,plots,processes,verbose=None):
 	def sqrt(obj,*args,**kwargs):
 		return np.sqrt(obj)	
 
+	def first(obj,*args,**kwargs):
+		return obj.iloc[0]
+
 	def mean(obj,*args,**kwargs):
 		dtypes = {(np.dtype('O'),):mean_obj}
 		default = mean_default
@@ -1464,6 +1468,7 @@ def apply(data,plots,processes,verbose=None):
 			indexing = keys[name][other].get('indexing',0)
 			legend = keys[name][other].get('legend',{})
 			process = keys[name][other].get('process')
+			application = keys[name][other].get('application')
 			funcs = keys[name][other].get('func',{})
 			analyses = keys[name][other].get('analysis',{})
 			wrappers = keys[name][other].get('wrapper',{})
@@ -1476,7 +1481,7 @@ def apply(data,plots,processes,verbose=None):
 
 			funcs = copy(funcs)
 			stat = 'stat'
-			stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
+			stats = {axes: {'':mean,'err':std} for axes in dimensions}
 			funcs = {} if not isinstance(funcs,dict) else funcs
 			analyses = {} if not isinstance(analyses,dict) else analyses
 			wrappers = {} if not isinstance(wrappers,dict) else wrappers
@@ -1510,11 +1515,12 @@ def apply(data,plots,processes,verbose=None):
 						obj = funcs[function][axes][func]
 						arguments = []
 						keywords = {}
+						attributes = None
 
 						if isinstance(obj,(str,dict)):
 
 							if isinstance(obj,dict):
-								obj,arguments,keywords = obj['func'],obj['args'],obj['kwargs']
+								obj,arguments,keywords,attributes = obj['func'],obj.get('args',()),obj.get('kwargs',{}),obj.get('attr')
 
 							if callable(getattr(data,obj,None)):
 								pass
@@ -1560,22 +1566,47 @@ def apply(data,plots,processes,verbose=None):
 						funcs[function][axes][func] = obj
 
 			wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+			arguments = {}
+			keywords = {}
+			attributes = {}
 
 			for attr in list(wrappers):
 
-				if wrappers[attr] is None:
+				obj = wrappers[attr]
+
+				if obj is None:
 					wrappers.pop(attr)
 					continue
-				elif isinstance(wrappers[attr],str):
-					wrappers[attr] = {wrappers[attr]:{}}
-				elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
-					wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+				elif callable(obj):
+					func = None
+					arguments[attr] = {func:()}
+					keywords[attr] = {func:()}
+					wrappers[attr] = {func:obj}
+					attributes[attr] = {func:attr}
+				elif isinstance(obj,str):
+					func = obj
+					arguments[attr] = {func:()}
+					keywords[attr] = {func:()}
+					wrappers[attr] = {func:obj}
+					attributes[attr] = {func:attr}
+				elif isinstance(obj,dict) and all(isinstance(obj[func],dict) for func in obj):
+					func = None
+					arguments[attr] = {func:() for func in obj}
+					keywords[attr] = {func:obj[func] for func in obj}					
+					wrappers[attr] = {func:func for func in obj}
+					attributes[attr] = {func:attr for func in obj}
+				elif isinstance(obj,dict) and all(func in ['func','args','kwargs','attr'] for func in obj):
+					func = None
+					arguments[attr] = {func:obj['args']}
+					keywords[attr] = {func:obj['kwargs']}					
+					wrappers[attr] = {func:obj['func']}
+					attributes[attr] = {func:obj['attr']}
 				else:
 					continue
 
 				for func in list(wrappers[attr]):
 					try:
-						wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+						wrappers[attr][func] = partial(load(wrappers[attr][func],default=wrappers[attr][func]),*arguments[attr][func],**wrappers[attr][func])
 					except:
 						wrappers[attr].pop(func)
 						continue
@@ -1591,14 +1622,14 @@ def apply(data,plots,processes,verbose=None):
 
 				for func in wrappers[attr]:
 					try:
-						data[attr] = wrappers[attr][func](data)
+						data[attributes[attr][func]] = wrappers[attr][func](data)
 					except:
 						pass
 
 			attributes = list(set((
 				*[attr for attr in data],
 				*[attr for attr in analyses if any(i in attr for i in data)],
-				*[attr for attr in wrappers if wrappers.get(attr) is not None and attr in data]
+				*[attr for i in attributes for func in attributes[i] for attr in (attributes[i][func] if not isinstance(attributes[i][func],str) else [attributes[i][func]]) if attr in data and wrappers[i][func] is not None]
 				)))
 
 			if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
@@ -1650,7 +1681,6 @@ def apply(data,plots,processes,verbose=None):
 				groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
 				groups = groups.groupby(by=by,**options)
 
-
 			if (
 				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
 				(not all(attr in data for attr in [*independent,*dependent]))
@@ -1689,9 +1719,9 @@ def apply(data,plots,processes,verbose=None):
 					if attr in data else 'dtype') 
 					for attr in attributes}
 
-			agg = {
-				**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
-						  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
+			applications = {
+				**{attr : [(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]] 
+						  if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])] 
 						  for attr in attributes},
 				**{attr : [(delim.join(((attr,function,func))),
 							{
@@ -1700,7 +1730,7 @@ def apply(data,plots,processes,verbose=None):
 								'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else std,
 								}[func],
 							'object':{
-								'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else 'first',
+								'':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else first,
 								'err':funcs[function][axes][func] if callable(funcs[function][axes].get(func)) else none,
 								}[func],
 							'dtype':{
@@ -1719,29 +1749,56 @@ def apply(data,plots,processes,verbose=None):
 			variables = [
 				*independent,
 				*dependent,
-				*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
+				*[kwarg[0] for attr in [*independent,*dependent] for kwarg in applications[attr]]
 				]
 
-			options = dict(level=0,axis=1)
-
-			dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+			dtype = {attr: data[attr].dtype for attr in applications if attr in label or attr not in variables}
 			
-			groups = groups.agg(agg).droplevel(**options).astype(dtype)
+			if not application:
 
-			# agg = {
+				agg = applications
+
+				options = dict(level=0,axis=1)
+
+				groups = groups.agg(agg).droplevel(**options).astype(dtype)
+
+			else:
+
+				def func(obj):
+					data = {}
+					for attr in applications:
+
+						for name,func in applications[attr]:
+							if callable(func):
+								try:
+									data[name] = func(obj[attr])
+								except:
+									data[name] = func(obj,attr=attr,bins=1000)
+							else:
+								try:
+									data[name] = getattr(obj[attr],func)()
+								except:
+									data[name] = getattr(obj[attr],func)
+					return series(data)
+
+				options = dict(include_groups=True)
+
+				groups = groups.apply(func,**options).astype(dtype)
+
+			# applications = {
 			# 	**{attr : {attr: pd.NamedAgg(
 			# 				column=attr,
 			# 				aggfunc={
-			# 					'array':mean,'object':'first','dtype':'mean'
+			# 					'array':mean,'object':first,'dtype':mean
 			# 					}[dtypes[attr]] 
-			# 		  		if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])
+			# 		  		if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])
 			# 				}						
 			# 			  for attr in data},
 			# 	**{attr : {delim.join(((attr,function,func))): pd.NamedAgg(
 			# 				column=attr,
 			# 				aggfunc= {
 			# 					'array':{'':mean,'err':std}[func],
-			# 				 	'object':{'':'first','err':none}[func],
+			# 				 	'object':{'':first,'err':none}[func],
 			# 				 	'dtype':funcs[function][axes][func]
 			# 					}[dtypes[attr]]) 
 			# 				for function in funcs for func in funcs[function][axes]} 
@@ -1754,15 +1811,17 @@ def apply(data,plots,processes,verbose=None):
 			# variables = [
 			# 	*independent,
 			# 	*dependent,
-			# 	*[agg[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in agg[attr]]
+			# 	*[applications[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in applications[attr]]
 			# 	]
-			# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
+			# applications = {kwarg: applications[attr][kwarg] for attr in applications for kwarg in applications[attr]}
 			
 			# droplevel = dict(level=0,axis=1)
 
-			# dtype = {attr: data[attr].dtype for attr in agg if attr in label or attr not in variables}
+			# dtype = {attr: data[attr].dtype for attr in applications if attr in label or attr not in variables}
 		
-			# groups = groups.agg(**agg).astype(dtype)
+			# agg = applications
+
+			# groups = groups.agg(**applications).astype(dtype)
 
 
 			by = [*labels]
@@ -2844,11 +2903,10 @@ def plotter(plots,processes,verbose=None):
 
 									elif isinstance(val,dict) and not any(prop in val for prop in ['value','type','func']):
 
-										val = {i:{label:val[i]} for i in val}
-
 										if prop not in PLOTS:
 											item = None
 											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+											val = copy({item:{i:{label:val[i]} for i in val}.get(item,{})})
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
@@ -2856,6 +2914,7 @@ def plotter(plots,processes,verbose=None):
 											else:
 												item = data[OTHER].get(label)
 												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+											val = copy({item:{i:{label:val[i]} for i in val}.get(item,{})})
 										else:
 											continue
 
@@ -3473,8 +3532,16 @@ def plotter(plots,processes,verbose=None):
 								else:
 									value = data[attr]['__value__']
 
-								if attr in [string for i in ['alpha','zorder','marker','linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
-									if isinstance(value,dict):
+								# if attr not in [string for i in ['color','ecolor'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
+								if isinstance(value,dict):
+									try:
+										value = [value[i][attr]
+											for i in value
+											for attr in value[i]
+											if attr in data[OTHER] and
+											data[OTHER][attr] == i]
+										value = value[0] if value else None
+									except:
 										value = [i for i in value if all(
 											((not isinstance(value[i][attr],iterables) and 
 												data[OTHER][attr] == value[i][attr]) or 
@@ -3482,9 +3549,9 @@ def plotter(plots,processes,verbose=None):
 												data[OTHER][attr] in value[i][attr]))
 											for attr in value[i] if attr in data[OTHER])]
 										value = value[0] if value else None
-									elif isinstance(value,iterables):
-										if data[attr]['__index__'] is not None:
-											value = value[data[attr]['__index__']%len(value)] 
+								elif isinstance(value,iterables):
+									if data[attr]['__index__'] is not None:
+										value = value[data[attr]['__index__']%len(value)] 
 
 								if attr in [string for i in ['color','ecolor'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
@@ -3494,10 +3561,6 @@ def plotter(plots,processes,verbose=None):
 								elif attr in [string for i in ['zorder'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									if not isinstance(value,scalars):
 										value = 1000*data[attr]['__index__']
-								elif attr in [string for i in ['marker'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
-									pass
-								elif attr in [string for i in ['linestyle'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
-									pass
 								else:
 									pass
 
@@ -3912,6 +3975,27 @@ def plotter(plots,processes,verbose=None):
 				plots[instance].pop(subinstance)
 		if not plots[instance]:
 			plots.pop(instance)
+
+
+	# for instance in plots:
+	# 	for subinstance in plots[instance]:
+	# 		print(subinstance)
+	# 		for obj in ['ax']:
+	# 			for prop in ['bar']:
+	# 				for data in search(plots[instance][subinstance][obj][prop]):
+	# 					if not data:
+	# 						continue
+	# 					if isinstance(data,dict):
+	# 						for attr in data:
+	# 							print('\t',attr,data[attr] if not isinstance(data[attr],np.ndarray) else data[attr].shape)
+	# 					else:
+	# 						print('\t',data)
+	# 					print()
+	# 				print()
+	# 			print()
+	# 		print()
+	# 		print()
+	# 		print()
 
 	# Plot data
 	for instance in plots:

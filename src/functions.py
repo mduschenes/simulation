@@ -27,7 +27,7 @@ from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,abs
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import grouper,conditions,flatten,concatenate
 from src.utils import orng as rng
-from src.utils import arrays,scalars,integers,floats,nonzero,delim,nan
+from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,nan
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
@@ -150,7 +150,20 @@ def func_samples_process_err(data,values,properties,*args,**kwargs):
 	data = values
 	return data
 
-def func_hist(data,*args,**kwargs):
+def func_hist(data,*args,attr=None,**kwargs):
+
+	obj = data['measure'].iloc[0]
+	try:
+		kwargs.update({
+			'none':dict(scale='linear',range=[0,1]),
+			'povm':dict(scale='log',range=[1e-20,1e0]),
+			}.get(data['measure'].iloc[0])
+			)
+	except:
+		pass
+
+	data = data[attr]
+
 	data = func_samples(data,*args,**kwargs)
 	x,y = histogram(data,*args,**kwargs)
 	x,y = to_tuple(x),to_tuple(y)

@@ -178,6 +178,22 @@ def exists(path):
 
 	return exists
 
+def memory(path):
+	'''
+	Get size of path
+	Args:
+		path (str): path
+	Returns:
+		size (int): Size of path
+	'''
+
+	try:
+		size = os.path.getsize(path)
+	except:
+		size = None
+
+	return size
+
 def dirname(path,abspath=False,delimiter=delimiter):
 	'''
 	Return directory name of path
@@ -711,11 +727,11 @@ def _merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 	'''	
 	
 	wr = 'r'
-	size = len(path)
+	length = len(path)
 	with (open(data,wr) if isinstance(data,str) else data) as obj:
 		obj = load_json(obj,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 		for index,key in enumerate(obj):
-			name = str(size+index) if transform else key
+			name = str(length+index) if transform else key
 			path[name] = obj[key]
 	
 	return	
@@ -880,10 +896,10 @@ def _merge_hdf5(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 	'''	
 	
 	wr = 'r'
-	size = len(path)
+	length = len(path)
 	with (h5py.File(data,wr) if isinstance(data,str) else data) as obj:
 		for index,key in enumerate(obj):
-			name = str(size+index) if transform else key
+			name = str(length+index) if transform else key
 			if name in path:
 				del path[name]
 			obj.copy(key,path,name)
@@ -967,7 +983,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 	if chunk:
 		return (
 			load(path,wr=wr,default=default,delimiter=delimiter,chunk=None,wrapper=wrapper,func=func,lock=lock,backup=backup,timeout=timeout,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) 
-			for path in slicer((path for path in glob(path)),chunk)
+			for path in slicer(sorted(glob(path),key=memory),chunk)
 			)
 
 	exts = ['npy','npz','csv','txt','sh','pickle','pkl','json','hdf5','h5','ckpt']
@@ -1077,8 +1093,8 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 					for attr in data:
 						if iterable(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
-					# size = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
-					# data['__path__'] = [path]*size
+					# length = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
+					# data['__path__'] = [path]*length
 					return data
 				try:
 					data = pd.concat((pd.DataFrame(function(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
