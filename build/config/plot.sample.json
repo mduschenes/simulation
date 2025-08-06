@@ -781,6 +781,7 @@
                 }
             },	
 			"legend": {
+				"obj":"twiny",
 				"set_title":"%s",
 				"title_fontsize": 36,
 				"fontsize": 36,
