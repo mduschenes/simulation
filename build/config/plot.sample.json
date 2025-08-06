@@ -220,7 +220,7 @@
 						-1,
 						2
 					],
-					"decimals": 2,
+					"decimals": 3,
 					"strip":true
 				}
 			},
@@ -599,7 +599,7 @@
 						-1,
 						2
 					],
-					"decimals": 2,
+					"decimals": 3,
 					"strip":true
 				}
 			},
