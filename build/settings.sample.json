@@ -19,7 +19,7 @@
 			"model.samples":[1e4],
 			"model.model":["sk"],
 			"model.measure":["povm",null],
-			"model.random":[{"random":"normal","bounds":[-1,-1]}],
+			"model.random":[{"random":"normal","bounds":[-1,1]}],
 			"model.options":[{"bins":1000}],
 
 			"options":[{}],
