@@ -20,6 +20,7 @@
 			"model.model":["sk"],
 			"model.measure":["povm",null],
 			"model.random":[{"random":"normal","bounds":[-1,-1]}],
+			"model.options":[{"bins":1000}],
 
 			"options":[{}],
 
@@ -91,7 +92,8 @@
 		"measure":null,
 		"random":null,
 		"seed":null,
-		"dtype":null
+		"dtype":null,
+		"options":null
 	},
 	"jobs":{
 		"preprocess":null,

@@ -13152,7 +13152,7 @@ def projector(i,shape):
 	return projector
 
 
-def histogram(a,bins=None,range=None,scale=None,base=None,density=None,**kwargs):
+def histogram(a,bins=None,range=None,scale=None,base=None,**kwargs):
 	'''
 	Get histogram of array
 	Args:
@@ -13161,7 +13161,6 @@ def histogram(a,bins=None,range=None,scale=None,base=None,density=None,**kwargs)
 		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
-		density (str): density of data, allowed strings in ['probability']
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		x (array): bins
@@ -13186,11 +13185,6 @@ def histogram(a,bins=None,range=None,scale=None,base=None,density=None,**kwargs)
 		x = array((x[:-1]+x[1:])/2)
 	elif scale in ['log','symlog']:
 		x = array((x[:-1]*x[1:])**(1/2))
-
-	if density is None:
-		pass
-	elif density in ['probability']:
-		y /= maximums(addition(y),1)
 
 	return x,y
 

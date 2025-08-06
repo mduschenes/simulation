@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import progress,forloop,vmap,timestamp
+from src.utils import progress,forloop,vmap,timestamp,histogram,partial
 from src.utils import array,rand,arange,logspace,inplace,transpose,reshape,addition,tensorprod,seeder,permutations
 from src.utils import einsum,exp,sqrt,prod,real,imag,abs2,iterables,arrays,scalars,integers,floats,datatype,e,pi,delim
 from src.io import load,dump,split,join
@@ -23,10 +23,14 @@ from src.logger	import Logger
 logger = Logger()
 verbose = True
 
-
 class Model(object):
 
-	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,model=None,measure=None,random=None,seed=None,dtype=None,path=None,cwd=None,key=None,system=None,**kwargs):
+	name = 'sample'
+	keys = ['x','y']
+	strings = ['linear','log']
+	pattern = '{name}.{string}.{key}'
+
+	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,model=None,measure=None,random=None,seed=None,dtype=None,path=None,cwd=None,key=None,options=None,system=None,**kwargs):
 		'''
 		Model Class
 		Args:
@@ -45,6 +49,7 @@ class Model(object):
 			path (str): System path
 			cwd (str): System directory
 			key (str): System key
+			options (dict): System options
 			system (dict): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		'''
 
@@ -63,6 +68,7 @@ class Model(object):
 		self.path = path
 		self.cwd = cwd
 		self.key = key
+		self.options = options
 
 		if system is not None:
 			for attr in system:
@@ -80,15 +86,21 @@ class Model(object):
 		for kwarg in kwargs:
 			setattr(self,kwarg,kwargs[kwarg])
 
-		self.samples = int(self.samples) if isinstance(self.samples,(*integers,*floats)) else 0
+		self.samples = 0 if not isinstance(self.samples,(*integers,*floats)) else int(self.samples)
 
 		self.random = dict(random=self.random) if not isinstance(self.random,dict) else self.random
 
-		self.attributes = dict(N=None,D=None,d=None,T=None,model=None,measure=None,data=None)
+		self.options = dict() if not isinstance(self.options,dict) else self.options
 
-		self.index = self.key if self.key is not None else timestamp()
+		self.attributes = dict(
+			N=None,D=None,d=None,T=None,model=None,measure=None,
+			# data=None,
+			**{attr:None for attr in [self.pattern.format(name=self.name,string=string,key=key) for string in self.strings for key in self.keys]}
+			)
 
-		self.data = self.data if isinstance(self.data,dict) else {}
+		self.index = timestamp() if self.key is None else self.key
+
+		self.data = dict() if not isinstance(self.data,dict) else self.data
 
 		self.initialize()
 
@@ -183,6 +195,15 @@ class Model(object):
 
 			return data
 
+		def hist(data,*args,**kwargs):
+			options = {**self.options,**kwargs}
+			func = partial(histogram,**options)
+			x,y = vmap(func)(data)
+			x = addition(x,0)/x.shape[0]
+			y = addition(y,0)
+			data = x,y
+			return data
+
 		initializer = {}
 		if self.model is None:
 			name = 'J'
@@ -234,6 +255,7 @@ class Model(object):
 		self.measurement = measurement
 		self.probability = probability
 		self.sample = sample
+		self.hist = hist
 
 		return
 		
@@ -299,9 +321,23 @@ class Model(object):
 			data = self.data[index]
 			return data
 
-		data=self.sample(*args,**kwargs)
+		data = self.sample(*args,**kwargs)
+		# data = {**dict(data=data)}
 
-		data = dict(data=data)
+		samples = {}
+		options = {
+				string:
+				dict(
+					linear=dict(scale='linear',base=10,range=[0,1]),
+					log=dict(scale='log',base=10,range=[1e-20,1e0])
+					).get(string)
+				 for string in self.strings
+				}
+		for string in options:
+			sample = self.hist(data,**options[string])
+			for key,value in zip(self.keys,sample):
+				samples[self.pattern.format(name=self.name,string=string,key=key)] = value
+		data = {**samples}
 
 		return data
 

@@ -483,7 +483,7 @@
 						"func": {
 							"stat": {
 								"y": {
-									"": {"func":"src.functions.func_hist","args":[],"kwargs":{"attr":"data","bins":1000,"range":[1e-20,1e0],"scale":"log","base":10,"density":"probability"}},
+									"": {"func":"src.functions.func_hist","args":[],"kwargs":{"attr":"data","bins":1000,"range":[1e-20,1e0],"scale":"log","base":10}},
 									"err": "src.functions.func_hist_err"
 								}
 							}
@@ -520,6 +520,7 @@
 					"scale": {"@measure@":{"povm":"log","none":null}},
 					"base":10,
 					"log":true,
+					"density":"probability",
 					"width":true,
 					"linewidth":2,
 					"edgecolor":{"color":"black","alpha":0},
@@ -537,6 +538,456 @@
 					"ecolor.errorbar": "black",
 					"zorder.errorbar": 100000
 				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@measure@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": ["viridis_0.33","viridis_0.66"],
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Measurement}$",
+					"labelpad": 10,
+					"size": 40
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": null,
+					"size": 40
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 40,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_colorbar":null,		
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel": "T",
+				"size": 40,
+				"scinotation": {
+					"scilimits": [
+						-1,
+						2
+					],
+					"decimals": 3,
+					"strip":true
+				}
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Probability}~~ p$",
+				"size": 40				
+			},	
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"set_axisbelow":{"b":true},							
+			"yaxis.offsetText.set_fontsize": [
+				{
+					"fontsize": 30
+				}
+			],
+			"xaxis.offsetText.set_fontsize": [
+				null,
+				{
+					"fontsize": 30,
+					"obj":"twiny"
+				}
+			],
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-7,
+				"xmax": 2e0
+			},
+			"set_xnbins": {
+				"nbins": 4
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},
+			"set_xticklabels": {
+				"labels": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},			
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-7,
+				"ymax": 2e0
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},	
+			"set_yticklabels": {
+				"labels": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},
+            "set_xscale": [
+	           	{"value":"linear"},
+	           	{"value":"log","base":10,"obj":"twiny"}
+            ],
+            "set_xlim": [
+            	{"xmin": -0.1,"xmax": 1.1},
+            	{"xmin": 1e-22,"xmax": 1e2,"obj":"twiny"}
+            ],
+            "set_xnbins": [
+                {"nbins": 5},
+                {"nbins": 5,"obj":"twiny"}
+            ],
+            "set_xticks": [
+                {"ticks": [0,0.2,0.4,0.6,0.8,1.0]},
+                {"ticks": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"obj":"twiny"}
+            ],
+            "set_xticklabels": [
+                {"labels": [0,0.2,0.4,0.6,0.8,1.0],"size": 36},
+                {"labels": [1e-20,1e-16,1e-12,1e-08,1e-4,1e0],"size": 36,"obj":"twiny"}
+            ],            
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 5e-17,
+                "ymax": 2.0
+            },
+            "set_ynbins": {
+                "nbins": 5
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_yticklabels": {
+                "labels": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ],
+                "size": 36
+            },
+            "invert_xaxis":[null,null],
+            "xaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {
+                        "base": 10
+                    }
+                }
+            },
+            "xaxis.set_minor_locator": null,
+            "xaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "xaxis.set_major_formatter": [
+            	null,
+            	{
+	                "ticker": {
+	                    "LogFormatterMathtext": {
+	                        "base": 10
+	                    }
+	                },
+	            	"obj":"twiny"
+            	}
+            ],
+            "xaxis.set_minor_locator": [null,null],
+            "xaxis.set_minor_formatter": [
+            	null,
+            	{
+	                "ticker": {
+	                    "NullFormatter": {}
+	                },
+	            	"obj":"twiny"	                
+            	}
+            ],
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {
+                        "base": 10
+                    }
+                }
+            },
+            "yaxis.set_minor_locator": null,
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },	
+			"legend": {
+				"obj":"twiny",
+				"set_title":"%s",
+				"title_fontsize": 36,
+				"fontsize": 36,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 36
+				},
+				"texify": {},				
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": "lower right",
+				"set_linestyle": "-",
+				"set_color": {"lines.Line2D":["container.BarContainer"]},
+				"set_alpha": 0.5,
+				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":1}},
+				"legendLabels":{"set_ha":"left"},
+				"keep":["marker","linestyle","alpha"],
+				"none":false,
+				"ncol": 1,
+				"merge": false,
+				"set_zorder": {
+					"level": 1000000
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 36
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": true,
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_xticks": true,                    
+					"set_xticklabels": true,                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": true,
+					"set_colorbar": "bottom_right"
+				}
+			}
+		}		
+	},
+	"sample":{
+		"fig": {
+			"set_size_inches": {
+				"w": 72,
+				"h": 72
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.5
+			},
+			"close": {}
+		},
+		"ax": {
+			"bar": [
+				{
+					"x": "sample.linear.x",
+					"y": "sample.linear.y",
+					"label": {
+						"label": {
+							"N": null,
+							"T": null,
+							"measure":["none"]
+						},
+						"func": {
+							"stat": {
+								"y": {
+									"": {"func":"src.functions.func_samples"},
+									"err": "src.functions.func_samples_err"
+								}
+							}
+						},
+						"process": {
+							"stat": {
+								"y": {
+									"": "src.functions.func_hist_process",
+									"err": "src.functions.func_hist_process_err"
+								}
+							}
+						},
+						"application":"agg",							
+						"wrapper":null,
+						"scinotation": {
+							"scilimits": [
+								-1,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":["measure"]
+						},
+						"sort":{"T":null,"N":null,"measure":["none","povm"]},				
+						"indexing":null,
+						"slice": null
+					},
+					"obj": {"@measure@":{"povm":"twiny","none":null}},
+					"plots":["errorbar"],
+					"function":"src.functions.func_fit_histogram",
+					"alpha": 0.5,
+					"scale": {"@measure@":{"povm":"log","none":null}},
+					"base":10,
+					"log":true,
+					"density":"probability",
+					"width":true,
+					"linewidth":2,
+					"edgecolor":{"color":"black","alpha":0},
+					"align":"center",
+					"zorder": {"@measure@": {"povm":100,"none":50}},
+					"obj.errorbar": {"@measure@":{"povm":"twiny","none":null}},
+					"alpha.errorbar": 0.5,
+					"marker.errorbar": {"@measure@":{"povm":"o","none":"s"}},
+					"markersize.errorbar": 10,
+					"linestyle.errorbar": "--",
+					"elinewidth.errorbar": 6,
+					"capsize.errorbar": 6,
+					"color": {"@measure@":{"povm":"viridis_0.66","none":"viridis_0.33"}},					
+					"color.errorbar": "black",
+					"ecolor.errorbar": "black",
+					"zorder.errorbar": 100000
+				},
+				{
+					"x": "sample.log.x",
+					"y": "sample.log.y",
+					"label": {
+						"label": {
+							"N": null,
+							"T": null,
+							"measure":["povm"]
+						},
+						"func": {
+							"stat": {
+								"y": {
+									"": {"func":"src.functions.func_samples"},
+									"err": "src.functions.func_samples_err"
+								}
+							}
+						},
+						"process": {
+							"stat": {
+								"y": {
+									"": "src.functions.func_hist_process",
+									"err": "src.functions.func_hist_process_err"
+								}
+							}
+						},
+						"application":"agg",							
+						"wrapper":null,
+						"scinotation": {
+							"scilimits": [
+								-1,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":["measure"]
+						},
+						"sort":{"T":null,"N":null,"measure":["none","povm"]},				
+						"indexing":null,
+						"slice": null
+					},
+					"obj": {"@measure@":{"povm":"twiny","none":null}},
+					"plots":["errorbar"],
+					"function":"src.functions.func_fit_histogram",
+					"alpha": 0.5,
+					"scale": {"@measure@":{"povm":"log","none":null}},
+					"base":10,
+					"log":true,
+					"density":"probability",
+					"width":true,
+					"linewidth":2,
+					"edgecolor":{"color":"black","alpha":0},
+					"align":"center",
+					"zorder": {"@measure@": {"povm":100,"none":50}},
+					"obj.errorbar": {"@measure@":{"povm":"twiny","none":null}},
+					"alpha.errorbar": 0.5,
+					"marker.errorbar": {"@measure@":{"povm":"o","none":"s"}},
+					"markersize.errorbar": 10,
+					"linestyle.errorbar": "--",
+					"elinewidth.errorbar": 6,
+					"capsize.errorbar": 6,
+					"color": {"@measure@":{"povm":"viridis_0.66","none":"viridis_0.33"}},					
+					"color.errorbar": "black",
+					"ecolor.errorbar": "black",
+					"zorder.errorbar": 100000
+				}				
 			],
 			"set_colorbar": {
 				"value": {
