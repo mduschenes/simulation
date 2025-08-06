@@ -1988,33 +1988,34 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					scale = kwargs[attr].get('scale')
 					base = kwargs[attr].get('base')
 
-					if size > 1:
-						if scale is None or scale in ['linear']:
-							z = np.array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
-							w = 1/(size+2*length)
-							
-							diff = np.diff(z[:-1])
-							step = diff*(-1/2 + (count+length)*w)
-							
-							x += step
-							width = diff*w
+					if scale is None or scale in ['linear']:
+						z = np.array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
+						w = 1/(size+2*length)
 						
-						elif scale in ['log','symlog']:
+						diff = np.diff(z[:-1])
+						
+						if size > 1:
+							step = diff*(-1/2 + (count+length)*w)
+							x += step
+						
+						width = diff*w
+					
+					elif scale in ['log','symlog']:
 
-							z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-2:-1]**2/x[-1:])])/np.log(base)
+						z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-2:-1]**2/x[-1:])])/np.log(base)
 
-							w = 1/(size+2*length)
+						w = 1/(size+2*length)
 
-							diff = np.diff(z[:-1])
+						diff = np.diff(z[:-1])
+						
+						if size > 1:
 							step = base**(diff*(-1/2 + (count+length)*w))
-							
 							x *= step
-
 							z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-1:]**2/x[-2:-1])])/np.log(base)
 
-							width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
+						width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
 
-						kwargs[attr][prop] = width
+					kwargs[attr][prop] = width
 
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:

@@ -579,12 +579,12 @@ class encode_json(json.JSONEncoder):
 		default = super().default
 		if isinstance(obj,arrays):
 			return obj.tolist()
-		# elif isinstance(obj,(np.integer,np.int64,np.int32,np.uint32)):
-		# 	return encode(int(obj))
-		# elif isinstance(obj,(np.floating,np.float64,np.float32)):
-		# 	return encode(float(obj))
-		elif isinstance(obj,(np.bool,np.bool_)):
-			return encode(bool(obj))
+		elif isinstance(obj,(np.integer,np.int64,np.int32,np.uint32,)):
+			return int(obj)
+		elif isinstance(obj,(np.floating,np.float64,np.float32,)):
+			return float(obj)
+		elif isinstance(obj,(np.bool_,)):
+			return bool(obj)
 		else:
 			return default(default(obj))
 
