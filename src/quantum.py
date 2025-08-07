@@ -17,7 +17,7 @@ from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
-from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
+from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng,histogram
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
 
@@ -1924,6 +1924,27 @@ class Measure(System):
 			data = state
 
 		data = func(data)
+
+		return data
+
+	def sample(self,parameters=None,state=None,where=None,func=None,**kwargs):
+		'''
+		Class sample
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			where (float,int,iterable[int]): indices of function		
+			func (callable): function to apply to sample		
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		func = (lambda data:data) if not callable(func) else func
+
+		data = self.array(parameters=parameters,state=state,where=where,func=func,**kwargs)
+
+		data = histogram(data,**kwargs)
 
 		return data
 
@@ -5129,6 +5150,23 @@ class Object(System):
 		self.d = self.lattice.d
 
 		return
+
+	def sample(self,parameters=None,state=None,**kwargs):
+		'''
+		Class sample
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			kwargs (dict): Additional class keyword arguments					
+		Returns:
+			data (object): data
+		'''
+
+		data = self.array(parameters=parameters,state=state,**kwargs)
+
+		data = histogram(data,**kwargs)
+
+		return data
 
 	def array(self,parameters=None,state=None,**kwargs):
 		'''
@@ -8883,19 +8921,22 @@ class Callback(System):
 
 
 class Callback(System):
-	def __init__(self,*args,attributes=None,keywords=None,options=None,**kwargs):
+	def __init__(self,*args,attributes=None,arguments=None,keywords=None,options=None,**kwargs):
 		'''	
 		Class for callback
 		Args:
 			attributes (dict): Attributes for callback
 			args (tuple): Class arguments
+			arguments (dict,iterable): Class positional arguments
 			keywords (dict): Class keyword arguments
 			options (dict): Class keyword arguments
 			kwargs (dict): Class keyword arguments
 		'''
 
 		defaults = [
-			'objective','infidelity','norm','entanglement','entangling','trace','array','state',
+			'objective','infidelity','norm','entanglement','entangling','trace',
+			'array','state',
+			'sample.linear','sample.log',
 			'infidelity.quantum','infidelity.classical','infidelity.pure',
 			'norm.quantum','norm.classical','norm.pure',
 			'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -8914,6 +8955,13 @@ class Callback(System):
 		else:
 			attributes = {attr:attributes[attr] for attr in attributes if attributes[attr]}
 
+		if arguments is None:
+			arguments = {attr: () for attr in attributes}
+		elif any(attr in arguments for attr in [*attributes,*defaults]):
+			arguments = {attr: arguments.get(attr,()) for attr in attributes}
+		else:
+			arguments = {attr: (*arguments,) for attr in attributes}
+
 		if keywords is None:
 			keywords = {attr: {} for attr in attributes}
 		elif any(attr in keywords for attr in [*attributes,*defaults]):
@@ -8928,7 +8976,18 @@ class Callback(System):
 		else:
 			options = {attr: {**options} for attr in attributes}
 
-		setter(kwargs,dict(attributes=attributes,keywords=keywords,options=options),delimiter=delim,default=False)
+		for attr in attributes:
+			if isinstance(attributes[attr],dict) and all(prop in attributes[attr] for prop in ['func','args','kwargs']):
+				for prop in attributes[attr]:
+					if prop in ['args'] and arguments.get(attr):
+						arguments[attr] = [*arguments[attr],*attributes[attr][prop]]
+					elif prop in ['kwargs'] and keywords.get(attr):
+						keywords[attr] = {**keywords[attr],**attributes[attr][prop]}
+				prop = 'func'
+				if prop in attributes[attr]:
+					attributes[attr] = attributes[attr][prop]
+
+		setter(kwargs,dict(attributes=attributes,arguments=arguments,keywords=keywords,options=options),delimiter=delim,default=False)
 
 		super().__init__(*args,**kwargs)
 
@@ -8959,6 +9018,7 @@ class Callback(System):
 
 
 		attr = list(attributes)[0] if attributes else None
+		arguments = self.arguments.get(attr,())
 		keywords = self.keywords.get(attr,{})
 
 		options = {
@@ -8976,11 +9036,15 @@ class Callback(System):
 
 		for attr in attributes:
 
-			if not isinstance(data.get(attr),list):
-				data[attr] = []
+			arguments = self.arguments.get(attr,())
+			keywords = self.keywords.get(attr,{})
+
+			key = attr
 
 			if attr in [
-				'objective','infidelity','norm','entanglement','entangling','trace','array','state',
+				'objective','infidelity','norm','entanglement','entangling','trace',
+				'array','state',
+				'sample.linear','sample.log',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -8991,8 +9055,6 @@ class Callback(System):
 				'rank.quantum','rank.classical',				
 				]:
 				
-				keywords = self.keywords.get(attr,{})
-
 				if attr in [
 					'objective','infidelity',
 					'infidelity.quantum','infidelity.classical','infidelity.pure',
@@ -9003,7 +9065,8 @@ class Callback(System):
 						other=_obj,
 						**keywords)
 				elif attr in [
-					'norm','entanglement','entangling','trace','array','state',
+					'norm','entanglement','entangling','trace',
+					'array','state',
 					'norm.quantum','norm.classical','norm.pure',
 					'entanglement.quantum','entanglement.classical','entanglement.renyi',
 					'entangling.quantum','entangling.classical','entangling.renyi',
@@ -9017,6 +9080,14 @@ class Callback(System):
 						state=obj,
 						**keywords)
 
+				elif attr in ['sample.linear','sample.log']:
+
+					key = [f'{attr}.{i}' for i in ['x','y']]
+
+					value = getattrs(model,attributes[attr],delimiter=delim)(
+						parameters=parameters,
+						state=obj,
+						**keywords)
 
 			elif attr in ['noise.parameters']:
 
@@ -9049,7 +9120,14 @@ class Callback(System):
 
 				value = None
 
-			data[attr].append(value)
+			if isinstance(key,str):
+				key = [key]
+				value = [value]
+
+			for key,value in zip(key,value):
+				if not data.get(key) and not isinstance(data.get(key),list):
+					data[key] = []
+				data[key].append(value)
 
 		if logging:
 

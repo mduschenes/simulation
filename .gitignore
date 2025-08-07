@@ -30,6 +30,8 @@ build/settings.tmp.json
 build/*.stdout
 build/*.stderr
 build/tmp
+build/test
+build/test.*
 build/data
 build/data/**/data*.hdf5
 build/data/**/data*.json

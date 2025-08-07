@@ -175,7 +175,7 @@ class Model(object):
 		def probability(parameters,state,*args,**kwargs):
 			return exp(-(1/self.T)*self.func(parameters,state,*args,**kwargs))
 		
-		def sample(*args,**kwargs):
+		def state(*args,**kwargs):
 			
 			state = arange(self.D**self.N,dtype=self.dtype)
 			sample = seeder(self.seed,size=self.samples)
@@ -195,7 +195,7 @@ class Model(object):
 
 			return data
 
-		def hist(data,*args,**kwargs):
+		def sample(data,*args,**kwargs):
 			options = {**self.options,**kwargs}
 			func = partial(histogram,**options)
 			x,y = vmap(func)(data)
@@ -254,8 +254,8 @@ class Model(object):
 		self.initializer = initializer
 		self.measurement = measurement
 		self.probability = probability
+		self.state = state
 		self.sample = sample
-		self.hist = hist
 
 		return
 		
@@ -321,7 +321,7 @@ class Model(object):
 			data = self.data[index]
 			return data
 
-		data = self.sample(*args,**kwargs)
+		data = self.state(*args,**kwargs)
 		# data = {**dict(data=data)}
 
 		samples = {}
@@ -334,7 +334,7 @@ class Model(object):
 				 for string in self.strings
 				}
 		for string in options:
-			sample = self.hist(data,**options[string])
+			sample = self.sample(data,**options[string])
 			for key,value in zip(self.keys,sample):
 				samples[self.pattern.format(name=self.name,string=string,key=key)] = value
 		data = {**samples}

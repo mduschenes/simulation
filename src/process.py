@@ -2645,7 +2645,7 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
-			logger.log(info,"\tConfiguring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not isinstance(metadata[instance][subinstance][attr],list)}))
+			logger.log(info,"\tConfiguring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not sorting[instance][subinstance] or attr in sorting[instance][subinstance]}))
 
 			for prop in information[instance][subinstance]:
 				

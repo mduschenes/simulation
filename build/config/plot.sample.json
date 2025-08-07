@@ -959,12 +959,12 @@
                     "log": true,
                     "density": "probability",
                     "width": true,
+                    "align": "center",
                     "linewidth": 2,
                     "edgecolor": {
                         "color": "black",
                         "alpha": 0
                     },
-                    "align": "center",
                     "zorder": {
                         "@measure@": {
                             "povm": 100,

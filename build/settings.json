@@ -269,6 +269,9 @@
 		"array":"measure.array",
 		"state":"measure.state",
 		
+		"sample.linear":"measure.sample",
+		"sample.log":"measure.sample",
+		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":"measure.infidelity_pure",
@@ -297,6 +300,8 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
+		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
+		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
@@ -317,7 +322,10 @@
 		
 		"array":"measure.array",
 		"state":"measure.state",
-
+		
+		"sample.linear":"measure.sample",
+		"sample.log":"measure.sample",
+		
 		"infidelity.quantum":null,
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":null,
@@ -346,6 +354,8 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
+		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
+		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
