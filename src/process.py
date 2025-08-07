@@ -1630,14 +1630,22 @@ def apply(data,plots,processes,verbose=None):
 				*[attr for i in attributes for func in attributes[i] for attr in (attributes[i][func] if not isinstance(attributes[i][func],str) else [attributes[i][func]]) if attr in data and wrappers[i][func] is not None]
 				)))
 
+			dtypes = {attr: (
+					('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
+					if attr in data else 'dtype') 
+					for attr in attributes}
+
 			if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
+
 			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
-			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent]
+			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) not in ['array']]
 			labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+			exceptions = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) in ['array']]
+
 
 			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 			boolean = conditions(boolean,op='and')
@@ -1681,7 +1689,7 @@ def apply(data,plots,processes,verbose=None):
 
 			if (
 				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
-				(not all(attr in data for attr in [*independent,*dependent]))
+				(not all(attr in data for attr in [*independent,*dependent,*exceptions]))
 				):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
@@ -1711,11 +1719,6 @@ def apply(data,plots,processes,verbose=None):
 						for i in range(groups.ndim)))
 						for prop in properties}
 			shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
-
-			dtypes = {attr: (
-					('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
-					if attr in data else 'dtype') 
-					for attr in attributes}
 
 			applications = {
 				**{attr : [(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]] 
@@ -1750,7 +1753,7 @@ def apply(data,plots,processes,verbose=None):
 				*[kwarg[0] for attr in [*independent,*dependent] for kwarg in applications[attr]]
 				]
 
-			dtype = {attr: data[attr].dtype for attr in applications if attr in label or attr not in variables}
+			dtype = {attr: data[attr].dtype for attr in applications if (attr in label or attr not in variables) and attr not in exceptions}
 			
 			if application is None or application in ['agg']:
 
@@ -1806,7 +1809,7 @@ def apply(data,plots,processes,verbose=None):
 			# 				 	'dtype':funcs[function][axes][func]
 			# 					}[dtypes[attr]]) 
 			# 				for function in funcs for func in funcs[function][axes]} 
-			# 				for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
+			# 				for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*exceptions,*dependent])
 			# 				},
 			# }		
 
@@ -1870,7 +1873,7 @@ def apply(data,plots,processes,verbose=None):
 					if value is None:
 						value = copy(getter(plts,name[-3:],delimiter=delim))
 
-					source = [attr for attr in attributes if attr not in variables]
+					source = [attr for attr in attributes if attr not in variables and attr not in exceptions]
 					destination = other
 
 					indexes = {}
@@ -1887,7 +1890,7 @@ def apply(data,plots,processes,verbose=None):
 
 					obj = {
 						**{attr: grouping[attr].iloc[0] for attr in source if len(grouping[attr])},
-						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
+						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent,*exceptions] else axes: 
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 							'func':[j,function],
@@ -1910,8 +1913,8 @@ def apply(data,plots,processes,verbose=None):
 
 							attr = keys[name][axes]
 
-							source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
-							destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
+							source = delim.join(((attr,function,func))) if attr in [*independent,*dependent,*exceptions] else attr
+							destination = '%s%s'%(axes,func) if attr in [*independent,*dependent,*exceptions] else axes
 
 							if grouping.shape[0]:
 								if source in grouping:

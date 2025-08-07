@@ -196,6 +196,31 @@ def func_hist_yerr(data,*args,**kwargs):
 	data = func_hist_err(data,*args,**kwargs)
 	return data
 
+def func_sample_y(data,*args,**kwargs):
+	data = sum((array(i) for i in data))
+	data = data.reshape(1,*data.shape)
+	return data
+
+def func_sample_x(data,*args,**kwargs):
+	data = sum((array(i) for i in data))/len(data)
+	return data
+
+def func_sample_yerr(data,*args,**kwargs):
+	data = tuple((None,))
+	return data
+def func_sample_xerr(data,*args,**kwargs):
+	data = tuple((None,))
+	return data
+
+def func_sample_process(data,values,properties,*args,**kwargs):
+	if isinstance(values,arrays):
+		data += values
+	return data
+
+def func_sample_process_err(data,values,properties,*args,**kwargs):
+	data = values
+	return 
+
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
 
