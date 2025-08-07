@@ -97,8 +97,8 @@ def spawn(settings):
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 	count = max(1,len(seedlings))
 
-	if isinstance(size,int):
-		size = [size]*count
+	if isinstance(size,(int,float)):
+		size = [int(size)]*count
 		groups = [[i for i in seedlings]]
 	elif isinstance(size,dict):
 		size = [size.get(seedling,1) for seedling in seedlings]
