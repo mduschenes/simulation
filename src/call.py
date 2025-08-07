@@ -1381,7 +1381,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
 
-	keys = jobs
+	keys = {key:{} for key in jobs}
 
 	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
 		args = {key:args for key in keys}
@@ -1409,10 +1409,6 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 			resume = None
 
 		resume = {key: resume for key in keys}
-
-		keys = intersection(keys,resume,sort=None)
-
-	keys = {key:{} for key in keys}
 
 	iterable = [key for key in keys]
 	kwds = dict(
