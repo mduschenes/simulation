@@ -25,12 +25,16 @@ verbose = True
 
 class Model(object):
 
-	name = 'sample'
-	keys = ['x','y']
-	strings = ['linear','log']
-	pattern = '{name}.{string}.{key}'
-
-	def __init__(self,N=None,D=None,d=None,T=None,data=None,parameters=None,samples=None,model=None,measure=None,random=None,seed=None,dtype=None,path=None,cwd=None,key=None,options=None,system=None,**kwargs):
+	def __init__(self,
+			N=None,D=None,d=None,T=None,
+			data=None,parameters=None,
+			samples=None,
+			model=None,measure=None,
+			random=None,seed=None,dtype=None,
+			path=None,cwd=None,key=None,
+			attributes=None,options=None,
+			system=None,
+			**kwargs):
 		'''
 		Model Class
 		Args:
@@ -38,9 +42,9 @@ class Model(object):
 			D (int): System dimension
 			d (int): Spatial dimension
 			T (float): System temperature
+			samples (int): System samples
 			data (dict): System data
 			parameters (object): System parameters
-			samples (int): System samples
 			model (str): System model, allowed strings in ['sk','ask','nn','ann','ising']
 			measure (str): System measure, allowed strings in ['povm']
 			random (dict,str): System randomness, rand options, or allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
@@ -49,6 +53,7 @@ class Model(object):
 			path (str): System path
 			cwd (str): System directory
 			key (str): System key
+			attributes (dict): System attributes
 			options (dict): System options
 			system (dict): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		'''
@@ -57,9 +62,9 @@ class Model(object):
 		self.D = D
 		self.d = d
 		self.T = T
+		self.samples = samples
 		self.data = data
 		self.parameters = parameters
-		self.samples = samples
 		self.model = model
 		self.measure = measure
 		self.random = random
@@ -68,6 +73,7 @@ class Model(object):
 		self.path = path
 		self.cwd = cwd
 		self.key = key
+		self.attributes = attributes
 		self.options = options
 
 		if system is not None:
@@ -93,10 +99,8 @@ class Model(object):
 		self.options = dict() if not isinstance(self.options,dict) else self.options
 
 		self.attributes = dict(
-			N=None,D=None,d=None,T=None,model=None,measure=None,
-			# data=None,
-			**{attr:None for attr in [self.pattern.format(name=self.name,string=string,key=key) for string in self.strings for key in self.keys]}
-			)
+			N=None,D=None,d=None,T=None,model=None,measure=None,data=None
+			) if self.attributes is None else {attr:None for attr in self.attributes} if not isinstance(self.attributes,dict) else self.attributes
 
 		self.index = timestamp() if self.key is None else self.key
 
@@ -301,7 +305,7 @@ class Model(object):
 
 	def append(self,*args,**kwargs):
 
-		def value(index,attr,self,*args,**kwargs):
+		def value(index,attr):
 			data = kwargs.get(attr,getattr(self,attr,None))
 			data = [data] if isinstance(data,arrays) and not isinstance(data,scalars) else data
 			return data
@@ -310,7 +314,7 @@ class Model(object):
 		index = self.index
 
 		if index not in data:
-			data[index] = {attr: value(index,attr,self,*args,**kwargs) for attr in self.attributes}
+			data[index] = {attr: value(index,attr) for attr in kwargs}
 
 		return
 
@@ -321,23 +325,47 @@ class Model(object):
 			data = self.data[index]
 			return data
 
-		data = self.state(*args,**kwargs)
-		# data = {**dict(data=data)}
+		state = self.state(*args,**kwargs)
 
-		samples = {}
-		options = {
-				string:
-				dict(
-					linear=dict(scale='linear',base=10,range=[0,1]),
-					log=dict(scale='log',base=10,range=[1e-20,1e0])
-					).get(string)
-				 for string in self.strings
-				}
-		for string in options:
-			sample = self.sample(data,**options[string])
-			for key,value in zip(self.keys,sample):
-				samples[self.pattern.format(name=self.name,string=string,key=key)] = value
-		data = {**samples}
+		data = {}
+		for attr in self.attributes:
+			
+			key = attr
+			value = self.attributes[attr]
+
+			if attr in ['data']:
+
+				value = state
+
+			elif attr in ['sample.linear','sample.log']:
+
+				options = {
+					**({
+					'sample.linear':dict(bins=1000,scale='linear',base=10,range=[0,1]),
+					'sample.log':dict(bins=1000,scale='log',base=10,range=[1e-20,1e0]),
+						}.get(attr,{})),
+					**self.options
+					}
+
+				key = [f'{attr}.{i}' for i in ['x','y']]
+
+				value = self.sample(state,**options)
+
+			elif hasattr(self,attr):
+
+				value = getattr(self,attr)
+
+			else:
+				continue
+
+			if isinstance(key,str):
+
+				key = [key]
+				value = [value]
+
+			for key,value in zip(key,value):
+
+				data[key] = value
 
 		return data
 
