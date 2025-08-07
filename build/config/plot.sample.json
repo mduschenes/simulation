@@ -1134,7 +1134,15 @@
                     ],
                     "decimals": 3,
                     "strip": true
-                }
+                },
+                "scinotation": {
+                    "scilimits": [
+                        -1,
+                        -1
+                    ],
+                    "decimals": 0,
+                    "strip": true
+                }                
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Probability}~~ p$",
