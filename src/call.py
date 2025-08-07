@@ -1381,37 +1381,25 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
 
-	keys = intersection(jobs)
+	keys = jobs
 
 	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
 		args = {key:args for key in keys}
 
-	keys = intersection(keys,args)
-
 	if not all(key in paths for key in keys) or not len(paths):
 		paths = {key:paths for key in keys}
-
-	keys = intersection(keys,paths)
 
 	if not all(key in patterns for key in keys) or not len(patterns):
 		patterns = {key:patterns for key in keys}
 
-	keys = intersection(keys,patterns)
-
 	if not isinstance(dependencies,dict) or not len(dependencies):
 		dependencies = {key:dependencies for key in keys}
-
-	keys = intersection(keys,dependencies)
 
 	if isinstance(pwd,str):
 		pwd = {key:pwd for key in keys}
 
-	keys = intersection(keys,pwd)
-
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
-
-	keys = intersection(keys,cwd)
 
 	if not isinstance(resume,dict):
 
@@ -1422,7 +1410,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 		resume = {key: resume for key in keys}
 
-	keys = intersection(keys,resume,sort=None)
+		keys = intersection(keys,resume,sort=None)
 
 	keys = {key:{} for key in keys}
 
@@ -1436,7 +1424,9 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	callback_kwds = {'keys':keys}
 
 	for key in iterable:
+
 		task = init(key,**kwds)
+		
 		callback(task,key,keys)
 
 		if not local:

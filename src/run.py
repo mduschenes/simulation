@@ -169,6 +169,7 @@ def iterate(settings,index=None,wrapper=None):
 	Yields:
 		key (str): settings key
 		setting (dict): settings values
+		size (int): settings size
 	'''
 
 	i = -1
@@ -232,10 +233,13 @@ def iterate(settings,index=None,wrapper=None):
 				yield key,setting,size
 				break
 			elif index is not None and i == index:
-				yield key,setting
+				yield key,setting,size
 				break
 				
-			yield key,setting
+			yield key,setting,size
+
+		if index is True:
+			break
 
 
 def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,execute=None,verbose=None,**kwargs):
@@ -274,7 +278,7 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 	setter(settings,defaults,delimiter=delim,default=False)
 
 	if index is not None:
-		for key,setting in iterate(settings,index=index,wrapper=wrapper):
+		for key,setting,size in iterate(settings,index=index,wrapper=wrapper):
 			settings = setting
 			break
 
@@ -303,19 +307,19 @@ def init(settings):
 	# Iterate settings with permutations, seeds and options
 	attribute = 'jobs'
 	keyword = 'local'
-	if isinstance(settings.get(attribute),dict) and any(isinstance(settings[attribute].get(job),dict) and settings[attribute][job].get(keyword) for job in settings[attribute]):
+	local = isinstance(settings.get(attribute),dict) and all(isinstance(settings[attribute].get(job),dict) and settings[attribute][job].get(keyword) for job in settings[attribute])
+	if local:
 		options = dict(index=None)
-		settings = {key:setting for key,setting in iterate(settings,**options)}
+		settings = {key:setting for key,setting,size in iterate(settings,**options)}
+		names = union(*(settings[key][attribute] for key in settings),sort=True)
 	else:
 		options = dict(index=True)
 		for key,setting,size in iterate(settings,**options):
-			settings = {str(i):setting for i in range(size)}
-
-
+			settings = {key:setting for key in range(size)}
+			names = list(setting[attribute]) if setting.get(attribute) else []
+	
 	# Set job
 	jobs = {}
-
-	names = union(*(settings[key][attribute] for key in settings),sort=True)
 
 	for name in names:
 		
@@ -323,6 +327,9 @@ def init(settings):
 
 		for key in settings:
 			
+			if not local and jobs[name]:
+				break
+
 			job = settings[key][attribute].get(name)
 
 			if job is None:
@@ -354,7 +361,10 @@ def init(settings):
 					if attr not in jobs[name]:
 						jobs[name][attr] = {}
 					if attr in ['jobs','args','paths','patterns','pwd','cwd']:
-						jobs[name][attr][key] = value
+						if local:
+							jobs[name][attr][key] = value
+						else:
+							jobs[name][attr] = {key:value for key in settings}
 					else:
 						jobs[name][attr] = value
 				elif name in ['preprocess']:
@@ -367,7 +377,7 @@ def init(settings):
 			attrs = {'name':name}
 			jobs[name].update({attr: attrs[attr] for attr in attrs if attr not in jobs[name]})
 
-	jobs = {name: jobs[name] for name in jobs if len(jobs[name])}			
+	jobs = {name:jobs[name] for name in jobs if jobs[name]}
 
 	return jobs
 
