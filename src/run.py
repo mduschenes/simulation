@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,seeder,delim,union,is_equal,funcpath,argparser
+from src.utils import copy,seeder,prod,delim,union,is_equal,funcpath,argparser
 from src.iterables import Dict,getter,setter,permuter,search
 from src.io import load,dump,join,split,basename,dirname,environ
 from src.call import launch,call,command
@@ -189,8 +189,9 @@ def iterate(settings,index=None,wrapper=None):
 		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
 		seed,seeds,seedlings = spawn(setting)
 
-		# Get shape and default key of permutations
+		# Get shape, size and default key of permutations
 		shape = (len(permutations),len(seeds))
+		size = prod(shape)
 		default = getter(setting,'system.key',delimiter=delim)
 
 		# Get all allowed enumerated keys and seeds for permutations and seedlings of settings
@@ -198,7 +199,7 @@ def iterate(settings,index=None,wrapper=None):
 
 			i += 1
 
-			if index is not None and i != index:
+			if index is not None and index is not True and i != index:
 				continue
 
 			key = (instance,number)
@@ -227,9 +228,13 @@ def iterate(settings,index=None,wrapper=None):
 			if wrapper is not None:
 				setting = wrapper(setting)
 
-			if index is not None and i == index:
+			if index is True:
+				yield key,setting,size
+				break
+			elif index is not None and i == index:
 				yield key,setting
-
+				break
+				
 			yield key,setting
 
 
@@ -296,12 +301,21 @@ def init(settings):
 		settings = default
 
 	# Iterate settings with permutations, seeds and options
-	settings = {key:setting for key,setting in iterate(settings)}
+	attribute = 'jobs'
+	keyword = 'local'
+	if isinstance(settings.get(attribute),dict) and any(isinstance(settings[attribute].get(job),dict) and settings[attribute][job].get(keyword) for job in settings[attribute]):
+		options = dict(index=None)
+		settings = {key:setting for key,setting in iterate(settings,**options)}
+	else:
+		options = dict(index=True)
+		for key,setting,size in iterate(settings,**options):
+			settings = {str(i):setting for i in range(size)}
+
 
 	# Set job
 	jobs = {}
 
-	names = union(*(settings[key]['jobs'] for key in settings),sort=True)
+	names = union(*(settings[key][attribute] for key in settings),sort=True)
 
 	for name in names:
 		
@@ -309,7 +323,7 @@ def init(settings):
 
 		for key in settings:
 			
-			job = settings[key]['jobs'].get(name)
+			job = settings[key][attribute].get(name)
 
 			if job is None:
 				continue
@@ -324,7 +338,7 @@ def init(settings):
 					value = {
 						**{variable: {data:None}
 							for string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items() if data is not None},
-						**{variable if variable is not None else basename(path):{data if data is not None else basename(path): settings[key] if job.get('local') else path}
+						**{variable if variable is not None else basename(path):{data if data is not None else basename(path): settings[key] if job.get(keyword) else path}
 							for string in ['settings'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
 						**{variable:{data:settings[key].get(string,{})}
 							for string in ['plot','process'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
