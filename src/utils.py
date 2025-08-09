@@ -12792,7 +12792,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 	if zero and number == 0:
 		string = r'%d%%s%%s%%s'%(number)
 
-	elif is_int(number) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
+	elif is_int(number) and (scilimits[0] < scilimits[1]) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
 		string = r'%s%%s%%s%%s'%(str(number))
 
 	elif is_naninf(number):
@@ -12812,8 +12812,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 		else:
 			string = r'%s%s%s%%s%%s%%s'%(
 				stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
-				r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
-				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+				r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+				'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
@@ -12829,16 +12829,16 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 			else:
 				error = r'%s%s%s'%(
 					stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
-					r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
-					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+					r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+					'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 					)
 			# if int(exp) in range(*scilimits):
 			# 	error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
 			# else:
 			# 	error = r'%s%s%s'%(
 			# 		'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-			# 		r' \cdot ' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
-			# 		'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+			# 		r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+			# 		'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 			# 		)
 
 	if error is None:
