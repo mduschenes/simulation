@@ -488,10 +488,10 @@ def func_fit_histogram(args,kwargs,attributes):
 		xerr = xerr[indices] if xerr is not None else None
 		yerr = yerr[indices] if yerr is not None else None
 
-		window = lambda size: np.ones(size)/size
-		options = dict(mode='same')
-		size = max(10,len(y)//100)
-		y = np.convolve(y,window(size),**options)
+		# window = lambda size: np.ones(size)/size
+		# options = dict(mode='same')
+		# size = max(10,len(y)//100)
+		# y = np.convolve(y,window(size),**options)
 
 		attributes['d'] = attributes['D']**attributes['N']
 
@@ -508,14 +508,17 @@ def func_fit_histogram(args,kwargs,attributes):
 	parameters = [1,1]
 	options = dict(full_output=True)
 
-	parameters,err,info,msg,code = model(objective,parameters,(x,y),**options)
+	if len(x)>1 and len(y)>1:
+		parameters,err,info,msg,code = model(objective,parameters,(x,y),**options)
+	else:
+		parameters,err,info,msg,code = parameters,None,None,None,None
 
 	x = x
 	y = func(parameters,x)
 	xerr = None
 	yerr = None#error(parameters,x,y,err)
 
-	x,y,xerr,yerr = x[::10 if len(x)>10*10 else 1],y[::10 if len(y)>10*10 else 1],xerr,yerr
+	# x,y,xerr,yerr = x[::10 if len(x)>10*10 else 1],y[::10 if len(y)>10*10 else 1],xerr,yerr
 
 	attr = 'errorbar'
 	kwarg = 'label'
