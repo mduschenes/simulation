@@ -624,6 +624,8 @@ def find(dictionary,verbose=None):
 				else:
 					keys[name][attr] = keys[name][attr][0]
 
+	keys = copy(keys)
+
 	return keys
 
 
@@ -670,7 +672,7 @@ def parse(key,value,data,verbose=None):
 
 	if key not in data:
 		pass
-	elif value is null:
+	elif isinstance(value,Null):
 		pass
 	elif value is None:
 		pass
@@ -1635,7 +1637,7 @@ def apply(data,plots,processes,verbose=None):
 					if attr in data else 'dtype') 
 					for attr in attributes}
 
-			if any((keys[name][axes] not in attributes) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
+			if any((keys[name][axes] not in attributes) and (not isinstance(keys[name][axes],Null)) for axes in AXES if axes in keys[name]):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
@@ -1643,9 +1645,8 @@ def apply(data,plots,processes,verbose=None):
 
 			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
 			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) not in ['array']]
-			labels = [attr for attr in label if (attr in attributes) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((isinstance(label[attr],iterables)) and (exclude is None)) or (isinstance(label[attr],str) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+			labels = [attr for attr in label if (attr in attributes) and (not isinstance(label[attr],str)) or ((((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include)))]
 			exceptions = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) in ['array']]
-
 
 			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 			boolean = conditions(boolean,op='and')
@@ -1879,7 +1880,7 @@ def apply(data,plots,processes,verbose=None):
 					indexes = {}
 					for axes in keys[name]:
 						attr = keys[name][axes]
-						if axes not in AXES or attr is null:
+						if axes not in AXES or isinstance(attr,Null):
 							continue
 						if attr not in indexes:
 							indexes[attr] = []
@@ -1894,13 +1895,13 @@ def apply(data,plots,processes,verbose=None):
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 							'func':[j,function],
-							'label':keys[name][axes] if keys[name][axes] is not null else None
+							'label':keys[name][axes] if not isinstance(keys[name][axes],Null) else None
 							} 
 							for axes in dimensions 
 							for func in funcs[function][axes]
 							},
 						**{other: {attr: {subattr: keys[name][other][attr][subattr] 
-							if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
+							if not isinstance(keys[name][other][attr][subattr],Null) else None for subattr in keys[name][other][attr]}
 							if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] 
 							for attr in keys[name][other]}
 							},
@@ -1927,7 +1928,7 @@ def apply(data,plots,processes,verbose=None):
 											obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
 									except Exception as exception:
 										obj = None
-								elif source is null:
+								elif isinstance(source,Null):
 									source = delim.join(((dependent[-1],function,func)))
 									obj = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
 								else:
@@ -2645,7 +2646,7 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
-			logger.log(info,"\tConfiguring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not sorting[instance][subinstance] or attr in sorting[instance][subinstance]}))
+			logger.log(info,"Configuring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not sorting[instance][subinstance] or attr in sorting[instance][subinstance]}))
 
 			for prop in information[instance][subinstance]:
 				

@@ -1716,7 +1716,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				
 
 				_kwds.update({
-					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
+					'set_zorder':kwargs[attr].get('set_zorder',{'level':1000}),
 					'set_title':{
 						**({'title': kwargs[attr].get('set_title',kwargs[attr].get('title',None)),
 							'prop':{'size':kwargs[attr].get('prop',{}).get('size')},
@@ -2364,6 +2364,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['%saxis.set_ticklabels'%(axes) for axes in AXES]:
 				pass			
+			
+			elif attr in ['set_zorder']:
+				call = True
+				pass
 
 			elif attr in ['invert_%saxis'%(axes) for axes in AXES]:
 				call = True
@@ -2903,7 +2907,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						for axes in AXES},
 					**{string%(axes):-2 for i,string in enumerate(['invert_%saxis'])
 						for axes in AXES},	
-					**{string:-2 for i,string in enumerate(['set_colorbar','legend'])},
+					**{string:-2 for i,string in enumerate(['set_colorbar','legend','set_zorder'])},
 					},
 				}.get(attr,{})
 			modify = {attr:-1 for attr in ordering} if attr in ['fig'] else {}
