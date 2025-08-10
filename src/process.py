@@ -1645,7 +1645,7 @@ def apply(data,plots,processes,verbose=None):
 
 			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in attributes]
 			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) not in ['array']]
-			labels = [attr for attr in label if (attr in attributes) and (not isinstance(label[attr],str)) or ((((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include)))]
+			labels = [attr for attr in label if (attr in attributes) and ((not isinstance(label[attr],str)) or ((((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))))]
 			exceptions = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) in ['array']]
 
 			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
@@ -1890,7 +1890,7 @@ def apply(data,plots,processes,verbose=None):
 							indexes[attr] = None
 
 					obj = {
-						**{attr: grouping[attr].iloc[0] for attr in source if len(grouping[attr])},
+						**{attr: grouping[attr].iloc[0] if len(grouping[attr]) else None for attr in source},
 						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent,*exceptions] else axes: 
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
@@ -1999,6 +1999,7 @@ def plotter(plots,processes,verbose=None):
 					plots[instance][subinstance][obj][prop] = [plots[instance][subinstance][obj][prop]]
 				
 				if prop in PLOTS:
+
 					for data in search(plots[instance][subinstance][obj][prop]):
 
 						if not data:
@@ -2053,7 +2054,7 @@ def plotter(plots,processes,verbose=None):
 							if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) >= (len(dimensions)-1)]
 						dim = len(dimensions)
 
-						if all(data.get(attr) is None for attr in ALL):
+						if all(data.get(attr) is None or isinstance(data.get(attr),str) for attr in ALL) or (isinstance(data[OTHER][OTHER].get(OTHER),dict) and any(data[OTHER].get(attr) is None for attr in data[OTHER][OTHER][OTHER])):
 							data.clear()
 						else:
 							for attr in ALL:
@@ -2115,7 +2116,6 @@ def plotter(plots,processes,verbose=None):
 						
 						if axes not in data or data[axes] is None or isinstance(data[axes],scalars):
 							continue
-
 
 						if not isinstance(data[axes],np.ndarray):
 							data[axes] = np.array(data[axes])

@@ -842,10 +842,13 @@ def _dump_hdf5(data,path,wr='w',ext=None,options=None,transform=None,execute=Non
 			elif isinstance(data[name],scalars):
 				if key in path.attrs:
 					del path.attrs[key]
-				try:
-					path.attrs[key] = data[name]
-				except TypeError:
-					pass
+				if data[name] is None:
+					path.attrs[key] = "none"
+				else:
+					try:
+						path.attrs[key] = data[name]
+					except TypeError:
+						pass
 			else:
 				if key in path:
 					del path[key]
