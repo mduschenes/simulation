@@ -305,6 +305,7 @@ def init(settings):
 		settings = default
 
 	# Iterate settings with permutations, seeds and options
+	names = []
 	attribute = 'jobs'
 	keyword = 'local'
 	local = isinstance(settings.get(attribute),dict) and all(isinstance(settings[attribute].get(job),dict) and settings[attribute][job].get(keyword) for job in settings[attribute])
