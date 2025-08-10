@@ -87,7 +87,7 @@
                             "N": null,
                             "T": null,
                             "measure": [
-                                "none"
+                                "projector"
                             ]
                         },
                         "func": {
@@ -527,7 +527,7 @@
                             "T": null,
                             "N": null,
                             "measure": [
-                                "none",
+                                "projector",
                                 "povm"
                             ]
                         },
@@ -537,7 +537,7 @@
                     "obj": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "plots": [
@@ -548,7 +548,7 @@
                     "scale": {
                         "@measure@": {
                             "povm": "log",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "base": 10,
@@ -564,20 +564,20 @@
                     "zorder": {
                         "@measure@": {
                             "povm": 100,
-                            "none": 50
+                            "projector": 50
                         }
                     },
                     "obj.errorbar": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "alpha.errorbar": 0.5,
                     "marker.errorbar": {
                         "@measure@": {
                             "povm": "o",
-                            "none": "s"
+                            "projector": "s"
                         }
                     },
                     "markersize.errorbar": 10,
@@ -587,7 +587,7 @@
                     "color": {
                         "@measure@": {
                             "povm": "viridis_0.66",
-                            "none": "viridis_0.33"
+                            "projector": "viridis_0.33"
                         }
                     },
                     "color.errorbar": "black",
@@ -885,7 +885,7 @@
                             "N": null,
                             "T": null,
                             "measure": [
-                                "none"
+                                "projector"
                             ]
                         },
                         "func": {
@@ -931,7 +931,7 @@
                             "T": null,
                             "N": null,
                             "measure": [
-                                "none",
+                                "projector",
                                 "povm"
                             ]
                         },
@@ -941,7 +941,7 @@
                     "obj": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "plots": [
@@ -952,7 +952,7 @@
                     "scale": {
                         "@measure@": {
                             "povm": "log",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "base": 10,
@@ -968,20 +968,20 @@
                     "zorder": {
                         "@measure@": {
                             "povm": 100,
-                            "none": 50
+                            "projector": 50
                         }
                     },
                     "obj.errorbar": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "alpha.errorbar": 0.5,
                     "marker.errorbar": {
                         "@measure@": {
                             "povm": "o",
-                            "none": "s"
+                            "projector": "s"
                         }
                     },
                     "markersize.errorbar": 10,
@@ -991,7 +991,7 @@
                     "color": {
                         "@measure@": {
                             "povm": "viridis_0.66",
-                            "none": "viridis_0.33"
+                            "projector": "viridis_0.33"
                         }
                     },
                     "color.errorbar": "black",
@@ -1052,7 +1052,7 @@
                             "T": null,
                             "N": null,
                             "measure": [
-                                "none",
+                                "projector",
                                 "povm"
                             ]
                         },
@@ -1062,7 +1062,7 @@
                     "obj": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "plots": [
@@ -1073,7 +1073,7 @@
                     "scale": {
                         "@measure@": {
                             "povm": "log",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "base": 10,
@@ -1089,20 +1089,20 @@
                     "zorder": {
                         "@measure@": {
                             "povm": 100,
-                            "none": 50
+                            "projector": 50
                         }
                     },
                     "obj.errorbar": {
                         "@measure@": {
                             "povm": "twiny",
-                            "none": null
+                            "projector": null
                         }
                     },
                     "alpha.errorbar": 0.5,
                     "marker.errorbar": {
                         "@measure@": {
                             "povm": "o",
-                            "none": "s"
+                            "projector": "s"
                         }
                     },
                     "markersize.errorbar": 10,
@@ -1112,7 +1112,7 @@
                     "color": {
                         "@measure@": {
                             "povm": "viridis_0.66",
-                            "none": "viridis_0.33"
+                            "projector": "viridis_0.33"
                         }
                     },
                     "color.errorbar": "black",

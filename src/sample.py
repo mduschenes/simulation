@@ -46,7 +46,7 @@ class Model(object):
 			data (dict): System data
 			parameters (object): System parameters
 			model (str): System model, allowed strings in ['sk','ask','nn','ann','ising']
-			measure (str): System measure, allowed strings in ['povm']
+			measure (str): System measure, allowed strings in ['projector','povm']
 			random (dict,str): System randomness, rand options, or allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			seed (int,key): System seed
 			dtype (datatype): System datatype
@@ -161,7 +161,7 @@ class Model(object):
 			def func(parameters,state,*args,**kwargs):
 				return -einsum('i,ij,j',state,parameters['J'],state) + einsum('i,i',parameters['h'],state)								
 		
-		if self.measure is None:
+		if self.measure is None or self.measure in ['projector']:
 			parameters = None
 			measure = None
 			def measurement(data,*args,**kwargs):

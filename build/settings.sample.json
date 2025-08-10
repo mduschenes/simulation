@@ -18,7 +18,7 @@
 			"model.T": [0.1,0.25,0.5,0.75,5],
 			"model.samples":[1e4],
 			"model.model":["sk"],
-			"model.measure":["povm",null],
+			"model.measure":["projector","povm"],
 			"model.random":[{"random":"normal","bounds":[-1,1]}],
 			"model.attributes":[["N","D","d","T","samples","model","measure","sample.linear","sample.log"]],
 			"model.options":[{"bins":1000}],
