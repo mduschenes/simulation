@@ -134,22 +134,22 @@ Example settings `settings.json`
 "model":{
     "data":{
         "x":{
-            "operator":["X"],"site":"i","string":"x",
+            "operator":["X"],"where":"i","string":"x",
             "parameters":null,
             "variable":true
         },
         "y":{
-            "operator":["Y"],"site":"i","string":"y",
+            "operator":["Y"],"where":"i","string":"y",
             "parameters":null,
             "variable":true
         },      
         "zz":{
-            "operator":["Z","Z"],"site":"i<j","string":"zz",
+            "operator":["Z","Z"],"where":"i<j","string":"zz",
             "parameters":[1,0,-1],
             "variable":true
         },
         "noise":{
-            "operator":"depolarize","site":null,"string":"noise",
+            "operator":"depolarize","where":null,"string":"noise",
             "parameters":1e-12,
             "variable":false
         }
@@ -197,7 +197,7 @@ Example settings `settings.json`
     },
 "label": {
     "operator":"haar",
-    "site":null,
+    "where":null,
     "string":"U",
     "parameters":1,
     "ndim":2,
@@ -205,7 +205,7 @@ Example settings `settings.json`
     },
 "state": {
     "operator":"zero",
-    "site":null,
+    "where":null,
     "string":"psi",
     "parameters":true,
     "ndim":2,
@@ -298,8 +298,8 @@ Settings files `settings.json` are used to configure model, optimization, and jo
 - `model` : model instance settings (`data`,`N`,`M`,`D`,...)
 - `system` : system settings (`dtype`,`device`,`backend`,`path`,`logger`,...)
 - `optimize` : optimization settings (`iterations`,`optimizer`,`metric`,`track`,...)
-- `label` : label settings for optimization (`operator`,`site`,`parameters`,...)
-- `state` : state settings for optimization (`operator`,`site`,`parameters`,...)
+- `label` : label settings for optimization (`operator`,`where`,`parameters`,...)
+- `state` : state settings for optimization (`operator`,`where`,`parameters`,...)
 - `callback` : callback settings for optimization (`args`,`kwargs`,...)
 - `process` : postprocessing settings (`load`,`dump`,`plot`,`instance`,`texify`,...)
 - `plot` : plotting settings (`fig`,`ax`,`style`,...)

@@ -7,7 +7,7 @@
 	},
 "seed":{
 	"seed":123,
-	"size":5,
+	"size":12,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -15,64 +15,72 @@
 "permutations":{
 	"permutations":{	
 
-		"module.N":[4,6,8],
-		"module.M":[1,2,5,10,20,50],
-		"module.D":[2],
-		"module.d":[1],
+		"module.M":[1,2,4,8,10,12,14,16,18,20,24,26,28,30,32,40,50],
 		"model.N":[4,6,8],
+		"model.N":[4],
 		"model.M":[1],
 		"model.D":[2],
 		"model.d":[1],
 		"model.local":[true],
+		"model.tensor":[true],
 		"model.configuration":[{
-			"key":["src.functions.key"],
-			"sort":null,
-			"reverse":false
+			"key":null,
+			"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 		
-		"module.measure.string":["pauli"],
-		"module.measure.operator":["pauli"],
+		"module.measure.string":["povm"],
+		"module.measure.operator":["tetrad"],
 		"module.measure.architecture":["tensor"],
 		"module.measure.D":[2],		
-		"module.measure.options":[{"cyclic":false}],
-		"module.options.max_bond":[null],
-		"module.options.max_bond":[2,3,4,6,8,16,32,64],
-		"module.options.cutoff":[0],
+		"module.measure.options":[{}],
+		"module.options":[{"scheme":"nmf","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","metric":"div","seed":null}],
+		"module.options":[{"scheme":"svd","eps":1e-16,"iters":5e6,"parameters":null,"method":"mu","initialize":"nndsvda","metric":"div","seed":null}],
+		"module.options.S":[4,16,64,256],
+		"module.options.S":[16],
 		"module.configuration":[{
-			"key":["src.functions.key"],
-			"sort":null,
-			"reverse":false
+			"key":null,
+			"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
 			}],
 
 		"model.data.unitary.operator":["haar"],
 		"model.data.unitary.parameters":[null],
-		"model.data.unitary.site":["||ij||"],
+		"model.data.unitary.where":["||ij||"],
 
-		"model.data.noise.operator":[["depolarize","depolarize"]],
-		"model.data.noise.parameters":[1e-14,1e-10,1e-6,1e-2],
-		"model.data.noise.site":["||ij||"],
+		"model.data.noise.operator":[["depolarize"]],
+		"model.data.noise.parameters":[1e-4,1e-3,5e-3,1e-2,5e-2,1e-1],
+		"model.data.noise.where":["||i.j||"],
 
 		"state.string":["psi"],
-		"state.operator":["zero"],
+		"state.operator":["haar"],
 		"state.local":[false],
+		"state.tensor":[true],
 		"state.D":[2],
 		"state.ndim":[2],
+		"state.architecture":[null],
 		"state.parameters":[null],
 
-		"jobs.job.cwd":["scratch/test"],
-		"jobs.postprocess.cwd":["scratch/test"],
+		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
+
+		"jobs.job.cwd":["~/scratch/probability"],
+		"jobs.postprocess.cwd":["~/scratch/probability"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
-		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/src/config"],
+		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
+
+		"jobs.job.paths.settings":[{"settings.json":"settings.json"}],
+		"jobs.postprocess.paths.plot":[{"plot.json":"plot.json"}],
+		"jobs.postprocess.paths.process":[{"process.json":"process.json"}],
 
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],
-		"jobs.job.process":["series"],
+		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[null],
 		"jobs.postprocess.pool":[1],
+		"jobs.job.local":[null],
+		"jobs.postprocess.local":[null],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
@@ -84,6 +92,8 @@
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/tensor/code/src"],
 		"jobs.postprocess.args.JOB_ENV":["tensor"],
 		"jobs.postprocess.args.NUMPY_BACKEND":["jax"],
+		"jobs.job.args.JOB_CLEANUP":["data.hdf5.lock"],
+		"jobs.postprocess.args.JOB_CLEANUP":[null],
 		"jobs.job.args.JOB_PROCESSES":[8],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
@@ -95,7 +105,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
-	"groups":[["module.N","model.N"]],
+	"groups":null,
 	"filters":null,
 	"func":null,
 	"index":null
@@ -111,20 +121,20 @@
 	"M":4,
 	"D":2,
 	"d":1,
-	"seed":null,
+	"seed":123,
 	"string":"module",
-	"measure":{"string":"povm","operator":"pauli","D":2,"seed":null,"architecture":"tensor","options":{"cyclic":false}},
+	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
 	"configuration":{},
-	"options":{"contract":"swap+split","max_bond":null,"cutoff":0}		
+	"options":{}		
 },
 "model":{
 	"data":{
 		"unitary":{
-			"operator":"haar","site":"||ij||","string":"unitary",
+			"operator":"haar","where":"||ij||","string":"unitary",
 			"parameters":null,"variable":false,"seed":null
 		},				
 		"noise":{
-			"operator":["depolarize","depolarize"],"site":"||ij||","string":"noise",
+			"operator":["depolarize"],"where":"||i.j||","string":"noise",
 			"parameters":1e-8,"variable":false
 		}
 	},
@@ -133,20 +143,23 @@
 	"D":2,
 	"d":1,
 	"local":true,
+	"tensor":true,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
 	"seed":null
 	},
 "state": {
-	"operator":["zero"],
-	"site":null,
+	"operator":"haar",
+	"where":null,
 	"string":"psi",
 	"parameters":null,
 	"N":null,
 	"D":2,
 	"ndim":2,
 	"local":null,
+	"tensor":true,	
+	"architecture":null,
 	"seed":null	
 	},
 "system":{
@@ -161,8 +174,10 @@
 	"instance":null,
 	"cwd":null,
 	"path":"data.hdf5",
+	"lock":true,
+	"backup":true,
 	"conf":"logging.conf",
-	"logger":"log.log",
+	"logger":null,
 	"cleanup":false,
 	"verbose":"info"
 	},
@@ -176,6 +191,7 @@
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
+			"JOB_CLEANUP":null,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
@@ -193,6 +209,7 @@
 		"pwd":"config",
 		"cwd":"data",
 		"pool":null,
+		"local":null,
 		"resume":null,
 		"pause":1,
 		"file":"job.sh",	
@@ -209,7 +226,8 @@
 			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/tensor/code/src",
 			"JOB_CMD":"process.py",
-			"JOB_PROCESSES":1,			
+			"JOB_PROCESSES":1,		
+			"JOB_CLEANUP":null,	
 			"JOB_ARGS":["--data=**/data.hdf5","--plots=plot.json","--processes=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{
@@ -226,6 +244,7 @@
 		"pwd":"config",
 		"cwd":"data",
 		"pool":null,		
+		"local":null,
 		"pause":1,	
 		"file":"postprocess.sh",
 		"processes":null,
@@ -242,8 +261,16 @@
 		"seed":"seed","seeding":"seeding",
 		"noise.parameters":"noise.parameters",
 		"operator":"measure.operator",
-		"max_bond":"options.max_bond",
-		"cyclic":"measure.options.cyclic",
+		"S":"options.S",
+		"scheme":"options.scheme",		
+		"layout":"configuration.options.layout",
+		"periodic":"measure.options.periodic",
+		
+		"array":"measure.array",
+		"state":"measure.state",
+		
+		"sample.linear":"measure.sample",
+		"sample.log":"measure.sample",
 		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
@@ -273,15 +300,69 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
+		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
+		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
 		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
 		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
-	"options":{
-		"contract":true,"max_bond":null,"cutoff":0
-	}
+	"options":{},
+	"attributes":{
+		"N":"N","M":"M","d":"d","D":"D",
+		"key":"key","instance":"instance","timestamp":"timestamp",
+		"seed":"seed","seeding":"seeding",
+		"noise.parameters":"noise.parameters",
+		"operator":"measure.operator",
+		"S":"options.S",
+		"scheme":"options.scheme",		
+		"layout":"configuration.options.layout",		
+		"periodic":"measure.options.periodic",
+		
+		"array":"measure.array",
+		"state":"measure.state",
+		
+		"sample.linear":"measure.sample",
+		"sample.log":"measure.sample",
+		
+		"infidelity.quantum":null,
+		"infidelity.classical":"measure.infidelity_classical",
+		"infidelity.pure":null,
+		"norm.quantum":null,
+		"norm.classical":"measure.norm_classical",
+		"norm.pure":null,
+
+		"entanglement.quantum":null,
+		"entanglement.classical":"measure.entanglement_classical",
+		"entanglement.renyi":null,
+		"entangling.quantum":null,
+		"entangling.classical":null,
+		"entangling.renyi":null,
+		
+		"mutual.quantum":null,
+		"mutual.measure":null,
+		"mutual.classical":"measure.mutual_classical",
+		"mutual.renyi":null,
+		"discord.quantum":null,
+		"discord.classical":null,
+		"discord.renyi":null,
+		
+		"spectrum.quantum":null,
+		"spectrum.classical":"measure.spectrum_classical",
+		"rank.quantum":null,
+		"rank.classical":"measure.rank_classical"
+	},
+	"keywords": {
+		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
+		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
+		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
+		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
+		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
+	},
+	"options":{}	
 },
 "workflow": {
 	"path":{

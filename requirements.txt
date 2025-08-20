@@ -7,11 +7,15 @@ pytables
 matplotlib
 pytest
 typing
+filelock
 natsort
+braceexpand
 joblib
 parallel
 jax
 jaxlib
+jaxopt
+qpax
 absl-py
 pyaml
 autograd

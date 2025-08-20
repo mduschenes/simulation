@@ -9,9 +9,9 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,seeder,delim,union,is_equal,funcpath,argparser
-from src.iterables import getter,setter,permuter,search
-from src.io import load,dump,join,split,environ
+from src.utils import copy,seeder,prod,delim,union,is_equal,funcpath,argparser
+from src.iterables import Dict,getter,setter,permuter,search
+from src.io import load,dump,join,split,basename,dirname,environ
 from src.call import launch,call,command
 
 def allow(value,values,settings):
@@ -41,11 +41,17 @@ def permute(settings):
 		permutations (iterable[dict]): Permutations of settings
 	'''
 	
-	permutations = settings['permutations'].get('permutations')
+	attr = 'permutations'
+
+	if settings.get(attr) is None:
+		permutations = []
+		return permutations
+
+	permutations = settings.get(attr,{}).get('permutations')
 	
-	groups = settings['permutations'].get('groups')
-	filters = load(settings['permutations'].get('filters'),default=settings['permutations'].get('filters'))
-	func = load(settings['permutations'].get('func'),default=settings['permutations'].get('func'))
+	groups = settings.get(attr,{}).get('groups')
+	filters = load(settings.get(attr,{}).get('filters'),default=settings.get(attr,{}).get('filters'))
+	func = load(settings.get(attr,{}).get('func'),default=settings.get(attr,{}).get('func'))
 	
 	permutations = permuter(permutations,groups=groups,filters=filters,func=func)
 
@@ -64,15 +70,26 @@ def spawn(settings):
 	'''
 
 	# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
-	seed = settings['seed'].get('seed')
-	size = settings['seed'].get('size')
-	groups = settings['seed'].get('groups')
+
+	attr = 'seed'
+
+	if settings.get(attr) is None:
+		seed = None
+		seeds = []
+		seedlings = {}
+		return seed,seeds,seedlings
+
+	seed = settings.get(attr,{}).get('seed')
+	size = settings.get(attr,{}).get('size')
+	groups = settings.get(attr,{}).get('groups')
+	attributes = settings.get(attr,{}).get('attributes')
 
 	# Find keys of seeds in settings
 	items = ['seed']
 	types = (list,dict,)
 	exclude = ['seed','seed.seed','system.seed',
 		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim)],
+		*(attributes if attributes is not None else [])
 		]
 	seedlings = search(settings,items=items,returns=True,types=types)
 
@@ -80,8 +97,8 @@ def spawn(settings):
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 	count = max(1,len(seedlings))
 
-	if isinstance(size,int):
-		size = [size]*count
+	if isinstance(size,(int,float)):
+		size = [int(size)]*count
 		groups = [[i for i in seedlings]]
 	elif isinstance(size,dict):
 		size = [size.get(seedling,1) for seedling in seedlings]
@@ -140,36 +157,25 @@ def formatter(key,shape,value,settings,default):
 	return string
 
 
-def setup(settings):
+def iterate(settings,index=None,wrapper=None):
 	'''
-	Setup settings
+	Iterate settings
 	Args:
 		settings (dict,str): settings
+		index (int): settings index
+		wrapper (callable): settings wrapper
 	Returns:
-		jobs (dict): Job submission dictionary
+		settings (dict): settings
+	Yields:
+		key (str): settings key
+		setting (dict): settings values
+		size (int): settings size
 	'''
 
-	# Default settings
-	path = 'config/settings.json'
-
-	# Load default settings
-	default = {}
-	if settings is None:
-		defaults = path
-		settings = default
-	elif isinstance(settings,str):
-		defaults = settings
-		settings = load(settings,default=default)
-	else:
-		settings = default
-
-	setter(settings,load(path,default=default),default=False)
-
+	i = -1
 
 	# Get permutations of settings
 	permutations = permute(settings)
-
-	keys = {}
 
 	for instance,permutation in enumerate(permutations):
 
@@ -184,50 +190,148 @@ def setup(settings):
 		# Get seeds for number of splits/seedings, for all nested settings branches that involve a seed
 		seed,seeds,seedlings = spawn(setting)
 
-		# Get shape and default key of permutations
+		# Get shape, size and default key of permutations
 		shape = (len(permutations),len(seeds))
+		size = prod(shape)
 		default = getter(setting,'system.key',delimiter=delim)
 
 		# Get all allowed enumerated keys and seeds for permutations and seedlings of settings
-		for index,seedling in enumerate(seeds):
+		for number,seedling in enumerate(seeds):
 
-			key = (instance,index)
+			i += 1
+
+			if index is not None and index is not True and i != index:
+				continue
+
+			key = (instance,number)
 			value = (permutation,seedling)
 
 			key = formatter(key,shape,value,setting,default)
 
 			options = {
-				'system.key':key,
-				'system.instance':index if key is not None else None,
-				'system.instances':{seedling: index for seedling in seedlings},
-				'system.seed':seed,
-				'system.seeding':seed
+					'system.key':key,
+					'system.instance':number if key is not None else None,
+					'system.instances':{seedling: number for seedling in seedlings},
+					'system.seed':seed,
+					'system.seeding':seed
 				}
 
-			keys[key] = {}
+			value = {
+				**permutation,
+				**seedling,
+				**options,
+			}
 
-			for value in [permutation,seedling,options]:
-				for attr in value:
-					keys[key][attr] = value[attr]
+			setting = copy(setting)
 
+			setter(setting,value,delimiter=delim,copy=True)
+
+			if wrapper is not None:
+				setting = wrapper(setting)
+
+			if index is True:
+				yield key,setting,size
+				break
+			elif index is not None and i == index:
+				yield key,setting,size
+				break
+				
+			yield key,setting,size
+
+		if index is True:
+			break
+
+
+def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,execute=None,verbose=None,**kwargs):
+	'''
+	Setup settings
+	Args:
+		settings (dict,str): settings
+		index (int): settings index
+		device (str): settings device
+		job (str): settings job
+		path (str): settings path
+		env (int): settings environment
+		execute (bool,int): settings execution
+		verbose (int,str,bool): settings verbosity
+		args (iterable): settings positional arguments
+		kwargs (dict): settings keyword arguments
+	Returns:
+		settings (dict): settings
+	'''
+
+	default = {}
+	wrapper = Dict
+	defaults = Dict(
+		boolean=dict(call=None,optimize=None,load=None,dump=None),
+		cls=dict(module=None,model=None,state=None,label=None,callback=None),
+		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
+		optimize=dict(),options=dict(),seed=dict(),system=dict(),
+		)
+
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default,wrapper=wrapper)
+
+	setter(settings,kwargs,delimiter=delim,default=True)
+	setter(settings,defaults,delimiter=delim,default=False)
+
+	if index is not None:
+		for key,setting,size in iterate(settings,index=index,wrapper=wrapper):
+			settings = setting
+			break
+
+	return settings
+
+
+def init(settings):
+	'''
+	initialize settings
+	Args:
+		settings (dict,str): settings
+	Returns:
+		jobs (dict): Job submission dictionary
+	'''
+
+	# Load settings
+	path = settings if isinstance(settings,str) else None
+	default = {}
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(path,default=default)
+	else:
+		settings = default
+
+	# Iterate settings with permutations, seeds and options
+	names = []
+	attribute = 'jobs'
+	keyword = 'local'
+	local = isinstance(settings.get(attribute),dict) and all(isinstance(settings[attribute].get(job),dict) and settings[attribute][job].get(keyword) for job in settings[attribute])
+	if local:
+		options = dict(index=None)
+		settings = {key:setting for key,setting,size in iterate(settings,**options)}
+		names = union(*(settings[key][attribute] for key in settings),sort=True)
+	else:
+		options = dict(index=True)
+		for key,setting,size in iterate(settings,**options):
+			settings = {key:setting for key in range(size)}
+			names = list(setting[attribute]) if setting.get(attribute) else []
 	
-	# Set settings with key and seed instances
-	settings = {key: copy(settings) for key in keys}
-
-	for key in keys:
-		setter(settings[key],keys[key],delimiter=delim,copy=True)
-
 	# Set job
 	jobs = {}
 
-	names = union(*(settings[key]['jobs'] for key in keys),sort=True)
-
 	for name in names:
+		
 		jobs[name] = {}
 
-		for key in keys:
+		for key in settings:
 			
-			job = settings[key]['jobs'].get(name)
+			if not local and jobs[name]:
+				break
+
+			job = settings[key][attribute].get(name)
 
 			if job is None:
 				continue
@@ -240,12 +344,12 @@ def setup(settings):
 					value = job[attr]
 				elif attr in ['paths']:
 					value = {
-						**{job[attr][path]: None
-							for path in job[attr]},
-						**{job[attr][path]: settings[key] 
-							for path in ['settings'] if path in job[attr]},
-						**{job[attr][path]: settings[key].get(path,{}) 
-							for path in ['plot','process'] if path in job[attr]},
+						**{variable: {data:None}
+							for string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items() if data is not None},
+						**{variable if variable is not None else basename(path):{data if data is not None else basename(path): settings[key] if job.get(keyword) else path}
+							for string in ['settings'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
+						**{variable:{data:settings[key].get(string,{})}
+							for string in ['plot','process'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
 						}
 				elif attr in ['patterns']:
 					value = job[attr]
@@ -258,7 +362,10 @@ def setup(settings):
 					if attr not in jobs[name]:
 						jobs[name][attr] = {}
 					if attr in ['jobs','args','paths','patterns','pwd','cwd']:
-						jobs[name][attr][key] = value
+						if local:
+							jobs[name][attr][key] = value
+						else:
+							jobs[name][attr] = {key:value for key in settings}
 					else:
 						jobs[name][attr] = value
 				elif name in ['preprocess']:
@@ -271,21 +378,22 @@ def setup(settings):
 			attrs = {'name':name}
 			jobs[name].update({attr: attrs[attr] for attr in attrs if attr not in jobs[name]})
 
+	jobs = {name:jobs[name] for name in jobs if jobs[name]}
+
 	return jobs
 
 
 
-def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,verbose=None):
+def run(settings,device=None,job=None,path=None,env=None,execute=False,verbose=None):
 	'''
 	Run simulations
 	Args:
 		settings (dict,str): settings for simulations
 		device (str): Name of device to submit to
 		job (str): Name of job to run simulations
-		cmd (str): Name of command to run simulations
 		path (str): Path where to submit job
 		env (str): Name of environment to run simulations
-		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		execute (bool,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
 	Returns:
 		results (iterable[str]): Return of commands for each job		
@@ -294,11 +402,12 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,
 	device = None if device is None else device
 	job = 'job.slurm' if job is None else job
 	settings = join(settings,abspath=True)
-	cmd = funcpath(run) if cmd is None else cmd
 	path = join(path,abspath=True)	
 	env = environ().get('CONDA_PREFIX',environ().get('VIRTUAL_ENV')) if env is None else env
 	execute = True if execute is None else execute
 	verbose = True if verbose is None else verbose
+
+	cmd = funcpath(run)
 
 	if device is not None:
 
@@ -325,11 +434,78 @@ def run(settings,device=None,job=None,cmd=None,path=None,env=None,execute=False,
 
 	else:
 
-		jobs = setup(settings)
+		jobs = init(settings)
 
 		results = launch(jobs,execute=execute,verbose=verbose)
 
 	return results
+
+
+def argparse(*args,**kwargs):
+	'''
+	Parse arguments
+	Args:
+		args (iterable): positional arguments
+		kwargs (dict): keyword arguments
+	Returns:
+		args (iterable): arguments
+	'''
+
+	arguments = {
+		'--settings':{
+			'help':'Settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--index':{
+			'help':'Index',
+			'type':int,
+			'default':None,
+			'nargs':'?'
+		},
+		'--device':{
+			'help':'Device',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--job':{
+			'help':'Job',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--path':{
+			'help':'Path',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--env':{
+			'help':'Environment',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--dry-run':{
+			'help':'Execute',
+			'action':'store_true'
+		},
+		'--quiet':{
+			'help':'Verbose',
+			'action':'store_true'
+		},										
+		}		
+
+	wrappers = {
+		'execute': lambda kwarg,wrappers,kwargs: not kwargs.pop('dry-run',True),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
+		}
+
+	args = argparser(arguments,wrappers)
+
+	return args
 
 
 def main(*args,**kwargs):
@@ -337,6 +513,7 @@ def main(*args,**kwargs):
 	run(*args,**kwargs)
 
 	return
+
 
 if __name__ == '__main__':
 
@@ -359,12 +536,6 @@ if __name__ == '__main__':
 			'default':None,
 			'nargs':'?'
 		},	
-		'--cmd':{
-			'help':'Command',
-			'type':str,
-			'default':None,
-			'nargs':'?'
-		},
 		'--path':{
 			'help':'Path',
 			'type':str,

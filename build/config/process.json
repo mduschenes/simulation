@@ -1,6 +1,7 @@
 {
 	"load": 0,
 	"dump": 1,
+	"tmp": 1,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
@@ -30,34 +31,39 @@
 		"M.discord.classical.noise.parameters.N": 1,
 		"M.discord.renyi.noise.parameters.N": 1,
 		"M.discord.mutual.measure.quantum.noise.parameters.N": 1,
-		"noise.parameters.entangling.quantum.max_bond.N": 1,
-		"noise.parameters.entangling.renyi.max_bond.N": 1,
-		"noise.parameters.mutual.quantum.max_bond.N": 1,
-		"noise.parameters.mutual.measure.max_bond.N": 1,
-		"noise.parameters.mutual.classical.max_bond.N": 1,
-		"noise.parameters.mutual.renyi.max_bond.N": 1,
-		"noise.parameters.discord.quantum.max_bond.N": 1,
-		"noise.parameters.discord.classical.max_bond.N": 1,
-		"noise.parameters.discord.renyi.max_bond.N": 1,
-		"max_bond.entangling.quantum.noise.parameters.N": 1,
-		"max_bond.entangling.renyi.noise.parameters.N": 1,
-		"max_bond.mutual.quantum.noise.parameters.N": 1,
-		"max_bond.mutual.measure.noise.parameters.N": 1,
-		"max_bond.mutual.classical.noise.parameters.N": 1,
-		"max_bond.mutual.renyi.noise.parameters.N": 1,
-		"max_bond.discord.quantum.noise.parameters.N": 1,
-		"max_bond.discord.classical.noise.parameters.N": 1,
-		"max_bond.discord.renyi.noise.parameters.N": 1,
-		"max_bond.infidelity.classical.noise.parameters.N": 1,
-		"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N": 1,
-		"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N": 1,
-		"max_bond.M.quantum.noise.parameters.N": 1,
-		"max_bond.M.renyi.noise.parameters.N": 1,
-		"M.spectrum.quantum.M.noise.parameters.N":1,
+		"noise.parameters.entangling.quantum.S.N": 1,
+		"noise.parameters.entangling.renyi.S.N": 1,
+		"noise.parameters.mutual.quantum.S.N": 1,
+		"noise.parameters.mutual.measure.S.N": 1,
+		"noise.parameters.mutual.classical.S.N": 1,
+		"noise.parameters.mutual.renyi.S.N": 1,
+		"noise.parameters.discord.quantum.S.N": 1,
+		"noise.parameters.discord.classical.S.N": 1,
+		"noise.parameters.discord.renyi.S.N": 1,
+		"S.entangling.quantum.noise.parameters.N": 1,
+		"S.entangling.renyi.noise.parameters.N": 1,
+		"S.mutual.quantum.noise.parameters.N": 1,
+		"S.mutual.measure.noise.parameters.N": 1,
+		"S.mutual.classical.noise.parameters.N": 1,
+		"S.mutual.renyi.noise.parameters.N": 1,
+		"S.discord.quantum.noise.parameters.N": 1,
+		"S.discord.classical.noise.parameters.N": 1,
+		"S.discord.renyi.noise.parameters.N": 1,
+		"S.infidelity.classical.noise.parameters.N": 1,
+		"S.entangling.quantum.infidelity.classical.noise.parameters.N": 1,
+		"S.entangling.renyi.infidelity.classical.noise.parameters.N": 1,
+		"S.M.quantum.noise.parameters.N": 1,
+		"S.M.renyi.noise.parameters.N": 1,
+		"M.spectrum.quantum.M.noise.parameters.N": 1,
+		"M.array.kurtosis.M.noise.parameters.N": 1,
+		"M.state.kurtosis.M.noise.parameters.N": 1,
 		"None.spectrum.quantum.M.noise.parameters": 1,
 		"None.spectrum.classical.M.noise.parameters": 1,
-		"None.spectrum.quantum.classical.M.noise.parameters": 1
-	},        
+		"None.spectrum.quantum.classical.M.noise.parameters": 1,
+		"None.array.M.noise.parameters": 1,
+		"None.state.M.noise.parameters": 1,
+		"hist.array.M.noise.parameters": 1
+	},
 	"configuration": [
 		[
 			[
@@ -80,7 +86,9 @@
 				"M.discord.quantum.noise.parameters.N",
 				"M.discord.classical.noise.parameters.N",
 				"M.discord.renyi.noise.parameters.N",
-				"M.discord.mutual.measure.quantum.noise.parameters.N"
+				"M.discord.mutual.measure.quantum.noise.parameters.N",
+				"M.array.kurtosis.M.noise.parameters.N",
+				"M.state.kurtosis.M.noise.parameters.N"
 			],
 			[
 				{
@@ -90,11 +98,11 @@
 					},
 					"kwargs": {
 						"ax.set_title.y": null,
-						"ax.errorbar.label.labels.max_bond": null,
+						"ax.errorbar.label.labels.S": null,
 						"ax.set_title.size": 36,
 						"ax.set_ylabel.size": 36,
 						"ax.set_xlabel.size": 36,
-						"ax.set_ylabel.y": 1.1,
+						"ax.set_ylabel.y": null,
 						"ax.set_yticklabels": null,
 						"ax.set_xticklabels": null,
 						"ax.tick_params.left": true,
@@ -105,10 +113,7 @@
 						"ax.set_colorbar.aspect": 40,
 						"ax.set_colorbar.pad": 0.02,
 						"ax.set_colorbar.ax.tick_params.labelsize": 36,
-						"ax.legend.loc": [
-							1.5,
-							3.375
-						],
+						"ax.legend.loc": null,
 						"ax.legend.title_fontsize": 36,
 						"ax.legend.fontsize": 36,
 						"ax.legend.prop.size": 36,
@@ -130,7 +135,7 @@
 				{
 					"position": "row",
 					"value": {
-						"max_bond": null
+						"S": null
 					}
 				}
 			]
@@ -147,7 +152,7 @@
 					},
 					"kwargs": {
 						"ax.set_title.y": null,
-						"ax.errorbar.label.labels.max_bond": null,
+						"ax.errorbar.label.labels.S": null,
 						"ax.set_title.size": 36,
 						"ax.set_ylabel.size": 36,
 						"ax.set_xlabel.size": 36,
@@ -185,41 +190,43 @@
 				{
 					"position": "row",
 					"value": {
-						"max_bond": null
+						"S": null
 					}
 				}
 			]
 		],
 		[
 			[
-				"max_bond.entangling.quantum.noise.parameters.N",
-				"max_bond.entangling.renyi.noise.parameters.N",
-				"max_bond.entangling.quantum.noise.parameters.N",
-				"max_bond.entangling.renyi.noise.parameters.N",
-				"max_bond.mutual.quantum.noise.parameters.N",
-				"max_bond.mutual.measure.noise.parameters.N",
-				"max_bond.mutual.classical.noise.parameters.N",
-				"max_bond.mutual.renyi.noise.parameters.N",
-				"max_bond.discord.quantum.noise.parameters.N",
-				"max_bond.discord.classical.noise.parameters.N",
-				"max_bond.discord.renyi.noise.parameters.N",
-				"max_bond.infidelity.classical.noise.parameters.N",
-				"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N",
-				"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N",
-				"noise.parameters.entangling.quantum.max_bond.N",
-				"noise.parameters.entangling.renyi.max_bond.N",
-				"noise.parameters.mutual.quantum.max_bond.N",
-				"noise.parameters.mutual.measure.max_bond.N",
-				"noise.parameters.mutual.classical.max_bond.N",
-				"noise.parameters.mutual.renyi.max_bond.N",
-				"noise.parameters.discord.quantum.max_bond.N",
-				"noise.parameters.discord.classical.max_bond.N",
-				"noise.parameters.discord.renyi.max_bond.N",
-				"max_bond.M.quantum.noise.parameters.N",
-				"max_bond.M.renyi.noise.parameters.N",
+				"S.entangling.quantum.noise.parameters.N",
+				"S.entangling.renyi.noise.parameters.N",
+				"S.entangling.quantum.noise.parameters.N",
+				"S.entangling.renyi.noise.parameters.N",
+				"S.mutual.quantum.noise.parameters.N",
+				"S.mutual.measure.noise.parameters.N",
+				"S.mutual.classical.noise.parameters.N",
+				"S.mutual.renyi.noise.parameters.N",
+				"S.discord.quantum.noise.parameters.N",
+				"S.discord.classical.noise.parameters.N",
+				"S.discord.renyi.noise.parameters.N",
+				"S.infidelity.classical.noise.parameters.N",
+				"S.entangling.quantum.infidelity.classical.noise.parameters.N",
+				"S.entangling.renyi.infidelity.classical.noise.parameters.N",
+				"noise.parameters.entangling.quantum.S.N",
+				"noise.parameters.entangling.renyi.S.N",
+				"noise.parameters.mutual.quantum.S.N",
+				"noise.parameters.mutual.measure.S.N",
+				"noise.parameters.mutual.classical.S.N",
+				"noise.parameters.mutual.renyi.S.N",
+				"noise.parameters.discord.quantum.S.N",
+				"noise.parameters.discord.classical.S.N",
+				"noise.parameters.discord.renyi.S.N",
+				"S.M.quantum.noise.parameters.N",
+				"S.M.renyi.noise.parameters.N",
 				"None.spectrum.quantum.M.noise.parameters",
 				"None.spectrum.classical.M.noise.parameters",
-				"None.spectrum.quantum.classical.M.noise.parameters"
+				"None.spectrum.quantum.classical.M.noise.parameters",
+				"None.array.M.noise.parameters",
+				"None.state.M.noise.parameters"
 			],
 			[
 				{
@@ -229,18 +236,111 @@
 					}
 				}
 			]
-		]
+		],
+		[
+			[
+				"hist.array.M.noise.parameters"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+						"M": [
+							0,
+							10,
+							20,
+							30,
+							40,
+							50
+						]
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+						"noise.parameters": [
+							0.0001,
+							0.005,
+							0.01,
+							0.025,
+							0.1
+						]
+					},
+					"kwargs": {
+						"fig.set_size_inches":{"w":43,"h":43},
+						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
+						"ax.set_title.label": "M",
+						"ax.set_ylabel.ylabel": "noise.parameters",
+						"ax.hist.label.labels": {"N":[4,6,8]},
+						"ax.hist.color": {
+							"@N@": {
+								"value": {
+									"value": null,
+									"color": "viridis",
+									"values": [],
+									"norm": null,
+									"scale": "linear",
+									"alpha": 1
+								},
+								"type": "value"
+							}
+						},
+						"ax.hist.alpha": {
+							"@N@": [
+								0.8
+							]
+						},
+						"ax.set_colorbar.value": {
+							"@N@": {
+								"value": null,
+								"type": "index"
+							}
+						},
+						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
+						"ax.set_colorbar.share": true,
+						"ax.set_colorbar.location": "right",
+						"ax.set_colorbar.orientation": "vertical",
+						"ax.set_colorbar.fraction": 0.02,
+						"ax.set_colorbar.size": "1.5%",
+						"ax.set_colorbar.pad": 0.5,
+						"ax.set_colorbar.aspect": 62,
+						"ax.set_colorbar.anchor": [10,0.5],
+						"ax.set_colorbar.set_ticks.ticks":3,
+						"ax.set_colorbar.set_ticklabels.ticklabels": [4,6,8],
+						"ax.legend": null,
+						"style.share.ax.legend": false,
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_xticklabels": true,
+						"style.share.ax.set_ylabel": "left",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_colorbar": "bottom_right"
+					}
+				}
+			]
+		]		
 	],
+	"join":{"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}}},
+	"patterns": {
+		"max_bond": "S",
+		"cyclic": "periodic"
+	},
 	"texify": {
 		"iteration": "\\textrm{Iteration}",
 		"objective": "\\textrm{Infidelity}",
-		"grad.norm": "$\\abs{\\textrm{Gradient}}$",
-		"search.norm": "$\\abs{\\textrm{Search Direction}}$",
-		"alpha": "$\\textrm{Learning Rate}",
-		"beta": "$\\textrm{Conjugate Rate}",
-		"rank": "$\\textrm{Rank}$",
-		"Entropy": "\\textrm{Entropy}",
-		"None": "$0$",
+		"grad.norm": "\\abs{\\textrm{Gradient}}",
+		"search.norm": "\\abs{\\textrm{Search Direction}}",
+		"alpha": "\\textrm{Learning Rate}",
+		"beta": "\\textrm{Conjugate Rate}",
+		"rank": "\\textrm{Rank}",
+		"entropy": "\\textrm{Entropy}",
+		"array": "\\textrm{Probability} ~~ p_{\\mu}",
+		"state": "\\textrm{State} ~~ \\rho_{\\sigma\\sigma}",
+		"array.kurtosis": "\\textrm{Probability Kurtosis} ~~ \\kappa(p)",
+		"state.kurtosis": "\\textrm{State Kurtosis} ~~ \\kappa(\\rho)",
+		"None": "D^{N}",
 		"key": "\\textrm{Key}",
 		"instance": "\\textrm{Instance}",
 		"instances.parameters.xy.seed": "\\textrm{Instance} \\theta^{xy}",
@@ -249,10 +349,13 @@
 		"instances.label.seed": "\\textrm{Instance} U",
 		"instances.noise.seed": "\\textrm{Instance} \\gamma",
 		"instances.state.seed": "\\textrm{Instance} \\psi",
+		"scheme": "\\textrm{Scheme}",
+		"svd": "\\textrm{SVD}",
+		"nmf": "\\textrm{NMF}",
 		"backend": "\\textrm{Backend}",
 		"jax": "\\textrm{Jax}",
 		"autograd": "\\textrm{Autograd}",
-		"max_bond": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
+		"S": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
 		"tau": "\\delta/T_{\\gamma}",
 		"T": "T/T_{\\gamma}",
 		"architecture": "\\textrm{Architecture}",

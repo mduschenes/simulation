@@ -15,7 +15,7 @@ from src.utils import np,onp
 from src.utils import arrays,scalars
 from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
-from src.iterables import search,find,inserter,indexer
+from src.iterables import search,finder,inserter,indexer,find,replace,regex,contains
 
 def test_equalizer(path=None,tol=None):
 	a = {1:{2:[3,4],3:lambda x:x,4:{1:[],2:[{4:np.array([])}]}}}
@@ -48,7 +48,7 @@ def test_search(path=None,tol=None):
 	print()
 
 	item = -1
-	index = find(item,iterable,types=types)
+	index = finder(item,iterable,types=types)
 	print(item,list(index))
 
 	print()
@@ -123,6 +123,31 @@ def test_permuter(path=None,tol=None):
 	return
 
 
+def test_find_replace(path=None,tol=None):
+
+	strings = {'x':True,'@x@':True,'x.':True,'.x':True,'ddfdfdf.x.dgsgs':False}
+	pattern = '[?]x[?]'
+	for string in strings:
+		assert contains(string,pattern) is strings[string]
+
+	iterable = {'x.y.z':{'label':['x',{'attr':'@x@'},['.x','x.','.x.']],'x':'attr'}}
+	keys = {'x':'STRING'}
+	length = 7
+
+	size = len(list(find(iterable,keys)))
+	print(iterable,size)
+	assert size == length
+
+	regex(iterable,keys)
+
+	size = len(list(find(iterable,keys)))
+	print(iterable,size)
+	assert size == 0
+
+	print('Passed')
+
+	return
+
 
 
 if __name__ == '__main__':
@@ -131,4 +156,5 @@ if __name__ == '__main__':
 
 	# test_search(path=path,tol=tol)
 	# test_equalizer(path=path,tol=tol)
-	test_permuter(path=path,tol=tol)
+	# test_permuter(path=path,tol=tol)
+	test_find_replace(path=path,tol=tol)

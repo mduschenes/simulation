@@ -3,11 +3,11 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy,warnings
+import itertools,functools,warnings
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','..','..']
+PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -16,19 +16,19 @@ os.environ['NUMPY_BACKEND'] = 'JAX'
 
 
 from src.utils import np,onp,backend
-from src.utils import jit,partial,vmap
+from src.utils import jit,partial,vmap,copy
 from src.utils import array,zeros,rand,arange,identity,inplace,datatype,allclose,sqrt,abs2,dagger,conjugate,convert
 from src.utils import gradient,rand,eye,diag,sin,cos,prod,maximum,minimum
 from src.utils import einsum,dot,add,tensorprod,norm,norm2,trace,mse
-from src.utils import shuffle,swap,transpose,reshape
+from src.utils import shuffle,swap,transpose,reshape,contraction,seeder,slicer
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
-from src.utils import scinotation,delim
+from src.utils import scinotation,delim,choices,samples
 from src.utils import arrays,scalars,iterables,integers,floats,pi,asarray,asscalar
 
 from src.optimize import Metric
 
-from src.iterables import getter,setter,sizer,namespace
+from src.iterables import getter,setter,sizer,namespace,permuter,Dictionary
 from src.io import load,dump,join,split,edit
 
 
@@ -364,7 +364,7 @@ def test_setter(path=None,tol=None):
 	test = lambda value,element,iterable,elements: value==elements[element]
 	
 	for element in elements:
-		iterable = copy.deepcopy(iterables)
+		iterable = copy(iterables)
 		setter(iterable,element,delimiter=delim,default='replace')
 		print(element)
 		print(iterables)
@@ -392,7 +392,6 @@ def test_sizer(path=None,tol=None):
 	return
 
 
-
 def test_scinotation(path=None,tol=None):
 	number = 1e5
 	_string = '10^{5}'
@@ -407,7 +406,7 @@ def test_scinotation(path=None,tol=None):
 	assert string == _string, "%s != %s"%(string,_string)
 
 	number = 2.1e-5
-	_string = r'2.1\cdot10^{-5}'
+	_string = r'2.1 \cdot 10^{-5}'
 	kwargs = dict(decimals=2,base=10,order=20,zero=True,one=False,scilimits=[-1,5],error=None,usetex=False)
 	string = scinotation(number,**kwargs)
 	assert string == _string, "%s != %s"%(string,_string)
@@ -583,7 +582,7 @@ def test_pytree(path=None,tol=None):
 							tree[tree.index(key)] = leaf
 			return
 
-		trees = (*copy.deepcopy(trees[:1]),*trees[1:])
+		trees = (*copy(trees[:1]),*trees[1:])
 		mapper(*trees,func=func,is_leaf=is_leaf,**kwargs)
 		tree = trees[0]
 
@@ -683,7 +682,7 @@ def test_pytree(path=None,tol=None):
 
 	def test(*trees,func=None,**kwargs):
 
-		trees = copy.deepcopy(trees)
+		trees = copy(trees)
 
 		default = None
 		test = load('src.utils.tree_%s'%(func),default=default)
@@ -883,6 +882,170 @@ def test_concatenate(path=None,tol=None):
 	
 	return
 
+
+def test_contract(path=None,tol=None):
+
+	kwargs = dict(N=[2,3,4,5,6],D=[2],d=[2,3,4],s=[None,1,2],samples=[[3,2]])
+	for kwargs in permuter(kwargs):
+
+		N = kwargs['N']
+		D = kwargs['D']
+		d = kwargs['d']
+		s = kwargs['s']
+		samples = kwargs['samples']
+
+		k = 2
+		l = s
+		d = d
+		s = 2 if s is None else s
+
+		seed = 123
+		dtype = 'complex'
+		key = seeder(seed)
+
+		where = [i for i in range(N%2,N,2) if i in range(N)]
+		shape = [*[D**2,D]*(d-k)][:d-k]
+		L = len(where)
+		length = len(samples)
+		size = len(shape)
+		objs = Dictionary(data=rand(shape=prod(shape)*D**(L*k),key=key,dtype=dtype),state=rand(shape=prod(samples)*D**(N*s),key=key,dtype=dtype))
+		attributes = Dictionary(N=N,D=D,d=d,s=s,samples=samples)
+
+		states = {}
+
+		attr = 'func'
+		def init(data,state):
+			data = reshape(
+				transpose(
+				reshape(
+					tensorprod([reshape(data,[*shape,*[D**L]*k]),reshape(identity(D**(N-L)),[*[1]*(d-k),*[D**(N-L)]*k])]),
+					[*shape,*[D]*(N*k)]),
+					[*range(size),*[size+N*j+[*where,*sorted(set(range(N))-set(where))].index(i) for j in range(k) for i in range(N)]]),
+					[*shape,*[D**N]*k]
+				)
+			state = reshape(state,[*samples,*[D**N]*s])
+			return data,state
+		def process(state):
+			state = reshape(state,[*samples,*[D**N]*s])
+			return state
+		def func(data,state,**kwargs):
+			def func(data,state):
+				if l is not None:
+					if d == 4 and s == 2:
+						state = einsum('auij,...jk,aulk->...il',data,state,conjugate(data))
+					elif d == 3 and s == 2:
+						state = einsum('uij,...jk,ulk->...il',data,state,conjugate(data))
+					elif d == 2 and s == 2:
+						state = einsum('ij,...jk,lk->...il',data,state,conjugate(data))		
+					elif d == 4 and s == 1:
+						state = einsum('auij,...j->...i',data,state)
+					elif d == 3 and s == 1:
+						state = einsum('uij,...j->...i',data,state)
+					elif d == 2 and s == 1:
+						state = einsum('ij,...j->...i',data,state)								
+					else:
+						raise NotImplementedError
+				else:
+					if d == 4 and s == 2:
+						state = einsum('auij,...jk->...ik',data,state)
+					elif d == 3 and s == 2:
+						state = einsum('uij,...jk->...ik',data,state)						
+					elif d == 2 and s == 2:
+						state = einsum('ij,...jk->...ik',data,state)		
+					elif d == 4 and s == 1:
+						state = einsum('auij,...j->...i',data,state)
+					elif d == 3 and s == 1:
+						state = einsum('uij,...j->...i',data,state)
+					elif d == 2 and s == 1:
+						state = einsum('ij,...j->...i',data,state)								
+					else:
+						raise NotImplementedError					
+				return state
+			return func
+		data,state = init(objs.data,objs.state)
+		func = func(data,state,where=where,attributes=attributes,local=False,tensor=False)
+		states[attr] = func(data,state)
+		states[attr] = process(states[attr])
+
+
+		attr = 'nonlocal.nontensor'
+		def init(data,state):
+			data = reshape(
+					swap(
+					tensorprod([reshape(data,[*shape,*[D**L]*k]),reshape(identity(D**(N-L)),[*[1]*(d-k),*[D**(N-L)]*k])]),
+					axes=[[i] for i in where],
+					shape={**{i:[shape[i],*[1]*(N-1)] for i in range(d-k)},**{d-k+i:[D]*N for i in range(k)}}
+					),
+					[*shape,*[D**N]*k]
+				)
+			state = reshape(state,[*samples,*[D**N]*s])
+			return data,state
+		def process(state):
+			state = reshape(state,[*samples,*[D**N]*s])
+			return state		
+		data,state = init(objs.data,objs.state)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=False)
+		states[attr] = func(data,state)
+		states[attr] = process(states[attr])
+
+		attr = 'nonlocal.tensor'
+		def init(data,state):
+			data = reshape(
+					swap(
+					tensorprod([reshape(data,[*shape,*[D**L]*k]),reshape(identity(D**(N-L)),[*[1]*(d-k),*[D**(N-L)]*k])]),
+					axes=[[i] for i in where],
+					shape={**{i:[shape[i],*[1]*(N-1)] for i in range(d-k)},**{d-k+i:[D]*N for i in range(k)}}
+					),
+					[*shape,*[D]*(N*k)]
+				)
+			state = reshape(state,[*samples,*[D]*(N*s)])
+			return data,state
+		def process(state):
+			state = reshape(state,[*samples,*[D**N]*s])
+			return state
+		data,state = init(objs.data,objs.state)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=False,tensor=True)
+		states[attr] = func(data,state)
+		states[attr] = process(states[attr])
+
+
+		attr = 'local.nontensor'
+		def init(data,state):
+			data = reshape(data,[*shape,*[D**L]*k])
+			state = reshape(state,[*samples,*[D**N]*s])
+			return data,state
+		def process(state):
+			state = reshape(state,[*samples,*[D**N]*s])
+			return state
+		data,state = init(objs.data,objs.state)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=False)
+		states[attr] = func(data,state)
+		states[attr] = process(states[attr])
+
+
+		attr = 'local.tensor'
+		def init(data,state):
+			data = reshape(data,[*shape,*[D]*(L*k)])
+			state = reshape(state,[*samples,*[D]*(N*s)])
+			return data,state
+		def process(state):
+			state = reshape(state,[*samples,*[D**N]*s])
+			return state		
+		data,state = init(objs.data,objs.state)
+		func = contraction(data,state if l is not None else None,where=where,attributes=attributes,local=True,tensor=True)
+		states[attr] = func(data,state)
+		states[attr] = process(states[attr])
+
+
+		print({**kwargs,**dict(shape=shape,where=where)},list(states))
+
+		assert all(allclose(states[i],states[j]) for i in states for j in states)
+
+
+	print('Passed')
+
+
+	return
 
 def test_action(path=None,tol=None):
 
@@ -1116,66 +1279,131 @@ def test_seed(path=None,tol=None):
 
 	return
 
+def test_sortgroupby(path=None,tol=None):
 
-def test_groupby(path=None,tol=None):
+	from src.utils import sortby,groupby
 
-	from src.utils import groupby
-	from src.utils import array
+	class Obj(object):
+		def __init__(self,**kwargs):
+			defaults = dict(where=lambda obj:(*obj,) if isinstance(obj,iterables) else (obj,))
+			for kwarg in kwargs:
+				setattr(self,kwarg,defaults[kwarg](kwargs[kwarg]) if kwarg in defaults else kwargs[kwarg])
+			return
 
-	iterable = [
-		{'hello':1,'world':(1,2,3),'goodbye':array([5,6,1])},
-		{'hello':1,'world':(1,2,3),'goodbye':array([52,6,41])},
-		{'hello':1,'world':(1,2,-3),'goodbye':array([-5,6,-1])},
-		{'hello':2,'world':(1,-2,3),'goodbye':array([5,46,1])},
-		{'hello':1,'world':(1,-2,3),'goodbye':array([52,6,41])},
-		{'hello':3,'world':(-1,2,3),'goodbye':array([5,6,1])},
-		{'hello':2,'world':(1,-2,3),'goodbye':array([-5,-6,-1])},
-		]
+		def __repr__(self):
+			return str(self)
 
-	key = ['hello','world']
+		def __str__(self):
+			return '-'.join(map(str,self.__dict__.values()))
 
-	sort = ['hello',"src.functions.test_by_key"]
+	sizes = range(3,8)
+	keys = {
+		'brickwork':{
+			'func':(lambda N:
+					[obj
+					for index in [*range(0,N-1,2),*range(1,N-1,2)]
+					for obj in [
+					{"where":(index+0,index+1),"unitary":True},
+					{"where":(index+0,),"unitary":True},
+					{"where":(index+1,),"unitary":True},
+					{"where":(index+0,),"unitary":False},
+					{"where":(index+1,),"unitary":False}
+					]
+					]),
+			'options':{
+				'layout':'brickwork',
+				'attribute':[
+					{"where":"ij","unitary":True},
+					{"where":"i","unitary":True},
+					{"where":"j","unitary":True},
+					{"where":"i","unitary":False},
+					{"where":"j","unitary":False}
+					]
+				}
+			},
+		'nearestneighbour':{
+			'func':(lambda N:
+					[obj
+					for index in [*range(0,N-1,1),]
+					for obj in [
+					{"where":(index+0,index+1),"unitary":True},
+					{"where":(index+0,index+1),"unitary":False},
+					]
+					]),
+			'options':{
+				'layout':'nearestneighbour',
+				'attribute':[
+					{"where":"ij","unitary":True},
+					{"where":"ij","unitary":False},
+					]
+				}
+			},	
+		'local':{
+			'func':(lambda N:
+					[obj
+					for index in [*range(0,N,1),]
+					for obj in [
+					{"where":(index+0,)},
+					]
+					]),
+			'options':{
+				'layout':'local',
+				'attribute':[
+					{"where":"i"},
+					]
+				}
+			},
+		}
 
-	for value in iterable:
-		print(value)
-	print()
+	for key in keys:
 
-	iterable = groupby(iterable,key=key,sort=sort)
+		func = keys[key].pop('func')
+		
+		for N in sizes:
 
-	for key,value in iterable:
-		for i in value:
-			print(i)
-		print()
+			iterable = {index:Obj(**obj) for index,obj in enumerate(func(N)) if obj is not None}
+			
+			print(key,N,len(iterable))
+			print(iterable)
+
+			tmp = copy(iterable)
+
+			iterable = {index:iterable[index] for index in samples(list(iterable),k=len(iterable))}
+
+			iterable = {index: [iterable[i] for i in group] for index,group in enumerate(groupby(iterable,**keys[key]))}
+
+			print(iterable)
+
+			assert all(all(getattr(i,attr)==getattr(j,attr) for attr in j.__dict__) for i,j in zip([i for index in iterable for i in iterable[index]],[tmp[index] for index in tmp]))
 
 	print('Passed')
-	return
-
-def test_structure(path=None,tol=None):
-
-	from src.utils import array,structure,einsum,arrays
-
-	n = 10
-	d = 2
-	k = 2
-	shape = (n**d,)*k
-	dtype = None
-
-	subscripts = 'ij,jk->ik'
-
-	a = structure(shape=shape,dtype=dtype)
-
-	print(isinstance(a,arrays))
-
-
-	attrs = ['shape','size','ndim','dtype','nbytes']
-
-	for attr in attrs:
-		print(attr,getattr(a,attr))
-
-	# b = einsum(subscripts,a,a)
-	# print(b)
 
 	return
+
+
+def test_slicer(path=None,tol=None):
+
+	def equalizer(a,b):
+		if not isinstance(a,int) and not isinstance(b,int):
+			return all(equalizer(i,j) for i,j in zip(a,b))
+		else:
+			return a==b
+
+	length = 10
+	size = 3
+	steps = [1,-1]
+
+	iterable = (i for i in range(length))
+
+	for step in steps:
+		key = lambda i,step=step: step*i
+		tmp = [[j for j in range(size*i,min(length,size*(i+1)))][::step] for i in range(length//size+((size%length)!=0))][::step]
+		assert equalizer(slicer(iterable,size),tmp)
+
+	print('Passed')
+
+	return
+
 
 
 def test_reshape(path=None,tol=None):
@@ -1187,8 +1415,6 @@ def test_reshape(path=None,tol=None):
 	#  	split.transpose-> (x,y,z,u,v,w,s)
 	#  	split.reshape-> (xyz,uvw,s)
 	# 	split.func-> (s,xyz,uvw)
-
-	from src.utils import array,arange,transpose,reshape,allclose,prod
 
 	x,y,z,u,v,w,s = 2,3,5,4,2,7,9
 
@@ -1256,7 +1482,505 @@ def test_jax(path=None,tol=None):
 	return
 
 
+def test_tensor(path=None,tol=None):
 
+	from src.utils import rand,tensor
+
+	shapes = {'x':11,'y':53,'z':29,'u':41}
+
+	indices = ['x','y','z']
+	shape = [shapes[i] for i in indices]
+	dtype = 'complex128'
+	seed = 123
+
+	data = rand(shape,seed=seed,dtype=dtype)
+	kwargs = dict(indices=indices)
+	obj = tensor(data,**kwargs)
+
+	assert allclose(obj(),data)
+
+
+	indices = ['x','u','z']
+	shape = [shapes[i] for i in indices]
+	dtype = 'complex128'
+	seed = 123
+
+	data = rand(shape,seed=seed,dtype=dtype)
+	kwargs = dict(indices=indices)
+	other = tensor(data,**kwargs)
+
+
+	assert obj.intersection(obj,other) == ['x','z']
+	assert obj.union(obj,other) == ['x','y','z','u']
+	assert obj.complement(obj,other) == ['y','u']
+
+
+	objs = {}
+
+
+	indices = sorted(set(i for i in [*obj.indices,*other.indices] 
+			if not (i in obj.indices and i in other.indices)),
+			key=lambda i: [*obj.indices,*other.indices].index(i))
+	data = einsum(obj.data,obj.indices,other.data,other.indices,indices)
+	objs['einsum'] = tensor(data=data,indices=indices)
+
+	objs['call'] = obj((obj,other))
+
+	objs['and'] = obj & other
+
+	obj &= other
+
+	objs['iand'] = obj
+
+	objs['copy'] = obj.copy(deep=True)
+
+	for i in objs:
+		print(i,objs[i])
+
+	assert all(allclose(objs[i](),objs[j]()) for i in objs for j in objs)
+
+	print('Passed')
+
+	return
+
+
+def test_network(path=None,tol=None):
+
+	from src.utils import rand,tensor,network,context
+
+	N = 3
+	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
+
+	indices = [['x{}','u{}','y{}'],['y{}','v{}','z{}'],['z{}','w{}','s{}']]
+	shape = [[shapes[j] for j in indices[i]] for i in range(N)]
+	dtype = 'complex128'
+	seed = 123
+
+	data = {i:rand(shape[i],seed=seed,dtype=dtype) for i in range(N)}
+	kwargs = dict(indices=indices)
+	obj = network(data,**kwargs)
+
+
+	assert obj.intersection(obj) == []
+	assert obj.union(obj) == ['x{}', 'u{}', 'y{}', 'v{}', 'z{}', 'w{}', 's{}']
+	assert obj.complement(obj) == ['x{}', 'u{}', 'v{}', 'w{}', 's{}']
+
+	_indices = ['t{}','u{}','q{}']
+	_shape = [shapes[i] for i in _indices]
+	dtype = 'complex128'
+	seed = 123
+
+	_data = rand(_shape,seed=seed,dtype=dtype)
+	kwargs = dict(indices=_indices)
+	_obj = tensor(_data,**kwargs)
+
+	tmp = obj & _obj
+
+	for i in obj:
+		print(i,obj[i])
+	print()
+	for i in tmp:
+		print(i,tmp[i])
+	print()
+	
+	obj &= _obj
+
+	for i in obj:
+		print(i,obj[i])
+
+	tmp = obj.array()
+
+	assert allclose(tmp,einsum('xuy,yvz,zws,tuq->xvwstq',*(data[i] for i in data),_data))
+
+	assert tmp.shape == tuple(shapes[i] for i in ['x{}', 'v{}', 'w{}', 's{}', 't{}','q{}'])
+
+
+	objs = {}
+
+	objs['obj'] = obj
+	objs['copy'] = obj.copy()
+
+	assert all(allclose(objs[i][k](),objs[j][l]()) for i in objs for j in objs for k,l in zip(objs[i],objs[j]))
+
+
+	N = 3
+	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
+
+	indices = [['x{}','u{}','y{}'],['y{}','v{}','z{}'],['z{}','w{}','s{}']]
+	shape = [[shapes[j] for j in indices[i]] for i in range(N)]
+	dtype = 'complex128'
+	seed = 123
+
+	data = {i:rand(shape[i],seed=seed,dtype=dtype) for i in range(N)}
+	kwargs = dict(indices=indices)
+	obj = network(data,**kwargs)
+
+	indices=[{attr:f'_{attr}' for attr in shapes} for i in range(N)]
+	attribute = {i:[*obj[i].indices] for i in obj}
+
+	print(obj.indices)
+
+	for i in range(N):
+		with context(*(obj[i] for i in obj),formats=i,indices=indices):
+			print(i,obj.indices)
+			assert obj.indices == {key:[index.format(i) for index in obj[key].indices] for key in obj}
+
+	print(obj.indices)
+	print()
+
+
+	print('Passed')
+
+
+	return
+
+
+
+def test_nmf(path=None,tol=None):
+
+	PATHS = ['','.','..']
+	for PATH in PATHS:
+		sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+	from src.utils import array,ones,zeros,rand,random,stochastic
+	from src.utils import addition,abs2,log10,reciprocal,einsum,dot,dotr,dotl,condition_number
+	from src.utils import seeder,delim
+	from src.iterables import permuter,setter,getter
+	from src.io import load,dump,join,exists
+
+	import jax
+	import matplotlib
+	import matplotlib.pyplot as plt
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	from random import choices,seed	as seeds
+
+	seed = 0
+	n = 1
+	d = 2
+	l = 2
+	q = n//2 + n%2
+	k = d**2
+	seeds(0)
+
+	data = {}
+	kwargs = {
+		'method':[
+			'mu',
+			'kl',
+			'hals'
+			],
+		'initialize':['nndsvda'],
+		'metric':[
+			'norm',
+			'div',
+			# 'abs',
+			],
+		'rank':[None],
+		'eps':[1e-16],
+		'iters':[1e3,5e1],
+		'parameters':[0],
+		'seed':choices(range(int(2**32)),k=int(3)),
+		'function':[
+			'pnmf',
+			'xnmf',
+			],
+		'shapes':[[
+			[k**(q-1),k,k**(q)],
+			[k**(q),k,k**(q-1)],
+			[k**l]*(2),
+			# [k**(q-1),k**(q-1)],
+			# [k**(q-1),k**(n-q-1)]
+			[k,k**(q-1)],
+			[k**(q-1),k]			
+			]]
+		}
+
+	directory = 'data'
+	file = 'data'
+	path = join(directory,file,ext='pkl')
+
+	data.update(load(path,default=data))
+
+	boolean = lambda index,data,options: any(options==data[i]['options'] for i in data)
+
+	def filters(kwargs):
+		if kwargs['method'] in ['hals'] and kwargs['iters'] < 1000:
+			return False
+
+		if kwargs ['method'] not in ['hals'] and kwargs['iters'] < 100:
+			return False
+
+		return True
+
+	do = 0 or not exists(path) or len(sys.argv[1:])
+	run = do or False
+	plot = True
+
+	if run:
+
+		print('Run',kwargs)
+
+		for index,kwargs in enumerate(permuter(kwargs)):
+
+			if not filters(kwargs):
+				continue
+
+			options = {
+				'rank': None,
+				'eps': 5e-9,
+				'iters':1e3,
+				'parameters': 1e-3,
+				'method': 'kl',
+				'initialize': 'rand',
+				'metric':'norm',
+				'seed': 123,
+				}
+			def init(index,data,options):
+
+				options['key'] = seeder(options['seed'])
+				options['keys'] = seeder(options['seed'],size=len(options['shapes']))
+
+				shapes = options.pop('shapes')
+				keys = options.pop('keys')
+				function = options.pop('function')
+
+				if function in ['pnmf']:
+				
+					from src.utils import pnmf as function
+
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[2],key=keys[2]),(k,)*(2*l))
+					x,y = addition(random(shapes[-2],key=keys[-2]),0),addition(random(shapes[-1],key=keys[-1]),-1)
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a = dotr(dotl(a,x),y)
+					a /= addition(a)
+					objects = a,u,v,(x,y)
+
+				elif function in ['xnmf']:
+				
+					from src.utils import xnmf as function
+
+					u,v,d = random(shapes[0],key=keys[0]),random(shapes[1],key=keys[1]),reshape(stochastic(shapes[2],key=keys[2]),(k,)*(2*l))
+					x,y = random(shapes[-2],key=keys[-2]),random(shapes[-1],key=keys[-1])
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a /= addition(dot(x,dot(a,y)))
+					objects = a,u,v,(x,y)
+
+				return function,objects,options
+
+			def process(index,data,options,stats):
+				if boolean(index,data,options):
+					for i in data:
+						if boolean(i,{i:data[i]},options):
+							index = i
+							break
+				else:
+					index = len(data)
+				if not isinstance(data.get(index),dict):
+					data[index] = {}
+				data[index].update({**dict(options=options),**stats})
+				return
+
+			def func(function,objects,options):
+				u,v,s,stats = function(*objects,**options)
+				return stats
+
+			print(kwargs)
+
+			setter(options,kwargs,delimiter=delim,default='replace')
+
+			kwargs = copy(options)
+
+			function,objects,options = init(index,data,options)
+
+			if boolean(index,data,options):
+				continue
+
+			stats = func(function,objects,options)
+
+			process(index,data,kwargs,stats)
+
+		dump(data,path)
+
+	if plot:
+
+		print('Plot',path,len(data))
+		
+		# path = 'data/'
+
+		data = load(path)
+
+		attrs = [
+			*[dict(x='iteration',y=attr,label=['function','method','metric','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
+		]
+		texify = {
+			'method':'$\\textnormal{Method}$',
+			'initialize':'$\\textnormal{Initialize}$',
+			'metric':'$\\textnormal{Metric}$',
+			'seed':'$\\textnormal{Seed}$',
+			'function':'$\\textnormal{Function}$',
+			'iteration':'$\\textnormal{Iteration}$',
+			'error':'$\\textnormal{Error}~\\mathcal{L}(A,UV)$',
+			'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
+			'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
+			'nmf':'$\\textnormal{NMF}$',
+			'pnmf':'$\\textnormal{Marginal-NMF}$',
+			'xnmf':'$\\textnormal{Joint-NMF}$',
+			'mu':'$\\textnormal{MU}$',
+			'kl':'$\\textnormal{KL}$',
+			'hals':'$\\textnormal{H-ALS}$',
+			'gd':'$\\textnormal{GD}$',
+			'kld':'$\\textnormal{KL-GD}$',
+			('norm','pnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('norm','xnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('abs','pnmf'):'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
+			('abs','xnmf'):'$\\norm{X_{x \\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta y}}/\\norm{A}',
+			('div','pnmf'):'$\\mathcal{D}(A,UV)',
+			('div','xnmf'):'$\\mathcal{D}(A,UV)',
+			}
+		mplstyle = 'config/plot.mplstyle'
+		with matplotlib.style.context(mplstyle):
+			for attr in attrs:
+
+				fig,ax = plt.subplots()
+
+				def boolean(data,index=None,wrapper=None):
+					if index is None:
+						size = max(len(data[i][attr['y']]) for i in data)	
+					else:
+						size = len(data[index][attr['y']])
+					# print(data[index]['options']['method'],size)
+					# indices = slice(0,size,100) if size > 1000 else slice(0,size,100)
+					indices = slice(0,size,max(50,(size//50)))
+					# size = min(size,6500000)
+					# indices = slice(0,size,1 if size < 1000 else 5000)
+					# size = min(size,1000)
+					# indices = slice(0,size,1 if size < 1000 else 500)					
+					if wrapper is not None:
+						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)
+					return indices
+
+				def filters(index,data):
+					# return True
+					if data[index]['options']['method'] in ['hals'] and data[index]['options']['iters'] < 1000:
+						return False
+
+					if data[index]['options']['method'] not in ['hals'] and data[index]['options']['iters'] < 100:
+						return False
+
+					return True
+
+				values = {index:data[index] for index in data if filters(index,data)}					
+
+				options = dict()
+				indices = sorted(list(set(values[i]['options'][attr['label'][-1]] for i in values)),key=lambda i:[values[i]['options'][attr['label'][-1]] for i in values].index(i))
+				x = {index:values[index][attr['x']][boolean(values,index=index)] for index in values}
+				y = {index:values[index][attr['y']][boolean(values,index=index)] for index in values}
+				options = {index:{**options,**dict(
+					label='$%s$'%('~,~'.join(str(texify.get(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
+					color=plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(values[index]['options']['function']))((indices.index(values[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
+					alpha=0.6,
+					# marker={'norm':'o','abs':'s','div':'^'}.get(values[index]['options']['metric']),
+					# linestyle={'mu':'-','kl':'--','hals':':'}.get(values[index]['options']['method']),
+					marker={'mu':'o','kl':'s','hals':'^'}.get(values[index]['options']['method']),
+					linestyle={'norm':'-','div':'--','abs':':'}.get(values[index]['options']['metric']),
+					markersize=8,
+					linewidth=3
+					)} for index in values}
+				plot = {}
+				for index in values:
+					plot[index] = ax.plot(x[index],y[index],**options[index])
+
+				options = dict(position='right',size="3%",pad=-0.545535)
+				number = 6
+				functions = sorted(set(values[i]['options']['function'] for i in values))
+				for i,function in enumerate(functions):
+					colors = [plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
+					if len(functions)>1:
+						opts = {**options,**dict(pad=options['pad']+i*0.065)}
+						cax,opts = fig.add_axes([
+							ax.get_position().x1+opts['pad'],
+							ax.get_position().y0,
+							0.01,
+							(ax.get_position().y1-ax.get_position().y0)*1.1075
+							]),dict()
+					else:
+						opts = {**options,**dict(pad=0.1)}
+						cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
+
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
+					opts = {**opts,**dict(cmap=cmap,orientation='vertical')}
+					cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
+					if i == (len(functions)-1):
+						cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+					else:
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])						
+						# cbar.ax.set_yticks(ticks=[])
+						# cbar.ax.set_yticklabels(labels=[])
+
+					if len(functions)>1:
+						cbar.ax.set_xlabel(xlabel=texify.get(function))
+
+
+
+				options = dict()
+				ax.set_xlabel(xlabel=texify.get(attr['x']),**options)
+				ax.set_ylabel(ylabel=texify.get(attr['y']),**options)
+
+				options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
+				number = 6
+				ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.05))),xmax=(max(int(options['x'][-1]*1.1),1)))
+				ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],max(1,(options['x'][-1]-options['x'][0])//number)))
+				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
+				ax.set_xscale(value='linear')
+				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))
+				ax.set_yticks(ticks=[10**(i) for i in range(options['y'][0]-1,options['y'][-1]+1,2)])
+				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
+				ax.set_yscale(value='log')
+
+				options = dict(
+					title=(
+						'$%s ~:~ %s$'%(
+						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
+						{
+							'pnmf':'$A_{\\mu\\nu} = X_{\\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$',''),
+							'xnmf':'$A_{x \\mu\\nu y} = X_{x \\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta y} \\approx X_{x \\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta y} = U_{x \\mu\\gamma}V_{\\gamma\\nu y}$'.replace('$','')
+						}.get(values[index]['options']['function'])
+						)),
+					ncol=1,
+					loc=(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
+					)
+				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
+				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
+				handles,labels = (
+					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
+					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
+					)
+				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[len([j for j in labels if j==i])//2 for i in sorted(set(labels),key=lambda i:labels.index(i))]
+				handles,labels = [copy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
+				# for handle in handles:
+				# 	handle.set_color('gray')
+				leg = ax.legend(handles,labels,**options)
+
+				options = dict(
+					w=43.5,
+					h=14
+					)
+				fig.set_size_inches(**options)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				options = dict(fname=join(directory,'%s.%s.%s'%(file,attr['x'],attr['y']),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
+				fig.savefig(**options)
+
+	return
 
 
 if __name__ == '__main__':
@@ -1272,7 +1996,8 @@ if __name__ == '__main__':
 	# test_expmi()	
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	test_shuffle(path,tol)	
+	# test_shuffle(path,tol)	
+	# test_contract(path,tol)
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
 	# test_action(path,tol)
@@ -1280,6 +2005,10 @@ if __name__ == '__main__':
 	# test_convert(path,tol)
 	# test_stability(path,tol)
 	# test_seed(path,tol)
-	# test_groupby(path,tol)
-	# test_structure(path,tol)
+	# test_sortby(path,tol)
+	# test_sortgroupby(path,tol)
+	test_slicer(path,tol)
 	# test_jax(path,tol)
+	# test_tensor(path,tol)
+	# test_network(path,tol)
+	# test_nmf(path,tol)

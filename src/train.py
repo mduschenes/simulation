@@ -9,43 +9,12 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,delim
-from src.io import load,glob
-from src.iterables import Dict,namespace,setter
+from src.run import argparse,setup
+from src.io import load,dump,glob
+from src.iterables import Dict,namespace,setter,getter
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
-
-def setup(settings,*args,**kwargs):
-	'''
-	Setup settings
-	Args:
-		settings (dict,str): settings
-		args (iterable): settings positional arguments
-		kwargs (dict): settings keyword arguments
-	Returns:
-		settings (dict): settings
-	'''
-
-	default = {}
-	wrapper = Dict
-	defaults = Dict(
-		boolean=dict(call=None,optimize=None,load=None,dump=None),
-		cls=dict(module=None,model=None,state=None,label=None,callback=None),
-		module=dict(),model=dict(),state=dict(),label=dict(),callback=dict(),
-		optimize=dict(),seed=dict(),system=dict(),
-		)
-
-	if settings is None:
-		settings = default
-	elif isinstance(settings,str):
-		settings = load(settings,default=default,wrapper=wrapper)
-
-	setter(settings,kwargs,delimiter=delim,default=True)
-	setter(settings,defaults,delimiter=delim,default=False)
-
-	return settings
-
 
 def call(settings,*args,**kwargs):
 	'''
@@ -228,7 +197,6 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = 'settings'
-	args = argparser(arguments)
+	args = argparse()
 
 	main(*args,**args)

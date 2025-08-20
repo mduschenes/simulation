@@ -8,27 +8,27 @@
 "model":{
 	"data":{
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":"random",			
 			"variable":true
 		},
 		"y":{
-			"operator":["Y"],"site":"i","string":"y",
+			"operator":["Y"],"where":"i","string":"y",
 			"parameters":"random",
 			"variable":true
 		},	
 		"z":{
-			"operator":["Z"],"site":"i","string":"z",
+			"operator":["Z"],"where":"i","string":"z",
 			"parameters":"random",
 			"variable":false
 		},				
 		"zz":{
-			"operator":["Z","Z"],"site":"i<j","string":"zz",
+			"operator":["Z","Z"],"where":"i<j","string":"zz",
 			"parameters":[0.5,-0.1,0.1],
 			"variable":false
 		},
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
+			"operator":"depolarize","where":null,"string":"noise",
 			"parameters":1e-6,
 			"variable":false
 		}
@@ -76,7 +76,7 @@
 	},
 "label": {
 	"operator":"haar",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":true,
 	"ndim":2,
@@ -84,7 +84,7 @@
 	},
 "state": {
 	"operator":"zero",
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,

@@ -4,7 +4,7 @@
 import os,sys,warnings,itertools,re
 from functools import partial,wraps
 from copy import deepcopy
-import traceback
+import json
 
 import numpy as np
 
@@ -26,6 +26,7 @@ class none(object):
 
 null = Null()
 
+iterables = (list,tuple,set,range)
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = (Null,)
 delim='.'
@@ -60,28 +61,6 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
-	@staticmethod
-	def decorator(func):
-		@wraps(func)
-		def wrapper(cls,*args,system=None,**kwargs):
-			# super().__init__(*args,system=system,**kwargs)
-
-			setter(kwargs,dict(system=system),delimiter=delim,default=False)
-			setter(kwargs,system,delimiter=delim,default=False)			
-			setter(kwargs,cls.defaults,delimiter=delim,default='none')
-
-			out = func(cls,*args,**kwargs)
-			
-			return out
-		
-		return wrapper
-
-	@classmethod
-	@property
-	def properties(cls):
-		return properties(cls,methods=[sys._getframe().f_code.co_name])
-
-
 class Dict(Dictionary):
 	'''
 	Dictionary subclass with nested Dictionary elements
@@ -96,7 +75,7 @@ class Dict(Dictionary):
 
 		for key in kwargs:
 			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
-				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else kwargs[key]
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else Dictionary(kwargs[key])
 
 		super().__init__(**kwargs)
 
@@ -208,13 +187,13 @@ def getattrs(obj,attr,default=None,delimiter=None):
 
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
-				return getattr(obj,attr)
+				return getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				return getattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				return getattrs(obj,attr,default=default,delimiter=delimiter)
 	
 	return default
 
@@ -240,14 +219,17 @@ def setattrs(obj,attr,value,delimiter=None):
 
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
-				setattr(obj,attr,value)
-				return True
+				if hasattr(obj,attr):
+					setattr(obj,attr,value)
+				else:
+					obj[attr] = value
+				return
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				setattrs(getattr(obj,attr),attribute,value=value,delimiter=delimiter)
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				setattrs(obj,attr,value=value,delimiter=delimiter)
 				return
 
 	attr = attrs[-1]
@@ -274,16 +256,16 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 	attrs = attr.split(delimiter)
 	
 	n = len(attrs)
-	
+
 	for i in range(n):
 		attr = delimiter.join(attrs[:i+1])
-		if hasattr(obj,attr):
+		if hasattr(obj,attr) or (isinstance(obj,dict) and attr in obj):
 			if i == (n-1):
 				return True
 			else:
-				attribute = delimiter.join(attrs[i+1:])
-				return hasattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
-	
+				obj = getattr(obj,attr) if hasattr(obj,attr) else obj.get(attr)
+				attr = delimiter.join(attrs[i+1:])
+				return hasattrs(obj,attr,default=default,delimiter=delimiter)
 	return False
 
 def contains(string,pattern):
@@ -299,7 +281,7 @@ def contains(string,pattern):
 	string = str(string)
 	pattern = str(pattern)
 
-	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*','[?]':'.?'}
 	for replacement in replacements:
 		pattern = pattern.replace(replacement,replacements[replacement])
 		
@@ -495,14 +477,14 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 		Recurse permute until values are lists and not dictionaries.
 		'''
 		keys,values = list(keys),list(values)
+		if isinstance(groups,iterables) and any(not isinstance(group,iterables) for group in groups):
+			groups = [groups]
 		for i,(key,value) in enumerate(zip(keys,values)):
 			if isinstance(value,dict):
 				if isinstance(groups,dict):
 					group = groups.get(key,group)
-				else:
-					group = groups
 				values[i] = permuter(value,copy=copy,groups=group) 
-		return keys,values
+		return keys,values,groups
 
 
 	if dictionary in [None,{}]:
@@ -513,7 +495,7 @@ def permuter(dictionary,copy=False,groups=None,filters=None,func=None,ordered=Tr
 
 
 	# Get values of permuted nested dictionaries in values
-	keys,values = retriever(keys,values,groups)
+	keys,values,groups = retriever(keys,values,groups)
 
 	# Retain ordering of keys in dictionary
 	keys_ordered = keys
@@ -588,6 +570,7 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 		returns (bool,str): Returns of search, 
 			None returns item, True returns index,shape,item, False returns None, 
 			allowed strings (.delimited) for combinations of ['index','shape','item']
+		items (iterable[object]): Items to search
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
@@ -619,13 +602,16 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 
 	dictionaries = (dict,)
 	items = [items] if (items is not None) and isinstance(items,scalars) else items
-	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and all(item in iterable for item in items)):
+	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and 
+		all(item in iterable for item in items)):
+		# all(any(contains(key,item) for key in iterable) for item in items)):
 		
 		if items:
 			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
 				return
 			elif isinstance(iterable,dictionaries):
 				item = [iterable[item] for item in items]
+				# item = [iterable[key] for key in iterable if any(contains(key,item) for item in items)]
 			else:
 				item = items
 		else:
@@ -642,7 +628,8 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 			yield from search(item,index=[*index,i],shape=[*shape,size],
 				returns=returns,items=items,types=types,exceptions=exceptions)
 
-def find(item,iterable,types=(list,),exceptions=()):
+
+def finder(item,iterable,types=(list,),exceptions=()):
 	'''
 	Search for index of item in iterable
 	Args:
@@ -657,7 +644,6 @@ def find(item,iterable,types=(list,),exceptions=()):
 		if key == item:
 			return index
 	return None
-
 
 
 def indexer(index,iterable,types=(list,),exceptions=()):
@@ -677,6 +663,28 @@ def indexer(index,iterable,types=(list,),exceptions=()):
 
 	return item
 
+def constructor(shape,types=None,default=None):
+	'''
+	Construct iterable of shape
+	Args:
+		shape (iterable[iterable[int]]): Shape of iterable
+		types (type): Type to construct
+		default (object): Default object in iterable
+	Returns:
+		iterable (iterable): Nested iterable
+	'''
+
+	if types is None:
+		types = list
+	elif isinstance(types,iterables):
+		types = type(types)
+
+	if shape:
+		iterable = types((constructor(shape[1:],types=types,default=default) for i in range(shape[0])))
+	else:
+		iterable = default
+
+	return iterable
 
 def inserter(index,item,iterable,types=(list,),exceptions=()):
 	'''
@@ -696,14 +704,123 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 	for j,i in enumerate(index):
 		default = None if (j==(len(index)-1)) else {} if isinstance(index[j+1],str) else []
 		if isinstance(iterable,dictionaries) and i not in iterable:
-			iterable[i] = default
+			iterable[i] = deepcopy(default)
 		elif not isinstance(iterable,dictionaries) and isinstance(i,int) and (len(iterable) <= i):
-			iterable.extend((default for j in range(i+1-len(iterable))))
+			iterable.extend((deepcopy(default) for j in range(i+1-len(iterable))))
 		
 		if j < (len(index)-1):
 			iterable = iterable[i]
 		else:
 			iterable[i] = item
+
+	return
+
+
+def find(iterable,keys,types=(dict,*iterables),exceptions=()):
+	'''
+	Find keys and values in iterable
+	Args:
+		iterable (iterable): Nested iterable
+		keys (iterable): Keys to find
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched		
+	Yields:
+		object: Found key or value
+	'''	
+
+	if not isinstance(iterable,types) or isinstance(iterable,exceptions):
+		return
+	elif isinstance(iterable,iterables):
+		for i,item in enumerate(iterable):
+			for pattern in keys:
+				if isinstance(item,str) and (contains(item,pattern) or (pattern in item)):
+					yield i,item
+			yield from find(iterable[i],keys,types=types,exceptions=exceptions)
+	elif isinstance(iterable,dict):
+		for key in iterable:
+			for pattern in keys:
+				if isinstance(key,str) and (contains(key,pattern) or (pattern in key)):
+					yield key,iterable[key]
+				if isinstance(iterable[key],str) and (contains(iterable[key],pattern) or (pattern in iterable[key])):
+					yield key,iterable[key]
+			yield from find(iterable[key],keys,types=types,exceptions=exceptions)
+	return
+
+def replace(iterable,keys,types=(dict,*iterables),exceptions=()):
+	'''
+	Replace keys and values in iterable
+	Args:
+		iterable (iterable): Nested iterable
+		keys (dict): Keys to replace
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched		
+	'''	
+
+	# types = (dict,*iterables) if types is None else types
+	# exceptions = () if exceptions if exceptions is None else exceptions
+
+	if not isinstance(iterable,types) or isinstance(iterable,exceptions):
+		return
+	elif isinstance(iterable,iterables):
+		for i,item in enumerate(iterable):
+			for pattern in keys:
+				if isinstance(item,str):
+					# if contains(item,pattern):
+					# 	item = keys.get(pattern,item)
+					# 	iterable[i] = item
+					if pattern in item:
+						item = keys.get(pattern,item)
+						iterable[i] = item
+			replace(iterable[i],keys,types=types,exceptions=exceptions)
+	elif isinstance(iterable,dict):
+		for key in list(iterable):
+			for pattern in keys:
+				if isinstance(key,str):
+					# if contains(key,pattern):
+					# 	key,value = keys.get(pattern,key),iterable.pop(key)
+					# 	iterable[key] = value
+					if pattern in key:
+						key,value = key.replace(pattern,keys.get(pattern,key)),iterable.pop(key)
+						iterable[key] = value
+				if isinstance(iterable[key],str):
+					# if contains(iterable[key],pattern):
+					# 	key,value = key,keys.get(pattern,iterable[key])
+					# 	iterable[key] = value
+					if pattern in iterable[key]:
+						key,value = key,iterable[key].replace(pattern,keys.get(pattern,iterable[key]))
+						iterable[key] = value
+
+			replace(iterable[key],keys,types=types,exceptions=exceptions)
+	return
+
+
+def regex(iterable,patterns=None):
+	'''
+	Find and replace patterns in dictionary keys and values
+	Args:
+		iterable (iterable,dict): Iterable to find and replace
+		patterns (dict): Patterns to find and replace
+	'''
+
+	if patterns is None:
+		return
+
+	if isinstance(iterable,dict):
+
+		string = json.dumps(iterable)
+
+		for pattern in patterns:
+			string = string.replace(pattern,patterns[pattern])
+
+		string = json.loads(string)
+
+		iterable.clear()
+
+		iterable.update(string)
+
+	else:
+
+		raise NotImplementedError
 
 	return
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime,shutil,traceback
+import os,sys,itertools,functools,shutil,traceback
 from time import time as timer
 from functools import partial
 import atexit
@@ -16,17 +16,13 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient
-from src.utils import array,asscalar,arange,eye,rand,einsum,dot,prod
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,sqrt,datatype
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import asscalar,prod,copy
 
-from src.utils import integers,floats,delim,Null,null,scalars,arrays
+from src.utils import integers,delim,datatype,timestamp
 
 from src.iterables import Dict,Dictionary,getter,setter
 from src.io import join,split,exists
-from src.call import rm,echo
+from src.call import rm
 from src.logger import Logger
 
 
@@ -34,49 +30,80 @@ class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
 	Args:
+		string (str): Data string identification of class
+		
 		dtype (str,data-type): Data type of class
 		format (str): Format of array
 		device (str): Device for computation
-		seed (array,int): Seed for random number generation
-		random (str): Type of random number generation
-		key (object): key for class
-		timestamp (str): timestamp for class
 		backend (str): backend for class
 		architecture (str): architecture for class
 		configuration (object): configuration for class
+
+		key (object): key for class
+		index (object): index for class
+		seed (array,int): Seed for random number generation
+		seeding (array,int): Seed for random number generation
+		random (str): Type of random number generation
+		instance (array,int): Seed for random number generation
+		instances (array,int): Seed for random number generation
+		samples (int,iterable[int]): samples for class
+		
 		base (str): base for class
 		unit (int,float): units of values
-		options (dict): options for system
+
+		path (str): Path to load and dump class data
+		cwd (str): Directory to dump class data	
+		lock (bool,str): Lock file for load and dump
+		backup (bool,str): Backup file for load and dump
+		timestamp (str): Timestamp for load and dump
+
+		conf (str,dict): Configuration path or dictionary for class logging
+		logger (str): Log file path for class logging
+		cleanup (bool): Cleanup class log files
 		verbose (bool,str): Verbosity of class	
+
+		options (dict): options for system
+
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
 	'''
+
 	def __init__(self,*args,**kwargs):
 
 		defaults = {
 			'string':__name__,
+			
 			'dtype':'complex',
 			'format':'array',
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
 			'configuration':None,
-			'base':None,
-			'unit':None,
-			'options':None,			
+
+			'key':None,
+			'index':None,
 			'seed':None,
 			'seedling':None,
 			'random':None,
-			'key':None,
 			'instance':None,
 			'instances':None,
-			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-			'cwd':None,
+			'samples':None,
+
+			'base':None,
+			'unit':None,
+
 			'path':None,
+			'cwd':None,
+			'lock':None,
+			'backup':None,
+			'timestamp':timestamp(),
+
 			'conf':None,
 			'logger':None,
 			'cleanup':None,
 			'verbose':None,
+
+			'options':None,						
 		}
 
 		def updates(kwargs,defaults):
@@ -85,7 +112,7 @@ class System(Dictionary):
 			kwargs[attr] = defaults.get(attr) if kwargs.get(attr,defaults.get(attr)) is None else kwargs.get(attr)
 
 			attr = 'backend'
-			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
+			kwargs[attr] = (os.environ.get('NUMPY_BACKEND').lower() if os.environ.get("NUMPY_BACKEND") is not None else None) if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
 
 			attr = 'instances'
 			if kwargs.get(attr) is not None:
@@ -107,7 +134,7 @@ class System(Dictionary):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 	def __clean__(self,cleanup=None):
 		'''
@@ -132,6 +159,7 @@ class System(Dictionary):
 			cleanup (bool,str,iterable[str]): Cleanup paths and attributes of class
 		'''
 
+
 		cleanup = self.cleanup if cleanup is None else cleanup
 
 		if cleanup is None:
@@ -144,7 +172,7 @@ class System(Dictionary):
 			paths = [getattr(self,path,path) for path in cleanup]
 
 		for path in paths:
-			echo(path,execute=False,verbose=False)
+			rm(path,execute=False,verbose=False)
 
 		return
 
@@ -164,6 +192,7 @@ class System(Dictionary):
 			cleanup = self.cleanup
 
 			self.logger = Logger(name,conf,file=file,cleanup=cleanup)
+
 
 		return
 
@@ -273,7 +302,7 @@ class Space(System):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 		
 
 class Time(System):
@@ -394,7 +423,7 @@ class Time(System):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 
 class Lattice(object):
@@ -562,7 +591,7 @@ class Lattice(object):
 				vertices = ((k,) for i in self.vertices for j in self.vertices if (i!=j) for k in (i,j))				
 			elif structure in ['i<j']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if (i<j))
-			elif structure in ['i.<j.']:
+			elif structure in ['i.<.j']:
 				vertices = ((k,) for i in self.vertices for j in self.vertices if (i<j) for k in (i,j))
 			elif structure in ['<ij>']:
 				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)))
@@ -578,7 +607,7 @@ class Lattice(object):
 				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if (((not self.boundaries((i,j))) and (i<j)) or (self.boundaries((i,j)) and i>j)) for k in (i,j))
 			elif structure in ['||ij||']:
 				vertices = ((i,j) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)))
-			elif structure in ['|i.j|']:
+			elif structure in ['||i.j||']:
 				vertices = ((k,) for i in [*self.vertices[0::2],*self.vertices[1::2]] for j in self.edges(i) if ((not self.boundaries((i,j))) and (i<j)) for k in (i,j))
 			elif structure in ['i...j']:
 				vertices = ((*self.vertices,) for i in self.vertices)
@@ -602,7 +631,7 @@ class Lattice(object):
 
 
 	def __string__(self):
-		self.string = self.lattice if self.lattice is not None else 'null'
+		self.string = self.lattice if self.lattice is not None else str(None)
 		return
 		
 	def __size__(self):
@@ -619,7 +648,7 @@ class Lattice(object):
 		return str(self.string)
 
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 	def __len__(self):
 		return self.vertices.stop - self.vertices.start
@@ -679,3 +708,98 @@ class Lattice(object):
 			boundary (bool): Edge is across boundary
 		'''
 		return self.boundary(edge)
+
+def layout(iterable,sort=False,group=False,options=None):
+	'''
+	Set layout of iterable
+	Args:
+		iterable (dict[str,object]): Iterable to sort and group
+		sort (bool): Sort iterable
+		group (bool): Group iterable
+		options (dict): Additional keyword arguments
+			'layout' (str): layout type for indexes corresponding to layout blocks, allowed strings in ['nearestneighbour','brickwork','local']
+			'attribute' (iterable[dict]): Iterable of attributes to sort/group by for each object in block
+				[{'where':'ij','unitary':True},{'where':'i','unitary':False},{'where':'j','unitary':False}]
+	Returns:
+		key (callable): sorting key function, with signature key(key) -> sortable object i.e) int,float,str,tuple
+	'''
+
+	if options:
+
+		options = copy(options)
+
+		objects = dict(
+			where =  {'ij':[0,1],'i':[0],'j':[1]},
+			unitary = {True:True,False:False},
+			)
+		defaults = dict(layout=None,attribute=[])
+
+		options.update({option:defaults[option] for option in defaults if options.get(option) is None})
+
+		N = max((j+1 for i in iterable for j in iterable[i].where),default=0)
+
+		name = 'layout'
+		if options[name] is None:
+			indexes = [*range(0,N-1,1)]
+
+		elif options[name] in ['nearestneighbour']:
+			indexes = [*range(0,N-1,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)
+		elif options[name] in ['brickwork']:
+			indexes = [*range(0,N-1,2),*range(1,N-1,2)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)
+		elif options[name] in ['local']:
+			indexes = [*range(0,N,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)							
+		else:
+			indexes = [*range(0,N-1,1)]
+			def groups(i,index,indexes,attribute,attributes):
+				return len(attributes)*index+attributes.index(attribute)			
+
+		name = 'attribute'
+		for item,option in enumerate(options[name]):
+			for attr in option:
+				if callable(option[attr]):
+					continue
+				if attr in ['where']:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): tuple(index+i for i in objects.get(obj,obj))
+				elif attr in ['unitary']:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): objects.get(obj,obj)
+				else:
+					option[attr] = lambda index,indexes,obj=option[attr],objects=objects.get(attr,{}): objects.get(obj,obj)
+
+		def attrs(index,indexes,name=name):
+			return [{attr:option[attr](index,indexes) for attr in option} for option in options[name]]
+		def boolean(i,index,indexes,attribute,attributes,name=name):
+			return all(type(attribute[attr])(getattr(iterable[i],attr))==attribute[attr] for attr in attribute)
+
+		indices = {}
+		for index in indexes:
+			attributes = attrs(index,indexes)
+			for attribute in attributes:
+				for i in iterable:
+					if i in indices:
+						continue
+					if boolean(i,index,indexes,attribute,attributes):
+						indices[i] = groups(i,index,indexes,attribute,attributes)
+						break
+
+		iterable = {**indices,**{i:iterable[i] for i in iterable if i not in indices}}
+
+	def key(key,iterable=iterable,sort=sort,group=group):
+
+		if sort and group:
+			index = (list(iterable).index(key),iterable[key])
+		elif sort:
+			index = list(iterable).index(key)
+		elif group:
+			index = iterable[key]
+		else:
+			index = key
+
+		return index
+
+	return key

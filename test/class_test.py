@@ -9,40 +9,48 @@ from math import prod
 	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','..','..']
+PATHS = ['','.','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
+from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
-from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
+from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,absolute,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
 from src.iterables import getter,setter,permuter,namespace,getattrs,setattrs
-from src.io import load,dump,join,exists
+from src.io import load,dump,split,join,exists,rm
+from src.call import cat
 
-from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter,compile,variables
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.system import Dictionary,Dict
 
 
 def test_logger(path,tol):
+
 	cls = load('src.system.System')
 
 	data = None
 	shape = None
-	system = {'logger':'log.txt','cleanup':1}
+	file = 'log/log.log'
+	system = {'logger':file,'verbose':'info'}
+	msg = 'TEST MESSAGE'
 
-	obj = cls(data,shape,system=system)
+	obj = cls(data,shape,**system)
 
+	print('Message')
+	print(msg)
 
-	data = None
-	shape = None
-	system = {'logger':'log.log','cleanup':1}
+	print('Log')
+	obj.log(msg)
 
-	obj = cls(data,shape,system=system)
+	print('Cat')
+	print(cat(file,execute=True,verbose=False))
 
-	# assert not exists(system['logger']), "Incorrect cleanup"
+	rm(split(file,file_ext=True))
+	rm(split(file,directory=True))
+
+	print('Passed')
 
 	return
 
@@ -78,7 +86,7 @@ def test_hessian(path,tol):
 
 	out = func(parameters)
 
-	eigs = sort(abs(eig(out,compute_v=False,hermitian=True)))[::-1] if out is not None else None
+	eigs = sort(absolute(eig(out,compute_v=False,hermitian=True)))[::-1] if out is not None else None
 	eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 	rank = nonzero(eigs,eps=50) if eigs is not None else None
 
@@ -114,9 +122,9 @@ def test_fisher(path,tol):
 
 		hyperparameters = settings.optimize
 		system = settings.system
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
-		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+		model = model(**{**settings.model,**dict(system=system,verbose=False)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system,verbose=False)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system,verbose=False)})
 
 		label.init(state=state)
 		model.init(state=state)
@@ -131,7 +139,7 @@ def test_fisher(path,tol):
 
 		tmp = func(parameters=parameters,state=state)
 
-		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
+		eigs = sort(absolute(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
 		eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 		rank = nonzero(eigs,eps=50) if eigs is not None else None
 
@@ -270,7 +278,7 @@ def check_fisher(path,tol):
 
 		setter(settings,kwargs,delimiter=delim)
 
-		print('N: %d, M: %d, B: %s'%(settings.model.N,settings.model.M,settings.model.data.zz.site))
+		print('N: %d, M: %d, B: %s'%(settings.model.N,settings.model.M,settings.model.data.zz.where))
 
 		model = load(settings.cls.model)
 		state = load(settings.cls.state)
@@ -318,7 +326,7 @@ def check_fisher(path,tol):
 
 
 		# if i == (n-1):
-		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(settings.model.data.zz.site,'')}
+		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(settings.model.data.zz.where,'')}
 		# 	data = {
 		# 		'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
 		# 		'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,
@@ -328,7 +336,7 @@ def check_fisher(path,tol):
 		# 	for file in data:
 		# 		dump(data[file],join(directory,file))
 
-		eigs = sort(abs(eigs))[::-1] if eigs is not None else None
+		eigs = sort(absolute(eigs))[::-1] if eigs is not None else None
 		# eigs = eigs/max(1,maximum(eigs))
 
 		print('-----')
@@ -533,13 +541,13 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	# test_object(path,tol)
-	# test_logger(path,tol)
+	test_logger(path,tol)
 	# test_data(path,tol)
 	# test_initialization(path,tol)
 	# test_hessian(path,tol)
 	# test_model(path,tol)
 
-	test_fisher(path,tol)
+	# test_fisher(path,tol)
 	# test_object(path,tol)
 	# test_data(path,tol)
 

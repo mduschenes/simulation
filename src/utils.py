@@ -3,13 +3,18 @@
 # Import python modules
 import os,sys,itertools,ast,operator
 from copy import deepcopy as copy
-from string import ascii_lowercase as characters
+from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
 from math import prod
 
-from functools import partial,wraps
+import inspect
+import typing
+from functools import partial,wraps,reduce
 from natsort import natsorted
-import hashlib
+import random
+from random import choices,sample as samples
+import hashlib,datetime
 import argparse
+from tqdm import tqdm
 
 import traceback
 import warnings
@@ -36,6 +41,8 @@ class RNG(onp.random.RandomState):
 
 orng = RNG()
 
+random.seed(0)
+
 _partial = partial
 partial = lambda func,*args,**kwargs: wraps(func)(_partial(func,*args,**kwargs))
 
@@ -47,19 +54,22 @@ for PATH in PATHS:
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd','numpy']
+BACKENDS = ['jax','autograd','jax.autograd','quimb','numpy']
 
 backend = os.environ.get(ENVIRON,DEFAULT).lower()
+
+BACKEND = {'jax':'jax','autograd':'autograd','jax.autograd':'autograd','quimb':'jax','numpy':'numpy'}.get(backend)
 
 assert backend in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,backend,BACKENDS)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	envs = {
 		'JAX_DISABLE_JIT':False,
 		'JAX_PLATFORMS':'',
 		'JAX_PLATFORM_NAME':'',
+		'JAX_ENABLE_X64':True,
 		'TF_CPP_MIN_LOG_LEVEL':5,
 		'JAX_TRACEBACK_FILTERING':'off',
 		# "XLA_FLAGS":(
@@ -75,11 +85,10 @@ if backend in ['jax','jax.autograd']:
 	import jax.scipy as sp
 
 	import jax.example_libraries.optimizers
-	from jax.tree_util import register_pytree_node_class as tree_register
+	from jax.tree_util import register_pytree_node_class as register
 	from jax.tree_util import tree_map as tree_map
 
-	import quimb as qu
-	import quimb.tensor as qtn
+	import opt_einsum
 
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
@@ -104,8 +113,7 @@ elif backend in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-	import quimb as qu
-	import quimb.tensor as qtn
+	import opt_einsum
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -143,7 +151,7 @@ elif backend in ['autograd']:
 							tree[tree.index(key)] = leaf
 			return
 
-		trees = (*deepcopy(trees[:1]),*trees[1:])
+		trees = (*copy(trees[:1]),*trees[1:])
 		mapper(*trees,func=func,is_leaf=is_leaf,**kwargs)
 		tree = trees[0]
 
@@ -161,9 +169,17 @@ elif backend in ['numpy']:
 	import pandas as pd
 	import scipy.special as spsp
 
+	import opt_einsum
+
 	mapper = map
 
 	rng = RNG()
+
+
+if backend in ['quimb']:
+
+	import quimb as qu
+	import quimb.tensor as qtn
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -177,7 +193,7 @@ class Null(object):
 	def __str__(self):
 		return 'Null'
 	def __repr__(self):
-		return self.__str__()
+		return str(self)
 
 class none(object):
 	def __init__(self,default=0,*args,**kwargs):
@@ -188,66 +204,11 @@ class none(object):
 
 null = Null()
 
-class structure(object):
-	'''
-	array placeholder class
-	Args:
-		args (iterable): Dataframe arguments
-		kwargs (dict): Dataframe keyword arguments
-	Returns:
-		out (array): dataframe
-	'''
-	def __init__(self,shape=None,dtype=None,**kwargs):
-		self._shape = () if shape is None else (shape,) if not isinstance(shape,iterables) else (*shape,)
-		self._dtype = float if dtype is None else dtype
-		self._data = asscalar(asarray(0,dtype=self.dtype))
-		return 
-
-	@property
-	def shape(self):
-		return self._shape
-	
-	@property
-	def size(self):
-		return prod(self.shape)
-	
-	@property
-	def ndim(self):
-		return len(self.shape)
-
-	@property
-	def dtype(self):
-		return self._dtype
-
-	@property
-	def data(self):
-		return self._data
-
-	@property
-	def nbytes(self):
-		return sys.getsizeof(self)
-
-	def __len__(self):
-		return self.shape[0]
-
-	def __iter__(self):
-		for i in range(len(self)):
-			yield self.data
-
-	def __getitem__(self,item):
-		return self.data
-
-	def __setitem__(self,item,value):
-		self.data = self.dtype(value)
-		return
-
-
-
 
 # Types
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	itg = np.integer
 	flt = np.float32
@@ -261,21 +222,34 @@ if backend in ['jax','jax.autograd']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
-	scalars = (*integers,*floats,str,type(None))
-	arrays = (np.ndarray,onp.ndarray,structure)
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices = (qtn.MatrixProductState,)
+	booleans = (bool,np.bool_,)
+	strings = (str,)
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	arrays = (np.ndarray,onp.ndarray,pd.Series,)
+	dataframes = (pd.DataFrame,)
 
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)	
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,dataframes)	
 	nulls = (Null,)
+
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'
 
 
-	def disp(*args,**kwargs):
-		with jax.disable_jit():
-			print(*args,**kwargs)
+	def debug(*obj,**objs):
+		strings = {}
+		string = ''
+
+		strings.update({index:i for index,i in enumerate(obj)})
+		strings.update({i:objs[i] for index,i in enumerate(objs)})
+
+		string = '\n'.join('{%s}'%(symbols(i)) if isinstance(i,int) else '%s = {%s}'%(i,i) for i in strings)
+		strings = {symbols(i) if isinstance(i,int) else i:strings[i] for i in strings}
+
+		jax.debug.print(string,**strings)
 		return
 
 elif backend in ['autograd']:
@@ -292,18 +266,23 @@ elif backend in ['autograd']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
-	scalars = (*integers,*floats,str,type(None))	
-	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,structure)
-	tensors = (qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
-	matrices = (qtn.MatrixProductState,)	
+	booleans = (bool,np.bool_,)
+	strings = (str,)
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
+	dataframes = (pd.DataFrame,)
 
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)	
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,dataframes,)	
 	nulls = (Null,)
+	
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
 
-	def disp(*args,**kwargs):
+	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
 
@@ -322,24 +301,35 @@ elif backend in ['numpy']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
-	scalars = (*integers,*floats,str,type(None))	
-	arrays = (np.ndarray,onp.ndarray,)
-	tensors = ()
-	matrices = ()	
+	booleans = (bool,np.bool_,)
+	strings = (str,)
+	nones = (type(None),)
+	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	arrays = (np.ndarray,onp.ndarray,pd.Series,)
+	dataframes = (pd.DataFrame,)
 
-	iterables = (*arrays,list,tuple,set,range)
-	dicts = (dict,)
+	generators = (typing.Generator,)
+	iterables = (*arrays,*generators,list,tuple,set,range,)
+	dicts = (dict,dataframes,)
 	nulls = (Null,)
+	
+	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
 
-	def disp(*args,**kwargs):
+	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
 
 
+
+def progress(*args,**kwargs):
+	options = dict(file=sys.stdout)
+	return tqdm(*args,**{**kwargs,**options})
+
+
 # Libraries
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
@@ -403,10 +393,16 @@ class argparser(argparse.ArgumentParser):
 				if not iterable:
 					values = [values]
 				for value in values:
-					for val in str(value).split(delimiter):
-						_values.append(self.type(val))
-					if iterable:
-						setattr(namespace,self.dest,_values)
+					if isinstance(value,str):
+						for val in str(value).split(delimiter):
+							_values.append(self.type(val))
+						if iterable:
+							setattr(namespace,self.dest,_values)
+					else:
+						try:
+							_values.append(self.type(value))
+						except:
+							_values.append(value)
 				if not iterable:
 					setattr(namespace,self.dest,_values[-1])
 
@@ -462,11 +458,10 @@ class argparser(argparse.ArgumentParser):
 					if null in options:
 						for option in nulls[null]:
 							options.pop(option,None);
-
 				options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 				options.update({
 					**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
-					**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+					**{option: argparse.SUPPRESS if options.get('type') in ['str',str] else None for option in ['default'] if option in options}
 					})
 				names = [name]
 				self.add_argument(*names,**options)
@@ -591,7 +586,7 @@ def epsilon(dtype=float,eps=None):
 
 	return eps
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -676,7 +671,7 @@ elif backend in ['autograd','numpy']:
 		'''
 		return a[index]
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -713,7 +708,7 @@ elif backend in ['autograd','numpy']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -722,7 +717,7 @@ if backend in ['jax','jax.autograd']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -759,7 +754,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -787,7 +782,7 @@ elif backend in ['autograd','numpy']:
 		return vfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -796,7 +791,7 @@ if backend in ['jax','jax.autograd']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -821,7 +816,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			func (callable): Function that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func
@@ -838,7 +833,7 @@ elif backend in ['autograd','numpy']:
 		return pfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -847,7 +842,7 @@ if backend in ['jax','jax.autograd']:
 		Args:
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func	
@@ -874,7 +869,7 @@ elif backend in ['autograd','numpy']:
 		Args:
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			in_axes (int,iterable): Input axis of iterables
-			out_axes (int,interable): Output axis of func return
+			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
 			kwargs (dict): Additional keyword arguments for func	
@@ -893,7 +888,7 @@ elif backend in ['autograd','numpy']:
 		return vfunc
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -930,8 +925,22 @@ elif backend in ['autograd','numpy']:
 		return funcs[index](*args)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 	
+	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		return jax.lax.cond(pred,true_fun,false_fun,*operands)
+
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
 		'''
@@ -949,8 +958,40 @@ if backend in ['jax','jax.autograd']:
 
 		return jax.lax.fori_loop(start,end,func,out)
 
+	# @partial(jit,static_argnums=(2,))	
+	def whileloop(cond,func,out):	
+		'''
+		Perform loop of func while cond 
+		Args:
+			cond (callable): Condition for loop with signature cond(out)
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
+		Returns:
+			out (array): Return of loop
+		'''
+
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+
+		return jax.lax.while_loop(cond,func,out)
 
 elif backend in ['autograd','numpy']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		if pred:
+			return true_fun(*operands)
+		else:
+			return false_fun(*operands)
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -971,42 +1012,23 @@ elif backend in ['autograd','numpy']:
 			out = func(i,out)
 		return out		
 
-
-if backend in ['jax','jax.autograd']:
-	
 	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
+	def whileloop(cond,func,out):	
 		'''
-		Conditionally evaluate functions
+		Perform loop of func while cond 
 		Args:
-			pred (bool): Conditional to choose function to evaluate
-			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
-			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
-			operands (iterable[object]): Arguments for functions
+			cond (callable): Condition for loop with signature cond(out)
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
 		Returns:
-			out (array): Return of function
+			out (array): Return of loop
 		'''
-		return jax.lax.cond(pred,true_fun,false_fun,*operands)
 
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+		while cond(out):
+			out = func(out)
+		return out
 
-elif backend in ['autograd','numpy']:
-
-	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
-		'''
-		Conditionally evaluate functions
-		Args:
-			pred (bool): Conditional to choose function to evaluate
-			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
-			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
-			operands (iterable[object]): Arguments for functions
-		Returns:
-			out (array): Return of function
-		'''
-		if pred:
-			return true_fun(*operands)
-		else:
-			return false_fun(*operands)
 
 def value_and_gradient(func,grad=None,returns=False):
 	'''
@@ -1128,7 +1150,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1210,7 +1232,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1318,7 +1340,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1411,7 +1433,7 @@ elif backend in ['numpy']:
 		raise NotImplementedError
 		return
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1511,14 +1533,14 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	if mode is None:
 		mode = 'fwd'
 
+	if grad is None:
+		grad = gradient(func,mode=mode,move=True)
+
+	shape = shapes[0]
 	if shapes is None:
 		ndim = None
 	else:
 		ndim = min((len(shape) for shape in shapes),default=2)
-
-	if grad is None:
-		grad = gradient(func,mode=mode,move=True)
-
 	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
 	dtype = getattr(func,'dtype',None)
 
@@ -1529,28 +1551,29 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 	if hermitian:
 
-		func = spectrum(func,compute_v=True,hermitian=hermitian)
-
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
 			shapes = [[shapes[0],shapes[1],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out, lambda out,*operands: 2*real(out)]
+			wrappers = [lambda out,*operands,shape=shape: out, lambda out,*operands,shape=shape: 2*real(out)]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
 
 		if shapes is not None:
 			einsummations = [
-				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+				lambda *operands,einsummation=einsummand(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 		else:
 			einsummations = [
-				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
+
+		func = spectrum(func,shape=shape,compute_v=True,hermitian=hermitian)
+		grad = lambda *args,grad=grad,shape=shape,**kwargs:reshape(grad(*args,**kwargs),[-1,*shape])
 
 		# @jit
 		def fisher(*args,**kwargs):
@@ -1580,24 +1603,24 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		if ndim == 1:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**0),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**0)]
+			wrappers = [lambda out,*operands,shape=shape: out,lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out]
 		elif ndim == 2:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
+			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]
 		else:
 			shapes = None
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
+			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]			
 		
 		if shapes is not None:
 			einsummations = [
-				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+				lambda *operands,einsummation=einsummand(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 		else:
 			einsummations = [
-				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]	
 
@@ -1605,6 +1628,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		def fisher(*args,**kwargs):
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
+
+			function = reshape(function,shape)
+			gradient = reshape(gradient,[-1,*shape])
 
 			out = 0
 
@@ -1654,10 +1680,12 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	else:
 		def entropy(*args,**kwargs):
 			out = func(*args,**kwargs)
+
+			out = reshape(out,shape)
 			
 			out = eig(out,compute_v=False,hermitian=hermitian)
 
-			out = abs(out)
+			out = absolute(out)
 
 			out = -addition(out*log(out))
 
@@ -1697,6 +1725,8 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		def purity(*args,**kwargs):
 			out = func(*args,**kwargs)
 			
+			out = reshape(out,shape)
+
 			out = real(einsum('ij,ij->',out,conjugate(out)))
 
 			return out
@@ -1728,6 +1758,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	if callable(label):
 		label = label()
+	label = reshape(label,shape)
 
 	labels = einsum('ij,ji->',label,label)
 
@@ -1741,9 +1772,11 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		def similarity(*args,**kwargs):
 			out = func(*args,**kwargs)
 
+			out = reshape(out,shape)
+
 			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
 			
-			out = abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
+			out = absolute((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
 
 			return out
 
@@ -1773,8 +1806,10 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	if callable(label):
 		label = label()
+	label = reshape(label,shape)
+
 	labels = eig(label,compute_v=False,hermitian=hermitian)
-	labels = abs(labels)
+	labels = absolute(labels)
 	labels = addition(log(labels**labels))
 
 	ndim = len(shape) if shape is not None else None
@@ -1787,9 +1822,11 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		def divergence(*args,**kwargs):
 			out = func(*args,**kwargs)
 
+			out = reshape(out,shape)
+
 			outs,out = eig(out,compute_v=True,hermitian=hermitian)
 
-			outs = abs(outs)
+			outs = absolute(outs)
 
 			out = real(labels - einsum('ij,jk,k,ik->',label,out,log(outs),conjugate(out)))
 
@@ -1842,123 +1879,201 @@ def datatype(dtype):
 		dtype (datatype): Underlying datatype
 	'''
 	
-	return real(array([],dtype=dtype)).dtype
+	return np.dtype(dtype).type(0).real.dtype
 
-class Array(onp.ndarray):
-	'''
-	Numpy array subclass, subclass of nd.ndarray with array of data of shape
+def arrayify(cls,new,*classes):
+
+	classes = (*classes,type(cls),cls.__class__,)
+
+	attrs = ['setup','init','__jax_array__','__array_function__','__array_ufunc__','__array_wrap__']
+
+	attr = 'setup'
+	for attr in attrs:
+		
+		if attr in ['setup']:
+			def func(self,data=None,indices=None,**kwargs):
+				'''
+				Setup class
+				Args:
+					data (array): Class data
+					indices (int,str,iterable[int,str]): Class indices
+					kwargs (dict): Additional class keyword arguments
+				'''
+
+				data = self.data if data is None else data
+				indices = self.indices if indices is None else indices
+
+				options = dict(order=None,dtype=None)
+				options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+
+				if not isinstance(data,classes):
+					data = cls(data,**options)
+
+				length = data.ndim
+				if indices is None:
+					indices = []
+				elif isinstance(indices,integers):
+					indices = symbols(indices)
+				elif isinstance(indices,strings):
+					indices = str(indices)
+				if not isinstance(indices,iterables):
+					indices = [indices]
+
+				indices = [*indices,*[symbols(i) for i in range(len(indices),length)]]
+
+				self.data = data
+				self.indices = indices
+
+				return
+
+		elif attr in ['init']:
+			def func(self,**kwargs):
+				'''
+				Initialize class
+				Args:
+					kwargs (dict): Additional class keyword arguments
+				'''
+				return
+
+		elif attr in ['__jax_array__']:
+			def func(self,*args,**kwargs):
+				return self.data
+
+		elif attr in ['__array_function__']:
+			funcs = {np.isclose: lambda self,other,*args,**kwargs: np.isclose(np.asarray(self),np.asarray(other),*args,**kwargs)}
+			def func(self,func,types,args,kwargs):
+				if func not in funcs:
+					return new(data=getattr(cls,attr)(func,types,args,kwargs))
+				else:
+					return new(data=funcs[func](*args,**kwargs))
+
+		elif attr in ['__array_ufunc__']:
+			def func(self,ufunc,method,*inputs,out=None,**kwargs):
+				return getattr(cls,attr)(ufunc,method,*(i.data if isinstance(i,new) else i for i in inputs),out=out,**kwargs)
+
+		elif attr in ['__array_wrap__']:
+			def func(self,out_arr,context=None,return_scalar=False):
+				return new(data=getattr(cls,attr)(out_arr, context, return_scalar))
+
+		if not hasattr(new,attr):
+			setattr(new,attr,func)
+
+
+	attrs = ['shape','size','ndim','dtype']
+	for attr in attrs:
+		
+		if attr in ['shape']:
+			@property
+			def func(self):
+				return self.data.shape
+
+		elif attr in ['size']:
+			@property
+			def func(self):
+				return self.data.size
+
+		elif attr in ['ndim']:
+			@property
+			def func(self):
+				return self.data.ndim				
+
+		elif attr in ['dtype']:
+			@property
+			def func(self):
+				return self.data.dtype
 	
-	Classes that inherit Array must have a __setup__() in place of __init__() to properly initialize
-	subclassed ndarray, that is initalized through Array's __new__() and an array.view(cls)
-	
-	Classes that inherit Array's __setup__() create the following attributes:
-		self.data (array)
-		self.string (str)
+		if not hasattr(new,attr):
+			setattr(new,attr,func)
 
-	Classes that inherit Array's __setup__() must also append newly institated attributes to the 
-	self.attrs attribute dictionary to allow for proper re-instantiation of the inherited class 
-	upon numpy-like views, slices etc.
+	attrs = (
+		"__abs__","__neg__","__pos__",
+		)
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
 
-	Args:
-		data (array,list,tuple): array data if array or list, array shape if tuple
-		args (iterable): class attributes
-		kwargs (dict): class keyword attributes
-	'''
-	def __new__(cls,*args,**kwargs):
-		attrs = {}
-		clsattrs = {}
-		for attr,value in kwargs.items():
-			if attr in onp.ndarray.__dict__:
-				clsattrs[attr] = value
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			return new(data=attribute(self.data,*args,**kwargs),indices=self.indices)
+
+		return func
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+	attrs = (
+		"__add__","__radd__","__sub__","__rsub__","__mul__","__mod__",
+		"__rmul__","__matmul__","__rmatmul__",
+		"__truediv__","__rtruediv__","__floordiv__","__rfloordiv__",
+		"__pow__","__rpow__",
+		"__gt__","__ge__","__lt__","__le__","__eq__","__ne__",
+		)
+	def wrapper(attr):
+		
+		attribute = getattr(cls,attr)
+
+		@wraps(attribute)
+		def func(self,other,*args,**kwargs):
+			if isinstance(other,new):
+				return new(data=attribute(self.data,other.data,*args,**kwargs),indices=self.indices)
 			else:
-				attrs[attr] = value
+				return new(data=attribute(self.data,other,*args,**kwargs),indices=self.indices)
 
-		field,value = 'attrs',attrs
-		setattr(cls,field,value)
+		return func	
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
 
-		cls = cls.__new__(cls,*args,**kwargs)
-
-		obj = onp.asarray(cls.data,**clsattrs).view(cls)
-
-		field,value = 'attrs',attrs
-		setattr(obj,field,value)
-
-		for attr,value in attrs.items():
-			setattr(obj,attr,getattr(obj,attr,value))
-
-		return obj
-
-	def __array_finalize__(self, obj):
-		field = 'attrs'
-		attrs = getattr(obj,field,getattr(self,field,None))
-		if obj is None or attrs is None: 
-			return
-		for attr in attrs:
-			setattr(self,attr,getattr(obj,attr,getattr(self,attr,None)))
-		return
-
-	
-	def __setup__(self,*args,**kwargs):
+	attrs = [
+		key for key,value in dict(inspect.getmembers(cls)).items() 
+		if isinstance(value,property) and 
+		not key.startswith('_') and 
+		key not in dir(new) and 
+		key not in ['at']
+		]
+	def wrapper(attr):
 		
-		field = 'attrs'
-		getattr(self,field).update({attr:getattr(self,attr,None) for attr in kwargs if attr not in getattr(self,field)})
+		attribute = getattr(cls,attr)
+
+		@property
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			data = getattr(self.data,attr)
+			if isinstance(data,classes):
+				return new(data=data,indices=self.indices)
+			else:
+				return data
+
+		return func	
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
+
+	attrs = [
+		key for key,value in dict(inspect.getmembers(cls)).items()
+		if callable(value) and 
+		not key.startswith('_') and 
+		key not in dir(new) and 
+		key not in []
+		]
+	def wrapper(attr):
 		
-		data = args[0] if len(args)>0 else None
-		if data is None:
-			data = onp.array()
-		elif isinstance(data,tuple):
-			data = onp.zeros(data)
-		else:
-			data = onp.asarray(data)
-		self.data = data
-		self.string = data.__str__()
-		return
+		attribute = getattr(cls,attr)
 
-	def __repr__(self):
-		return self.string
+		@wraps(attribute)
+		def func(self,*args,**kwargs):
+			data = getattr(self.data,attr)(*args,**kwargs)
+			if isinstance(data,classes):
+				return new(data=data,indices=self.indices)
+			else:
+				return data
 
-	def to_numpy(self):
-		return onp.array(self)
-
-	def to_jax(self):
-		return np.array(self)
-
-class String(str):
-	'''
-	String class to represent concatenated and delimited strings, subclass of str
-	Args:
-		string (str,tuple,list): string, tuple of strings, or list of tuple of strings or strings, where strings in tuple are concatenated and strings in list are delimited		
-	'''
-	def __new__(cls,string,deliminate=' + ',concatenate='*',fmt=None):
-		try:
-			string = [tuple([substring]) if not isinstance(substring,tuple) else substring 
-						for substring in ([string] if not isinstance(string,list) else string)]
-			string = deliminate.join([concatenate.join(substring) for substring in string])
-		except:
-			string = ''
-		string = fmt%string if fmt is not None else string
-		obj = super().__new__(cls,string)
-		obj.deliminate = deliminate
-		obj.concatenate = concatenate			
-		return obj
-
-	def __getslice__(self,item):
-		try:
-			obj = self.deliminate.join(self.split(self.deliminate)[item])
-		except:
-			obj = self
-		return obj
-
-	def __getitem__(self,item):
-		try:
-			obj = self.split(self.deliminate)[item]
-		except:
-			obj = self
-		return obj
+		return func
+	for attr in attrs:
+		setattr(new,attr,wrapper(attr))
 
 
+	return new
 
-# @tree_register
+
+# @register
 # class Parameters(dict):
 # 	'''
 # 	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
@@ -1996,7 +2111,7 @@ class String(str):
 # 			}
 # 		return cls(parameters)
 
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def tree_ravel(tree,is_leaf=None):
 		'''
@@ -2043,7 +2158,7 @@ if backend in ['jax']:
 		Returns:
 			tree_map (pytree): Return pytree of function call
 		'''	
-		return dot(a.ravel(),b.ravel())
+		return dot(ravel(a),ravel(b))
 
 	@tree_func
 	def tree_add(a,b):
@@ -2092,7 +2207,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				yield from tree_ravel(node,is_leaf=is_leaf)
 		else:
 			try:
-				yield from tree.ravel()
+				yield from ravel(tree)
 			except:
 				yield tree
 
@@ -2130,7 +2245,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Returns:
 			tree_map (pytree): Return pytree of function call
 		'''	
-		return dot(a.ravel(),b.ravel())
+		return dot(ravel(a),ravel(b))
 
 	@tree_func
 	def tree_add(a,b):
@@ -2196,40 +2311,1801 @@ def wrapper(function,*arguments,**keywords):
 	return wrapper	
 
 
-class Array(onp.ndarray):
-	'''
-	array subclass (TODO: Views do not copy attrs)
-	'''
-	def __new__(cls,obj,attrs={},**kwargs):
-		self = onp.asarray(obj,**kwargs).view(cls)
-		self.attrs = attrs
-		for attr in self.attrs:
-			setattr(self,attr,attrs[attr])
-		return self
 
-	def __array_finalize__(self, obj):
-		if obj is None:
+if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
+
+	class array(np.ndarray):
+		'''
+		array class
+		Args:
+			args (iterable): Array positional arguments
+			kwargs (dict): Array keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return np.array(*args,**kwargs)			
+
+	class tensor(object):
+		'''
+		tensor class
+		Args:
+			data (iterable,array,tensor,object,callable): Class data
+			indices (iterable[int,str],callable): Class indices
+			parameters (array,dict,callable): Class parameters
+			string (str): Class string
+			kwargs (dict): Additional class keyword arguments
+		'''
+
+		defaults = dict()
+
+		def __init__(self,data,indices=None,parameters=None,string=None,**kwargs):
+
+			self.data = data
+			self.indices = indices
+			self.parameters = parameters
+			self.string = string
+
+			self.setup(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
+
+			self.init(**kwargs)
+
 			return
-		try:
-			self.attrs = obj.attrs
-			for attr in self.attrs:
-				setattr(self,attr,getattr(obj,attr,None))
-		except:
-			pass
-		return
 
-class array(np.ndarray):
-	'''
-	array class
-	Args:
-		args (iterable): Array positional arguments
-		kwargs (dict): Array keyword arguments
-	Returns:
-		out (array): array
-	'''
-	def __new__(cls,*args,**kwargs):
-		return np.array(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (iterable,array,tensor,object,callable): Class data
+				indices (iterable[int,str],callable): Class indices
+				parameters (array,dict,callable): Class parameters
+				string (str): Class string
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
+				kwargs (dict): Additional class keyword arguments				
+			'''		
+
+			if setup is None or setup is True:
+
+				def setup(index,data,indices,parameters,string,**kwargs):
+
+					classes = self.__class__
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					if callable(data):
+						data = data(**kwargs)
+
+					if callable(indices):
+						indices = indices(**kwargs)
+		
+					parameters = parameters if parameters is not None else parameters
+
+					string = str(string) if string is not None else string
+
+					length = data.ndim
+					if indices is None:
+						indices = []
+					elif isinstance(indices,integers):
+						indices = symbols(indices)
+					elif isinstance(indices,strings):
+						indices = str(indices)
+					if not isinstance(indices,iterables):
+						indices = [indices]
+
+					indices = [f'{string if string is not None else ""}{i}'
+						for i in [*indices,*[symbols(i) for i in range(len(indices),length)]]
+						]
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,**kwargs):
+					
+					classes = self.__class__
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					return data,indices,parameters,string
+
+			data = data if data is not None else self.data
+			indices = indices if indices is not None else self.indices
+			parameters = parameters if parameters is not None else self.parameters
+			string = string if string is not None else self.string
+
+			index = None
+			data,indices,parameters,string = setup(index,data,indices,parameters,string,**kwargs)
+
+			cls = array
+			classes = arrays
+			options = {}
+
+			if not isinstance(data,classes): 
+				data = cls(data)
+
+			self.data = data
+			self.indices = indices
+			self.parameters = parameters
+			self.string = string
+
+			return
+
+		@property
+		def shape(self):
+			return self.data.shape
+
+		@property
+		def size(self):
+			return self.data.size
+
+		@property
+		def ndim(self):
+			return self.data.ndim
+
+		@property
+		def dtype(self):
+			return self.data.dtype
+
+		def tensor(self,where=None):
+			return self.data
+
+		def array(self):
+			return self.data
+
+		def format(self,*format,**formats):
+			self.indices = [i.format(*format,**formats) for i in self.indices]
+			return
+
+		def transform(self,data=None,indices=None,func=None,shape=None,axes=None,conj=None):
+			if data is not None:
+				self.data = data
+			if indices is not None:
+				indices = indices if not callable(indices) else indices(self)
+				self.indices = [indices.get(index,index) for index in self.indices]
+			if func is not None:
+				self.data = func(self)
+			if shape is not None:
+				shape = shape if not callable(shape) else shape(self)
+				self.data = reshape(self.data,[shape[i] for i in shape])
+				self.indices = [i for i in shape]
+			if axes is not None:
+				axes = axes if not callable(axes) else axes(self)				
+				self.data = transpose(self.data,axes)
+				self.indices = [self.indices[i] for i in axes]
+			if conj is not None:
+				self.data = conjugate(self.data)
+				self.indices = [*self.indices]
+			return self
+
+		def get(self):
+			return self.data
+
+		def set(self,data):
+			self.data = data
+			return
+
+		def append(self,*objects,indices=None):
+			'''
+			Append tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''
+			self.data,self.indices = self.construct(self,*objects)
+			return self
+
+		@classmethod
+		def join(cls,*objects,indices=None):
+			'''
+			Join tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''
+			data,indices = cls.construct(*objects)
+			cls = tensor
+			return cls(data=data,indices=indices)
+
+		@classmethod
+		def construct(cls,*objects,indices=None):
+			'''
+			Construct tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				data (array): Tensor data
+				indices (iterable[int,str]): Tensor indices
+			'''	
+			data = cls.contraction(*objects,indices=indices)
+			indices = cls.complement(*objects,indices=indices)
+			return data,indices
+
+		@classmethod
+		def intersection(cls,*objects,indices=None):
+			'''
+			Intersection of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj for obj in objects if obj is not None]
+			indices = [i for obj in objects for i in obj.indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if all(i in obj.indices for obj in objects)),key=lambda i: indices.index(i))
+
+		@classmethod
+		def union(cls,*objects,indices=None):
+			'''
+			Union of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj for obj in objects if obj is not None]
+			indices = [i for obj in objects for i in obj.indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices),key=lambda i: indices.index(i))
+
+		@classmethod
+		def complement(cls,*objects,indices=None):
+			'''
+			Complement of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj for obj in objects if obj is not None]
+			indices = [i for obj in objects for i in obj.indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if sum(i in obj.indices for obj in objects)<2),key=lambda i: indices.index(i))
+
+		@classmethod
+		def contraction(cls,*objects,indices=None):
+			'''
+			Contraction of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors to contract
+			Returns:
+				data (array): Contraction of tensors
+			'''
+			indices = cls.complement(*objects,indices=indices)
+			return einsum(*(i for obj in objects if obj is not None for i in [obj.data,obj.indices]),indices)
+
+		def __and__(self,other):
+			'''
+			Join tensors
+			Args:
+				other (iterable[tensor]): Tensor
+			Returns:
+				obj (tensor): Tensor				
+			'''			
+			return self.join(self,other)
+
+		def __iand__(self,other):
+			'''
+			Append tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor				
+			'''
+			return self.append(other)
+
+		def __len__(self):
+			return len(self.data)
+		
+		def __iter__(self):
+			yield from self.data
+
+		def __getitem__(self,index):
+			return self.data[index]
+
+		def __setitem__(self,index,value):
+			self.data = inplace(self.data,index,value)
+			return
+
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = dict(zip(self.indices,self.data.shape))
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return hash(self.data)
+
+		def __copy__(self,*args,**kwargs):
+			return self.copy(deep=False)
+
+		def __deepcopy__(self,*args,**kwargs):
+			return self.copy(deep=True)
+
+		def copy(self,deep=False,**kwargs):
+			cls = self.__class__
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
+
+		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (array,callable): Class data
+				parameters (array): Class parameters
+				where (float,int,iterable[int]): Class indices
+				options (dict): Class options
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (dict): Class data
+			'''
+			if data is None:
+				data = self.data
+			elif isinstance(data,arrays):
+				self.data = data
+			elif isinstance(data,tensors):
+				self.data = data()
+			elif isinstance(data,iterables):
+				data = self.join(*data)
+			elif callable(data):
+				data = data(self.data,**kwargs)
+			else:
+				data = self.data
+
+			return data
+
+	class matrix(dict):
+		'''
+		matrix class
+		Args:
+			args (iterable): Additional class positional arguments
+			kwargs (dict): Additional class keyword arguments
+		'''
+		pass
+
+	class network(dict):
+		'''
+		tensor network class
+		Args:
+			data (dict,iterable,array,tensor,object,callable): Class data
+			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+			parameters (array,dict,callable): Class parameters
+			string (str): Class string
+			kwargs (dict): Additional keyword arguments
+		'''
+
+		defaults = dict()
+
+		def __init__(self,data=None,indices=None,parameters=None,string=None,**kwargs):
+
+			super().__init__()
+
+			self.data = data
+			self.parameters = parameters
+			self.string = string
+
+			self.setup(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
+
+			self.init(**kwargs)
+
+			return
+
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (dict,iterable,array,tensor,object,callable): Class data
+				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+				parameters (array,dict,callable): Class parameters
+				string (str): Class string		
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string		
+				kwargs (dict): Additional class keyword arguments				
+			'''
+
+			if setup is None or setup is True:
+				
+				def setup(index,data,indices,parameters,string,**kwargs):
+					
+					classes = tensors
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					if callable(data):
+						data = data(**kwargs)
+					
+					if callable(indices):
+						indices = indices(**kwargs)
+
+					parameters = parameters if parameters is not None else parameters
+
+					string = str(string) if string is not None else string
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,**kwargs):
+					
+					classes = self.__class__
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					return data,indices,parameters,string
+
+			data = data if data is not None else self.data
+			indices = indices if indices is not None else self.indices if isinstance(self.data,dict) and all(isinstance(self.data[i],tensors) for i in self.data) else None
+			parameters = parameters if parameters is not None else self.parameters
+			string = string if string is not None else self.string
+
+			data = {i:data[key] for i,key in enumerate(data)} if isinstance(data,dict) else {i:data[i] for i in range(len(data))} if isinstance(data,iterables) else {}
+			indices = {i:indices[key] for i,key in enumerate(indices)} if isinstance(indices,dict) else {i:indices[i] for i in range(len(data))} if isinstance(indices,iterables) else {i:indices for i in range(len(data))}
+			parameters = parameters if parameters is not None else parameters
+			string = str(string) if string is not None else string
+
+			cls = tensor
+			classes = tensors
+			options = {}
+
+			for i in data:
+
+				data[i],indices[i],parameters,string = setup(i,data[i],indices[i],parameters,string,**kwargs)
+
+				if not isinstance(data[i],classes):
+					data[i] = cls(data=data[i],indices=indices[i],**options)
+
+			self.data = data
+			self.parameters = parameters
+			self.string = string
+
+			return
+
+		@property
+		def shape(self):
+			return {i:self[i].shape for i in self}
+
+		@property
+		def size(self):
+			return prod(self[i].size for i in self)
+
+		@property
+		def ndim(self):
+			return max(self[i].ndim for i in self)
+
+		@property
+		def dtype(self):
+			return self[min(self)].dtype
+
+		@property
+		def indices(self):
+			return {i:self[i].indices for i in self}
+
+		def tensor(self,where=None):
+			where = self if where is None else where
+			return {i:self[i].data for i in where}
+
+		def array(self):
+			return self.contraction(self)
+
+		def format(self,*format,**formats):
+			for i in self:
+				self[i].format(*format,**formats)
+			return
+
+		def transform(self,data=None,indices=None,func=None,shape=None,axes=None,conj=None):
+			if data is not None:
+				for i in data:
+					self[i].transform(data=data[i])
+			if indices is not None:
+				for i in indices:
+					self[i].transform(indices=indices[i])
+			if func is not None:
+				for i in func:
+					self[i].transform(func=func[i])
+			if shape is not None:
+				for i in shape:
+					self[i].transform(shape=shape[i])
+			if axes is not None:
+				for i in axes:
+					self[i].transform(axes=axes[i])
+			if conj is not None:
+				for i in conj:
+					self[i].transform(conj=conj[i])
+			return self
+
+		def get(self):
+			return {i: self[i].get() for i in self}
+
+		def set(self,data):
+			for i in data:
+				self[i].set(data[i])
+			return
+
+		def append(self,*objects,indices=None):
+			'''
+			Append tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''
+			self.data = self.construct(self,*objects)
+			return self
+
+		@classmethod
+		def join(cls,*objects,indices=None):
+			'''
+			Join tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor
+			'''
+			data = cls.construct(*objects)
+			cls = network
+			return cls(data=data,setup=False)
+
+		@classmethod
+		def construct(cls,*objects,indices=None):
+			'''
+			Construct tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				data (dict[tensor]): Tensor data
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			data = {i: copy(data) for i,data in enumerate(obj[key] for obj in objects for key in obj)}
+			return data
+
+		@classmethod
+		def intersection(cls,*objects,indices=None):
+			'''
+			Intersection of tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			indices = [i for obj in objects for key in obj for i in obj[key].indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if all(i in obj[key].indices for obj in objects for key in obj)),key=lambda i: indices.index(i))
+
+		@classmethod
+		def union(cls,*objects,indices=None):
+			'''
+			Union of tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			indices = [i for obj in objects for key in obj for i in obj[key].indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices),key=lambda i: indices.index(i))
+
+		@classmethod
+		def complement(cls,*objects,indices=None):
+			'''
+			Complement of tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			indices = [i for obj in objects for key in obj for i in obj[key].indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if sum(i in obj[key].indices for obj in objects for key in obj)<2),key=lambda i: indices.index(i))
+
+		@classmethod
+		def contraction(cls,*objects,indices=None):
+			'''
+			Contraction of tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors to contract
+			Returns:
+				data (array): Contraction of tensors
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			indices = cls.complement(*objects,indices=indices)
+			return einsum(*(i for obj in objects for key in obj for i in [obj[key].data,obj[key].indices]),indices)
+
+		def __and__(self,other):
+			'''
+			Join tensors
+			Args:
+				other (iterable[tensor,network]): Tensor
+			Returns:
+				obj (tensor): Tensor				
+			'''			
+			return self.join(self,other)
+
+		def __iand__(self,other):
+			'''
+			Join tensors
+			Args:
+				objects (iterable[tensor,network]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				obj (tensor): Tensor				
+			'''
+			return self.append(other) 
+
+		def __len__(self):
+			return len(self.data)
+		
+		def __iter__(self):
+			yield from self.data
+
+		def __getitem__(self,index):
+			return self.data.get(index)
+
+		def __setitem__(self,index,value):
+			self.data[index] = value
+			return
+
+		def __str__(self):
+			if isinstance(self.string,str):
+				string = self.string
+			else:
+				string = self.__class__.__name__
+			data = '\n\t'.join(['',*[f'{i}: {dict(zip(self[i].indices,self[i].shape))}' for i in self]])
+			return f'{string}: {data}'
+
+		def __repr__(self):
+			return str(self)
+		
+		def __hash__(self):
+			return hash((self[i] for i in self))
+
+		def __copy__(self,*args,**kwargs):
+			return self.copy(deep=False)
+
+		def __deepcopy__(self,*args,**kwargs):
+			return self.copy(deep=True)
+
+		def copy(self,deep=False,**kwargs):
+			cls = self.__class__
+			options = {**dict(data=self.data,indices=self.indices,parameters=self.parameters,string=self.string),**kwargs}
+			if deep:
+				options = copy(options)
+			return cls(**options)
+
+		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (array,callable): Class data
+				parameters (array): Class parameters
+				where (float,int,iterable[int]): Class indices
+				options (dict): Class options
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (dict): Class data
+			'''
+			return self
+
+	class context(object):
+		'''
+		Update tensor within context with formats
+		Args:
+			objs (iterable[tensor]): Tensors to update
+			formats (object): Formats for indices
+			indices (iterable[dict]): Formats of indices to update, [{index:format}]
+		'''
+		def __init__(self,*objs,formats=None,indices=None):
+
+			self.objs = [obj for obj in objs]
+			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else []
+			self.indices = [index if index is not None else {} for index in indices] if isinstance(indices,iterables) else [indices if indices is not None else {} for obj in objs]
+			self.attributes = [[] for obj in objs]
+
+			indexes = range(len(objs))
+
+			def enter(obj,formats,indices,attributes):
+				attributes.extend(obj.indices)
+				indexes = [*obj.indices]
+				for i,index in enumerate(indexes):
+					if index in indices:
+						indexes[i] = indices[index]
+				obj.indices = indexes
+				obj.format(*formats)
+				return
+
+			def exit(obj,formats,indices,attributes):
+				obj.indices = attributes
+				return
+
+			self.indexes = indexes
+			self.enter = enter
+			self.exit = exit
+
+			return
+
+		def __enter__(self):
+			for i in self.indexes:
+				self.enter(self.objs[i],self.formats,self.indices[i],self.attributes[i])
+			return
+
+		def __exit__(self,type,value,traceback):
+			for i in self.indexes:
+				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
+			return
+	
+	class mps(network):
+		'''
+		matrix product state tensor network class
+		Args:
+			data (dict,iterable,array,tensor,object,callable): Class data
+			indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+			parameters (array,dict,callable): Class parameters
+			string (str): Class string
+			N (int): Class size
+			D (int): Class dimension
+			S (int): Class approximation
+			kwargs (dict): Additional keyword arguments
+		'''
+
+		defaults = dict(strings=None,orientation=None,scheme=None,func=None)
+		
+		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
+
+			self.N = N
+			self.D = D
+			self.S = S
+
+			for key in self.defaults:
+				setattr(self,key,kwargs.get(key,self.defaults[key]))
+
+			super().__init__(data=data,indices=indices,parameters=parameters,string=string,**kwargs)
+
+			return
+
+		def init(self,**kwargs):
+			'''
+			Initialize class
+			Args:
+				kwargs (dict): Additional class keyword arguments			
+			'''
+			return
+
+		def setup(self,data=None,indices=None,parameters=None,string=None,setup=None,**kwargs):
+			'''
+			Setup class
+			Args:
+				data (dict,iterable,array,tensor,object,callable): Class data
+				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
+				parameters (array,dict,callable): Class parameters
+				string (str): Class string		
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string						
+				kwargs (dict): Additional class keyword arguments				
+			'''
+
+			N = self.N if self.N is not None else 0
+			D = self.D if self.D is not None else 0
+			S = self.S if self.S is not None else 0
+
+			if callable(self.strings):
+				strings = self.strings
+			else:
+				def strings(index=None,string=None,strings=None):
+					strings = '|' if strings is None else strings
+					if (index is None) or (index.startswith(strings) and index.endswith(strings)):
+						string = f'{strings}{characters(4) if string is None else string}{strings}'
+					else:
+						string = index
+					return string
+
+			if setup is None or setup is True:
+				
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+
+					classes = tensors
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					if callable(data):
+						data = data(**kwargs)
+
+					if data.ndim == 1:
+						shape = [1,*data.shape,1]
+						axes = range(data.ndim+2)
+						
+						data = transpose(reshape(data,shape),axes)
+
+					indices = [
+						strings(string=symbols(index)),
+						*((indices[max(1,(data.ndim-2)//2):min(-1,-(data.ndim-2)//2)] if len(indices)==3 else indices) if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
+						strings(string=symbols(index+1)),
+						]
+
+					parameters = parameters if parameters is not None else parameters
+
+					string = str(string) if string is not None else string
+
+					return data,indices,parameters,string
+
+			elif setup is False:
+
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+					
+					classes = tensors
+
+					if isinstance(data,classes):
+						data,indices = data.data,data.indices
+
+					return data,indices,parameters,string
+
+			super().setup(data=data,indices=indices,parameters=parameters,string=string,setup=setup,**kwargs)
+
+			self.N = max(N,max(self)+1)
+			self.D = max(D,max((max(self[i].shape[1:-1],default=1) for i in self),default=D))
+			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=S))
+			
+			self.strings = strings
+
+			orientation = self.orientation
+			if not callable(orientation):
+				def orientation(i,where):
+					if i < min(where):
+						return i - min(where)
+					elif i > max(where):
+						return i - max(where)
+					else:
+						return None
+			self.orientation = orientation
+
+			scheme = self.scheme if self.scheme is not None else {scheme:self.schemes(options=dict(scheme=scheme),**kwargs) for scheme in self.schemes(options=dict(scheme=True))}
+			self.scheme = scheme
+
+			func = self.func if self.func is not None else None
+			if func is None:
+				func = {}
+				for L in range(self.N+1):
+					subscripts = '%s,%s->%s%s%s'%(
+						''.join((
+							''.join(symbols(i) for i in range(L)),
+							''.join(symbols(L+i) for i in range(L))
+							)),
+						','.join(
+							''.join((symbols(2*L+i),symbols(L+i),symbols(2*L+i+1))) for i in range(L)),
+						''.join((symbols(2*L),)),
+						''.join(symbols(i) for i in range(L)),
+						''.join((symbols(2*L+L),))
+						)
+					if L < 2 or L > 2 or L == 2:
+						options = {}
+						def function(data,state,where=None,subscripts=subscripts,options=options):
+							return einsum(subscripts,data,*(state[i]() for i in where))
+					elif L == 2:
+						options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+						def function(data,state,where=None,subscripts=subscripts,options=options):
+							L = len(where)
+							d = data.ndim//L
+							shape = [(state[i].shape[1],)*d for i in where]
+							axes = [j for i in range(L) for j in range(i,d*L,L)]
+
+
+							data = real(reshape(transpose(data,axes),[prod(i) for i in shape]))
+							u,s,v = svd(data,**options)
+							u,v = reshape(u,(*shape[0],-1)),reshape(v,(-1,*shape[-1]))
+
+							a,b = state[where[0]],state[where[-1]]
+							x,y = addition(a,(0,1)),addition(b,(-2,-1))
+							a,b,c = dotr(a,reciprocal(x)),dotl(b,reciprocal(y)),x*y
+
+							u,v = reshape(einsum('acs,xcz->xasz',u,a),(*a.shape[:-1],-1)),reshape(einsum('sbd,zdy->szby',v,b),(-1,*b.shape[1:]))
+							z = tensorproduct(s,c)
+
+
+							x,y = addition(u,(0,1)),addition(v,(-2,-1))
+							u,v = dotr(u,reciprocal(x)),dotl(v,reciprocal(y))
+							z = z*x*y 
+
+							norm = lambda a: addition(abs2(a))
+
+							return einsum(subscripts,data,*(state[i]() for i in where))						
+					func[L] = function
+			self.func = func
+
+			self.index()
+
+			return
+
+		def update(self,data=None,shape=None,axes=None,orientation=None,where=None,options=None,**kwargs):
+			'''
+			Update class data
+			Args:
+				data (array,iterable[array,dict],dict,mps): Class data		
+				shape (iterable[int]): Shape of data
+				axes (iterable[int]): Class axes
+				orientation (callable): Class orientation with signature orientation(i,where) -> int
+				where (float,int,iterable[int],callable): Class indices
+				kwargs (dict): Additional class keyword arguments				
+			Returns:
+				data (dict): Class data		
+			'''	
+
+			data = self.tensor() if data is None else data
+
+			options = {} if options is None else options
+
+			N = self.N
+			orientation = self.orientation if not callable(orientation) else orientation
+			scheme = options.get('scheme')
+			defaults = {}
+
+			objects = None
+
+			if scheme is False:
+				return
+
+			if isinstance(data,dict):
+
+				where = [N,N] if where is None else [where,where] if isinstance(where,integers) else [*where]
+				indices = (*range(0,min(where)+1,1),*range(N-1,max(where)-1,-1))
+
+				for i in indices:
+
+					index = orientation(i,where)
+
+					if index is None:
+						
+						continue
+
+					elif index < 0:
+
+						state = data[i]
+						shape = state.shape
+						axes = axes
+
+						state = self.organize(data=state,where=i,scheme=scheme,transform=True,conj=False,**kwargs)
+
+						u,v,s = self.scheme[scheme](state,conj=False,**{**defaults,**kwargs,**options})
+
+						state = self.organize(data=u,where=i,scheme=scheme,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
+
+						data[i] = state
+
+						if s is not None:
+							data[i+1] = data[i+1][:s]
+
+						if v is not None:
+							if v.ndim == 2:
+								data[i+1] = dot(v,data[i+1])
+							elif v.ndim == 1:
+								data[i+1] = dotl(data[i+1],v)
+					
+					elif index > 0:
+
+						state = data[i]
+						shape = state.shape
+						axes = axes
+
+						state = self.organize(data=state,where=i,scheme=scheme,transform=True,conj=True,**kwargs)
+						
+						u,v,s = self.scheme[scheme](state,conj=True,**{**defaults,**kwargs,**options})
+
+						state = self.organize(data=v,where=i,scheme=scheme,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
+						
+						data[i] = state
+
+
+						if s is not None:	
+							data[i-1] = data[i-1][...,:s]
+
+						if u is not None:
+							if u.ndim == 2:
+								data[i-1] = dot(data[i-1],u)
+							elif u.ndim == 1:
+								data[i-1] = dotr(data[i-1],u)
+
+			elif isinstance(data,(*arrays,*iterables)):
+
+				data = (data,{i:None for i in where}) if isinstance(data,arrays) else (*data,)
+
+				if len(where) == 1:
+
+					data = dict(zip(where,data))
+
+				elif len(where) == 2:
+
+					data,state = data
+
+					state = state.tensor()
+
+					u,v = [state[i] for i in where]
+
+					objects = [min(where),max(where)]
+
+					if scheme in ['nmf']:
+						for index,i in enumerate(objects):
+							if index == 0:
+								if i > 0:
+									objects[index] = addition(state[i-1],0)
+									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(0,i))),0),(-1,state[i].shape[0]))
+								else:
+									objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
+									# objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
+							elif index == (len(objects)-1):
+								if i < (N-1):
+									objects[index] = addition(state[i+1],-1)
+									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(i+1,N))),-1),(state[i].shape[-1],-1))
+								else:
+									objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
+									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)	
+					elif scheme in ['pnmf']:
+						for index,i in enumerate(objects):
+							if index == 0:
+								if i > 0:
+									objects[index] = addition(state[i-1],range(0,state[i-1].ndim-1))
+								else:
+									objects[index] = ones(state[i].shape[:1],dtype=state[i].dtype)
+							elif index == (len(objects)-1):
+								if i < (N-1):
+									objects[index] = addition(state[i+1],range(1,state[i+1].ndim))
+								else:
+									objects[index] = ones(state[i].shape[-1:],dtype=state[i].dtype)
+
+					data = self.organize(data,where=where,scheme=scheme,shape=[prod(data.shape[:len(data.shape)//2]),prod(data.shape[len(data.shape)//2:])],axes=None if axes is None else axes,transform=True,conj=False,**kwargs)
+
+					u,v,s = self.scheme[scheme](data,u,v,objects,**{**defaults,**kwargs,**options})
+
+					try:
+						a,z = data,dot(u,v)
+						x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
+						z = dot(x,dot(z,y))
+						a = dot(x,dot(a,y))
+						print('diff',allclose(z,a),addition(abs2(z-a)))
+					except:
+						pass
+
+					data = self.organize((u,v),where=where,scheme=scheme,shape=[[1,*u.shape[:-1],s],[s,*v.shape[1:],1]] if shape is None else [[*shape[0][:-1],s],[s,*shape[1][1:]]],axes=None if axes is None else axes,transform=False,conj=False,**kwargs)
+
+					data = dict(zip(where,data))
+
+				else:
+					raise NotImplementedError(f"Not Implemented {where}")
+
+				objects = data
+
+			for i in data:
+				self[i](data[i])
+
+			data = objects
+
+			return data
+
+		def organize(self,data=None,shape=None,axes=None,conj=None,scheme=None,where=None,transform=True,**kwargs):
+			'''
+			Organize class data
+			Args:
+				data (dict,array,tensor,network,object): Class data
+				shape (iterable[int]): Shape of data
+				axes (iterable[int]): Axes order of data
+				conj (bool): Conjugate of class data
+				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+				where (float,int,iterable[int]): Class indices
+				transform (bool): Forward or backward transform data
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (array): Class data
+			'''			
+
+			if scheme is None or scheme in ['svd','qr','eig','spectrum']:
+				pass
+			elif scheme in ['nmf','pnmf','stq','probability']:
+				return data
+
+			data = self if data is None else data
+
+			if transform:
+
+				if isinstance(data,dict):
+
+					where = [*data] if where is None else [where] if not isinstance(where,iterables) else [*where]
+					N = len(where)
+
+					shape = [k for i,j in enumerate(where) for k in ([prod(data[j].shape[:2]),*data[j].shape[2:-1]] if i in [0] else [*data[j].shape[1:-2],prod(data[j].shape[-2:])] if i in [N-1] else [*data[j].shape[1:-1]])] if shape is None else shape
+					axes = range(N) if axes is None else axes
+					subscripts = '%s->%s'%(
+						','.join(
+							''.join((symbols(N+i),symbols(i),symbols(N+i+1)))
+							for i in range(N)
+							),
+						''.join(
+							''.join((symbols(N+i),symbols(i),) if i in [0] else (symbols(i),symbols(N+i+1)) if i in [N-1] else (symbols(i),))
+							for i in range(N)
+							),
+						)
+
+					data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
+					
+				elif isinstance(data,tuple):
+					raise NotImplementedError(f"Not Implemented {data}")
+				
+				elif isinstance(data,arrays):
+					if data.ndim == 1:
+						if not conj:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = [0] if axes is None else axes
+						else:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = [0] if axes is None else axes
+					elif data.ndim == 2:
+						if not conj:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes					
+					elif data.ndim == 3:
+						if not conj:
+							shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [data.shape[0],prod(data.shape[1:-1])*data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					elif data.ndim == 4:
+						if not conj:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					else:
+						raise NotImplementedError(f"Not Implemented {data}")
+					
+					data = reshape(transpose(data,axes),shape)
+
+			else:
+
+				if isinstance(data,dict):
+					raise NotImplementedError(f"Not Implemented {data}")
+			
+				elif isinstance(data,tuple):
+					where = range(len(data)) if where is None else [where] if not isinstance(where,iterables) else [*where]
+					shape = [[*data[0].shape[:2],-1],[-1,*data[1].shape[-2:]]] if shape is None else shape
+					axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
+					data = [transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)]
+					
+				elif isinstance(data,arrays):
+					if data.ndim == 1:
+						if not conj:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = range(data.ndim+2) if axes is None else axes
+						else:
+							shape = [1,*data.shape,1] if shape is None else shape
+							axes = range(data.ndim+2) if axes is None else axes
+					elif data.ndim == 2:
+						if not conj:
+							shape = [data.shape[0],prod(data.shape[1:-1]),-1] if shape is None else shape
+							axes = range(data.ndim+1) if axes is None else axes
+						else:
+							shape = [-1,prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
+							axes = range(data.ndim+1) if axes is None else axes
+					elif data.ndim == 3:
+						if not conj:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+						else:
+							shape = [*data.shape] if shape is None else shape
+							axes = range(data.ndim) if axes is None else axes
+					elif data.ndim == 4:
+						if not conj:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim-2) if axes is None else axes
+						else:
+							shape = [prod(data.shape[:2]),prod(data.shape[-2:])] if shape is None else shape
+							axes = range(data.ndim-2) if axes is None else axes
+					else:
+						raise NotImplementedError(f"Not Implemented {data}")
+
+					data = transpose(reshape(data,shape),axes)
+
+			return data
+
+		def shuffle(self,data,shape,where=None,transform=True,**kwargs):
+			'''
+			Shuffle class data
+			Args:
+				data (array,dict): Class data
+				shape (iterable[int]): Shape of data
+				where (float,int,iterable[int]): Class indices
+				transform (bool): Forward or backward transform data
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (array): Class data
+			'''	
+
+			if transform:
+				n,d = len(shape),data.ndim
+				where = [range(n)] if where is None else [where,sorted(set(range(n))-set(where))]
+				shape = [*shape]*d
+				axes = [j*n+i for indices in where for j in range(d) for i in indices]
+				data = transpose(reshape(data,shape),axes)
+			else:
+				n,d = len(shape),data.ndim//len(shape)
+				where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+				shape = [prod(shape)]*d
+				axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
+				data = reshape(transpose(data,axes),shape)
+			return data
+
+		def schemes(self,options=None,**kwargs):
+			'''
+			Scheme for updating class
+			Args:
+				options (dict): Class options
+				kwargs (dict): Additional class keyword arguments
+					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+					eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+			Returns:
+				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options)
+			'''
+			options = {} if options is None else options
+
+			scheme = options.get('scheme',kwargs.get('scheme'))
+			eps = options.get('eps') if options.get('eps') is not None else epsilon()
+
+			schemes = [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+
+			if isinstance(scheme,bool):
+				return schemes
+
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					shape = a.shape
+					rank = min(*shape,*([] if rank is None else [rank]))
+					a = conjugate(transpose(a)) if conj else a
+					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)
+					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
+					return u,v,s
+				return decorator
+
+			if scheme is None:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					u,v,s = u,dotl(v,s),rank
+					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
+					# u,v,s = dotr(u,s),dotl(v,s),rank
+					return u,v,s				
+			elif scheme in ['svd']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+					u,v,s = u,dotl(v,s),rank
+					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
+					# u,v,s = dotr(u,s),dotl(v,s),rank
+					return u,v,s
+			
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					shape = (prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))
+					rank = min(*shape,*([] if rank is None else [rank]))
+					a = conjugate(transpose(a)) if conj else a
+					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)					
+					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
+					return u,v,s
+				return decorator
+
+			if scheme in ['nmf']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					data = [real(i) for i in data] if data is not None else data
+					u,v,s,stats = xnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
+					u,v,s = u,v,rank
+					u,v,s = cmplx(u),cmplx(v),s		
+					return u,v,s
+			elif scheme in ['pnmf']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					data = [real(i) for i in data] if data is not None else data
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
+					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
+					u,v,s = u,v,rank
+					u,v,s = cmplx(u),cmplx(v),s		
+					return u,v,s
+
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					a = conjugate(transpose(a)) if conj else a
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
+					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
+					return u,v,s
+				return decorator
+
+			if scheme in ['qr']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					defaults = dict(mode='reduced')
+					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
+					u,v,s = u[:,:rank],v[:rank,:],rank
+					return u,v,s				
+			
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					shape = (*a.shape[:1],prod(a.shape[1:])) if conj else (prod(a.shape[:-1]),*a.shape[-1:])
+					rank = min(*shape,*([] if rank is None else [rank]))
+					a = conjugate(transpose(a)) if conj else a
+					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = (v,conjugate(transpose(u)),s) if conj else (u,v,s)
+					return u,v,s
+				return decorator
+
+			if scheme in ['stq']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					u = a[:,:,:rank]
+					s = addition(u,(0,1))
+					u,v,s = dotr(u,reciprocal(s)),s,rank
+					return u,v,s				
+			
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					shape = a.shape
+					rank = min(*shape,*([] if rank is None else [rank]))
+					s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					return s
+				return decorator
+
+			if scheme in ['eig']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					defaults = dict(compute_v=False,hermitian=False)	
+					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
+					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
+					s = s[:rank]					
+					return s
+			elif scheme in ['spectrum']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
+					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
+					s = s[:rank]					
+					return s
+
+			def wrapper(func):
+				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+					shape = (prod(a.shape[:-1]),*a.shape[-1:])
+					rank = min(*shape,*([] if rank is None else [rank]))	
+					s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					return s
+				return decorator
+
+			if scheme in ['probability']:
+				@wrapper
+				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+					data = [real(i) for i in data] if data is not None else data				
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
+					s = s[:rank]
+					return s
+			
+			return scheme
+
+		def array(self):
+			return super().array()
+
+		def matrix(self,indices=None):
+			
+			data = self.array()
+
+			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.strings(index)==index}
+			
+			if indices is None:
+				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in sorted(set(indexes[index][0] for index in indexes))}
+			else:
+				axes = {index:[i for i in indexes if indexes[i] in inds] for index,inds in sorted(enumerate(indices))}
+
+			axis = tuple(i for i in range(data.ndim) if i not in indexes)
+			shape = data.shape
+
+			shape = [prod(shape[i] for i in axes[index]) for index in axes]
+			axes = [*axis,*[i for index in axes for i in axes[index]]]
+			axis = tuple(range(len(axis)))
+
+			data = reshape(addition(transpose(data,axes),axis),shape)
+
+			return data
+
+		def index(self):
+			indices = {index:self.strings(index) for i in self for index in self[i].indices}
+			self.transform(indices={i:indices for i in self})
+			return
+
+		def copy(self,deep=False,**kwargs):
+			kwargs.update(dict(N=self.N,D=self.D,S=self.S,setup=False))
+			return super().copy(deep=deep,**kwargs)
+
+		def __call__(self,data=None,parameters=None,where=None,options=None,**kwargs):
+			'''
+			Call class
+			Args:
+				data (array,callable): Class data
+				parameters (array): Class parameters
+				where (float,int,iterable[int]): Class indices
+				options (dict): Class options
+				kwargs (dict): Additional class keyword arguments		
+			Returns:
+				data (dict): Class data
+			'''
+
+			state = self
+			options = {} if options is None else options		
+			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
+
+			shape = [state[i].shape for i in where]		
+			orientation = self.orientation
+			rank = options.get('S',options.get('rank'))
+
+			func = self.func[len(where)]
+
+			scheme = {'svd':False,'nmf':'stq','pnmf':'stq'}.get(options.get('scheme'))
+			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
+
+			data = func(data,state,where=where)
+
+			scheme = options.get('scheme')
+			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+
+			data = self
+
+			return data
+
+
+	tensors = (tensor,matrix,network,)
+	objects = (*arrays,*tensors)
+	
+if backend in ['quimb']:
+
+	class tensor_quimb(qtn.Tensor):
+		'''
+		tensor class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Tensor(*args,**kwargs)
+
+	class matrix_quimb(qtn.MatrixProductState):
+		'''
+		matrix class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.MatrixProductState(*args,**kwargs)
+
+	class network_quimb(qtn.TensorNetwork):
+		'''
+		tensor network class
+		Args:
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.TensorNetwork(*args,**kwargs)
+
+	class mps_quimb(qtn.MatrixProductState):
+		'''
+		matrix product state tensor network class
+		Args:
+			data (iterable,int,str,callable,array,tensor,object): Class data
+			args (iterable): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+		def __new__(cls,data,*args,**kwargs):
+
+			if isinstance(data,tensors_quimb):
+				self = data
+			elif isinstance(data,arrays):
+				kwargs.update(dict(arrays=data))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,iterables):
+				kwargs.update(dict(arrays=asarray(data)))
+				self = qtn.MPS_product_state(*args,**kwargs)
+			elif isinstance(data,str):
+				kwargs.update(dict(binary=data))
+				self = qtn.MPS_computational_state(*args,**kwargs)
+			elif isinstance(data,integers):
+				kwargs.update(dict(L=data))
+				self = qtn.MPS_rand_state(*args,**kwargs)
+			elif callable(data):
+				kwargs.update(dict(fill_fn=data))
+				self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
+			else:
+				self = qtn.MatrixProductState(data,*args,**kwargs)
+			return self
+
+
+	class gate_quimb(qtn.Gate):
+		'''
+		gate class
+		Args:
+			args (iterable): Gate arguments
+			kwargs (dict): Gate keyword arguments
+		Returns:
+			out (array): array
+		'''
+		def __new__(cls,*args,**kwargs):
+			return qtn.Gate(*args,**kwargs)
+
+
+	tensors_quimb = (tensor_quimb,gate_quimb,qtn.Tensor,qtn.TensorNetwork,qtn.Gate,qtn.MatrixProductState)
+	matrices_quimb = (mps_quimb,qtn.MatrixProductState)
+	objects_quimb = (*tensors_quimb,*matrices_quimb)
+
+	def contract_quimb(obj,where=None,**kwargs):
+		'''
+		Contract object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+
+		options = dict(output_inds=where) 
+
+		obj = obj.contract(**{**kwargs,**options})
+
+		return obj
+
+
+	def reduce_quimb(obj,where=None,**kwargs):
+		'''
+		Reduce object
+		Args:
+			obj (tensor): object
+			where (int,str,iterable[int,str]): where not to contract
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Contraction of object
+		'''
+
+		obj = contract_quimb(obj)
+
+		where = getattr(obj,'inds',getattr(obj,'sites',None))
+
+		if where is None:
+			return obj
+
+		for i in where:
+			options = dict(ind=i) 
+			obj = obj.sum_reduce(**{**kwargs,**options})
+
+		return obj
+
+
+	def fuse_quimb(obj,where=None,**kwargs):
+		'''
+		Fuse object
+		Args:
+			obj (tensor): object
+			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): Fused object
+		'''
+
+		options = dict(fuse_map=where) 
+
+		obj = obj.fuse(**{**kwargs,**options})
+
+		return obj
+
+
+	def representation_quimb(obj,to=True,contraction=None,func=None,**kwargs):
+		'''
+		Get data of object
+		Args:
+			obj (tensor): object
+			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor_quimb']
+			contraction (bool): Contract data
+			func (callable): Wrapper function for data with signature func(obj)
+			kwargs (dict): Additional keyword arguments for data
+		Returns:
+			obj (object): data of object
+		'''
+
+		if not isinstance(obj,tensors_quimb):
+			return obj
+		
+		if contraction:
+			obj = contract_quimb(obj,**kwargs)
+
+		if not isinstance(obj,tensors_quimb):
+			return obj
+
+		if to in ['array']:
+			obj,structure = qtn.pack(obj)
+			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
+
+		elif to in ['tensor_quimb']:
+			axes = tuple(i 
+				for i in sorted(set((i 
+				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
+				for string in tuple(sorted(set(i[0] 
+				for i in obj.inds)))) if i))) 
+				)
+			where = tuple(j for i in axes for j in i)
+			arguments = tuple(axes)
+			keywords = dict()
+			obj = contract_quimb(obj,where=where,**kwargs)
+			obj = obj.to_dense(*arguments,**keywords)
+
+		elif to in ['data']:
+			obj,structure = qtn.pack(obj)
+
+		elif to in ['structure']:
+			data,obj = qtn.pack(obj)
+
+		elif to:
+			obj,structure = qtn.pack(obj)
+			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
+		
+		if func is not None:
+			obj = func(obj)
+
+		return obj
+
+
+	class context_quimb(object):
+		'''
+		Update tensor attributes within context with key
+		Args:
+			objs (iterable[object]): Objects with attributes to update
+			key (object): Key to update attributes
+			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
+		'''
+		def __init__(self,*objs,key=None,formats=None):
+
+			if formats is None:
+				formats = ['inds','tags']
+			elif isinstance(formats,str):
+				formats = [formats]
+			if not isinstance(formats,dict):
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+					for attr in formats}
+			else:
+				if key is None:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}
+				elif isinstance(key,iterables):
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}		
+				else:
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+						if not isinstance(formats[attr],iterables) else 
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+						for attr in formats}					
+
+			attributes = [attr for attr in formats]
+			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
+			
+			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+			
+			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
+				obj = objs[i]
+				if key is None:
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				elif isinstance(key,iterables):
+					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
+				else:
+					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
+				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
+				return
+
+			self.key = key
+			self.objs = objs
+			self.formats = formats
+			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
+			self.funcs = [{attr: func for attr in attributes} for obj in objs]
+			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
+			self.args = tuple()
+			self.kwargs = dict(inplace=True)
+
+			return
+
+		def __enter__(self):
+			for i in range(len(self)):
+				for attr in self.funcs[i]:
+					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+
+		def __exit__(self, type, value, traceback):
+			for i in range(len(self)):
+				for attr in self._funcs[i]:
+					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
+			return
+		
+		def __len__(self):
+			return len(self.objs)
+
+		@classmethod
+		def attributes(cls,obj,attr,attrs=None,**kwargs):
+			if attrs is None:
+				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
+				return wrappers[attr](getattr(obj,attributes[attr]))
+			else:
+				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
+				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
+				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
+				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+
+
 
 class nparray(onp.ndarray):
 	'''
@@ -2242,7 +4118,6 @@ class nparray(onp.ndarray):
 	'''
 	def __new__(cls,*args,**kwargs):
 		return onp.array(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
 
 class asndarray(onp.ndarray):
 	'''
@@ -2417,12 +4292,22 @@ class dataframe(pd.DataFrame):
 		args (iterable): Dataframe arguments
 		kwargs (dict): Dataframe keyword arguments
 	Returns:
-		out (array): dataframe
+		out (dataframe): dataframe
 	'''
 	def __new__(cls,*args,**kwargs):
 		return pd.DataFrame(*args,**kwargs)
-		# return super().__init__(cls,*args,**kwargs)
 
+class series(pd.Series):
+	'''
+	series class
+	Args:
+		args (iterable): Series arguments
+		kwargs (dict): Series keyword arguments
+	Returns:
+		out (series): series
+	'''
+	def __new__(cls,*args,**kwargs):
+		return pd.Series(*args,**kwargs)
 
 class identity(array):
 	'''
@@ -2530,304 +4415,7 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
-
-if backend in ['jax','jax.autograd','autograd']:
-
-	class tensor(qtn.Tensor):
-		'''
-		tensor class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.Tensor(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-
-	class tensornetwork(qtn.TensorNetwork):
-		'''
-		tensornetwork class
-		Args:
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.TensorNetwork(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-
-	class mps(qtn.MatrixProductState):
-		'''
-		matrix product state class
-		Args:
-			data (iterable,int,str,callable,array,tensor,object): Tensor data
-			args (iterable): Tensor arguments
-			kwargs (dict): Tensor keyword arguments
-		Returns:
-			self (object): class instance
-		'''
-		def __new__(cls,data,*args,**kwargs):
-
-			if isinstance(data,tensors):
-				self = data
-			elif isinstance(data,arrays):
-				kwargs.update(dict(arrays=data))
-				self = qtn.MPS_product_state(*args,**kwargs)
-			elif isinstance(data,iterables):
-				kwargs.update(dict(arrays=asarray(data)))
-				self = qtn.MPS_product_state(*args,**kwargs)
-			elif isinstance(data,str):
-				kwargs.update(dict(binary=data))
-				self = qtn.MPS_computational_state(*args,**kwargs)
-			elif isinstance(data,integers):
-				kwargs.update(dict(L=data))
-				self = qtn.MPS_rand_state(*args,**kwargs)
-			elif callable(data):
-				kwargs.update(dict(fill_fn=data))
-				self = qtn.MatrixProductState.from_fill_fn(*args,**kwargs)
-			else:
-				self = qtn.MatrixProductState(data,*args,**kwargs)
-			return self
-			# return super().__init__(cls,*args,**kwargs)
-
-
-	class gate(qtn.Gate):
-		'''
-		gate class
-		Args:
-			args (iterable): Gate arguments
-			kwargs (dict): Gate keyword arguments
-		Returns:
-			out (array): array
-		'''
-		def __new__(cls,*args,**kwargs):
-			return qtn.Gate(*args,**kwargs)
-			# return super().__init__(cls,*args,**kwargs)
-
-
-
-	def contract(obj,where=None,**kwargs):
-		'''
-		Contract object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-
-		options = dict(output_inds=where) 
-
-		obj = obj.contract(**{**kwargs,**options})
-
-		return obj
-
-
-	def reduce(obj,where=None,**kwargs):
-		'''
-		Reduce object
-		Args:
-			obj (tensor): object
-			where (int,str,iterable[int,str]): where not to contract
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Contraction of object
-		'''
-
-		obj = contract(obj)
-
-		where = getattr(obj,'inds',getattr(obj,'sites',None))
-
-		if where is None:
-			return obj
-
-		for i in where:
-			options = dict(ind=i) 
-			obj = obj.sum_reduce(**{**kwargs,**options})
-
-		return obj
-
-
-	def fuse(obj,where=None,**kwargs):
-		'''
-		Fuse object
-		Args:
-			obj (tensor): object
-			where (dict[str,iterable[str]]): where to fuse indices of the form {"new":("old_inds")}
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): Fused object
-		'''
-
-		options = dict(fuse_map=where) 
-
-		obj = obj.fuse(**{**kwargs,**options})
-
-		return obj
-
-
-	def representation(obj,to=True,contraction=None,func=None,**kwargs):
-		'''
-		Get data of object
-		Args:
-			obj (tensor): object
-			to (str): Return data as type, defaults as array, allowed strings in ['data','structure','array','tensor']
-			contraction (bool): Contract data
-			func (callable): Wrapper function for data with signature func(obj)
-			kwargs (dict): Additional keyword arguments for data
-		Returns:
-			obj (object): data of object
-		'''
-
-		if not isinstance(obj,tensors):
-			return obj
-		
-		if contraction:
-			obj = contract(obj,**kwargs)
-
-		if not isinstance(obj,tensors):
-			return obj
-
-		if to in ['array']:
-			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-
-		elif to in ['tensor']:
-			axes = tuple(i 
-				for i in sorted(set((i 
-				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
-				for string in tuple(sorted(set(i[0] 
-				for i in obj.inds)))) if i))) 
-				)
-			where = tuple(j for i in axes for j in i)
-			arguments = tuple(axes)
-			keywords = dict()
-			obj = contract(obj,where=where,**kwargs)
-			obj = obj.to_dense(*arguments,**keywords)
-
-		elif to in ['data']:
-			obj,structure = qtn.pack(obj)
-
-		elif to in ['structure']:
-			data,obj = qtn.pack(obj)
-
-		elif to:
-			obj,structure = qtn.pack(obj)
-			obj = array([obj[i].ravel() for i in obj]) if not isinstance(obj,arrays) else obj
-		
-		if func is not None:
-			obj = func(obj)
-
-		return obj
-
-
-	class context(object):
-		'''
-		Update object attributes within context with key
-		Args:
-			key (object): Key to update attributes
-			objs (iterable[object]): Objects with attributes to update
-			formats (str,iterable[str],dict[str,dict]): Formats of attributes to update, {attr:[{attr_obj:format_attr_obj}]}
-		'''
-		def __init__(self,*objs,key=None,formats=None):
-
-			if formats is None:
-				formats = ['inds','tags']
-			elif isinstance(formats,str):
-				formats = [formats]
-			if not isinstance(formats,dict):
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-					for attr in formats}
-			else:
-				if key is None:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}
-				elif isinstance(key,iterables):
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}		
-				else:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}					
-
-			attributes = [attr for attr in formats]
-			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-			
-			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {attrs[i][attr][index]:formats[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-				return
-			
-			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
-				obj = objs[i]
-				if key is None:
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				elif isinstance(key,iterables):
-					attrs = {formats[i][attr][index]:attrs[i][attr][index] for index in attrs[i][attr]}
-				else:
-					attrs = {formats[i][attr][index].format(key):attrs[i][attr][index] for index in attrs[i][attr]}
-				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
-				return
-
-			self.key = key
-			self.objs = objs
-			self.formats = formats
-			self.attrs = [{attr: {index:index for index in self.attributes(obj,attr)} for attr in attributes} for obj in objs]
-			self.funcs = [{attr: func for attr in attributes} for obj in objs]
-			self._funcs = [{attr: _func for attr in attributes} for obj in objs]
-			self.args = tuple()
-			self.kwargs = dict(inplace=True)
-
-			return
-
-		def __enter__(self):
-			for i in range(len(self)):
-				for attr in self.funcs[i]:
-					self.funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-			return
-
-		def __exit__(self, type, value, traceback):
-			for i in range(len(self)):
-				for attr in self._funcs[i]:
-					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
-			return
-		
-		def __len__(self):
-			return len(self.objs)
-
-		@classmethod
-		def attributes(cls,obj,attr,attrs=None,**kwargs):
-			if attrs is None:
-				attributes = dict(inds='inds',tags='tags',sites='site_ind_id')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:[obj])
-				return wrappers[attr](getattr(obj,attributes[attr]))
-			else:
-				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
-				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
-				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
-
-
-
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def seeder(seed=None,size=None,split=False,data=False,**kwargs):
 		'''
@@ -2847,9 +4435,9 @@ if backend in ['jax']:
 		generator = rng
 
 		if is_key(seed):
-			return seed
-
-		if seed is None or isinstance(seed,integers):
+			if not size:
+				return seed
+		elif seed is None or isinstance(seed,integers):
 			seed = seeded(seed)
 		else:
 			seed = generator.wrap_key_data(asarray(seed,dtype=uint))
@@ -3124,7 +4712,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				keys = wrapper(keys)
 			return keys
 
-if backend in ['jax']:
+if backend in ['jax','quimb']:
 
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,dtype=None,**kwargs):
 		'''
@@ -3199,9 +4787,9 @@ if backend in ['jax']:
 				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
-				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
 				kwds = {**dict(key=key,shape=shape),
-						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
 				return out			
@@ -3233,7 +4821,7 @@ if backend in ['jax']:
 
 						Q,R = qr(out[i,j])
 						R = diag(R)
-						R = diag(R/abs(R))
+						R = diag(R/absolute(R))
 						
 						out = inplace(out,(i,j),dot(Q,R))
 
@@ -3402,6 +4990,25 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape),dtype=dtype)
 
+	def randn(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random gaussian array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.normal
+
+		return astype(generator(key,shape=shape),dtype=dtype)
+
 	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random integer array
@@ -3421,6 +5028,54 @@ if backend in ['jax']:
 
 		return astype(generator(key,shape=shape,minval=bounds[0],maxval=bounds[1]),dtype=dtype)
 
+	def randpermute(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random permutation array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.permutation
+
+		return astype(generator(key,shape),dtype=dtype)
+
+	def choice(data,shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random choice of array
+		Args:
+			data (array): Array to choose
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.choice
+
+		return astype(generator(key,data,shape),dtype=dtype)
+
+	def characters(n=16,**kwargs):
+		'''
+		Get random string
+		Args:
+			n (int): Number of characters
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			string (str): Random string
+		'''			
+		return ''.join(choices(character,k=n))
+
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
@@ -3438,20 +5093,37 @@ if backend in ['jax']:
 
 		kwargs = dict(
 			shape = shape,
-			random = 'normal',
-			dtype = dtype
+			dtype = datatype(dtype)
 		)
 
-		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
+		out = randn(key=real,**kwargs) + 1j*randn(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)
-		R = diag(R/abs(R))
+		R = diag(R/absolute(R))
 		
 		out = dot(Q,R)
 
 		return out
 
+	def stochastic(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random stochastic array
+		Args:
+			shape (iterable): Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random			
+		Returns:
+			out (array): Random array
+		'''	
+
+		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
+
+		out = abs2(out)
+
+		return out
 
 elif backend in ['jax.autograd','autograd','numpy']:
 
@@ -3530,9 +5202,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				return out			
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
-				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
 				kwds = {**dict(key=key,shape=shape),
-						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
 				return out					
@@ -3565,7 +5237,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 						Q,R = qr(out[i,j])
 						R = diag(R)
-						R = diag(R/abs(R))
+						R = diag(R/absolute(R))
 						
 						out = inplace(out,(i,j),dot(Q,R))
 
@@ -3713,7 +5385,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return out
 
-
 	def random(shape=(),random='uniform',seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random array
@@ -3732,6 +5403,25 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		generator = getattr(rng,random)
 
 		return astype(generator(size=shape),dtype=dtype)
+
+	def randn(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random gaussian array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.normal
+
+		return astype(generator(key,shape=shape),dtype=dtype)
 
 	def randint(shape=(),bounds=[0,1],seed=None,key=None,dtype=None,**kwargs):
 		'''
@@ -3752,6 +5442,54 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		return astype(generator(*bounds,size=shape),dtype=dtype)
 
+	def randpermute(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random permutation array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.permutation
+
+		return astype(generator(shape),dtype=dtype)
+
+	def choice(data,shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random choice of array
+		Args:
+			data (array): Array to choose
+			shape (int,iterable): Size or Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			out (array): Random array
+		'''	
+
+		key = seed if key is None else key
+		generator = rng.choice
+
+		return astype(generator(data,shape),dtype=dtype)
+
+	def characters(n=16,**kwargs):
+		'''
+		Get random string
+		Args:
+			n (int): Number of characters
+			kwargs (dict): Additional keyword arguments for random				
+		Returns:
+			string (str): Random string
+		'''			
+		return ''.join(choices(character,k=n))
+
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
 		'''
 		Get random haar array
@@ -3767,22 +5505,85 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		real,imag = seed if key is None else key,seed if key is None else key
 
+
 		kwargs = dict(
 			shape = shape,
-			random = 'normal',
-			dtype = dtype
+			dtype = datatype(dtype)
 		)
 
-		out = random(key=real,**kwargs) + 1j*random(key=imag,**kwargs)
+		out = randn(key=real,**kwargs) + 1j*randn(key=imag,**kwargs)
 
 		Q,R = qr(out)
 		R = diag(R)
-		R = diag(R/abs(R))
+		R = diag(R/absolute(R))
 		
 		out = dot(Q,R)
 
 		return out
 
+	def stochastic(shape=(),seed=None,key=None,dtype=None,**kwargs):
+		'''
+		Get random stochastic array
+		Args:
+			shape (iterable): Shape of random array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random			
+		Returns:
+			out (array): Random array
+		'''	
+
+		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
+
+		out = abs2(out)
+
+		return out
+
+def timestamp(format=None,time=None):
+	'''
+	Get timestamp
+	Args:
+		format (str): Format for timestamp
+		time (datetime): datetime
+	Returns:
+		timestamp (str): timestamp
+	'''
+	if format is None:
+		format = '%d.%M.%Y.%H.%M.%S.%f'
+	
+	if time is None:
+		time = datetime.datetime.now()
+
+	timestamp = time.strftime(format)
+	
+	return timestamp
+
+def reduce(func,data,*args,**kwargs):
+	return getattr(np,func).reduce(data,*args,**kwargs)
+
+@jit
+def inv(a):
+	'''
+	Compute inverse of a
+	Args:
+		a (array): Array to compute inverse
+	Returns:
+		out (array): Inverse
+	'''
+	return np.linalg.inv(a)
+
+
+@jit
+def pinv(a):
+	'''
+	Compute pseudo inverse of a
+	Args:
+		a (array): Array to compute inverse
+	Returns:
+		out (array): Inverse
+	'''
+	return np.linalg.pinv(a)
 
 def _svd(A,k=None):
 	'''
@@ -3835,7 +5636,7 @@ def eig(a,compute_v=False,hermitian=False):
 		if hermitian:
 			_eig = np.linalg.eigh
 		else:
-			_eig = sp.linalg.eig
+			_eig = np.linalg.eig
 	else:
 		if hermitian:
 			_eig = np.linalg.eigvalsh
@@ -3877,19 +5678,82 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 		rightvectors (array): Array of right singular vectors of shape (...,n,n)
 		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
+	# return jax.lax.linalg.svd(a,compute_uv=compute_uv,full_matrices=full_matrices)
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
-def qr(a):
+
+def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
+	'''
+	Compute singular values of an array
+	Args:
+		a (array): Array to compute eigenvalues of shape (...,n,n)
+		full_matrices (bool): Compute full matrices of right,left singular values
+		compute_uv (bool): Compute U,V in addition to singular values
+		hermitian (bool): Whether array is Hermitian				
+	Returns:
+		singular (array): Array of singular values of shape (...,n)
+		rightvectors (array): Array of right singular vectors of shape (...,n,n)
+		leftvectors (array): Array of left singular vectors of shape (...,n,n)
+	'''
+
+	u,s,v = svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
+
+	# x = sign(take(ravel(u.T), argmax(absolute(u), axis=0) + arange(u.shape[1])*u.shape[0], axis=0))
+	# u,v = dotr(u,x),dotl(v,x)
+
+	return u,s,v
+
+def qr(a,mode='reduced',**kwargs):
 	'''
 	Compute QR decomposition of array
 	Args:
 		a (array): Array to compute QR decomposition of shape (...,n,n)
+		mode (str): Mode to compute QR decomposition
 	Returns:
 		Q (array): Q factor of shape (...,n,n)
 		R (array): R factor of shape (...,n,n)
 	'''
-	return np.linalg.qr(a)
+	return np.linalg.qr(a,mode=mode)
 
+def qrs(a,mode='reduced',**kwargs):
+	'''
+	Compute QR decomposition of array
+	Args:
+		a (array): Array to compute QR decomposition of shape (...,n,n)
+		mode (str): Mode to compute QR decomposition
+	Returns:
+		Q (array): Q factor of shape (...,n,n)
+		R (array): R factor of shape (...,n,n)
+	'''
+	q,r = qr(a,mode=mode)
+
+	s = signs(diag(r))
+	q = dotr(q,conjugate(s))
+	r = dotl(r,s)
+
+	return q,r
+
+def lu(a,**kwargs):
+	'''
+	Compute LU decomposition of array
+	Args:
+		a (array): Array to compute LU decomposition of shape (...,n,n)
+	Returns:
+		P (array): P factor of shape (...,n,n)
+		L (array): L factor of shape (...,n,n)
+		U (array): U factor of shape (...,n,n)
+	'''
+	return sp.linalg.lu(a)
+
+def cho(a,**kwargs):
+	'''
+	Compute cholesky decomposition of array
+	Args:
+		a (array): Array to compute cholesky decomposition of shape (...,n,n)
+	Returns:
+		T (array): cholesky factor of shape (...,n,n)
+	'''
+	return sp.linalg.cho_factor(a)
 
 def cholesky(a):
 	'''
@@ -3900,6 +5764,80 @@ def cholesky(a):
 		L (array): Cholesky factor of shape (...,n,n)
 	'''
 	return np.linalg.cholesky(a)
+
+
+def solve(a,b,method=None,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		method (str): Method to solve system
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+
+	if method is None:
+		return solve_solve(a,b,**kwargs)
+	elif method in ['triangular']:
+		return solve_triangular(a,b,**kwargs)
+	elif method in ['cholesky']:
+		return solve_chol(a,b,**kwargs)	
+	elif method in ['lu']:
+		return solve_lu(a,b,**kwargs)				
+	else:
+		return solve_solve(a,b,**kwargs)		
+
+def solve_solve(a,b,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.solve(a,b)
+
+def solve_triangular(a,b,lower=False,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		lower (bool): Array a is lower-triangular
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.solve_triangular(a,b,lower=lower)
+
+def solve_chol(a,b,lower=False,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		lower (bool): Array a is lower-triangular		
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.cho_solve(cho(a,lower=lower),b)
+
+def solve_lu(a,b,**kwargs):
+	'''
+	Solve linear system ax = b
+	Args:
+		a (array): Array for linear system
+		b (array): Array for linear data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (object): Returns of linear solver
+	'''
+	return sp.linalg.lu_solve(lu(a),b)
 
 def lstsq(x,y):
 	'''
@@ -3914,22 +5852,844 @@ def lstsq(x,y):
 	return out
 
 
-@jit
-def inv(a):
+def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	'''
-	Compute inverse of a
+	Non-negative svd
 	Args:
-		a (array): Array to compute inverse
+		a (array): Array for svd
+		u (array): u array of svd
+		v (array): v array of svd
+		rank (int): Rank of svd
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
-		out (array): Inverse
+		u (array): u array of svd
+		v (array): v array of svd
+		s (array): s array of svd
 	'''
-	return np.linalg.inv(a)
 
-def spectrum(func,compute_v=False,hermitian=False):
+	def true(x_positive,y_positive,z_positive,x_negative,y_negative,z_negative):
+		return x_positive,y_positive,z_positive
+
+	def false(x_positive,y_positive,z_positive,x_negative,y_negative,z_negative):
+		return x_negative,y_negative,z_negative
+
+	@jit
+	def func(i,x):
+		u,v,s = x
+
+		x,y,z = u[slices,i],v[i,slices],s[i]
+
+		x_positive,y_positive = absolute(maximums(x,eps)),absolute(maximums(y,eps))
+		x_negative,y_negative = absolute(minimums(x,eps)),absolute(minimums(y,eps))
+		x_positive_norm,y_positive_norm = norm(x_positive),norm(y_positive)
+		x_negative_norm,y_negative_norm = norm(x_negative),norm(y_negative)
+
+		z_positive,z_negative = z*x_positive_norm*y_positive_norm,z*x_negative_norm*y_negative_norm
+
+		x_positive,y_positive = x_positive/x_positive_norm,y_positive/y_positive_norm
+		x_negative,y_negative = x_negative/x_negative_norm,y_negative/y_negative_norm
+
+		x,y,z = cond(z_positive>z_negative,true,false,x_positive,y_positive,z_positive,x_negative,y_negative,z_negative)
+
+		u,v,s = inplace(u,(slices,i),sqrt(z)*x),inplace(v,(i,slices),sqrt(z)*y),inplace(s,i,1)
+		
+		x = u,v,s
+
+		return x
+
+	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+	u,s,v = svd(a,**options)
+
+	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
+	eps = epsilon(a.dtype) if eps is None else eps
+	slices = slice(None)
+
+	print('svd',rank,s.min()/s.max())	
+
+	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+
+	start,end,x = 0,rank,(u,v,s)
+	x = forloop(start,end,func,x)
+	u,v,s = x
+
+	return u,v,s
+
+def nmfd(u,v,rank=None,eps=None):
+	'''
+	Non-negative matrix factor decomposition of nmf
+	Args:
+		u (array): Array for nmf of shape (n,k)
+		v (array): Array for nmf of shape (k,m)
+		rank (int): Rank of nmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
+	Returns:
+		u (array): u array of nmf of shape (n,k)
+		v (array): v array of nmf of shape (k,m)
+		s (array): s array of nmf of shape (k,)
+	'''
+	x,y = addition(u,0),addition(v,1)
+	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
+	return u,v,s
+
+def pnmfd(u,v,rank=None,eps=None):
+	'''
+	Non-negative matrix factor decomposition of pnmf
+	Args:
+		u (array): Array for pnmf of shape (n,p,k)
+		v (array): Array for pnmf of shape (k,q,m)
+		rank (int): Rank of pnmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
+	Returns:
+		u (array): u array of pnmf of shape (n,p,k)
+		v (array): v array of pnmf of shape (k,q,m)
+		s (array): s array of pnmf of shape (k,)
+	'''
+	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
+	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
+	print('xy',addition(s),s.min()/s.max())
+	return u,v,s
+
+def xnmfd(u,v,rank=None,eps=None):
+	'''
+	Non-negative matrix factor decomposition of xnmf
+	Args:
+		u (array): Array for xnmf of shape (n,p,k)
+		v (array): Array for xnmf of shape (k,q,m)
+		rank (int): Rank of xnmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
+	Returns:
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)
+		s (array): s array of xnmf of shape (k,)
+	'''
+	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
+	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
+	print('xy',addition(s),s.min()/s.max())
+	return u,v,s
+
+def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	'''
+	Non-negative matrix factor decomposition for matrices
+	Args:
+		a (array): Array for nmf of shape (n,m)
+		u (array): Array for nmf of shape (n,k)
+		v (array): Array for nmf of shape (k,m)
+		data (array,iterable[array]): Data for nmf
+		rank (int): Rank of nmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int): Number of iterations, defaults to 1e7
+		parameters (int,float,array,dict,object): Parameters for nmf method
+		method (str): Nmf method, allowed strings in ['mu','als','psvd',]
+		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
+		kwargs (dict): Additional keyword arguments	
+	Returns:
+		u (array): u array of nmf of shape (n,k)
+		v (array): v array of nmf of shape (k,m)
+		s (array): s array of nmf of shape (k,)
+	'''	
+	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
+	eps = epsilon(a.dtype) if eps is None else eps
+	iters = iters if iters is not None else int(1e7)
+
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+		eps = epsilon(a.dtype)
+		if initialize is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+		elif initialize in ['rand']:	
+			options = {**dict(dtype=a.dtype),**kwargs}					
+			u = random(shape=[*a.shape[:-1],rank],**options)
+			v = random(shape=[rank,*a.shape[1:]],**options)
+		elif initialize in ['nndsvd']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			u,v,s = nndsvd(a,**options)		
+		elif initialize in ['nndsvda']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			u,v,s = nndsvd(a,**options)		
+			x = mean(a)/a.size
+			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+		elif initialize in ['nndsvdr']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)			
+			u,v,s = nndsvd(a,**options)		
+
+			options = {**dict(dtype=a.dtype),**kwargs}			
+			i = u<=eps
+			j = v<=eps
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
+			u,v = inplace(u,i,x),inplace(v,j,y)
+		elif u is None or v is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+		return u,v
+	
+	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+		if method is None:
+			def func(x):
+
+				a,u,v,i = x
+				
+				u,v = (
+					(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
+					(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
+				)
+
+				i += 1
+
+				x = a,u,v,i
+
+				return x		
+		elif method in ['mu']:
+			def func(x):
+
+				a,u,v,i = x
+				
+				u = (dot(a,transpose(v))*reciprocal(dot(u,dot(v,transpose(v)))))*u
+				v = (dot(transpose(u),a)*reciprocal(dot(dot(transpose(u),u),v)))*v
+
+				i += 1
+
+				x = a,u,v,i
+
+				return x
+		elif method in ['als']:
+			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
+			def func(x):
+
+				a,u,v,i = x
+				
+				v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a))
+				v = maximums(v,eps)
+				
+				u = solve(dot(v,transpose(v))+parameters,dot(a,transpose(v)))
+				u = maximums(u,eps)
+
+				i += 1
+
+				x = a,u,v,i
+
+				return x				
+		elif method in ['psvd']:
+			def func(x):
+
+				a,u,v,i = x
+				
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+				u,v = maximums(u,eps),maximums(v,eps)
+
+				i += 1
+
+				x = a,u,v,i
+
+				return x		
+		else:
+			def func(x):
+				return x	
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+
+		if metric is None or metric in ['norm']:
+			def error(x):
+				a,u,v,i = x
+				return norm(a-dot(u,v))/norm(a)
+		elif metric in ['abs']:
+			def error(x):
+				a,u,v,i = x
+				return norm(a-dot(u,v))/norm(a)
+		elif metric in ['div']:
+			def error(x):
+				a,u,v,i = x
+				return absolute(-addition(a*log(dot(u,v)*reciprocal(a))))
+		
+		def condition(x):
+			a,u,v,i = x
+			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
+
+		i = 0
+
+		x = a,u,v,i
+
+		loop = partial(whileloop,condition,func)
+		
+		x = loop(x)
+
+		a,u,v,i = x           
+
+		return u,v
+
+	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
+	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+
+	u,v,s = nmfd(u,v,rank=rank,eps=eps)
+
+	return u,v,s
+
+def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	'''
+	Non-negative matrix factor decomposition for probability tensor trains
+	Args:
+		a (array): Array for pnmf of shape (n,p,q,m)
+		u (array): u array of pnmf of shape (n,p,k)
+		v (array): v array of pnmf of shape (k,q,m)	
+		data (array,iterable[array]): Data for pnmf
+		rank (int): Rank of nmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int,float): Number of iterations, defaults to 1e7		
+		parameters (int,float,array,dict,object): Parameters for nmf method
+		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
+		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
+		kwargs (dict): Additional keyword arguments	
+	Returns:
+		u (array): u array of pnmf of shape (n,p,k)
+		v (array): v array of pnmf of shape (k,q,m)
+		s (array): s array of pnmf of shape (k,)
+	'''	
+
+	data = [ones(a.shape[0],dtype=a.dtype),ones(a.shape[-1],dtype=a.dtype)] if data is None else data
+	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
+	eps = epsilon(a.dtype) if eps is None else eps
+	iters = iters if iters is not None else int(1e7)
+
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		shape,dtype = a.shape,a.dtype
+		if initialize is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['rand']:
+			options = {**dict(dtype=dtype),**kwargs}
+			u = random(shape=[*shape[:len(shape)//2],rank],**options)
+			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z		
+		elif initialize in ['nndsvd']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))					
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvda']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)	
+
+			x = addition(a)/a.size
+			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvdr']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			
+			options = {**dict(dtype=dtype),**kwargs}
+			i = u<=eps
+			j = v<=eps
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
+			u,v = inplace(u,i,x),inplace(v,j,y)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))		
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif u is None or v is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+			u,v = u*z,v*z	
+		return u,v
+	
+	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		if method is None:
+			def func(x):
+				return x		
+		elif method in ['mu']:
+			def func(x):
+
+				x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
+				x['v'] = einsum('a,aug,b,uv->gvb',x['x'],x['u'],x['y'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%100),error,null,x))
+				
+				return x
+		elif method in ['kl']:
+			@jit
+			def func(x):
+
+				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['x'],x['v'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,gc,c->ag',x['x'],addition(x['v'],1),x['y'])))*x['u']
+				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['x'],x['u'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,ag,b->gb',x['x'],addition(x['u'],1),x['y'])))*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
+
+				return x
+		elif method in ['hals']:
+			size = rank*(a.shape[0]*a.shape[-1])
+			iters = min(iters*size if iters is not None else iters,1e4*size)
+			def func(x):
+
+				i = x['i']%size
+				l = i%rank
+				k = (i%(rank*x['y'].shape[0]))//rank
+				j = (i)//(rank*x['y'].shape[0])
+
+				s = (l,slice(None),k)
+				z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
+				# w = einsum('u,v->uv',z,x['v'][s])
+				x['e'] += einsum('u,v->uv',z,x['v'][s])
+				x['v'] = inplace(x['v'],s,maximums((einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps))
+				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('u,v->uv',z,x['v'][s]))))
+				x['e'] -= einsum('u,v->uv',z,x['v'][s])
+
+
+				s = (j,slice(None),l)
+				z = x['x'][j]*einsum('vb,b->v',x['v'][l,:,:],x['y'])
+				# w = einsum('v,u->uv',z,x['u'][s])
+				x['e'] += einsum('v,u->uv',z,x['u'][s])
+				x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
+				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))			
+				x['e'] -= einsum('v,u->uv',z,x['u'][s])
+
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
+
+				return x				
+		elif method in ['als']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+				
+				g = reshape(transpose(einsum('a,gvb,b->avg',b,v,c),(1,0,2)),(v.shape[1],u.shape[0]*u.shape[2]))
+				u = transpose(reshape(
+						solve(dot(transpose(g),g)+parameters*identity(g.shape[-1]),dot(transpose(g),transpose(a))),
+						(u.shape[1],u.shape[0],u.shape[2])),(1,0,2))
+				u = maximums(u,eps)
+
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
+
+				h = reshape(transpose(einsum('a,aug,b->gub',b,u,c),(1,0,2)),(u.shape[1],v.shape[0]*v.shape[2]))
+				v = transpose(reshape(
+						solve(dot(transpose(h),h)+parameters*identity(h.shape[-1]),dot(transpose(h),a)),
+						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
+				v = maximums(v,eps)
+
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
+				u,v = u*z,v*z
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x
+		elif method in ['gd']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+				
+				g = einsum('a,gvb,b,t,lvk,k,tul->aug',b,v,c,b,v,c,u) - einsum('a,gvb,b,uv->aug',b,v,c,a)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = einsum('n,nug,b,k,kul,t,lvt->gvb',b,u,c,b,u,c,v) - einsum('n,nug,b,uv->gvb',b,u,c,a)
+				v = v - parameters*h
+				v = maximums(v,eps)
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x
+		elif method in ['kld']:
+			def func(x):
+
+				a,b,c,d,e,u,v,stats,i = x
+
+				g = -einsum('a,gvb,b,uv->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c))) + einsum('a,gb,b,u->aug',b,addition(v,1),c,w)
+				u = u - parameters*g
+				u = maximums(u,eps)
+
+				h = -einsum('a,aug,b,uv->gvb',b,u,c,a*reciprocal(einsum('n,nuk,l,kvl->uv',b,u,c,v))) + einsum('a,ag,b,v->gvb',b,addition(u,1),c,z)
+				v = v - parameters*h
+				v = maximums(v,eps)
+
+				i += 1
+
+				x = a,b,c,d,e,u,v,stats,i
+
+				stats['iteration'] = inplace(stats['iteration'],i,i)
+				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
+
+				return x								
+		else:
+			def func(x):
+				return x	
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+		
+		def null(*args,**kwargs):
+			return nan
+
+		if metric is None or metric in ['norm']:
+			def error(x):
+				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
+		elif metric in ['abs']:
+			def error(x):
+				return norm(addition(absolute(x['z']-dotr(dotl(dot(x['u'],x['v']),x['x']),x['y'])),(0,-1)))/norm(x['z'])
+		elif metric in ['div']:
+			def error(x):
+				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+
+		def condition(x):
+			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
+			
+		x = {}
+		x['x'] = data[0]
+		x['y'] = data[-1]
+		x['z'] = dotr(dotl(a,x['x']),x['y'])
+		x['a'] = addition(x['z'],(0,-1))
+		x['u'] = u
+		x['v'] = v
+		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
+		x['stats'] = {}
+		x['i'] = 0
+
+		x['stats'].update({attr:None for attr in ['iteration','error']})
+		for attr in x['stats']:
+			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
+			if attr in ['iteration']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
+			elif attr in ['error']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
+
+
+		loop = partial(whileloop,condition,func)
+
+		x = loop(x)
+
+		u,v,stats = x['u'],x['v'],x['stats']
+
+		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		u,v = u*z,v*z
+
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
+		for attr in stats:
+			stats[attr] = stats[attr][indices]
+
+		if anything(indices):
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+
+		return u,v,stats
+
+	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
+
+	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
+
+	return u,v,s,stats
+
+
+def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	'''
+	Non-negative matrix factor decomposition for probability tensor trains
+	Args:
+		a (array): Array for xnmf of shape (n,p,q,m)
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)	
+		data (array,iterable[array]): Data for xnmf
+		rank (int): Rank of nmf
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
+		iters (int,float): Number of iterations, defaults to 1e7		
+		parameters (int,float,array,dict,object): Parameters for nmf method
+		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
+		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
+		kwargs (dict): Additional keyword arguments	
+	Returns:
+		u (array): u array of xnmf of shape (n,p,k)
+		v (array): v array of xnmf of shape (k,q,m)
+		s (array): s array of xnmf of shape (k,)
+	'''	
+
+	data = [ones((a.shape[0],u.shape[0]),dtype=a.dtype),ones((v.shape[-1],a.shape[-1]),dtype=a.dtype)] if data is None else data
+	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
+	eps = epsilon(a.dtype) if eps is None else eps
+	iters = iters if iters is not None else int(1e7)
+
+	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		shape,dtype = a.shape,a.dtype
+		if initialize is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))			
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['rand']:
+			options = {**dict(dtype=dtype),**kwargs}
+			u = random(shape=[*shape[:len(shape)//2],rank],**options)
+			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z		
+		elif initialize in ['nndsvd']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))					
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvda']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)	
+
+			x = addition(a)/a.size
+			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif initialize in ['nndsvdr']:
+			options = dict(u=u,v=v,rank=rank,eps=eps)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,v,s = nndsvd(a,**options)		
+			
+			options = {**dict(dtype=dtype),**kwargs}
+			i = u<=eps
+			j = v<=eps
+			x = random(shape=(addition(i),),**options)
+			y = random(shape=(addition(j),),**options)
+			u,v = inplace(u,i,x),inplace(v,j,y)
+			
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))	
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z
+		elif u is None or v is None:
+			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+			u,s,v = svd(a,**options)
+			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			u = reshape(u,(*shape[:len(shape)//2],-1,))
+			v = reshape(v,(-1,*shape[len(shape)//2:],))
+			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+			u,v = u*z,v*z	
+		return u,v
+	
+	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		if method is None:
+			def func(x):
+				return x		
+		elif method in ['mu']:
+			def func(x):
+
+				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nul,xn,lvk,ky,xa,gvt,ty->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
+				x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a'],x['x'],x['u'],x['y'])*reciprocal(einsum('xn,nug,by,xk,kul,ty,lvt->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
+				
+				return x
+		elif method in ['kl']:
+			@jit
+			def func(x):
+
+				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['v'],x['y'])*reciprocal(einsum('xa,gvb,by->ag',x['x'],x['v'],x['y'])[:,None,:])*x['u']
+				x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['u'],x['y'])*reciprocal(einsum('xa,aug,by->gb',x['x'],x['u'],x['y'])[:,None,:])*x['v']
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
+
+				return x
+		elif method in ['hals']:
+			size = rank*(a.shape[0]*a.shape[-1])
+			iters = min(iters*size if iters is not None else iters,1e4*size)
+			def func(x):
+
+				i = x['i']%size
+				l = i%rank
+				k = (i%(rank*x['y'].shape[0]))//rank
+				j = (i)//(rank*x['y'].shape[0])
+
+				s = (l,slice(None),k)
+				z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
+				# w = einsum('xuy,v->xuvy',z,x['v'][s])
+				x['e'] += einsum('xuy,v->xuvy',z,x['v'][s])
+				x['v'] = inplace(x['v'],s,maximums((einsum('xuvy,xuy->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('xuy,xuy->',z,z)+parameters),eps))
+				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('xuy,v->xuvy',z,x['v'][s]))))
+				x['e'] -= einsum('xuy,v->xuvy',z,x['v'][s])
+
+
+				s = (j,slice(None),l)
+				z = einsum('x,vb,by->xvy',x['x'][:,j],x['v'][l,:,:],x['y'])
+				# w = einsum('xvy,u->xuvy',z,x['u'][s])
+				x['e'] += einsum('xvy,u->xuvy',z,x['u'][s])
+				x['u'] = inplace(x['u'],s,maximums((einsum('xuvy,xvy->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('xvy,xvy->',z,z)+parameters),eps))
+				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
+				x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
+
+
+				x['i'] += 1
+
+				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
+				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
+
+				return x						
+		else:
+			def func(x):
+				return x	
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+		
+		def null(*args,**kwargs):
+			return nan
+
+		if metric is None or metric in ['norm']:
+			def error(x):
+				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
+		elif metric in ['abs']:
+			def error(x):
+				return norm(addition(absolute(x['Z']-dotr(dotl(dot(x['u'],x['v']),x['X']),x['Y'])),(0,-1)))/norm(x['a'])
+		elif metric in ['div']:
+			def error(x):
+				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+
+		def condition(x):
+			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
+			
+		x = {}
+		x['x'] = data[0]
+		x['y'] = data[-1]
+		x['z'] = a
+		x['a'] = dot(x['x'],dot(x['z'],x['y']))
+		x['u'] = u
+		x['v'] = v
+		x['X'] = addition(x['x'],0)
+		x['Y'] = addition(x['y'],-1)
+		x['Z'] = dotr(dotl(x['z'],x['X']),x['Y'])
+		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
+		x['stats'] = {}
+		x['i'] = 0
+
+		x['stats'].update({attr:None for attr in ['iteration','error']})
+		for attr in x['stats']:
+			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
+			if attr in ['iteration']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
+			elif attr in ['error']:
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
+
+		loop = partial(whileloop,condition,func)
+
+		x = loop(x)
+
+		u,v,stats = x['u'],x['v'],x['stats']
+
+		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		u,v = u*z,v*z
+
+		attribute = 'error'
+		indices = ~is_nan(stats[attribute])
+		for attr in stats:
+			stats[attr] = stats[attr][indices]
+
+		if anything(indices):
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+
+
+		# func = jax.profiler.annotate_function(func)
+
+		# loop = partial(whileloop,condition,func)
+
+		# trace = dict(
+		# 	log_dir=os.environ['PERFETTO_DIR'],
+		# 	create_perfetto_link=True
+		# 	)
+		# trace = dict(
+		# 	log_dir=os.environ['TENSORBOARD_DIR'],
+		# 	create_perfetto_link=False
+		# 	)
+
+		# with jax.profiler.trace(**trace):
+		# with jax.log_compiles():
+		# 	x = loop(x)
+		# 	for key in x:
+		# 		if isinstance(x[key],arrays):
+		# 			x[key].block_until_ready()
+		# 		else:
+		# 			for attr in x[key]:
+		# 				x[key][attr].block_until_ready()
+
+		return u,v,stats
+
+	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
+
+	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+
+	u,v,s = xnmfd(u,v,rank=rank,eps=eps)
+
+	return u,v,s,stats
+
+def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors of a function
 	Args:
 		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		shape (iterable[int]): Shape to reshape function
+		axes (iterable[int]): Axes to transpose function
 		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
 		hermitian (bool): Whether array is Hermitian
 	Returns:
@@ -3938,9 +6698,21 @@ def spectrum(func,compute_v=False,hermitian=False):
 			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
 	'''
 
+	if shape is not None and axes is not None:
+		def transform(data):
+			return reshape(transpose(data,axes),shape)
+	if shape is not None:
+		def transform(data):
+			return reshape(data,shape)
+	elif axes is not None:
+		def transform(data):
+			return transpose(data,axes)
+	else:
+		def transform(data):
+			return data
 	@jit
 	def wrapper(*args,**kwargs):
-		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+		return eig(transform(func(*args,**kwargs)),compute_v=compute_v,hermitian=hermitian)
 
 	return wrapper
 
@@ -4091,7 +6863,7 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 		data = data.groupby(by=by,**options)
 
 	if apply is not None and by is not None and agg is not None:
-		options = dict()
+		options = {}
 		data = data.apply(apply,**options)
 
 		options = dict(drop=True)
@@ -4101,15 +6873,15 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 		data = data.groupby(by=by,**options)
 
 	elif apply is not None and by is not None:
-		options = dict()
+		options = {}
 		data = data.apply(apply,**options)
 
 		options = dict(drop=True)
 		data = data.reset_index(**options)
 
 	elif apply is not None:
-		options = dict()
-		data = data.apply(apply)
+		options = {}
+		data = data.apply(apply,**options)
 	
 	if agg is not None and by is not None:
 		options = dict(level=0,axis=1)
@@ -4152,7 +6924,7 @@ def factorial(n,exact=True):
 	n = ospsp.factorial(n,exact=exact)
 	return n
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -4218,540 +6990,556 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None,**kwargs):
+def contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
-		data (array,tensor): data
-		state (array,tensor): state
+		data (array): data
+		state (array): state
 		where (int,str,iterable[int,str]): indices of contraction
-		kwargs (dict): Additional keyword arguments for contraction
+		attributes (dict): tensorized data and state attributes {N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
+		local (bool): local data contraction on state
+		tensor (bool): tensorized data contraction on state
+		kwargs (dict): additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,where=where)
 	'''
 
+	einsummation = None
 	shuffler = None
 	_shuffler = None
 
-	def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+	def function(data,state,*args,**kwargs):
 		return data
 
-	if state is None:
-		wrapper = jit
-	elif isinstance(state,arrays):
-		wrapper = jit
-	elif isinstance(state,tensors):
-		wrapper = None
-	else:
-		wrapper = None
+	k = 2
 
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+
+	shapes = Dictionary(
+		data=([*data.shape] if not isinstance(data.shape,dict) else [data.shape[i] for i in data.shape]) if data is not None else None,
+		state=([*state.shape] if not isinstance(state.shape,dict) else [state.shape[i] for i in state.shape]) if state is not None else None,
+		)
+
+	wrapper = jit
+
+	if attributes is not None:
+		N,D,d,s,samples = attributes.N,attributes.D,attributes.d,attributes.s,attributes.samples
+	elif data is not None and state is not None:
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),data.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
+	elif data is not None and state is None:
+		N,D,d,s,samples = int(log(prod(shapes.data[-k:]))/log(max(shapes.data[-k:]))/max(1,data.ndim-k)),max(shapes.data[-k:]),data.ndim,data.ndim,None
+	elif data is None and state is not None:
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),state.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
+	else:
+		N,D,d,s,samples = None,None,None,None,None
+
+	where = [*range(N)] if ((where is None or not local) and (N is not None)) else [] if where is None else where
+	L = len(where) if where is not None else None
+	D = [*D][:N] if isinstance(D,iterables) and N is not None else [D]*N if D is not None and N is not None else None
+
+	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
+	length = len(samples) if samples is not None else 0
+	string = [symbols(i) for i in range(length)] if samples is not None else []
+
+	shape = shapes.data[:max(0,d-k)] if data is not None else []
+	size = len(shape) if shape is not None else 0
+	strings = [symbols(length+i) for i in range(size)]
 
 	if data is None:
 
-		if state is None:
-		
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-
-		elif isinstance(state,arrays):
-			
-			if state.ndim == 1:
-
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-	
-			elif state.ndim == 2:
-				
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-	
-		elif isinstance(state,tensors):
-
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-
-	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
-	
-		def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-			return data(state)
+		def function(data,state,*args,**kwargs):
+			return data
 
 	elif isinstance(data,arrays):
 
-		if data.ndim == 0:
-
-			if state is None:
+		if d < k:
 			
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-			
-			elif isinstance(state,arrays):
+			def function(data,state,*args,**kwargs):
+				return data
 
-				if state.ndim == 1:
-
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-				elif state.ndim == 2:
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-			elif isinstance(state,tensors):
-
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif data.ndim == 1:
-			
-			if state is None:
-			
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return data
-
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-				elif state.ndim == 2:
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return data
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif data.ndim == 2:
+		else:
 
 			if state is None:
 
-				state = data
-
-				if where is None:
-					subscripts = 'ij,jk->ik'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
+				if not local and not tensor:
+				
+					subscripts = (
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]]),
+						(*string,*[letters[j] for j in ['i','k'][:s]]),
+						)
+					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					einsummation = einsummand(subscripts,*shapes)
+					
+					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(data,state)
 
-				else:
-					subscripts = 'ij,jk...->ik...'
-					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-					einsummation = einsum(subscripts,*shapes)
+				elif local and not tensor:
+
+					subscripts = (
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+						(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+						)
+					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),)
+
+					einsummation = einsummand(subscripts,*shapes)
+
+					shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return _shuffler(einsummation(data,shuffler(state)))
 
+				elif not local and tensor:
 
-			elif isinstance(state,arrays):
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+						)
+					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
-				if state.ndim == 1:
+					einsummation = einsummand(subscripts,*shapes)
 					
-					if where is None:
-						subscripts = 'ij,j->i'
-						shapes = (data.shape,state.shape)
-						einsummation = einsum(subscripts,*shapes)
+					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(data,state)
+
+				elif local and tensor:
+
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+						)
+					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+					einsummation = einsummand(subscripts,*shapes)
+
+					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(data,state)
+
+			else:
+
+				if s == 1:
+
+					if not local and not tensor:
+
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*string,*[letters[j] for j in ['i','k'][:s]]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					
+						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state)
-					else:
-						subscripts = 'ij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-						einsummation = einsum(subscripts,*shapes)
+
+					elif local and not tensor:
+
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+							(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),)
+
+						einsummation = einsummand(subscripts,*shapes)
+
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state)))
 
+					elif not local and tensor:
 
-				elif state.ndim == 2:
-				
-					if where is None:
-						subscripts = 'ij,jk,lk->il'
-						shapes = (data.shape,state.shape,data.shape)
-						einsummation = einsum(subscripts,*shapes)
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return einsummation(data,state,conjugate(data))
-					else:
-						subscripts = 'ij,jk...,lk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+							)
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+						einsummation = einsummand(subscripts,*shapes)
 						
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))							
-
-			elif isinstance(state,tensors):
-				
-				def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return state.gate(data,where=where)
-
-		elif data.ndim == 3:
-
-			if state is None:
-
-				state = data
-				
-				if where is None:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
-
-				else:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
-					einsummation = einsum(subscripts,*shapes)
-			
-					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-					
-					def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
-
-
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-					
-					if where is None:
-						subscripts = 'uij,j->i'
-						shapes = (data.shape,state.shape)
-						einsummation = einsum(subscripts,*shapes)
-					
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state)
-					else:
-						subscripts = 'uij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-						einsummation = einsum(subscripts,*shapes)
+
+					elif local and tensor:
+
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+							)	
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+						einsummation = einsummand(subscripts,*shapes)
 						
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(data,state)
+
+				elif s == 2:
+
+					if not local and not tensor:
 						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return _shuffler(einsummation(data,shuffler(state)))
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
-
-				elif state.ndim == 2:
-
-					if where is None:					
-						subscripts = 'uij,jk,ulk->il'
-						shapes = (data.shape,state.shape,data.shape)
-						einsummation = einsum(subscripts,*shapes)
-
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						einsummation = einsummand(subscripts,*shapes)
+						
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(data,state,conjugate(data))
 
-					else:
-						subscripts = 'uij,jk...,ulk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
-						einsummation = einsum(subscripts,*shapes)
+					elif local and not tensor:
 
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
+
+						einsummation = einsummand(subscripts,*shapes)
+
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
 
+					elif not local and tensor:
 
-			elif isinstance(state,tensors):
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
+							)
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+						einsummation = einsummand(subscripts,*shapes)
+						
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(data,state,conjugate(data))
 
-	elif isinstance(data,tensors):
+					elif local and tensor:
 
-		if state is None:
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return data
-		
-		elif isinstance(state,arrays):
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
+							)	
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
-			if state.ndim == 1:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-			elif state.ndim == 2:
-				raise NotImplementedError("Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+						einsummation = einsummand(subscripts,*shapes)
 
-		elif isinstance(state,tensors):
+						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(data,state,conjugate(data))
 
-			def func(data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return state.gate(data,where=where)
+	def func(data,state,function=function,**kwargs):
+		return function(data,state)
 
 	func = wrapper(func) if wrapper is not None else func
 
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None,**kwargs):
+def gradient_contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
-		data (array,tensor): data
-		state (array,tensor): state
+		data (array): data
+		state (array): state
 		where (int,str,iterable[int,str]): indices of contraction
-		kwargs (dict): Additional keyword arguments for contraction		
+		attributes (dict): tensorized data and state shapes	{N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
+		local (bool): local data contraction on state
+		tensor (bool): tensorized data contraction on state
+		kwargs (dict): additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(grad,data,state,where=where)
 	'''
 
+	einsummation = None
 	shuffler = None
 	_shuffler = None
 
-	def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+	def function(grad,data,state,*args,**kwargs):
 		return grad
 
-	if state is None:
-		wrapper = jit
-	elif isinstance(state,arrays):
-		wrapper = jit
-	elif isinstance(state,tensors):
-		wrapper = None
+	k = 2
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+
+	shapes = Dictionary(
+		data=([*data.shape] if not isinstance(data.shape,dict) else [data.shape[i] for i in data.shape]) if data is not None else None,
+		state=([*state.shape] if not isinstance(state.shape,dict) else [state.shape[i] for i in state.shape]) if state is not None else None,
+		)
+
+	wrapper = jit
+
+	if attributes is not None:
+		N,D,d,s,samples = attributes.N,attributes.D,attributes.d,attributes.s,attributes.samples
+	elif data is not None and state is not None:
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),data.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
+	elif data is not None and state is None:
+		N,D,d,s,samples = int(log(prod(shapes.data[-k:]))/log(max(shapes.data[-k:]))/max(1,data.ndim-k)),max(shapes.data[-k:]),data.ndim,data.ndim,None
+	elif data is None and state is not None:
+		N,D,d,s,samples = int(log(prod(shapes.state[-k:]))/log(max(shapes.state[-k:]))/max(1,state.ndim-k)),max(shapes.state[-k:]),state.ndim,state.ndim,(shapes.state[:k] if state.ndim>k else None)
 	else:
-		wrapper = None
+		N,D,d,s,samples = None,None,None,None,None
+
+	where = [*range(N)] if ((where is None or not local) and (N is not None)) else [] if where is None else where
+	L = len(where) if where is not None else None
+	D = [*D][:N] if isinstance(D,iterables) and N is not None else [D]*N if D is not None and N is not None else None
+
+	samples = [samples] if isinstance(samples,integers) else [*samples] if samples is not None else []
+	length = len(samples) if samples is not None else 0
+	string = [symbols(i) for i in range(length)] if samples is not None else []
+
+	shape = shapes.data[:max(0,d-k)] if data is not None else []
+	size = len(shape) if shape is not None else 0
+	strings = [symbols(length+i) for i in range(size)]
 
 	if data is None:
-		
-		if state is None:
-		
-			def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-				return grad
 
-		elif isinstance(state,arrays):
-
-			if state.ndim == 1:
-
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return grad
-
-			elif state.ndim == 2:
-				
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return grad
-	
-		elif isinstance(state,tensors):
-
-			raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-	elif callable(data) and not isinstance(data,(*arrays,*tensors)):
-	
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+		def function(grad,data,state,*args,**kwargs):
+			return grad
 
 	elif isinstance(data,arrays):
 
-		if data.ndim == 0:
-
-			if state is None:
+		if d < k:
 			
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return grad
-			
-			elif isinstance(state,arrays):
+			def function(grad,data,state,*args,**kwargs):
+				return data
 
-				if state.ndim == 1:
-
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return grad
-
-				elif state.ndim == 2:
-					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return grad
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif data.ndim == 1:
-			
-			if state is None:
-			
-				def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-					return grad
-
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return grad
-
-				elif state.ndim == 2:
-					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return grad
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif data.ndim == 2:
+		else:
 
 			if state is None:
 
-				state = data
-
-				if where is None:
-					subscripts = 'ij,jk->ik'
-					shapes = (data.shape,state.shape)
-					einsummation = einsum(subscripts,*shapes)
+				if not local and not tensor:
+				
+					subscripts = (
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]]),
+						(*string,*[letters[j] for j in ['i','k'][:s]]),
+						)
+					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+					einsummation = einsummand(subscripts,*shapes)
+					
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(grad,state)
 
-				else:
-					subscripts = 'ij,jk...->ik...'
-					shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-					einsummation = einsum(subscripts,*shapes)
+				elif local and not tensor:
+
+					subscripts = (
+						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+						(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+						)
+					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),)
+
+					einsummation = einsummand(subscripts,*shapes)
+
+					shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return _shuffler(einsummation(grad,shuffler(state)))
+
+				elif not local and tensor:
+
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+						)
+					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+					einsummation = einsummand(subscripts,*shapes)
 					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return _shuffler(einsummation(grad,shuffler(state)))					
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(grad,state)
 
-			elif isinstance(state,arrays):
+				elif local and tensor:
 
-				if state.ndim == 1:
+					subscripts = (
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+						)
+					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
-					if where is None:
-						subscripts = 'ij,j->i'
-						shapes = (data.shape,state.shape)
-						einsummation = einsum(subscripts,*shapes)
+					einsummation = einsummand(subscripts,*shapes)
+
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(grad,state)
+
+			else:
+
+				if s == 1:
+
+					if not local and not tensor:
+
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*string,*[letters[j] for j in ['i','k'][:s]]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
+					
+						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(grad,state)
 
-					else:
-						subscripts = 'ij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-						einsummation = einsum(subscripts,*shapes)
+					elif local and not tensor:
 
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+							(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),)
+
+						einsummation = einsummand(subscripts,*shapes)
+
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(grad,shuffler(state)))
 
+					elif not local and tensor:
 
-				elif state.ndim == 2:
-					
-					if where is None:
-						subscripts = 'ij,jk,lk->il'
-						shapes = (data.shape,state.shape,data.shape)
-						einsummation = einsum(subscripts,*shapes)
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+							)
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							out = einsummation(grad,state,conjugate(data))
-							return out + dagger(out)
-
-					else:
-						subscripts = 'ij,jk...,lk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
-						einsummation = einsum(subscripts,*shapes)
-
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
-							return out + dagger(out)				
-
-			elif isinstance(state,tensors):
-
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
-
-		elif data.ndim == 3:
-
-			if state is None:
-
-				state = data
-
-				if where is None:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
-					einsummation = einsum(subscripts,*shapes)
-					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
-
-				else:
-					subscripts = 'uij,j...->i...'
-					shapes = (data.shape,state.shape[1:])
-					einsummation = einsum(subscripts,*shapes)
-
-					shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-					_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
-					
-					def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-						return state
-
-
-			elif isinstance(state,arrays):
-
-				if state.ndim == 1:
-					
-					if where is None:
-						subscripts = 'uij,j->i'
-						shapes = (data.shape,state.shape)
-						einsummation = einsum(subscripts,*shapes)
-						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(grad,state)
 
-					else:
-						subscripts = 'uij,j...->i...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):])
-						einsummation = einsum(subscripts,*shapes)
+					elif local and tensor:
 
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
+							)	
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
+
+						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							return _shuffler(einsummation(grad,shuffler(state)))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(grad,state)
 
-				elif state.ndim == 2:
-					
-					if where is None:
-						subscripts = 'uij,jk,ulk->il'
-						shapes = (data.shape,state.shape,data.shape)
-						einsummation = einsum(subscripts,*shapes)
+				elif s == 2:
+
+					if not local and not tensor:
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							out = einsummation(grad,state,conjugate(data))
-							return out + dagger(out)
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]]),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
-					else:
-						subscripts = 'uij,jk...,ulk->il...'
-						shapes = (data.shape,data.shape[(data.ndim-state.ndim):],data.shape)
-						einsummation = einsum(subscripts,*shapes)
-
-						shuffler = shuffle(state,**kwargs,transformation=True,execute=False)
-						_shuffler = shuffle(state,**kwargs,transformation=False,execute=False)
+						einsummation = einsummand(subscripts,*shapes)
 						
-						def func(grad,data,state,where=where,shuffler=shuffler,_shuffler=_shuffler):
-							out = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
-							return out + dagger(out)						
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(grad,state,conjugate(data))
+							return grad + dagger(grad)
 
-			elif isinstance(state,tensors):
+					elif local and not tensor:
 
-				raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+						subscripts = (
+							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
+							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*string,*[letters[j] for j in ['i','l'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
+							)
+						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
-	elif isinstance(data,tensors):
+						einsummation = einsummand(subscripts,*shapes)
 
-		raise NotImplementedError("Gradient Contraction Not Implemented for data: %r , state: %r"%(type(data),type(state)))
+						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
+						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
+
+						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
+							return grad + dagger(grad)
+
+					elif not local and tensor:
+
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
+							)
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
+
+						einsummation = einsummand(subscripts,*shapes)
+						
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(grad,state,conjugate(data))
+							return grad + dagger(grad)
+
+					elif local and tensor:
+
+						subscripts = (
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
+							)	
+						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
+
+						einsummation = einsummand(subscripts,*shapes)
+						
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(grad,state,conjugate(data))
+							return grad + dagger(grad)
+
+	def func(grad,data,state,function=function,**kwargs):
+		return function(grad,data,state)
 
 	func = wrapper(func) if wrapper is not None else func
 
@@ -4761,7 +7549,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	'''
 	Setup metrics
 	Args:
-		metric (str,callable): Type of metric
+		metric (str,callable): Type of metric, or function with signature
 		shapes (iterable[tuple[int]]): Shapes of Operators
 		label (array,callable): Label			
 		weights (array): Weights
@@ -4772,63 +7560,64 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		grad (callable): Metric gradient with signature grad(*operands,label,weights,*gradients)
 		grad_analytical (callable): Metric analytical gradient with signature grad_analytical(*operands,label,weights,*gradients)
 	'''
-	
+
 	if shapes:
-		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
-		ndim = min([len(shape) for shape in shapes[:2] if shape is not None])
+		size = sum(int(prod(shape)**(1/min(2,len(shape)))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+		ndim = min([min(2,len(shape)) for shape in shapes[:2] if shape is not None])
+		shape = [size]*ndim
 	else:
 		size = 1
 		ndim = None
-
-
-	if callable(metric):
-			metric = metric
-			func = jit(metric)
-			grad = jit(gradient(metric))
-			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
-			grad_analytical = jit(gradient(metric))
+		shape = [size]
 	
+	if callable(metric):
+		metric = metric
+		func = jit(metric)
+		grad = jit(gradient(metric))
+		# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
+		grad_analytical = jit(gradient(metric))
+
 	elif metric is None:
 
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return out/2
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return out/2
 
 	elif metric in ['lstsq']:
 		func = mse
 		grad_analytical = gradient_mse
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return out/2
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return out/2	
 
 	elif metric in ['mse']:
 		func = mse
 		grad_analytical = gradient_mse
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].size/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/prod(shape)/2
 
-		def wrapper_grad(out,*operands):
-			return out/operands[0].size/2					
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/prod(shape)/2					
 
 	elif metric in ['norm']:
 
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/shape[-1]/2
 		
-		def wrapper_grad(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
 	elif metric in ['abs2']:
 
@@ -4837,41 +7626,41 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 		if ndim is not None:
 			if ndim == 1:
-				def wrapper_func(out,*operands):
+				def wrapper_func(out,*operands,shape=shape):
 					return 1 - out
 
-				def wrapper_grad(out,*operands):
+				def wrapper_grad(out,*operands,shape=shape):
 					return - out
 
 			elif ndim == 2:
-				def wrapper_func(out,*operands):
-					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_func(out,*operands,shape=shape):
+					return 1 - out/prod(shape)
 
-				def wrapper_grad(out,*operands):
-					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_grad(out,*operands,shape=shape):
+					return - out/prod(shape)
 			else:
-				def wrapper_func(out,*operands):
-					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_func(out,*operands,shape=shape):
+					return 1 - out/prod(shape)
 
-				def wrapper_grad(out,*operands):
-					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+				def wrapper_grad(out,*operands,shape=shape):
+					return - out/prod(shape)
 
 		else:
-			def wrapper_func(out,*operands):
-				return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+			def wrapper_func(out,*operands,shape=shape):
+				return 1 - out/prod(shape)
 
-			def wrapper_grad(out,*operands):
-				return - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+			def wrapper_grad(out,*operands,shape=shape):
+				return - out/prod(shape)
 
 	elif metric in ['real']:
 
 		func = inner_real
 		grad_analytical = gradient_inner_real
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return 1 - out
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return  - out
 
 	elif metric in ['imag']:
@@ -4879,10 +7668,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_imag
 		grad_analytical = gradient_inner_imag
 
-		def wrapper_func(out,*operands):
+		def wrapper_func(out,*operands,shape=shape):
 			return 1 - out
 
-		def wrapper_grad(out,*operands):
+		def wrapper_grad(out,*operands,shape=shape):
 			return - out
 
 	else:
@@ -4890,30 +7679,31 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_norm
 		grad_analytical = gradient_inner_norm
 
-		def wrapper_func(out,*operands):
-			return out/operands[0].shape[-1]/2
+		def wrapper_func(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
-		def wrapper_grad(out,*operands):
-			return out/operands[0].shape[-1]/2
-
+		def wrapper_grad(out,*operands,shape=shape):
+			return out/shape[-1]/2
 
 	shapes_func = (*(shape for shape in shapes if shape is not None),) if shapes else ()
 	optimize_func = optimize
 	wrapper_func = jit(wrapper_func)
 
-	shapes_grad = (*(shape for shape in shapes if shape is not None),(size**2,*shapes[0]),) if shapes else ()
+	shapes_grad = (*(shape for shape in shapes if shape is not None),(prod(shape),*shapes[0]),) if shapes else ()
 	optimize_grad = optimize
 	wrapper_grad = jit(wrapper_grad)
 
+	shape,shape_grad = [(*shape,)]*len(shapes_func),[*[(*shape,)]*len(shapes_func),*[(prod(shape),*shape)]]
+
 	if shapes_func:
-		func = func(*shapes_func,optimize=optimize_func,wrapper=wrapper_func)
+		func = func(*shapes_func,shape=shape,optimize=optimize_func,wrapper=wrapper_func)
 	else:
-		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
+		func = partial(func,shape=shape,optimize=optimize_grad,wrapper=wrapper_func)
 
 	if shapes_grad:
-		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+		grad_analytical = grad_analytical(*shapes_grad,shape=shape_grad,optimize=optimize_func,wrapper=wrapper_grad)
 	else:
-		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+		grad_analytical = partial(grad_analytical,shape=shape_grad,optimize=optimize_grad,wrapper=wrapper_grad)
 	# grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	grad = grad_analytical
@@ -4975,13 +7765,12 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		return func,grad,grad_analytical
 
 
-
-
-def mse(*operands,optimize=True,wrapper=None):
+def mse(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -4989,65 +7778,169 @@ def mse(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
+	
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:
+			if length == 2:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]							
+				else:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+			else:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]				
+		elif ndim == 2:
+			if length == 2:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]										
+				else:
+					subscripts = [
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]					
+			else:
+				subscripts = [
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+		else:
+			if length == 2:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 3:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['j'].format(i) for i in range(size)],],
+						]					
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]										
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]					
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]	
+	
 		if length == 2:
-			subscripts = 'i,i->'
+			shapes = (shapes[0],shapes[1])
 		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = 'i,j,ij->'			
+			shapes = (shapes[0],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[0],shapes[1])
+	
+	else:
+		if ndim == 1:
+			if length == 2:
+				subscripts = 'i,i->'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = 'i,i,i->'
+				elif len(shapes[2]) == 2:
+					subscripts = 'i,j,ij->'			
+				else:
+					subscripts = 'i,i->'
 			else:
 				subscripts = 'i,i->'
-		else:
-			subscripts = 'i,i->'
-	elif ndim == 2:
-		if length == 2:
-			subscripts = 'ij,ij->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = 'ij,ik,jk->'			
+		elif ndim == 2:
+			if length == 2:
+				subscripts = 'ij,ij->'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = 'ij,ij,j->'			
+				elif len(shapes[2]) == 2:
+					subscripts = 'ij,ik,jk->'			
+				else:
+					subscripts = 'ij,ij->'
 			else:
 				subscripts = 'ij,ij->'
 		else:
-			subscripts = 'ij,ij->'
-	else:
-		if length == 2:
-			subscripts = '...ij,...ij->...'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
+			if length == 2:
+				subscripts = '...ij,...ij->...'
+			elif length == 3:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,...ij,j->...'
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,...ik,jk->...'
+				else:
+					subscripts = '...ij,...ij->...'
 			else:
 				subscripts = '...ij,...ij->...'
+
+		if length == 2:
+			shapes = (shapes[0],shapes[1])
+		elif length == 3:
+			shapes = (shapes[0],shapes[1],shapes[2])
 		else:
-			subscripts = '...ij,...ij->...'
+			shapes = (shapes[0],shapes[1])
 
-	if length == 2:
-		shapes = (shapes[0],shapes[1])
-	elif length == 3:
-		shapes = (shapes[0],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[0],shapes[1])
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = real(einsummation(out,out,*operands[2:]))
+		out = real(einsummation(out,out,*operands[2:length]))
 		# out = real(einsummation(out,conjugate(out),*operands[2:])/
 		# 		   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
 		return wrapper(out,*operands)
@@ -5059,11 +7952,12 @@ def mse(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_mse(*operands,optimize=True,wrapper=None):
+def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5071,60 +7965,164 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
+	
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]			
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],],
+						]
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],],
+					]				
+		elif ndim == 2:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]						
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]					
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]										
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]														
+		else:
+			if length == 3:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+			elif length == 4:
+				if len(shape[2]) == 1:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],],
+						]						
+				elif len(shape[2]) == 2:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
+						]						
+				else:
+					subscripts = [
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+						]										
+			else:
+				subscripts = [
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+					]					
+
 		if length == 3:
-			subscripts = '...i,i->'
+			shapes = (shapes[2],shapes[1])
 		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = '...i,j,ij->'			
+			shapes = (shapes[3],shapes[1],shapes[2])
+		else:
+			shapes = (shapes[2],shapes[1])
+
+	else:
+		if ndim == 1:
+			if length == 3:
+				subscripts = '...i,i->'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...i,i,i->'
+				elif len(shapes[2]) == 2:
+					subscripts = '...i,j,ij->'			
+				else:
+					subscripts = '...i,i->'
 			else:
 				subscripts = '...i,i->'
-		else:
-			subscripts = '...i,i->'
-	elif ndim == 2:
-		if length == 3:
-			subscripts = '...ij,ij->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,ik,jk->'			
+		elif ndim == 2:
+			if length == 3:
+				subscripts = '...ij,ij->'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,ij,j->'			
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,ik,jk->'			
+				else:
+					subscripts = '...ij,ij->'
 			else:
 				subscripts = '...ij,ij->'
 		else:
-			subscripts = '...ij,ij->'
-	else:
-		if length == 3:
-			subscripts = '...ij,...ij->...'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
+			if length == 3:
+				subscripts = '...ij,...ij->...'
+			elif length == 4:
+				if len(shapes[2]) == 1:
+					subscripts = '...ij,...ij,j->...'
+				elif len(shapes[2]) == 2:
+					subscripts = '...ij,...ik,jk->...'
+				else:
+					subscripts = '...ij,...ij->...'
 			else:
 				subscripts = '...ij,...ij->...'
+
+		if length == 3:
+			shapes = (shapes[2],shapes[1])
+		elif length == 4:
+			shapes = (shapes[3],shapes[1],shapes[2])
 		else:
-			subscripts = '...ij,...ij->...'
+			shapes = (shapes[2],shapes[1])
 
-	if length == 3:
-		shapes = (shapes[2],shapes[1])
-	elif length == 4:
-		shapes = (shapes[3],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[2],shapes[1])
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	if length == 3:
 		@jit
@@ -5157,210 +8155,62 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 
 	return out
 
-
-
-def inner_prod(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	isarray = all(isinstance(operand,arrays) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
-	if isarray:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
-
-	if ndim == 1:
-		if length == 2:
-			subscripts = 'i,i->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = 'i,j,ij->'			
-			else:
-				subscripts = 'i,i->'
-		else:
-			subscripts = 'i,i->'
-	elif ndim == 2:
-		if length == 2:
-			subscripts = 'ij,ij->'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = 'ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = 'ij,ik,jk->'			
-			else:
-				subscripts = 'ij,ij->'
-		else:
-			subscripts = 'ij,ij->'
-	else:
-		if length == 2:
-			subscripts = '...ij,...ij->...'
-		elif length == 3:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
-			else:
-				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
-
-	if length == 2:
-		shapes = (shapes[0],shapes[1])
-	elif length == 3:
-		shapes = (shapes[0],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[0],shapes[1])
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
-
-	@jit
-	def func(*operands):
-		out = real(einsummation(*operands[:length]))
-		return wrapper(out,*operands)
-
-	if isarray:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-def gradient_inner_prod(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate gradient of inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	isarray = all(isinstance(operand,arrays) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
-	if isarray:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
-	length = len([shape for shape in shapes if shape is not None])
-
-	if ndim == 1:
-		if length == 3:
-			subscripts = '...i,i->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...i,i,i->'
-			elif len(shapes[2]) == 2:
-				subscripts = '...i,j,ij->'			
-			else:
-				subscripts = '...i,i->'
-		else:
-			subscripts = '...i,i->'
-	elif ndim == 2:
-		if length == 3:
-			subscripts = '...ij,ij->'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,ij,j->'			
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,ik,jk->'			
-			else:
-				subscripts = '...ij,ij->'
-		else:
-			subscripts = '...ij,ij->'
-	else:
-		if length == 3:
-			subscripts = '...ij,...ij->...'
-		elif length == 4:
-			if len(shapes[2]) == 1:
-				subscripts = '...ij,...ij,j->...'
-			elif len(shapes[2]) == 2:
-				subscripts = '...ij,...ik,jk->...'
-			else:
-				subscripts = '...ij,...ij->...'
-		else:
-			subscripts = '...ij,...ij->...'
-
-	if length == 3:
-		shapes = (shapes[2],shapes[1])
-	elif length == 4:
-		shapes = (shapes[3],shapes[1],shapes[2])
-	else:
-		shapes = (shapes[2],shapes[1])
-
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
-
-	if length == 3:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[2],operands[1]))
-			return wrapper(out,*operands)
-	elif length == 4:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[3],operands[1],operands[2]))
-			return wrapper(out,*operands)
-	else:
-		@jit
-		def func(*operands):
-			out = real(einsummation(operands[2],operands[1]))
-			return wrapper(out,*operands)			
-
-	if isarray:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-
-def inner_norm(*operands,optimize=True,wrapper=None):
+def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i->'
-	elif ndim == 2:
-		subscripts = 'ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],)
+
 	else:
-		subscripts = '...ij->...'
+		if ndim == 1:
+			subscripts = 'i->'
+		elif ndim == 2:
+			subscripts = 'ij->'
+		else:
+			subscripts = '...ij->...'
 
-	shapes = (shapes[0],)
+		shapes = (shapes[0],)
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5374,11 +8224,12 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_inner_norm(*operands,optimize=True,wrapper=None):
+def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5386,24 +8237,52 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5419,11 +8298,12 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_abs2(*operands,optimize=True,wrapper=None):
+def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate absolute square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5435,24 +8315,52 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+		shapes = [tuple(operand) for operand in operands]
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
+	
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
+
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
-	
-	shapes = (shapes[0],shapes[1])
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
+		out = abs2(einsummation(*operands[:2]))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
 	if isarray:
@@ -5464,11 +8372,12 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 
 
-def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
+def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of absolute square of inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5476,35 +8385,85 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts_func = 'i,i->'
-	elif ndim == 2:
-		subscripts_func = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts_func = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts_func = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts_func = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes_func = (shapes[0],shapes[1])
+
 	else:
-		subscripts_func = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts_func = 'i,i->'
+		elif ndim == 2:
+			subscripts_func = 'ij,ij->'
+		else:
+			subscripts_func = '...ij,...ij->...'
+		
+		shapes_func = (shapes[0],shapes[1])
 
-	shapes_func = (shapes[0],shapes[1])
+	einsummation_func = einsummand(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
-	einsummation_func = einsum(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
-	if ndim == 1:
-		subscripts_grad = '...i,i->...'
-	elif ndim == 2:
-		subscripts_grad = '...ij,ij->...'
+
+	if tensor:
+		if ndim == 1:	
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts_grad = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes_grad = (shapes[2],shapes[1])
+
 	else:
-		subscripts_grad = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts_grad = '...i,i->...'
+		elif ndim == 2:
+			subscripts_grad = '...ij,ij->...'
+		else:
+			subscripts_grad = '...ij,...ij->...'
+		
+		shapes_grad = (shapes[2],shapes[1])
 
-	shapes_grad = (shapes[2],shapes[1])
-
-	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
+	einsummation_grad = einsummand(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5519,11 +8478,12 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_real(*operands,optimize=True,wrapper=None):
+def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5531,28 +8491,56 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
-	shapes = (shapes[0],shapes[1])
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = real(einsummation(*operands))
+		out = real(einsummation(*operands[:2]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -5563,11 +8551,12 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_real(*operands,optimize=True,wrapper=None):
+def gradient_inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5575,24 +8564,52 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
@@ -5607,11 +8624,12 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_imag(*operands,optimize=True,wrapper=None):
+def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
@@ -5619,28 +8637,56 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	'''	
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[0],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = 'i,i->'
+		elif ndim == 2:
+			subscripts = 'ij,ij->'
+		else:
+			subscripts = '...ij,...ij->...'
+		
+		shapes = (shapes[0],shapes[1])
 
-	shapes = (shapes[0],shapes[1])
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands).imag
+		out = imag(einsummation(*operands[:2]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -5651,40 +8697,69 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_imag(*operands,optimize=True,wrapper=None):
+def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	'''
 	Calculate gradient of imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		shape (int,iterable[int]): Shape of arrays		
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
-	
+
 	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		shapes = [tuple(operand) for operand in operands]
+
+	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
+	tensor = any(i!=j for i,j in zip(shape,shapes))
 	
-	ndim = min(len(shape) for shape in shapes if shape is not None)
+	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+	size = max((len(i) for i in shapes[:2]),default=0)//ndim
 
-	if ndim == 1:
-		subscripts = '...i,i->...'
-	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+	letters = {letter:f'{letter}{{}}' for i,letter in enumerate(character)}
+	ellipses = ['...']
+
+	if tensor:
+		if ndim == 1:	
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],],
+				]
+		elif ndim == 2:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+		else:
+			subscripts = [
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
+				]
+
+		shapes = (shapes[2],shapes[1])
+
 	else:
-		subscripts = '...ij,...ij->...'
+		if ndim == 1:
+			subscripts = '...i,i->...'
+		elif ndim == 2:
+			subscripts = '...ij,ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+		shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = einsummation(operands[2],operands[1]).imag
+		out = imag(einsummation(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -5695,38 +8770,48 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	return out
 
 
-
-@jit
-def dot(a,b):
+@partial(jit,static_argnums=(2,))
+def dot(a,b,axes=1):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (array): Array to calculate dot product
 		b (array): Array to calculate dot product
+		axes (int,iterable[int]): Axes to calculate dot product
 	Returns:
 		out (array): Dot product
 	'''	
-	return np.dot(a,b)
+	return np.tensordot(a,b,axes=axes)
 
-
-def dots(*a):
+@jit
+def out(a,b):
 	'''
-	Calculate dot product of arrays a and b
+	Calculate outer product of arrays a and b
 	Args:
-		a (iterable[array]): Arrays to calculate dot product
+		a (array): Array to calculate outer product
+		b (array): Array to calculate outer product
+	Returns:
+		out (array): Outer product
+	'''	
+	return np.outer(a,b)
+
+@jit
+def dots(*a,axes=1):
+	'''
+	Calculate dot products of arrays a
+	Args:
+		a (array): Array to calculate dot product
+		b (array): Array to calculate dot product
+		axes (int,iterable[int]): Axes to calculate dot product
 	Returns:
 		out (array): Dot product
-	'''	
-
-	if not len(a):
-		out = None
-	else:
-		out = a[0]
-		for i in a[1:]:
-			out = dot(out,i)
-	
+	'''
+	if not a:
+		return a
+	out = a[0]
+	for i in a[1:]:
+		out = dot(out,i,axes=axes)
 	return out
-	
 
 @jit
 def inner(a,b):
@@ -5738,7 +8823,7 @@ def inner(a,b):
 	Returns:
 		out (array): Inner product
 	'''	
-	return np.inner(dagger(a),b)
+	return np.inner(conjugate(transpose(a)),b)
 
 @jit
 def outer(a,b):
@@ -5750,8 +8835,7 @@ def outer(a,b):
 	Returns:
 		out (array): Outer product
 	'''	
-	return np.outer(a,dagger(b))
-
+	return np.outer(a,conjugate(transpose(b)))
 
 @jit
 def multiply(a,b):
@@ -5777,7 +8861,6 @@ def divide(a,b):
 	'''
 	return np.divide(a,b)
 
-
 @jit
 def multiplication(a):
 	'''
@@ -5801,19 +8884,6 @@ def multiplication(a):
 
 @jit
 def add(a,b):
-	'''
-	Add arrays elementwise
-	Args:
-		a (array): Array to add
-		b (array): Array to add
-	Returns:
-		out (ndarray): Elementwise addition of arrays
-	'''
-	return np.add(a,b)
-
-
-@jit
-def _addition(a,b):
 	'''
 	Add arrays elementwise
 	Args:
@@ -5851,6 +8921,29 @@ def product(a):
 		out = 0
 	return out
 
+@jit
+def dotr(a,b):
+	'''
+	multiply array by diagonal vector from right a @ diag(b) == a*b[None,:]
+	Args:
+		a (array): Array to multiply
+		b (array): Array to multiply
+	Returns:
+		out (array): Right multiplication of arrays
+	'''
+	return a*b[tuple((*[None]*(a.ndim-1),slice(None)))]
+
+@jit
+def dotl(a,b):
+	'''
+	multiply array by diagonal vector from left diag(b) @ b == a*b[:,None]
+	Args:
+		a (array): Array to multiply
+		b (array): Array to multiply
+	Returns:
+		out (array): Left multiplication of arrays
+	'''
+	return a*b[tuple((slice(None),*[None]*(a.ndim-1)))]
 
 def where(conditions,x=None,y=None):
 	'''
@@ -5986,7 +9079,7 @@ def vtensordot(a,b,axis=0):
 	Returns:
 		out (array): Dot product of array along axis
 	'''
-	return vmap(lambda a: tensordot(a,b,axis))(a)
+	return vmap(lambda a: Classdot(a,b,axis))(a)
 
 @partial(jit,static_argnums=(2,))
 def tensordot(a,b,axis=0):
@@ -6003,14 +9096,14 @@ def tensordot(a,b,axis=0):
 
 
 @jit
-def _tensorprod(a,b):
+def tensorproduct(a,b):
 	'''
 	Tensor (kronecker) product of arrays a and b	
 	Args:
 		a (array): Array to tensorproduct
 		b (array): Array to tensorproduct
 	Returns:
-		out (array): Tensorproduct product of arrays
+		out (array): Classproduct product of arrays
 	'''
 	return np.kron(a,b)
 
@@ -6026,9 +9119,9 @@ def tensorprod(a):
 	'''
 	out = a[0]
 	for i in range(1,len(a)):
-		out = _tensorprod(out,a[i])
+		out = tensorproduct(out,a[i])
 	return out
-	# return forloop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
+	# return forloop(1,len(a),lambda i,out: tensorproduct(out,a[i]),a[0])	
 
 @jit
 def vtensorprod(a):
@@ -6057,7 +9150,7 @@ def ntensorprod(a,n):
 	for i in range(1,n):
 		out = _tensorpod(out,a)
 	return out
-	# return forloop(1,n,lambda i,out: _tensorprod(out,a),a)	
+	# return forloop(1,n,lambda i,out: tensorproduct(out,a),a)	
 
 @jit
 def vntensorprod(a,n):
@@ -6071,8 +9164,15 @@ def vntensorprod(a,n):
 	'''
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
+def einsum(*args,optimize=None,backend=None,**kwargs):
+	# return np.einsum(*args,**kwargs)
+	return opt_einsum.contract(*args,**kwargs,backend=BACKEND)
 
-def einsum(subscripts,*operands,optimize=True,wrapper=None):
+def symbols(index):
+	return opt_einsum.get_symbol(index)
+	# return character[index]
+
+def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 	'''
 	Get optimal summation of axis in array denoted by subscripts
 	Args:
@@ -6084,7 +9184,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
 
-	noperands = subscripts.count(',')+1 if isinstance(subscripts,str) else len(subscripts)-1
+	noperands = subscripts.count(',')+subscripts.count('->')  if isinstance(subscripts,str) else len(operands)
 	operands = operands[:noperands]
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
@@ -6099,26 +9199,64 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)
 
-	if wrapper is not None:
-		if isinstance(subscripts,str):
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
-		else:
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return wrapper(np.einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize),*operands)
+	if callable(optimize):
+		func = optimize
+		if wrapper is not None:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
+			elif len(subscripts)==len(operands):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
 
+		else:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
+			elif len(subscripts)==len(operands):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)			
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
 	else:
-		if isinstance(subscripts,str):
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize):
-				return np.einsum(subscripts,*operands,optimize=optimize)
-		else:
-			@jit
-			def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
-				return np.einsum(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1],optimize=optimize)
+		func = lambda *args,**kwargs: einsum(*args,**kwargs,optimize=optimize)
+		if wrapper is not None:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*operands),*operands)
+			elif len(subscripts)==len(operands):				
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)),*operands)
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1]),*operands)
 
+		else:
+			if isinstance(subscripts,str):
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*operands)
+			elif len(subscripts)==len(operands):				
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)))			
+			else:
+				@jit
+				def einsummation(*operands,func=func,wrapper=wrapper):
+					return func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1])		
 
 
 	if isarray:
@@ -6143,10 +9281,15 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	optimize = optimizers.get(optimize,optimize)
 
 	if isinstance(subscripts,str):
+		# operands = (zeros(shape) for shape in shapes)
+		# optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
+		args = (subscripts,*shapes)
+	elif len(subscripts)==len(shapes):
+		args = (*(j for i in zip(shapes,subscripts) for j in i),)
+	else:
+		args = (*(j for i in zip(shapes,subscripts[:-1]) for j in i),subscripts[-1])
 
-		operands = (zeros(shape) for shape in shapes)
-
-		optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
+	optimize = opt_einsum.contract_expression(*args)
 
 	return optimize
 
@@ -6165,7 +9308,7 @@ def distance(a,b):
 	return norm(a-b,ord=2)
 
 
-if backend in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd','quimb']:
 
 	def slicing(a,start,size):
 		'''
@@ -6300,29 +9443,14 @@ def nonzero(a,axis=None,eps=None):
 	Args:
 		a (array): Array to count non-zero elements
 		axis (int,iterable[int]): Axis to compute non-zero elements
-		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		n (int): Number of non-zero entries
 	'''
 	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,integers) else eps
-	n = np.count_nonzero(abs(a)>=eps,axis=axis)
+	n = np.count_nonzero(absolute(a)>=eps,axis=axis)
 	return n
 
-
-def nonnegative(a,eps=None,normalize=True):
-	'''
-	Return non-negative elements of array, with eps tolerance
-	Args:
-		a (array): Array of elements
-		eps (scalar): Epsilon tolerance, defaults to 0
-		normalize (bool,str): normalize array
-	Returns:
-		a (array): Array of non-negative elements
-	'''
-	eps = 0 if eps is None else eps
-	a = a[a>=eps]
-	a = a/addition(a) if normalize else a
-	return a
 
 def _len_(obj):
 	'''
@@ -6472,7 +9600,7 @@ def commutes(a,b):
 	Returns:
 		commutes (bool): Boolean of a and b commuting
 	'''	
-	return bool(~(commutator(a,b).any()))
+	return bool(~(anything(commutator(a,b))))
 
 @jit
 def anticommutator(a,b):
@@ -6497,7 +9625,7 @@ def anticommutes(a,b):
 	Returns:
 		commutes (bool): Boolean of a and b anticommuting
 	'''	
-	return bool(~(anticommutator(a,b).any()))
+	return bool(~(anything(anticommutator(a,b))))
 
 
 @partial(jit,static_argnums=(1,))
@@ -6512,19 +9640,30 @@ def trace(a,axis=(0,1)):
 	'''	  
 	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
-@partial(jit,static_argnums=(1,))
-def traces(a,axes=((0,1),)):
+
+@jit
+def det(a,**kwargs):
 	'''
-	Calculate partial trace of array
+	Calculate determinant of array
 	Args:
-		a (array): Array to calculate trace
-		axis (iterable[iterable[int]]): Axes to compute trace with respect to
+		a (array): Array to calculate determinant
 	Returns:
-		out (array): Trace of array
-	'''	
-	for axis in sorted(axes,reverse=True):
-		a = trace(a,axis=axis)
-	return a
+		out (array): Determinant of array
+	'''	  
+	return np.linalg.det(a)
+
+
+@jit
+def condition_number(a,**kwargs):
+	'''
+	Calculate condition number of array
+	Args:
+		a (array): Array to calculate condition number
+	Returns:
+		out (array): Condition number of array
+	'''	  
+	return np.linalg.cond(a)
+
 
 @jit
 def rank(a,tol=None,hermitian=False):
@@ -6544,7 +9683,7 @@ def rank(a,tol=None,hermitian=False):
 
 
 @jit
-def abs(a):
+def absolute(a):
 	'''
 	Calculate absolute value of array
 	Args:
@@ -6563,7 +9702,7 @@ def abs2(a):
 	Returns:
 		out (array): Absolute value squared of array
 	'''	
-	return abs(a)**2
+	return absolute(a)**2
 
 @jit
 def real(a):
@@ -6588,6 +9727,27 @@ def imag(a):
 	'''	
 	return np.imag(a)
 
+@jit
+def cmplx(a):
+	'''
+	Make complex array
+	Args:
+		a (array): Array to make complex
+	Returns:
+		out (array): Complex array
+	'''		
+	return a + 0*1j
+
+@jit
+def pstv(a):
+	'''
+	Make positive array
+	Args:
+		a (array): Array to make positive
+	Returns:
+		out (array): positive array
+	'''		
+	return a + 0.
 
 def transpose(a,axes=None):
 	'''
@@ -6622,7 +9782,41 @@ def dagger(a):
 	Returns:
 		out (array): Conjugate transpose
 	'''	
-	return conjugate(transpose(a))
+	return conjugate(transpose(a,(*range(a.ndim//2,a.ndim),*range(a.ndim//2))))
+
+@jit
+def sign(a):
+	'''
+	Calculate sign of array a
+	Args:
+		a (array): Array to compute sign
+	Returns:
+		out (array): Sign of array
+	'''
+	return np.sign(a)
+
+@jit
+def signs(a):
+	'''
+	Calculate sign of array a
+	Args:
+		a (array): Array to compute sign
+	Returns:
+		out (array): Sign of array
+	'''
+	return (a + (a==0))/(absolute(a) + (a==0))
+
+@jit
+def reciprocal(a):
+	'''
+	Calculate reciprocal of array a
+	Args:
+		a (array): Array to compute reciprocal
+	Returns:
+		out (array): Reciprocal of array
+	'''	
+	s = a == 0
+	return (1 - s)/(a + s)
 
 @partial(jit,static_argnums=(1,))
 def sqrtm(a,hermitian=False):
@@ -6639,7 +9833,7 @@ def sqrtm(a,hermitian=False):
 
 	eigenvalues = eigenvalues.astype(a.dtype) if hermitian else eigenvalues
 
-	return dot(eigenvectors*sqrt(eigenvalues),dagger(eigenvectors))
+	return dot(eigenvectors*sqrt(eigenvalues),conjugate(transpose(eigenvectors)))
 
 
 @jit
@@ -7021,18 +10215,6 @@ def expmmcn(x,A,I,v,B,C):
 
 
 @jit
-def sign(a):
-	'''
-	Calculate sign of array a
-	Args:
-		a (array): Array to compute sign
-	Returns:
-		out (array): Sign of array
-	'''
-	return np.sign(a)
-
-
-@jit
 def expmat(a,dtype=None):
 	'''
 	Calculate matrix exponential of array a
@@ -7357,6 +10539,20 @@ def vstack(a):
 	'''
 	return np.vstack(a)
 
+def concat(df,*args,**kwargs):
+	'''
+	Concatenate dataframes
+	Args:
+		df (dataframe): dataframes to concatenate
+		args (iterable): Positional arguments
+		kwargs (dict): Keyword arguments
+	Returns:
+		df (dataframe): Concatenated dataframe
+	'''
+	options = dict(ignore_index=True)
+	options.update({kwarg:kwargs[kwarg] for kwarg in kwargs if kwarg in options})
+	return pd.concat(df,**options)
+
 def roll(a,shift,axis=0):
 	'''
 	Shift array along axis (periodically)
@@ -7442,7 +10638,7 @@ def interleaver(*iterable):
 
 
 @jit
-def difference(a,n=1,axis=-1):
+def difference(a,n=1,axis=-1,**kwargs):
 	'''
 	Get difference of array elements
 	Args:
@@ -7450,7 +10646,7 @@ def difference(a,n=1,axis=-1):
 		n (int): Step of differences
 		axis (int): Axis of differences
 	'''
-	return np.diff(a,n=n,axis=axis)
+	return np.diff(a,n=n,axis=axis,**kwargs)
 
 @jit
 def diag(a):
@@ -7543,7 +10739,7 @@ def take(a,indices,axis):
 	Args:
 		a (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		axis (int,iterable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Sliced array
 	'''
@@ -7570,7 +10766,7 @@ def put(a,values,indices,axis):
 		a (array): Array to put
 		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		axis (int,iterable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Put array
 	'''
@@ -7630,115 +10826,71 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
-def sortby(iterable,key=None,reverse=False):
+def slicer(iterable,size):
 	'''
-	Sort dictionary by keys
+	Get slices of iterable
+	Args:
+		iterable (iterable): Iterables to slice
+		size (int): Slice size of iterable
+	Returns:
+		slice (generator): slice of iterable
+	'''
+	if not size:
+		yield iterable
+	else:
+		def iterate(item,items):
+			yield item
+			yield from itertools.islice(items,size-1)
+		items = iter(iterable)
+		while True:
+			item = next(items,None)
+			if item is None:
+				break
+			yield iterate(item,items)
+
+def sortby(iterable,key=None,options=None):
+	'''
+	Sort dictionary
 	Args:
 		iterable (dict): dictionary to be sorted
-		key (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
-		reverse (bool): Reverse sort
+		key (str,callable): sort iterable, with signature key(iterable,sort=True,options=None) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		options (dict): options
 	Returns:
-		iterable (dict[key,value]): Sorted iterable
+		iterable (dict): Sorted iterable keys
 	'''
+	
+	key = load(key) if isinstance(key,str) else key if callable(key) else None
 
-	def parse(value):
-		if isinstance(value,iterables):
-			try:
-				return tuple((parse(i) for i in value))
-			except:
-				return asscalar(value)
-		else:
-			return value
+	key = layout if not callable(key) else key
 
-	def get(value,key,iterable):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
-		return value
+	key = key(iterable=iterable,sort=True,options=options)
 
-	reverse = False if not reverse else True
-
-	if key is None:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(key) or not isinstance(key,iterables):
-		func = load(key,default=None) if isinstance(key,str) else None
-		key = func if func is not None else key
-		key = lambda value,key=key,iterable=iterable: parse(get(iterable[value],key,iterable))
-	elif isinstance(key,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in key]
-		key = [item if function is None else function for item,function in zip(key,func)]
-		key = lambda value,key=key,iterable=iterable: parse([get(iterable[value],item,iterable) for item in key])
-	else:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-
-	iterable = {value: iterable[value] for value in sorted(iterable,key=key,reverse=reverse)}
+	iterable = [index for index in sorted(iterable,key=key)]
 
 	return iterable
 
-def groupby(iterable,key=None,sort=None,reverse=False):
+def groupby(iterable,key=None,options=None):
 	'''
-	Group iterable by keys, after sorting by key or sort
+	Group dictionary
 	Args:
-		iterable (iterable): Iterable to be grouped
-		key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value,iterable)
-		sort (object,iterable[object],callable,iterable[callable]): sort iterable by key, iterable of keys, callable, or iterable of callables, with signature sort(value,iterable)
-		reverse (bool): Reverse sort	
+		iterable (iterable): dictionary to be grouped
+		key (str,callable): group iterable, with signature key(iterable,group=True,sort=True,options=None) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		options (dict): Additional keyword arguments
 	Returns:
-		iterable (iterable[group]): Grouped iterable with group keys and iterable values 
+		iterable (iterable[group]): grouped iterable key groups
 	'''
 
-	def parse(value):
-		if isinstance(value,iterables):
-			try:
-				return tuple((parse(i) for i in value))
-			except:
-				return asscalar(value)
-		else:
-			return value
+	iterable = {index: iterable[index] for index in sortby(iterable,key=key,options=options)}
 
-	def get(value,key,iterable):
-		value = getattr(value,key,value.get(key)) if not callable(key) else key(value,iterable)
-		return value
+	key = load(key) if isinstance(key,str) else key if callable(key) else None
 
-	reverse = False if not reverse else True
+	key = layout if not callable(key) else key
 
-	if key is None:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(key) or not isinstance(key,iterables):
-		func = load(key,default=None) if isinstance(key,str) else None
-		key = func if func is not None else key
-		key = lambda value,key=key,iterable=iterable: parse(get(value,key,iterable))
-	elif isinstance(key,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in key]
-		key = [item if function is None else function for item,function in zip(key,func)]
-		key = lambda value,key=key,iterable=iterable: parse([get(value,item,iterable) for item in key])
-	else:
-		key = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
+	key = key(iterable=iterable,group=True,options=options)
 
-	if sort is None:
-		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-	elif callable(sort) or not isinstance(sort,iterables):
-		func = load(sort,default=None) if isinstance(sort,str) else None
-		sort = func if func is not None else sort
-		sort = lambda value,sort=sort,iterable=iterable: parse(get(value,sort,iterable))
-	elif isinstance(sort,iterables):
-		func = [load(item,default=None) if isinstance(item,str) else None for item in sort]
-		sort = [item if function is None else function for item,function in zip(sort,func)]
-		sort = lambda value,sort=sort,iterable=iterable: parse([get(value,item,iterable) for item in sort])
-	else:
-		sort = lambda value,iterable=[id(value) for value in iterable]: list(iterable).index(id(value))
-
-	sort = key if sort is None else sort
-
-	iterable = sorted(iterable,key=sort,reverse=reverse)
-
-	if key is not None:
-		iterable = itertools.groupby(iterable,key=key)
-	else:
-		iterable = ((index,(value,)) for index,value in enumerate(iterable))
+	iterable = [[*group] for index,(name,group) in enumerate(itertools.groupby(iterable,key=key))]
 
 	return iterable
-
-
-
 
 
 def convert(iterable,type=list,types=(list,),default=None):
@@ -7842,7 +10994,7 @@ def moveaxis(a,source,destination):
 	Args:
 		a (array): Array to be moved
 		source (int,iterable[int]): Initial axis
-		destination (int,interable[int]): Final axis
+		destination (int,iterable[int]): Final axis
 	Returns:
 		out (array): Array with moved axis
 	'''
@@ -7880,19 +11032,19 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 		transformation: (s,xyz,uvw) ->
 			split.func-> (xyz,uvw,s)
 			split.reshape-> (x,y,z,u,v,w,s)
-		 	split.transpose-> (x,u,y,v,z,w,s)
-		 	group.func-> (x,u,y,v,z,w,s)
-		 	group.transpose-> (z,x,w,u,y,v,s)
-		 	group.reshape-> (zx,wu,y,v,s)
+			split.transpose-> (x,u,y,v,z,w,s)
+			group.func-> (x,u,y,v,z,w,s)
+			group.transpose-> (z,x,w,u,y,v,s)
+			group.reshape-> (zx,wu,y,v,s)
 
 		~transformation: (zx,wu,y,v,s) ->
 			group.reshape-> (z,x,w,u,y,v,s)
-		 	group.transpose-> (x,u,y,v,z,w,s)
-		 	group.func-> (x,u,y,v,z,w,s)
-		 	split.transpose-> (x,y,z,u,v,w,s)
-		 	split.reshape-> (xyz,uvw,s)
+			group.transpose-> (x,u,y,v,z,w,s)
+			group.func-> (x,u,y,v,z,w,s)
+			split.transpose-> (x,y,z,u,v,w,s)
+			split.reshape-> (xyz,uvw,s)
 			split.func-> (s,xyz,uvw)
-				 					 	
+										
 
 	Args:
 		a (array): array to reshape into subspaces
@@ -7938,74 +11090,82 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			shape = {axis: [d]*n for axis in range(ndim)}
 
 		shape,shapes = ({axis: shape[axis] for axis in shape if not isinstance(shape[axis],integers)},
-					    {axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)})
+						{axis: shape[axis] for axis in shape if isinstance(shape[axis],integers)})
 
 		ndim = len(shape)
 		ndims = len(shapes)
 
 		n = max(len(shape[axis]) for axis in shape)
-		
-		sort = [*[axis for axis in shape],*[axis for axis in shapes]]
 
-		shape,shapes = ({i: shape[axis] for i,axis in enumerate(shape)},
-					    {ndim+i: shapes[axis] for i,axis in enumerate(shapes)})
+		sort = [*[axis for axis in shapes],*[axis for axis in shape]]
+
+		shape,shapes = ({ndims+i: shape[axis] for i,axis in enumerate(shape)},
+						{i: shapes[axis] for i,axis in enumerate(shapes)})
 
 		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
-		axes = [list(sorted(set(axis),key=lambda i: axis.index(i))) for axis in axes if axis]
+		axes = [sorted(set(axis),key=lambda i: axis.index(i)) for axis in axes if axis]
 		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
 	
+		axes = [*[[i for i in axis] for axis in axes]]
+		shape = {**{axis:shape[axis] for axis in shape}}
+		shapes = {**{axis:shapes[axis] for axis in shapes}}
+		ndim = ndim
+		ndims = ndims
+		n = n
+		sort = [*[i for i in sort]]
+
 		return axes,shape,shapes,ndim,ndims,n,sort
 
 
 	if execute:
 
 		def split(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[axis][i] for axis in shape for i in range(n)]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*n for i in range(n) for j in range(ndim)]]
 			func = lambda a: transpose(a,sort)
 			return transpose(reshape(func(a),shape),axes)
 
 		def group(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
-			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[ndims+i][j] for j in axis) for axis in axes for i in range(ndim)]]
+			axes = [*[i for i in range(ndims)],*[ndims+j*ndim+i for axis in axes for i in range(ndim) for j in axis]]
 			func = lambda a: a
 			return reshape(transpose(func(a),axes),shape)
 
 		def _split(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[axis][i] for i in range(n)) for axis in shape ]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*ndim for i in range(ndim) for j in range(n)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return func(reshape(transpose(a,axes),shape))
 
 		def _group(a,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
-			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[ndims+i][j] for axis in axes for i in range(ndim) for j in axis]]
+			axes = [*[i for i in range(ndims)],*[ndims+[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)]]
 			func = lambda a: a
 			return func(transpose(reshape(a,shape),axes))
 
 	else:
 
 		def split(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[axis][i] for axis in shape for i in range(n)],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*n for i in range(n) for j in range(ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[axis][i] for axis in shape for i in range(n)]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*n for i in range(n) for j in range(ndim)]]
 			func = lambda a: reshape(transpose(a,sort))
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (transpose(reshape(func(a if not callable(obj) else obj(a)),shape),axes)))
 
 		def group(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[i][j] for j in axis) for axis in axes for i in range(ndim)],*[shapes[axis] for axis in shapes]]
-			axes = [*[j*ndim+i for axis in axes for i in range(ndim) for j in axis],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[ndims+i][j] for j in axis) for axis in axes for i in range(ndim)]]
+			axes = [*[i for i in range(ndims)],*[ndims+j*ndim+i for axis in axes for i in range(ndim) for j in axis]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (reshape(transpose(func(obj(a)),axes),shape)))
 
 		def _split(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[prod(shape[axis][i] for i in range(n)) for axis in shape ],*[shapes[axis] for axis in shapes]]
-			axes = [*[i+j*ndim for i in range(ndim) for j in range(n)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[prod(shape[axis][i] for i in range(n)) for axis in shape ]]
+			axes = [*[i for i in range(ndims)],*[ndims+i+j*ndim for i in range(ndim) for j in range(n)]]
 			func = lambda a: transpose(a,[sort.index(i) for i in range(len(sort))])
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(reshape(transpose(obj(a),axes),shape))))
 
 		def _group(obj,axes,shape,shapes,ndim,ndims,n,sort):
-			shape = [*[shape[i][j] for axis in axes for i in range(ndim) for j in axis],*[shapes[axis] for axis in shapes]]
-			axes = [*[[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)],*[i for i in range(n*ndim,n*ndim+ndims)]]
+			shape = [*[shapes[axis] for axis in shapes],*[shape[ndims+i][j] for axis in axes for i in range(ndim) for j in axis]]
+			axes = [*[i for i in range(ndims)],*[ndims+[j*ndim+i for axis in axes for i in range(ndim) for j in axis].index(i) for i in range(n*ndim)]]
 			func = lambda a: a
 			return (lambda a,axes=axes,shape=shape,func=func,obj=obj: (func(transpose(reshape(a if not callable(obj) else obj(a),shape),axes))))
 
@@ -8155,6 +11315,18 @@ def edging(data,constants=None,dtype=None,**kwargs):
 	return data
 
 
+def mesh(shape):
+	'''
+	Get mesh with shape
+	Args:
+		shape (int,iterable[int]): Shape of mesh
+	Returns:
+		data (array): Mesh with shape shape
+	'''
+	integer = isinstance(shape,int)
+	shape = [shape] if integer else shape
+	data = reshape(transpose(np.meshgrid([arange(i) for i in shape])),(-1,len(shape)) if integer else -1)
+	return data
 
 def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	'''
@@ -8240,6 +11412,25 @@ def isinstances(obj,instances,reverse=False,args=(),kwargs={}):
 			pass
 	return boolean
 
+def allthing(a):
+	'''
+	Check if all of array a is True
+	Args:
+		a (array[bool]): Array of booleans
+	Returns:
+		out (bool): Array all of a is True
+	'''
+	return a.all()	
+
+def anything(a):
+	'''
+	Check if any of array a is True
+	Args:
+		a (array[bool]): Array of booleans
+	Returns:
+		out (bool): Array any of a is True
+	'''
+	return a.any()	
 
 # @partial(jit,static_argnums=(2,3,4,))
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
@@ -8313,7 +11504,7 @@ def is_diag(a):
 	'''	
 	n,m = a.shape
 	assert n == m
-	return ~a.ravel()[:-1].reshape(n-1,m+1)[:,1:].any()
+	return ~anything(reshape(ravel(a)[:-1],(n-1,m+1))[:,1:])
 
 
 
@@ -8602,8 +11793,6 @@ def is_hermitian(obj,*args,**kwargs):
 		out (bool): If object is hermitian
 	'''
 	try:
-		# out = cholesky(obj)
-		# out = (True and not is_naninf(out).any()) or allclose(obj,dagger(obj))
 		out = allclose(obj,dagger(obj))
 	except:
 		out = False
@@ -8623,7 +11812,10 @@ def is_unitary(obj,*args,**kwargs):
 	try:
 		if obj.ndim == 1:
 			out = allclose(ones(1,dtype=obj.dtype),dot(obj,dagger(obj)))
+		elif obj.ndim == 2:
+			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
 		else:
+			obj = reshape(obj,(prod(obj.shape[:obj.ndim//2]),prod(obj.shape[obj.ndim//2:])))
 			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
 	except:
 		out = False
@@ -8702,17 +11894,15 @@ def generator(stop=None):
 	Generator wrapper to restart stop number of times
 	'''
 	def wrap(func):
-		def set(*args,**kwargs):
-			return func(*args,*kwargs)
 		@wraps(func)
 		def wrapper(*args,stop=stop,**kwargs):
-			generator = set(*args,**kwargs)
+			generator = func(*args,**kwargs)
 			while stop:
 				try:
 					yield next(generator)
 				except StopIteration:
 					stop -= 1
-					generator = set(*args,**kwargs)
+					generator = func(*args,**kwargs)
 					yield next(generator)
 		return wrapper
 	return wrap
@@ -8889,7 +12079,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 		'''
 		Get all list of dictionaries of all permutations of sub-dictionaries
 		'''
-		return [{k:d[k] for d in dicts for k in d} for dicts in itertools.product(*dictionaries)]
+		return [{k:d[k] for d in dictionary for k in d} for dictionary in itertools.product(*dictionaries)]
 
 	def nester(keys,values):
 		'''
@@ -9163,7 +12353,7 @@ def extrema(x,y,_x=None,**kwargs):
 
 	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 
-	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
+	indices = argsort(absolute(interp(x,y,**kwargs)(_x)))
 
 	return indices
 
@@ -9280,6 +12470,13 @@ def replace(iterable,elements):
 	return iterable
 
 
+def flatten(iterable,types=iterables):
+	if not isinstance(iterable,types):
+		yield from [iterable]
+	else:
+		for obj in iterable:
+			yield from [obj] if not isinstance(obj,types) else flatten(obj,types=types)
+
 def to_eval(a,represent=True):
 	'''
 	Convert string to python object
@@ -9314,6 +12511,19 @@ def to_repr(a,represent=True):
 	'''
 	return repr(a) if represent else a
 
+
+def to_slice(a,dtype=None,exceptions=(str,),**kwargs):
+	'''
+	Convert iterable to slice type
+	Args:
+		a (iterable): Iterable to convert to iterable
+		dtype (datatype): Type of iterable
+		exceptions (tuple[datatype]): Exception types not to update
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (slice): Slice representation of iterable
+	'''
+	return map(lambda i:int(i) if i is not None else i,a)
 
 def to_iterable(a,dtype=None,exceptions=(str,),**kwargs):
 	'''
@@ -9420,6 +12630,21 @@ def to_int(a,**kwargs):
 		integer = a
 	return integer
 
+def to_float(a,**kwargs):
+	'''
+	Convert object to float
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		floating (float): float representation of object
+	'''
+
+	try:
+		floating = float(a)
+	except:
+		floating = a
+	return floating
 
 def to_str(a,**kwargs):
 	'''
@@ -9510,7 +12735,7 @@ def to_index(position,shape):
 	return index
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=True,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -9520,6 +12745,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
+		strip (bool): Remove trailing zeros in float representation
 		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
@@ -9532,6 +12758,11 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 	if scilimits is None:
 		scilimits = [-1,1]
+
+	if strip and decimals > 1:
+		stripper = lambda string: string.rstrip('0')
+	else:
+		stripper = lambda string: string
 
 	if not is_number(number):
 		return str(number)
@@ -9561,7 +12792,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	if zero and number == 0:
 		string = r'%d%%s%%s%%s'%(number)
 
-	elif is_int(number) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
+	elif is_int(number) and (scilimits[0] < scilimits[1]) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
 		string = r'%s%%s%%s%%s'%(str(number))
 
 	elif is_naninf(number):
@@ -9576,23 +12807,39 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		exp = str(int(string[1])*basechange)
 
 		if int(exp) in range(*scilimits):
-			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
+			flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
 			string = r'%s%%s%%s%%s'%(flt)
 		else:
-			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
-				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
-				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+			string = r'%s%s%s%%s%%s%%s'%(
+				stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
+				r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+				'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
+			error = '%0.*e'%(decimals-1,error)
+			error = error.split('e')
+			basechange = log(10)/log(base)
+			basechange = int(basechange) if int(basechange) == basechange else basechange
+			flt = error[0]
+			exp = str(int(error[1])*basechange)
 			if int(exp) in range(*scilimits):
-				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+				flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
+				error = r'%s'%(flt)
 			else:
 				error = r'%s%s%s'%(
-					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-					r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
-					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
+					stripper('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else ''),
+					r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+					'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 					)
+			# if int(exp) in range(*scilimits):
+			# 	error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			# else:
+			# 	error = r'%s%s%s'%(
+			# 		'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
+			# 		r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
+			# 		'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
+			# 		)
 
 	if error is None:
 		error = ''
@@ -9623,7 +12870,7 @@ def texify(string,usetex=False):
 	'''
 
 	if isinstance(string,str):
-		string = '\\textrm{%s}'%(string)
+		string = '%s'%(string)
 	else:
 		string = str(string)
 
@@ -9653,16 +12900,16 @@ def uncertainty_propagation(x,y,xerr,yerr,operation):
 
 	if operation in ['+','plus']:
 		func = lambda x,y: x+y
-		error = lambda x,y: sqrt((xerr*1)**2+(yerr*1)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*1)**2+(yerr*1)**2)
 	elif operation in ['-','minus']:
 		func = lambda x,y: x-y
-		error = lambda x,y: sqrt((xerr*1)**2+(yerr*-1)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*1)**2+(yerr*-1)**2)
 	elif operation in ['*','times']:
 		func = lambda x,y: x*y
-		error = lambda x,y: sqrt((xerr*y)**2+(yerr*x)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr*y)**2+(yerr*x)**2)
 	elif operation in ['/','divides']:
 		func = lambda x,y: x+y
-		error = lambda x,y: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
+		error = lambda x,y,xerr,yerr: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
 
 	out,err = func(x,y),error(x,y)
 
@@ -9904,6 +13151,43 @@ def projector(i,shape):
 
 	return projector
 
+
+def histogram(a,bins=None,range=None,scale=None,base=None,**kwargs):
+	'''
+	Get histogram of array
+	Args:
+		a (array): array of data
+		bins (int,iterable): bins of data, default 100
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (array): bins
+		y (array): counts
+	'''
+
+	if bins is None or isinstance(bins,integers):
+		bins = 100 if bins is None else bins
+		bins += 1
+		if scale is None or scale in ['linear']:
+			base = 10 if base is None else base
+			range = [0,1] if range is None else range
+			bins = linspace(*range,bins)[:]
+		elif scale in ['log','symlog']:
+			base = 10 if base is None else base
+			range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
+			bins = logspace(*range,bins,base=base)
+
+	y,x = np.histogram(asarray(a),bins=bins,range=range,**kwargs)
+
+	if scale is None or scale in ['linear']:
+		x = array((x[:-1]+x[1:])/2)
+	elif scale in ['log','symlog']:
+		x = array((x[:-1]*x[1:])**(1/2))
+
+	return x,y
+
 def bloch(state,path=None):
 	'''
 	Plot state on Bloch Sphere
@@ -9983,3 +13267,4 @@ def bloch(state,path=None):
 
 
 from src.io import load,dump,exists
+from src.system import layout,Dictionary

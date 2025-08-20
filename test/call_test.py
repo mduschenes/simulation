@@ -222,5 +222,6 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
+	test_touch(path,tol)
 	# test_ls(path,tol)
-	test_call(path,tol)
+	# test_call(path,tol)

@@ -23,7 +23,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -329,7 +329,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -612,11 +612,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -651,7 +647,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -934,11 +930,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -973,7 +965,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -1249,11 +1241,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1288,7 +1276,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -1564,11 +1552,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1603,7 +1587,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -1879,11 +1863,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -1918,7 +1898,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -2194,11 +2174,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2233,7 +2209,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -2509,11 +2485,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2548,7 +2520,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -2825,11 +2797,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -2864,7 +2832,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -3059,6 +3027,23 @@
 					1
 				]
 			},
+			"set_ylim": {
+				"ymin": -0.01,
+				"ymax": 0.21
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.04,
+					0.08,
+					0.12,
+					0.16,
+					0.20
+				]
+			},     			
 			"yaxis.set_major_formatter": {
 				"ticker": {}
 			},
@@ -3140,11 +3125,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3179,7 +3160,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -3455,11 +3436,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3494,7 +3471,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -3506,7 +3483,7 @@
 							"yerr": "src.functions.func_yerr"
 						},
 						"analysis":{
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -3696,8 +3673,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -3793,11 +3770,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -3832,7 +3805,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
@@ -3846,7 +3819,7 @@
 							"yerr": null							
 						},
 						"analysis":{
-							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["seeding"],"dependent":["discord.quantum"]}}							
+							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -3926,19 +3899,22 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
 							"max_bond": null
 						},
 						"wrapper": {
-							"discord.quantum": null,
+							"mutual.quantum": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr",
 							"y": null,
 							"yerr": null							
 						},
+						"analysis":{
+							"mutual.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}							
+						},								
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -4012,19 +3988,22 @@
 				},
 				{
 					"x": "M",
-					"y": "mutual.quantum",
+					"y": "mutual.measure",
 					"label": {
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
 							"max_bond": null
 						},
+						"analysis":{
+							"mutual.measure":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}							
+						},		
 						"wrapper": {
-							"mutual.quantum": "src.functions.func_mutual_measure",
+							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr",
 							"y": null,
@@ -4213,8 +4192,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -4328,11 +4307,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4367,7 +4342,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -4643,11 +4618,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4682,7 +4653,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -4958,11 +4929,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -4997,7 +4964,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -5280,11 +5247,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5319,7 +5282,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -5602,11 +5565,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5641,7 +5600,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -5917,11 +5876,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -5956,7 +5911,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -6232,11 +6187,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6269,7 +6220,7 @@
 				"label": {
 					"label": {
 						"N": null,
-						"cyclic": null,
+						"scheme": null,
 						"noise.parameters": null
 					},
 					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"max_bond":null}},
@@ -6287,7 +6238,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -6560,11 +6511,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6598,7 +6545,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -6871,11 +6818,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -6909,7 +6852,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -7178,11 +7121,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7216,7 +7155,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -7489,11 +7428,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7527,7 +7462,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -7801,11 +7736,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -7839,7 +7770,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -8112,11 +8043,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8150,7 +8077,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -8423,11 +8350,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8461,7 +8384,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -8646,8 +8569,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -8754,11 +8677,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -8792,7 +8711,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -9065,11 +8984,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9103,7 +9018,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -9376,11 +9291,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9414,7 +9325,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -9491,7 +9402,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -9890,11 +9801,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -9934,7 +9841,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -10011,7 +9918,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -10410,11 +10317,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -10453,7 +10356,7 @@
 				"label": {
 					"label": {
 						"N": null,
-						"cyclic": null,
+						"scheme": null,
 						"max_bond": null
 					},
 					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"noise.parameters":null}},
@@ -10471,7 +10374,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -10753,11 +10656,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -10791,7 +10690,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -11073,11 +10972,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11111,7 +11006,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -11393,11 +11288,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11431,7 +11322,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -11714,11 +11605,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -11752,7 +11639,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -12034,11 +11921,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12072,7 +11955,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -12354,11 +12237,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12392,7 +12271,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -12586,8 +12465,8 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 5.1
+				"ymin": -0.5,
+				"ymax": 5.5
 			},
 			"set_ynbins": {
 				"nbins": 6
@@ -12694,11 +12573,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -12732,7 +12607,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -13014,11 +12889,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13052,7 +12923,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"max_bond": null
 						},
 						"analysis": {
@@ -13334,11 +13205,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13372,7 +13239,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -13645,11 +13512,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13683,7 +13546,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"analysis": {
@@ -13956,11 +13819,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -13995,7 +13854,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -14290,11 +14149,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14329,7 +14184,7 @@
 						"label": {
 							"N": null,
 							"max_bond": null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
@@ -14612,11 +14467,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14867,11 +14718,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -14906,7 +14753,7 @@
 						"label": {
 							"N": null,
 							"max_bond":null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"wrapper":{
@@ -14926,7 +14773,7 @@
 						},
 						"legend": {
 							"include":{"M":null,"max_bond":null,"rank":null},
-							"exclude":{"M":null,"cyclic":null}
+							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
 							0,
@@ -15005,7 +14852,7 @@
 						"label": {
 							"N": null,
 							"max_bond":null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"wrapper":{
@@ -15025,7 +14872,7 @@
 						},
 						"legend": {
 							"include":{"M":null,"max_bond":null,"rank":null},
-							"exclude":{"M":null,"cyclic":null}
+							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
 							0,
@@ -15343,11 +15190,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -15384,7 +15227,7 @@
 							"N": null,
 							"M": null,
 							"max_bond":null,							
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.quantum@"
 						},
@@ -15402,7 +15245,7 @@
 						},
 						"legend": {
 							"include":{"M":null,"rank":null},
-							"exclude":{"cyclic":null}
+							"exclude":{"scheme":null}
 						},
 						"slice": [
 							0,
@@ -15658,11 +15501,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -15699,7 +15538,7 @@
 							"N": null,
 							"M": null,
 							"max_bond":null,							
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.classical@"
 						},
@@ -15717,7 +15556,7 @@
 						},
 						"legend": {
 							"include":{"M":null,"rank":null},
-							"exclude":{"cyclic":null}
+							"exclude":{"scheme":null}
 						},
 						"slice": [
 							0,
@@ -15973,11 +15812,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -16012,7 +15847,7 @@
 						"label": {
 							"N": null,
 							"max_bond":null,
-							"cyclic": null,
+							"scheme": null,
 							"noise.parameters": null
 						},
 						"wrapper":{
@@ -16030,7 +15865,7 @@
 						},
 						"legend": {
 							"include":{"M":null,"max_bond":null},
-							"exclude":{"M":null,"cyclic":null}
+							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
 							0,
@@ -16351,11 +16186,7 @@
 			},
 			"share": {
 				"ax": {
-					"legend": {
-						"title": "bottom_right",
-						"handles": "bottom_right",
-						"labels": "bottom_right"
-					},
+					"legend": "bottom_right",
 					"set_title": "top",
 					"set_xlabel": "bottom",                    
 					"set_ylabel": "left",
@@ -16366,5 +16197,1597 @@
 				}
 			}
 		}
+	},
+	"M.array.kurtosis.M.noise.parameters.N": {
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "M",
+					"y": "array.kurtosis",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond": null,
+							"scheme": null,
+							"noise.parameters": null
+						},
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"array.kurtosis":{"src.functions.func_kurtosis":{"attr":"array"}},
+							"y": "src.functions.func_y_scale",
+							"yerr": "src.functions.func_yerr_scale"							
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
+						]
+					},
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel":"\\textrm{Probability Kurtosis} ~~ \\kappa(p)"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Depth} ~~ M$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "linear"
+			},
+			"set_xlim": {
+				"xmin": -5,
+				"xmax": 55
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xticks": {
+				"ticks": [
+					0,
+					10,
+					20,
+					30,
+					40,
+					50
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]
+			},   			
+			"yaxis.set_major_formatter": {
+				"ticker": {}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"ncol": 1,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}				
+	},
+	"M.state.kurtosis.M.noise.parameters.N": {
+		"fig": {
+			"set_size_inches": {
+				"w": 40,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "M",
+					"y": "state.kurtosis",
+					"label": {
+						"label": {
+							"N": null,
+							"max_bond": null,
+							"scheme": null,
+							"noise.parameters": null
+						},
+						"labels": {
+							"max_bond": null
+						},
+						"wrapper": {
+							"state.kurtosis":{"src.functions.func_kurtosis":{"attr":"state"}},
+							"y": "src.functions.func_y_scale",
+							"yerr": "src.functions.func_yerr_scale"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": [
+								"max_bond"
+							]
+						}
+					},
+					"alpha": {
+						"@N@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@max_bond@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",							
+							"2",
+							"3",
+							"4"
+						]
+					},
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,					
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel":"\\textrm{State Kurtosis} ~~ \\kappa(\\rho)"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Depth} ~~ M$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "linear"
+			},
+			"set_xlim": {
+				"xmin": -5,
+				"xmax": 55
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xticks": {
+				"ticks": [
+					0,
+					10,
+					20,
+					30,
+					40,
+					50
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
+				]
+			},
+			"yaxis.set_major_formatter": {
+				"ticker": {}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"ncol": 1,
+				"keep": "middle",
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
+	"None.array.M.noise.parameters": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 16
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": null,
+					"y": "array",
+					"label": {
+						"label": {
+							"N": null,
+							"M": "$0,10,25,50$",
+							"max_bond":null,							
+							"scheme": null,
+							"noise.parameters": null
+						},
+						"wrapper":{
+							"y":{"src.functions.func_array":{"eps":1e-15}}
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":{"M":null},
+							"exclude":{"scheme":null}
+						},
+						"indexing":1,
+						"slice": [
+							0,
+							2000,
+							null
+						]
+					},
+					"alpha": {
+						"@M@": [
+							0.4,
+							0.6,
+							0.8,
+							1
+						]
+					},
+					"marker": {
+						"@M@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"linestyle": "-",
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}			                    
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel": "$\\textrm{Probability}~~ p_{\\mu}$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Probability Index} ~~ \\mu$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xlim":{"xmin":-15,"xmax":270},
+			"set_xticks":{"ticks":[0,50,100,150,200,250]},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-25,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":5e-6,"ymax":2e0},
+			"set_yticks":{"ticks":[1e-5,1e-4,1e-3,1e-2,1e-1,1e0]},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {}
+				}
+			},
+			"yaxis.set_minor_locator": {
+				"ticker": {
+					"LogLocator": {
+						"base": 10.0,
+						"subs": [
+							0.2,
+							0.3,
+							0.4,
+							0.5,
+							0.6,
+							0.7,
+							0.8,
+							0.9
+						],
+						"numticks": 100
+					}
+				}
+			},
+			"yaxis.set_minor_locator":null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 0,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.15,
+					0.395
+				],
+				"set_color": "grey",
+				"keep":["marker","linestyle","alpha"],
+				"ncol": 1,
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
+	"None.state.M.noise.parameters": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 16
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": null,
+					"y": "state",
+					"label": {
+						"label": {
+							"N": null,
+							"M": "$0,10,25,50$",
+							"max_bond":null,							
+							"scheme": null,
+							"noise.parameters": null
+						},
+						"wrapper":{
+							"y":{"src.functions.func_state":{"eps":1e-15}}
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":{"M":null},
+							"exclude":{"scheme":null}
+						},
+						"indexing":1,
+						"slice": [
+							0,
+							2000,
+							null
+						]
+					},
+					"alpha": {
+						"@M@": [
+							0.4,
+							0.6,
+							0.8,
+							1
+						]
+					},
+					"marker": {
+						"@M@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"linestyle": "-",
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}			                    
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N"
+			},
+			"set_ylabel": {
+				"ylabel": "\\textrm{State} ~~ \\rho_{\\sigma\\sigma}$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{State Index} ~~ \\sigma$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_xlim":{"xmin":-15,"xmax":270},
+			"set_xticks":{"ticks":[0,50,100,150,200,250]},
+			"set_xnbins": {
+				"nbins": 5
+			},
+			"set_xlim":{"xmin":-2,"xmax":18},
+			"set_xticks":{"ticks":[0,4,8,12,16]},			
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":1e-25,"ymax":1e1},
+			"set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim":{"ymin":5e-6,"ymax":2e0},
+			"set_yticks":{"ticks":[1e-5,1e-4,1e-3,1e-2,1e-1,1e0]},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {}
+				}
+			},
+			"yaxis.set_minor_locator": {
+				"ticker": {
+					"LogLocator": {
+						"base": 10.0,
+						"subs": [
+							0.2,
+							0.3,
+							0.4,
+							0.5,
+							0.6,
+							0.7,
+							0.8,
+							0.9
+						],
+						"numticks": 100
+					}
+				}
+			},
+			"yaxis.set_minor_locator":null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 0,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
+				"set_color": "grey",
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.15,
+					0.395
+				],
+				"set_color": "grey",
+				"keep":["marker","linestyle","alpha"],
+				"ncol": 1,
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}		
+	},
+	"hist.array.M.noise.parameters": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 32
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.4
+			},
+			"close": {}
+		},
+		"ax": {
+			"hist": [
+				{
+					"x": null,
+					"y": "array",
+					"label": {
+						"label": {
+							"N": null,
+							"M": null,
+							"max_bond":null,							
+							"scheme": null,
+							"noise.parameters": null
+						},
+                        "func": {
+                            "stat": {
+                                "y": {
+                                    "": "src.functions.func_samples",
+                                    "err": "src.functions.func_samples_err"
+                                }
+                            }
+                        },
+						"analysis":{
+							"array":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":null,"dependent":["array"]}}							
+						},  
+						"analysis":{},                      
+						"wrapper":{
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include":{"M":null},
+							"exclude":{"scheme":null}
+						},
+						"indexing":1,
+						"slice": null
+					},
+					"obj":null,
+					"plots":{"errorbar":"label"},
+					"plots":false,
+					"bins":1000,
+					"range":[0,1],
+					"density":"probability",
+					"log":true,
+					"alpha": {
+						"@M@": [
+							0.4,
+							0.6,
+							0.8,
+							1
+						]
+					},
+					"alpha.errorbar": {
+						"@M@": [
+							0.4,
+							0.6,
+							0.8,
+							1
+						]
+					},
+					"marker.errorbar": {
+						"@M@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"markersize.errorbar": 10,
+					"linestyle.errorbar": "",
+					"elinewidth.errorbar": 6,
+					"capsize.errorbar": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"color.errorbar": "black",
+					"ecolor.errorbar": "black"
+				}			                    
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"share":true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						4
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"labelpad": 10,
+					"size": 40
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0.0001,
+						0.001,
+						0.01,
+						0.1,
+						1
+					],
+					"size": 40
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 40,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_title": {
+				"label": "N",
+				"size": 40
+			},
+			"set_ylabel": {
+				"ylabel": "$\\textrm{Count}$",
+				"size": 40
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Probability}~~ p$",
+				"size": 40
+			},			
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 40
+			},
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-7,
+				"xmax": 2e0
+			},
+			"set_xnbins": {
+				"nbins": 4
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-7,
+				"ymax": 2e0
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-6,
+					1e-4,
+					1e-2,
+					1e0
+				]
+			},	
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-17,
+				"xmax": 2e0
+			},
+			"set_xnbins": {
+				"nbins": 5
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},
+			"set_xticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				],
+				"size": 36
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-17,
+				"ymax": 2e0
+			},
+			"set_ynbins": {
+				"nbins": 4
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				]
+			},	
+			"set_yticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-8,
+					1e-4,
+					1e0
+				],
+				"size": 36
+			},											
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 10}
+				}
+			},
+			"xaxis.set_minor_locator": null,
+			"xaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 10}
+				}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},						
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 25,
+				"fontsize": 25,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 25
+				},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
+				"markerscale": 2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.15,
+					0.395
+				],
+				"set_color": "black",
+				"set_linestyle": "-",
+				"set_alpha": 0.5,
+				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.3}},
+				"keep":["marker","linestyle","alpha"],
+				"ncol": 1,
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 40
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",                    
+					"set_xticks": true,                    
+					"set_xticklabels": true,                    
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": true,
+					"set_colorbar": "right"
+				}
+			}
+		}		
 	}
+
 }

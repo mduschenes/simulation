@@ -53,7 +53,7 @@
 
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["phase"],
-		"model.data.noise.site":[null],
+		"model.data.noise.where":[null],
 		"model.data.noise.parameters.data":[1],
 		"model.data.noise.parameters.parameters":[0],
 		"model.data.noise.seed":[null],
@@ -114,7 +114,7 @@
 "model":{
 	"data":{
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":{
 				"data":null,
 				"shape":[],
@@ -138,7 +138,7 @@
 				},
 			"variable":true,"seed":123},
 		"y":{
-			"operator":["Y"],"site":"i","string":"y",
+			"operator":["Y"],"where":"i","string":"y",
 			"parameters":{
 				"data":null,
 				"shape":[],
@@ -162,7 +162,7 @@
 				},
 			"variable":true,"seed":123},
 		"z":{
-			"operator":["Z"],"site":"i","string":"z",
+			"operator":["Z"],"where":"i","string":"z",
 			"parameters":{
 				"data":[-1.1,0,-0.1,2.9,-0.2],
 				"parameters":1e-2,
@@ -185,7 +185,7 @@
 				},
 			"variable":false,"seed":123},								
 		"zz":{
-			"operator":["Z","Z"],"site":"i<j","string":"zz",
+			"operator":["Z","Z"],"where":"i<j","string":"zz",
 			"parameters":{
 				"data":[0.724,-1.30,0.5,2.1,0.2,-1.9,-0.3,0.60,0.9,-0.6],
 				"parameters":1e-4,
@@ -208,7 +208,7 @@
 				},
 			"variable":false,"seed":123},		
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
+			"operator":"depolarize","where":null,"string":"noise",
 			"parameters":1e-12,
 			"ndim":3,
 			"variable":false
@@ -216,12 +216,12 @@
 	},
 	"data": {
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":{"data":"random","seed":123},
 			"variable":true
 		},
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
+			"operator":"depolarize","where":null,"string":"noise",
 			"parameters":1e-12,
 			"ndim":3,
 			"variable":false
@@ -321,7 +321,7 @@
 	},
 "label": {
 	"operator":"haar",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":1,
 	"ndim":2,
@@ -329,7 +329,7 @@
 	},
 "state": {
 	"operator":"haar",
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":true,
 	"ndim":2,

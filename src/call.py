@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime
+import os,sys,warnings,itertools,inspect,traceback
 from functools import partial
 import subprocess
 from natsort import natsorted
@@ -98,6 +98,8 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),
 					} if len(kwargs) else {}
 					),
 				**{arg: '%s%s%s'%("\"" if len(args[arg])>1 else '',' '.join([subarg for subarg in args[arg]]),"\"" if len(args[arg])>1 else '') for arg in args},
@@ -120,6 +122,8 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				**({
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
 					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),					
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),					
 				} if len(kwargs) else {}),
 				},
 			**env
@@ -143,7 +147,9 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 					'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
 					'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
 					'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
-					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
+					'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+					'SLURM_ARRAY_TASK_LOCAL':kwargs.get('local'),					
+					'SLURM_ARRAY_TASK_DATA':kwargs.get('data'),								
 				} if len(kwargs) else {}),
 			},
 			**env,			
@@ -552,7 +558,7 @@ def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,ve
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return
+	return stdout
 
 
 def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -920,10 +926,13 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 
 		
 		elif pattern in ['output','error']:
+			if value is not None:
+				mkdir(join(kwargs.get('data') if kwargs.get('data') is not None else 'log' if kwargs.get('device') in ['slurm'] else None,split(value,directory=True),root=kwargs.get('cwd')))
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
 					ext=(split(value,ext=True) if value is not None else 
 						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
-					root=None)
+					root=kwargs.get('data') if kwargs.get('data') is not None else 'log' if kwargs.get('device') in ['slurm'] else None
+					)
 			value = value.replace('.%a','') if ((kwargs['count'] is None)) else value
 		else:
 			value = value
@@ -968,7 +977,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def configure(paths,pwd=None,cwd=None,patterns={},local=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -976,6 +985,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
+		local (bool): Subtasks in local paths versus global path
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per system call		
@@ -993,33 +1003,29 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 	if patterns is None:
 		patterns = {}
 
-	for path in paths:
+	for name in paths:
 
-		# Set data to update
-		data = paths[path] if isinstance(paths,dict) else None
+		for path in paths[name]:
 
-		# Set sources and destinations of files
-		source = join(path,root=pwd)
-		destination = join(path,root=cwd)
+			# Set data to update
+			data = paths[name][path] if isinstance(paths[name],dict) else None
 
-		# Update and Dump files
-		if execute and isinstance(data,dict):
-			data,source,destination = load(source),copy(data),destination
-			setter(source,data,default=False)
-			dump(source,destination)
+			# Set sources and destinations of files
+			source = join(name,root=pwd) if not isinstance(data,str) else data
+			destination = join(path,root=cwd)
 
-			source = source
-			destination = join(cwd,abspath=True)
-			if not exists(destination):
-				dump(source,destination)
-
-		elif execute:
-			cp(source,destination,default=path,execute=execute,verbose=verbose)
-
+			# Update and Dump files
+			if execute and not exists(destination):
+				if data is not None and ((not isinstance(data,str)) or (isinstance(data,dict) and data)):
+					data,source,destination = load(source),copy(data),destination
+					setter(source,data,default=False)
+					dump(source,destination)
+				else:
+					cp(source,destination,default=path,execute=execute,verbose=verbose)
 
 	return
 
-def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,local=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Status of job
 	Args:
@@ -1032,6 +1038,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task
+		local (bool): Subtasks in local paths versus global path
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
@@ -1136,7 +1143,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 def init(key,
 		keys=None,
 		name=None,jobs=None,args=None,paths=None,patterns=None,dependencies=None,
-		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
+		pwd=None,cwd=None,pool=None,local=None,resume=None,pause=None,file=None,
 		env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 		'''
 		Process job commands as tasks to command line
@@ -1153,6 +1160,7 @@ def init(key,
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task
+			local (bool): Subtasks in local paths versus global path
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file		
@@ -1164,15 +1172,20 @@ def init(key,
 		Returns:
 			task (dict[str,str]): Task for job
 		'''
-		pool = 1 if pool is None else pool
+
 		verbose = False
 		execution = True if execute == -1 else execute
 		execute = False if execute == -1 else execute
 
+		key = key
 		indices = [subkey for subkey in keys if cwd[subkey] == cwd[key]]
 		size = len(indices)
 
-		if size > 1 and process not in ['serial']:
+		if process not in ['serial',None]:
+
+			pool = size if pool is None else pool
+			local = local if local is True else None
+
 			index = indices.index(key)
 			mod = index%pool			
 			slice = pool
@@ -1184,6 +1197,10 @@ def init(key,
 			count = (max - min + 1)//step
 			
 		else:
+
+			pool = 1 if pool is None else pool
+			local = local if local is True else None
+
 			index = None
 			mod = None
 			slice = None
@@ -1194,13 +1211,14 @@ def init(key,
 			step = None
 			count = None
 
-		if size > 1:
+		if size > 1 and local:
 			path = indices.index(key)
+			data = 'data'
 		else:
 			path = None
+			data = None
 
-		path = join(path,root=cwd[key])
-
+		path = join(data,path,root=cwd[key])
 
 		def updates(task):
 
@@ -1224,9 +1242,8 @@ def init(key,
 			task[attr] = value
 
 			attr = 'destination'
-			value = task[attr]		
-			value = join(job,root=task['path'],abspath=True)
-			task[attr] = value			
+			value = join(task['path'],split(task['source'],file_ext=True),abspath=True)
+			task[attr] = value	
 
 			attr = 'resume'
 			subattr = attr
@@ -1246,7 +1263,7 @@ def init(key,
 			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
 			value = (task[subattr] in [0,None]) and all([*({
 					'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
+					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or (task['dependencies'] is not None and not len(task['dependencies'])) or
 						(task['dependencies'] and all(i is not None for i in task['dependencies']))),
 				}.get(pattern,True) for pattern in task['patterns']),
 				])
@@ -1260,6 +1277,8 @@ def init(key,
 			'key':key,
 			'path':path,
 			'name':name,
+			'data':data,
+			'device':device,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
@@ -1272,6 +1291,7 @@ def init(key,
 			'env':env,
 			'process':process,
 			'pool':pool,
+			'local':local,
 			'size':size,
 			'index': index,
 			'mod':mod,
@@ -1300,10 +1320,11 @@ def init(key,
 
 		if boolean:
 
-			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],local=local,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-			msg = 'Job : %s'%(key)
-			logger.log(info,msg)
+			msg = 'Job : %s'%(path)
+
+			logger.log(info,msg)	
 		
 		return task
 
@@ -1318,7 +1339,7 @@ def callback(task,key,keys):
 	keys[key] = task
 	return
 
-def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,local=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -1331,6 +1352,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task
+		local (bool): Subtasks in local paths versus global path
 		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
@@ -1353,43 +1375,31 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	queue = status(
 		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
+		pwd=pwd,cwd=cwd,pool=pool,local=local,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
 
-	keys = intersection(jobs)
+	keys = {key:{} for key in jobs}
 
 	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
 		args = {key:args for key in keys}
 
-	keys = intersection(keys,args)
-
 	if not all(key in paths for key in keys) or not len(paths):
 		paths = {key:paths for key in keys}
-
-	keys = intersection(keys,paths)
 
 	if not all(key in patterns for key in keys) or not len(patterns):
 		patterns = {key:patterns for key in keys}
 
-	keys = intersection(keys,patterns)
-
 	if not isinstance(dependencies,dict) or not len(dependencies):
 		dependencies = {key:dependencies for key in keys}
-
-	keys = intersection(keys,dependencies)
 
 	if isinstance(pwd,str):
 		pwd = {key:pwd for key in keys}
 
-	keys = intersection(keys,pwd)
-
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
-
-	keys = intersection(keys,cwd)
 
 	if not isinstance(resume,dict):
 
@@ -1400,22 +1410,23 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 		resume = {key: resume for key in keys}
 
-	keys = intersection(keys,resume,sort=None)
-
-	keys = {key:{} for key in keys}
-
 	iterable = [key for key in keys]
 	kwds = dict(
 		keys=keys,
 		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
+		pwd=pwd,cwd=cwd,pool=pool,local=local,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
 	)
 	callback_kwds = {'keys':keys}
 
 	for key in iterable:
+
 		task = init(key,**kwds)
+		
 		callback(task,key,keys)
+
+		if not local:
+			break
 
 	# parallelize = Pooler(processes)
 
@@ -1475,6 +1486,7 @@ def launch(jobs={},wrapper=None,execute=False,verbose=None):
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task
+			local (bool): Subtasks in local paths versus global path
 			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
@@ -1504,9 +1516,9 @@ def launch(jobs={},wrapper=None,execute=False,verbose=None):
 
 		wrapper(name,jobs,results)
 
-		options = {key:value for key,value in dict(execute=execute,verbose=verbose).items() if value is not None}
+		options = {**jobs[name],**{key:value for key,value in dict(execute=execute,verbose=verbose).items() if (value is not None) and (value and jobs[name].get(key))}}
 
-		result = submit(**{**jobs[name],**options})
+		result = submit(**options)
 
 		results[name] = result
 

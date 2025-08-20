@@ -10,17 +10,17 @@ import scipy as osp
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd','numpy']
+BACKENDS = ['jax','autograd','jax.autograd','quimb','numpy']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
 assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 
-if BACKEND in ['jax','jax.autograd']:
+if BACKEND in ['jax','jax.autograd','quimb']:
 
 	envs = {
-		'JAX_PLATFORMS':'cpu',
-		'JAX_PLATFORM_NAME':'cpu',
+		'JAX_PLATFORMS':'',
+		'JAX_PLATFORM_NAME':'',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
 	for var in envs:
@@ -39,8 +39,8 @@ if BACKEND in ['jax','jax.autograd']:
 
 	configs = {
 		'jax_disable_jit':False,
-		'jax_platforms':'cpu',
-		'jax_platform_name':'cpu',
+		'jax_platforms':'',
+		'jax_platform_name':'',
 		'jax_enable_x64': True
 		}
 	for name in configs:
@@ -110,17 +110,6 @@ elif BACKEND in ['autograd','numpy']:
 
 class LineSearchWarning(RuntimeWarning):
 	pass
-
-# import absl.logging
-# absl.logging.set_verbosity(absl.logging.INFO)
-
-# configs = {
-# 	'jax_disable_jit':False,
-# 	'jax_platforms':'cpu',
-# 	'jax_enable_x64': True
-# 	}
-# for name in configs:
-# 	jax.config.update(name,configs[name])
 
 #------------------------------------------------------------------------------
 # Minpack's Wolfe line and scalar searches

@@ -14,7 +14,7 @@
 "model":{
 	"data":{
 		"x":{
-			"operator":["X"],"site":"i","string":"x",
+			"operator":["X"],"where":"i","string":"x",
 			"parameters":{"data":"random","seed":123},
 			"variable":true
 		}
@@ -62,7 +62,7 @@
 	},
 "label": {
 	"operator":"X",
-	"site":null,
+	"where":null,
 	"string":"U",
 	"parameters":0.5,
 	"ndim":2,
@@ -70,7 +70,7 @@
 	},
 "state": {
 	"operator":"zero",
-	"site":null,
+	"where":null,
 	"string":"psi",
 	"parameters":null,
 	"ndim":2,

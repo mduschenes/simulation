@@ -28,14 +28,14 @@ def main(*args,**kwargs):
 	settings = Dict({
 		"model":{
 			"operator":"depolarize",
-			"site":None,
+			"where":None,
 			"string":"noise",
 			"parameters":{"data":1e-3,"parameters":1},
 			"N":2,"D":2,"ndim":3,
 		},
 		"state": {
 			"operator":"zero",
-			"site":None,
+			"where":None,
 			"string":"psi",
 			"parameters":True,
 			"N":2,"D":2,"ndim":2,
