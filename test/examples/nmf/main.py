@@ -1,0 +1,383 @@
+#!/usr/bin/env python
+
+# Import python modules
+import os,sys
+
+# Import User modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','.','..','../../..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+
+os.environ['NUMPY_BACKEND'] = 'JAX'
+
+from src.utils import array,ones,zeros,rand,random,stochastic
+from src.utils import addition,abs2,log10,reciprocal,einsum,reshape,dot,dotr,dotl,condition_number
+from src.utils import copy,seeder,delim
+from src.iterables import permuter,setter,getter
+from src.io import load,dump,join,exists
+
+import jax
+import matplotlib
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from random import choices,seed	as seeds
+
+def main(*args,**kwargs):
+
+	n = int(args[0] if len(args)>0 else 1)
+	d = int(args[1] if len(args)>1 else 2)
+	l = int(args[2] if len(args)>2 else 2)
+
+
+	directory = 'scratch/nmf/data'
+	file = 'data'
+	mplstyle = 'config/plot.mplstyle'
+
+
+	q = n//2 + n%2
+	k = d**2
+
+	seed = 123
+	seeds(seed)
+
+	data = {}
+	kwargs = {
+		'method':[
+			'mu',
+			'kl',
+			'hals'
+			],
+		'initialize':['nndsvda'],
+		'metric':[
+			'norm',
+			'div',
+			# 'abs',
+			],
+		'rank':[None],
+		'eps':[1e-16],
+		'iters':[1e3,5e1],
+		'parameters':[0],
+		'seed':choices(range(int(2**32)),k=int(3)),
+		'function':[
+			'pnmf',
+			'xnmf',
+			],
+		'n':[n],'d':[d],'l':[l],'q':[q],'k':[k],
+		'shapes':[[
+			[k**(q-1),k,k**(q)],
+			[k**(q),k,k**(q-1)],
+			[k**l]*(2),
+			# [k**(q-1),k**(q-1)],
+			# [k**(q-1),k**(n-q-1)]
+			[k,k**(q-1)],
+			[k**(q-1),k]			
+			]]
+		}
+
+	path = join(directory,file,ext='pkl')
+
+	data.update(load(path,default=data))
+
+	def boolean(index,data,options,opts):
+		return any(options==data[i]['options'] for i in data)
+
+	def filters(kwargs):
+		if kwargs['method'] in ['hals'] and kwargs['iters'] < 1000:
+			return False
+
+		if kwargs ['method'] not in ['hals'] and kwargs['iters'] < 100:
+			return False
+
+		return True
+
+	do = 0 or not exists(path) or len(sys.argv[1:])
+	run = do or False
+	plot = True
+
+	if run:
+
+		print('Run',kwargs)
+
+		for index,kwargs in enumerate(permuter(kwargs)):
+
+			if not filters(kwargs):
+				continue
+
+			options = {
+				'rank': None,
+				'eps': 5e-9,
+				'iters':1e3,
+				'parameters': 1e-3,
+				'method': 'kl',
+				'initialize': 'rand',
+				'metric':'norm',
+				'seed': 123,
+				}
+			def init(index,data,options):
+
+				options['key'] = seeder(options['seed'])
+				options['keys'] = seeder(options['seed'],size=len(options['shapes']))
+
+				opts = dict(
+					n = options.pop('n'),
+					d = options.pop('d'),
+					l = options.pop('l'),
+					q = options.pop('q'),
+					k = options.pop('k'),
+					shapes = options.pop('shapes'),
+					keys = options.pop('keys'),
+					function = options.pop('function'),
+				)
+
+				if opts['function'] in ['pnmf']:
+				
+					from src.utils import pnmf as function
+
+					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(k,)*(2*l))
+					x,y = addition(random(opts['shapes'][-2],key=opts['keys'][-2]),0),addition(random(opts['shapes'][-1],key=opts['keys'][-1]),-1)
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a = dotr(dotl(a,x),y)
+					a /= addition(a)
+					objects = a,u,v,(x,y)
+
+				elif opts['function'] in ['xnmf']:
+				
+					from src.utils import xnmf as function
+
+					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(k,)*(2*l))
+					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
+					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
+					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
+					u,v = dotl(u,p),dotr(v,q)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a /= addition(dot(x,dot(a,y)))
+					objects = a,u,v,(x,y)
+
+				return function,objects,options,opts
+
+			def process(index,data,stats,options,opts):
+				if boolean(index,data,options,opts):
+					for i in data:
+						if boolean(i,{i:data[i]},options,opts):
+							index = i
+							break
+				else:
+					index = len(data)
+				if not isinstance(data.get(index),dict):
+					data[index] = {}
+				data[index].update({**dict(options={**options,**opts}),**stats})
+				return
+
+			def func(function,objects,options):
+				u,v,s,stats = function(*objects,**options)
+				return stats
+
+			print(kwargs)
+
+			setter(options,kwargs,delimiter=delim,default='replace')
+
+			kwargs = copy(options)
+
+			function,objects,options,opts = init(index,data,options)
+
+			if boolean(index,data,options,opts):
+				continue
+
+			stats = func(function,objects,options)
+
+			process(index,data,stats,kwargs,opts)
+
+		dump(data,path)
+
+	if plot:
+
+		print('Plot',path)
+		
+		data = load(path)
+
+		attrs = [
+			*[dict(x='iteration',y=attr,label=['function','method','metric','seed']) for attr in set(i for index in data for i in data[index] if i not in ['options'] and i in ['error'])],
+		]
+		texify = {
+			'method':'$\\textnormal{Method}$',
+			'initialize':'$\\textnormal{Initialize}$',
+			'metric':'$\\textnormal{Metric}$',
+			'seed':'$\\textnormal{Seed}$',
+			'function':'$\\textnormal{Function}$',
+			'iteration':'$\\textnormal{Iteration}$',
+			'error':'$\\textnormal{Error}~\\mathcal{L}(A,UV)$',
+			'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
+			'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
+			'nmf':'$\\textnormal{NMF}$',
+			'pnmf':'$\\textnormal{Marginal-NMF}$',
+			'xnmf':'$\\textnormal{Joint-NMF}$',
+			'mu':'$\\textnormal{MU}$',
+			'kl':'$\\textnormal{KL}$',
+			'hals':'$\\textnormal{H-ALS}$',
+			'gd':'$\\textnormal{GD}$',
+			'kld':'$\\textnormal{KL-GD}$',
+			('norm','pnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('norm','xnmf'):'$\\norm{A-UV}/\\norm{A}',
+			('abs','pnmf'):'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
+			('abs','xnmf'):'$\\norm{X_{x \\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta y}}/\\norm{A}',
+			('div','pnmf'):'$\\mathcal{D}(A,UV)',
+			('div','xnmf'):'$\\mathcal{D}(A,UV)',
+			}
+		with matplotlib.style.context(mplstyle):
+			for attr in attrs:
+
+				fig,ax = plt.subplots()
+
+				def boolean(data,index=None,wrapper=None):
+					if index is None:
+						size = max(len(data[i][attr['y']]) for i in data)	
+					else:
+						size = len(data[index][attr['y']])
+					# print(data[index]['options']['method'],size)
+					# indices = slice(0,size,100) if size > 1000 else slice(0,size,100)
+					indices = slice(0,size,max(50,(size//50)))
+					# size = min(size,6500000)
+					# indices = slice(0,size,1 if size < 1000 else 5000)
+					# size = min(size,1000)
+					# indices = slice(0,size,1 if size < 1000 else 500)					
+					if wrapper is not None:
+						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)
+					return indices
+
+				def filters(index,data):
+					# return True
+					if data[index]['options']['method'] in ['hals'] and data[index]['options']['iters'] < 1000:
+						return False
+
+					if data[index]['options']['method'] not in ['hals'] and data[index]['options']['iters'] < 100:
+						return False
+
+					return True
+
+				values = {index:data[index] for index in data if filters(index,data)}					
+
+				options = dict()
+				indices = sorted(list(set(values[i]['options'][attr['label'][-1]] for i in values)),key=lambda i:[values[i]['options'][attr['label'][-1]] for i in values].index(i))
+				x = {index:values[index][attr['x']][boolean(values,index=index)] for index in values}
+				y = {index:values[index][attr['y']][boolean(values,index=index)] for index in values}
+				options = {index:{**options,**dict(
+					label='$%s$'%('~,~'.join(str(texify.get(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attr['label'][:-1]).replace('$','')),
+					color=plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(values[index]['options']['function']))((indices.index(values[index]['options'][attr['label'][-1]])+1)/(len(indices)+1)),
+					alpha=0.6,
+					# marker={'norm':'o','abs':'s','div':'^'}.get(values[index]['options']['metric']),
+					# linestyle={'mu':'-','kl':'--','hals':':'}.get(values[index]['options']['method']),
+					marker={'mu':'o','kl':'s','hals':'^'}.get(values[index]['options']['method']),
+					linestyle={'norm':'-','div':'--','abs':':'}.get(values[index]['options']['metric']),
+					markersize=8,
+					linewidth=3
+					)} for index in values}
+				plot = {}
+				for index in values:
+					plot[index] = ax.plot(x[index],y[index],**options[index])
+
+				options = dict(position='right',size="3%",pad=-0.545535)
+				number = 6
+				functions = sorted(set(values[i]['options']['function'] for i in values))
+				for i,function in enumerate(functions):
+					colors = [plt.get_cmap({'pnmf':'viridis','xnmf':'magma'}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
+					if len(functions)>1:
+						opts = {**options,**dict(pad=options['pad']+i*0.065)}
+						cax,opts = fig.add_axes([
+							ax.get_position().x1+opts['pad'],
+							ax.get_position().y0,
+							0.01,
+							(ax.get_position().y1-ax.get_position().y0)*1.1075
+							]),dict()
+					else:
+						opts = {**options,**dict(pad=0.1)}
+						cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
+
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
+					opts = {**opts,**dict(cmap=cmap,orientation='vertical')}
+					cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
+					if i == (len(functions)-1):
+						cbar.ax.set_ylabel(ylabel=texify.get(attr['label'][-1],attr['label'][-1]))
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+					else:
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])						
+						# cbar.ax.set_yticks(ticks=[])
+						# cbar.ax.set_yticklabels(labels=[])
+
+					if len(functions)>1:
+						cbar.ax.set_xlabel(xlabel=texify.get(function))
+
+
+				options = dict()
+				ax.set_title(label="$%s$"%(" ~,~ ".join(["%s = %s"%(i,j) for i,j in [
+					("N",max((values[index]['options'].get('n') for index in values if values[index]['options'].get('n')),default=None)),
+					("D",max((values[index]['options'].get('k') for index in values if values[index]['options'].get('k')),default=None)),
+					# ("L",max((values[index]['options'].get('l') for index in values if values[index]['options'].get('l')),default=None)),
+					("A","(D^{N/2},D,D,D^{N/2})"),
+					] if i and j])
+					),**options)
+				ax.set_xlabel(xlabel=texify.get(attr['x']),**options)
+				ax.set_ylabel(ylabel=texify.get(attr['y']),**options)
+
+				options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=[int(min(min(log10(y[index])) for index in y)),int(max(max(log10(y[index])) for index in y))])
+				number = 6
+				ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.05))),xmax=(max(int(options['x'][-1]*1.1),1)))
+				ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],max(1,(options['x'][-1]-options['x'][0])//number)))
+				ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
+				ax.set_xscale(value='linear')
+				ax.set_ylim(ymin=5*10**(options['y'][0]-2),ymax=2*10**(options['y'][-1]+1))
+				ax.set_yticks(ticks=[10**(i) for i in range(options['y'][0]-1,options['y'][-1]+1,2)])
+				ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
+				ax.set_yscale(value='log')
+
+				options = dict(
+					title=(
+						'$%s ~:~ %s$'%(
+						'~,~'.join(texify.get(label,label) for label in attr['label'][:-1]).replace('$',''),
+						{
+							'pnmf':'$A_{\\mu\\nu} = X_{\\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$',''),
+							'xnmf':'$A_{x \\mu\\nu y} = X_{x \\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta y} \\approx X_{x \\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta y} = U_{x \\mu\\gamma}V_{\\gamma\\nu y}$'.replace('$','')
+						}.get(values[index]['options']['function'])
+						)),
+					ncol=1,
+					loc=(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
+					)
+				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
+				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
+				handles,labels = (
+					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
+					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
+					)
+				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[len([j for j in labels if j==i])//2 for i in sorted(set(labels),key=lambda i:labels.index(i))]
+				handles,labels = [copy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
+				# for handle in handles:
+				# 	handle.set_color('gray')
+				leg = ax.legend(handles,labels,**options)
+
+				options = dict(
+					w=43.5,
+					h=14
+					)
+				fig.set_size_inches(**options)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				options = dict(fname=join(directory,'%s.%s.%s'%(file,attr['x'],attr['y']),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
+				fig.savefig(**options)
+
+	return
+
+
+if __name__ == '__main__':
+	args = []
+	kwargs = {}
+
+	args.extend(sys.argv[1:])
+	kwargs.update({})
+
+	main(*args,**kwargs)
