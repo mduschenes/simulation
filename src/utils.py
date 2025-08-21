@@ -3582,7 +3582,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
 					eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 			Returns:
-				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options)
+				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,size=None,conj=None,**options)
 			'''
 			options = {} if options is None else options
 
@@ -3595,144 +3595,144 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				return schemes
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					shape = a.shape
-					rank = min(*shape,*([] if rank is None else [rank]))
+					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
 					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)
-					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme is None:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
-					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					u,v,s = u,dotl(v,s),rank
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s = u[:,:size],v[:size,:],s[:size]
+					u,v,s = u,dotl(v,s),size
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
-					# u,v,s = dotr(u,s),dotl(v,s),rank
+					# u,v,s = dotr(u,s),dotl(v,s),size
 					return u,v,s				
 			elif scheme in ['svd']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
-					u,v,s = u[:,:rank],v[:rank,:],s[:rank]
-					u,v,s = u,dotl(v,s),rank
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s = u[:,:size],v[:size,:],s[:size]
+					u,v,s = u,dotl(v,s),size
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
-					# u,v,s = dotr(u,s),dotl(v,s),rank
+					# u,v,s = dotr(u,s),dotl(v,s),size
 					return u,v,s
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					shape = (prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))
-					rank = min(*shape,*([] if rank is None else [rank]))
+					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
 					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)					
-					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['nmf']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					data = [real(i) for i in data] if data is not None else data
-					u,v,s,stats = xnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
-					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
-					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
-					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
-					u,v,s = u,v,rank
+					u,v,s,stats = xnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s = u[:,:,:size],v[:size,:,:],s[:size]
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),size
+					u,v,s = u[:,:,:size],v[:size,:,:],s					
+					u,v,s = u,v,size
 					u,v,s = cmplx(u),cmplx(v),s		
 					return u,v,s
 			elif scheme in ['pnmf']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					data = [real(i) for i in data] if data is not None else data
-					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
-					u,v,s = u[:,:,:rank],v[:rank,:,:],s[:rank]
-					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),rank
-					u,v,s = u[:,:,:rank],v[:rank,:,:],s					
-					u,v,s = u,v,rank
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s = u[:,:,:size],v[:size,:,:],s[:size]
+					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),size
+					u,v,s = u[:,:,:size],v[:size,:,:],s					
+					u,v,s = u,v,size
 					u,v,s = cmplx(u),cmplx(v),s		
 					return u,v,s
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					a = conjugate(transpose(a)) if conj else a
-					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
-					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					size = min(*a.shape) if size is None else min(*a.shape,size)    
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['qr']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					defaults = dict(mode='reduced')
-					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
-					u,v,s = u[:,:rank],v[:rank,:],rank
+					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s = u[:,:size],v[:size,:],size
 					return u,v,s				
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					shape = (*a.shape[:1],prod(a.shape[1:])) if conj else (prod(a.shape[:-1]),*a.shape[-1:])
-					rank = min(*shape,*([] if rank is None else [rank]))
+					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
-					u,v,s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					u,v,s = (v,conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['stq']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
-					u = a[:,:,:rank]
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+					u = a[:,:,:size]
 					s = addition(u,(0,1))
-					u,v,s = dotr(u,reciprocal(s)),s,rank
+					u,v,s = dotr(u,reciprocal(s)),s,size
 					return u,v,s				
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					shape = a.shape
-					rank = min(*shape,*([] if rank is None else [rank]))
-					s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					size = min(*shape,*([] if size is None else [size]))
+					s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					return s
 				return decorator
 
 			if scheme in ['eig']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					defaults = dict(compute_v=False,hermitian=False)	
-					rank = min(*a.shape) if rank is None else min(*a.shape,rank)    
-					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
-					s = s[:rank]					
+					size = min(*a.shape) if size is None else min(*a.shape,size)    
+					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					s = s[:size]					
 					return s
 			elif scheme in ['spectrum']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
-					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,rank=rank)})
-					s = s[:rank]					
+					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					s = s[:size]					
 					return s
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,rank=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
 					shape = (prod(a.shape[:-1]),*a.shape[-1:])
-					rank = min(*shape,*([] if rank is None else [rank]))	
-					s = func(a,u,v,data=data,rank=rank,conj=conj,**kwargs) 
+					size = min(*shape,*([] if size is None else [size]))	
+					s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
 					return s
 				return decorator
 
 			if scheme in ['probability']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,rank=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
 					data = [real(i) for i in data] if data is not None else data				
-					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,rank=rank)})
-					s = s[:rank]
+					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
+					s = s[:size]
 					return s
 			
 			return scheme
@@ -3790,17 +3790,17 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			shape = [state[i].shape for i in where]		
 			orientation = self.orientation
-			rank = options.get('S',options.get('rank'))
+			size = options.get('S',options.get('size'))
 
 			func = self.func[len(where)]
 
 			scheme = {'svd':False,'nmf':'stq','pnmf':'stq'}.get(options.get('scheme'))
-			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,rank=rank)},**kwargs)
+			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,size=size)},**kwargs)
 
 			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
-			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,rank=rank),**options},**kwargs)
+			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,size=size),**options},**kwargs)
 
 			data = self
 
@@ -5587,10 +5587,10 @@ def pinv(a):
 
 def _svd(A,k=None):
 	'''
-	Perform SVD on array, possibly reduced rank k
+	Perform SVD on array, possibly reduced size k
 	Args:
 		A (array): array of shape (n,m)
-		k (int): reduced rank of SVD, defaults to max(n,m) if None
+		k (int): reduced size of SVD, defaults to max(n,m) if None
 	Returns
 		U (array): unitary of left eigenvectors of A of shape (n,m)
 		S (array): array of singular values of shape (m,)
@@ -5852,14 +5852,14 @@ def lstsq(x,y):
 	return out
 
 
-def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
+def nndsvd(a=None,u=None,v=None,size=None,eps=None):
 	'''
 	Non-negative svd
 	Args:
 		a (array): Array for svd
 		u (array): u array of svd
 		v (array): v array of svd
-		rank (int): Rank of svd
+		size (int): Size of svd
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		u (array): u array of svd
@@ -5900,27 +5900,27 @@ def nndsvd(a=None,u=None,v=None,rank=None,eps=None):
 	options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 	u,s,v = svd(a,**options)
 
-	rank = min(*a.shape,*u.shape,*v.shape,*([rank] if rank is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
+	size = min(*a.shape,*u.shape,*v.shape,*([size] if size is not None else []),*([nonzero(s,eps=eps)] if eps is not None else []))
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',rank,s.min()/s.max())	
+	print('svd',size,s.min()/s.max())	
 
-	u,v,s = u[:,:rank],v[:rank,:],s[:rank]
+	u,v,s = u[:,:size],v[:size,:],s[:size]
 
-	start,end,x = 0,rank,(u,v,s)
+	start,end,x = 0,size,(u,v,s)
 	x = forloop(start,end,func,x)
 	u,v,s = x
 
 	return u,v,s
 
-def nmfd(u,v,rank=None,eps=None):
+def nmfd(u,v,size=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of nmf
 	Args:
 		u (array): Array for nmf of shape (n,k)
 		v (array): Array for nmf of shape (k,m)
-		rank (int): Rank of nmf
+		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of nmf of shape (n,k)
@@ -5931,13 +5931,13 @@ def nmfd(u,v,rank=None,eps=None):
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
 	return u,v,s
 
-def pnmfd(u,v,rank=None,eps=None):
+def pnmfd(u,v,size=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of pnmf
 	Args:
 		u (array): Array for pnmf of shape (n,p,k)
 		v (array): Array for pnmf of shape (k,q,m)
-		rank (int): Rank of pnmf
+		size (int): Size of pnmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of pnmf of shape (n,p,k)
@@ -5949,13 +5949,13 @@ def pnmfd(u,v,rank=None,eps=None):
 	print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
-def xnmfd(u,v,rank=None,eps=None):
+def xnmfd(u,v,size=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of xnmf
 	Args:
 		u (array): Array for xnmf of shape (n,p,k)
 		v (array): Array for xnmf of shape (k,q,m)
-		rank (int): Rank of xnmf
+		size (int): Size of xnmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
 		u (array): u array of xnmf of shape (n,p,k)
@@ -5967,7 +5967,7 @@ def xnmfd(u,v,rank=None,eps=None):
 	print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
-def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for matrices
 	Args:
@@ -5975,7 +5975,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 		u (array): Array for nmf of shape (n,k)
 		v (array): Array for nmf of shape (k,m)
 		data (array,iterable[array]): Data for nmf
-		rank (int): Rank of nmf
+		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (int): Number of iterations, defaults to 1e7
 		parameters (int,float,array,dict,object): Parameters for nmf method
@@ -5988,11 +5988,11 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 		v (array): v array of nmf of shape (k,m)
 		s (array): s array of nmf of shape (k,)
 	'''	
-	rank = min(*a.shape) if rank is None else min(*a.shape,rank)        
+	size = min(*a.shape) if size is None else min(*a.shape,size)        
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
 		eps = epsilon(a.dtype)
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6000,18 +6000,18 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 		elif initialize in ['rand']:	
 			options = {**dict(dtype=a.dtype),**kwargs}					
-			u = random(shape=[*a.shape[:-1],rank],**options)
-			v = random(shape=[rank,*a.shape[1:]],**options)
+			u = random(shape=[*a.shape[:-1],size],**options)
+			v = random(shape=[size,*a.shape[1:]],**options)
 		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			u,v,s = nndsvd(a,**options)		
 		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			u,v,s = nndsvd(a,**options)		
 			x = mean(a)/a.size
 			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)			
+			options = dict(u=u,v=v,size=size,eps=eps)			
 			u,v,s = nndsvd(a,**options)		
 
 			options = {**dict(dtype=a.dtype),**kwargs}			
@@ -6026,7 +6026,11 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 		return u,v
 	
-	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
+		
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+
 		if method is None:
 			def func(x):
 
@@ -6056,7 +6060,7 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 				return x
 		elif method in ['als']:
-			parameters = (1e-6 if parameters is None else parameters)*identity(rank,dtype=a.dtype)
+			parameters = (1e-6 if parameters is None else parameters)*identity(size,dtype=a.dtype)
 			def func(x):
 
 				a,u,v,i = x
@@ -6091,22 +6095,6 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 			def func(x):
 				return x	
 
-		def norm(a):
-			return sqrt(addition(abs2(a)))
-
-		if metric is None or metric in ['norm']:
-			def error(x):
-				a,u,v,i = x
-				return norm(a-dot(u,v))/norm(a)
-		elif metric in ['abs']:
-			def error(x):
-				a,u,v,i = x
-				return norm(a-dot(u,v))/norm(a)
-		elif metric in ['div']:
-			def error(x):
-				a,u,v,i = x
-				return absolute(-addition(a*log(dot(u,v)*reciprocal(a))))
-		
 		def condition(x):
 			a,u,v,i = x
 			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
@@ -6123,15 +6111,15 @@ def nmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,
 
 		return u,v
 
-	u,v = init(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = init(a,u=u,v=v,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	u,v = run(a,u=u,v=v,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
+	u,v = run(a,u=u,v=v,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
 
-	u,v,s = nmfd(u,v,rank=rank,eps=eps)
+	u,v,s = nmfd(u,v,size=size,eps=eps)
 
 	return u,v,s
 
-def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+def pnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
@@ -6139,7 +6127,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		u (array): u array of pnmf of shape (n,p,k)
 		v (array): v array of pnmf of shape (k,q,m)	
 		data (array,iterable[array]): Data for pnmf
-		rank (int): Rank of nmf
+		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (int,float): Number of iterations, defaults to 1e7		
 		parameters (int,float,array,dict,object): Parameters for nmf method
@@ -6154,11 +6142,11 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	'''	
 
 	data = [ones(a.shape[0],dtype=a.dtype),ones(a.shape[-1],dtype=a.dtype)] if data is None else data
-	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
+	size = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if size is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),size)
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6171,12 +6159,12 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z
 		elif initialize in ['rand']:
 			options = {**dict(dtype=dtype),**kwargs}
-			u = random(shape=[*shape[:len(shape)//2],rank],**options)
-			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
+			u = random(shape=[*shape[:len(shape)//2],size],**options)
+			v = random(shape=[size,*shape[len(shape)//2:]],**options)
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
@@ -6184,7 +6172,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
@@ -6196,7 +6184,7 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
@@ -6222,11 +6210,33 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z	
 		return u,v
 	
-	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	
+		length = size*(a.shape[0]*a.shape[-1])
+		iters = min(iters*length if iters is not None else iters,1e4*length)
+		iteration = 1 if method not in ['hals'] else length
+
+		def decorator(func):
+			def wrapper(x):
+				x = func(x)
+				x = cond(~(x['i']%iteration),statistics,null,x)
+				return x
+			return wrapper
+
+		def null(x):
+			return x
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+
 		if method is None:
+			@jit
+			@decorator
 			def func(x):
 				return x		
 		elif method in ['mu']:
+			@jit
+			@decorator
 			def func(x):
 
 				x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
@@ -6234,12 +6244,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x['i'] += 1
 
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%100),error,null,x))
-				
 				return x
 		elif method in ['kl']:
 			@jit
+			@decorator
 			def func(x):
 
 				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['x'],x['v'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,gc,c->ag',x['x'],addition(x['v'],1),x['y'])))*x['u']
@@ -6247,19 +6255,16 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x['i'] += 1
 
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%1000),error,null,x))
-
 				return x
 		elif method in ['hals']:
-			size = rank*(a.shape[0]*a.shape[-1])
-			iters = min(iters*size if iters is not None else iters,1e4*size)
+			@jit
+			@decorator
 			def func(x):
 
-				i = x['i']%size
-				l = i%rank
-				k = (i%(rank*x['y'].shape[0]))//rank
-				j = (i)//(rank*x['y'].shape[0])
+				i = x['i']%length
+				l = i%size
+				k = (i%(size*x['y'].shape[0]))//size
+				j = (i)//(size*x['y'].shape[0])
 
 				s = (l,slice(None),k)
 				z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
@@ -6281,11 +6286,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x['i'] += 1
 
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
-
 				return x				
 		elif method in ['als']:
+			@jit
+			@decorator
 			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
@@ -6312,11 +6316,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x = a,b,c,d,e,u,v,stats,i
 
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
-
 				return x
 		elif method in ['gd']:
+			@jit
+			@decorator
 			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
@@ -6333,11 +6336,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x = a,b,c,d,e,u,v,stats,i
 
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
-
 				return x
 		elif method in ['kld']:
+			@jit
+			@decorator
 			def func(x):
 
 				a,b,c,d,e,u,v,stats,i = x
@@ -6354,29 +6356,42 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x = a,b,c,d,e,u,v,stats,i
 
-				stats['iteration'] = inplace(stats['iteration'],i,i)
-				stats['error'] = inplace(stats['error'],i,cond(~(i%100),error,null,x))
-
 				return x								
 		else:
+			@jit
+			@decorator
 			def func(x):
 				return x	
 
-		def norm(a):
-			return sqrt(addition(abs2(a)))
-		
-		def null(*args,**kwargs):
-			return nan
+		functions = {}
+
+		if method in ['hals']:
+			def function(x):
+				return x['i']//iteration
+		else:
+			def function(x):
+				return x['i']
+		functions['iteration'] = function
 
 		if metric is None or metric in ['norm']:
-			def error(x):
+			def function(x):
 				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
 		elif metric in ['abs']:
-			def error(x):
+			def function(x):
 				return norm(addition(absolute(x['z']-dotr(dotl(dot(x['u'],x['v']),x['x']),x['y'])),(0,-1)))/norm(x['z'])
 		elif metric in ['div']:
-			def error(x):
+			def function(x):
 				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+		functions['error'] = function
+
+		def function(x):
+			return minimums(rank(x['u']),rank(x['v']))
+		functions['rank'] = function
+
+		def statistics(x):
+			for attr in functions:			
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],functions[attr](x))
+			return
 
 		def condition(x):
 			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
@@ -6389,17 +6404,10 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		x['u'] = u
 		x['v'] = v
 		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
-		x['stats'] = {}
+		x['stats'] = {attr:nan*ones(int(max(iters,eps))+1) for attr in functions}
 		x['i'] = 0
 
-		x['stats'].update({attr:None for attr in ['iteration','error']})
-		for attr in x['stats']:
-			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
-			if attr in ['iteration']:
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
-			elif attr in ['error']:
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
-
+		x = statistics(x)
 
 		loop = partial(whileloop,condition,func)
 
@@ -6410,28 +6418,28 @@ def pnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
 		u,v = u*z,v*z
 
-		attribute = 'error'
-		indices = ~is_nan(stats[attribute])
 		for attr in stats:
-			stats[attr] = stats[attr][indices]
+			stats[attr] = stats[attr][~is_nan(stats[attr])]
 
-		if anything(indices):
-			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
+		try:
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in stats})
+		except:
+			pass
 
 		return u,v,stats
 
-	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
+	print(dict(method=method,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
 
-	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
-	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	u,v,stats = run(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
-	u,v,s = pnmfd(u,v,rank=rank,eps=eps)
+	u,v,s = pnmfd(u,v,size=size,eps=eps)
 
 	return u,v,s,stats
 
 
-def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 	'''
 	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
@@ -6439,7 +6447,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		u (array): u array of xnmf of shape (n,p,k)
 		v (array): v array of xnmf of shape (k,q,m)	
 		data (array,iterable[array]): Data for xnmf
-		rank (int): Rank of nmf
+		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 		iters (int,float): Number of iterations, defaults to 1e7		
 		parameters (int,float,array,dict,object): Parameters for nmf method
@@ -6454,11 +6462,11 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 	'''	
 
 	data = [ones((a.shape[0],u.shape[0]),dtype=a.dtype),ones((v.shape[-1],a.shape[-1]),dtype=a.dtype)] if data is None else data
-	rank = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if rank is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),rank)
+	size = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if size is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),size)
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
 			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6471,12 +6479,12 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z
 		elif initialize in ['rand']:
 			options = {**dict(dtype=dtype),**kwargs}
-			u = random(shape=[*shape[:len(shape)//2],rank],**options)
-			v = random(shape=[rank,*shape[len(shape)//2:]],**options)
+			u = random(shape=[*shape[:len(shape)//2],size],**options)
+			v = random(shape=[size,*shape[len(shape)//2:]],**options)
 			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 			u,v = u*z,v*z		
 		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			u = reshape(u,(*shape[:len(shape)//2],-1,))
@@ -6484,7 +6492,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)	
 
@@ -6496,7 +6504,7 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 			u,v = u*z,v*z
 		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,rank=rank,eps=eps)
+			options = dict(u=u,v=v,size=size,eps=eps)
 			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
 			u,v,s = nndsvd(a,**options)		
 			
@@ -6522,11 +6530,33 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 			u,v = u*z,v*z	
 		return u,v
 	
-	def run(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+		
+		length = size*(a.shape[0]*a.shape[-1])
+		iters = min(iters*length if iters is not None else iters,1e4*length)
+		iteration = 1 if method not in ['hals'] else length
+
+		def decorator(func):
+			def wrapper(x):
+				x = func(x)
+				x = cond(~(x['i']%iteration),statistics,null,x)
+				return x
+			return wrapper
+
+		def null(x):
+			return x
+
+		def norm(a):
+			return sqrt(addition(abs2(a)))
+
 		if method is None:
+			@jit
+			@decorator
 			def func(x):
 				return x		
 		elif method in ['mu']:
+			@jit
+			@decorator
 			def func(x):
 
 				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nul,xn,lvk,ky,xa,gvt,ty->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
@@ -6534,12 +6564,10 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x['i'] += 1
 
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
-				
 				return x
 		elif method in ['kl']:
 			@jit
+			@decorator
 			def func(x):
 
 				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['v'],x['y'])*reciprocal(einsum('xa,gvb,by->ag',x['x'],x['v'],x['y'])[:,None,:])*x['u']
@@ -6547,19 +6575,16 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 				x['i'] += 1
 
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i'])
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],error(x))
-
 				return x
 		elif method in ['hals']:
-			size = rank*(a.shape[0]*a.shape[-1])
-			iters = min(iters*size if iters is not None else iters,1e4*size)
+			@jit
+			@decorator
 			def func(x):
 
-				i = x['i']%size
-				l = i%rank
-				k = (i%(rank*x['y'].shape[0]))//rank
-				j = (i)//(rank*x['y'].shape[0])
+				i = x['i']%length
+				l = i%size
+				k = (i%(size*x['y'].shape[0]))//size
+				j = (i)//(size*x['y'].shape[0])
 
 				s = (l,slice(None),k)
 				z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
@@ -6578,36 +6603,49 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
 				x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
 
-
 				x['i'] += 1
-
-				x['stats']['iteration'] = inplace(x['stats']['iteration'],x['i'],x['i']//size)
-				x['stats']['error'] = inplace(x['stats']['error'],x['i'],cond(~(x['i']%size),error,null,x))
 
 				return x						
 		else:
+			@jit
+			@decorator
 			def func(x):
 				return x	
 
-		def norm(a):
-			return sqrt(addition(abs2(a)))
-		
-		def null(*args,**kwargs):
-			return nan
+		functions = {}
+
+		if method in ['hals']:
+			def function(x):
+				return x['i']//iteration
+		else:
+			def function(x):
+				return x['i']
+		functions['iteration'] = function
+
 
 		if metric is None or metric in ['norm']:
-			def error(x):
+			def function(x):
 				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
 		elif metric in ['abs']:
-			def error(x):
+			def function(x):
 				return norm(addition(absolute(x['Z']-dotr(dotl(dot(x['u'],x['v']),x['X']),x['Y'])),(0,-1)))/norm(x['a'])
 		elif metric in ['div']:
-			def error(x):
+			def function(x):
 				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+		functions['error'] = function
+
+		def function(x):
+			return minimums(rank(x['u']),rank(x['v']))
+		functions['rank'] = function
+
+		def statistics(x):
+			for attr in functions:			
+				x['stats'][attr] = inplace(x['stats'][attr],x['i'],functions[attr](x))
+			return x
 
 		def condition(x):
 			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
-			
+
 		x = {}
 		x['x'] = data[0]
 		x['y'] = data[-1]
@@ -6619,16 +6657,10 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		x['Y'] = addition(x['y'],-1)
 		x['Z'] = dotr(dotl(x['z'],x['X']),x['Y'])
 		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
-		x['stats'] = {}
+		x['stats'] = {attr:nan*ones(int(max(iters,eps))+1) for attr in functions}
 		x['i'] = 0
 
-		x['stats'].update({attr:None for attr in ['iteration','error']})
-		for attr in x['stats']:
-			x['stats'][attr] = nan*ones(int(max(iters,eps))+1)
-			if attr in ['iteration']:
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],x['i'])
-			elif attr in ['error']:
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],error(x))
+		x = statistics(x)
 
 		loop = partial(whileloop,condition,func)
 
@@ -6639,14 +6671,13 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
 		u,v = u*z,v*z
 
-		attribute = 'error'
-		indices = ~is_nan(stats[attribute])
 		for attr in stats:
-			stats[attr] = stats[attr][indices]
+			stats[attr] = stats[attr][~is_nan(stats[attr])]
 
-		if anything(indices):
-			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in ['iteration','error']})
-
+		try:
+			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in stats})
+		except:
+			pass
 
 		# func = jax.profiler.annotate_function(func)
 
@@ -6673,13 +6704,13 @@ def xnmf(a,u=None,v=None,data=None,rank=None,eps=None,iters=None,parameters=None
 
 		return u,v,stats
 
-	print(dict(method=method,initialize=initialize,metric=metric,rank=rank,eps=eps,iters=iters))
+	print(dict(method=method,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
 
-	u,v = init(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
-	u,v,stats = run(a,u=u,v=v,data=data,rank=rank,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	u,v,stats = run(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
 
-	u,v,s = xnmfd(u,v,rank=rank,eps=eps)
+	u,v,s = xnmfd(u,v,size=size,eps=eps)
 
 	return u,v,s,stats
 
@@ -9674,7 +9705,7 @@ def rank(a,tol=None,hermitian=False):
 		tol (float): Tolerance of rank computation
 		hermitian (bool): Whether array is hermitian
 	Returns:
-		out (array): rank of array
+		out (array): Size of array
 	'''		
 	try:
 		return np.linalg.matrix_rank(a,tol=tol,hermitian=hermitian)
