@@ -7,11 +7,14 @@ envs=${3:-${HOME}/conda/envs}
 modules=(${4:-})
 
 mkdir -p ${envs}
+
 conda deactivate
 conda remove --name ${env} --all
 conda create --prefix ${envs}/${env}
 conda activate ${env}
-conda install --channel conda-forge --file requirements.txt
+
+conda install --channel conda-forge --file ${requirements}
+
 pytest -rA -W ignore::DeprecationWarning test.py
 
 
