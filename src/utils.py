@@ -6385,7 +6385,10 @@ def pnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None
 		functions['error'] = function
 
 		def function(x):
-			return minimums(rank(x['u']),rank(x['v']))
+			return minimums(
+					rank(dot(x['x'],x['u'])),
+					rank(dot(x['v'],x['y'])),
+					)
 		functions['rank'] = function
 
 		def statistics(x):
@@ -6635,7 +6638,10 @@ def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None
 		functions['error'] = function
 
 		def function(x):
-			return minimums(rank(x['u']),rank(x['v']))
+			return minimums(
+					rank(reshape(dot(x['x'],x['u']),(-1,x['u'].shape[-1]))),
+					rank(reshape(dot(x['v'],x['y']),(x['v'].shape[0],-1))),
+					)
 		functions['rank'] = function
 
 		def statistics(x):
