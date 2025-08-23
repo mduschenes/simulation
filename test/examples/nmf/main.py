@@ -147,7 +147,7 @@ def main(*args,**kwargs):
 
 				if opts['function'] in ['nmf.marginal']:
 
-					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
+					u,v,w = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
 					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
 					
 					x,y = addition(x,0),addition(y,-1)
@@ -155,7 +155,7 @@ def main(*args,**kwargs):
 					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
 					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
 					u,v = dotl(u,p),dotr(v,q)
-					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,w)
 					
 					a = dotr(dotl(a,x),y)
 					c = a
@@ -165,13 +165,13 @@ def main(*args,**kwargs):
 
 				elif opts['function'] in ['nmf.joint']:
 				
-					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
+					u,v,w = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
 					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
 					
 					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
 					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
 					u,v = dotl(u,p),dotr(v,q)
-					a = einsum('awg,gzb,uvwz->auvb',u,v,d)
+					a = einsum('awg,gzb,uvwz->auvb',u,v,w)
 					
 					a = a
 					c = dot(x,dot(a,y))
