@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=submit
@@ -10,20 +10,17 @@
 #SBATCH --mem=16G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=2
+##SBATCH --gpus-per-task=2
 
 ##SBATCH --array=0-1:4%100
 
 ##SBATCH --dependency=afterany:
 
 ##SBATCH --signal=B:USRSIG@60
-##SBATCH --open-mode=append
-
-##--nodelist=cpu[0-10]
-##--exclude=cpu[0-10]
 
 #SBATCH --parsable
 #SBATCH --get-user-env
-#SBATCH --cpus-per-task=2
 
 
 # Variables
