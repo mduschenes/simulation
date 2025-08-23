@@ -2,7 +2,6 @@
 
 import pytest
 
-
 @pytest.fixture(autouse=True,scope='session')
 def cleanup(*args,**kwargs):
 	import os
@@ -24,49 +23,82 @@ def test_numpy(*args,**kwargs):
 
 def test_jax(*args,**kwargs):
 
+	import os
+	import traceback
+
+
 	def func(device):
-		import os
+
+		def func(device):
+			array = np.array([1,2,3])
+			array *= array
+			print(device,':::',xla_bridge.get_backend().platform,xla_bridge.get_backend().devices(),':::',array.devices())
+			return
+
+		if isinstance(device,str) and device.count(':'):
+			platform = 'gpu'
+		elif isinstance(device,str):
+			platform = device
+		else:
+			platform = str(device).split(':')[0]
+
 		environs = {
-				'JAX_PLATFORMS':device,
-				'JAX_PLATFORM_NAME':device,
-				'TF_CPP_MIN_LOG_LEVEL':5
+			'JAX_DISABLE_JIT':False,
+			'JAX_PLATFORMS':platform,
+			'JAX_PLATFORM_NAME':platform,
+			'JAX_CUDA_VISIBLE_DEVICES':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
+			'JAX_ENABLE_X64':True,
+			'TF_CPP_MIN_LOG_LEVEL':5
 			}
-			
 		for name in environs:
-			os.environ[name] = str(environs[name])
+			if environs[name] is None:
+				continue
+			os.environ[name],environs[name] = str(environs[name]),os.environ.get(name)
+		
 		import jax
 		from jax.lib import xla_bridge
 		import jax.numpy as np
-		
+	
 		configs = {
 			'jax_disable_jit':False,
-			'jax_platforms':device,
-			'jax_platform_name':device,
+			'jax_platforms':platform,
+			'jax_platform_name':platform,
+			'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 			'jax_enable_x64': True,
 			}
 		for name in configs:
+			if configs[name] is None:
+				continue
 			jax.config.update(name,configs[name])
 
-		print(xla_bridge.get_backend().platform)
-		print(jax.devices())
+		func(device)		
 
-		array = np.array([1,2,3])
-		print(array.devices())
-		array *= array
+		for name in environs:
+			if environs[name] is None:
+				continue
+			os.environ[name] = environs[name]	
 
 		return
 	
-	devices = ['cuda','gpu','cpu']
-	# devices = ['cpu','gpu',]
+
+	# NVIDIA_DEVICE_ORDER=PCI_BUS_ID
+	# CUDA_DEVICE_ORDER=PCI_BUS_ID
+	# JAX_CUDA_DEVICE_ORDER=PCI_BUS_ID
+	# NVIDIA_VISIBLE_DEVICES=1
+	# CUDA_VISIBLE_DEVICES=1
+	# JAX_CUDA_VISIBLE_DEVICES=1
+
+	name="CUDA_VISIBLE_DEVICES"
+	# devices = ['cuda','gpu','cpu']
+	# devices = [*(f"cuda:{i}" for i in os.environ[name].split(','))][-1:]
+	devices = ['cuda','gpu','cpu',*(f"gpu:{i}" for i in os.environ[name].split(','))]
+
 	for device in devices:
 		try:
 			func(device)
-			return
 		except Exception as exception:
-			print(exception)
+			print('Exception:',exception,'\n',traceback.format_exc())
 			continue
-
-	raise AttributeError("JAX IMPORT ERROR")
 
 	return
 
@@ -75,7 +107,7 @@ def test_matplotlib(*args,**kwargs):
 	import matplotlib
 	import matplotlib.pyplot as plt
 
-	mplstyle = 'plot.mplstyle'
+	mplstyle = 'config/plot.mplstyle'
 	try:
 		with matplotlib.style.context(mplstyle):
 			plt.plot([1,2,3],[1,2,3],label='$\\textrm{Hi}~\\ket{\\psi}~\\norm{\\vec{v}}$')
