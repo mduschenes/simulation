@@ -118,7 +118,7 @@ def test_pytables(*args,**kwargs):
 def main(*args,**kwargs):
 	test_python()
 	test_numpy()
-	test_numpy()
+	test_jax()
 	test_matplotlib()
 	test_pytables()
 	return
