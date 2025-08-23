@@ -28,7 +28,7 @@ def main(*args,**kwargs):
 	n = int(args[0] if len(args)>0 else 5)
 	d = int(args[1] if len(args)>1 else 2)
 
-	directory = 'scratch/nmf/data'
+	directory = '~/scratch/nmf/data'
 	file = 'data'
 	mplstyle = 'config/plot.mplstyle'
 	path = join(directory,file,ext='pkl')
