@@ -9,24 +9,25 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-envs = {
-	'JAX_DISABLE_JIT':False,
+environ = {
 	'JAX_PLATFORMS':'',
 	'JAX_PLATFORM_NAME':'',
+	'JAX_CUDA_VISIBLE_DEVICES':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 	'JAX_ENABLE_X64':True,
+	'JAX_DISABLE_JIT':False,
 	'JAX_TRACEBACK_FILTERING':'off',
 	'TF_CPP_MIN_LOG_LEVEL':5,
 	# "XLA_FLAGS":(
 	# 	"--xla_cpu_multi_thread_eigen=false "
 	# 	"intra_op_parallelism_threads=1"),
 }
-for var in envs:
-	os.environ[var] = str(envs[var])
-
+for name in environ:
+	if environ[name] is None:
+		continue
+	os.environ[name] = str(environ[name])
 
 from src.utils import gradient,rand
 from src.io import load,dump
-
 
 from functools import partial
 
@@ -35,14 +36,17 @@ from typing import Dict,Tuple,Sequence,Callable
 
 import jax
 
-configs = {
-	'jax_disable_jit':False,
+config = {
 	'jax_platforms':'',
 	'jax_platform_name':'',
+	'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 	'jax_enable_x64': True,
+	'jax_disable_jit':False,
 	}
-for name in configs:
-	jax.config.update(name,configs[name])
+for name in config:
+	if config[name] is None:
+		continue
+	jax.config.update(name,config[name])
 
 import jax.numpy as np
 

@@ -43,12 +43,13 @@ def test_jax(*args,**kwargs):
 			platform = str(device).split(':')[0]
 
 		environs = {
-			'JAX_DISABLE_JIT':False,
 			'JAX_PLATFORMS':platform,
 			'JAX_PLATFORM_NAME':platform,
 			'JAX_CUDA_VISIBLE_DEVICES':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 			'JAX_ENABLE_X64':True,
-			'TF_CPP_MIN_LOG_LEVEL':5
+			'JAX_DISABLE_JIT':False,
+			'JAX_TRACEBACK_FILTERING':'off',
+			'TF_CPP_MIN_LOG_LEVEL':5,
 			}
 		for name in environs:
 			if environs[name] is None:
@@ -59,17 +60,17 @@ def test_jax(*args,**kwargs):
 		from jax.lib import xla_bridge
 		import jax.numpy as np
 	
-		configs = {
-			'jax_disable_jit':False,
+		config = {
 			'jax_platforms':platform,
 			'jax_platform_name':platform,
 			'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 			'jax_enable_x64': True,
+			'jax_disable_jit':False,
 			}
-		for name in configs:
-			if configs[name] is None:
+		for name in config:
+			if config[name] is None:
 				continue
-			jax.config.update(name,configs[name])
+			jax.config.update(name,config[name])
 
 		func(device)		
 
