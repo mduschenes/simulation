@@ -2720,11 +2720,11 @@ def test_class(*args,**kwargs):
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"state.architecture":["array","array","array"],
 		"module.options":[
-			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","key":seeder(123)},
-			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			# {"scheme":"pnmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","key":seeder(123)},
-			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
-			# {"scheme":"pnmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","architecture":"joint","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","architecture":"joint","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e4,"parameters":0e-4,"method":"kl","initialize":"nndsvda","metric":"div","architecture":"marginal","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","architecture":"joint","key":seeder(123)},
+			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":1e5,"parameters":0e-4,"method":"hals","initialize":"nndsvda","metric":"norm","architecture":"marginal","key":seeder(123)},
 			{"scheme":"svd","S":None},
 			{"contract":"swap+split","max_bond":None,"cutoff":0},
 			{}

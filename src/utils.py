@@ -1064,7 +1064,7 @@ def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	Compute gradient of function
 	Args:
 		func (callable): Function to differentiate
-		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		mode (str): Type of gradient, allowed strings in ['grad','finite','shift','fwd','rev']
 		argnums (int,iterable[int]): Arguments of func to derive with respect to
 		holomorphic (bool): Whether function is holomorphic
 		kwargs : Additional keyword arguments for gradient mode:
@@ -1440,7 +1440,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		Compute hessian of function
 		Args:
 			func (callable): Function to differentiate
-			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			mode (str): Type of gradient, allowed strings in ['grad','finite','shift','fwd','rev']
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
 			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments for gradient mode:
@@ -1471,7 +1471,7 @@ elif backend in ['autograd']:
 		Compute hessian of function
 		Args:
 			func (callable): Function to differentiate
-			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			mode (str): Type of gradient, allowed strings in ['grad','finite','shift','fwd','rev']
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
 			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments for gradient mode:
@@ -1501,7 +1501,7 @@ elif backend in ['numpy']:
 		Compute hessian of function
 		Args:
 			func (callable): Function to differentiate
-			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			mode (str): Type of gradient, allowed strings in ['grad','finite','shift','fwd','rev']
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
 			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments for gradient mode:
@@ -1524,7 +1524,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
-		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'fwd'
+		mode (str): Type of gradient, allowed strings in ['grad','finite','shift','fwd','rev']
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
@@ -3274,6 +3274,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			N = self.N
 			orientation = self.orientation if not callable(orientation) else orientation
 			scheme = options.get('scheme')
+			architecture = options.get('architecture')
 			defaults = {}
 
 			objects = None
@@ -3359,7 +3360,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					objects = [min(where),max(where)]
 
-					if scheme in ['nmf']:
+					if scheme in ['nmf'] and (architecture is None or architecture in ['joint']):
 						for index,i in enumerate(objects):
 							if index == 0:
 								if i > 0:
@@ -3375,7 +3376,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 								else:
 									objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
 									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)	
-					elif scheme in ['pnmf']:
+					elif scheme in ['nmf'] and (architecture in ['marginal']):
 						for index,i in enumerate(objects):
 							if index == 0:
 								if i > 0:
@@ -3425,7 +3426,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Axes order of data
 				conj (bool): Conjugate of class data
-				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
 				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
 				kwargs (dict): Additional class keyword arguments		
@@ -3435,7 +3436,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			if scheme is None or scheme in ['svd','qr','eig','spectrum']:
 				pass
-			elif scheme in ['nmf','pnmf','stq','probability']:
+			elif scheme in ['nmf','stq','probability']:
 				return data
 
 			data = self if data is None else data
@@ -3579,37 +3580,39 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				options (dict): Class options
 				kwargs (dict): Additional class keyword arguments
-					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
+					scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
 					eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 			Returns:
-				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,size=None,conj=None,**options)
+				scheme (callable): Scheme function with signature scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options)
 			'''
 			options = {} if options is None else options
 
 			scheme = options.get('scheme',kwargs.get('scheme'))
+			architecture = options.get('architecture') if options.get('architecture') is not None else None
 			eps = options.get('eps') if options.get('eps') is not None else epsilon()
 
-			schemes = [None,'svd','nmf','pnmf','qr','stq','eig','spectrum','probability']
+			schemes = [None,'svd','nmf','qr','stq','eig','spectrum','probability']
 
 			if isinstance(scheme,bool):
 				return schemes
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = a.shape
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
 					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme is None:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					u,v,s = u[:,:size],v[:size,:],s[:size]
 					u,v,s = u,dotl(v,s),size
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
@@ -3617,9 +3620,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					return u,v,s				
 			elif scheme in ['svd']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					defaults = dict(compute_uv=True,full_matrices=False,hermitian=False)
-					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,s,v = svds(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					u,v,s = u[:,:size],v[:size,:],s[:size]
 					u,v,s = u,dotl(v,s),size
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
@@ -3627,32 +3630,21 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					return u,v,s
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
 					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)					
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['nmf']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					data = [real(i) for i in data] if data is not None else data
-					u,v,s,stats = xnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
-					u,v,s = u[:,:,:size],v[:size,:,:],s[:size]
-					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),size
-					u,v,s = u[:,:,:size],v[:size,:,:],s					
-					u,v,s = u,v,size
-					u,v,s = cmplx(u),cmplx(v),s		
-					return u,v,s
-			elif scheme in ['pnmf']:
-				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
-					data = [real(i) for i in data] if data is not None else data
-					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s,stats = nmf(real(a),**{**kwargs,**options,**dict(data=data,size=size,architecture=architecture)})
 					u,v,s = u[:,:,:size],v[:size,:,:],s[:size]
 					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),size
 					u,v,s = u[:,:,:size],v[:size,:,:],s					
@@ -3661,77 +3653,77 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					return u,v,s
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					a = conjugate(transpose(a)) if conj else a
 					size = min(*a.shape) if size is None else min(*a.shape,size)    
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['qr']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					defaults = dict(mode='reduced')
-					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					u,v,s = u[:,:size],v[:size,:],size
 					return u,v,s				
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (*a.shape[:1],prod(a.shape[1:])) if conj else (prod(a.shape[:-1]),*a.shape[-1:])
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					u,v,s = (v,conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
 
 			if scheme in ['stq']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					u = a[:,:,:size]
 					s = addition(u,(0,1))
 					u,v,s = dotr(u,reciprocal(s)),s,size
 					return u,v,s				
 			
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = a.shape
 					size = min(*shape,*([] if size is None else [size]))
-					s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					return s
 				return decorator
 
 			if scheme in ['eig']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					defaults = dict(compute_v=False,hermitian=False)	
 					size = min(*a.shape) if size is None else min(*a.shape,size)    
-					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					s = s[:size]					
 					return s
 			elif scheme in ['spectrum']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
-					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size)})
+					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					s = s[:size]					
 					return s
 
 			def wrapper(func):
-				def decorator(a,u=None,v=None,data=None,size=None,conj=None,**kwargs):
+				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (prod(a.shape[:-1]),*a.shape[-1:])
 					size = min(*shape,*([] if size is None else [size]))	
-					s = func(a,u,v,data=data,size=size,conj=conj,**kwargs) 
+					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
 					return s
 				return decorator
 
 			if scheme in ['probability']:
 				@wrapper
-				def scheme(a,u=None,v=None,data=None,size=None,conj=None,**options):
+				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
 					data = [real(i) for i in data] if data is not None else data				
-					u,v,s,stats = pnmf(real(a),**{**kwargs,**options,**dict(data=data,size=size)})
+					u,v,s,stats = nmf(real(a),**{**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					s = s[:size]
 					return s
 			
@@ -3791,16 +3783,18 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			shape = [state[i].shape for i in where]		
 			orientation = self.orientation
 			size = options.get('S',options.get('size'))
+			conj = options.get('conj')
+			architecture = options.get('architecture')
 
 			func = self.func[len(where)]
 
-			scheme = {'svd':False,'nmf':'stq','pnmf':'stq'}.get(options.get('scheme'))
-			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,size=size)},**kwargs)
+			scheme = {'svd':False,'nmf':'stq'}.get(options.get('scheme'))
+			state.update(where=where,orientation=orientation,options={**kwargs,**options,**dict(scheme=scheme,size=size,conj=conj,architecture=architecture)},**kwargs)
 
 			data = func(data,state,where=where)
 
 			scheme = options.get('scheme')
-			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,size=size),**options},**kwargs)
+			data = state.update((data,state),shape=shape,where=where,orientation=orientation,options={**dict(scheme=scheme,size=size,conj=conj,architecture=architecture),**options},**kwargs)
 
 			data = self
 
@@ -5590,7 +5584,7 @@ def _svd(A,k=None):
 	Perform SVD on array, possibly reduced size k
 	Args:
 		A (array): array of shape (n,m)
-		k (int): reduced size of SVD, defaults to max(n,m) if None
+		k (int): reduced size of SVD
 	Returns
 		U (array): unitary of left eigenvectors of A of shape (n,m)
 		S (array): array of singular values of shape (m,)
@@ -5621,7 +5615,7 @@ def _svd(A,k=None):
 
 	return U,S,V
 
-def eig(a,compute_v=False,hermitian=False):
+def eig(a,compute_v=False,hermitian=False,**kwargs):
 	'''
 	Compute eigenvalues and eigenvectors
 	Args:
@@ -5644,7 +5638,21 @@ def eig(a,compute_v=False,hermitian=False):
 			_eig = np.linalg.eigvals
 	return _eig(a)
 
-def schur(a,compute_v=False,output=None):
+
+def eigs(a,compute_v=False,hermitian=False,**kwargs):
+	'''
+	Compute eigenvalues and eigenvectors
+	Args:
+		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
+	Returns:
+		eigenvalues (array): Array of eigenvalues of shape (...,n)
+		eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+	return eig(a,compute_v=compute_v,hermitian=hermitian)
+
+def schur(a,compute_v=False,output=None,**kwargs):
 	'''
 	Compute schur decomposition of array
 	Args:
@@ -5665,7 +5673,7 @@ def schur(a,compute_v=False,output=None):
 	else:
 		return triangular
 
-def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
+def svd(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 	'''
 	Compute singular values of an array
 	Args:
@@ -5918,550 +5926,42 @@ def nmfd(u,v,size=None,eps=None):
 	'''
 	Non-negative matrix factor decomposition of nmf
 	Args:
-		u (array): Array for nmf of shape (n,k)
-		v (array): Array for nmf of shape (k,m)
+		u (array): Array of nmf of shape (n,...,k)
+		v (array): Array of nmf of shape (k,...,m)
 		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
 	Returns:
-		u (array): u array of nmf of shape (n,k)
-		v (array): v array of nmf of shape (k,m)
+		u (array): u array of nmf of shape (n,...,k)
+		v (array): v array of nmf of shape (k,...,m)
 		s (array): s array of nmf of shape (k,)
-	'''
-	x,y = addition(u,0),addition(v,1)
-	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	return u,v,s
-
-def pnmfd(u,v,size=None,eps=None):
-	'''
-	Non-negative matrix factor decomposition of pnmf
-	Args:
-		u (array): Array for pnmf of shape (n,p,k)
-		v (array): Array for pnmf of shape (k,q,m)
-		size (int): Size of pnmf
-		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
-	Returns:
-		u (array): u array of pnmf of shape (n,p,k)
-		v (array): v array of pnmf of shape (k,q,m)
-		s (array): s array of pnmf of shape (k,)
 	'''
 	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
 	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	print('xy',addition(s),s.min()/s.max())
 	return u,v,s
 
-def xnmfd(u,v,size=None,eps=None):
+def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,architecture=None,stats=None,**kwargs):
 	'''
-	Non-negative matrix factor decomposition of xnmf
+	Non-negative matrix factor decomposition for probability tensor trains
 	Args:
-		u (array): Array for xnmf of shape (n,p,k)
-		v (array): Array for xnmf of shape (k,q,m)
-		size (int): Size of xnmf
-		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
-	Returns:
-		u (array): u array of xnmf of shape (n,p,k)
-		v (array): v array of xnmf of shape (k,q,m)
-		s (array): s array of xnmf of shape (k,)
-	'''
-	x,y = addition(u,range(0,u.ndim-1)),addition(v,range(1,v.ndim-0))
-	u,v,s = dotr(u,reciprocal(x)),dotl(v,reciprocal(y)),x*y
-	print('xy',addition(s),s.min()/s.max())
-	return u,v,s
-
-def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
-	'''
-	Non-negative matrix factor decomposition for matrices
-	Args:
-		a (array): Array for nmf of shape (n,m)
-		u (array): Array for nmf of shape (n,k)
-		v (array): Array for nmf of shape (k,m)
-		data (array,iterable[array]): Data for nmf
+		a (array): Array of nmf of shape (n,...,m)
+		u (array): u array of nmf of shape (n,...,k)
+		v (array): v array of nmf of shape (k,...,m)
+		data (array,iterable[array]): Data of nmf
 		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (int): Number of iterations, defaults to 1e7
-		parameters (int,float,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu','als','psvd',]
-		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
-		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
+		iters (int,float,iterable[eps,float]): Number of iterations		
+		parameters (int,float,array,dict,object): Parameters of nmf
+		method (str,iterable[str]): Method of nmf, allowed strings in ['mu','kl','hals']
+		initialize (str): Initialization of nmf, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
+		metric (str): Metric of nmf, allowed strings in ['norm','abs','div']
+		architecture (str): Architecture of nmf, allowed strings in ['marginal','joint']
+		stats (stats): Statistics of nmf
 		kwargs (dict): Additional keyword arguments	
 	Returns:
-		u (array): u array of nmf of shape (n,k)
-		v (array): v array of nmf of shape (k,m)
+		u (array): u array of nmf of shape (n,...,k)
+		v (array): v array of nmf of shape (k,...,m)
 		s (array): s array of nmf of shape (k,)
-	'''	
-	size = min(*a.shape) if size is None else min(*a.shape,size)        
-	eps = epsilon(a.dtype) if eps is None else eps
-	iters = iters if iters is not None else int(1e7)
-
-	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
-		eps = epsilon(a.dtype)
-		if initialize is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-		elif initialize in ['rand']:	
-			options = {**dict(dtype=a.dtype),**kwargs}					
-			u = random(shape=[*a.shape[:-1],size],**options)
-			v = random(shape=[size,*a.shape[1:]],**options)
-		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			u,v,s = nndsvd(a,**options)		
-		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			u,v,s = nndsvd(a,**options)		
-			x = mean(a)/a.size
-			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
-		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,size=size,eps=eps)			
-			u,v,s = nndsvd(a,**options)		
-
-			options = {**dict(dtype=a.dtype),**kwargs}			
-			i = u<=eps
-			j = v<=eps
-			x = random(shape=(addition(i),),**options)
-			y = random(shape=(addition(j),),**options)
-			u,v = inplace(u,i,x),inplace(v,j,y)
-		elif u is None or v is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-		return u,v
-	
-	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,**kwargs):
-		
-		def norm(a):
-			return sqrt(addition(abs2(a)))
-
-		if method is None:
-			def func(x):
-
-				a,u,v,i = x
-				
-				u,v = (
-					(dot(a,transpose(v))/dot(u,dot(v,transpose(v))))*u,
-					(dot(transpose(u),a)/dot(dot(transpose(u),u),v))*v
-				)
-
-				i += 1
-
-				x = a,u,v,i
-
-				return x		
-		elif method in ['mu']:
-			def func(x):
-
-				a,u,v,i = x
-				
-				u = (dot(a,transpose(v))*reciprocal(dot(u,dot(v,transpose(v)))))*u
-				v = (dot(transpose(u),a)*reciprocal(dot(dot(transpose(u),u),v)))*v
-
-				i += 1
-
-				x = a,u,v,i
-
-				return x
-		elif method in ['als']:
-			parameters = (1e-6 if parameters is None else parameters)*identity(size,dtype=a.dtype)
-			def func(x):
-
-				a,u,v,i = x
-				
-				v = solve(dot(transpose(u),u)+parameters,dot(transpose(u),a))
-				v = maximums(v,eps)
-				
-				u = solve(dot(v,transpose(v))+parameters,dot(a,transpose(v)))
-				u = maximums(u,eps)
-
-				i += 1
-
-				x = a,u,v,i
-
-				return x				
-		elif method in ['psvd']:
-			def func(x):
-
-				a,u,v,i = x
-				
-				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-				u,s,v = svd(a,**options)
-				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-				u,v = maximums(u,eps),maximums(v,eps)
-
-				i += 1
-
-				x = a,u,v,i
-
-				return x		
-		else:
-			def func(x):
-				return x	
-
-		def condition(x):
-			a,u,v,i = x
-			return (norm(a-dot(u,v))/norm(a) > eps) & (i < iters)
-
-		i = 0
-
-		x = a,u,v,i
-
-		loop = partial(whileloop,condition,func)
-		
-		x = loop(x)
-
-		a,u,v,i = x           
-
-		return u,v
-
-	u,v = init(a,u=u,v=v,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-
-	u,v = run(a,u=u,v=v,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,**kwargs)
-
-	u,v,s = nmfd(u,v,size=size,eps=eps)
-
-	return u,v,s
-
-def pnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
-	'''
-	Non-negative matrix factor decomposition for probability tensor trains
-	Args:
-		a (array): Array for pnmf of shape (n,p,q,m)
-		u (array): u array of pnmf of shape (n,p,k)
-		v (array): v array of pnmf of shape (k,q,m)	
-		data (array,iterable[array]): Data for pnmf
-		size (int): Size of nmf
-		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (int,float): Number of iterations, defaults to 1e7		
-		parameters (int,float,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
-		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
-		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
-		kwargs (dict): Additional keyword arguments	
-	Returns:
-		u (array): u array of pnmf of shape (n,p,k)
-		v (array): v array of pnmf of shape (k,q,m)
-		s (array): s array of pnmf of shape (k,)
-	'''	
-
-	data = [ones(a.shape[0],dtype=a.dtype),ones(a.shape[-1],dtype=a.dtype)] if data is None else data
-	size = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if size is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),size)
-	eps = epsilon(a.dtype) if eps is None else eps
-	iters = iters if iters is not None else int(1e7)
-
-	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
-		shape,dtype = a.shape,a.dtype
-		if initialize is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))			
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z
-		elif initialize in ['rand']:
-			options = {**dict(dtype=dtype),**kwargs}
-			u = random(shape=[*shape[:len(shape)//2],size],**options)
-			v = random(shape=[size,*shape[len(shape)//2:]],**options)
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z		
-		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)		
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))					
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z
-		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)	
-
-			x = addition(a)/a.size
-			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
-			
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z
-		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)		
-			
-			options = {**dict(dtype=dtype),**kwargs}
-			i = u<=eps
-			j = v<=eps
-			x = random(shape=(addition(i),),**options)
-			y = random(shape=(addition(j),),**options)
-			u,v = inplace(u,i,x),inplace(v,j,y)
-			
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))		
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z
-		elif u is None or v is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-			u,v = u*z,v*z	
-		return u,v
-	
-	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
-	
-		length = size*(a.shape[0]*a.shape[-1])
-		iters = min(iters*length if iters is not None else iters,1e4*length)
-		iteration = 1 if method not in ['hals'] else length
-
-		def decorator(func):
-			def wrapper(x):
-				x = func(x)
-				x = cond(~(x['i']%iteration),statistics,null,x)
-				return x
-			return wrapper
-
-		def null(x):
-			return x
-
-		def norm(a):
-			return sqrt(addition(abs2(a)))
-
-		if method is None:
-			@jit
-			@decorator
-			def func(x):
-				return x		
-		elif method in ['mu']:
-			@jit
-			@decorator
-			def func(x):
-
-				x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
-				x['v'] = einsum('a,aug,b,uv->gvb',x['x'],x['u'],x['y'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
-
-				x['i'] += 1
-
-				return x
-		elif method in ['kl']:
-			@jit
-			@decorator
-			def func(x):
-
-				x['u'] = einsum('a,gvb,b,uv,ag->aug',x['x'],x['v'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,gc,c->ag',x['x'],addition(x['v'],1),x['y'])))*x['u']
-				x['v'] = einsum('a,aug,b,uv,gb->gvb',x['x'],x['u'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,ag,b->gb',x['x'],addition(x['u'],1),x['y'])))*x['v']
-
-				x['i'] += 1
-
-				return x
-		elif method in ['hals']:
-			@jit
-			@decorator
-			def func(x):
-
-				i = x['i']%length
-				l = i%size
-				k = (i%(size*x['y'].shape[0]))//size
-				j = (i)//(size*x['y'].shape[0])
-
-				s = (l,slice(None),k)
-				z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
-				# w = einsum('u,v->uv',z,x['v'][s])
-				x['e'] += einsum('u,v->uv',z,x['v'][s])
-				x['v'] = inplace(x['v'],s,maximums((einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps))
-				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('u,v->uv',z,x['v'][s]))))
-				x['e'] -= einsum('u,v->uv',z,x['v'][s])
-
-
-				s = (j,slice(None),l)
-				z = x['x'][j]*einsum('vb,b->v',x['v'][l,:,:],x['y'])
-				# w = einsum('v,u->uv',z,x['u'][s])
-				x['e'] += einsum('v,u->uv',z,x['u'][s])
-				x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
-				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))			
-				x['e'] -= einsum('v,u->uv',z,x['u'][s])
-
-
-				x['i'] += 1
-
-				return x				
-		elif method in ['als']:
-			@jit
-			@decorator
-			def func(x):
-
-				a,b,c,d,e,u,v,stats,i = x
-				
-				g = reshape(transpose(einsum('a,gvb,b->avg',b,v,c),(1,0,2)),(v.shape[1],u.shape[0]*u.shape[2]))
-				u = transpose(reshape(
-						solve(dot(transpose(g),g)+parameters*identity(g.shape[-1]),dot(transpose(g),transpose(a))),
-						(u.shape[1],u.shape[0],u.shape[2])),(1,0,2))
-				u = maximums(u,eps)
-
-				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
-				u,v = u*z,v*z
-
-				h = reshape(transpose(einsum('a,aug,b->gub',b,u,c),(1,0,2)),(u.shape[1],v.shape[0]*v.shape[2]))
-				v = transpose(reshape(
-						solve(dot(transpose(h),h)+parameters*identity(h.shape[-1]),dot(transpose(h),a)),
-						(v.shape[1],v.shape[0],v.shape[2])),(1,0,2))
-				v = maximums(v,eps)
-
-				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',b,c,u,v)))
-				u,v = u*z,v*z
-
-				i += 1
-
-				x = a,b,c,d,e,u,v,stats,i
-
-				return x
-		elif method in ['gd']:
-			@jit
-			@decorator
-			def func(x):
-
-				a,b,c,d,e,u,v,stats,i = x
-				
-				g = einsum('a,gvb,b,t,lvk,k,tul->aug',b,v,c,b,v,c,u) - einsum('a,gvb,b,uv->aug',b,v,c,a)
-				u = u - parameters*g
-				u = maximums(u,eps)
-
-				h = einsum('n,nug,b,k,kul,t,lvt->gvb',b,u,c,b,u,c,v) - einsum('n,nug,b,uv->gvb',b,u,c,a)
-				v = v - parameters*h
-				v = maximums(v,eps)
-
-				i += 1
-
-				x = a,b,c,d,e,u,v,stats,i
-
-				return x
-		elif method in ['kld']:
-			@jit
-			@decorator
-			def func(x):
-
-				a,b,c,d,e,u,v,stats,i = x
-
-				g = -einsum('a,gvb,b,uv->aug',b,v,c,a*reciprocal(einsum('nuk,n,kvl,l->uv',u,b,v,c))) + einsum('a,gb,b,u->aug',b,addition(v,1),c,w)
-				u = u - parameters*g
-				u = maximums(u,eps)
-
-				h = -einsum('a,aug,b,uv->gvb',b,u,c,a*reciprocal(einsum('n,nuk,l,kvl->uv',b,u,c,v))) + einsum('a,ag,b,v->gvb',b,addition(u,1),c,z)
-				v = v - parameters*h
-				v = maximums(v,eps)
-
-				i += 1
-
-				x = a,b,c,d,e,u,v,stats,i
-
-				return x								
-		else:
-			@jit
-			@decorator
-			def func(x):
-				return x	
-
-		functions = {}
-
-		if method in ['hals']:
-			def function(x):
-				return x['i']//iteration
-		else:
-			def function(x):
-				return x['i']
-		functions['iteration'] = function
-
-		if metric is None or metric in ['norm']:
-			def function(x):
-				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
-		elif metric in ['abs']:
-			def function(x):
-				return norm(addition(absolute(x['z']-dotr(dotl(dot(x['u'],x['v']),x['x']),x['y'])),(0,-1)))/norm(x['z'])
-		elif metric in ['div']:
-			def function(x):
-				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
-		functions['error'] = function
-
-		def function(x):
-			return minimums(
-					rank(dot(x['x'],x['u'])),
-					rank(dot(x['v'],x['y'])),
-					)
-		functions['rank'] = function
-
-		def statistics(x):
-			for attr in functions:			
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],functions[attr](x))
-			return
-
-		def condition(x):
-			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
-			
-		x = {}
-		x['x'] = data[0]
-		x['y'] = data[-1]
-		x['z'] = dotr(dotl(a,x['x']),x['y'])
-		x['a'] = addition(x['z'],(0,-1))
-		x['u'] = u
-		x['v'] = v
-		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
-		x['stats'] = {attr:nan*ones(int(max(iters,eps))+1) for attr in functions}
-		x['i'] = 0
-
-		x = statistics(x)
-
-		loop = partial(whileloop,condition,func)
-
-		x = loop(x)
-
-		u,v,stats = x['u'],x['v'],x['stats']
-
-		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
-		u,v = u*z,v*z
-
-		for attr in stats:
-			stats[attr] = stats[attr][~is_nan(stats[attr])]
-
-		try:
-			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in stats})
-		except:
-			pass
-
-		return u,v,stats
-
-	print(dict(method=method,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
-
-	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
-
-	u,v,stats = run(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
-
-	u,v,s = pnmfd(u,v,size=size,eps=eps)
-
-	return u,v,s,stats
-
-
-def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
-	'''
-	Non-negative matrix factor decomposition for probability tensor trains
-	Args:
-		a (array): Array for xnmf of shape (n,p,q,m)
-		u (array): u array of xnmf of shape (n,p,k)
-		v (array): v array of xnmf of shape (k,q,m)	
-		data (array,iterable[array]): Data for xnmf
-		size (int): Size of nmf
-		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (int,float): Number of iterations, defaults to 1e7		
-		parameters (int,float,array,dict,object): Parameters for nmf method
-		method (str): Nmf method, allowed strings in ['mu','kl','als','hals','gd','kld']
-		initialize (str): Nmf initialization, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
-		metric (str): Nmf metric, allowed strings in ['norm','abs','div']
-		kwargs (dict): Additional keyword arguments	
-	Returns:
-		u (array): u array of xnmf of shape (n,p,k)
-		v (array): v array of xnmf of shape (k,q,m)
-		s (array): s array of xnmf of shape (k,)
+		stats (stats): Statistics of nmf
 	'''	
 
 	data = [ones((a.shape[0],u.shape[0]),dtype=a.dtype),ones((v.shape[-1],a.shape[-1]),dtype=a.dtype)] if data is None else data
@@ -6469,83 +5969,179 @@ def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None
 	eps = epsilon(a.dtype) if eps is None else eps
 	iters = iters if iters is not None else int(1e7)
 
-	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def init(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,architecture=None,stats=None,**kwargs):
 		shape,dtype = a.shape,a.dtype
 		if initialize is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))			
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z
+			if architecture is None:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			elif architecture in ['marginal']:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))			
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z
+			elif architecture in ['joint']:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))			
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif initialize in ['rand']:
-			options = {**dict(dtype=dtype),**kwargs}
-			u = random(shape=[*shape[:len(shape)//2],size],**options)
-			v = random(shape=[size,*shape[len(shape)//2:]],**options)
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z		
+			if architecture is None:
+				options = {**dict(dtype=a.dtype),**kwargs}					
+				u = random(shape=[*a.shape[:-1],size],**options)
+				v = random(shape=[size,*a.shape[1:]],**options)				
+			elif architecture in ['marginal']:
+				options = {**dict(dtype=dtype),**kwargs}
+				u = random(shape=[*shape[:len(shape)//2],size],**options)
+				v = random(shape=[size,*shape[len(shape)//2:]],**options)
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z
+			elif architecture in ['joint']:
+				options = {**dict(dtype=dtype),**kwargs}
+				u = random(shape=[*shape[:len(shape)//2],size],**options)
+				v = random(shape=[size,*shape[len(shape)//2:]],**options)
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))						
 		elif initialize in ['nndsvd']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)		
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))					
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z
+			if architecture is None:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				u,v,s = nndsvd(a,**options)	
+			elif architecture in ['marginal']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)		
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))					
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z				
+			elif architecture in ['joint']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)		
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))					
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
 		elif initialize in ['nndsvda']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)	
+			if architecture is None:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				u,v,s = nndsvd(a,**options)		
+				x = mean(a)/a.size
+				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)				
+			elif architecture in ['marginal']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)	
 
-			x = addition(a)/a.size
-			u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
-			
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z
+				x = addition(a)/a.size
+				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+				
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z
+			elif architecture in ['joint']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)	
+
+				x = addition(a)/a.size
+				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
+				
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
 		elif initialize in ['nndsvdr']:
-			options = dict(u=u,v=v,size=size,eps=eps)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,v,s = nndsvd(a,**options)		
-			
-			options = {**dict(dtype=dtype),**kwargs}
-			i = u<=eps
-			j = v<=eps
-			x = random(shape=(addition(i),),**options)
-			y = random(shape=(addition(j),),**options)
-			u,v = inplace(u,i,x),inplace(v,j,y)
-			
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))	
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z
+			if architecture is None:
+				options = dict(u=u,v=v,size=size,eps=eps)			
+				u,v,s = nndsvd(a,**options)		
+				options = {**dict(dtype=a.dtype),**kwargs}			
+				i = u<=eps
+				j = v<=eps
+				x = random(shape=(addition(i),),**options)
+				y = random(shape=(addition(j),),**options)
+				u,v = inplace(u,i,x),inplace(v,j,y)				
+			elif architecture in ['marginal']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)		
+				
+				options = {**dict(dtype=dtype),**kwargs}
+				i = u<=eps
+				j = v<=eps
+				x = random(shape=(addition(i),),**options)
+				y = random(shape=(addition(j),),**options)
+				u,v = inplace(u,i,x),inplace(v,j,y)
+				
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))		
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z
+			elif architecture in ['joint']:
+				options = dict(u=u,v=v,size=size,eps=eps)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,v,s = nndsvd(a,**options)		
+				
+				options = {**dict(dtype=dtype),**kwargs}
+				i = u<=eps
+				j = v<=eps
+				x = random(shape=(addition(i),),**options)
+				y = random(shape=(addition(j),),**options)
+				u,v = inplace(u,i,x),inplace(v,j,y)
+				
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))	
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
 		elif u is None or v is None:
-			options = dict(full_matrices=False,compute_uv=True,hermitian=False)
-			a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-			u,s,v = svd(a,**options)
-			u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
-			u = reshape(u,(*shape[:len(shape)//2],-1,))
-			v = reshape(v,(-1,*shape[len(shape)//2:],))
-			z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
-			u,v = u*z,v*z	
+			if architecture is None:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+			elif architecture in ['marginal']:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
+				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
+				u,v = u*z,v*z				
+			elif architecture in ['joint']:
+				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
+				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
+				u,s,v = svd(a,**options)
+				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
+				u = reshape(u,(*shape[:len(shape)//2],-1,))
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
+				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
+				u,v = u*z,v*z
+			else:
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))					
 		return u,v
 	
-	def run(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,**kwargs):
+	def func(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,architecture=None,stats=None,**kwargs):
 		
-		length = size*(a.shape[0]*a.shape[-1])
-		iters = min(iters*length if iters is not None else iters,1e4*length)
-		iteration = 1 if method not in ['hals'] else length
-
-		def decorator(func):
-			def wrapper(x):
-				x = func(x)
-				x = cond(~(x['i']%iteration),statistics,null,x)
-				return x
-			return wrapper
-
 		def null(x):
 			return x
 
@@ -6553,135 +6149,334 @@ def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None
 			return sqrt(addition(abs2(a)))
 
 		if method is None:
-			@jit
-			@decorator
-			def func(x):
-				return x		
+			
+			if architecture is None:
+			
+				def func(x):
+					return x
+			
+			elif architecture in ['marginal']:
+		
+				def func(x):
+					return x				
+		
+			elif architecture in ['joint']:
+		
+				def func(x):
+					return x
+		
+			else:
+				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
+		
 		elif method in ['mu']:
-			@jit
-			@decorator
-			def func(x):
 
-				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nul,xn,lvk,ky,xa,gvt,ty->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
-				x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a'],x['x'],x['u'],x['y'])*reciprocal(einsum('xn,nug,by,xk,kul,ty,lvt->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
-
-				x['i'] += 1
-
-				return x
+			if architecture is None:
+				
+				def func(x):
+					x['u'] = (dot(x['a'],transpose(x['v']))/dot(u,dot(x['v'],transpose(x['v']))))*u
+					x['v'] = (dot(transpose(u),x['a'])/dot(dot(transpose(u),u),x['v']))*x['v']
+					return x
+			
+			elif architecture in ['marginal']:
+				
+				def func(x):
+					x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
+					x['v'] = einsum('a,aug,b,uv->gvb',x['x'],x['u'],x['y'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
+					return x				
+			
+			elif architecture in ['joint']:
+			
+				def func(x):
+					x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nul,xn,lvk,ky,xa,gvt,ty->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
+					x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a'],x['x'],x['u'],x['y'])*reciprocal(einsum('xn,nug,by,xk,kul,ty,lvt->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
+					return x
+			
+			else:
+				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
+		
 		elif method in ['kl']:
-			@jit
-			@decorator
-			def func(x):
 
-				x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['v'],x['y'])*reciprocal(einsum('xa,gvb,by->ag',x['x'],x['v'],x['y'])[:,None,:])*x['u']
-				x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['u'],x['y'])*reciprocal(einsum('xa,aug,by->gb',x['x'],x['u'],x['y'])[:,None,:])*x['v']
-
-				x['i'] += 1
-
-				return x
+			if architecture is None:
+				
+				def func(x):
+					x['u'] = einsum('uv,gv,g->ug',x['a']*reciprocal(einsum('ug,gv->uv',x['u'],x['v'])),x['v'],reciprocal(addition(x['v'],1)))
+					x['v'] = einsum('uv,ug,g->gv',x['a']*reciprocal(einsum('ug,gv->uv',x['u'],x['v'])),x['u'],reciprocal(addition(x['u'],0)))
+					return x				
+			
+			elif architecture in ['marginal']:
+				
+				def func(x):
+					x['u'] = einsum('a,gvb,b,uv,ag->aug',x['x'],x['v'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,gc,c->ag',x['x'],addition(x['v'],1),x['y'])))*x['u']
+					x['v'] = einsum('a,aug,b,uv,gb->gvb',x['x'],x['u'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,ag,b->gb',x['x'],addition(x['u'],1),x['y'])))*x['v']
+					return x
+			elif architecture in ['joint']:
+			
+				def func(x):
+					x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['v'],x['y'])*reciprocal(einsum('xa,gvb,by->ag',x['x'],x['v'],x['y'])[:,None,:])*x['u']
+					x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['u'],x['y'])*reciprocal(einsum('xa,aug,by->gb',x['x'],x['u'],x['y'])[:,None,:])*x['v']
+					return x
+			
+			else:
+				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))					
 		elif method in ['hals']:
-			@jit
-			@decorator
-			def func(x):
 
-				i = x['i']%length
-				l = i%size
-				k = (i%(size*x['y'].shape[0]))//size
-				j = (i)//(size*x['y'].shape[0])
+			if architecture is None:
+			
+				def func(x):
+					i = x['i']%length
 
-				s = (l,slice(None),k)
-				z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
-				# w = einsum('xuy,v->xuvy',z,x['v'][s])
-				x['e'] += einsum('xuy,v->xuvy',z,x['v'][s])
-				x['v'] = inplace(x['v'],s,maximums((einsum('xuvy,xuy->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('xuy,xuy->',z,z)+parameters),eps))
-				# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('xuy,v->xuvy',z,x['v'][s]))))
-				x['e'] -= einsum('xuy,v->xuvy',z,x['v'][s])
+					s = (i,slice(None))
+					z = x['u'][:,i]
+					x['e'] += einsum('u,v->uv',z,x['v'][s])
+					x['v'] = inplace(x['v'],s,maximums(einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps)
+					x['e'] -= einsum('u,v->uv',z,x['v'][s])
+
+					s = (slice(None),i)
+					z = x['v'][i,:]
+					x['e'] += einsum('u,v->uv',x['u'][s],z)
+					x['u'] = inplace(x['u'],s,maximums(einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps)
+					x['e'] -= einsum('u,v->uv',x['u'][s],z)
+					
+					return x
+
+			elif architecture in ['marginal']:
+			
+				def func(x):
+
+					i = x['i']%length
+					l = i%size
+					k = (i%(size*x['y'].shape[0]))//size
+					j = (i)//(size*x['y'].shape[0])
+
+					s = (l,slice(None),k)
+					z = einsum('a,au->u',x['x'],x['u'][:,:,l])*x['y'][k]
+					# w = einsum('u,v->uv',z,x['v'][s])
+					x['e'] += einsum('u,v->uv',z,x['v'][s])
+					x['v'] = inplace(x['v'],s,maximums((einsum('uv,u->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps))
+					# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('u,v->uv',z,x['v'][s]))))
+					x['e'] -= einsum('u,v->uv',z,x['v'][s])
 
 
-				s = (j,slice(None),l)
-				z = einsum('x,vb,by->xvy',x['x'][:,j],x['v'][l,:,:],x['y'])
-				# w = einsum('xvy,u->xuvy',z,x['u'][s])
-				x['e'] += einsum('xvy,u->xuvy',z,x['u'][s])
-				x['u'] = inplace(x['u'],s,maximums((einsum('xuvy,xvy->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('xvy,xvy->',z,z)+parameters),eps))
-				# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
-				x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
+					s = (j,slice(None),l)
+					z = x['x'][j]*einsum('vb,b->v',x['v'][l,:,:],x['y'])
+					# w = einsum('v,u->uv',z,x['u'][s])
+					x['e'] += einsum('v,u->uv',z,x['u'][s])
+					x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
+					# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))			
+					x['e'] -= einsum('v,u->uv',z,x['u'][s])
 
-				x['i'] += 1
+					return x
+		
+			elif architecture in ['joint']:
 
-				return x						
+				def func(x):
+
+					i = x['i']%length
+					l = i%size
+					k = (i%(size*x['y'].shape[0]))//size
+					j = (i)//(size*x['y'].shape[0])
+
+					s = (l,slice(None),k)
+					z = einsum('xa,au,y->xuy',x['x'],x['u'][:,:,l],x['y'][k,:])
+					# w = einsum('xuy,v->xuvy',z,x['v'][s])
+					x['e'] += einsum('xuy,v->xuvy',z,x['v'][s])
+					x['v'] = inplace(x['v'],s,maximums((einsum('xuvy,xuy->v',x['e'],z)+parameters*x['v'][s])*reciprocal(einsum('xuy,xuy->',z,z)+parameters),eps))
+					# x['v'] = inplace(x['v'],s,x['v'][s]*addition(w)*reciprocal(addition(einsum('xuy,v->xuvy',z,x['v'][s]))))
+					x['e'] -= einsum('xuy,v->xuvy',z,x['v'][s])
+
+
+					s = (j,slice(None),l)
+					z = einsum('x,vb,by->xvy',x['x'][:,j],x['v'][l,:,:],x['y'])
+					# w = einsum('xvy,u->xuvy',z,x['u'][s])
+					x['e'] += einsum('xvy,u->xuvy',z,x['u'][s])
+					x['u'] = inplace(x['u'],s,maximums((einsum('xuvy,xvy->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('xvy,xvy->',z,z)+parameters),eps))
+					# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
+					x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
+
+					return x						
+		
 		else:
-			@jit
-			@decorator
-			def func(x):
-				return x	
+			if architecture is None:
+
+				def func(x):
+					return x
+
+			elif architecture in ['marginal']:
+
+				def func(x):
+					return x				
+
+			elif architecture in ['joint']:
+
+				def func(x):
+					return x
+
+			else:
+				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
+
+
 
 		functions = {}
 
 		if method in ['hals']:
 			def function(x):
-				return x['i']//iteration
+				return (x['iteration']-x['i']) + (x['i']//iteration)
 		else:
 			def function(x):
-				return x['i']
+				return x['iteration']
 		functions['iteration'] = function
 
-
 		if metric is None or metric in ['norm']:
-			def function(x):
-				return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
+			if architecture is None:
+				def function(x):
+					return norm(x['a']-dot(x['u'],x['v']))/norm(x['a'])
+			elif architecture in ['marginal']:
+				def function(x):
+					return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
+			elif architecture in ['joint']:
+				def function(x):
+					return norm(x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y']))/norm(x['a'])
+			else:
+				raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
 		elif metric in ['abs']:
-			def function(x):
-				return norm(addition(absolute(x['Z']-dotr(dotl(dot(x['u'],x['v']),x['X']),x['Y'])),(0,-1)))/norm(x['a'])
+			if architecture is None:
+				def function(x):
+					return norm(x['a']-dot(x['u'],x['v']))/norm(x['a'])
+			elif architecture in ['marginal']:
+				def function(x):
+					return norm(addition(absolute(x['z']-dotr(dotl(dot(x['u'],x['v']),x['x']),x['y'])),(0,-1)))/norm(x['z'])
+			elif architecture in ['joint']:
+				def function(x):
+					return norm(addition(absolute(x['Z']-dotr(dotl(dot(x['u'],x['v']),x['X']),x['Y'])),(0,-1)))/norm(x['a'])
+			else:
+				raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
 		elif metric in ['div']:
-			def function(x):
-				return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+			if architecture is None:
+				def function(x):
+					return absolute(-addition(x['a']*log(dot(x['u'],x['v'])*reciprocal(x['a']))))
+			elif architecture in ['marginal']:
+				def function(x):
+					return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+			elif architecture in ['joint']:
+				def function(x):
+					return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
+			else:
+				raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
 		functions['error'] = function
 
-		def function(x):
-			return minimums(
-					rank(reshape(dot(x['x'],x['u']),(-1,x['u'].shape[-1]))),
-					rank(reshape(dot(x['v'],x['y']),(x['v'].shape[0],-1))),
-					)
+		if architecture is None:
+			def function(x):
+				return minimums(
+						rank(x['u']),
+						rank(x['v']),
+						)
+		elif architecture in ['marginal']:
+			def function(x):
+				return minimums(
+						rank(dot(x['x'],x['u'])),
+						rank(dot(x['v'],x['y'])),
+						)
+		elif architecture in ['joint']:
+			def function(x):
+				return minimums(
+						rank(reshape(dot(x['x'],x['u']),(-1,x['u'].shape[-1]))),
+						rank(reshape(dot(x['v'],x['y']),(x['v'].shape[0],-1))),
+						)
+		else:
+			raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
 		functions['rank'] = function
+
+		if architecture is None:
+			length = size
+		elif architecture in ['marginal']:
+			length = size*(a.shape[0]*a.shape[-1])
+		elif architecture in ['joint']:
+			length = size*(a.shape[0]*a.shape[-1])
+
+		if method in ['hals']:
+			iterations = int(iters)
+			iteration = int(length*1)
+			iters = int(iterations*iteration)
+		else:
+			iterations = int(iters)
+			iteration = int(1*1)
+			iters = int(iterations*iteration)
+
+		number = (min(len(stats[attr]) for attr in stats) if stats else 1) - 1
+
+		x = {}
+
+		if architecture is None:
+			x['a'] = a
+			x['u'] = u
+			x['v'] = v
+			x['e'] = x['a'] - dot(x['u'],x['v'])
+		elif architecture in ['marginal']:
+			x['x'] = data[0]
+			x['y'] = data[-1]
+			x['z'] = dotr(dotl(a,x['x']),x['y'])
+			
+			x['a'] = addition(x['z'],(0,-1))			
+			x['u'] = u
+			x['v'] = v
+			x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
+		elif architecture in ['joint']:
+			x['x'] = data[0]
+			x['y'] = data[-1]
+			x['z'] = a
+			x['X'] = addition(x['x'],0)
+			x['Y'] = addition(x['y'],-1)
+			x['Z'] = dotr(dotl(x['z'],x['X']),x['Y'])
+
+			x['a'] = dot(x['x'],dot(x['z'],x['y']))
+			x['u'] = u
+			x['v'] = v
+			x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
+		
+		x['stats'] = {attr: array([*(stats[attr] if stats else []),*nan*ones(iterations+(1 if not stats else 0))]) for attr in functions}
+		x['iteration'] = stats['iteration'][-1] if stats else 0
+		x['i'] = 0
 
 		def statistics(x):
 			for attr in functions:			
-				x['stats'][attr] = inplace(x['stats'][attr],x['i'],functions[attr](x))
+				x['stats'][attr] = inplace(x['stats'][attr],number + x['i']//iteration,functions[attr](x))
 			return x
 
 		def condition(x):
-			return (x['stats']['error'][x['i']] > eps) & (x['i'] <= iters)
+			return (x['stats']['error'][number + x['i']//iteration] > eps) & (x['i'] <= iters)
+			
+		def decorator(func):
+			def wrapper(x):
+				x = func(x)
+				x['i'] += 1
+				x['iteration'] += 1
+				x = cond(mod(x['i'],iteration)==0,statistics,null,x)
+				return x
+			return wrapper
 
-		x = {}
-		x['x'] = data[0]
-		x['y'] = data[-1]
-		x['z'] = a
-		x['a'] = dot(x['x'],dot(x['z'],x['y']))
-		x['u'] = u
-		x['v'] = v
-		x['X'] = addition(x['x'],0)
-		x['Y'] = addition(x['y'],-1)
-		x['Z'] = dotr(dotl(x['z'],x['X']),x['Y'])
-		x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
-		x['stats'] = {attr:nan*ones(int(max(iters,eps))+1) for attr in functions}
-		x['i'] = 0
-
-		x = statistics(x)
-
+		func = jit(decorator(func))
 		loop = partial(whileloop,condition,func)
+
+		if not stats:
+			x = statistics(x)
 
 		x = loop(x)
 
 		u,v,stats = x['u'],x['v'],x['stats']
 
-		z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		if architecture is None:
+			z = reciprocal(sqrt(absolute(addition(dot(x['u'],x['v'])))))
+		elif architecture in ['marginal']:
+			z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
+		elif architecture in ['joint']:
+			z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
 		u,v = u*z,v*z
 
 		for attr in stats:
 			stats[attr] = stats[attr][~is_nan(stats[attr])]
 
 		try:
-			print({attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in stats})
+			print(method,{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats})
 		except:
 			pass
 
@@ -6710,13 +6505,16 @@ def xnmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None
 
 		return u,v,stats
 
-	print(dict(method=method,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
+	print(dict(method=method,architecture=architecture,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
 
-	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,architecture=architecture,stats=stats,**kwargs)
 
-	u,v,stats = run(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,**kwargs)
+	method = [method] if not isinstance(method,iterables) else [*method]
+	iters = [iters]*len(method) if not isinstance(iters,iterables) else iters
+	for method,iters in zip(method,iters):
+		u,v,stats = func(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,architecture=architecture,stats=stats,**kwargs)
 
-	u,v,s = xnmfd(u,v,size=size,eps=eps)
+	u,v,s = nmfd(u,v,size=size,eps=eps)
 
 	return u,v,s,stats
 
@@ -9713,10 +9511,7 @@ def rank(a,tol=None,hermitian=False):
 	Returns:
 		out (array): Size of array
 	'''		
-	try:
-		return np.linalg.matrix_rank(a,tol=tol,hermitian=hermitian)
-	except:
-		return 0
+	return np.linalg.matrix_rank(a,tol=tol)
 
 
 @jit
