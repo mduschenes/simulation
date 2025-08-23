@@ -10,21 +10,17 @@
 #SBATCH --mem=32G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+##SBATCH --gpus-per-task=1
 
 #SBATCH --array=0-1:4%100
 
 ##SBATCH --dependency=afterany:
 
 #SBATCH --signal=B:SIGUSR1@60
-##SBATCH --open-mode=append
-
-##--nodelist=cpu[0-10]
-##--exclude=cpu[0-10]
 
 #SBATCH --parsable
 #SBATCH --get-user-env
-#SBATCH --cpus-per-task=1
-
 
 # Run Parallel tasks
 
