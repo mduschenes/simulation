@@ -655,6 +655,3 @@ axes.linewidth : 2
 #   # # matplotlib.rcParams['font.sans-serif'] = 'Computer Modern Sans serif'
 #   # matplotlib.rcParams['mathtext.fontset'] = 'dejavusans'
 #   # matplotlib.rcParams['figure.autolayout'] = True
-
-      
-### //
