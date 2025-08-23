@@ -9,9 +9,6 @@ PATHS = ['','.','..','../../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-
-os.environ['NUMPY_BACKEND'] = 'JAX'
-
 from src.utils import array,ones,zeros,rand,random,stochastic
 from src.utils import addition,abs2,log10,reciprocal,einsum,reshape,dot,dotr,dotl,condition_number
 from src.utils import copy,seeder,delim
@@ -30,15 +27,15 @@ def main(*args,**kwargs):
 
 	n = int(args[0] if len(args)>0 else 5)
 	d = int(args[1] if len(args)>1 else 2)
-	l = int(args[2] if len(args)>2 else 2)
 
 	directory = 'scratch/nmf/data'
 	file = 'data'
 	mplstyle = 'config/plot.mplstyle'
 	path = join(directory,file,ext='pkl')
 
-	q = n//2 + n%2
-	k = d**2
+	d = d**2
+	length = n//2 + n%2
+	locality = 2
 
 	seed = 123
 	size = 1
@@ -76,13 +73,13 @@ def main(*args,**kwargs):
 			'nmf.marginal',
 			'nmf.joint',
 			],
-		'n':[n],'d':[d],'l':[l],'q':[q],'k':[k],
+		'n':[n],'d':[d],'locality':[locality],'length':[length],
 		'shapes':[[
-			[k**(q),k,k**(q+1)],
-			[k**(q+1),k,k**(q)],
-			[k**(l)]*(2),
-			[k**(q-q+1),k**(q)],
-			[k**(q),k**(q-q+1)]
+			[d**(length),d,d**(length+1)],
+			[d**(length+1),d,d**(length)],
+			[d**(locality)]*(2),
+			[d**(length-length+1),d**(length)],
+			[d**(length),d**(length-length+1)]
 			]]
 		}
 
@@ -141,9 +138,8 @@ def main(*args,**kwargs):
 				opts = dict(
 					n = options.pop('n'),
 					d = options.pop('d'),
-					l = options.pop('l'),
-					q = options.pop('q'),
-					k = options.pop('k'),
+					length = options.pop('length'),
+					locality = options.pop('locality'),
 					shapes = options.pop('shapes'),
 					keys = options.pop('keys'),
 					function = options.pop('function'),
@@ -151,7 +147,7 @@ def main(*args,**kwargs):
 
 				if opts['function'] in ['nmf.marginal']:
 
-					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(k,)*(2*l))
+					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
 					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
 					
 					x,y = addition(x,0),addition(y,-1)
@@ -169,7 +165,7 @@ def main(*args,**kwargs):
 
 				elif opts['function'] in ['nmf.joint']:
 				
-					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(k,)*(2*l))
+					u,v,d = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
 					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
 					
 					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
@@ -354,8 +350,8 @@ def main(*args,**kwargs):
 				options = dict()
 				ax.set_title(label="$%s$"%(" ~,~ ".join(["%s = %s"%(i,j) for i,j in [
 					("N",max((values[index]['options'].get('n') for index in values if values[index]['options'].get('n')),default=None)),
-					("D",max((values[index]['options'].get('k') for index in values if values[index]['options'].get('k')),default=None)),
-					# ("L",max((values[index]['options'].get('l') for index in values if values[index]['options'].get('l')),default=None)),
+					("D",max((values[index]['options'].get('d') for index in values if values[index]['options'].get('d')),default=None)),
+					# ("L",max((values[index]['options'].get('locality') for index in values if values[index]['options'].get('locality')),default=None)),
 					("A","(D^{N/2},D,D,D^{N/2})"),
 					] if i and j])
 					),**options)
