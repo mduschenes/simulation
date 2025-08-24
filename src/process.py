@@ -2648,7 +2648,10 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
-			logger.log(info,"Configuring : %s %s"%(subinstance,{attr:metadata[instance][subinstance][attr] for attr in metadata[instance][subinstance] if not sorting[instance][subinstance] or attr in sorting[instance][subinstance]}))
+			logger.log(info,"Configuring : %s %s"%(subinstance,
+				{attr:metadata[instance][subinstance][attr] 
+				for attr in metadata[instance][subinstance] 
+				if (not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and (not isinstance(metadata[instance][subinstance][attr],iterables) or len(metadata[instance][subinstance][attr])<len(metadata[instance])**2)}))
 
 			for prop in information[instance][subinstance]:
 				
