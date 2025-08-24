@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 
-##SBATCH --account=mduschenes
-#SBATCH --job-name=output
+##SBATCH --account=def-rgmelko
+#SBATCH --job-name=job
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
-#SBATCH --partition=cpu
-#SBATCH --time=01:00:00
-#SBATCH --mem=32G
+##SBATCH --partition=cpu
+#SBATCH --time=03:00:00
+#SBATCH --mem=16G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
-##SBATCH --gpus-per-task=1
+#SBATCH --cpus-per-task=2
+##SBATCH --gpus-per-task=2
 
-#SBATCH --array=0-1:4%100
+#SBATCH --array=0-0:1%100
 
 ##SBATCH --dependency=afterany:
 
@@ -40,12 +40,14 @@ JOB_DATA=${SLURM_ARRAY_TASK_DATA}
 # Variables
 JOB_CWD="${1:-${JOB_CWD}}"
 JOB_ENV="${2:-${JOB_ENV}}"
-JOB_SRC="${3:-${JOB_SRC}}"
-JOB_CMD="${4:-${JOB_CMD}}"
-JOB_PROCESSES="${5:-${JOB_PROCESSES}}"
-JOB_CLEANUP="${6:-${JOB_CLEANUP}}"
-shift 6;
-JOB_ARGS=${@:-${JOB_ARGS}}
+JOB_MODULES=(${3:-${JOB_MODULES[@]}})
+JOB_SRC="${4:-${JOB_SRC}}"
+JOB_CMD="${5:-${JOB_CMD}}"
+JOB_PROCESSES="${6:-${JOB_PROCESSES}}"
+JOB_ENVIRONMENT="${7:-${JOB_ENVIRONMENT}}"
+JOB_CLEANUP="${8:-${JOB_CLEANUP}}"
+shift 8;
+JOB_ARGS=${@:-${JOB_ARGS[@]}}
 
 JOB_PATH=$(pwd)
 
@@ -160,11 +162,17 @@ else
 fi
 JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
+JOB_ARGS=(${JOB_ARGS[@]//\"})
+
 
 # Environment
+JOB_ENV=${JOB_ENV//"${HOME}/envs/"}
+JOB_MODULES=(${JOB_MODULES[@]//\"})
 module purge &>/dev/null 2>&1
+module load ${JOB_MODULES[@]} &>/dev/null 2>&1
 # conda activate ${JOB_ENV} &>/dev/null 2>&1
-source activate ${JOB_ENV} &>/dev/null 2>&1
+# source activate ${JOB_ENV} &>/dev/null 2>&1
+source ${HOME}/envs/${JOB_ENV}/bin/activate &>/dev/null 2>&1
 
 
 # Command
@@ -187,6 +195,7 @@ EXE=()
 EXE+=(parallel)
 EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${JOB_PATH})
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
+[ ! -z ${JOB_ENVIRONMENT} ] && EXE+=(${JOB_ENVIRONMENT}='$(({%} - 1))')
 EXE+=(RUN)
 EXE+=({})
 EXE+=(${CMD[@]})
@@ -207,7 +216,10 @@ else
 fi
 
 echo $(pwd) ${EXE[@]} ${TASKS[@]}
+
+
 ${EXE[@]} ${TASKS[@]}
+
 
 cd ${JOB_PATH}
 

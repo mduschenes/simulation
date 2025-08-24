@@ -113,7 +113,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 			[
 			*flags,
 			*(['-J',basedir(kwargs.get('cwd'))] if len(kwargs) else []),
-			*(['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))] if len(args) else []),
+			*(['%s=%s'%('--export',','.join(['%s=%s'%(arg,'%s%s%s'%('\"' if len(args[arg])>1 else '',' '.join([subarg if not isinstance(subarg,str) or not subarg.count(' ') else "\"%s\""%(subarg) for subarg in args[arg]]),'\"' if len(args[arg])>1 else '')) for arg in args]))] if len(args) else []),
 			],
 			['<'],
 			[*exe,*cmd,*options],
@@ -304,7 +304,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			args = [[str(arg) for arg in args]]
 
 		cmd = ' | '.join([
-			' '.join([subarg if ' ' not in subarg else '"%s"'%(subarg) for subarg in arg])
+			' '.join([subarg for subarg in arg])
 			for arg in args])
 
 		inputs = []

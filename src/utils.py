@@ -12419,7 +12419,10 @@ def to_tuple(a,dtype=None,**kwargs):
 		out (tuple): List representation of iterable
 	'''
 	try:
-		return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+		if not isinstance(a,scalars):
+			return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+		else:
+			return a
 	except:
 		return a
 

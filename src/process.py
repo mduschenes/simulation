@@ -1890,7 +1890,7 @@ def apply(data,plots,processes,verbose=None):
 							indexes[attr] = None
 
 					obj = {
-						**{attr: grouping[attr].iloc[0] if len(grouping[attr]) else None for attr in source},
+						**{attr: to_tuple(grouping[attr].iloc[0]) if dtype[attr] in ['object'] and isinstance(grouping[attr].iloc[0],iterables) else grouping[attr].iloc[0] if len(grouping[attr]) else None for attr in source},
 						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent,*exceptions] else axes: 
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
@@ -1926,6 +1926,8 @@ def apply(data,plots,processes,verbose=None):
 											obj = grouping[source].to_numpy()
 										if indexes.get(attr) is not None:
 											obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
+										if obj.dtype.kind in ['O']:
+											obj = None
 									except Exception as exception:
 										obj = None
 								elif isinstance(source,Null):
@@ -1940,7 +1942,7 @@ def apply(data,plots,processes,verbose=None):
 							else:
 								obj = None
 
-							if ((func in ['err']) or (attr in independent)) and (obj is not None) and (all(i is None for i in obj.flatten()) or any(np.allclose(obj,i) for i in nulls)):
+							if ((func in ['err']) or (attr in independent)) and (obj is not None) and (all(i is None for i in obj.flatten()) or any(all(not isinstance(j,arrays) for j in obj) or np.allclose(obj,i) for i in nulls)):
 								obj = None
 
 							if process.get(function,{}).get(axes,{}).get(func) is not None:
@@ -2287,7 +2289,7 @@ def plotter(plots,processes,verbose=None):
 				if obj in plots[instance][subinstance] and prop in plots[instance][subinstance][obj]
 				for data in search(plots[instance][subinstance][obj][prop])
 				if ((data) and (OTHER in data) and (OTHER in data[OTHER])) and 'sort' in data[OTHER][OTHER]
-				for key,value in (data[OTHER][OTHER]['sort'].items() if isinstance(data[OTHER][OTHER]['sort'],dict) else metadata[subinstance][instance].items())
+				for key,value in (data[OTHER][OTHER]['sort'].items() if isinstance(data[OTHER][OTHER]['sort'],dict) else metadata[instance][subinstance].items())
 				}
 			data = {
 				**{attr:[data[attr]] if not isinstance(data[attr],list) else data[attr]
