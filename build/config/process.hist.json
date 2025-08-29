@@ -12,7 +12,8 @@
 	"instance": {
 		"hist.array.M.noise.parameters": 0,
 		"bar.array.M.noise.parameters": 0,
-		"sample.array.M.noise.parameters": 1
+		"sample.array.M.noise.parameters": 1,
+		"sample.state.M.noise.parameters": 1
 	},
 	"configuration": [
 		[
@@ -175,7 +176,8 @@
 		],
 		[
 			[
-				"sample.array.M.noise.parameters"
+				"sample.array.M.noise.parameters",
+				"sample.state.M.noise.parameters"
 			],
 			[
 				{
@@ -241,8 +243,7 @@
 						"ax.set_colorbar.anchor": [10,0.5],
 						"ax.set_colorbar.set_ticks.ticks":5,
 						"ax.set_colorbar.set_ticklabels.ticklabels": null,
-						"ax.legend": null,
-						"style.share.ax.legend": false,
+						"style.share.ax.legend": true,
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_xlabel": "bottom",
 						"style.share.ax.set_xticks": true,
@@ -259,7 +260,8 @@
 	"join":{
 		"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}},
 		"bar.array.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}},
-		"sample.array.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}}
+		"sample.array.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}},
+		"sample.state.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}}
 	},
 	"join":null,	
 	"patterns": {

@@ -42,6 +42,7 @@ LAYOUTDIM = 2
 AXES = ['x','y','z']
 VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
+DELIMITER = 'DELIMITER'
 DELIMITERS = ['','_']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
@@ -1344,7 +1345,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					return
 				
 				handles,labels = handles_labels
-				
+
 				for i in range(min(len(handles),len(labels))-1,-1,-1):
 					func(i,handles,labels)
 
@@ -1428,7 +1429,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop] = {i:[kwargs[attr][prop][i]] if isinstance(kwargs[attr][prop][i],str) else kwargs[attr][prop][i] for i in kwargs[attr][prop]}
 							unique = {i:tuple(getattrs(matplotlib,j) for j in kwargs[attr][prop][parser(i,handles,labels)]) for i,label in enumerate(labels) if any(isinstance(handles[i],getattrs(matplotlib,j)) for j in kwargs[attr][prop])}
 							unique = {i:[j for j,l in enumerate(labels) if isinstance(handles[j],unique[i])] for i in unique}
-							unique = {i:[j for k,j in enumerate(unique[i]) if labels[i].replace('$','').startswith(labels[j].replace('$',''))] for l,i in enumerate(unique)}
+							unique = {i:[j for k,j in enumerate(unique[i]) if (
+								(isinstance(labels[i],str) and isinstance(labels[j],str) and labels[i].replace('$','').startswith("%s%s%s"%(DELIMITER,labels[j].replace('$',''),DELIMITER)))
+								)] for l,i in enumerate(unique)}
 							if any(unique[i] for i in unique):
 								kwargs[attr][prop] = []
 								for index,i in enumerate(unique):
@@ -1450,7 +1453,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
 							else:
 								kwargs[attr][prop] = None
-
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
 					k = kwargs[attr].get('join',1)
@@ -1530,6 +1532,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
 
+				def func(handle,label):
+					if isinstance(label,str) and label.count(DELIMITER) == 2:
+						label = label.replace('$','')
+						label = label.join(label.split(DELIMITER)[2:])
+						label = '\n'.join('$%s$'%(i) for i in label.split('\n'))
+					return handle,label
+				handles_labels = [func(handles[i],labels[i]) for i in range(len(handles))]
+				handles,labels = map(list,zip(*(handles_labels)))
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
@@ -1809,7 +1819,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['errorbar']:
 
 				dim = 2
-			
+
 				props = '%s'
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:

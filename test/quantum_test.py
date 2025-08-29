@@ -18,7 +18,7 @@ from src.iterables import permutations
 from src.io import load,dump,glob
 from src.call import rm,echo
 from src.system import Dict,Dictionary
-from src.iterables import namespace,permuter,setter,getter
+from src.iterables import namespace,permuter,setter,getter,getattrs,hasattrs
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 # logger = Logger()
@@ -2306,6 +2306,10 @@ def test_calculate(*args,**kwargs):
 				"measure":"measure",
 				"array":"array",
 				"state":"state",
+				"sample.array.linear":"sample",
+				"sample.array.log":"sample",
+				"sample.state.linear":"sample",
+				"sample.state.log":"sample",
 				"norm_quantum":"norm_quantum",
 				"norm_classical":"norm_classical",
 				"norm_pure":"norm_pure",
@@ -2359,6 +2363,10 @@ def test_calculate(*args,**kwargs):
 			'square',
 			'array',
 			'state',
+			'sample.array.linear',
+			'sample.array.log',
+			'sample.state.linear',
+			'sample.state.log',
 			'norm_quantum',
 			'norm_classical',
 			'norm_pure',
@@ -2386,7 +2394,7 @@ def test_calculate(*args,**kwargs):
 
 
 		# Verbose
-		verbose = False
+		verbose = True
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -2498,22 +2506,39 @@ def test_calculate(*args,**kwargs):
 				kwargs = dict()
 				where = None
 
+			elif attr in [
+				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log'
+				]:
+
+				if attr in ['sample.array.linear']:
+					kwargs = dict(attr="array",options=dict(bins=1000,scale="linear",base=10,range=[0,1]))
+				elif attr in ['sample.array.log']:
+					kwargs = dict(attr="array",options=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+				elif attr in ['sample.state.linear']:
+					kwargs = dict(attr="state",options=dict(bins=1000,scale="linear",base=10,range=[0,1]))
+				elif attr in ['sample.state.log']:
+					kwargs = dict(attr="state",options=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+				where = None
 
 			else:
 
 				kwargs = dict()
 				where = None
 
-			obj = module.measure.calculate(attr,state=state,where=where,**kwargs)
+			attribute = module.callback.attributes.get(attr,attr)
+
+			print(attr,attribute,getattrs(module.measure,attribute,delimiter=delim))
+
+			obj = getattrs(module.measure,attribute,delimiter=delim)(parameters=parameters,state=state,where=where,**kwargs)
 
 			key = attr
 
 			if module.measure.architecture in ['array']:
-				value = array(obj).ravel()
+				value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel()
 			elif module.measure.architecture in ['tensor']:
 				value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel()
 			elif module.measure.architecture in ['tensor_quimb']:
-				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel()
+				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel()
 
 			if verbose or True:
 				print(module.measure.architecture,attr,where,value.shape)

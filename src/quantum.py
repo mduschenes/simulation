@@ -51,13 +51,13 @@ class Basis(Dict):
 			# super().__init__(*args,system=system,**kwargs)
 
 			setter(kwargs,dict(system=system),delimiter=delim,default=False)
-			setter(kwargs,system,delimiter=delim,default=False)			
+			setter(kwargs,system,delimiter=delim,default=False)
 			setter(kwargs,cls.defaults,delimiter=delim,default='none')
 
 			out = func(cls,*args,**kwargs)
-			
+
 			return out
-		
+
 		return wrapper
 
 	dimension = 2
@@ -88,7 +88,7 @@ class Basis(Dict):
 			if cls.parse(item) == cls.parse(attr):
 				return getattr(cls,item)
 		return getattr(cls,attr)
-		
+
 
 	@classmethod
 	def set(cls,attr,value):
@@ -122,26 +122,26 @@ class Basis(Dict):
 			data (array,dict): Class data
 			shape (iterable[int]): Shape of data
 			where (float,int,iterable[int]): indices of class
-			transform (bool): Forward or backward transform data
-			kwargs (dict): Additional class keyword arguments		
+			options (dict): Class options
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array): Class data
-		'''			
+		'''
 		if state.ndim == 1:
 			if data.ndim == 2:
 				data = einsum('ij,j->i',data,state)
-			else:	
-				raise NotImplementedError(f"Not Implemented {data}")						
+			else:
+				raise NotImplementedError(f"Not Implemented {data}")
 		elif state.ndim > 1:
 			if data.ndim == 2:
 				data = einsum('ij,jk...,lk->il...',data,state,conjugate(data))
 			elif data.ndim == 3:
 				data = einsum('uij,jk...,ulk->il...',data,state,conjugate(data))
 			else:
-				raise NotImplementedError(f"Not Implemented {data}")			
+				raise NotImplementedError(f"Not Implemented {data}")
 		else:
-			raise NotImplementedError(f"Not Implemented {state}")			
-		
+			raise NotImplementedError(f"Not Implemented {state}")
+
 		return data
 
 	@classmethod
@@ -153,10 +153,10 @@ class Basis(Dict):
 			shape (iterable[int]): Shape of data
 			where (float,int,iterable[int]): indices of class
 			transform (bool): Forward or backward transform data
-			kwargs (dict): Additional class keyword arguments		
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array): Class data
-		'''	
+		'''
 
 		if transform:
 			n,d = len(shape),data.ndim
@@ -166,7 +166,7 @@ class Basis(Dict):
 			data = transpose(reshape(data,shape),axes)
 		else:
 			n,d = len(shape),data.ndim//len(shape)
-			where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+			where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]
 			shape = [prod(shape)]*d
 			axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
 			data = reshape(transpose(data,axes),shape)
@@ -187,32 +187,32 @@ class Basis(Dict):
 		'''
 
 		attr = cls.parse(attr)
-	
+
 		if attr in ['rand']:
 			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim,))) else 
+				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim,))) else
 					  (options.D**options.N,)*options.ndim)
 				))
 		elif attr in ['unitary']:
 			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else 
+				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else
 					  (options.D**options.N,)*cls.dimensions(attr,**options))
 				))
 		elif attr in ['gate']:
 			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else 
+				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else
 					  (options.D**options.N,)*cls.dimensions(attr,**options))
-				))			
+				))
 		elif attr in ['state']:
 			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else 
+				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else
 					  (options.D**options.N,)*options.ndim)
-				))	
+				))
 		elif attr in ['ghz']:
 			options.update(dict(
-				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else 
+				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,options.ndim))) else
 					  (options.D**options.N,)*options.ndim)
-				))	
+				))
 		return options
 
 	@classmethod
@@ -267,7 +267,7 @@ class Basis(Dict):
 		elif attr in ['unitary']:
 			locality = options.N
 		elif attr in ['state']:
-			locality = options.N	
+			locality = options.N
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
 			locality = 1
 		elif attr in ['ghz']:
@@ -279,12 +279,12 @@ class Basis(Dict):
 		elif attr in ['dephase','bitflip','phaseflip','amplitude']:
 			locality = 1
 		elif attr in ['depolarize']:
-			locality = 1			
+			locality = 1
 		elif attr in ['pauli','tetrad','trine','standard']:
 			locality = 1
 		else:
-			locality = None																
-		
+			locality = None
+
 		return locality
 
 
@@ -359,12 +359,12 @@ class Basis(Dict):
 		elif attr in ['dephase','bitflip','phaseflip','amplitude']:
 			dimension = 3
 		elif attr in ['depolarize']:
-			dimension = 3			
+			dimension = 3
 		elif attr in ['pauli','tetrad','trine','standard']:
 			dimension = 3
 		else:
-			dimension = None																
-		
+			dimension = None
+
 		return dimension
 
 
@@ -407,11 +407,11 @@ class Basis(Dict):
 			N = sum(len(shape[key]) for key in shape if shape[key] is not None) if shape is not None else None
 			ndim = max(len(shape[key]) for key in shape if shape[key] is not None) if shape is not None else None
 
-			shape = {axis: [i 
-				for key in shape if shape[key] is not None 
+			shape = {axis: [i
+				for key in shape if shape[key] is not None
 				for i in (
-					shape[key][axis-ndim+len(shape[key])] 
-					if (axis >= (ndim-len(shape[key]))) else 
+					shape[key][axis-ndim+len(shape[key])]
+					if (axis >= (ndim-len(shape[key]))) else
 					[1]*max(len(shape[key][i]) for i in shape[key])
 					)
 				] for axis in range(ndim)} if shape is not None else None
@@ -420,7 +420,7 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['identity']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['rand']:			
+		elif attr in ['rand']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['I','X','Y','Z']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
@@ -431,7 +431,7 @@ class Basis(Dict):
 		elif attr in ['gate','clifford']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['unitary']:
-			shape = {i: [options.D]*options.N for i in range(options.ndim)}			
+			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['state']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['zero','one','plus','minus','plusi','minusi']:
@@ -449,8 +449,8 @@ class Basis(Dict):
 		elif attr in ['pauli','tetrad','trine','standard']:
 			shape = {**{i: [options.D**2]*options.N for i in range(1)},**{i: [options.D]*options.N for i in range(1,options.ndim)}}
 		else:
-			shape = None																
-		
+			shape = None
+
 		return shape
 
 	# Basis
@@ -523,7 +523,7 @@ class Basis(Dict):
 
 	# Random
 	@classmethod
-	@decorator	
+	@decorator
 	def rand(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = rand(
@@ -537,7 +537,7 @@ class Basis(Dict):
 		elif data is not None and data.ndim == 2:
 			data = (data + dagger(data))/2
 			data /= trace(data)
-		return data	
+		return data
 
 	# Pauli
 	@classmethod
@@ -565,13 +565,13 @@ class Basis(Dict):
 	def Y(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
-			data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)		
+			data = array([[0,-1j],[1j,0]],dtype=kwargs.dtype)
 		else:
 			data = -1j*dot(cls.Z(*args,**kwargs),cls.X(*args,**kwargs))
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def Z(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.D is None:
@@ -589,14 +589,14 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def S(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,],[0,1j]],dtype=kwargs.dtype)
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def T(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,],[0,(1+1j)/sqrt(2)]],dtype=kwargs.dtype)
@@ -610,36 +610,36 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	# @decorator	
+	# @decorator
 	def gate(cls,*args,**kwargs):
-		data = {1:[cls.I,cls.H,cls.S,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']] 
+		data = {1:[cls.I,cls.H,cls.S,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']]
 		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
 		index = choice(
 			data=len(data),
 			shape=(),
 			seed=kwargs['seed'],
-			dtype=int			
+			dtype=int
 			)
 		data = switch(index,data)
 		return data
 
 	@classmethod
-	# @decorator	
+	# @decorator
 	def clifford(cls,*args,**kwargs):
-		data = {1:[cls.I,cls.H,cls.S],2:[cls.identity,cls.CNOT]}[kwargs['N']] 
+		data = {1:[cls.I,cls.H,cls.S],2:[cls.identity,cls.CNOT]}[kwargs['N']]
 		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
 		index = choice(
 			data=len(data),
 			shape=(),
 			seed=kwargs['seed'],
-			dtype=int			
+			dtype=int
 			)
 		data = switch(index,data)
 		return data
 
 	# Unitary
 	@classmethod
-	# @decorator	
+	# @decorator
 	def unitary(cls,*args,**kwargs):
 		# kwargs = Dictionary(**kwargs)
 		# data = haar(
@@ -650,14 +650,14 @@ class Basis(Dict):
 			shape=kwargs['shape'],
 			seed=kwargs['seed'],
 			dtype=kwargs['dtype']
-			)		
+			)
 		return data
 
 	# State
 	@classmethod
-	@decorator	
+	@decorator
 	def state(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)		
+		kwargs = Dictionary(**kwargs)
 		data = haar(
 			shape=kwargs.shape if isinstance(kwargs.shape,iterables) and len(kwargs.shape) == 2 else kwargs.shape*2 if isinstance(kwargs.shape,iterables) else (kwargs.shape,)*2 if isinstance(kwargs.shape,integers) else (kwargs.D,)*2,
 			seed=kwargs.seed,
@@ -670,13 +670,13 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def zero(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([1,*[0]*(kwargs.D-1)],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
@@ -686,13 +686,13 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def one(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([*[0]*(kwargs.D-1),1],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
@@ -702,13 +702,13 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def plus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
@@ -718,13 +718,13 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def minus(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
@@ -734,13 +734,13 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def plusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,1j],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
@@ -750,25 +750,25 @@ class Basis(Dict):
 		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def minusi(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = (1/sqrt(kwargs.D))*array([1,-1j],dtype=kwargs.dtype)
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
-				data = outer(data,data)		
+				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
 			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
 			data = array([outer(i,i) for i in data])
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
-		return data	
+		return data
 
 	@classmethod
-	@decorator	
+	@decorator
 	def ghz(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)		
+		kwargs = Dictionary(**kwargs)
 		data = [ravel(cls.element(D=kwargs.D,data=[i]*kwargs.N,dtype=kwargs.dtype)) for i in range(kwargs.D)]
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			data = (1/sqrt(kwargs.D))*sum(data)
@@ -789,7 +789,7 @@ class Basis(Dict):
 
 	# Operator
 	@classmethod
-	@decorator	
+	@decorator
 	def element(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		index = tuple(map(int,kwargs.data)) if kwargs.data is not None else None
@@ -851,7 +851,7 @@ class Basis(Dict):
 	def depolarize(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
-			kwargs.parameters = 0		
+			kwargs.parameters = 0
 		data = array([
 				sqrt(1-(kwargs.D**2-1)*kwargs.parameters/(kwargs.D**2))*cls.I(D=kwargs.D,dtype=kwargs.dtype),
 				sqrt(kwargs.parameters/(kwargs.D**2))*cls.X(D=kwargs.D,dtype=kwargs.dtype),
@@ -865,9 +865,9 @@ class Basis(Dict):
 	def amplitude(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		if kwargs.parameters is None:
-			kwargs.parameters = 0		
+			kwargs.parameters = 0
 		data = array([
-			cls.element(D=kwargs.D,data='00',dtype=kwargs.dtype) + 
+			cls.element(D=kwargs.D,data='00',dtype=kwargs.dtype) +
 				sqrt(1-kwargs.parameters)*cls.element(D=kwargs.D,data='11',dtype=kwargs.dtype),
 			sqrt(kwargs.parameters)*cls.element(D=kwargs.D,data='01',dtype=kwargs.dtype)
 			],dtype=kwargs.dtype)
@@ -878,10 +878,10 @@ class Basis(Dict):
 	@decorator
 	def pauli(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		
+
 		if kwargs.ndim is None or kwargs.ndim < 2:
 			kwargs.ndim = 2
-		
+
 		data = (1/(kwargs.D**2-1))*array([
 				cls.zero(*args,**kwargs),
 				cls.plus(*args,**kwargs),
@@ -889,7 +889,7 @@ class Basis(Dict):
 			   (cls.one(*args,**kwargs)+
 				cls.minus(*args,**kwargs)+
 				cls.minusi(*args,**kwargs)),
-			],dtype=kwargs.dtype)		
+			],dtype=kwargs.dtype)
 
 		return data
 
@@ -898,13 +898,13 @@ class Basis(Dict):
 	@decorator
 	def tetrad(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-	
+
 		if kwargs.ndim is None or kwargs.ndim < 2:
 			kwargs.ndim = 2
 
 		data = (1/(kwargs.D**2))*array([
 			sum(i*operator(*args,**kwargs)
-				for i,operator in 
+				for i,operator in
 				zip(parameters,(cls.I,cls.X,cls.Y,cls.Z)))
 			for parameters in [
 			(1,0,0,1),
@@ -920,7 +920,7 @@ class Basis(Dict):
 	@decorator
 	def povm(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		
+
 		if kwargs.ndim is None or kwargs.ndim < 2:
 			kwargs.ndim = 2
 
@@ -934,42 +934,42 @@ class Basis(Dict):
 		data = getattr(cls,data)(*args,**kwargs)
 
 		data = array([dot(unitary,dot(i,dagger(unitary))) for i in data])
-		
+
 		return data
 
 	@classmethod
 	@decorator
 	def trine(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-	
+
 		if kwargs.ndim is None or kwargs.ndim < 2:
 			kwargs.ndim = 2
 
 		data = (1/(kwargs.D**2-1))*array([
-										cls.I(D=kwargs.D,dtype=kwargs.dtype) + 
-			cos(i*2*pi/(kwargs.D**2-1))*cls.Z(D=kwargs.D,dtype=kwargs.dtype) + 
+										cls.I(D=kwargs.D,dtype=kwargs.dtype) +
+			cos(i*2*pi/(kwargs.D**2-1))*cls.Z(D=kwargs.D,dtype=kwargs.dtype) +
 			sin(i*2*pi/(kwargs.D**2-1))*cls.X(D=kwargs.D,dtype=kwargs.dtype)
 			for i in range(kwargs.D**2-1)
 			],dtype=kwargs.dtype)
-		
+
 		raise ValueError('Not Informationally Complete POVM <%s>'%(sys._getframe().f_code.co_name))
-		
+
 		return data
 
 	@classmethod
 	@decorator
 	def standard(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
-		
+
 		if kwargs.ndim is None or kwargs.ndim < 2:
-			kwargs.ndim = 2		
+			kwargs.ndim = 2
 
 		data = zeros((kwargs.D**2,kwargs.D**2),dtype=kwargs.dtype)
 		for i in range(kwargs.D**2):
 			data = inplace(data,(i,i),1)
 		data = reshape(data,shape=(kwargs.D**2,kwargs.D,kwargs.D))
 
-		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))		
+		raise ValueError('Non-Normalized POVM <%s>'%(sys._getframe().f_code.co_name))
 
 		return data
 
@@ -981,7 +981,7 @@ class Measure(System):
 
 	basis = None
 
-	defaults = dict(			
+	defaults = dict(
 		data=None,operator=None,string=None,system=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		basis=None,inverse=None,structure=None,ones=None,zeros=None,pointer=None,
@@ -1005,7 +1005,7 @@ class Measure(System):
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
-		super().__init__(**kwargs)	
+		super().__init__(**kwargs)
 
 		self.init()
 
@@ -1017,7 +1017,7 @@ class Measure(System):
 		Args:
 			data (str,array,tensor,mps,Measure): data of measure
 			parameters (array,dict): parameters of class
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -1044,7 +1044,7 @@ class Measure(System):
 			data (str,array,tensor,mps,Measure): data of measure
 			operator (str): name of measure basis
 			string (str): string label of measure
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -1081,15 +1081,15 @@ class Measure(System):
 		dtype = dtype
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			cls = array
-			
+
 			kwargs = dict(dtype=dtype)
 
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
-			
+
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
@@ -1108,7 +1108,7 @@ class Measure(System):
 
 			kwargs = dict(indices=[*self.inds[:2]])
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
-			
+
 			kwargs = dict(indices=[*self.inds[:3]])
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
@@ -1119,7 +1119,7 @@ class Measure(System):
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			self.ind = 'u{}'
 			self.inds = ('u{}','v{}','w{}',)
 			self.indices = ('i{}','j{}',)
@@ -1135,7 +1135,7 @@ class Measure(System):
 
 			kwargs = dict(inds=(*self.inds[:2],),tags=(self.tag,*self.tags,))
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
-			
+
 			kwargs = dict(inds=(*self.inds[:3],),tags=(self.tag,*self.tags,))
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
@@ -1217,7 +1217,7 @@ class Measure(System):
 				return state
 
 			def gradient(parameters=None,state=None,**kwargs):
-				return 0				
+				return 0
 
 		self.func = func
 		self.gradient = gradient
@@ -1237,10 +1237,10 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,)
-			kwargs (dict): Additional class keyword arguments					
+			kwargs (dict): Additional class keyword arguments
 		'''
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		
+
 		return self.func(parameters=parameters,state=state,**kwargs)
 
 	def __len__(self):
@@ -1266,28 +1266,28 @@ class Measure(System):
 	@property
 	def K(self):
 		return len(self)
-	
+
 	def info(self,display=None,ignore=None,verbose=None,**kwargs):
 		'''
 		Log class information
 		Args:
 			display (str,iterable[str]): Show attributes
 			ignore (str,iterable[str]): Do not show attributes
-			verbose (bool,int,str): Verbosity of message	
-			kwargs (dict): Additional logging keyword arguments						
-		'''		
+			verbose (bool,int,str): Verbosity of message
+			kwargs (dict): Additional logging keyword arguments
+		'''
 
 		if not verbose and not self.verbose:
 			return
 
 		msg = []
-		
+
 		options = dict(
 			align=kwargs.get('align','<'),
 			space=kwargs.get('space',1),
 			width=kwargs.get('width',2)
 			)
-	
+
 		precision = kwargs.get('precision',8)
 
 		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
@@ -1322,15 +1322,17 @@ class Measure(System):
 
 		return
 
-	def transform(self,parameters=None,state=None,model=None,where=None,transformation=None,**kwargs):
+	def transform(self,parameters=None,state=None,model=None,transformation=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (str,iterable[str],array,tensor,network): state of class of shape (N,self.D,self.D) or (self.D**N,self.D**N)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
-			where (float,int,iterable[int]): indices of function
 			transformation (bool,str): Type of transformation, True for amplitude -> probability or model to fun, or False for probability -> amplitude, allowed strings in ['probability','amplitude','operator','state','function','model'], default of amplitude -> probability
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
 			kwargs (dict): Additional class keyword arguments
 		Returns:
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,) or (self.D**N,self.D**N)
@@ -1338,35 +1340,38 @@ class Measure(System):
 		'''
 
 		if transformation in [None,True,'probability','state'] and model is None:
-		
-			return self.probability(parameters=parameters,state=state,where=where,**kwargs)
+
+			return self.probability(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 
 		elif transformation in [False,'amplitude','function']:
 
-			return self.amplitude(parameters=parameters,state=state,where=where,**kwargs)
+			return self.amplitude(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 
 		elif transformation in [None,True,'probability','state'] and model is not None:
-		
-			state = self.transform(parameters=parameters,state=state,transformation=transformation,where=where)
-		
-			return self.operation(parameters=parameters,state=state,model=model,where=where,**kwargs)
+
+			state = self.transform(parameters=parameters,state=state,transformation=transformation,where=where,func=func,options=options,**kwargs)
+
+			return self.operation(parameters=parameters,state=state,model=model,where=where,func=func,options=options,**kwargs)
 
 		else:
-		
-			return state		
 
-	def probability(self,parameters=None,state=None,**kwargs):
+			return state
+
+	def probability(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (iterable[array,tensor,callable]): state of class of shape (N,self.D,self.D)
-			kwargs (dict): Additional class keyword arguments					
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N)
 		'''
-		
-		state = [*state] if isinstance(state,iterables) else [state] if state is not None else state		
+
+		state = [*state] if isinstance(state,iterables) else [state] if state is not None else state
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
 		if state is None:
@@ -1374,9 +1379,9 @@ class Measure(System):
 
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			N = len(state)
-			D = self.D			
+			D = self.D
 			ndim = 2
 
 			cls = array
@@ -1435,13 +1440,13 @@ class Measure(System):
 
 
 			options = {**(self.options if self.options is not None else {}),**{}}
-			
+
 			state = mps(state,**options)
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			N = len(state)
-			D = self.D		
+			D = self.D
 			ndim = 2
 
 			cls = tensor_quimb
@@ -1462,34 +1467,36 @@ class Measure(System):
 				state[i] = data
 
 			options = {**dict(site_ind_id=self.ind,site_tag_id=self.tag),**dict(cyclic=self.options.get('periodic',self.options.get('cyclic',None)) if self.options is not None else None)}
-			
+
 			state = mps_quimb(state,**options)
 
 		return state
 
-	def amplitude(self,parameters=None,state=None,where=None,**kwargs):
+	def amplitude(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Amplitude for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function			
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			state (array,tensor,network): state of class of Probability state of shape (self.D**N,self.D**N)
 		'''
-		
+
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = state if state is not None else state
-		
+
 		if state is None:
 			return state
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			if L:
 				basis = array([tensorprod(i) for i in permutations(*[self.basis[i] for i in where])],dtype=self.dtype)
 				inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
@@ -1518,7 +1525,7 @@ class Measure(System):
 
 		return state
 
-	def operation(self,parameters=None,state=None,model=None,where=None,options=None,**kwargs):
+	def operation(self,parameters=None,state=None,model=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Operator for POVM probability measure
 		Args:
@@ -1526,17 +1533,18 @@ class Measure(System):
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			model (callable): model of operator with signature model(parameters,state,**kwargs) -> data
 			where (float,int,iterable[int]): indices of function
-			options (dict): Operator keyword options			
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 		state = state if state is not None else state
-		
+
 		default = tuple()
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		K = self.K
 		D = self.D
@@ -1544,7 +1552,7 @@ class Measure(System):
 		letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
 
 		if L:
-		
+
 			if self.architecture is None or self.architecture in ['array']:
 				basis = [self.basis[i] for i in where]
 				inverse = [self.inverse[i] for i in where]
@@ -1554,12 +1562,12 @@ class Measure(System):
 			elif self.architecture in ['tensor_quimb']:
 				basis = [representation_quimb(self.basis[i]) for i in where]
 				inverse = [representation_quimb(self.inverse[i]) for i in where]
-		
+
 			basis = array([tensorprod(i) for i in permutations(*[i for i in basis])],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)				
-		
+			inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)
+
 		else:
-		
+
 			if self.architecture is None or self.architecture in ['array']:
 				basis = self.basis[self.pointer]
 				inverse = self.inverse[self.pointer]
@@ -1568,8 +1576,8 @@ class Measure(System):
 				inverse = self.inverse[self.pointer].array()
 			elif self.architecture in ['tensor_quimb']:
 				basis = representation_quimb(self.basis[self.pointer])
-				inverse = representation_quimb(self.inverse[self.pointer])						
-		
+				inverse = representation_quimb(self.inverse[self.pointer])
+
 		if where is not None:
 			samples = [K]*L
 
@@ -1592,7 +1600,7 @@ class Measure(System):
 		else:
 
 			einsummation = None
-		
+
 		if self.architecture is None or self.architecture in ['array']:
 
 			options = {**{option:self.options[option] for option in self.options if option not in []},**(options if options is not None else {})}
@@ -1621,32 +1629,32 @@ class Measure(System):
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None				
+					return None
 
 		elif self.architecture in ['tensor']:
 
 			options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
 
 			if model is not None and where:
-			
+
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
 					return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
-		
+
 			else:
-				
+
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None	
+					return None
 
 		elif self.architecture in ['tensor_quimb']:
 
 			options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
 
 			if model is not None and where:
-			
+
 				options = options if options is not None else {}
 
 				shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
@@ -1654,13 +1662,13 @@ class Measure(System):
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
 					options.update(dict(max_bond=options.pop('S',options.get('max_bond'))))
 					return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
-		
+
 			else:
-				
+
 				options = options if options is not None else {}
 
 				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None				
+					return None
 
 		parameters = self.parameters() if parameters is None else parameters
 		wrapper = partial
@@ -1670,34 +1678,38 @@ class Measure(System):
 
 		return func
 
-	def calculate(self,attr=None,parameters=None,state=None,**kwargs):
+	def calculate(self,attr=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Calculate data for POVM probability measure
 		Args:
 			attr (str): attribute for calculation of data
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
 
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def where(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def where(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Indices of function
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			where (iterable[int],dict[int,int]): indices of function
 			L (int): size of indices
@@ -1736,15 +1748,16 @@ class Measure(System):
 
 		return where,L,N
 
-	def eig(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def eig(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Eigenvalues for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array): Eigenvalues, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
@@ -1753,9 +1766,9 @@ class Measure(System):
 		func = lambda data,func=func: func(sort(data)[::-1])
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
-		where = where if where is not None and L else None 
+		where = where if where is not None and L else None
 
 		if isinstance(state,arrays):
 
@@ -1764,7 +1777,7 @@ class Measure(System):
 			data = eig(state,**kwargs) if where is not None else array([])
 
 		elif isinstance(state,tensors):
-			
+
 			raise NotImplementedError
 
 		elif isinstance(state,matrices_quimb):
@@ -1776,7 +1789,7 @@ class Measure(System):
 			data = sqr(data)
 
 		elif isinstance(state,tensors_quimb):
-			
+
 			where = tuple(self.ind.format(i) for i in where) if where is not None else None
 
 			data = state.singular_values(where) if where is not None else array([])
@@ -1786,22 +1799,23 @@ class Measure(System):
 		else:
 
 			where = tuple(where) if where is not None else None
-			
+
 			data = state
 
 		data = func(data)
 
 		return data
 
-	def svd(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def svd(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Singular values for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array): Singular values, sorted largest to smallest, of shape (self.D**L,) or (self.K**L,)
 		'''
@@ -1810,14 +1824,14 @@ class Measure(System):
 		func = lambda data,func=func: func(data)
 
 		default = tuple()
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
-		where = where if where is not None else None 
+		where = where if where is not None else None
 
 		if isinstance(state,arrays):
 
 			where = tuple(where) if where is not None and L else None
-			
+
 			data = svd(state,**kwargs) if where is not None else array([])
 
 		elif isinstance(state,tensors):
@@ -1830,9 +1844,9 @@ class Measure(System):
 			data = state.singular_values(where) if where is not None else array([])
 
 		elif isinstance(state,tensors_quimb):
-			
+
 			where = tuple(self.ind.format(i) for i in where) if where is not None else None
-			
+
 			data = state.singular_values(where) if where is not None else array([])
 
 		else:
@@ -1845,38 +1859,40 @@ class Measure(System):
 
 		return data
 
-	def rank(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def rank(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Rank for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(nonzero(real(data)/maximum(absolute(real(data))),**kwargs))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		data = func(state)
 
-		return data		
+		return data
 
-	def entropy(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entropy(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class of Probability of shape (N,self.D) or (self.D**N,) or (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (array,tensor,network): state of class of Probability of shape (L,self.D) or (self.D**L,) or (L,self.K) or (self.K**L,)
 		'''
@@ -1885,7 +1901,7 @@ class Measure(System):
 		func = lambda data,func=func: func(data)
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if isinstance(state,arrays):
 
@@ -1912,7 +1928,7 @@ class Measure(System):
 			data = state.entropy(where)
 
 		elif isinstance(state,tensors_quimb):
-			
+
 			where = tuple(self.ind.format(i) for i in where) if where is not None else None
 
 			data = state.entropy(where)
@@ -1920,56 +1936,64 @@ class Measure(System):
 		else:
 
 			where = tuple(where) if where is not None else None
-			
+
 			data = state
 
 		data = func(data)
 
 		return data
 
-	def sample(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def sample(self,attr=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class sample
 		Args:
+			attr (str): attribute for calculation of data
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to sample		
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
 
-		func = (lambda data:data) if not callable(func) else func
+		if hasattr(self,attr):
+			attr = getattr(self,attr)
+		else:
+			attr = self.array
 
-		data = self.array(parameters=parameters,state=state,where=where,func=func,**kwargs)
+		options = {} if options is None else options
 
-		data = histogram(data,**kwargs)
+		data = attr(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
+
+		data = histogram(data,**options)
 
 		return data
 
-	def array(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def array(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class data
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(ravel(data)))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		where = tuple(i for i in range(N) if i not in where)
 
-		state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+		state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		where = tuple(i for i in range(N) if i not in where)
 
@@ -1982,43 +2006,44 @@ class Measure(System):
 			data = state.array()
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			data = representation_quimb(contract_quimb(state),contraction=True)
 
 		data = func(data)
 
 		return data
 
-	def state(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def state(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class state
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(diag(data)))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		where = tuple(i for i in range(N) if i not in where)
 
-		state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+		state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		where = tuple(i for i in range(N) if i not in where)
 
-		options = dict(transformation=False)
-		state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+		settings = dict(transformation=False)
+		state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = array(state)
 
 		elif self.architecture in ['tensor']:
@@ -2031,26 +2056,27 @@ class Measure(System):
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def trace(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def trace(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Trace for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
-			state (array,tensor,network): state of class of Probability of shape (L,self.K) or (self.K**L,)
+			state (array,tensor,network): state of class
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
 
@@ -2059,12 +2085,12 @@ class Measure(System):
 			K = self.K
 			ndim = data.ndim
 
-			options = dict(
+			settings = dict(
 				axes = [[i] for i in range(N)],
 				shape = [K,N,ndim],
 				transformation=True,
 				)
-			_options = dict(
+			_settings = dict(
 				axes = [[i] for i in range(N-L)],
 				shape = [K,N-L,ndim],
 				transformation=False,
@@ -2072,7 +2098,7 @@ class Measure(System):
 
 			function = lambda data: addition(data,axis=where)
 
-			data = shuffle(function(shuffle(data,**options)),**_options)
+			data = shuffle(function(shuffle(data,**settings)),**_settings)
 
 		elif self.architecture in ['tensor']:
 
@@ -2083,7 +2109,7 @@ class Measure(System):
 					data &= self.ones[i]
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			data = state.copy()
 
 			for i in where:
@@ -2094,24 +2120,25 @@ class Measure(System):
 
 		return data
 
-	def measure(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def measure(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Measure probability for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (dict[int,int]): indices and values of measured probability
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
-			state (array,tensor,network): state of class of Probability of shape (L,self.K) or (self.K**L,)
+			state (array,tensor,network): state of class
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
 		default = {}
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
 
@@ -2120,12 +2147,12 @@ class Measure(System):
 			K = self.K
 			ndim = data.ndim
 
-			options = dict(
+			settings = dict(
 				axes = [[i] for i in range(N)],
 				shape = [K,N,ndim],
 				transformation=True,
 				)
-			_options = dict(
+			_settings = dict(
 				axes = [[i] for i in range(N-L)],
 				shape = [K,N-L,ndim],
 				transformation=False,
@@ -2133,10 +2160,10 @@ class Measure(System):
 
 			function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(N))]
 
-			data = shuffle(function(shuffle(data,**options)),**_options)
+			data = shuffle(function(shuffle(data,**settings)),**_settings)
 
 		elif self.architecture in ['tensor']:
-			
+
 			data = state.copy()
 
 			for i in where:
@@ -2146,7 +2173,7 @@ class Measure(System):
 				self.zeros[i].set(array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			data = state.copy()
 
 			for i in where:
@@ -2159,28 +2186,29 @@ class Measure(System):
 
 		return data
 
-	def square(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
+	def square(self,parameters=None,state=None,other=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Trace of Square for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function				
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			other = state if other is None else other
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
@@ -2207,7 +2235,7 @@ class Measure(System):
 			data = state
 
 		elif self.architecture in ['tensor_quimb']:
-	
+
 			other = state if other is None else other
 
 			state = state.copy()
@@ -2227,33 +2255,34 @@ class Measure(System):
 
 		return data
 
-	def vectorize(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def vectorize(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Partial Trace of Vectorized Operator for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function				
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(data)
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = state
 
 			K = self.K
 			ndim = data.ndim
 
-			options = dict(
+			settings = dict(
 				axes = [[i for i in range(N) if i not in where],[i for i in range(N) if i in where]],
 				shape = [K,N,ndim],
 				transformation=True,
@@ -2261,7 +2290,7 @@ class Measure(System):
 
 			inverse = array([tensorprod(i) for i in permutations(*[self.inverse[i] for i in where])],dtype=self.dtype)
 
-			data = shuffle(data,**options)
+			data = shuffle(data,**settings)
 
 			data = reshape(data,shape=(1,*data.shape)) if not (N-L) else data
 
@@ -2285,7 +2314,7 @@ class Measure(System):
 			data = state
 
 		elif self.architecture in ['tensor_quimb']:
-	
+
 			state = state.copy()
 			other = state.copy()
 
@@ -2303,117 +2332,120 @@ class Measure(System):
 
 		return data
 
-	def infidelity(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
+	def infidelity(self,parameters=None,state=None,other=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Infidelity for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
 
 		attr = 'infidelity_classical'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def infidelity_quantum(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
+	def infidelity_quantum(self,parameters=None,state=None,other=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Infidelity (Quantum) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
-			
+
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,options=options,**{**settings,**kwargs})
+
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,options=options,**kwargs)
 
 			data = addition(sqrt(absolute(data)))
 
 		elif self.architecture in ['tensor']:
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,options=options,**{**settings,**kwargs})
 
 			state = state.matrix()
 			other = other.matrix()
 
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,options=options,**kwargs)
 
 			data = addition(sqrt(absolute(data)))
 
 		elif self.architecture in ['tensor_quimb']:
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
-			other = self.transform(parameters=parameters,state=other,where=where,**{**options,**kwargs})
-			
-			options = dict(to=self.architecture,contraction=True)
-			state = representation_quimb(state,**{**options,**kwargs})
-			other = representation_quimb(other,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,options=options,**{**settings,**kwargs})
+
+			settings = dict(to=self.architecture,contraction=True)
+			state = representation_quimb(state,**{**settings,**kwargs})
+			other = representation_quimb(other,**{**settings,**kwargs})
 
 			state = dot(state,other)
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,options=options,**kwargs)
 
 			data = addition(sqrt(absolute(data)))
 
 		data = func(data)
 
-		return data		
+		return data
 
-	def infidelity_classical(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
+	def infidelity_classical(self,parameters=None,state=None,other=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Infidelity (Classical) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data		
-			kwargs (dict): Additional class keyword arguments					
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			function = sqrt
-			
+
 			state = function(state)
 			other = function(other)
 
@@ -2430,7 +2462,7 @@ class Measure(System):
 			data = dot(state,other)
 
 		elif self.architecture in ['tensor_quimb']:
-			
+
 			function = sqrt
 			kwargs = {}
 
@@ -2446,239 +2478,246 @@ class Measure(System):
 
 		return data
 
-	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,func=None,**kwargs):
+	def infidelity_pure(self,parameters=None,state=None,other=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Infidelity (Pure) for POVM probability measure with respect to other POVM
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			other (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function				
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - sqrt(absolute(real(data))))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
-			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
-			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
-			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
+
+			data = self.square(parameters=parameters,state=state,other=other,where=where,options=options,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,options=options,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,options=options,**kwargs)
 
 			data = data/sqrt(state*other)
 
 		elif self.architecture in ['tensor']:
 
-			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
-			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
-			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
+			data = self.square(parameters=parameters,state=state,other=other,where=where,options=options,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,options=options,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,options=options,**kwargs)
 
 			data = (data.array()/sqrt(state.array()*other.array())).item()
 
 		elif self.architecture in ['tensor_quimb']:
 
-			options = dict(contraction=True)
-	
-			data = self.square(parameters=parameters,state=state,other=other,where=where,**kwargs)
-			state = self.square(parameters=parameters,state=state,other=state,where=where,**kwargs)
-			other = self.square(parameters=parameters,state=other,other=other,where=where,**kwargs)
+			settings = dict(contraction=True)
 
-			data = representation_quimb(data,**options)/sqrt(representation_quimb(state,**options)*representation_quimb(other,**options))
+			data = self.square(parameters=parameters,state=state,other=other,where=where,options=options,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,options=options,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,options=options,**kwargs)
+
+			data = representation_quimb(data,**settings)/sqrt(representation_quimb(state,**settings)*representation_quimb(other,**settings))
 
 		data = func(data)
 
 		return data
 
-	def norm(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def norm(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Norm for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-	
+
 		attr = 'norm_classical'
-	
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def norm_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def norm_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Norm (quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function		
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			options = dict(contraction=True)
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			settings = dict(contraction=True)
 
-			data = representation_quimb(data,**options)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = representation_quimb(data,**settings)
 
 		data = func(data)
 
 		return data
 
-	def norm_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def norm_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Norm (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function					
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			options = dict(contraction=True)
 
-			data = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			settings = dict(contraction=True)
 
-			data = representation_quimb(data,**options)
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = representation_quimb(data,**settings)
 
 		data = func(data)
 
 		return data
 
-	def norm_pure(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def norm_pure(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Norm (Pure) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function			
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(1 - sqrt(absolute(real(data))))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
 
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.array().item()
 
 		elif self.architecture in ['tensor_quimb']:
 
-			options = dict(contraction=True)
-	
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
+			settings = dict(contraction=True)
 
-			data = representation_quimb(data,**options)
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = representation_quimb(data,**settings)
 
 		data = func(data)
 
 		return data
 
 
-	def entanglement(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entanglement(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-	
+
 		attr = 'entanglement_classical'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def entanglement_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entanglement_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -2687,24 +2726,24 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data)/log(self.D**L))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
-			where = tuple(i for i in range(N) if i not in where)
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 			state = array(state)
 
-			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 			data = data.item()
 
@@ -2712,54 +2751,55 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 			state = state.matrix()
 
-			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			state = state.copy()
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
-			options = dict(to=self.architecture,contraction=True)
-			state = representation_quimb(state,**{**options,**kwargs})
+			settings = dict(to=self.architecture,contraction=True)
+			state = representation_quimb(state,**{**settings,**kwargs})
 
-			data = self.eig(parameters=parameters,state=state,**kwargs)
+			data = self.eig(parameters=parameters,state=state,options=options,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def entanglement_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entanglement_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -2768,15 +2808,15 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data)/log(self.K**L))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.item()
 
@@ -2784,135 +2824,138 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			state = state.array().ravel()
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			state = ravel(representation_quimb(state,contraction=True))
 
-			data = self.entropy(parameters=parameters,state=state,where=where,**kwargs)
-
-		data = func(data)
-
-		return data	
-
-	def entanglement_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
-		'''
-		Entanglement Entropy (Renyi) for POVM probability measure with respect to where
-		Args:
-			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-		
-		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(1 - real(data))
-
-		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
-
-		if self.architecture is None or self.architecture in ['array']:
-			
-			where = tuple(i for i in range(N) if i not in where)
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
-
-			where = tuple(i for i in range(N) if i not in where)
-
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = data.item()
-
-		elif self.architecture in ['tensor']:
-
-			where = tuple(i for i in range(N) if i not in where)
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
-
-			where = tuple(i for i in range(N) if i not in where)
-
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = data.array().item()
-
-		elif self.architecture in ['tensor_quimb']:
-	
-			where = tuple(i for i in range(N) if i not in where)
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
-
-			where = tuple(i for i in range(N) if i not in where)
-
-			options = dict(contraction=True)
-
-			data = self.square(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = representation_quimb(data,**options)
+			data = self.entropy(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		data = func(data)
 
 		return data
 
-	def entangling(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entanglement_renyi(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+		'''
+		Entanglement Entropy (Renyi) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
+		Returns:
+			data (object): data
+		'''
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(1 - real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
+
+		if self.architecture is None or self.architecture in ['array']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.item()
+
+		elif self.architecture in ['tensor']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.array().item()
+
+		elif self.architecture in ['tensor_quimb']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = dict(contraction=True)
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = representation_quimb(data,**settings)
+
+		data = func(data)
+
+		return data
+
+	def entangling(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-	
+
 		attr = 'entangling_renyi'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def entangling_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entangling_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func((1/2)*real(data)/log(self.D**L))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2923,19 +2966,19 @@ class Measure(System):
 
 			data = einsum('uv,us,vp,si,pj->ij',data,inverse,inverse,basis,conjugate(basis))
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
-			
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2948,17 +2991,17 @@ class Measure(System):
 			indices = [[symbol.format(i) for i in where for symbol in symbols] for symbols in [self.symbols[:2],self.symbols[2:4]]]
 			data = data.matrix(indices=indices)
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array()
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -2968,58 +3011,59 @@ class Measure(System):
 				with context_quimb(self.inverse[i],self.basis[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1],self.inds[1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}],tags=None)):
 					data &= self.inverse[i] & self.basis[i].conj()
 
-			options = {}
-			data = contract_quimb(data,**options)
+			settings = {}
+			data = contract_quimb(data,**settings)
 
-			options = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
-			data = fuse_quimb(data,**options)
+			settings = dict(where={self.symbols[j].format(j):(*(symbol.format(i) for i in where for symbol in self.symbols[2*j:2*(j+1)]),) for j in range(2)})
+			data = fuse_quimb(data,**settings)
 
-			options = dict(contraction=True)
-			data = representation_quimb(data,**options)
+			settings = dict(contraction=True)
+			data = representation_quimb(data,**settings)
 
-			options = {}
-			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+			settings = {}
+			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,options=options,**kwargs),**settings)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def entangling_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entangling_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func((1/2)*real(data)/log(self.K**L))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
-			where = tuple(i for i in range(N) if i not in where)
-
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 			data = data.item()
 
@@ -3027,70 +3071,71 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
 			data = data.matrix()
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array()
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array()
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			where = tuple(i for i in range(N) if i not in where)
-
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = {}
-			data = contract_quimb(data,**options)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			options = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
-			data = fuse_quimb(data,**options)
+			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(contraction=True)
-			data = representation_quimb(data,**options)
+			settings = {}
+			data = contract_quimb(data,**settings)
 
-			options = {}
-			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)
+			settings = dict(where={self.inds[j]:(*(self.inds[j].format(i) for i in where),) for j in range(2)})
+			data = fuse_quimb(data,**settings)
+
+			settings = dict(contraction=True)
+			data = representation_quimb(data,**settings)
+
+			settings = {}
+			data /= contract_quimb(self.vectorize(parameters=parameters,state=state,options=options,**kwargs),**settings)
 
 			data = self.eig(parameters=parameters,state=data,**kwargs)
 
-			data = self.entropy(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def entangling_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def entangling_renyi(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Entangling Power/Operator Entanglement Entropy (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(1 - real(data))		
+		func = lambda data,func=func: func(1 - real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
+
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3098,7 +3143,7 @@ class Measure(System):
 
 			data = einsum('uv,up,vs,sp->',data,inverse,inverse,data)
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs)**2
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs)**2
 
 			data = data.item()
 
@@ -3106,7 +3151,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3126,18 +3171,18 @@ class Measure(System):
 
 			data = data.array().item()
 
-			data /= self.vectorize(parameters=parameters,state=state,**kwargs).array().item()**2
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array().item()**2
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			where = tuple(i for i in range(N) if i not in where)
-
-			data = self.vectorize(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = {}
-			data = contract_quimb(data,**options)
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = {}
+			data = contract_quimb(data,**settings)
 
 			other = data.copy()
 
@@ -3151,74 +3196,76 @@ class Measure(System):
 
 				data &= other
 
-				options = dict(contraction=True)
-				data = representation_quimb(data,**options)
+				settings = dict(contraction=True)
+				data = representation_quimb(data,**settings)
 
-				options = {}
-				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,**kwargs),**options)**2
+				settings = {}
+				data /= contract_quimb(self.vectorize(parameters=parameters,state=state,options=options,**kwargs),**settings)**2
 
 		data = func(data)
 
 		return data
 
-	def mutual(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def mutual(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Mutual Information for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-	
+
 		attr = 'mutual_renyi'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def mutual_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def mutual_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Mutual Information (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.D**(2*N)))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data -= tmp
 
 			data = data.item()
@@ -3229,68 +3276,69 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data -= tmp
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,**kwargs)*log(self.D**L)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data -= tmp
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def mutual_measure(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def mutual_measure(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Mutual Information (Measure) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-		
+
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(data)/log(self.D**(2*N)))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			tmp = state
-			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,**kwargs)*log(self.D**L)
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,options=options,**kwargs)*log(self.D**L)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3303,8 +3351,8 @@ class Measure(System):
 				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
 
 				index = range(L)
-				options = dict(transformation=False)
-				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+				settings = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**settings,**kwargs})
 
 				tmp /= norm
 
@@ -3323,7 +3371,7 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i in where)
 			tmp = state
-			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,**kwargs)*log(self.D**L)
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,options=options,**kwargs)*log(self.D**L)
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3336,15 +3384,15 @@ class Measure(System):
 				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
-				options = dict(transformation=False)
-				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+				settings = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**settings,**kwargs})
 
 				tmp = tmp.matrix()
 
 				norm = norm.array()
 
 				tmp /= norm
- 
+
 				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
@@ -3373,14 +3421,14 @@ class Measure(System):
 				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
 
 				index = tuple(i for i in range(N) if i not in where)
-				options = dict(transformation=False)
-				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**options,**kwargs})
+				settings = dict(transformation=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**settings,**kwargs})
 
-				options = dict(to=self.architecture,contraction=True)
-				tmp = representation_quimb(tmp,**{**options,**kwargs})
+				settings = dict(to=self.architecture,contraction=True)
+				tmp = representation_quimb(tmp,**{**settings,**kwargs})
 
-				options = dict(to=self.architecture,contraction=True)
-				norm = representation_quimb(norm,**{**options,**kwargs})
+				settings = dict(to=self.architecture,contraction=True)
+				norm = representation_quimb(norm,**{**settings,**kwargs})
 
 				tmp /= norm
 
@@ -3392,17 +3440,18 @@ class Measure(System):
 
 		data = func(data)
 
-		return data			
+		return data
 
-	def mutual_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def mutual_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Mutual Information (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3411,25 +3460,25 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data)/log(self.K**L))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data -= tmp
 
 			data = data.item()
@@ -3440,53 +3489,54 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data -= tmp
 
 			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,**kwargs)*log(self.K**L)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
 			data -= tmp
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def mutual_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def mutual_renyi(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Mutual Information (Renyi) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3495,27 +3545,27 @@ class Measure(System):
 		func = lambda data,func=func: func((1/2)*real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data -= tmp
-		
+
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
@@ -3524,75 +3574,77 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data -= tmp
-		
+
 			data = data.item()
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			data = 0
 
 			where = tuple(i for i in range(N) if i in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N) if i not in where)
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data += tmp
 
 			where = tuple(i for i in range(N))
 			L = len(where)
-			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,**kwargs)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
 			data -= tmp
 
 		data = func(data)
 
 		return data
 
-	def discord(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def discord(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Discord for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
-	
+
 		attr = 'discord_quantum'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def discord_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def discord_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Discord (Quantum) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3601,33 +3653,34 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
-			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
 
-			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			data = self.mutual_quantum(parameters=parameters,state=state,where=where,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,**kwargs)
+
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		data = func(data)
 
-		return data	
+		return data
 
-	def discord_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def discord_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Discord (Classical) for POVM probability measure with respect to where
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data			
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3636,10 +3689,10 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
+
 			data = 0
 
 		elif self.architecture in ['tensor']:
@@ -3647,79 +3700,82 @@ class Measure(System):
 			data = 0
 
 		elif self.architecture in ['tensor_quimb']:
-		
-			data = 0
 
-		data = func(data)
-
-		return data	
-
-	def discord_renyi(self,parameters=None,state=None,where=None,func=None,**kwargs):
-		'''
-		Discord (Renyi) for POVM probability measure with respect to where
-		Args:
-			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data			
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-
-		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(real(data))
-
-		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
-
-		if self.architecture is None or self.architecture in ['array']:
-			
-			data = 0
-
-		elif self.architecture in ['tensor']:
-		
-			data = 0
-
-		elif self.architecture in ['tensor_quimb']:
-		
 			data = 0
 
 		data = func(data)
 
 		return data
 
-	def spectrum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def discord_renyi(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+		'''
+		Discord (Renyi) for POVM probability measure with respect to where
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
+		Returns:
+			data (object): data
+		'''
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(data))
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
+
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = 0
+
+		elif self.architecture in ['tensor']:
+
+			data = 0
+
+		elif self.architecture in ['tensor_quimb']:
+
+			data = 0
+
+		data = func(data)
+
+		return data
+
+	def spectrum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Spectrum for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function				
-			func (callable): function to apply to data	
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
 
 		attr = 'spectrum_classical'
-		
+
 		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,**kwargs)
+			data = getattr(self,attr)(parameters=parameters,state=state,other=other,where=where,func=func,options=options,**kwargs)
 		else:
 			data = state
 
 		return data
 
-	def spectrum_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def spectrum_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Spectrum (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data					
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3728,73 +3784,74 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-			
-			where = tuple(i for i in range(N) if i not in where)
-
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 			where = tuple(i for i in range(N) if i in where)
 
-			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 			state = state.matrix()
 
 			where = tuple(i for i in range(N) if i in where)
 
-			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
-		
+
 			state = state.copy()
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			state = self.trace(parameters=parameters,state=state,where=where,**kwargs)
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			where = tuple(i for i in range(N) if i not in where)
 
-			options = dict(transformation=False)
-			state = self.transform(parameters=parameters,state=state,where=where,**{**options,**kwargs})
+			settings = dict(transformation=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
-			options = dict(to=self.architecture,contraction=True)
-			state = representation_quimb(state,**{**options,**kwargs})
+			settings = dict(to=self.architecture,contraction=True)
+			state = representation_quimb(state,**{**settings,**kwargs})
 
 			where = tuple(i for i in range(N) if i in where)
 
-			data = self.eig(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		data = func(data)
 
 		return data
 
-	def spectrum_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def spectrum_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Spectrum (Classical) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data							
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3803,22 +3860,22 @@ class Measure(System):
 		func = lambda data,func=func: func(real(data))
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
-		
+
 			K = self.K
 			ndim = state.ndim
 
-			options = dict(
+			settings = dict(
 				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
 				shape = [K,N,ndim],
 				transformation=True,
 				)
 
-			state = shuffle(state,**options)
+			state = shuffle(state,**settings)
 
-			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
 
@@ -3827,74 +3884,34 @@ class Measure(System):
 			K = self.K
 			ndim = state.ndim
 
-			options = dict(
+			settings = dict(
 				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
 				shape = [K,N,ndim],
 				transformation=True,
 				)
 
-			state = shuffle(state,**options)
+			state = shuffle(state,**settings)
 
-			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
-
-		elif self.architecture in ['tensor_quimb']:
-		
-			data = self.svd(parameters=parameters,state=state,where=where,**kwargs)
-
-		data = func(data)
-
-		return data	
-
-	def rank_quantum(self,parameters=None,state=None,where=None,func=None,**kwargs):
-		'''
-		Rank (Quantum) for POVM probability measure
-		Args:
-			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data						
-			kwargs (dict): Additional class keyword arguments					
-		Returns:
-			data (object): data
-		'''
-
-		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(data)
-
-		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
-
-		if self.architecture is None or self.architecture in ['array']:
-
-			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
-
-		elif self.architecture in ['tensor']:
-
-			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
 
-			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,**kwargs)
-
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		data = func(data)
 
 		return data
 
-	def rank_classical(self,parameters=None,state=None,where=None,func=None,**kwargs):
+	def rank_quantum(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
-		Rank (Classical) for POVM probability measure
+		Rank (Quantum) for POVM probability measure
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
+			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
-			func (callable): function to apply to data							
-			kwargs (dict): Additional class keyword arguments					
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -3903,25 +3920,67 @@ class Measure(System):
 		func = lambda data,func=func: func(data)
 
 		default = range
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default)
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
 
 		if self.architecture is None or self.architecture in ['array']:
 
-			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
 
-			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor_quimb']:
 
-			data = self.spectrum_classical(parameters=parameters,state=state,where=where,**kwargs)
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.rank(parameters=parameters,state=data,where=where,**kwargs)
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		data = func(data)
+
+		return data
+
+	def rank_classical(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+		'''
+		Rank (Classical) for POVM probability measure
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
+		Returns:
+			data (object): data
+		'''
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(data)
+
+		default = range
+		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
+
+		if self.architecture is None or self.architecture in ['array']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor_quimb']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		data = func(data)
 
@@ -3937,7 +3996,7 @@ class MPS(mps):
 		N (int): Tensor system size
 		D (int): Tensor physical bond dimension
 		S (int): Tensor virtual bond dimension
-		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		kwargs (dict): Additional keyword arguments
 	'''
 
@@ -3963,7 +4022,7 @@ class MPS(mps):
 				**{attr: Basis.plus for attr in ['plus','+']},
 				**{attr: Basis.minus for attr in ['minus','-']},
 				**{attr: Basis.plusi for attr in ['plusi','+i']},
-				**{attr: Basis.minusi for attr in ['minusi','-i']},	
+				**{attr: Basis.minusi for attr in ['minusi','-i']},
 				**{attr: Basis.ghz for attr in ['ghz']},
 			}
 			options = dict(D=D,**kwargs)
@@ -3982,12 +4041,12 @@ if backend in ['quimb']:
 
 	objects = (*objects,*objects_quimb)
 
-	class MPS_quimb(mps_quimb): 
+	class MPS_quimb(mps_quimb):
 		'''
 		Matrix Product State class
 		Args:
 			data (iterable,int,str,callable,array,object): Tensor data
-			parameters (array,dict): Tensor parameters				
+			parameters (array,dict): Tensor parameters
 			N (int): Tensor system size
 			D (int): Tensor physical bond dimension
 			S (int): Tensor virtual bond dimension
@@ -3999,7 +4058,7 @@ if backend in ['quimb']:
 				'periodic':(
 					(lambda attr,value,kwargs:'cyclic'),
 					(lambda attr,value,kwargs: (value is True) and N is not None and N>2)
-					),		
+					),
 				}
 
 			kwargs.update(dict(data=data,L=N))
@@ -4016,8 +4075,8 @@ if backend in ['quimb']:
 			if data is None:
 				kwds = {attr: kwargs.get(attr) for attr in ['random','seed','bounds','dtype']}
 				def data(shape,*args,**kwargs):
-					data = Basis.state(shape=shape,**kwds) 
-					return 
+					data = Basis.state(shape=shape,**kwds)
+					return
 				kwargs.update(dict(phys_dim=D,bond_dim=S))
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','phys_dim','bond_dim','cyclic'] if attr in kwargs}
 			elif isinstance(data,(str,*dicts,*iterables)):
@@ -4030,18 +4089,18 @@ if backend in ['quimb']:
 					**{attr: Basis.plus for attr in ['plus','+']},
 					**{attr: Basis.minus for attr in ['minus','-']},
 					**{attr: Basis.plusi for attr in ['plusi','+i']},
-					**{attr: Basis.minusi for attr in ['minusi','-i']},	
-					**{attr: Basis.ghz for attr in ['ghz']},					
+					**{attr: Basis.minusi for attr in ['minusi','-i']},
+					**{attr: Basis.ghz for attr in ['ghz']},
 				}
 				options = dict(D=D,**kwargs)
 				data = [data]*N if isinstance(data,str) else [data[i] for i in data] if isinstance(data,dicts) else [i for i in data]
 				data = [basis.get(i)(**Basis.opts(basis.get(i),options)) if isinstance(i,str) else i for i in data]
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic'] if attr in kwargs}
 			elif isinstance(data,integers):
-				kwargs.update(dict(phys_dim=D,bond_dim=S))			
+				kwargs.update(dict(phys_dim=D,bond_dim=S))
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
 			else:
-				kwargs.update(dict(phys_dim=D,bond_dim=S))			
+				kwargs.update(dict(phys_dim=D,bond_dim=S))
 				kwargs = {attr: kwargs.get(attr) for attr in ['L','cyclic','dtype'] if attr in kwargs}
 
 			kwargs.update(dict(data=data))
@@ -4056,7 +4115,7 @@ def trotter(iterable=None,p=None,verbose=False):
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
-		verbose (bool,int,str): Verbosity of function		
+		verbose (bool,int,str): Verbosity of function
 	Returns:
 		iterables (iterable,scalar): Trotterized iterable for order p or parameters for order p if iterable is None
 	'''
@@ -4073,7 +4132,7 @@ def trotter(iterable=None,p=None,verbose=False):
 		iterables = options[p]
 	else:
 		options = {i:[slice(None,None,(-1)**i)] for i in range(P)}
-		iterables = []        
+		iterables = []
 		for i in range(p):
 			for indices in options[i]:
 				iterables += iterable[indices]
@@ -4089,7 +4148,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+		compilation (dict[str,int,bool]): Compilation options, allowed keys
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function
@@ -4099,13 +4158,13 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 	state = state() if callable(state) else state
-	conj = conj if conj is None else False	
+	conj = conj if conj is None else False
 	size = size if size is not None else 1
 	compilation = Dict({**dict(trotter=None,simplify=False),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
-		
+
 		if data[i] is None:
 			continue
 
@@ -4123,7 +4182,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	if compilation.simplify:
 
 		boolean = lambda i=None,data=None: (data[i] is not None) and (not data[i].null()) and (not data[i].variable) and (data[i].unitary)
-		
+
 		obj = {i: data[i] for i in data if boolean(i,data)}
 
 		if len(obj)>1:
@@ -4131,9 +4190,9 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 			for obj in splitter(obj):
 				if len(obj) < 2:
 					continue
-				
+
 				j = min(obj)
-				
+
 				for i in obj:
 					if i == j:
 						continue
@@ -4147,7 +4206,7 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 	obj = [j
 		for i in interleaver(
 		[trotter(i,p=compilation.trotter) for i in splitter([i for i in data if boolean(i,data)])],
-		[i for i in splitter([i for i in data if not boolean(i,data)])]) 
+		[i for i in splitter([i for i in data if not boolean(i,data)])])
 		for j in i]
 
 	data = [data[i] for i in obj]
@@ -4156,15 +4215,15 @@ def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False)
 
 def variables(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
-	Get indexes of variable parameters of data and state, 
-	with positive integers representing parameter indexes for that data element, 
+	Get indexes of variable parameters of data and state,
+	with positive integers representing parameter indexes for that data element,
 	and negative integers representing no parameter indexes for that data element
 	Args:
 		data (iterable[Object],dict[int,Object]): data of shape (length,)
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+		compilation (dict[str,int,bool]): Compilation options, allowed keys
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function
@@ -4175,7 +4234,7 @@ def variables(data,state=None,conj=False,size=None,compilation=None,verbose=Fals
 
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 	state = state() if callable(state) else state
-	conj = conj if conj is None else False	
+	conj = conj if conj is None else False
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
 
@@ -4202,17 +4261,17 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+		compilation (dict[str,int,bool]): Compilation options, allowed keys
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
-		verbose (bool,int,str): Verbosity of function		
+		verbose (bool,int,str): Verbosity of function
 	Returns:
 		func (callable): contract data with signature func(parameters,state,indices,**kwargs)
 	'''
 
 	state = state() if callable(state) else state
 	parameters = parameters() if callable(parameters) else parameters
-	conj = conj if conj is None else False	
+	conj = conj if conj is None else False
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
 
@@ -4224,10 +4283,10 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 	dtype = data[0].dtype if data else None
 
 	if parameters is not None and len(parameters):
-		def function(parameters,state=state,indices=indices,**kwargs):	
+		def function(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,data,parameters[indices//length],state,**kwargs)
 	else:
-		def function(parameters,state=state,indices=indices,**kwargs):	
+		def function(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,data,parameters,state,**kwargs)
 
 	obj = state() if state is not None and state() is not None else state.identity() if data else None
@@ -4251,7 +4310,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 
 	func = wrapper(func,**kwargs)
 
-	return func			
+	return func
 
 
 
@@ -4265,10 +4324,10 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+		compilation (dict[str,int,bool]): Compilation options, allowed keys
 			trotter (int): Number of cycles of each contraction of data and state
 			simplify (bool): Simplification of data to most basic form
-		verbose (bool,int,str): Verbosity of function		
+		verbose (bool,int,str): Verbosity of function
 	Returns:
 		func (callable): contract gradient with signature func(parameters,state,indices,**kwargs)
 	'''
@@ -4278,28 +4337,28 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 	conj = conj if conj is None else False
 	size = size if size is not None else 1
 	compilation = compilation if compilation is not None else None
-	
+
 	length = len(data)
 	indices = (0,size*length)
-	
+
 	D = min(data[i].D for i in data if data[i] is not None) if data else None
 	locality = len(set(j for i in data if data[i] is not None for j in data[i].where)) if data else None
 	dtype = data[0].dtype if data else None
 
-	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation)	
+	function = scheme(data,parameters=parameters,state=state,conj=conj,size=size,compilation=compilation)
 
 	if parameters is not None and len(parameters):
-		def gradient(parameters,state=state,indices=indices,**kwargs):	
+		def gradient(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,grad,parameters[indices//length],state,**kwargs)
 	else:
-		def gradient(parameters,state=state,indices=indices,**kwargs):	
+		def gradient(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,grad,parameters,state,**kwargs)
 
 	obj = state() if state is not None and state() is not None else state.identity() if data else None
 
-	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)	
+	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)
 
-	indexes,shape = variables(data,state=state,conj=conj,size=size,compilation=compilation)	
+	indexes,shape = variables(data,state=state,conj=conj,size=size,compilation=compilation)
 	length = len(data)
 	indices = (0,size*length)
 
@@ -4336,14 +4395,14 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 			return cond(indexes[i]>=0,true,false,i,out,parameters,state,**kwargs)
 
 		state = obj if state is None else state
-		
+
 		out = zeros((*shape,*state.shape),dtype=state.dtype)
 
 		return forloop(*indices,func,out)
 
 	func = wrapper(func,**kwargs)
 
-	return func			
+	return func
 
 
 class Object(System):
@@ -4351,11 +4410,11 @@ class Object(System):
 	Base class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) N-length delimiter-separated string of operators 'X_Y_Z' or N-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -4366,7 +4425,7 @@ class Object(System):
 		**{attr: Basis.identity for attr in [default]},
 		}
 
-	defaults = dict(			
+	defaults = dict(
 		data=None,operator=None,where=None,string=None,system=None,
 		state=None,parameters=None,conj=False,
 		tensor=None,local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
@@ -4377,13 +4436,13 @@ class Object(System):
 		contract=None,gradient_contract=None
 		)
 
-	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):
 
 		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
-		super().__init__(**kwargs)	
+		super().__init__(**kwargs)
 
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
@@ -4393,7 +4452,7 @@ class Object(System):
 			if isinstance(operator,self.__class__):
 				for attr in operator:
 					if attr not in kwargs:
-						setattr(self,attr,getattr(operator,attr))					
+						setattr(self,attr,getattr(operator,attr))
 
 			return
 
@@ -4414,7 +4473,7 @@ class Object(System):
 		local = self.local if self.local is not None else None
 		locality = self.locality if self.locality is not None else None
 		number = self.number if self.number is not None else None
-		
+
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
 		symmetry = self.symmetry if self.symmetry is not None else None
@@ -4428,7 +4487,7 @@ class Object(System):
 		size = self.size if self.size is not None else None
 		ndim = self.ndim if self.ndim is not None else None
 		dtype = self.dtype if self.dtype is not None else None
-	
+
 		identity = self.identity
 		basis = self.basis
 		default = self.default
@@ -4466,7 +4525,7 @@ class Object(System):
 		if locality is not None:
 			locality = locality
 		elif isinstance(where,iterables):
-			locality = len(where)			
+			locality = len(where)
 		elif isinstance(operator,iterables):
 			locality = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in operator],**options)
 		elif isinstance(operator,str) and operator.count(delim) > 0:
@@ -4547,7 +4606,7 @@ class Object(System):
 		local = local
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
-		
+
 		variable = variable
 		constant = constant
 		symmetry = symmetry
@@ -4557,7 +4616,7 @@ class Object(System):
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
-		
+
 		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
@@ -4567,7 +4626,7 @@ class Object(System):
 		size = self.size if self.size is not None else None
 		ndim = self.ndim if self.ndim is not None else None
 		dtype = self.dtype if self.dtype is not None else None
-		
+
 		identity = identity if self.identity is not None else lambda self=self:None
 
 		system = self.system if self.system is not None else None
@@ -4577,7 +4636,7 @@ class Object(System):
 		options = Dictionary(
 			parameters=parameters,
 			D=D,N=locality//number,ndim=ndim,
-			data=self.data,			
+			data=self.data,
 			random=self.random,seed=seeder(self.seed),
 			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
@@ -4619,7 +4678,7 @@ class Object(System):
 		self.local = local
 		self.locality = locality
 		self.number = number
-		
+
 		self.variable = variable
 		self.constant = constant
 		self.symmetry = symmetry
@@ -4648,13 +4707,13 @@ class Object(System):
 			state (bool,dict,array,Object): state of class
 			parameters (array,dict): parameters of class
 			conj (bool): conjugate
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		if data is None:
 			data = self.data
 		elif data is True:
-			data = self.data			
+			data = self.data
 		elif data is False:
 			data = None
 
@@ -4695,18 +4754,18 @@ class Object(System):
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
 			setter(keywords,{attr: getattr(self,attr) for attr in (self.system if isinstance(self.system,dict) else {}) if (isinstance(self.parameters,dicts) and attr not in self.parameters)},delimiter=delim,default=True)
-			
+
 			self.parameters = cls(**keywords)
 
 		elif isinstance(self.parameters,cls):
 			defaults = {}
-			parameters = parameters if parameters is not None else parameters			
+			parameters = parameters if parameters is not None else parameters
 			keywords = parameters if isinstance(parameters,dicts) else dict(data=parameters) if parameters is not None else {}
 			setter(keywords,{attr: getattr(self,attr) for attr in {**self,**kwargs} if hasattr(self,attr) and not callable(getattr(self,attr)) and attr not in cls.defaults and attr not in dict(data=None,local=None)},delimiter=delim,default=False)
 			setter(keywords,dict(string=self.string,variable=self.variable,constant=self.constant,system=self.system),delimiter=delim,default=False)
 			setter(keywords,defaults,delimiter=delim,default=False)
 			setter(keywords,dict(self.parameters if isinstance(self.parameters,dicts) else {}),delimiter=delim,default=False)
-			
+
 			self.parameters.init(**keywords)
 
 		else:
@@ -4725,7 +4784,7 @@ class Object(System):
 		operator = self.operator
 		where = self.where
 		string = self.string
-		
+
 		tensor = self.tensor
 		local = self.local
 		locality = self.locality
@@ -4745,7 +4804,7 @@ class Object(System):
 		operator = operator[:locality] if operator is not None and not isinstance(operator,str) and not isinstance(operator,arrays) and not callable(operator) else operator
 		where = where[:locality] if isinstance(where,iterables) else where
 		string = string if string is not None else None
-		
+
 		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
@@ -4759,7 +4818,7 @@ class Object(System):
 		self.operator = operator
 		self.where = where
 		self.string = string
-		
+
 		self.tensor = tensor
 		self.local = local
 		self.locality = locality
@@ -4774,7 +4833,7 @@ class Object(System):
 		options = Dictionary(
 			parameters=self.parameters(),
 			D=self.D,N=self.locality//self.number,ndim=self.ndim,
-			data=self.data,			
+			data=self.data,
 			random=self.random,seed=seeder(self.seed),
 			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
@@ -4788,12 +4847,12 @@ class Object(System):
 		self.tensor = tensor
 
 		def identity(N=None,D=None,self=self):
-			
+
 			data = None
-			
+
 			if self.null():
 				return data
-			
+
 			cls = Basis.identity
 			N = self.N if N is None else N
 			D = self.D if D is None else D
@@ -4805,13 +4864,13 @@ class Object(System):
 
 			data = tensorprod([cls(D=D,**options)]*N)
 			data = self.tensor(data,N=N,D=D,d=d) if self.tensor is not None else data
-			
+
 			return data
 
 		self.identity = identity
 
 		if ( (not self.null()) and ((not isinstance(self.data,arrays)) and not callable(self.data)) and (
-			((isinstance(self.operator,str) and self.operator in self.basis) or 
+			((isinstance(self.operator,str) and self.operator in self.basis) or
 			(isinstance(self.operator,iterables) and all(i in self.basis for i in self.operator)))
 			)):
 
@@ -4871,32 +4930,32 @@ class Object(System):
 				data = tensorprod(data) if data is not None else None
 
 		else:
-			
+
 			data = self.data
 
 
 		if (((self.data is not None) or (self.operator is not None))):
-			
+
 			self.setup(data=data,operator=self.operator,where=self.where,string=self.string)
-		
+
 		if (self.parameters() is None) and (not isinstance(self.data,arrays)) and (not callable(self.data)):
-		
+
 			data = None
-		
+
 		elif isinstance(self.data,arrays) or callable(self.data):
-		
+
 			data = self.data
-		
+
 		elif isinstance(self.operator,arrays) or callable(self.operator):
-		
+
 			data,self.operator = self.operator,self.string
-		
+
 		elif self.operator is None:
-		
+
 			data = None
 
 		else:
-		
+
 			data = self.data
 
 		self.N = max((i for i in (self.N if self.N is not None else None,self.locality if self.locality is not None else None,) if i is not None),default=None) if self.local and (self.N is not None or self.locality is not None) else self.N if self.N is not None else None
@@ -4904,7 +4963,7 @@ class Object(System):
 
 		self.shape = [prod(i) for i in Basis.shapes(
 				attr=Basis.string,
-				operator=[self.basis.get(i) 
+				operator=[self.basis.get(i)
 					for i in [
 						*(self.operator if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options))),
 						*([] if self.local else [self.default]*(self.N-self.locality))]
@@ -4938,7 +4997,7 @@ class Object(System):
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
 
-		# TODO: Add self.where,self.state.where interdependency 
+		# TODO: Add self.where,self.state.where interdependency
 		# for subspace evolution within where of state
 		if self.null():
 			kwargs = dict(
@@ -4997,7 +5056,7 @@ class Object(System):
 		self.gradient = wrapper(self.gradient,parameters=parameters,state=state,**kwargs)
 		self.contract = wrapper(self.contract,state=state,where=where,**kwargs)
 		self.gradient_contract = wrapper(self.gradient_contract,state=state,where=where,**kwargs)
- 
+
 		return
 
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
@@ -5005,10 +5064,10 @@ class Object(System):
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		return
@@ -5019,7 +5078,7 @@ class Object(System):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
@@ -5031,7 +5090,7 @@ class Object(System):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
@@ -5045,7 +5104,7 @@ class Object(System):
 			N (int): Size of system
 			D (int): Local dimension of system
 			space (str,dict,Space): Type of local space
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		'''
 
 		space = self.space if space is None else space
@@ -5069,7 +5128,7 @@ class Object(System):
 		self.space = Space(**space)
 
 		self.N = self.space.N
-		self.D = self.space.D		
+		self.D = self.space.D
 
 		return
 
@@ -5081,9 +5140,9 @@ class Object(System):
 			M (int): Duration of system
 			T (int): Simulation time
 			tau (float): Simulation time scale
-			P (int): Trotter order		
-			time (str,dict,Time): Type of time evolution						
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
+			P (int): Trotter order
+			time (str,dict,Time): Type of time evolution
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
 		'''
 
 		time = self.time if time is None else time
@@ -5112,7 +5171,7 @@ class Object(System):
 		self.T = self.time.T
 		self.P = self.time.P
 		self.tau = self.time.tau
-		
+
 		return
 
 
@@ -5122,9 +5181,9 @@ class Object(System):
 		Args:
 			N (int): Size of system
 			d (int): Spatial dimension of system
-			lattice (str,dict,Lattice): Type of lattice		
-			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)		
-		'''		
+			lattice (str,dict,Lattice): Type of lattice
+			system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
+		'''
 
 		lattice = self.lattice if lattice is None else lattice
 
@@ -5156,8 +5215,8 @@ class Object(System):
 		Class sample
 		Args:
 			parameters (array): parameters of class
-			state (array,tensor,network): state of class of Probability of shape (N,self.K) or (self.K**N,)
-			kwargs (dict): Additional class keyword arguments					
+			state (array,tensor,network): state of class
+			kwargs (dict): Additional class keyword arguments
 		Returns:
 			data (object): data
 		'''
@@ -5174,13 +5233,13 @@ class Object(System):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
-		
+
 		data = self(parameters=parameters,state=state,**kwargs)
-		
+
 		return data
 
 	def __str__(self):
@@ -5198,11 +5257,11 @@ class Object(System):
 
 	def __repr__(self):
 		return str(self)
-	
+
 	def __hash__(self):
 		return (
-			hash(self.string) ^ 
-			hash(tuple(self.operator) if not isinstance(self.operator,str) else self.operator) ^ 
+			hash(self.string) ^
+			hash(tuple(self.operator) if not isinstance(self.operator,str) else self.operator) ^
 			hash(tuple(self.where)) ^
 			hash(id(self))
 			)
@@ -5219,7 +5278,7 @@ class Object(System):
 				key.extend(attr)
 		key = tuple(key)
 		return key
-	
+
 	def __len__(self):
 		return len(self.data)
 
@@ -5227,13 +5286,13 @@ class Object(System):
 		'''
 		Tensor product operation on class
 
-		Objects with disjoint locality are tensored within the larger of the self,other locality 
-		i.e) self.where = [0,1], other.where = [2,3], self.N = 3, other.N = 4 
-		-> instance.where = [*self.where,*other.where] = [0,1,2,3] ,  instance.N = max(self.N,other.N) = 4 
+		Objects with disjoint locality are tensored within the larger of the self,other locality
+		i.e) self.where = [0,1], other.where = [2,3], self.N = 3, other.N = 4
+		-> instance.where = [*self.where,*other.where] = [0,1,2,3] ,  instance.N = max(self.N,other.N) = 4
 
 		Objects with non-disjoint locality are tensored within the product of the self,other locality
-		i.e) self.where = [0,1], other.where = [1,3], self.N = 3, other.N = 4 
-		-> instance.where = [*self.where,self.N+*other.where] = [0,1,4,6] ,  instance.N = max(self.N,other.N) = 7 
+		i.e) self.where = [0,1], other.where = [1,3], self.N = 3, other.N = 4
+		-> instance.where = [*self.where,self.N+*other.where] = [0,1,4,6] ,  instance.N = max(self.N,other.N) = 7
 
 		Args:
 			other (class,int): class instance or integer for tensor product
@@ -5270,10 +5329,10 @@ class Object(System):
 			variable = self.variable
 			constant = self.constant
 			symmetry = self.symmetry
-			
+
 			N = self.N*other
 			D = self.D
-			
+
 			shape = None
 			size = None
 			ndim = self.ndim
@@ -5318,10 +5377,10 @@ class Object(System):
 			variable = all((self.variable,other.variable))
 			constant = all((self.constant,other.constant))
 			symmetry = self.symmetry
-			
+
 			N = max(self.N,other.N) if (len(support) == 0) else (self.N + other.N)
 			D = max(self.D,other.D)
-			
+
 			shape = None
 			size = None
 			ndim = self.ndim
@@ -5343,9 +5402,9 @@ class Object(System):
 			conj = all((self.conj,other.conj))
 
 		else:
-			
+
 			raise NotImplementedError("<%r> @ <%r> Not Implemented - Identical classes required"%(self,other))
-		
+
 
 		kwargs = {
 			**{attr: getattr(self,attr) for attr in self if not callable(getattr(self,attr))},
@@ -5360,7 +5419,7 @@ class Object(System):
 
 		instance = self.__class__(**kwargs)
 
-		
+
 		return instance
 
 	def null(self):
@@ -5370,7 +5429,7 @@ class Object(System):
 			null (bool): Null status of class, depending on class attributes
 		'''
 
-		null = all(getattr(self,attr,default) is None 
+		null = all(getattr(self,attr,default) is None
 			for attr,default in dict(operator=None,where=None,string=None).items())
 
 		return null
@@ -5384,7 +5443,7 @@ class Object(System):
 			state (obj): state
 			index (int,str,iterable[str]): Index of basis operator for component
 			basis (str): basis for operators, allowed strings in ['pauli']
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): Component of basis of class with respect to string
 		'''
@@ -5414,7 +5473,7 @@ class Object(System):
 			parameters (array): parameters
 			state (obj): state
 			data (array): Data for inner product
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): Inner product of class with data
 		'''
@@ -5431,7 +5490,7 @@ class Object(System):
 		Args:
 			data (array): Data for inner product
 			other (array): Data for inner product
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): Inner product of data and other
 		'''
@@ -5450,21 +5509,21 @@ class Object(System):
 		Args:
 			display (str,iterable[str]): Show attributes
 			ignore (str,iterable[str]): Do not show attributes
-			verbose (bool,int,str): Verbosity of message	
-			kwargs (dict): Additional logging keyword arguments						
-		'''		
+			verbose (bool,int,str): Verbosity of message
+			kwargs (dict): Additional logging keyword arguments
+		'''
 
 		if not verbose and not self.verbose:
 			return
 
 		msg = []
-		
+
 		options = dict(
 			align=kwargs.get('align','<'),
 			space=kwargs.get('space',1),
 			width=kwargs.get('width',2)
 			)
-	
+
 		precision = kwargs.get('precision',8)
 
 		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
@@ -5496,7 +5555,7 @@ class Object(System):
 			msg.append(string)
 
 		for attr in ['operator','where','locality','tensor','local','variable','constant','symmetry']:
-		
+
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 				continue
@@ -5505,7 +5564,7 @@ class Object(System):
 				try:
 					string = '%s: %s'%(attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
 				except:
-					string = '%s: %s'%(attr,getattr(self,attr) is not None if callable(getattr(self,attr)) else getattr(self,attr))					
+					string = '%s: %s'%(attr,getattr(self,attr) is not None if callable(getattr(self,attr)) else getattr(self,attr))
 			else:
 				string = '%s: %s'%(attr,parse(substring))
 
@@ -5524,7 +5583,7 @@ class Object(System):
 
 				string = []
 				for subattr in [None,'operator','variable','method','indices','local','tensor','where','shape','parameters']:
-				
+
 					obj = subattr
 					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 						continue
@@ -5558,9 +5617,9 @@ class Object(System):
 							try:
 								substring = parse(substring())
 							except:
-								substring = parse(substring is not None)						
+								substring = parse(substring is not None)
 						else:
-							substring = parse(substring is not None)													
+							substring = parse(substring is not None)
 					else:
 						substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
 						if callable(substring):
@@ -5578,7 +5637,7 @@ class Object(System):
 							substring = parse(substring)
 
 					substring = '%s : %s'%(subattr,'{:{align}{space}{width}}'.format(substring,**options))
-					
+
 					string.append(substring)
 
 				string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join([i for i in string if i is not None]))
@@ -5586,7 +5645,7 @@ class Object(System):
 				msg.append(string)
 
 			for attr in ['parameters']:
-		
+
 				obj = attr
 				if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 					continue
@@ -5606,7 +5665,7 @@ class Object(System):
 						substring = '%0.4e'%(substring)
 					else:
 						substring = parse(substring)
-					
+
 					if len(substring):
 						substring = '%s : %s'%(subattr,substring)
 					else:
@@ -5616,14 +5675,14 @@ class Object(System):
 
 				string = ', '.join([i for i in string if i is not None])
 
-				msg.append(string)			
+				msg.append(string)
 
 
 		elif isinstance(self,Object):
 
 			string = []
 			for attr in [None,'variable','method','indices','local','where','shape','parameters']:
-	
+
 				obj = 'parameters'
 				if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
 					continue
@@ -5663,11 +5722,11 @@ class Object(System):
 						substring = parse(substring)
 
 				substring = '%s : %s'%(attr,'{:{align}{space}{width}}'.format(substring,**options))
-				
-				string.append(substring)			
+
+				string.append(substring)
 
 			string = 'parameters.%s\n\t%s'%(self,'\n\t'.join(string))
-			
+
 			msg.append(string)
 
 
@@ -5684,11 +5743,11 @@ class Data(Object):
 	Data class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -5699,13 +5758,13 @@ class Data(Object):
 		**{attr: Basis.identity for attr in [default]},
 		**{attr: Basis.data for attr in ['data']},
 		}
-	
+
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
@@ -5727,9 +5786,9 @@ class Data(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
@@ -5741,16 +5800,16 @@ class Data(Object):
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
 
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
-			
+
 		else:
 
 			data = None
@@ -5786,11 +5845,11 @@ class Gate(Object):
 	Gate class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -5811,13 +5870,13 @@ class Gate(Object):
 		**{attr: Basis.clifford for attr in ['clifford']},
 		**{attr: Basis.identity for attr in ['IDENTITY','identity']},
 		}
-	
+
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
@@ -5839,9 +5898,9 @@ class Gate(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
@@ -5868,7 +5927,7 @@ class Gate(Object):
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,							
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -5884,7 +5943,7 @@ class Gate(Object):
 									return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])														
+									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -5894,11 +5953,11 @@ class Gate(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})							
+									return options.basis(**{**options,**kwargs})
 					else:
 						options = Dictionary(
-							D=self.D,N=self.locality//self.number,ndim=ndim,							
-							local=local,tensor=tensor,						
+							D=self.D,N=self.locality//self.number,ndim=ndim,
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -5924,20 +5983,20 @@ class Gate(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})													
+									return options.basis(**{**options,**kwargs})
 				else:
 					raise NotImplementedError
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
 
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
 
 		else:
@@ -5946,7 +6005,7 @@ class Gate(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
-		symmetry = None		
+		symmetry = None
 
 		hermitian = False
 		unitary = True
@@ -5975,11 +6034,11 @@ class Pauli(Object):
 	Pauli class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -5993,16 +6052,16 @@ class Pauli(Object):
 		**{attr: Basis.Y for attr in ['Y']},
 		**{attr: Basis.Z for attr in ['Z']},
 			}
-	
+
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -6021,9 +6080,9 @@ class Pauli(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
@@ -6035,14 +6094,14 @@ class Pauli(Object):
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
 
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
 
 		else:
@@ -6051,7 +6110,7 @@ class Pauli(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
-		symmetry = None		
+		symmetry = None
 
 		hermitian = False
 		unitary = True
@@ -6065,14 +6124,14 @@ class Pauli(Object):
 			def func(parameters=None,state=None,**kwargs):
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return cos(parameters)*identity + -1j*sin(parameters)*self.data
-			
+
 			def gradient(parameters=None,state=None,**kwargs):
 				grad = self.parameters.grad(parameters,**kwargs)
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return grad*(-sin(parameters)*identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
-		
+
 			def func(parameters=None,state=None,**kwargs):
 				parameters = self.parameters(parameters,**kwargs) if parameters is not None else self.parameters(self.parameters(),**kwargs)
 				return cos(parameters)*identity + -1j*sin(parameters)*self.data
@@ -6109,11 +6168,11 @@ class Haar(Object):
 	Haar class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -6125,16 +6184,16 @@ class Haar(Object):
 		**{attr: Basis.identity for attr in ['I']},
 		**{attr: Basis.unitary for attr in ['unitary','haar','U','u']},
 		}
-	
+
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -6153,9 +6212,9 @@ class Haar(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
@@ -6182,7 +6241,7 @@ class Haar(Object):
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,							
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6198,7 +6257,7 @@ class Haar(Object):
 									return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])														
+									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -6208,11 +6267,11 @@ class Haar(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})							
+									return options.basis(**{**options,**kwargs})
 					else:
 						options = Dictionary(
-							D=self.D,N=self.locality//self.number,ndim=ndim,							
-							local=local,tensor=tensor,						
+							D=self.D,N=self.locality//self.number,ndim=ndim,
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6238,20 +6297,20 @@ class Haar(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})													
+									return options.basis(**{**options,**kwargs})
 				else:
 					raise NotImplementedError
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
-				
+
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
 
 		else:
@@ -6291,13 +6350,13 @@ class Noise(Object):
 	Noise class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
-	
+
 	N = None
 	D = None
 
@@ -6312,8 +6371,8 @@ class Noise(Object):
 		**{attr: Basis.phaseflip for attr in ['phaseflip','flipphase']},
 		**{attr: Basis.dephase for attr in ['phase','dephase']}
 		}
-	
-	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
+
+	def __init__(self,data=None,operator=None,where=None,string=None,system=None,**kwargs):
 
 		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -6328,10 +6387,10 @@ class Noise(Object):
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -6350,9 +6409,9 @@ class Noise(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = Dictionary(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				seed = seeder(self.seed)
@@ -6361,45 +6420,45 @@ class Noise(Object):
 
 				if all(i in ['noise','rand'] for i in data):
 					options = Dictionary(
-						D=self.D,N=self.locality//self.number,ndim=self.ndim,						
+						D=self.D,N=self.locality//self.number,ndim=self.ndim,
 						random=self.random,bounds=[-1,1],seed=seed,
 						index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 						data=self.data,operator=None,
 						basis=self.basis,axes=axes,shapes=shape,
-						)					
+						)
 					def function(parameters,state,options=options,**kwargs):
 						return state + parameters*rand(**{**options,**dict(shape=state.shape,seed=options.seed,dtype=state.dtype)})/2
 				elif all(i in ['eps'] for i in data):
 					options = Dictionary(
-						D=self.D,N=self.locality//self.number,ndim=self.ndim,						
+						D=self.D,N=self.locality//self.number,ndim=self.ndim,
 						random=self.random,bounds=[-1,1],seed=seed,
 						index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 						data=self.data,operator=tensorprod([diag((1+self.parameters())**(arange(D)+2) - 1) for i in range(self.locality if self.local else self.N)]),
 						basis=self.basis,axes=axes,shapes=shape,
-						)						
+						)
 					def function(parameters,state,options=options,**kwargs):
 						return options['data']
 				else:
 					options = Dictionary()
 					def function(parameters,state,options=options,**kwargs):
-						return None						
+						return None
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
-				
+
 				def contract(data=None,state=None,where=None,**kwargs):
 					return data
-				
+
 				def gradient_contract(grad=None,data=None,state=None,where=None,**kwargs):
-					return grad	
+					return grad
 
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
 
 		else:
@@ -6408,7 +6467,7 @@ class Noise(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
-		symmetry = None		
+		symmetry = None
 
 		hermitian = False
 		unitary = False
@@ -6418,7 +6477,7 @@ class Noise(Object):
 		self.operator = operator if operator is not None else self.operator
 		self.where = where if where is not None else self.where
 		self.string = string if string is not None else self.string
-		
+
 		self.func = func
 		self.gradient = gradient
 		self.contract = contract
@@ -6438,11 +6497,11 @@ class State(Object):
 	State class for Quantum Objects
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -6461,19 +6520,19 @@ class State(Object):
 		**{attr: Basis.plus for attr in ['plus','+']},
 		**{attr: Basis.minus for attr in ['minus','-']},
 		**{attr: Basis.plusi for attr in ['plusi','+i']},
-		**{attr: Basis.minusi for attr in ['minusi','-i']},		
+		**{attr: Basis.minusi for attr in ['minusi','-i']},
 		**{attr: Basis.ghz for attr in ['ghz']},
 		}
-	
+
 	def setup(self,data=None,operator=None,where=None,string=None,**kwargs):
 		'''
 		Setup operator
 		Args:
 			data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']			
+			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[int]): location of local operators, i.e) nearest neighbour
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments				
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		data = self.data if data is None else data
@@ -6492,9 +6551,9 @@ class State(Object):
 
 		if do:
 
-			if ((isinstance(self.operator,str) and (self.operator in functions)) or 
+			if ((isinstance(self.operator,str) and (self.operator in functions)) or
 				(isinstance(self.operator,iterables) and any(i in self.operator for i in functions))):
-				
+
 				options = dict(D=self.D,N=self.locality//self.number,ndim=self.ndim,index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
 
 				data = [i for i in self.operator] if isinstance(self.operator,iterables) else [self.operator]*(self.locality//Basis.localities(self.basis.get(self.operator),**options)) if isinstance(self.operator,str) else None
@@ -6511,7 +6570,7 @@ class State(Object):
 				dtype = dtype
 
 				local = self.local
-				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None				
+				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
 
 				data = [*data,*_data] if not self.local else data
 
@@ -6520,8 +6579,8 @@ class State(Object):
 				if self.architecture is None or self.architecture in ['array']:
 					if self.local:
 						options = Dictionary(
-							D=self.D,N=self.locality//self.number,ndim=ndim,							
-							local=local,tensor=tensor,						
+							D=self.D,N=self.locality//self.number,ndim=ndim,
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6537,7 +6596,7 @@ class State(Object):
 									return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])							
+									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -6547,11 +6606,11 @@ class State(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})								
+									return options.basis(**{**options,**kwargs})
 					else:
 						options = Dictionary(
-							D=self.D,N=self.locality//self.number,ndim=ndim,							
-							local=local,tensor=tensor,						
+							D=self.D,N=self.locality//self.number,ndim=ndim,
+							local=local,tensor=tensor,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6567,7 +6626,7 @@ class State(Object):
 									return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)														
+									return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -6577,26 +6636,26 @@ class State(Object):
 									return options.tensor(options.basis(**{**options,**kwargs}))
 							else:
 								def function(parameters,state,options=options,**kwargs):
-									return options.basis(**{**options,**kwargs})							
+									return options.basis(**{**options,**kwargs})
 				else:
 					raise NotImplementedError
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
-				
+
 				def gradient(parameters=None,state=None,**kwargs):
 					return None
-				
+
 				def contract(data=None,state=None,where=None):
 					return data
-				
+
 				def gradient_contract(grad=None,data=None,state=None,where=None):
-					return grad	
+					return grad
 
 				data = func(parameters=self.parameters(),state=self.state())
 
 			else:
-			
+
 				data = self.data if data is None else data
 
 		else:
@@ -6605,7 +6664,7 @@ class State(Object):
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
-		symmetry = None		
+		symmetry = None
 
 		if self.ndim is None:
 			hermitian = True
@@ -6646,7 +6705,7 @@ class State(Object):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
@@ -6661,7 +6720,7 @@ class State(Object):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
@@ -6676,20 +6735,20 @@ class Operator(Object):
 	Class for Operator
 	Args:
 		data (str,array,tensor,mps,iterable[str,array,tensor,mps],dict): data of operator
-		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']		
+		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[int]): location of local operators, i.e) nearest neighbour
 		string (str): string label of operator
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
 	D = None
 
-	default = 'I'	
+	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}}
 
-	def __new__(cls,data=None,operator=None,where=None,string=None,system=None,**kwargs):		
+	def __new__(cls,data=None,operator=None,where=None,string=None,system=None,**kwargs):
 
 		# TODO: Allow multiple different classes to be part of one operator
 
@@ -6700,7 +6759,7 @@ class Operator(Object):
 		classes = [Data,Gate,Pauli,Haar,Noise,State,Channel,Operators,Unitary,Hamiltonian,Object]
 
 		for subclass in classes:
-			
+
 			if any(isinstance(obj,subclass) for obj in [data if data is not None else operator if operator is not None else None]):
 
 				self = subclass(**kwargs)
@@ -6708,18 +6767,18 @@ class Operator(Object):
 				break
 
 			if not all(
-				j in subclass.basis for obj in [operator if operator is not None else data if data is not None else None] 
+				j in subclass.basis for obj in [operator if operator is not None else data if data is not None else None]
 				if isinstance(obj,(str,*iterables))
-				for k in (obj if isinstance(obj,iterables) else [obj]) 
+				for k in (obj if isinstance(obj,iterables) else [obj])
 				for j in ([k] if k in subclass.basis else k.split(delim) if all(j in subclass.basis for j in k.split(delim)) else [None])):
 				continue
 
 			if cls in [Operator]:
 
 				self = subclass(**kwargs)
-			
+
 			else:
-				
+
 				for attr in subclass.__dict__:
 					setattr(cls,attr,getattr(subclass,attr))
 
@@ -6741,7 +6800,7 @@ class Objects(Object):
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 		where (iterable[str,iterable[int,str]]): location of local operators
 		string (iterable[str]): string labels of operators
@@ -6750,16 +6809,16 @@ class Objects(Object):
 		D (int): Local dimension of system
 		d (int): Spatial dimension of system
 		T (int): Simulation time
-		tau (float): Simulation time scale		
-		P (int): Trotter order		
+		tau (float): Simulation time scale
+		P (int): Trotter order
 		space (str,dict,Space): Type of local space
-		time (str,dict,Time): Type of time evolution						
-		lattice (str,dict,Lattice): Type of lattice	
+		time (str,dict,Time): Type of time evolution
+		lattice (str,dict,Lattice): Type of lattice
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
-	
+
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['operators']}}
 
@@ -6777,17 +6836,17 @@ class Objects(Object):
 
 		super().__init__(**kwargs)
 
-		return	
+		return
 
 	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
-		''' 
+		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
 			conj (bool): conjugate
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		# Set attributes
@@ -6863,9 +6922,9 @@ class Objects(Object):
 
 		cls = Parameters
 		keywords = dict(
-			parameters={i:self.data[i].parameters 
-				for i in self.data 
-				if ((self.data[i] is not None) and 
+			parameters={i:self.data[i].parameters
+				for i in self.data
+				if ((self.data[i] is not None) and
 					(not self.data[i].null()))
 				} if parameters is None else parameters if not isinstance(parameters,dicts) else None,
 			system=self.system
@@ -6879,7 +6938,7 @@ class Objects(Object):
 		# Set kwargs
 		for kwarg in kwargs:
 			if hasattr(self,kwarg):
-				setattr(self,kwarg,kwargs[kwarg])		
+				setattr(self,kwarg,kwargs[kwarg])
 
 
 		# Set identity
@@ -6892,12 +6951,12 @@ class Objects(Object):
 					data = self.data[i].identity(N=N,D=D)
 					break
 			return data
-		
+
 		self.identity = identity
 
 		# Set data
 		for i in self.data:
-			
+
 			if self.data[i] is None:
 				continue
 
@@ -6925,7 +6984,7 @@ class Objects(Object):
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
@@ -6942,7 +7001,7 @@ class Objects(Object):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 			if parameters is not None and len(parameters):
 				for i in indexes:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
@@ -6950,10 +7009,10 @@ class Objects(Object):
 					for j in (j for j in indices if j>i):
 						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indexes:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
@@ -6961,9 +7020,9 @@ class Objects(Object):
 					for j in (j for j in indices if j>i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)			
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return grad
-	
+
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
 		grad_analytical = grad
@@ -6999,11 +7058,11 @@ class Objects(Object):
 				operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 				where (iterable[str,iterable[int,str]]): location of local operators
 				string (iterable[str]): string labels of operators
-				kwargs (dict): Additional operator keyword arguments			
+				kwargs (dict): Additional operator keyword arguments
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional class keyword arguments		
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		# Get status of data
@@ -7038,8 +7097,8 @@ class Objects(Object):
 							data[name][obj] = None
 			for obj in objs:
 				objs[obj].extend([data[name].get(obj) for name in data if data[name] is not None])
-			
-			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data if data[name] is not None] 
+
+			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else null for name in data if data[name] is not None]
 				for kwarg in set(kwarg for name in data if data[name] is not None for kwarg in data[name] if kwarg not in objs)
 				})
 
@@ -7052,15 +7111,15 @@ class Objects(Object):
 
 		# Get number of operators
 		size = min([len(data[obj]) for obj in data if data[obj] is not None],default=0)
-		
+
 		# Get attribute of symbolic indices
 		attrs = dict(
 			where = lambda attr,value,values,indices: [dict(zip(indices,
 								value if not isinstance(value,integers) else (value,))
-							).get(i,int(i) if not isinstance(i,str) else i) 
+							).get(i,int(i) if not isinstance(i,str) else i)
 							for i in values[attr]]
 			)
-		
+
 		# Get data
 		for index in range(size):
 
@@ -7097,21 +7156,21 @@ class Objects(Object):
 								tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
 			if key is True:
 				for obj in data:
-					data[obj].append(tmp[obj])	
+					data[obj].append(tmp[obj])
 
 				for kwarg in kwargs:
 					kwargs[kwarg].append(copy(tmps[kwarg]))
 			elif key is False:
 				for obj in data:
-					data[obj].append(None)	
+					data[obj].append(None)
 
 				for kwarg in kwargs:
-					kwargs[kwarg].append(None)				
+					kwargs[kwarg].append(None)
 			elif key is not None:
 				for i,index in enumerate(lattice(key)):
 					value = {}
 					for obj in data:
-						
+
 						if obj in attrs:
 							value[obj] = attrs[obj](obj,index,tmp,indices[key])
 						else:
@@ -7119,20 +7178,20 @@ class Objects(Object):
 
 					for obj in data:
 						data[obj].append(value[obj])
-					
+
 					for kwarg in kwargs:
 						kwargs[kwarg].append(copy(tmps[kwarg]))
 
 			else:
 				for obj in data:
-					data[obj].append(tmp[obj])	
+					data[obj].append(tmp[obj])
 
 				for kwarg in kwargs:
 					kwargs[kwarg].append(copy(tmps[kwarg]))
 
 
-		# Set class dependent attributes 
-		# i.e) set parameters data with where-dependent data 
+		# Set class dependent attributes
+		# i.e) set parameters data with where-dependent data
 		# i.e) set parameters shape with depth-M-dependent shape
 		attributes = {}
 		def decorator(func):
@@ -7176,7 +7235,7 @@ class Objects(Object):
 		attribute = 'parameters.axis'
 		@decorator
 		def func(i,attr,attrs,data,kwargs):
-			
+
 			if not isinstance(kwargs[attr][i],dict):
 				tmp = None if isinstance(kwargs[attr][i],nulls) else kwargs[attr][i]
 				kwargs[attr][i] = dict(data=tmp)
@@ -7194,7 +7253,7 @@ class Objects(Object):
 				obj = obj
 
 			setter(kwargs[attr][i],{attrs:obj},delimiter=delim,default=True)
-			return			
+			return
 		attributes[attribute] = func
 
 		for attribute in attributes:
@@ -7217,9 +7276,9 @@ class Objects(Object):
 		'''
 		Class function
 		Args:
-			parameters (array): parameters		
+			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional function keyword arguments						
+			kwargs (dict): Additional function keyword arguments
 		Returns
 			out (array): Return of function
 		'''
@@ -7230,54 +7289,54 @@ class Objects(Object):
 
 
 	def grad(self,parameters=None,state=None,**kwargs):
-		''' 
+		'''
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional function keyword arguments											
+			kwargs (dict): Additional function keyword arguments
 		Returns:
 			out (array): Return of function
-		'''		
+		'''
 		return self.gradient(parameters=parameters,state=state,**kwargs)
 
 
 	def grad_automatic(self,parameters=None,state=None,**kwargs):
-		''' 
+		'''
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional function keyword arguments									
+			kwargs (dict): Additional function keyword arguments
 		Returns:
 			out (array): Return of function
-		'''		
+		'''
 		return self.gradient_automatic(parameters=parameters,state=state,**kwargs)
 
 
 	def grad_finite(self,parameters=None,state=None,**kwargs):
-		''' 
+		'''
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional function keyword arguments									
+			kwargs (dict): Additional function keyword arguments
 		Returns:
 			out (array): Return of function
-		'''		
+		'''
 		return self.gradient_finite(parameters=parameters,state=state,**kwargs)
 
 
 	def grad_analytical(self,parameters=None,state=None,**kwargs):
-		''' 
+		'''
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional function keyword arguments						
+			kwargs (dict): Additional function keyword arguments
 		Returns:
 			out (array): Return of function
-		'''		
+		'''
 
 		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 
@@ -7315,9 +7374,9 @@ class Objects(Object):
 		Returns:
 			status (bool): Status of data
 		'''
-	
+
 		data = self.data if data is None else data
-		
+
 		cls = Object
 		status = data is not None and all(isinstance(data[i],cls) or data[i] is None or data[i] is True or data[i] is False for i in data)
 
@@ -7342,7 +7401,7 @@ class Objects(Object):
 			self.data = insertion(self.data,index,{index:data})
 
 		elif data is not None:
-			
+
 			self.data = type(self.data)({index:data[i] for index,i in enumerate(data)})
 
 		return
@@ -7357,13 +7416,13 @@ class Objects(Object):
 		'''
 
 		if index is not None:
-			
+
 			index = len(self) + index if index < 0 else index
 
 			data = self.data.get(index)
-		
+
 		else:
-		
+
 			data = self.data
 
 		return data
@@ -7407,14 +7466,14 @@ class Objects(Object):
 			operator (str,iterable[str]): name of operator, i.e) locality-length delimiter-separated string of operators 'X_Y_Z' or locality-length iterable of operator strings['X','Y','Z']
 			where (iterable[str,iterable[int,str]]): location of local operators
 			string (iterable[str]): string labels of operators
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		size = min([len(i) for i in (data,operator,where,string) if i is not None and not all(j is None for j in i)],default=0)
 
 		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not null],default=size) if kwargs is not None else None
 		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs} for i in range(length)] if kwargs is not None else None
-		
+
 		if not size:
 			self.set()
 			return
@@ -7426,9 +7485,9 @@ class Objects(Object):
 		if where is None:
 			where = [None]*size
 		if string is None:
-			string = [None]*size						
+			string = [None]*size
 		if kwargs is None:
-			kwargs = [None]*size	
+			kwargs = [None]*size
 
 		for _data,_operator,_where,_string,_kwargs in zip(data,operator,where,string,kwargs):
 
@@ -7445,7 +7504,7 @@ class Objects(Object):
 			operator (str): string name of operator
 			where (int): where of local operator
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments			
+			kwargs (dict): Additional operator keyword arguments
 		'''
 		index = -1
 		self.insert(index,data,operator,where,string,kwargs)
@@ -7461,7 +7520,7 @@ class Objects(Object):
 			operator (str): string name of operator
 			where (int): where of local operator
 			string (str): string label of operator
-			kwargs (dict): Additional operator keyword arguments						
+			kwargs (dict): Additional operator keyword arguments
 		'''
 
 		status = self.status()
@@ -7547,7 +7606,7 @@ class Objects(Object):
 
 		D = max((i for i in (
 			max([data[i].D for i in data if boolean(i,data) and data[i].D is not None],default=None),
-			) if i is not None),default=self.D) if data is not None else None		
+			) if i is not None),default=self.D) if data is not None else None
 
 		self.data = data
 
@@ -7587,21 +7646,21 @@ class Objects(Object):
 
 	def dump(self,path=None):
 		'''
-		Save class data		
+		Save class data
 		Args:
-			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
+			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump
 		'''
 
 		# Set path
 		paths = {}
 		if path is None:
-			paths.update({attr: True for attr in data})			
+			paths.update({attr: True for attr in data})
 		elif not isinstance(path,dict):
 			paths.update({attr: path for attr in data if path})
 		else:
 			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})
 
 		# Set data
 		data = {}
@@ -7615,12 +7674,12 @@ class Objects(Object):
 			file = file if file is not None else self.path
 			path = join(file,root=root)
 			dump(data[attr],path,**options)
-		
+
 		return
 
 	def load(self,path=None):
 		'''
-		Load class data		
+		Load class data
 		Args:
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
 		Returns:
@@ -7633,13 +7692,13 @@ class Objects(Object):
 		# Set path
 		paths = {}
 		if path is None:
-			paths.update({attr: True for attr in data})			
+			paths.update({attr: True for attr in data})
 		elif not isinstance(path,dict):
 			paths.update({attr: path for attr in data if path})
 		else:
 			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})
 
 		# Load data
 		for attr in paths:
@@ -7658,7 +7717,7 @@ class Channel(Objects):
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Channel']}}
 
 	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
-		''' 
+		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
@@ -7671,7 +7730,7 @@ class Channel(Objects):
 
 		# Set data
 		for i in self.data:
-			
+
 			if self.data[i] is None:
 				continue
 
@@ -7701,7 +7760,7 @@ class Channel(Objects):
 		self.gradient = grad
 		self.gradient_automatic = grad_automatic
 		self.gradient_finite = grad_finite
-		self.gradient_analytical = grad_analytical		
+		self.gradient_analytical = grad_analytical
 
 
 		# Set wrapper
@@ -7724,26 +7783,26 @@ class Operators(Objects):
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['operators']}}
 
 	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
-		''' 
+		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
 			conj (bool): conjugate
-			kwargs (dict): Additional class keyword arguments						
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
 
 		# Set data
 		for i in self.data:
-			
+
 			if self.data[i] is None:
 				continue
 
 			keywords = {**dict(state=self.state),**kwargs}
-			
+
 			self.data[i].init(**keywords)
 
 
@@ -7762,12 +7821,12 @@ class Operators(Objects):
 			out = state
 			if parameters is not None and len(parameters):
 				for i in indices:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = self.data[i%size](parameters=parameters[i//size],state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indices:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = self.data[i%size](parameters=parameters,state=out,**kwargs[i%size])
 					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return out
@@ -7792,10 +7851,10 @@ class Operators(Objects):
 					for j in (j for j in indices if j>i):
 						out = self.data[j%size](parameters=parameters[j//size],state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)					
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			else:
 				for i in indexes:
-					kwargs[i%size].index = i					
+					kwargs[i%size].index = i
 					out = state
 					for j in (j for j in indices if j<i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
@@ -7803,7 +7862,7 @@ class Operators(Objects):
 					for j in (j for j in indices if j>i):
 						out = self.data[j%size](parameters=parameters,state=out,**kwargs[i%size])
 					grad = inplace(grad,indexes.index(i),out,'add')
-					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)			
+					seed,kwargs[i%size].seed = rng.split(kwargs[i%size].seed)
 			return grad
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
@@ -7848,10 +7907,10 @@ class Module(System):
 		model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 		N (int): Size of system
 		M (int): Duration of system
-		state (array,State): state for module			
+		state (array,State): state for module
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (string,dtype,format,device,backend,architecture,configuration,key,index,seed,seeding,random,instance,instances,samples,base,unit,cwd,path,lock,backup,timestamp,conf,logger,cleanup,verbose,options)
-		kwargs (dict): Additional system keyword arguments	
+		kwargs (dict): Additional system keyword arguments
 	'''
 
 	N = None
@@ -7884,16 +7943,16 @@ class Module(System):
 
 		self.info()
 
-		return	
+		return
 
 	def init(self,model=None,state=None,parameters=None,**kwargs):
-		''' 
+		'''
 		Setup class functions
 		Args:
 			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 			state (State): state for module
 			parameters (dict,array,Parameters): parameters of class
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		# Set model
@@ -7911,7 +7970,7 @@ class Module(System):
 		if parameters is None or not callable(parameters):
 			def parameters(parameters=parameters):
 				return parameters
-		
+
 		self.parameters = parameters
 
 
@@ -7921,16 +7980,16 @@ class Module(System):
 		if state is None or not callable(state):
 			def state(parameters=None,state=state):
 				return state
-		
+
 		self.state = state
 
 
 		# Set kwargs
 		for kwarg in kwargs:
 			if hasattr(self,kwarg):
-				setattr(self,kwarg,kwargs[kwarg])		
+				setattr(self,kwarg,kwargs[kwarg])
 
-	
+
 		# Setup
 		self.setup()
 
@@ -7941,9 +8000,9 @@ class Module(System):
 		Setup class
 		Args:
 			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
-			state (State): state for module			
-			parameters (dict,array,Parameters): parameters of class			
-			kwargs (dict): Additional class keyword arguments		
+			state (State): state for module
+			parameters (dict,array,Parameters): parameters of class
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		# Settings
@@ -7964,7 +8023,7 @@ class Module(System):
 
 		N = max((model.N for index in self.model for model in self.model[index] if boolean(model) and model.N is not None),default=self.N)
 		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=None)
-		
+
 		self.N = N
 
 		# Measure
@@ -8023,12 +8082,12 @@ class Module(System):
 
 			parameters = measure.parameters()
 			state = [self.state]*N
-			
-			model = measure.transform(parameters=parameters,state=state,model=model,where=where,**kwargs)
+
+			model = measure.transform(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
 
 			def func(parameters,state,where=where,model=model,options=options,**kwargs):
 				return model(parameters=parameters,state=state,where=where,options=options,**kwargs)
-			
+
 			data.append(func)
 
 		self.data = data
@@ -8045,7 +8104,7 @@ class Module(System):
 
 		hermitian = True
 		unitary = False
-		
+
 		self.variable = variable
 		self.constant = constant
 		self.symmetry = symmetry
@@ -8073,7 +8132,7 @@ class Module(System):
 			for l in range(M):
 				for i,data in enumerate(self.data):
 
-					# print('index',l,i)					
+					# print('index',l,i)
 					kwargs[i].index = (l,i)
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
@@ -8081,7 +8140,7 @@ class Module(System):
 					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
 					# trace = self.measure.trace(parameters=parameters,state=state)
 
-					# if self.measure.architecture in ['tensor']:					
+					# if self.measure.architecture in ['tensor']:
 					# 	trace = trace.array().item()
 					# elif self.measure.architecture in ['tensor_quimb']:
 					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
@@ -8127,7 +8186,7 @@ class Module(System):
 		Returns:
 			status (bool): Status of model
 		'''
-	
+
 		model = self.model if model is None else model
 
 		cls = Object
@@ -8155,7 +8214,7 @@ class Module(System):
 			self.model = insertion(self.model,index,{index:[model]})
 
 		elif model is not None:
-			
+
 			cls = Object
 			if isinstance(model,cls) and isinstance(model.data,Dictionary):
 				model = {index:[model.data[key]] for index,key in enumerate(model.data)}
@@ -8167,7 +8226,7 @@ class Module(System):
 				model = {index:[instance] for index,instance in enumerate(model)}
 			elif isinstance(model,dicts) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
 				model = {index:[instance for instance in model[key]] for index,key in enumerate(model)}
-		
+
 			else:
 				raise NotImplementedError("Incorrect model %r"%(model))
 
@@ -8185,13 +8244,13 @@ class Module(System):
 		'''
 
 		if index is not None:
-			
+
 			index = len(self) + index if index < 0 else index
 
 			model = self.model.get(index)
-		
+
 		else:
-		
+
 			model = self.model
 
 		return model
@@ -8232,9 +8291,9 @@ class Module(System):
 		'''
 		Class function
 		Args:
-			parameters (array): parameters		
+			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): class keyword arguments			
+			kwargs (dict): class keyword arguments
 		Returns
 			out (array): Return of function
 		'''
@@ -8250,9 +8309,9 @@ class Module(System):
 		Args:
 			display (str,iterable[str]): Show attributes
 			ignore (str,iterable[str]): Do not show attributes
-			verbose (bool,int,str): Verbosity of message		
-			kwargs (dict): Additional logging keyword arguments	
-		'''		
+			verbose (bool,int,str): Verbosity of message
+			kwargs (dict): Additional logging keyword arguments
+		'''
 
 		if not verbose and not self.verbose:
 			return
@@ -8264,7 +8323,7 @@ class Module(System):
 			space=kwargs.get('space',1),
 			width=kwargs.get('width',2)
 			)
-	
+
 		precision = kwargs.get('precision',8)
 
 		parse = lambda obj: str(obj.round(precision)) if isinstance(obj,arrays) else str(obj)
@@ -8306,7 +8365,7 @@ class Module(System):
 
 	def dump(self,path=None):
 		'''
-		Save class data		
+		Save class data
 		Args:
 			path (str): Path to dump class data
 		'''
@@ -8342,16 +8401,16 @@ class Module(System):
 			data = {key:data} if key is not None else data
 
 			dump(data,path,**options)
-		
+
 		return
 
 	def load(self,path=None):
 		'''
-		Load class data		
+		Load class data
 		Args:
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
 		Returns:
-			data (object): Class data		
+			data (object): Class data
 		'''
 
 		# Set path
@@ -8400,7 +8459,7 @@ class Label(Operator):
 			state (bool,dict,array,Object): state of class
 			parameters (array,dict): parameters of class
 			conj (bool): conjugate
-			kwargs (dict): Additional class keyword arguments			
+			kwargs (dict): Additional class keyword arguments
 		'''
 
 		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
@@ -8433,7 +8492,7 @@ class Label(Operator):
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			kwargs (dict): Additional operator keyword arguments									
+			kwargs (dict): Additional operator keyword arguments
 		Returns:
 			data (array): data
 		'''
@@ -8467,7 +8526,7 @@ class Label(Operator):
 
 class Callback(System):
 	def __init__(self,*args,**kwargs):
-		'''	
+		'''
 		Class for callback
 		Args:
 			args (tuple): Class arguments
@@ -8486,7 +8545,7 @@ class Callback(System):
 			'parameters.relative':[],'parameters.relative.mean':[],
 			'variables':[],
 			'variables.relative':[],'variables.relative.mean':[],
-			'parameters.norm':[],'grad.norm':[],'search.norm':[],			
+			'parameters.norm':[],'grad.norm':[],'search.norm':[],
 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
 			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
@@ -8510,7 +8569,7 @@ class Callback(System):
 		return
 
 	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
-		''' 
+		'''
 		Callback
 		Args:
 			parameters (array): parameters
@@ -8529,21 +8588,21 @@ class Callback(System):
 		hyperparameters = optimizer.hyperparameters
 
 		init = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
-		
+
 		done = ((len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop)))
-		
+
 		status = (
-			((len(attributes['value']) >= 1) and 
+			((len(attributes['value']) >= 1) and
 			 (attributes['iteration'][-1] <= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
 			(
-			(absolute(attributes['value'][-1]) > 
+			(absolute(attributes['value'][-1]) >
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
-			(log10(absolute(attributes['value'][-1] - attributes['value'][-2])) > 
+			(log10(absolute(attributes['value'][-1] - attributes['value'][-2])) >
 				(log10(absolute(hyperparameters['eps']['value.difference'])))) and
-			(norm(attributes['grad'][-1])/(attributes['grad'][-1].size) > 
+			(norm(attributes['grad'][-1])/(attributes['grad'][-1].size) >
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
-			(norm(attributes['grad'][-1] - attributes['grad'][-2])/(attributes['grad'][-2].size) > 
+			(norm(attributes['grad'][-1] - attributes['grad'][-2])/(attributes['grad'][-2].size) >
 				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/(attributes['grad'][-2].size)))
 			)
 			)
@@ -8553,11 +8612,11 @@ class Callback(System):
 			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			(hyperparameters['eps'].get('value.increase') > 0) and
-			((len(attributes['value']) > 1) and 
+			((len(attributes['value']) > 1) and
 			 (attributes['iteration'][-1] >= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
 			((attributes['value'][-1] > attributes['value'][-2]) and
-			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
+			(log10(attributes['value'][-1] - attributes['value'][-2]) >
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
 			) or
 			((iterations.start == iterations.stop))
@@ -8568,13 +8627,13 @@ class Callback(System):
 		status = ((status) and (not stop) and (not none))
 
 		other = (
-			(len(attributes['iteration']) == 1) or 
-			(hyperparameters['modulo']['track'] is None) or 
+			(len(attributes['iteration']) == 1) or
+			(hyperparameters['modulo']['track'] is None) or
 			((hyperparameters['modulo']['track'] == -1) and (not status)) or
 			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 			)
 
-		tracking = ((not status) or done or init or other) 
+		tracking = ((not status) or done or init or other)
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
@@ -8605,10 +8664,10 @@ class Callback(System):
 			'parameters':True,
 			'grad':True,
 			'search':True,
-			'parameters.relative':True,'parameters.relative.mean':True,		
+			'parameters.relative':True,'parameters.relative.mean':True,
 			'variables':True,'variables.relative':True,'variables.relative.mean':True,
 			'entropy':True,'purity':True,'similarity':True,'divergence':True
-		}	
+		}
 
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
@@ -8616,14 +8675,14 @@ class Callback(System):
 
 
 		if tracking:
-			
+
 			for attr in attrs:
 
-				if ((hyperparameters['length']['track'] is not None) and 
+				if ((hyperparameters['length']['track'] is not None) and
 					(len(track[attr]) > hyperparameters['length']['track'])
 					):
 					_value = track[attr].pop(0)
-				
+
 
 				index = -1 if ((not stop) or other) else -2
 				parameters = attributes['parameters'][index]
@@ -8658,7 +8717,7 @@ class Callback(System):
 
 				elif attr in ['value']:
 					value = absolute(attributes[attr][index])
-				
+
 				elif attr in ['parameters','grad','search'] and (not do):
 					value = default
 
@@ -8710,7 +8769,7 @@ class Callback(System):
 
 				elif attr in ['objective']:
 					value = absolute(metric(model(parameters=parameters,state=state,**kwargs)))
-				
+
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
@@ -8736,11 +8795,11 @@ class Callback(System):
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						tmp.update(dict(data={i:True for i in tmp.data},state=tmp.state,label=tmp.label))
-					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
+					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:
 						tmp.update(dict(data={i:False for i in tmp.data},state=tmp.state,label=tmp.label))
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
 						tmp.update(dict(data={i:False for i in tmp.data},state=False,label=tmp.label))
-				
+
 					data = tmp.data
 					state = metric.state
 					label = metric.label
@@ -8752,7 +8811,7 @@ class Callback(System):
 
 					metric.init(model=model,state=state,label=label)
 
-					
+
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = absolute(metric(model(parameters=parameters,state=state,**kwargs)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
@@ -8773,12 +8832,12 @@ class Callback(System):
 					metric.init(model=model,state=state,label=label)
 
 					state = state()
-					
+
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
 					value = default
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (do):
-					
+
 					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 					grad = model.grad_analytical
 					wrapper = jit
@@ -8880,8 +8939,8 @@ class Callback(System):
 						track[attr][i] = updates[attr](i,attr,track,default)
 
 
-		logging = ((len(attributes['iteration']) == 1) or 
-			(hyperparameters['modulo']['log'] is None) or 
+		logging = ((len(attributes['iteration']) == 1) or
+			(hyperparameters['modulo']['log'] is None) or
 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
 			)
 
@@ -8904,12 +8963,12 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
-				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1])
 				# 	for attr in attributes}),
-				# 'track: \t %s'%({attr: attributes[attr][-1].dtype 
-				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
-				# 	for attr in attributes}),				
+				# 'track: \t %s'%({attr: attributes[attr][-1].dtype
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1])
+				# 	for attr in attributes}),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
 				# 'U\n%s\nV\n%s'%(
@@ -8926,7 +8985,7 @@ class Callback(System):
 
 class Callback(System):
 	def __init__(self,*args,attributes=None,arguments=None,keywords=None,options=None,**kwargs):
-		'''	
+		'''
 		Class for callback
 		Args:
 			attributes (dict): Attributes for callback
@@ -8940,7 +8999,7 @@ class Callback(System):
 		defaults = [
 			'objective','infidelity','norm','entanglement','entangling','trace',
 			'array','state',
-			'sample.linear','sample.log',
+			'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
 			'infidelity.quantum','infidelity.classical','infidelity.pure',
 			'norm.quantum','norm.classical','norm.pure',
 			'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -8998,21 +9057,21 @@ class Callback(System):
 		return
 
 	def __call__(self,parameters=None,state=None,model=None,data=None,optimizer=None,**kwargs):
-		''' 
+		'''
 		Callback
 		Args:
 			parameters (array): parameters
 			state (array): state
 			model (object): Model instance
 			data (dict): data
-			optimizer (Optimizer): optimizer			
+			optimizer (Optimizer): optimizer
 			kwargs (dict): additional keyword arguments for callback
 		Returns:
 			status (int): status of callback
 		'''
 
-		attributes = {attr:self.attributes[attr] 
-			for attr in self.attributes 
+		attributes = {attr:self.attributes[attr]
+			for attr in self.attributes
 			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
 			}
 
@@ -9048,7 +9107,7 @@ class Callback(System):
 			if attr in [
 				'objective','infidelity','norm','entanglement','entangling','trace',
 				'array','state',
-				'sample.linear','sample.log',
+				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -9056,9 +9115,9 @@ class Callback(System):
 				'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
 				'discord.quantum','discord.classical','discord.renyi',
 				'spectrum.quantum','spectrum.classical',
-				'rank.quantum','rank.classical',				
+				'rank.quantum','rank.classical',
 				]:
-				
+
 				if attr in [
 					'objective','infidelity',
 					'infidelity.quantum','infidelity.classical','infidelity.pure',
@@ -9084,7 +9143,7 @@ class Callback(System):
 						state=obj,
 						**keywords)
 
-				elif attr in ['sample.linear','sample.log']:
+				elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
 
 					key = [f'{attr}.{i}' for i in ['x','y']]
 

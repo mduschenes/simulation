@@ -271,8 +271,10 @@
 		"array":"measure.array",
 		"state":"measure.state",
 		
-		"sample.linear":"measure.sample",
-		"sample.log":"measure.sample",
+		"sample.array.linear":"measure.sample",
+		"sample.array.log":"measure.sample",
+		"sample.state.linear":"measure.sample",
+		"sample.state.log":"measure.sample",
 		
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
@@ -302,8 +304,10 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
-		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
-		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
+		"sample.array.linear":{"attr":"array","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attr":"array","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attr":"state","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attr":"state","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
@@ -322,11 +326,13 @@
 		"layout":"configuration.options.layout",		
 		"periodic":"measure.options.periodic",
 		
-		"array":"measure.array",
-		"state":"measure.state",
+		"array":null,
+		"state":null,
 		
-		"sample.linear":"measure.sample",
-		"sample.log":"measure.sample",
+		"sample.array.linear":"measure.sample",
+		"sample.array.log":"measure.sample",
+		"sample.state.linear":"measure.sample",
+		"sample.state.log":"measure.sample",
 		
 		"infidelity.quantum":null,
 		"infidelity.classical":"measure.infidelity_classical",
@@ -356,8 +362,10 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
-		"sample.linear":{"bins":1000,"scale":"linear","base":10,"range":[0,1]},
-		"sample.log":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]},
+		"sample.array.linear":{"attr":"array","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attr":"array","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attr":"state","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attr":"state","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},

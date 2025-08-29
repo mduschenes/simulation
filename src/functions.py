@@ -31,7 +31,7 @@ from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,na
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
-from src.plot import AXES
+from src.plot import AXES,DELIMITER
 
 from src.io import load,dump
 
@@ -548,8 +548,9 @@ def func_fit_histogram(args,kwargs,attributes):
 				**options['texify']
 				)
 			for i in range(len(parameters))])
-		kwargs[attr][kwarg] = ('%s%s'%(kwargs[attr][kwarg],string) + '\n' + strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
-
+		# kwargs[attr][kwarg] = ('%s%s'%(kwargs[attr][kwarg],string) + '\n' + strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
+		# kwargs[attr][kwarg] = strings
+		kwargs[attr][kwarg] = '%s%s%s%s'%(DELIMITER,kwargs[attr][kwarg].replace('$',''),DELIMITER,strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
 
 	attr = 'legend'
 	kwarg = 'set_title'
@@ -558,7 +559,8 @@ def func_fit_histogram(args,kwargs,attributes):
 			if not data or not data.get(kwarg):
 				continue
 			string = 'P(p) = \\alpha D^{N} e^{-\\beta D^{N} p}'
-			data[kwarg] = '%s ~:~ %s'%(data[kwarg],string) if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
+			# data[kwarg] = '%s ~:~ %s'%(data[kwarg],string) if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
+			data[kwarg] = '%s'%(string) if string else '' #if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
 			data[kwarg] = texify(data[kwarg],**options['texify'])
 
 	return x,y,xerr,yerr
