@@ -42,28 +42,27 @@ def test_jax(*args,**kwargs):
 		else:
 			platform = str(device).split(':')[0]
 
-		environs = {
+		environ = {
 			'JAX_PLATFORMS':platform,
 			'JAX_PLATFORM_NAME':platform,
-			'JAX_CUDA_VISIBLE_DEVICES':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
+			'JAX_CUDA_VISIBLE_DEVICES':os.environ.get('JAX_CUDA_VISIBLE_DEVICES') if os.environ.get('JAX_CUDA_VISIBLE_DEVICES') else None,
 			'JAX_ENABLE_X64':True,
 			'JAX_DISABLE_JIT':False,
-			'JAX_TRACEBACK_FILTERING':'off',
-			'TF_CPP_MIN_LOG_LEVEL':5,
+			'TF_CPP_MIN_LOG_LEVEL':5
 			}
-		for name in environs:
-			if environs[name] is None:
+		for name in environ:
+			if environ[name] is None:
 				continue
-			os.environ[name],environs[name] = str(environs[name]),os.environ.get(name)
-		
+			os.environ[name],environ[name] = str(environ[name]),os.environ.get(name)
+
 		import jax
 		from jax.lib import xla_bridge
 		import jax.numpy as np
-	
+
 		config = {
 			'jax_platforms':platform,
 			'jax_platform_name':platform,
-			'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
+			'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES') if os.environ.get('JAX_CUDA_VISIBLE_DEVICES') else None,
 			'jax_enable_x64': True,
 			'jax_disable_jit':False,
 			}
@@ -72,15 +71,15 @@ def test_jax(*args,**kwargs):
 				continue
 			jax.config.update(name,config[name])
 
-		func(device)		
+		func(device)
 
-		for name in environs:
-			if environs[name] is None:
+		for name in environ:
+			if environ[name] is None:
 				continue
-			os.environ[name] = environs[name]	
+			os.environ[name] = environ[name]
 
 		return
-	
+
 
 	# NVIDIA_DEVICE_ORDER=PCI_BUS_ID
 	# CUDA_DEVICE_ORDER=PCI_BUS_ID
@@ -90,15 +89,13 @@ def test_jax(*args,**kwargs):
 	# JAX_CUDA_VISIBLE_DEVICES=1
 
 	name="CUDA_VISIBLE_DEVICES"
-	# devices = ['cuda','gpu','cpu']
-	# devices = [*(f"cuda:{i}" for i in os.environ[name].split(','))][-1:]
-	devices = ['cuda','gpu','cpu',*(f"gpu:{i}" for i in os.environ[name].split(','))]
+	devices = ['cuda','gpu','cpu',*(f"gpu:{i}" for i in os.environ[name].split(','))] if os.environ.get(name) else ['']
 
 	for device in devices:
 		try:
 			func(device)
 		except Exception as exception:
-			print('Exception:',exception,'\n',traceback.format_exc())
+			# print('Exception:',exception,'\n',traceback.format_exc())
 			continue
 
 	return

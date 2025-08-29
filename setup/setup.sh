@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-env=${1:-env}
+env=${1:-tensor}
 requirements=${2:-requirements.txt}
 envs=${3:-${HOME}/conda/envs}
 # modules=(${4:-cuda-12.3})
