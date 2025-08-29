@@ -329,10 +329,10 @@
 		"array":null,
 		"state":null,
 		
-		"sample.array.linear":"measure.sample",
-		"sample.array.log":"measure.sample",
-		"sample.state.linear":"measure.sample",
-		"sample.state.log":"measure.sample",
+		"sample.array.linear":null,
+		"sample.array.log":null,
+		"sample.state.linear":null,
+		"sample.state.log":null,
 		
 		"infidelity.quantum":null,
 		"infidelity.classical":"measure.infidelity_classical",
