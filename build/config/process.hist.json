@@ -70,7 +70,7 @@
 								"type": "index"
 							}
 						},
-						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
+						"ax.set_colorbar.set_label.label": "$\\textrm{Size} ~~ N$",
 						"ax.set_colorbar.share": true,
 						"ax.set_colorbar.location": "right",
 						"ax.set_colorbar.orientation": "vertical",
@@ -149,7 +149,7 @@
 								"type": "index"
 							}
 						},
-						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
+						"ax.set_colorbar.set_label.label": "$\\textrm{Size} ~~ N$",
 						"ax.set_colorbar.share": true,
 						"ax.set_colorbar.location": "right",
 						"ax.set_colorbar.orientation": "vertical",
@@ -176,8 +176,7 @@
 		],
 		[
 			[
-				"sample.array.M.noise.parameters",
-				"sample.state.M.noise.parameters"
+				"sample.array.M.noise.parameters"
 			],
 			[
 				{
@@ -195,9 +194,9 @@
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
-						"ax.set_title.texify":{"texify":{"M":"$\\textrm{System Depth} ~~ M$"}},
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
 						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise Scale} ~~ \\gamma$"}},
+						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
 						"ax.set_ylabel.scinotation": {
 							"scilimits": [
 								1,
@@ -226,6 +225,7 @@
 								0.8
 							]
 						},
+						"ax.bar.plots":false,
 						"ax.set_colorbar.value": {
 							"@N@": {
 								"value": null,
@@ -233,7 +233,7 @@
 								"type": "index"
 							}
 						},
-						"ax.set_colorbar.texify":{"texify":{"N":"$\\textrm{System Size} ~~ N$"}},
+						"ax.set_colorbar.texify":{"texify":{"N":"$\\textrm{Size} ~~ N$"}},
 						"ax.set_colorbar.set_label.label": "N",
 						"ax.set_colorbar.share": true,
 						"ax.set_colorbar.location": "right",
@@ -263,7 +263,8 @@
 						"ax.set_xticklabels": {
 							"labels": [
 								0,0.2,0.4,0.6,0.8,1.0
-							]
+							],
+							"size": 36
 						},
 						"ax.set_xscale": {
 							"value": "log",
@@ -313,7 +314,8 @@
 						"ax.set_yticklabels": {
 							"labels": [
 								0,0.2,0.4,0.6,0.8,1.0
-							]
+							],
+							"size": 36
 						},
 						"ax.set_yscale": {
 							"value": "log",
@@ -357,7 +359,193 @@
 					}
 				}
 			]			
-		]						
+		],
+		[
+			[
+				"sample.state.M.noise.parameters"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+						"M": null
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+						"noise.parameters": null
+					},
+					"kwargs": {
+						"fig.set_size_inches":{"w":43,"h":43},
+						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
+						"ax.set_title.label": "M",
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
+						"ax.set_ylabel.ylabel": "noise.parameters",
+						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
+						"ax.set_ylabel.scinotation": {
+							"scilimits": [
+								1,
+								2
+							],
+							"decimals": 1,
+							"strip":true
+						},
+						"ax.bar.label.labels": null,
+						"ax.bar.color": {
+							"@N@": {
+								"value": {
+									"value": null,
+									"color": "viridis",
+									"values": [],
+									"norm": null,
+									"scale": "linear",
+									"alpha": 1
+								},
+								"values": null,
+								"type": "value"
+							}
+						},
+						"ax.bar.alpha": {
+							"@N@": [
+								0.8
+							]
+						},
+						"ax.bar.plots":false,
+						"ax.set_colorbar.value": {
+							"@N@": {
+								"value": null,
+								"values": null,
+								"type": "index"
+							}
+						},
+						"ax.set_colorbar.texify":{"texify":{"N":"$\\textrm{Size} ~~ N$"}},
+						"ax.set_colorbar.set_label.label": "N",
+						"ax.set_colorbar.share": true,
+						"ax.set_colorbar.location": "right",
+						"ax.set_colorbar.orientation": "vertical",
+						"ax.set_colorbar.fraction": 0.02,
+						"ax.set_colorbar.size": "1.5%",
+						"ax.set_colorbar.pad": 0.5,
+						"ax.set_colorbar.aspect": 62,
+						"ax.set_colorbar.anchor": [10,0.5],
+						"ax.set_colorbar.set_ticks.ticks":5,
+						"ax.set_colorbar.set_ticklabels.ticklabels": null,
+						"ax.set_xscale": {
+							"value": "log",
+							"base": 10
+						},
+						"ax.set_xlim": {
+							"xmin": 5e-17,
+							"xmax": 2e0
+						},
+						"ax.set_xnbins": {
+							"nbins": 5
+						},
+						"ax.set_xticks": {
+							"ticks": [
+								1e-16,
+								1e-12,
+								1e-8,
+								1e-4,
+								1e0
+							]
+						},
+						"ax.set_xticklabels": {
+							"labels": [
+								1e-16,
+								1e-12,
+								1e-8,
+								1e-4,
+								1e0
+							],
+							"size": 36
+						},
+						"ax.set_xscale": {
+							"value": "linear"
+						},
+						"ax.set_xlim": {
+							"xmin": -0.1,
+							"xmax": 1.1
+						},
+						"ax.set_xnbins": {
+							"nbins": 5
+						},
+						"ax.set_xticks": {
+							"ticks": [
+								0,0.2,0.4,0.6,0.8,1.0
+							]
+						},
+						"ax.set_xticklabels": {
+							"labels": [
+								0,0.2,0.4,0.6,0.8,1.0
+							],
+							"size": 36
+						},
+						"ax.set_yscale": {
+							"value": "log",
+							"base": 10
+						},
+						"ax.set_ylim": {
+							"ymin": 5e-17,
+							"ymax": 2e0
+						},
+						"ax.set_ynbins": {
+							"nbins": 4
+						},
+						"ax.set_yticks": {
+							"ticks": [
+								1e-16,
+								1e-12,
+								1e-8,
+								1e-4,
+								1e0
+							]
+						},
+						"ax.set_yticklabels": {
+							"labels": [
+								1e-16,
+								1e-12,
+								1e-8,
+								1e-4,
+								1e0
+							],
+							"size": 36
+						},
+						"ax.set_yscale": {
+							"value": "linear"
+						},
+						"ax.set_ylim": {
+							"ymin": -0.1,
+							"ymax": 1.1
+						},
+						"ax.set_ynbins": {
+							"nbins": 5
+						},
+						"ax.set_yticks": {
+							"ticks": [
+								0,0.2,0.4,0.6,0.8,1.0
+							]
+						},
+						"ax.set_yticklabels": {
+							"labels": [
+								0,0.2,0.4,0.6,0.8,1.0
+							],
+							"size": 36
+						},
+						"style.share.ax.legend": true,
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_xticklabels": true,
+						"style.share.ax.set_ylabel": "left",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_colorbar": "bottom_right"
+					}
+				}
+			]
+		]
 	],
 	"join":{
 		"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}},
