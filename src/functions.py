@@ -25,7 +25,7 @@ for PATH in PATHS:
 from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
 from src.utils import to_tuple,is_nan,asscalar
-from src.utils import grouper,conditions,flatten,concatenate
+from src.utils import grouper,conditions,flatten,concatenate,inplace
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,nan
 
@@ -220,6 +220,23 @@ def func_sample_process(data,values,properties,*args,**kwargs):
 def func_sample_process_err(data,values,properties,*args,**kwargs):
 	data = values
 	return 
+
+
+def func_sample_filter(data,*args,eps=None,**kwargs):
+	data = data['y']
+	if eps:
+		data = np.array(data)
+		boolean = data>0
+		data[boolean] = np.log(data[boolean])
+		key = boolean & (np.abs((data-data[boolean].max())/(((data-data[boolean].max())**2).mean()))>eps)
+		data[boolean] = np.exp(data[boolean])
+		value = 0
+		data[key] = value
+	return data
+
+def func_sample_filter_err(data,*args,eps=None,**kwargs):
+	data = data['yerr']
+	return data
 
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)

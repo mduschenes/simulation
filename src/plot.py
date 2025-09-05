@@ -636,20 +636,27 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 				 'vmax':max(values,default=1)})
 
 	values = [i for i in natsorted(set([*values,*[norm['vmin'],norm['vmax']]])) if is_number(i)]
-	norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
+	norm.update({'vmin':min(values,default=0),'vmax':max(values,default=1)})
 
 	if not isinstance(value,scalars):
 		value = list(natsorted(set([*value])))
 
 	if scale in ['linear',None]:
 		norm = matplotlib.colors.Normalize(**norm)  
-	elif scale in ['log','symlog']:
-		values = [i for i in values if is_number(i) and i>0]
+	elif scale in ['log']:
+		values = [i for i in values if is_number(i)]
 		base = 10 if base is None else base
-		norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
+		norm.update({'vmin':min([i for i in values if i>0],default=0),'vmax':max([i for i in values if i>0],default=1)} if values else {})
 		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
 		norm = {i: norm[i] if isinstance(norm[i],scalars) else norm[i] for i in norm}
-		norm = matplotlib.colors.LogNorm(**norm)  
+		norm = matplotlib.colors.LogNorm(**norm)
+	elif scale in ['symlog']:
+		values = [i for i in values if is_number(i)]
+		base = 10 if base is None else base
+		norm.update({'vmin':min([i for i in values if i>0],default=0),'vmax':max([i for i in values if i>0],default=1),'linthresh':norm.get('linthresh',min(values))} if values else {})
+		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
+		norm = {i: norm[i] if isinstance(norm[i],scalars) else norm[i] for i in norm}
+		norm = matplotlib.colors.SymLogNorm(**norm)
 	else:
 		norm = matplotlib.colors.Normalize(**norm)					
 
@@ -768,11 +775,11 @@ def set_data(data=None,scale=None,base=None,**kwargs):
 	   data = None
 
 	elif ((scale is None) or
-		  (not any(i in ['log','symlog'] for i in scale))):
+		  (not any(i in ['log'] for i in scale))):
 	
 		data = data
 	
-	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):
+	elif ((not isinstance(scale,str) and any(i in ['log'] for i in scale))):
 
 		if not isinstance(data,np.ndarray):
 			for i,value in enumerate(data):
@@ -806,7 +813,7 @@ def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 	   err = None
 
 	elif ((scale is None) or
-		  (not any(i in ['log','symlog'] for i in scale))):
+		  (not any(i in ['log'] for i in scale))):
 	
 		if allclose(err,0):
 			err = None
@@ -2229,6 +2236,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			elif attr in ['imshow','matshow']:
+
 				dim = 2
 
 				if any(prop in kwargs[attr] for prop in ['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]]):

@@ -1242,7 +1242,10 @@
                         },
                         "application": "agg",
 						"analysis": {},
-						"wrapper": {},
+                        "wrapper": {
+                            "y": {"func":"src.functions.func_sample_filter","args":[],"kwargs":{"eps":1e-1}},
+                            "yerr": {"func":"src.functions.func_sample_filter_err","args":[],"kwargs":{"eps":1e-1}}
+                        },
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -1392,44 +1395,6 @@
 				"fontsize": 40
 			},
 			"set_xscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_xlim": {
-				"xmin": 5e-7,
-				"xmax": 2e0
-			},
-			"set_xnbins": {
-				"nbins": 4
-			},
-			"set_xticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},
-			"set_yscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_ylim": {
-				"ymin": 5e-7,
-				"ymax": 2e0
-			},
-			"set_ynbins": {
-				"nbins": 4
-			},
-			"set_yticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},
-			"set_xscale": {
 				"value": "linear"
 			},
 			"set_xlim": {
@@ -1478,6 +1443,26 @@
 					1e0
 				],
 				"size": 36
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					0,0.2,0.4,0.6,0.8,1.0
+				]
+			},
+			"set_yticklabels": {
+				"labels": [
+					0,0.2,0.4,0.6,0.8,1.0
+				]
 			},
 			"set_yscale": {
 				"value": "log",

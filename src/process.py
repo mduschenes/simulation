@@ -1606,7 +1606,7 @@ def apply(data,plots,processes,verbose=None):
 
 				for func in list(wrappers[attr]):
 					try:
-						wrappers[attr][func] = partial(load(wrappers[attr][func],default=wrappers[attr][func]),*arguments[attr][func],**wrappers[attr][func])
+						wrappers[attr][func] = partial(load(wrappers[attr][func],default=wrappers[attr][func]),*arguments[attr][func],**keywords[attr][func])
 					except:
 						wrappers[attr].pop(func)
 						continue
@@ -1696,24 +1696,51 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
+
 			process = copy(process)
-			if process is None or callable(process) or isinstance(process,str):
-				process = load(process) if isinstance(process,str) else process
+
+			def boolean(obj):
+				return obj is None or callable(obj) or isinstance(obj,str) or (isinstance(obj,dict) and any(string in ['func','args','kwargs'] for string in obj))
+
+			def parser(obj):
+				if isinstance(obj,dict) and any(string in ['func','args','kwargs'] for string in obj):
+					obj = {'func':obj.get('func'),'args':obj.get('args',args),'kwargs':obj.get('kwargs',kwargs)}
+				else:
+					obj = {'func':obj,'args':args,'kwargs':kwargs}
+				obj = {
+					'func':obj['func'] if obj.get('func') else None,
+					'args':obj['args'] if obj.get('args') else [],
+					'kwargs':obj['kwargs'] if obj.get('kwargs') else {},
+					}
+				return obj
+
+			if boolean(process):
+				process = parser(process)
 				process = {function:{axes:{func:process for func in funcs[function][axes]} for axes in funcs[function]} for function in funcs}
 			elif isinstance(process,dict):
 				for function in funcs:
-					if process.get(function) is None or callable(process.get(function)) or isinstance(process.get(function),str):
-						process[function] = load(process.get(function)) if isinstance(process.get(function),str) else process.get(function)
+					if boolean(process.get(function)):
+						process[function] = parser(process.get(function))
 						process[function] = {axes:{func:process.get(function) for func in funcs[function][axes]} for axes in funcs[function]}
 					elif isinstance(process.get(function),dict):
 						for axes in funcs[function]:
-							if process[function].get(axes) is None or callable(process[function].get(axes)) or isinstance(process[function].get(axes),str):
-								process[function][axes] = load(process[function].get(axes)) if isinstance(process[function].get(axes),str) else process[function].get(axes)
+							if boolean(process[function].get(axes)):
+								process[function][axes] = parser(process[function].get(axes))
 								process[function][axes] = {func:process[function].get(axes) for func in funcs[function][axes]}
 							elif isinstance(process[function].get(axes),dict):
 								for func in funcs[function][axes]:
-									if process[function][axes].get(func) is None or callable(process[function][axes].get(func)) or isinstance(process[function][axes].get(func),str):
-										process[function][axes][func] = load(process[function][axes].get(func)) if isinstance(process[function][axes].get(func),str) else process[function][axes].get(func)
+									if boolean(process[function][axes].get(func)):
+										process[function][axes][func] = parser(process[function][axes].get(func))
+										process[function][axes][func] = process[function][axes].get(func)
+
+			for function in list(process):
+				for axes in list(process[function]):
+					for func in list(process[function][axes]):
+						try:
+							process[function][axes][func] = partial(load(process[function][axes][func]['func'],default=process[function][axes][func]['func']),*process[function][axes][func]['args'],**process[function][axes][func]['kwargs'])
+						except:
+							process[function][axes][func] = None
+
 
 			shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 									max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -2008,6 +2035,7 @@ def plotter(plots,processes,verbose=None):
 							continue
 
 						if OTHER in data and OTHER in data[OTHER]:
+
 							wrappers = data[OTHER][OTHER].get('wrapper')
 
 							if wrappers is None:
@@ -2023,28 +2051,48 @@ def plotter(plots,processes,verbose=None):
 									wrappers.pop(attr)
 									continue
 								elif isinstance(wrappers[attr],str):
-									wrappers[attr] = {wrappers[attr]:{}}
+									wrappers[attr] = {wrappers[attr]:{'func':wrappers[attr],'args':None,'kwargs':None}}
+								elif isinstance(wrappers[attr],dict) and all(string in ['func','args','kwargs'] for string in wrappers[attr]):
+									wrappers[attr] = {wrappers[attr]:{'func':wrappers[attr].get('func'),'args':wrappers[attr].get('args'),'kwargs':wrappers[attr].get('kwargs')}}
 								elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
-									wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+									for func in wrappers[attr]:
+										if isinstance(wrappers[attr][func],dict) and all(string in ['func','args','kwargs'] for string in wrappers[attr][func]):
+											wrappers[attr][func] = {'func':wrappers[attr][func].get('func'),'args':wrappers[attr][func].get('args'),'kwargs':wrappers[attr][func].get('kwargs')}
+										else:
+											wrappers[attr][func] = {'func':func,'args':None,'kwargs':wrappers[attr][func]}
+								elif isinstance(wrappers[attr],dict):
+									wrappers[attr] = {func:{'func':func,'args':None,'kwargs':wrappers[attr][func]} for func in wrappers[attr]}
 								else:
 									continue
 
 								for func in list(wrappers[attr]):
+
+									wrappers[attr][func] = {
+											'func':wrappers[attr][func]['func'] if wrappers[attr][func].get('func') else None,
+											'args':wrappers[attr][func]['args'] if wrappers[attr][func].get('args') else [],
+											'kwargs':wrappers[attr][func]['kwargs'] if wrappers[attr][func].get('kwargs') else {},
+											}
+
 									try:
-										wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+										wrappers[attr][func] = partial(load(wrappers[attr][func]['func'],default=wrappers[attr][func]['func']),*wrappers[attr][func]['args'],**wrappers[attr][func]['kwargs'])
 									except:
 										wrappers[attr].pop(func)
 										continue
 
 							for attr in data[OTHER]:
 								if wrappers.get(attr) is not None:
+
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
 										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 										**{attr: data[attr] for attr in data if attr in ALL},
 										}
+
 									for func in wrappers[attr]:
+										if not callable(wrappers[attr][func]):
+											continue
 										value = wrappers[attr][func](value)
+
 									data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
@@ -2464,6 +2512,7 @@ def plotter(plots,processes,verbose=None):
 
 				opts = indexer(position,options)
 				vals = indexer(position,layout)
+
 				for attr in list(opts):
 
 					attr,tmp = attr.split(delim),opts.pop(attr)
@@ -2514,9 +2563,59 @@ def plotter(plots,processes,verbose=None):
 							if item in data and isinstance(items[item],dict) and any(i.startswith(SYMBOL) and i.endswith(SYMBOL) for i in items[item]):
 								data[item] = copy(items.get(item)) 
 								nulls.append(item)
-						
+							value = getter(data,item,delimiter=delim)
+							if isinstance(value,list) and not isinstance(items[item],list) and all(isinstance(i,type(items[item])) for i in value):
+								items[item] = [items[item]]
+
 						setter(data,copy({item:items[item] for item in items if item not in nulls}),delimiter=delim)
-	
+
+
+	# Parse data
+	for instance in list(plots):
+
+		for subinstance in list(plots[instance]):
+
+			for prop in plots[instance][subinstance][obj]:
+
+				if prop not in PLOTS:
+					continue
+
+				for data in search(plots[instance][subinstance][obj][prop]):
+
+					if not data:
+						continue
+
+					if OTHER not in data or OTHER not in data[OTHER]:
+						continue
+
+					attr = OTHER
+					kwarg = 'labels'
+					if data[OTHER][OTHER].get(kwarg) is not None:
+
+						value = {
+								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+								**{attr: data[OTHER][attr] for attr in data[OTHER]},
+								**{attr: data[attr] for attr in data if attr in ALL},
+								}
+						values = [information[instance][subinstance][prop],metadata[instance][subinstance],sorting[instance][subinstance]]
+						nulls = {}
+
+						for label in data[OTHER][OTHER].get(kwarg):
+							if (label in value) and (label not in ALL) and not parse(label,data[OTHER][OTHER].get(kwarg),value,verbose=verbose):
+
+								if label not in nulls:
+									nulls[label] = []
+								nulls[label].append(value[label])
+
+								data.clear()
+
+								break
+
+						for label in nulls:
+							for objs in values:
+								if label in objs:
+									objs[label] = [item for item in objs[label] if item not in nulls[label]]
+
 	for instance in list(plots):
 
 		for subinstance in list(plots[instance]):
@@ -2935,8 +3034,8 @@ def plotter(plots,processes,verbose=None):
 									if not any(label in values[prop] for prop in values):
 										continue
 									
-									if isinstance(val,dict) and any(prop in val for prop in ['value','type','func']):
-										defaults = {'value':None,'type':None,'func':None}
+									if isinstance(val,dict) and any(prop in val for prop in ['value','values','type','func']):
+										defaults = {'value':None,'values':None,'type':None,'func':None}
 										val.update({prop: val.get(prop,defaults[prop]) for prop in defaults})
 
 										if isinstance(val['func'],str):
@@ -2956,7 +3055,7 @@ def plotter(plots,processes,verbose=None):
 												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in ALL if attr in data},
 												**{attr:data[OTHER][attr] for attr in [label]},
 												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
-												})											
+												})
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
@@ -2967,7 +3066,11 @@ def plotter(plots,processes,verbose=None):
 										else:
 											continue
 
-									elif isinstance(val,dict) and not any(prop in val for prop in ['value','type','func']):
+										if val['values'] is not None:
+
+											items = val['values']
+
+									elif isinstance(val,dict) and not any(prop in val for prop in ['value','values','type','func']):
 
 										if prop not in PLOTS:
 											item = None
@@ -2996,6 +3099,7 @@ def plotter(plots,processes,verbose=None):
 										item = None
 										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
+
 									if isinstance(item,arrays):
 										item = item.tolist()
 									
@@ -3018,6 +3122,7 @@ def plotter(plots,processes,verbose=None):
 											'__value__': val
 											}
 								
+
 								elif delimiter in ['__']:
 									
 									if label not in [*GRID[:LAYOUTDIM],*INDEXES]:
@@ -3096,8 +3201,8 @@ def plotter(plots,processes,verbose=None):
 					value = data[attr]['__value__']
 					indices = [(data[attr]['__items__'].index(i)+(data[attr]['__size__']==1))/max(1,data[attr]['__size__']-1+2*(data[attr]['__size__']==0)) for i in data[attr]['__items__']]
 
-					if isinstance(value,dict) and any(prop in value for prop in ['value','type','func']):
-						defaults = {'value':None,'type':None,'func':None}
+					if isinstance(value,dict) and any(prop in value for prop in ['value','values','type','func']):
+						defaults = {'value':None,'values':None,'type':None,'func':None}
 						value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
 						if value['type'] in ['value']:
@@ -3107,7 +3212,7 @@ def plotter(plots,processes,verbose=None):
 						else:
 							value = indices
 
-					elif isinstance(value,dict) and not any(prop in value for prop in ['value','type','func']):
+					elif isinstance(value,dict) and not any(prop in value for prop in ['value','values','type','func']):
 						pass
 
 					elif value is not None:
@@ -3161,8 +3266,6 @@ def plotter(plots,processes,verbose=None):
 						else:
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
-						value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
-
 						if isinstance(data[attr%(axes)].get(kwarg),integers):
 							
 							size = data[attr%(axes)][kwarg]
@@ -3170,11 +3273,19 @@ def plotter(plots,processes,verbose=None):
 							size = min(size,len(data.get('value',[])))
 
 							if data[attr%(axes)][kwarg] == 1:
+								value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
+								value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
 								value = np.linspace(*value,size,endpoint=True)
-							elif scale in ['log','symlog']:
+							elif scale in ['log']:
 								base = 10 if base is None else base
+								value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
+								value = np.log(value)/np.log(base)
+								value = np.logspace(*value,size,base=base,endpoint=True)
+							elif scale in ['symlog']:
+								base = 10 if base is None else base
+								value = [max(min(data.get('value',[]),default=0),norm['vmin']),min(max(data.get('value',[]),default=1),norm['vmax'])]
 								value = np.log(value)/np.log(base)
 								value = np.logspace(*value,size,base=base,endpoint=True)
 							else:
@@ -3217,11 +3328,17 @@ def plotter(plots,processes,verbose=None):
 									value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
 								else:
 									size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
-									if scale in ['log','symlog']:
+									if scale in ['linear']:
+										value = [min(value),max(value)]
+										value = np.linspace(*value,size,endpoint=True)
+									elif scale in ['log']:
 										base = 10 if base is None else base
-										value = np.logspace(min(value),max(value),size,base=base,endpoint=True)
-									elif scale in ['linear']:
-										value = np.linspace(min(value),max(value),size,endpoint=True)
+										value = [min(value),max(value)]
+										value = np.logspace(*value,size,base=base,endpoint=True)
+									elif scale in ['symlog']:
+										base = 10 if base is None else base
+										value = [min(value),max(value)]
+										value = np.logspace(*value,size,base=base,endpoint=True)
 									else:
 										value = None
 
@@ -3464,19 +3581,33 @@ def plotter(plots,processes,verbose=None):
 							wrappers.pop(attr)
 							continue
 						elif isinstance(wrappers[attr],str):
-							wrappers[attr] = {wrappers[attr]:{}}
+							wrappers[attr] = {wrappers[attr]:{'func':wrappers[attr],'args':None,'kwargs':None}}
+						elif isinstance(wrappers[attr],dict) and all(string in ['func','args','kwargs'] for string in wrappers[attr]):
+							wrappers[attr] = {None:{'func':wrappers[attr].get('func'),'args':wrappers[attr].get('args'),'kwargs':wrappers[attr].get('kwargs')}}
 						elif isinstance(wrappers[attr],dict) and all(isinstance(wrappers[attr][func],dict) for func in wrappers[attr]):
-							wrappers[attr] = {func:wrappers[attr][func] for func in wrappers[attr]}
+							for func in wrappers[attr]:
+								if isinstance(wrappers[attr][func],dict) and all(string in ['func','args','kwargs'] for string in wrappers[attr][func]):
+									wrappers[attr][func] = {'func':wrappers[attr][func].get('func'),'args':wrappers[attr][func].get('args'),'kwargs':wrappers[attr][func].get('kwargs')}
+								else:
+									wrappers[attr][func] = {'func':func,'args':None,'kwargs':wrappers[attr][func]}
+						elif isinstance(wrappers[attr],dict):
+							wrappers[attr] = {func:{'func':func,'args':None,'kwargs':wrappers[attr][func]} for func in wrappers[attr]}
 						else:
 							continue
 
 						for func in list(wrappers[attr]):
+
+							wrappers[attr][func] = {
+									'func':wrappers[attr][func]['func'] if wrappers[attr][func].get('func') else None,
+									'args':wrappers[attr][func]['args'] if wrappers[attr][func].get('args') else [],
+									'kwargs':wrappers[attr][func]['kwargs'] if wrappers[attr][func].get('kwargs') else {},
+									}
+
 							try:
-								wrappers[attr][func] = partial(load(func),**wrappers[attr][func])
+								wrappers[attr][func] = partial(load(wrappers[attr][func]['func'],default=wrappers[attr][func]['func']),*wrappers[attr][func]['args'],**wrappers[attr][func]['kwargs'])
 							except:
 								wrappers[attr].pop(func)
 								continue
-
 
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
@@ -3510,12 +3641,16 @@ def plotter(plots,processes,verbose=None):
 							options = {}
 
 						if wrappers.get(attr) is not None:
+
 							value = {
 								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 								**{attr: data[OTHER][attr] for attr in data[OTHER]},
 								**{attr: data[attr] for attr in data if attr in ALL},
 								}
+
 							for func in wrappers[attr]:
+								if not callable(wrappers[attr][func]):
+									continue
 								value = wrappers[attr][func](value)
 
 						if attr in [OTHER]:
