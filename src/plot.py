@@ -1977,7 +1977,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for plot in plots:
 					functions[plot] = func
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim],'height'] if kwargs[attr].get('%s%s'%(k,s)) is not None and not all(j is None for j in kwargs[attr].get('%s%s'%(k,s)))])
 
 				args = [arg for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
