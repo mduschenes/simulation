@@ -27,40 +27,40 @@ def call(settings,*args,**kwargs):
 		model (object): Model instance
 	'''
 
-	settings = setup(settings,*args,**kwargs)
+	for settings in setup(settings,*args,**kwargs):
 
-	module = load(settings.cls.module)
-	model = load(settings.cls.model)
-	state = load(settings.cls.state)
-	callback = load(settings.cls.callback)
-	system = settings.system
+		module = load(settings.cls.module)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		callback = load(settings.cls.callback)
+		system = settings.system
 
-	if module is not None and model is not None and state is not None:
-	
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
-		callback = callback(**{**settings.callback,**dict(system=system)})
+		if module is not None and model is not None and state is not None:
 
-		module = module(**{**settings.module,**namespace(module,model),**dict(model=model,state=state,callback=callback,system=system)})
+			model = model(**{**settings.model,**dict(system=system)})
+			state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+			callback = callback(**{**settings.callback,**dict(system=system)})
 
-		module.init()
+			module = module(**{**settings.module,**namespace(module,model),**dict(model=model,state=state,callback=callback,system=system)})
 
-		model = module
+			module.init()
 
-	elif model is not None and state is not None:
+			model = module
 
-		model = model(**{**settings.model,**dict(system=system)})
-		state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
+		elif model is not None and state is not None:
 
-		model.init(state=state)
+			model = model(**{**settings.model,**dict(system=system)})
+			state = state(**{**namespace(state,model),**settings.state,**dict(system=system)})
 
-	elif model is not None:
+			model.init(state=state)
 
-		model = model(**{**settings.model,**dict(system=system)})
+		elif model is not None:
 
-	else:
+			model = model(**{**settings.model,**dict(system=system)})
 
-		model = None
+		else:
+
+			model = None
 
 	return model
 
@@ -79,35 +79,35 @@ def optimize(settings,*args,**kwargs):
 		optimizer (object): Model optimizer
 	'''	
 
-	settings = setup(settings,*args,**kwargs)
+	for settings in setup(settings,*args,**kwargs):
 
-	model = call(settings,*args,**kwargs)
-	system = settings.system
+		model = call(settings,*args,**kwargs)
+		system = settings.system
 
-	label = load(settings.cls.label)
-	callback = load(settings.cls.callback)
+		label = load(settings.cls.label)
+		callback = load(settings.cls.callback)
 
-	state = model.state
-	label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
-	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
+		state = model.state
+		label = label(**{**namespace(label,model),**settings.label,**dict(system=system)})
+		callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
-	label.init(state=state)
+		label.init(state=state)
 
-	func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
-	hyperparameters = settings.optimize
-	arguments = ()
-	keywords = {}
-	
-	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
-	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
-	callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparameters,system=system)
+		func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
+		hyperparameters = settings.optimize
+		arguments = ()
+		keywords = {}
 
-	optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparameters,system=system)
+		metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+		func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
+		callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparameters,system=system)
 
-	parameters = model.parameters()
-	state = model.state()
+		optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparameters,system=system)
 
-	parameters = optimizer(parameters,state=state)
+		parameters = model.parameters()
+		state = model.state()
+
+		parameters = optimizer(parameters,state=state)
 
 	return model,parameters,state,optimizer
 
@@ -126,28 +126,28 @@ def train(settings,*args,**kwargs):
 		optimizer (object): Model optimizer
 	'''
 
-	settings = setup(settings,*args,**kwargs)
+	for settings in setup(settings,*args,**kwargs):
 
-	model = None
-	parameters = None
-	state = None
-	optimizer = None
+		model = None
+		parameters = None
+		state = None
+		optimizer = None
 
-	if settings.boolean.load:
+		if settings.boolean.load:
 
-		model.load()
+			model.load()
 
-	if settings.boolean.call:
+		if settings.boolean.call:
 
-		model = call(settings)
-	
-	if settings.boolean.optimize:
+			model = call(settings)
 
-		model,parameters,state,optimizer = optimize(settings)
+		if settings.boolean.optimize:
 
-	if settings.boolean.dump:	
-	
-		model.dump()
+			model,parameters,state,optimizer = optimize(settings)
+
+		if settings.boolean.dump:
+
+			model.dump()
 
 	return model,parameters,state,optimizer
 

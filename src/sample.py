@@ -388,23 +388,23 @@ class Model(object):
 
 def main(settings,*args,**kwargs):
 
-	settings = setup(settings,*args,**kwargs)
+	for settings in setup(settings,*args,**kwargs):
 
-	boolean = settings.boolean
-	options = settings.options
-	model = settings.model
-	system = settings.system
+		boolean = settings.boolean
+		options = settings.options
+		model = settings.model
+		system = settings.system
 
-	model = Model(**{**model,**system})
+		model = Model(**{**model,**system})
 
-	if boolean.load:
-		model.load()
+		if boolean.load:
+			model.load()
 
-	if boolean.call:
-		model(**options)
+		if boolean.call:
+			model(**options)
 
-	if boolean.dump:
-		model.dump()
+		if boolean.dump:
+			model.dump()
 
 	return
 

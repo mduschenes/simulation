@@ -20,11 +20,8 @@ from src.call import rm,echo
 from src.system import Dict,Dictionary
 from src.iterables import namespace,permuter,setter,getter,getattrs,hasattrs
 from src.optimize import Optimizer,Objective,Metric,Callback
-from src.logger import Logger
-# logger = Logger()
 
 from src.quantum import Basis as basis
-
 
 def equalizer(a,b):
 	try:

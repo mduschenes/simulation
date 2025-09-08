@@ -256,7 +256,7 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 		verbose (int,str,bool): settings verbosity
 		args (iterable): settings positional arguments
 		kwargs (dict): settings keyword arguments
-	Returns:
+	Yields:
 		settings (dict): settings
 	'''
 
@@ -280,9 +280,12 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 	if index is not None:
 		for key,setting,size in iterate(settings,index=index,wrapper=wrapper):
 			settings = setting
+			yield settings
 			break
+	else:
+		yield settings
 
-	return settings
+	return
 
 
 def init(settings):

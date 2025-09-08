@@ -3308,7 +3308,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 						state = self.organize(data=state,where=i,scheme=scheme,transform=True,conj=False,**kwargs)
 
-						u,v,s = self.scheme[scheme](state,conj=False,**{**defaults,**kwargs,**options})
+						u,v,s = self.scheme[scheme](state,**{**defaults,**kwargs,**options,**dict(conj=False)})
 
 						state = self.organize(data=u,where=i,scheme=scheme,shape=[*shape[:-1],s],axes=axes,transform=False,conj=False,**kwargs)
 
@@ -3331,7 +3331,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 						state = self.organize(data=state,where=i,scheme=scheme,transform=True,conj=True,**kwargs)
 						
-						u,v,s = self.scheme[scheme](state,conj=True,**{**defaults,**kwargs,**options})
+						u,v,s = self.scheme[scheme](state,**{**defaults,**kwargs,**options,**dict(conj=True)})
 
 						state = self.organize(data=v,where=i,scheme=scheme,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
 						
