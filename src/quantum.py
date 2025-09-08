@@ -17,7 +17,7 @@ from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
-from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng,histogram
+from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
 
@@ -1678,11 +1678,13 @@ class Measure(System):
 
 		return func
 
-	def calculate(self,attr=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def calculate(self,attribute=None,function=None,settings=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Calculate data for POVM probability measure
 		Args:
-			attr (str): attribute for calculation of data
+			attribute (str,callable): attribute for calculation of data
+			function (callable): function of data
+			settings (dict): settings of data
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
@@ -1693,10 +1695,33 @@ class Measure(System):
 			data (object): data
 		'''
 
-		if hasattr(self,attr):
-			data = getattr(self,attr)(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
+		if isinstance(attribute,str):
+			if hasattr(self,attribute):
+				attribute = getattr(self,attribute)
+		elif not callable(attribute):
+			attribute = state
+
+		if isinstance(function,str):
+			if hasattr(self,function):
+				function = getattr(self,function)
+			else:
+				try:
+					function = load(function)
+				except:
+					function = None
+		elif not callable(function):
+			function = None
+
+		settings = {} if settings is None else settings
+		settings.update({attr:getattr(self,attr) for attr in self if attr not in settings and not callable(getattr(self,attr))})
+
+		if callable(attribute):
+			data = attribute(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
-			data = state
+			data = attribute
+
+		if callable(function):
+			data = function(data,**settings)
 
 		return data
 
@@ -1943,11 +1968,12 @@ class Measure(System):
 
 		return data
 
-	def sample(self,attr=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def sample(self,attribute=None,function=None,settings=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class sample
 		Args:
-			attr (str): attribute for calculation of data
+			attribute (str,callable): attribute for calculation of data
+			function (callable): function of data
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
 			where (float,int,iterable[int]): indices of function
@@ -1958,16 +1984,33 @@ class Measure(System):
 			data (object): data
 		'''
 
-		if hasattr(self,attr):
-			attr = getattr(self,attr)
+		if isinstance(attribute,str):
+			if hasattr(self,attribute):
+				attribute = getattr(self,attribute)
+		elif not callable(attribute):
+			attribute = self.array
+
+		if isinstance(function,str):
+			if hasattr(self,function):
+				function = getattr(self,function)
+			else:
+				try:
+					function = load(function)
+				except:
+					function = None
+		elif not callable(function):
+			function = None
+
+		settings = {} if settings is None else settings
+		settings.update({attr:getattr(self,attr) for attr in self if attr not in settings and not callable(getattr(self,attr))})
+
+		if callable(attribute):
+			data = attribute(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 		else:
-			attr = self.array
+			data = attribute
 
-		options = {} if options is None else options
-
-		data = attr(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
-
-		data = histogram(data,**options)
+		if callable(function):
+			data = function(data,**settings)
 
 		return data
 
@@ -5222,8 +5265,6 @@ class Object(System):
 		'''
 
 		data = self.array(parameters=parameters,state=state,**kwargs)
-
-		data = histogram(data,**kwargs)
 
 		return data
 
@@ -9000,6 +9041,7 @@ class Callback(System):
 			'objective','infidelity','norm','entanglement','entangling','trace',
 			'array','state',
 			'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+			'sample.array.information','sample.state.information',
 			'infidelity.quantum','infidelity.classical','infidelity.pure',
 			'norm.quantum','norm.classical','norm.pure',
 			'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -9108,6 +9150,7 @@ class Callback(System):
 				'objective','infidelity','norm','entanglement','entangling','trace',
 				'array','state',
 				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+				'sample.array.information','sample.state.information',
 				'infidelity.quantum','infidelity.classical','infidelity.pure',
 				'norm.quantum','norm.classical','norm.pure',
 				'entanglement.quantum','entanglement.classical','entanglement.renyi',
@@ -9146,6 +9189,15 @@ class Callback(System):
 				elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
 
 					key = [f'{attr}.{i}' for i in ['x','y']]
+
+					value = getattrs(model,attributes[attr],delimiter=delim)(
+						parameters=parameters,
+						state=obj,
+						**keywords)
+
+				elif attr in ['sample.array.information','sample.state.information']:
+
+					key = attr
 
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,

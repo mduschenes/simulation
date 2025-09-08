@@ -2307,6 +2307,9 @@ def test_calculate(*args,**kwargs):
 				"sample.array.log":"sample",
 				"sample.state.linear":"sample",
 				"sample.state.log":"sample",
+				"sample.array.information":"sample",
+				"sample.state.information":"sample",
+
 				"norm_quantum":"norm_quantum",
 				"norm_classical":"norm_classical",
 				"norm_pure":"norm_pure",
@@ -2364,6 +2367,8 @@ def test_calculate(*args,**kwargs):
 			'sample.array.log',
 			'sample.state.linear',
 			'sample.state.log',
+			'sample.array.information',
+			'sample.state.information',
 			'norm_quantum',
 			'norm_classical',
 			'norm_pure',
@@ -2504,17 +2509,23 @@ def test_calculate(*args,**kwargs):
 				where = None
 
 			elif attr in [
-				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log'
+				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+				'sample.array.information','sample.state.information',
 				]:
 
 				if attr in ['sample.array.linear']:
-					kwargs = dict(attr="array",options=dict(bins=1000,scale="linear",base=10,range=[0,1]))
+					kwargs = dict(attribute="array",function="src.functions.func_histogram",settings=dict(bins=1000,scale="linear",base=10,range=[0,1]))
 				elif attr in ['sample.array.log']:
-					kwargs = dict(attr="array",options=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+					kwargs = dict(attribute="array",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.state.linear']:
-					kwargs = dict(attr="state",options=dict(bins=1000,scale="linear",base=10,range=[0,1]))
+					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="linear",base=10,range=[0,1]))
 				elif attr in ['sample.state.log']:
-					kwargs = dict(attr="state",options=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+				elif attr in ['sample.array.information']:
+					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict())
+				elif attr in ['sample.state.information']:
+					kwargs = dict(attribute="state",function="src.functions.func_information",settings=dict())
+
 				where = None
 
 			else:

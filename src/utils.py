@@ -1533,7 +1533,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		fisher (callable): Fisher information of function
+		function (callable): Fisher information of function
 	'''
 	if mode is None:
 		mode = 'fwd'
@@ -1550,9 +1550,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	dtype = getattr(func,'dtype',None)
 
 	if not size:
-		def fisher(*args,**kwargs):
+		def function(*args,**kwargs):
 			return None
-		return fisher
+		return function
 
 	if hermitian:
 
@@ -1581,7 +1581,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		grad = lambda *args,grad=grad,shape=shape,**kwargs:reshape(grad(*args,**kwargs),[-1,*shape])
 
 		# @jit
-		def fisher(*args,**kwargs):
+		def function(*args,**kwargs):
 			
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
@@ -1630,7 +1630,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 				]	
 
 		@jit
-		def fisher(*args,**kwargs):
+		def function(*args,**kwargs):
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
@@ -1652,7 +1652,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 		raise NotImplementedError("Not Hermitian/Unitary Fisher Information Not Implemented for ndim = %r"%(ndim))
 
-	return fisher
+	return function
 
 
 def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
@@ -1664,7 +1664,7 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		entropy (callable): Entropy of function
+		function (callable): Entropy of function
 	'''
 
 	if shape is None:
@@ -1680,10 +1680,10 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
-		def entropy(*args,**kwargs):
+		def function(*args,**kwargs):
 			return 0
 	else:
-		def entropy(*args,**kwargs):
+		def function(*args,**kwargs):
 			out = func(*args,**kwargs)
 
 			out = reshape(out,shape)
@@ -1696,7 +1696,7 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			return out
 
-	return entropy
+	return function
 
 
 def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
@@ -1708,7 +1708,7 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		purity (callable): purity of function
+		function (callable): purity of function
 	'''
 
 	if shape is None:
@@ -1724,10 +1724,10 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
-		def purity(*args,**kwargs):
+		def function(*args,**kwargs):
 			return 1
 	else:
-		def purity(*args,**kwargs):
+		def function(*args,**kwargs):
 			out = func(*args,**kwargs)
 			
 			out = reshape(out,shape)
@@ -1736,7 +1736,7 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			return out
 
-	return purity
+	return function
 
 
 def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
@@ -1749,7 +1749,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		similarity (callable): similarity of function
+		function (callable): similarity of function
 	'''
 
 	if shape is None:
@@ -1771,10 +1771,10 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
-		def similarity(*args,**kwargs):
+		def function(*args,**kwargs):
 			return 0
 	else:
-		def similarity(*args,**kwargs):
+		def function(*args,**kwargs):
 			out = func(*args,**kwargs)
 
 			out = reshape(out,shape)
@@ -1785,7 +1785,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			return out
 
-	return similarity
+	return function
 
 def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	'''
@@ -1797,7 +1797,7 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		divergence (callable): divergence of function
+		function (callable): divergence of function
 	'''
 
 	if shape is None:
@@ -1821,10 +1821,10 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
-		def divergence(*args,**kwargs):
+		def function(*args,**kwargs):
 			return 0
 	else:
-		def divergence(*args,**kwargs):
+		def function(*args,**kwargs):
 			out = func(*args,**kwargs)
 
 			out = reshape(out,shape)
@@ -1837,7 +1837,21 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			return out
 
-	return divergence
+	return function
+
+def information(func,*args,**kwargs):
+	'''
+	Compute information of function
+	Args:
+		func  (callable): Function to compute information
+		label  (callable,array): Label to compute information
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		data (array): information of function
+	'''
+	return -log(func(*args,**kwargs))
 
 
 def nullfunc(obj,*args,**kwargs):
@@ -12992,7 +13006,7 @@ def projector(i,shape):
 	return projector
 
 
-def histogram(a,bins=None,range=None,scale=None,base=None,**kwargs):
+def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,density=None,**kwargs):
 	'''
 	Get histogram of array
 	Args:
@@ -13001,6 +13015,8 @@ def histogram(a,bins=None,range=None,scale=None,base=None,**kwargs):
 		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
+		weights (iterable): weight of data
+		density (bool): normalization of data
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		x (array): bins
@@ -13019,7 +13035,7 @@ def histogram(a,bins=None,range=None,scale=None,base=None,**kwargs):
 			range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
 			bins = logspace(*range,bins,base=base)
 
-	y,x = np.histogram(asarray(a),bins=bins,range=range,**kwargs)
+	y,x = np.histogram(asarray(a),bins=bins,range=range,weights=weights,density=density)
 
 	if scale is None or scale in ['linear']:
 		x = array((x[:-1]+x[1:])/2)

@@ -22,8 +22,8 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,log10,absolute,maximum,minimum,sort,log
+from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,information
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort
 from src.utils import to_tuple,is_nan,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace
 from src.utils import orng as rng
@@ -827,6 +827,14 @@ def layout(iterable,sort=False,group=False):
 
 	return key
 
+
+def func_histogram(obj,*args,**kwargs):
+	return histogram(obj,*args,**kwargs)
+
+def func_information(obj,*args,**kwargs):
+	n = obj.size
+	func = lambda obj,n: n*exp(-n*obj)
+	return addition(information(func,obj=obj,n=n))/n
 
 def test(*args,**kwargs):
 	return args,kwargs
