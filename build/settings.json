@@ -275,7 +275,9 @@
 		"sample.array.log":"measure.sample",
 		"sample.state.linear":"measure.sample",
 		"sample.state.log":"measure.sample",
-		
+		"sample.array.information":"measure.sample",
+		"sample.state.information":"measure.sample",
+
 		"infidelity.quantum":"measure.infidelity_quantum",
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":"measure.infidelity_pure",
@@ -304,10 +306,12 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
-		"sample.array.linear":{"attr":"array","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
-		"sample.array.log":{"attr":"array","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
-		"sample.state.linear":{"attr":"state","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
-		"sample.state.log":{"attr":"state","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.linear":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.information":{"attribute":"array","function":"src.functions.func_information","settings":{}},
+		"sample.state.information":{"attribute":"state","function":"src.functions.func_information","settings":{}},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
@@ -333,7 +337,9 @@
 		"sample.array.log":null,
 		"sample.state.linear":null,
 		"sample.state.log":null,
-		
+		"sample.array.information":null,
+		"sample.state.information":null,
+
 		"infidelity.quantum":null,
 		"infidelity.classical":"measure.infidelity_classical",
 		"infidelity.pure":null,
@@ -362,10 +368,12 @@
 		"rank.classical":"measure.rank_classical"
 	},
 	"keywords": {
-		"sample.array.linear":{"attr":"array","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
-		"sample.array.log":{"attr":"array","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
-		"sample.state.linear":{"attr":"state","options":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
-		"sample.state.log":{"attr":"state","options":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.linear":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.information":{"attribute":"array","function":"src.functions.func_information","settings":{}},
+		"sample.state.information":{"attribute":"state","function":"src.functions.func_information","settings":{}},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
