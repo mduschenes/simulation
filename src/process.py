@@ -1662,6 +1662,7 @@ def apply(data,plots,processes,verbose=None):
 			options = dict(as_index=False,dropna=False)
 			groups = data[boolean].groupby(by=by,**options)
 
+			properties[name] = properties.get(name,{})
 			variables = independent
 			func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
 			props = []
@@ -1669,17 +1670,18 @@ def apply(data,plots,processes,verbose=None):
 				prop = func(group,variables)
 				property = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==prop}
 				property = {grouping: Dict({attr: getattr(property[grouping],attr) if hasattr(property[grouping],attr) else None for attr in ['shape','size','ndim','SHAPE','SIZE','NDIM']}) for grouping in property}
-				if prop not in properties:
-					properties[prop] = property
+				if prop not in properties[name]:
+					properties[name][prop] = {}
+				properties[name][prop].update({grouping:property[grouping] for grouping in property if grouping not in properties[name][prop]})
 				if prop not in props:
 					for grouping in property:
-						properties[prop][grouping].update(dict(
-							shape=properties[prop][grouping].shape,
-							SHAPE=tuple(sum((i,j)) if index == 0 else max(i,j) for index,(i,j) in enumerate(zip(properties[prop][grouping].shape,properties[prop][grouping].SHAPE))) if properties[prop][grouping].SHAPE is not None else properties[prop][grouping].shape,
-							size=properties[prop][grouping].size,
-							SIZE=sum((properties[prop][grouping].size,properties[prop][grouping].SIZE)) if properties[prop][grouping].SIZE is not None else properties[prop][grouping].size,
-							ndim=properties[prop][grouping].ndim,
-							NDIM=max((properties[prop][grouping].ndim,properties[prop][grouping].NDIM)) if properties[prop][grouping].NDIM is not None else properties[prop][grouping].ndim,
+						properties[name][prop][grouping].update(dict(
+							shape=properties[name][prop][grouping].shape,
+							SHAPE=tuple(sum((i,j)) if index == 0 else max(i,j) for index,(i,j) in enumerate(zip(properties[name][prop][grouping].shape,properties[name][prop][grouping].SHAPE))) if properties[name][prop][grouping].SHAPE is not None else properties[name][prop][grouping].shape,
+							size=properties[name][prop][grouping].size,
+							SIZE=sum((properties[name][prop][grouping].size,properties[name][prop][grouping].SIZE)) if properties[name][prop][grouping].SIZE is not None else properties[name][prop][grouping].size,
+							ndim=properties[name][prop][grouping].ndim,
+							NDIM=max((properties[name][prop][grouping].ndim,properties[name][prop][grouping].NDIM)) if properties[name][prop][grouping].NDIM is not None else properties[name][prop][grouping].ndim,
 							))
 				props.append(prop)
 
@@ -1742,10 +1744,10 @@ def apply(data,plots,processes,verbose=None):
 							process[function][axes][func] = None
 
 
-			shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
-									max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
+			shapes = {prop: tuple(((min(properties[name][prop][grouping].shape[i] for grouping in properties[name][prop]),
+									max(properties[name][prop][grouping].shape[i] for grouping in properties[name][prop]))
 						for i in range(groups.ndim)))
-						for prop in properties}
+						for prop in properties[name]}
 			shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
 
 			applications = {
@@ -1886,9 +1888,9 @@ def apply(data,plots,processes,verbose=None):
 				except:
 					continue
 
-				for prop in properties:
-					if group in properties[prop]:
-						property = properties[prop][group]
+				for prop in properties[name]:
+					if group in properties[name][prop]:
+						property = properties[name][prop][group]
 						break
 
 				logger.log(info,"Group : %d %r %r %r -> %r"%(i,group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
@@ -2080,7 +2082,7 @@ def plotter(plots,processes,verbose=None):
 										continue
 
 							for attr in data[OTHER]:
-								if wrappers.get(attr) is not None:
+								if wrappers.get(attr):
 
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
@@ -2750,7 +2752,7 @@ def plotter(plots,processes,verbose=None):
 			logger.log(info,"Configuring : %s %s"%(subinstance,
 				{attr:metadata[instance][subinstance][attr] 
 				for attr in metadata[instance][subinstance] 
-				if (not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and (not isinstance(metadata[instance][subinstance][attr],iterables) or len(metadata[instance][subinstance][attr])<len(metadata[instance])**2)}))
+				if (not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and (not isinstance(metadata[instance][subinstance][attr],arrays)) and (not isinstance(metadata[instance][subinstance][attr],iterables) or len(metadata[instance][subinstance][attr])<len(metadata[instance])**2)}))
 
 			for prop in information[instance][subinstance]:
 				
@@ -3185,6 +3187,7 @@ def plotter(plots,processes,verbose=None):
 
 				attr = 'value'
 				delimiter = '__'
+
 				if (data.get(attr) is None):
 				
 					data[attr] = []
@@ -3219,6 +3222,27 @@ def plotter(plots,processes,verbose=None):
 						value = indices
 					else:
 						value = None
+
+
+					if value:
+
+						if (data.get('set_ticks') and
+							data.get('set_ticks',{}).get('ticks') and
+							isinstance(data.get('set_ticks',{}).get('ticks'),list) and
+							len(data.get('set_ticks',{}).get('ticks')) != len(value)):
+							length = len(data.get('set_ticks',{}).get('ticks'))
+							value = data.get('set_ticks',{}).get('ticks')
+						elif (data.get('set_ticklabels') and
+							data.get('set_ticklabels',{}).get('ticklabels') and
+							isinstance(data.get('set_ticklabels',{}).get('ticklabels'),list) and
+							len(data.get('set_ticklabels',{}).get('ticklabels')) != len(value)):
+							length = len(data.get('set_ticklabels',{}).get('ticklabels'))
+							value = data.get('set_ticklabels',{}).get('ticklabels')
+						else:
+							length = None
+
+						if length:
+							value = [i/length for i in range(length+1)]
 
 					data[attr] = value
 
@@ -3640,7 +3664,7 @@ def plotter(plots,processes,verbose=None):
 						else:
 							options = {}
 
-						if wrappers.get(attr) is not None:
+						if wrappers.get(attr):
 
 							value = {
 								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},

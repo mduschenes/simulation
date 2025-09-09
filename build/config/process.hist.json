@@ -194,7 +194,7 @@
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
-						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
 						"ax.set_ylabel.scinotation": {
@@ -245,6 +245,7 @@
 						"ax.set_colorbar.anchor": [10,0.5],
 						"ax.set_colorbar.set_ticks.ticks":5,
 						"ax.set_colorbar.set_ticklabels.ticklabels": null,
+						"ax.legend.set_label":false,
 						"ax.set_xscale": {
 							"value": "linear"
 						},
@@ -380,7 +381,7 @@
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
-						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
 						"ax.set_ylabel.scinotation": {
@@ -431,6 +432,7 @@
 						"ax.set_colorbar.anchor": [10,0.5],
 						"ax.set_colorbar.set_ticks.ticks":5,
 						"ax.set_colorbar.set_ticklabels.ticklabels": null,
+						"ax.legend.set_label":false,
 						"ax.set_xscale": {
 							"value": "log",
 							"base": 10

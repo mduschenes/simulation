@@ -1546,7 +1546,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						label = '\n'.join('$%s$'%(i) for i in label.split('\n'))
 					return handle,label
 				handles_labels = [func(handles[i],labels[i]) for i in range(len(handles))]
-				handles,labels = map(list,zip(*(handles_labels)))
+
+				if handles_labels:
+					handles,labels = map(list,zip(*(handles_labels)))
+				else:
+					handles,labels = [],[]
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
@@ -2787,8 +2791,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])](_subattr_,_obj_))
 													else:
 														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])])
-												elif isinstance(_kwds[k][l],dict) and j in _kwds[k][l]:
-													if callable(_kwds[k][l][j]):
+												elif isinstance(_kwds[k][l],dict) and j%len(_kwds[k][l]) in _kwds[k][l]:
+													if callable(_kwds[k][l][j%len(_kwds[k][l])]):
 														getattr(_subattr_,l)(_kwds[k][l][j](_subattr_,_obj_))
 													else:
 														getattr(_subattr_,l)(_kwds[k][l][j])
