@@ -9188,21 +9188,35 @@ class Callback(System):
 
 				elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
 
-					key = [f'{attr}.{i}' for i in ['x','y']]
+					key = '{attr}.{i}'
 
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
 						state=obj,
 						**keywords)
+
+					if isinstance(value,dict):
+						key = [key.format(attr=attr,i=i) for i in value]
+						value = [value[i] for i in value]
+					else:
+						key = attr
+						value = value
 
 				elif attr in ['sample.array.information','sample.state.information']:
 
-					key = attr
+					key = '{attr}{i}'
 
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
 						state=obj,
 						**keywords)
+
+					if isinstance(value,dict):
+						key = [key.format(attr=attr,i=i) for i in value]
+						value = [value[i] for i in value]
+					else:
+						key = attr
+						value = value
 
 			elif attr in ['noise.parameters']:
 

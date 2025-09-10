@@ -221,7 +221,6 @@ def func_sample_process_err(data,values,properties,*args,**kwargs):
 	data = values
 	return 
 
-
 def func_sample_filter(data,*args,eps=None,**kwargs):
 	data = data['y']
 	if eps:
@@ -237,6 +236,25 @@ def func_sample_filter(data,*args,eps=None,**kwargs):
 def func_sample_filter_err(data,*args,eps=None,**kwargs):
 	data = data['yerr']
 	return data
+
+
+def func_info(data,values,properties,*args,**kwargs):
+	if isinstance(values,arrays):
+		data += values
+	return data
+
+def func_info_err(data,values,properties,*args,**kwargs):
+	data = values
+	return
+
+def func_info_process(data,values,properties,*args,**kwargs):
+	if isinstance(values,arrays):
+		data += values
+	return data
+
+def func_info_process_err(data,values,properties,*args,**kwargs):
+	data = values
+	return
 
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
@@ -829,12 +847,19 @@ def layout(iterable,sort=False,group=False):
 
 
 def func_histogram(obj,*args,**kwargs):
-	return histogram(obj,*args,**kwargs)
+	key = ['x','y']
+	value = histogram(obj,*args,**kwargs)
+	data = dict(zip(key,value))
+	return data
 
 def func_information(obj,*args,**kwargs):
 	n = obj.size
 	func = lambda obj,n: n*exp(-n*obj)
-	return addition(information(func,obj=obj,n=n))/n
+	key = ['','err']
+	value = information(func,obj=obj,n=n)
+	value = addition(value)/n,addition(value**2)/n
+	data = dict(zip(key,value))
+	return data
 
 def test(*args,**kwargs):
 	return args,kwargs
