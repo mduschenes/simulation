@@ -40,11 +40,13 @@ warnings.simplefilter('ignore', (UserWarning,DeprecationWarning,FutureWarning))
 DIM = 2
 LAYOUTDIM = 2
 AXES = ['x','y','z']
-VARIANTS = ['','err','1','2']
+STATS = ['','err']
+VARIANTS = [*STATS,*[str(i) for i in range(1,DIM+1)]]
 FORMATS = ['lower','upper']
 DELIMITER = 'DELIMITER'
 DELIMITERS = ['','_']
-ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
+ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for variant in VARIANTS for fmt in FORMATS for axes in AXES ]
+STATISTICS = ['%s%s'%(axes,stats) for stats in STATS for axes in AXES]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
 OBJS = ['ax','fig','style']
 OBJ = 'ax'

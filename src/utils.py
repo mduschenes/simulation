@@ -229,8 +229,10 @@ if backend in ['jax','jax.autograd','quimb']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
+
 	nones = (type(None),)
-	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	numbers = (*integers,*floats,*booleans,)
+	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 	dataframes = (pd.DataFrame,)
 
@@ -273,8 +275,10 @@ elif backend in ['autograd']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
+
 	nones = (type(None),)
-	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	numbers = (*integers,*floats,*booleans,)
+	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
 	dataframes = (pd.DataFrame,)
 
@@ -308,8 +312,10 @@ elif backend in ['numpy']:
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
+
 	nones = (type(None),)
-	scalars = (*integers,*floats,*booleans,*strings,*nones)
+	numbers = (*integers,*floats,*booleans,)
+	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 	dataframes = (pd.DataFrame,)
 

@@ -31,7 +31,7 @@ from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,na
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
-from src.plot import AXES,DELIMITER
+from src.plot import ALL,AXES,DELIMITER
 
 from src.io import load,dump
 
@@ -147,7 +147,6 @@ def func_samples_process(data,values,properties,*args,**kwargs):
 	return data
 
 def func_samples_process_err(data,values,properties,*args,**kwargs):
-	data = values
 	return data
 
 def func_hist(data,*args,attr=None,**kwargs):
@@ -177,7 +176,6 @@ def func_hist_process(data,values,properties,*args,**kwargs):
 	return data
 
 def func_hist_process_err(data,values,properties,*args,**kwargs):
-	data = values
 	return data
 
 def func_hist_x(data,*args,**kwargs):
@@ -208,6 +206,7 @@ def func_sample_x(data,*args,**kwargs):
 def func_sample_yerr(data,*args,**kwargs):
 	data = tuple((None,))
 	return data
+
 def func_sample_xerr(data,*args,**kwargs):
 	data = tuple((None,))
 	return data
@@ -218,10 +217,9 @@ def func_sample_process(data,values,properties,*args,**kwargs):
 	return data
 
 def func_sample_process_err(data,values,properties,*args,**kwargs):
-	data = values
 	return 
 
-def func_sample_filter(data,*args,eps=None,**kwargs):
+def func_sample_wrapper(data,*args,eps=None,**kwargs):
 	data = data['y']
 	if eps:
 		data = np.array(data)
@@ -233,28 +231,57 @@ def func_sample_filter(data,*args,eps=None,**kwargs):
 		data[key] = value
 	return data
 
-def func_sample_filter_err(data,*args,eps=None,**kwargs):
+def func_sample_wrapper_err(data,*args,eps=None,**kwargs):
 	data = data['yerr']
 	return data
 
+def func_info_y(data,*args,**kwargs):
+	data = sum((array(i) for i in data))
+	data = data.reshape(*data.shape)
+	return data
 
-def func_info(data,values,properties,*args,**kwargs):
+def func_info_yerr(data,*args,**kwargs):
+	data = sum((array(i) for i in data))
+	data = data.reshape(*data.shape)
+	return data
+
+def func_info_process_y(data,values,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data += values
 	return data
 
-def func_info_err(data,values,properties,*args,**kwargs):
-	data = values
-	return
-
-def func_info_process(data,values,properties,*args,**kwargs):
-	if isinstance(values,arrays):
-		data += values
+def func_info_process_yerr(data,values,properties,*args,**kwargs):
 	return data
 
-def func_info_process_err(data,values,properties,*args,**kwargs):
-	data = values
-	return
+def func_info_function_y(data,*args,**kwargs):
+	func = lambda x,n: n*exp(-n*x)
+
+	size = min(len(data['x']),len(data['y']))
+
+	x = np.asarray([data['label']['sample.array.linear.x']]*size)
+	n = ((data['x'] if 'D' not in data['label'] else data['label']['D'])**(data['x'] if 'N' not in data['label'] else data['label']['N']))[:,None]
+
+	y = np.asarray(data['y'])
+	y = (1/addition(y,-1)[:,None])*y
+
+	z = func(x,n)
+	z = (1/addition(z,-1)[:,None])*z
+
+	data = -addition((y*(log(z)-log(y)))*((y!=0) & (z!=0)),-1)
+
+	return data
+
+def func_info_function_yerr(data,*args,**kwargs):
+	data = None
+	return data
+
+def func_info_function_x(data,*args,**kwargs):
+	data = 1/data['x']
+	return data
+
+def func_info_function_xerr(data,*args,**kwargs):
+	data = None
+	return data
 
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
@@ -682,13 +709,6 @@ def error(data,*args,**kwargs):
 			for sample in bits}
 
 
-
-		for sample in bits:
-			for types in bits[sample]:
-				for bit in bits[sample][types]:
-
-					print(sample,types,bit,eps[sample][types][bit])
-
 		dtype = {sample: {
 			**{types: {bit: 'complex%d'%(bits[sample][types][bit]) for bit in bits[sample][types]} for types in ['numerical']},
 			**{types: {bit: maxdtype for bit in bits[sample][types]} for types in ['analytical','probabilistic']},
@@ -781,8 +801,6 @@ def error(data,*args,**kwargs):
 
 							value = values[sample][types][bit](bit,types,sample,i)
 
-							print(i,sample,types,bit,value,B[sample][types][bit].dtype,value.dtype)
-
 							data['index'].append(i)
 							data['value'].append(value)
 							data['size'].append(size)
@@ -790,9 +808,6 @@ def error(data,*args,**kwargs):
 							data['type'].append(types)
 							data['sample'].append(sample)
 							data['seed'].append(seeds[sample])
-			else:
-
-				print(i)
 
 		return
 

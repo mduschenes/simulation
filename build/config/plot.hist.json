@@ -416,7 +416,7 @@
 							"stat": {
 								"y": {
 									"": {"func": "src.functions.func_hist","args": [],"kwargs":{"bins":1000,"range": [1e-20,1e0],"scale": "log","base":10,"density": "probability"}},
-									"err": "src.functions.func_hist_err"
+									"err": {"func": "src.functions.func_hist_err","args": [],"kwargs":{"bins":1000,"range": [1e-20,1e0],"scale": "log","base":10,"density": "probability"}}
 								}
 							}
 						},
@@ -810,15 +810,11 @@
                         "func": {
                             "stat": {
                                 "y": {
-                                    "": {
-                                        "func": "src.functions.func_sample_y"
-                                    },
+                                    "": "src.functions.func_sample_y",
                                     "err": "src.functions.func_sample_yerr"
                                 },
                                 "x": {
-                                    "": {
-                                        "func": "src.functions.func_sample_x"
-                                    },
+                                    "": "src.functions.func_sample_x",
                                     "err": "src.functions.func_sample_xerr"
                                 }
                             }
@@ -1203,15 +1199,11 @@
                         "func": {
                             "stat": {
                                 "y": {
-                                    "": {
-                                        "func": "src.functions.func_sample_y"
-                                    },
+                                    "": "src.functions.func_sample_y",
                                     "err": "src.functions.func_sample_yerr"
                                 },
                                 "x": {
-                                    "": {
-                                        "func": "src.functions.func_sample_x"
-                                    },
+                                    "": "src.functions.func_sample_x",
                                     "err": "src.functions.func_sample_xerr"
                                 }
                             }

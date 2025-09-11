@@ -896,15 +896,11 @@
                         "func": {
                             "stat": {
                                 "y": {
-                                    "": {
-                                        "func": "src.functions.func_sample_y"
-                                    },
+                                    "": "src.functions.func_sample_y",
                                     "err": "src.functions.func_sample_yerr"
                                 },
                                 "x": {
-                                    "": {
-                                        "func": "src.functions.func_sample_x"
-                                    },
+                                    "": "src.functions.func_sample_x",
                                     "err": "src.functions.func_sample_xerr"
                                 }                                
                             }
@@ -1018,15 +1014,11 @@
                         "func": {
                             "stat": {
                                 "y": {
-                                    "": {
-                                        "func": "src.functions.func_sample_y"
-                                    },
+                                    "": "src.functions.func_sample_y",
                                     "err": "src.functions.func_sample_yerr"
                                 },
                                 "x": {
-                                    "": {
-                                        "func": "src.functions.func_sample_x"
-                                    },
+                                    "": "src.functions.func_sample_x",
                                     "err": "src.functions.func_sample_xerr"
                                 }                                
                             }
