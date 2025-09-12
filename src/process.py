@@ -1890,7 +1890,7 @@ def apply(data,plots,processes,verbose=None):
 						property = properties[name][prop][group]
 						break
 
-				logger.log(info,"Group : %d %r %r %r -> %r"%(i,group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
+				logger.log(info,"Group : %d %r %r %r -> %r"%(i,dict(zip(label,group)) if group else group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
 				
 				for j,string in enumerate(funcs):
 
@@ -2745,7 +2745,7 @@ def plotter(plots,processes,verbose=None):
 			values = {}
 
 			logger.log(info,"Configuring : %s %s"%(subinstance,
-				{attr:metadata[instance][subinstance][attr] 
+				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
 				for attr in metadata[instance][subinstance] 
 				if (not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and (not isinstance(metadata[instance][subinstance][attr],arrays)) and (not isinstance(metadata[instance][subinstance][attr],iterables) or len(metadata[instance]) == 1 or len(metadata[instance][subinstance][attr])<len(metadata[instance])**2)}))
 

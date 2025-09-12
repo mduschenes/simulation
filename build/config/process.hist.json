@@ -13,7 +13,7 @@
 		"hist.array.M.noise.parameters": 0,
 		"bar.array.M.noise.parameters": 0,
 		"sample.array.M.noise.parameters": 1,
-		"sample.state.M.noise.parameters": 1
+		"sample.state.M.noise.parameters": 0
 	},
 	"configuration": [
 		[

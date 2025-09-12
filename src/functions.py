@@ -255,17 +255,18 @@ def func_info_process_yerr(data,values,properties,*args,**kwargs):
 
 def func_info_function_y(data,*args,**kwargs):
 	func = lambda x,n: n*exp(-n*x)
+	norm = lambda x: x/addition(x,-1)[...,None]
 
 	size = min(len(data['x']),len(data['y']))
 
 	x = np.asarray([data['label']['sample.array.linear.x']]*size)
-	n = ((data['x'] if 'D' not in data['label'] else data['label']['D'])**(data['x'] if 'N' not in data['label'] else data['label']['N']))[:,None]
+	n = ((data['label']['D'])**(1/data['x']))[:,None]
 
 	y = np.asarray(data['y'])
-	y = (1/addition(y,-1)[:,None])*y
+	y = norm(y)
 
 	z = func(x,n)
-	z = (1/addition(z,-1)[:,None])*z
+	z = norm(z)
 
 	data = -addition((y*(log(z)-log(y)))*((y!=0) & (z!=0)),-1)
 

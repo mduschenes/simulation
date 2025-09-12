@@ -1866,11 +1866,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					kwargs[attr][prop] = err
 
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim]])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
 
 				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args)  if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:1] for k in AXES],*[]])
 				
 				call = len(args)>0			
 
