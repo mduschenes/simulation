@@ -117,7 +117,7 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 		data = grouper(data,**options)
 
 	else:
-		
+
 		data = mask(agg(data))
 
 	def func(data):
@@ -217,9 +217,9 @@ def func_sample_process(data,values,properties,*args,**kwargs):
 	return data
 
 def func_sample_process_err(data,values,properties,*args,**kwargs):
-	return 
+	return
 
-def func_sample_wrapper(data,*args,eps=None,**kwargs):
+def func_sample_function(data,*args,eps=None,**kwargs):
 	data = data['y']
 	if eps:
 		data = np.array(data)
@@ -231,7 +231,7 @@ def func_sample_wrapper(data,*args,eps=None,**kwargs):
 		data[key] = value
 	return data
 
-def func_sample_wrapper_err(data,*args,eps=None,**kwargs):
+def func_sample_function_err(data,*args,eps=None,**kwargs):
 	data = data['yerr']
 	return data
 
@@ -259,29 +259,71 @@ def func_info_function_y(data,*args,**kwargs):
 
 	size = min(len(data['x']),len(data['y']))
 
-	x = np.asarray([data['label']['sample.array.linear.x']]*size)
-	n = ((data['label']['D'])**(1/data['x']))[:,None]
+	x = data['x']
+	z = array([*data['label']['sample.array.linear.x']])[None,:]
 
-	y = np.asarray(data['y'])
+	n = ((data['label']['D'])**(x))[:,None]
+
+	y = array(data['y'])
 	y = norm(y)
 
-	z = func(x,n)
+	z = func(z,n)
 	z = norm(z)
 
-	data = -addition((y*(log(z)-log(y)))*((y!=0) & (z!=0)),-1)
+	data['x'] = 1/x
+	data['y'] = -addition((y*(log(z)-log(y)))*((y!=0) & (z!=0)),-1)
+	data['xerr'] = None
+	data['yerr'] = None
 
 	return data
 
-def func_info_function_yerr(data,*args,**kwargs):
-	data = None
+def func_information_y(data,*args,**kwargs):
+	data = tuple(data)
 	return data
 
-def func_info_function_x(data,*args,**kwargs):
-	data = 1/data['x']
+def func_information_yerr(data,*args,**kwargs):
+	data = tuple(data)
 	return data
 
-def func_info_function_xerr(data,*args,**kwargs):
-	data = None
+def func_information_process_y(data,values,properties,*args,**kwargs):
+	data = tuple((*values,*data)) if isinstance(values,arrays) else data
+	return data
+
+def func_information_process_yerr(data,values,properties,*args,**kwargs):
+	data = tuple((*values,*data)) if isinstance(values,arrays) else data
+	return data
+
+def func_information_function(data,*args,**kwargs):
+
+	x = data['x']
+	y = data['y']
+	yerr = data['yerr']
+	D = data['label']['D']
+	size = y.shape[-1]
+
+	y = addition(y,-1)/size
+	yerr = addition(yerr,-1)/size
+
+	data['x'] = 1/x
+	data['y'] = (x*log(D)+log(size)) - y
+	data['xerr'] = None
+	data['yerr'] = yerr - y**2
+
+	return data
+
+def func_histogram(obj,*args,**kwargs):
+	key = ['x','y']
+	value = histogram(obj,*args,**kwargs)
+	data = dict(zip(key,value))
+	return data
+
+def func_information(obj,*args,**kwargs):
+	n = obj.size
+	func = lambda obj,n: n*exp(-n*obj)
+	key = ['','err']
+	value = information(func,obj=obj,n=n)
+	value = addition(value)/n,addition(value**2)/n
+	data = dict(zip(key,value))
 	return data
 
 def func_y(data):
@@ -309,7 +351,7 @@ def func_line(data,attr=None):
 	if attr not in data:
 		return data
 	values = {i: data[i].mean() for i in ['D','N']}
-	data[attr] = 2*(sum(1/i for i in range(int(values['D']**(values['N']/2))+1,int(values['D']**(values['N'])))) - 
+	data[attr] = 2*(sum(1/i for i in range(int(values['D']**(values['N']/2))+1,int(values['D']**(values['N'])))) -
 		   ((int(values['D']**(values['N']/2))-1)/(2*int(values['D']**(values['N']/2)))))/log(values['D']**(2*values['N']/2))
 	return data
 
@@ -403,7 +445,7 @@ def func_spectrum_rank(data,attr=None,eps=None):
 					sort(
 						np.abs(data[~is_nan(data)])/maximum(np.abs(data))
 					),eps=eps)
-				)			
+				)
 		return data
 	data = [func(i) for i in data[attr]]
 	data = data[0] if len(data) == 1 else data
@@ -478,11 +520,11 @@ def func_hessian_eigenvalues(data):
 
 def func_objective_func(data):
 	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
-	return out	
+	return out
 
 def func_objective_func_err(data):
 	out = 0*np.array(data['M'])
-	return out	
+	return out
 
 def func_entropy(data):
 	out = np.array(data['entropy'])/log(data['D']**data['N'])
@@ -491,31 +533,31 @@ def func_entropy(data):
 def func_entropy_func(data):
 	# Incorrect
 	out = data['N']*np.array(data['M'])*data['noise.parameters']
-	return out	
+	return out
 
 def func_entropy_func_err(data):
 	out = 0*np.array(data['M'])
-	return out	
+	return out
 
 def func_purity(data):
 	out = 1-np.array(data['purity'])
-	return out	
+	return out
 
 def func_purity_func(data):
 	out = 2*data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
-	return out	
+	return out
 
 def func_purity_func_err(data):
 	out = 0*np.array(data['M'])
-	return out	
+	return out
 
 def func_similarity(data):
 	out = 1-np.array(data['similarity'])
 	return out
 
 def func_similarity_func(data):
-	out = 1-np.array(data['similarity'])	
-	return out	
+	out = 1-np.array(data['similarity'])
+	return out
 
 def func_similarity_func_err(data):
 	out = 0*np.array(data['M'])
@@ -526,13 +568,13 @@ def func_divergence(data):
 	return out
 
 def func_divergence_func(data):
-	# Incorrect	
+	# Incorrect
 	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))/log(data['D']**data['N'])
-	return out	
+	return out
 
 def func_divergence_func_err(data):
 	out = 0*np.array(data['M'])
-	return out		
+	return out
 
 
 def func_fit_histogram(args,kwargs,attributes):
@@ -647,18 +689,18 @@ def error(data,*args,**kwargs):
 	Workflow function
 	Args:
 		data (str,dict): Workflow data
-		args (iterable): Workflow positional arguments 
-		kwargs (dict): Workflow keyword arguments 
+		args (iterable): Workflow positional arguments
+		kwargs (dict): Workflow keyword arguments
 	Returns:
 		data (dict): Workflow data
-	'''	
+	'''
 
 	def func(data,*args,**kwargs):
 
 		def generator(iteration,shape,scale,seed=None,dtype=None):
-			
+
 			# seeded(seed)
-			
+
 			value = 2*random((2,*shape),dtype=dtype)-1
 			value = (value[0] + 1j*value[1])/sqrt((value**2).sum(0))
 			value = (scale/2)*value
@@ -685,26 +727,26 @@ def error(data,*args,**kwargs):
 		samples = range(kwargs.get('sample'))
 		seeded(kwargs.get('seed'))
 		seeds = {sample: rand(bounds=[0,1e12],random='randint') for sample in samples}
-		
+
 		bits = {sample:
 				{
 				**{types:
-					{int(floor(log10(finfo('complex%d'%(bit)).eps))): bit 
+					{int(floor(log10(finfo('complex%d'%(bit)).eps))): bit
 					for bit in kwargs.get('bits',[])}
 					for types in ['numerical']
 				},
-				**{types: {bit: bit for bit in kwargs.get('epsilon',[])} 
+				**{types: {bit: bit for bit in kwargs.get('epsilon',[])}
 					for types in ['analytical','probabilistic']
 				},
 			}
 			for sample in samples}
-		eps = {sample: {types: {bit: 
+		eps = {sample: {types: {bit:
 			power(addition([power(power(
 				1+(power(10,bit,dtype=maxftype)),
 				size-i-1,dtype=maxftype)-1,
 				ord,dtype=maxftype)
 				for i in range(size)],dtype=maxftype),
-				1/ord,dtype=maxftype) 
+				1/ord,dtype=maxftype)
 			for bit in bits[sample][types]}
 			for types in bits[sample]}
 			for sample in bits}
@@ -716,17 +758,17 @@ def error(data,*args,**kwargs):
 		} for sample in bits}
 		ftype = {sample: {
 			**{types: {bit: 'float%d'%(bits[sample][types][bit]//2) for bit in bits[sample][types]} for types in ['numerical']},
-			**{types: {bit: maxftype for bit in bits[sample][types]} for types in ['analytical','probabilistic']},			
+			**{types: {bit: maxftype for bit in bits[sample][types]} for types in ['analytical','probabilistic']},
 		}
 		for sample in bits}
 
-		V = sp.Matrix([[sp.exp(sp.Mul(sp.I,2*sp.pi,sp.Rational(i*j,size))) 
-			for j in range(size)] 
+		V = sp.Matrix([[sp.exp(sp.Mul(sp.I,2*sp.pi,sp.Rational(i*j,size)))
+			for j in range(size)]
 			for i in range(size)])/sp.sqrt(size)
 
 		S = [sp.Rational(randint(shape=None,bounds=[1,i]) if i>1 else 0,i) for i in randint(shape=size,bounds=[1,size**2])]
 		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
-	
+
 		matrix = lambda k=1: V*D(k)*V.H
 		norm = lambda A,bit=maxftype,ord=ord: ((((np.abs(A,dtype=bit))**ord).sum(dtype=bit))**(1/ord)).real
 		numerical = lambda A,bit: array(sp.N(A,bit),dtype=maxdtype)
@@ -741,35 +783,35 @@ def error(data,*args,**kwargs):
 		} for sample in bits}
 		B = {sample: {types: {bit: A[sample][types][bit](bit,types,sample) for bit in bits[sample][types]} for types in bits[sample]} for sample in bits}
 		C = {sample: {
-			**{types: {bit: 
-				(lambda bit,types,sample,i=None,A=numerical(matrix(),bit=-bit): 0) 
+			**{types: {bit:
+				(lambda bit,types,sample,i=None,A=numerical(matrix(),bit=-bit): 0)
 				for bit in bits[sample][types]} for types in ['numerical']},
-			**{types: {bit: 
-				(lambda bit,types,sample,i=None,A=1: 0) 
+			**{types: {bit:
+				(lambda bit,types,sample,i=None,A=1: 0)
 				for bit in bits[sample][types]} for types in ['analytical']},
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None,A=numerical(matrix(),bit=-bit): generator(iteration=i,shape=A.shape,scale=eps[sample][types][bit],seed=seeds[sample],dtype=maxftype))
 				for bit in bits[sample][types]} for types in ['probabilistic']},
-		} for sample in bits}		
+		} for sample in bits}
 		functions = {sample: {
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: matmul(A[sample][types][bit](bit,types,sample,i),B[sample][types][bit],dtype=dtype[sample][types][bit]) + C[sample][types][bit](bit,types,sample,i))
 				for bit in bits[sample][types]} for types in ['numerical']},
 
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: multiply(A[sample][types][bit](bit,types,sample,i),B[sample][types][bit],dtype=dtype[sample][types][bit]) + C[sample][types][bit](bit,types,sample,i))
 				for bit in bits[sample][types]} for types in ['analytical']},
 
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: matmul(A[sample][types][bit](bit,types,sample,i),B[sample][types][bit],dtype=dtype[sample][types][bit]) + C[sample][types][bit](bit,types,sample,i))
-				for bit in bits[sample][types]} for types in ['probabilistic']},				
+				for bit in bits[sample][types]} for types in ['probabilistic']},
 		} for sample in bits}
 		values = {sample: {
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: norm(B[sample][types][bit] - numerical(matrix(i),bit=-bit))/norm(B[sample][types][bit]))
 				for bit in bits[sample][types]} for types in ['numerical']},
 
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: multiply(
 					divide(
 						power(normalization[sample][types][bit],i,dtype=ftype[sample][types][bit]),
@@ -777,9 +819,9 @@ def error(data,*args,**kwargs):
 						((power(1+eps[sample][types][bit],i,dtype=ftype[sample][types][bit]) - 1)),dtype=ftype[sample][types][bit]))
 				for bit in bits[sample][types]} for types in ['analytical']},
 
-			**{types: {bit: 
+			**{types: {bit:
 				(lambda bit,types,sample,i=None: norm(B[sample][types][bit] - numerical(matrix(i),bit=-bit))/norm(B[sample][types][bit]))
-				for bit in bits[sample][types]} for types in ['probabilistic']},				
+				for bit in bits[sample][types]} for types in ['probabilistic']},
 		} for sample in bits}
 
 		normalization = {sample: {types: {bit: norm(A[sample][types][bit](bit,types,sample),ord=ord).real
@@ -834,7 +876,7 @@ def permutations(dictionaries,*args,**kwargs):
 		delim = '.'
 		settings = {key: getter(dictionary,attr,delimiter=delim) for key,attr in []}
 		setter(dictionary,settings,delimiter=delim,default=None)
-	return 	
+	return
 
 
 def state(*args,**kwargs):
@@ -860,22 +902,6 @@ def layout(iterable,sort=False,group=False):
 		return index
 
 	return key
-
-
-def func_histogram(obj,*args,**kwargs):
-	key = ['x','y']
-	value = histogram(obj,*args,**kwargs)
-	data = dict(zip(key,value))
-	return data
-
-def func_information(obj,*args,**kwargs):
-	n = obj.size
-	func = lambda obj,n: n*exp(-n*obj)
-	key = ['','err']
-	value = information(func,obj=obj,n=n)
-	value = addition(value)/n,addition(value**2)/n
-	data = dict(zip(key,value))
-	return data
 
 def test(*args,**kwargs):
 	return args,kwargs

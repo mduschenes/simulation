@@ -1507,8 +1507,7 @@ def apply(data,plots,processes,verbose=None):
 
 	groupings = {}
 	properties = {}	
-	names = []
-	function = None
+	functions = {}
 
 	for data in database:
 
@@ -1683,6 +1682,10 @@ def apply(data,plots,processes,verbose=None):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
+
+			groupings[name] = groupings.get(name,())
+			properties[name] = properties.get(name,{})
+			functions[name] = functions.get(name,{})
 
 			dependent = [keys[name][axes] for axes in sorted(set([*dimensions[-1:],*statistics]),key=lambda i:[*dimensions[-1:],*statistics].index(i)) if keys[name][axes] in attributes and axes not in dimensions[:-1]]
 			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes  and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) not in ['array']]
@@ -1947,14 +1950,20 @@ def apply(data,plots,processes,verbose=None):
 								if source in grouping:
 									try:
 										if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
-											obj = np.array([np.array(i) for i in grouping[source]])
+											try:
+												obj = np.array([np.array(i) for i in grouping[source]])
+											except Exception as exception:
+												if process.get(string,{}).get(axes,{}).get(func) and function is not None:
+													obj = np.concatenate([np.array(i).flatten() for i in grouping[source]])
+												else:
+													raise exception
 										else:
 											obj = grouping[source].to_numpy()
 										if indexes.get(attr) is not None:
 											obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
 										if obj.dtype.kind in ['O']:
 											obj = None
-									except Exception as exception:
+									except:
 										obj = None
 								elif isinstance(source,Null):
 									source = delim.join(((dependent[-1],string,func)))
@@ -1977,10 +1986,9 @@ def apply(data,plots,processes,verbose=None):
 
 							value[destination] = obj
 
+					functions[name][key] = function
+
 					setter(plots,{key:value},delimiter=delim,default=True)
-
-					names.append(key)
-
 
 			for attr in tmp:
 				if tmp[attr] is None and attr in data:
@@ -1992,23 +2000,47 @@ def apply(data,plots,processes,verbose=None):
 		del data
 
 
-	if function:
+	for name in functions:
 
-		for key in names:
+		for key in functions[name]:
+
+			if not key or not callable(functions[name][key]):
+				continue
 
 			value = getter(plots,key,delimiter=delim,default=None)
 
-			if value is None:
+			if not value:
 				continue
 
-			for attr in function:
+			print('---')
+			print(value['x'])
+			print(value['y'])
+			print(value['xerr'])
+			print(value['yerr'])
+			print()
 
-				if attr not in value:
-					continue
+			try:
+				value = function[name][key](value)
+			except:
+				pass
 
-				for attribute in function[attr]:
+			print(value['x'])
+			print(value['y'])
+			print(value['xerr'])
+			print(value['yerr'])
+			print()
 
-					value[attribute] = function[attr][attribute](value)
+			setter(plots,{key:value},delimiter=delim,default=True)
+
+
+			value = getter(plots,key,delimiter=delim,default=None)
+
+			print(value['x'])
+			print(value['y'])
+			print(value['xerr'])
+			print(value['yerr'])
+			print()
+			exit()
 
 	return
 

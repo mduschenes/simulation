@@ -12,8 +12,12 @@
 	"instance": {
 		"hist.array.M.noise.parameters": 0,
 		"bar.array.M.noise.parameters": 0,
-		"sample.array.M.noise.parameters": 1,
-		"sample.state.M.noise.parameters": 0
+		"sample.array.M.noise.parameters": 0,
+		"sample.state.M.noise.parameters": 0,
+		"info.array.N.M.noise.parameters": 0,
+		"info.state.N.M.noise.parameters": 0,
+		"information.array.N.M.noise.parameters": 1,
+		"information.state.N.M.noise.parameters": 1
 	},
 	"configuration": [
 		[
@@ -172,7 +176,7 @@
 						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				}
-			]			
+			]
 		],
 		[
 			[
@@ -194,7 +198,7 @@
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
-						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
 						"ax.set_ylabel.scinotation": {
@@ -359,7 +363,7 @@
 						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				}
-			]			
+			]
 		],
 		[
 			[
@@ -381,7 +385,7 @@
 						"fig.set_size_inches":{"w":43,"h":43},
 						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
 						"ax.set_title.label": "M",
-						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
+						"ax.set_title.texify":{"texify":{"M":"$\\textrm{Layers} ~~ M$"}},
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_ylabel.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
 						"ax.set_ylabel.scinotation": {
@@ -544,6 +548,113 @@
 						"style.share.ax.set_yticks": true,
 						"style.share.ax.set_yticklabels": true,
 						"style.share.ax.set_colorbar": "bottom_right"
+					}
+				}
+			]
+		],
+		[
+
+			[
+				"info.array.N.M.noise.parameters",
+				"info.state.N.M.noise.parameters"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+					},
+					"kwargs": {
+						"ax.set_ylabel.size": 36,
+						"ax.set_xlabel.size": 36,
+						"ax.set_ylabel.y": null,
+						"ax.set_yticklabels": null,
+						"ax.set_xticklabels": null,
+						"ax.tick_params.left": true,
+						"ax.tick_params.bottom": true,
+						"ax.set_colorbar.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
+						"ax.set_colorbar.set_label.label": "noise.parameters",
+						"ax.set_colorbar.set_label.size": 36,
+						"ax.set_colorbar.fraction": 0.15,
+						"ax.set_colorbar.shrink": 1,
+						"ax.set_colorbar.aspect": 40,
+						"ax.set_colorbar.pad": 0.02,
+						"ax.set_colorbar.ax.tick_params.labelsize": 36,
+						"ax.legend.loc": null,
+						"ax.legend.title_fontsize": 36,
+						"ax.legend.fontsize": 36,
+						"ax.legend.prop.size": 36,
+						"ax.legend.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_ylabel": "middle_left",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_xticklabels": true,
+						"style.share.ax.set_colorbar": "bottom_right",
+						"style.share.ax.legend": "bottom_right",
+						"fig.set_size_inches": {
+							"w": 40,
+							"h": 30
+						}
+					}
+				},
+				{
+					"position": "row",
+					"value": {
+					}
+				}
+			]
+		],
+		[
+			[
+				"information.array.N.M.noise.parameters",
+				"information.state.N.M.noise.parameters"
+			],
+			[
+				{
+					"position": "col",
+					"value": {
+					},
+					"kwargs": {
+						"ax.set_ylabel.size": 36,
+						"ax.set_xlabel.size": 36,
+						"ax.set_ylabel.y": null,
+						"ax.set_yticklabels": null,
+						"ax.set_xticklabels": null,
+						"ax.tick_params.left": true,
+						"ax.tick_params.bottom": true,
+						"ax.set_colorbar.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},
+						"ax.set_colorbar.set_label.label": "noise.parameters",
+						"ax.set_colorbar.set_label.size": 36,
+						"ax.set_colorbar.fraction": 0.15,
+						"ax.set_colorbar.shrink": 1,
+						"ax.set_colorbar.aspect": 40,
+						"ax.set_colorbar.pad": 0.02,
+						"ax.set_colorbar.ax.tick_params.labelsize": 36,
+						"ax.legend.loc": null,
+						"ax.legend.title_fontsize": 36,
+						"ax.legend.fontsize": 36,
+						"ax.legend.prop.size": 36,
+						"ax.legend.texify":{"texify":{"M":"$\\textrm{Depth} ~~ M$"}},
+						"style.share.ax.set_title": "top",
+						"style.share.ax.set_ylabel": "middle_left",
+						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_yticks": true,
+						"style.share.ax.set_xticks": true,
+						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_xticklabels": true,
+						"style.share.ax.set_colorbar": "bottom_right",
+						"style.share.ax.legend": "bottom_right",
+						"fig.set_size_inches": {
+							"w": 40,
+							"h": 30
+						}
+					}
+				},
+				{
+					"position": "row",
+					"value": {
 					}
 				}
 			]
