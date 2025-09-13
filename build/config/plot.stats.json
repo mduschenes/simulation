@@ -53,9 +53,9 @@
 					},
 					"obj": null,
 					"plots": ["errorbar"],
-					"function": "src.functions.func_fit_histogram",
 					"plots":false,
 					"function": null,
+					"function.errorbar": "src.functions.func_fit_histogram",
 					"bins":1000,
 					"range": [0,1],
 					"density": "probability",
@@ -133,7 +133,7 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
 					"size": 36
 				},
@@ -444,9 +444,9 @@
 					},
 					"obj": null,
 					"plots": ["errorbar"],
-					"function": "src.functions.func_fit_histogram",
 					"plots":false,
 					"function": null,
+					"function.errorbar": "src.functions.func_fit_histogram",
 					"alpha": 0.5,
 					"log":true,
 					"width":true,
@@ -526,7 +526,7 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
 					"size": 36
 				},
@@ -827,7 +827,7 @@
 						"scinotation": {
 							"scilimits": [
 								0,
-								0
+								4
 							],
 							"decimals": 0,
 							"one": false
@@ -846,7 +846,8 @@
 					},
 					"obj": null,
 					"plots": ["errorbar"],
-					"function": "src.functions.func_fit_histogram",
+					"function":null,
+					"function.errorbar": "src.functions.func_fit_histogram",
 					"alpha": 0.5,
 					"scale": "log",
 					"base": 10,
@@ -929,7 +930,7 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
 					"size": 36
 				},
@@ -1236,7 +1237,8 @@
 					},
 					"obj": null,
 					"plots": ["errorbar"],
-					"function": "src.functions.func_fit_histogram",
+					"function":null,
+					"function.errorbar": "src.functions.func_fit_histogram",
 					"alpha": 0.5,
 					"scale": "log",
 					"base": 10,
@@ -1319,7 +1321,7 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
 					"size": 36
 				},
@@ -1716,9 +1718,9 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
-					"size": 30
+					"size": 36
 				},
 				"set_ticks": {
 					"ticks": 5
@@ -1731,13 +1733,13 @@
 						0.1,
 						1
 					],
-					"size": 50
+					"size": 36
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
 				"ax.tick_params": {
-					"labelsize": 30,
+					"labelsize": 36,
 					"which": "major",
 					"size": 10,
 					"length": 8,
@@ -2056,9 +2058,9 @@
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
-					"size": 30
+					"size": 36
 				},
 				"set_ticks": {
 					"ticks": 5
@@ -2071,13 +2073,13 @@
 						0.1,
 						1
 					],
-					"size": 50
+					"size": 36
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
 				"ax.tick_params": {
-					"labelsize": 30,
+					"labelsize": 36,
 					"which": "major",
 					"size": 10,
 					"length": 8,
@@ -2250,6 +2252,7 @@
 				{
 					"x": "N",
 					"y": "sample.state.information",
+					"xerr": "N",
 					"yerr": "sample.state.informationerr",
 					"label": {
 						"label": {
@@ -2262,8 +2265,14 @@
 						},
                         "func": {
                             "stat": {
+                                "x": {
+                                    "": "src.functions.func_information_x"
+                                },
                                 "y": {
                                     "": "src.functions.func_information_y"
+                                },
+                                "xerr": {
+                                    "err": "src.functions.func_information_xerr"
                                 },
                                 "yerr": {
                                     "err": "src.functions.func_information_yerr"
@@ -2272,8 +2281,14 @@
                         },
                         "process": {
                             "stat": {
+                                "x": {
+                                    "": "src.functions.func_information_process_x"
+                                },
                                 "y": {
                                     "": "src.functions.func_information_process_y"
+                                },
+                                "xerr": {
+                                    "err": "src.functions.func_information_process_xerr"
                                 },
                                 "yerr": {
                                     "err": "src.functions.func_information_process_yerr"
@@ -2371,6 +2386,7 @@
 				{
 					"x": "N",
 					"y": "sample.array.information",
+					"xerr": "N",
 					"yerr": "sample.array.informationerr",
 					"label": {
 						"label": {
@@ -2383,8 +2399,14 @@
 						},
                         "func": {
                             "stat": {
+                                "x": {
+                                    "": "src.functions.func_information_x"
+                                },
                                 "y": {
                                     "": "src.functions.func_information_y"
+                                },
+                                "xerr": {
+                                    "err": "src.functions.func_information_xerr"
                                 },
                                 "yerr": {
                                     "err": "src.functions.func_information_yerr"
@@ -2393,8 +2415,14 @@
                         },
                         "process": {
                             "stat": {
+                                "x": {
+                                    "": "src.functions.func_information_process_x"
+                                },
                                 "y": {
                                     "": "src.functions.func_information_process_y"
+                                },
+                                "xerr": {
+                                    "err": "src.functions.func_information_process_xerr"
                                 },
                                 "yerr": {
                                     "err": "src.functions.func_information_process_yerr"
@@ -2507,19 +2535,21 @@
 				"segments": 100,
 				"size": "3%",
 				"pad": 0.02,
+				"fraction":0.15,
+				"aspect":40,
 				"share":true,
 				"scinotation": {
 					"scilimits": [
 						0,
-						4
+						0
 					],
 					"decimals": 0,
 					"one": false
 				},
 				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
+					"label": "noise.parameters",
 					"labelpad": 10,
-					"size": 30
+					"size": 36
 				},
 				"set_ticks": {
 					"ticks": 5
@@ -2528,13 +2558,13 @@
 					"ticklabels": [
 						0,1e-4,1e-3,1e-2,1e-1
 					],
-					"size": 50
+					"size": 36
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
 				"ax.tick_params": {
-					"labelsize": 30,
+					"labelsize": 36,
 					"which": "major",
 					"size": 10,
 					"length": 8,
@@ -2555,20 +2585,20 @@
 				"base": 10
 			},
 			"set_xlim": {
-				"xmin": 5e-3,
+				"xmin": 5e-17,
 				"xmax": 2e0
 			},
 			"set_xnbins": {
-				"nbins": 3
+				"nbins": 5
 			},
 			"set_xticks": {
 				"ticks": [
-					1e-2,1e-1,1e0
+					1e-16,1e-12,1e-8,1e-4,1e0
 				]
 			},
 			"set_xticklabels": {
 				"ticklabels": [
-					1e-2,1e-1,1e0
+					1e-16,1e-12,1e-8,1e-4,1e0
 				],
 				"size":36
 			},
@@ -2577,20 +2607,20 @@
 				"base": 10
 			},
 			"set_ylim": {
-				"ymin": 5e-3,
-				"ymax": 2e2
+				"ymin": 5e-17,
+				"ymax": 2e0
 			},
 			"set_ynbins": {
 				"nbins": 5
 			},
 			"set_yticks": {
 				"ticks": [
-					1e-2,1e-1,1e0,1e1,1e2
+					1e-16,1e-12,1e-8,1e-4,1e0
 				]
 			},
 			"set_yticklabels": {
 				"ticklabels": [
-					1e-2,1e-1,1e0,1e1,1e2
+					1e-16,1e-12,1e-8,1e-4,1e0
 				],
 				"size":36
 			},
@@ -2658,6 +2688,14 @@
 				},
 				"prop": {
 					"size": 36
+				},
+				"scinotation": {
+					"scilimits": [
+						0,
+						0
+					],
+					"decimals": 0,
+					"one": false
 				},
 				"set_color": "gray",
 				"set_alpha":0.6,

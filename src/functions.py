@@ -24,8 +24,8 @@ for PATH in PATHS:
 
 from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,information
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort
-from src.utils import to_tuple,is_nan,asscalar
-from src.utils import grouper,conditions,flatten,concatenate,inplace
+from src.utils import to_tuple,is_nan,is_naninf,asscalar
+from src.utils import grouper,conditions,flatten,concatenate,inplace,epsilon
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,nan
 
@@ -307,7 +307,7 @@ def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if data is None else data
 	for key,i in zip(keys,data):
-		values[key] = [*values.get(key,[]),*flatten(i)]
+		values[key] = array([*values.get(key,[]),*flatten(i)])
 	data = values
 	return data
 
@@ -325,38 +325,39 @@ def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if data is None else data
 	for key,i in zip(keys,data):
-		values[key] = array([*flatten(values.get(key,[])),*flatten(i)])
+		values[key] = array([*values.get(key,[]),*flatten(i)])
 	data = values
 	return data
 
 def func_information_function(data,*args,**kwargs):
 
-	keys = list(data['y']) if isinstance(data['y'],dict) else list(range(len(data['y']))) if data['y'] is not None else None
-	keys = array([keys.index(i) for i in natsorted(keys)]) if keys is not None else None
+	keys = data['y']
+	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
+	keys = natsorted(keys) if keys is not None else None
 
-	print(data['x'])
-	print(data['y'])
-	print(data['xerr'])
-	print(data['yerr'])
-	exit()
+	def parse(data):
+		if data is None:
+			data = None
+		elif all(i is None for i in data):
+			data = None
+		else:
+			data = array(data)
+			eps = epsilon(data.dtype)
+			value = 0
+			data = inplace(data,(is_naninf(data))|(data<eps),value)
 
-	x = array([data['x'][key] for key in data['x']] if isinstance(data['x'],dict) else data['x'])[keys] if data['x'] is not None and len(data['x'])>1 else array(data['x']) if data['x'] is not None else None
-	y = array([data['y'][key] for key in data['y']] if isinstance(data['y'],dict) else data['y'])[keys] if data['y'] is not None and len(data['y'])>1 else array(data['y']) if data['y'] is not None else None
-	xerr = array([data['xerr'][key] for key in data['xerr']] if isinstance(data['xerr'],dict) else data['xerr'])[keys] if data['xerr'] is not None and len(data['xerr'])>1 else array(data['xerr']) if data['xerr'] is not None else None
-	yerr = array([data['yerr'][key] for key in data['yerr']] if isinstance(data['yerr'],dict) else data['yerr'])[keys] if data['yerr'] is not None and len(data['yerr'])>1 else array(data['yerr']) if data['yerr'] is not None else None
-	D = data['label']['D']
-	size = y.shape[-1]
+		return data
 
-	y = addition(y,-1)/size
-	yerr = addition(yerr,-1)/size
-	xerr = None
+	func = {
+		'x':lambda attr,key,data:1/data[attr][key],
+		'y':lambda attr,key,data:(data['x'][key]*log(data['label']['D'])+log(data[attr][key].size)) - addition(data[attr][key])/data[attr][key].size,
+		'xerr':lambda attr,key,data:data[attr][key],
+		'yerr':lambda attr,key,data:addition(data[attr][key])/data[attr][key].size - (addition(data['y'][key])/data['y'][key].size)**2,
+	}
 
-	data['x'] = 1/x
-	data['y'] = (x*log(D)+log(size)) - y
-	data['xerr'] = xerr
-	data['yerr'] = yerr - y**2
+	func = {attr:parse([func[attr](attr,key,data) for key in keys]) for attr in func if attr in data} if keys is not None else {}
 
-	print(data['x'].shape,data['y'].shape,data['x'])
+	data.update(func)
 
 	return data
 

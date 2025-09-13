@@ -12652,7 +12652,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 	if zero and number == 0:
 		string = r'%d%%s%%s%%s'%(number)
 
-	elif is_int(number) and (scilimits[0] < scilimits[1]) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
+	elif is_int(number) and ((scilimits[0] < scilimits[1]) or (scilimits[0]==0 and scilimits[1]==0)) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
 		string = r'%s%%s%%s%%s'%(str(number))
 
 	elif is_naninf(number):

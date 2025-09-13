@@ -59,7 +59,8 @@
                     "plots": [
                         "errorbar"
                     ],
-                    "function": "src.functions.func_fit_histogram",
+                    "function": null,
+                    "function.errorbar": "src.functions.func_fit_histogram",
                     "bins": 1000,
                     "range": [
                         1e-20,
@@ -124,7 +125,8 @@
                     "plots": [
                         "errorbar"
                     ],
-                    "function": "src.functions.func_fit_histogram",
+                    "function": null,
+                    "function.errorbar": "src.functions.func_fit_histogram",
                     "bins": 1000,
                     "range": [
                         0,
@@ -548,7 +550,8 @@
                     "plots": [
                         "errorbar"
                     ],
-                    "function": "src.functions.func_fit_histogram",
+                    "function": null,
+                    "function.errorbar": "src.functions.func_fit_histogram",
                     "alpha": 0.5,
                     "scale": {
                         "@measure@": {
@@ -949,7 +952,8 @@
                     "plots": [
                         "errorbar"
                     ],
-                    "function": "src.functions.func_fit_histogram",
+                    "function": null,
+                    "function.errorbar": "src.functions.func_fit_histogram",
                     "alpha": 0.5,
                     "scale": {
                         "@measure@": {
@@ -1067,7 +1071,8 @@
                     "plots": [
                         "errorbar"
                     ],
-                    "function": "src.functions.func_fit_histogram",
+                    "function": null,
+                    "function.errorbar": "src.functions.func_fit_histogram",
                     "alpha": 0.5,
                     "scale": {
                         "@measure@": {

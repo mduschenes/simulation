@@ -7,7 +7,7 @@
 	},
 "seed":{
 	"seed":123,
-	"size":12,
+	"size":7,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -60,15 +60,15 @@
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
 
-		"jobs.job.cwd":["~/scratch/test"],
-		"jobs.postprocess.cwd":["~/scratch/test"],
+		"jobs.job.cwd":["test"],
+		"jobs.postprocess.cwd":["test"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 
-		"jobs.job.paths.settings":[{"settings.json":"settings.json"}],
-		"jobs.postprocess.paths.plot":[{"plot.hist.json":"plot.json"}],
-		"jobs.postprocess.paths.process":[{"process.hist.json":"process.json"}],
+		"jobs.job.paths.settings":[{"settings.stats.json":"settings.json"}],
+		"jobs.postprocess.paths.plot":[{"plot.stats.json":"plot.json"}],
+		"jobs.postprocess.paths.process":[{"process.stats.json":"process.json"}],
 
 		"jobs.job.device":["local"],
 		"jobs.postprocess.device":["local"],

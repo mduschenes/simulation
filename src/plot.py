@@ -22,7 +22,7 @@ from src.logger	import Logger
 logger = Logger()
 info = 100	
 debug = 100
-def log(exception,verbose=None):
+def logging(exception,verbose=None):
 	verbose = debug if verbose is None else verbose
 	logger.log(verbose,'%r'%(exception))
 	logger.log(verbose,'%s'%(traceback.format_exc()))
@@ -1270,7 +1270,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			args = []
 			kwds = {}
 			
-			wrapper = None
 			functions = {}
 
 			fields = {
@@ -1771,7 +1770,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						}),
 					})
 
-				def wrapper(objs,obj,attr,arguments,keywords,kwargs,kwds=kwds):
+				def function(objs,obj,attr,arguments,keywords,kwargs,kwds=kwds):
 
 					funcs = []
 
@@ -1794,9 +1793,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 											funcs.append((key,value))
 
 							elif kwd in ['set_color','set_alpha']:
-								children = getattr(objs,'legendHandles')
+								children = list(get_children(objs,'legendHandles'))
 								for i,child in enumerate(children):
-									child = copy(child)
+									# child = copy(child)
 									key = getattr(child,kwd)
 									value = kwds[kwd]
 									if isinstance(value,list):
@@ -1825,7 +1824,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								key(value)
 
 					except Exception as exception:
-						log(exception)
+						logging(exception)
 
 					return
 
@@ -2002,7 +2001,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
-					def wrapper(objs,obj,attr,arguments,keywords,kwargs):
+					def function(objs,obj,attr,arguments,keywords,kwargs):
 						y,x,plot = objs
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -2016,7 +2015,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value = False
 					kwargs[attr][prop] = value
 
-				def func(obj,attr,instance,objs,index,indices,shape,count,counts,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs):
 					y,x,plot = objs[-1]['obj']
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -2031,6 +2030,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 							}
 
+						function = kwds[attr].pop('function',None)
 						scale = [i[-1].get('value') for i in search(kwargs.get('set_xscale'),returns=True) if i is not None and i[-1] is not None and kwargs.get(attr,{}).get('obj')==i[-1].get('obj')]
 						if any(i is None or i in ['linear'] for i in scale):
 							x = (x[:-1]+x[1:])/2
@@ -2039,6 +2039,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						y = y
 						xerr = None
 						yerr = None
+
+
 
 						if callable(function):
 							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,attributes=attributes)
@@ -2122,7 +2124,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value,color,values,colors,norm = set_color(**kwargs[attr][prop])
 					kwargs[attr][prop] = color
 
-				def func(obj,attr,instance,objs,index,indices,shape,count,counts,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs):
 					plot = objs[-1]['obj']
 					x,y = np.array([i.get_x()+{'center':i.get_width()//2,'xy':0,None:0}.get(i.rotation_point,0) for i in plot.patches]),np.array([i.get_y()+i.get_height() for i in plot.patches])
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
@@ -2137,6 +2139,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								},
 							}
 							}
+
+						function = kwds[attr].pop('function',None)
 
 						x = x
 						y = y
@@ -2807,7 +2811,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					_obj_ = _obj(**_kwargs_)
 				except Exception as exception:
-					log(exception)
+					logging(exception)
 					try:
 						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
 						if _kwargs_:
@@ -2815,13 +2819,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						else:
 							_obj_ = None
 					except Exception as exception:
-						log(exception)
+						logging(exception)
 						_obj_ = None
 
 
-			if wrapper is not None:
+			if function is not None:
 				try:
-					wrapper(_obj_,obj,attr,args,_kwargs_,kwargs)
+					function(_obj_,obj,attr,args,_kwargs_,kwargs)
 				except Exception as exception:
 					pass
 
@@ -2831,9 +2835,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for plot in functions:
 				try:
-					functions[plot](obj,plot,attr,objs,index,indices,shape,count,counts,_kwargs,kwargs)	
+					functions[plot](obj,plot,attr,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs)
 				except Exception as exception:
-					log(exception)
+					logging(exception)
 					pass
 
 			return

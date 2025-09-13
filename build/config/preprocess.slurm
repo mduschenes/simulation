@@ -130,15 +130,8 @@ else
 
 		echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
-		# if [[ ${TASK} == -1 || ${TASK} == 1 || ${TASK} == 2 ]]
-		# then
-		# 	echo ERROR - ${TASK}
-		# 	touch ${JOB_CLEANUP}
-		# 	kill -SIGUSR1 $$
-		# 	return
-		# fi
 
-		${CMDS[@]} ${TASK}
+		TASK=${TASK} ${CMDS[@]} ${TASK}
 
 
 		echo ${TASK} $(date '+%Y-%m-%d %H:%M:%S')

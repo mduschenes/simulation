@@ -32,6 +32,11 @@ from src.logger	import Logger
 logger = Logger()
 info = 100
 debug = 100
+def logging(exception,verbose=None):
+	verbose = debug if verbose is None else verbose
+	logger.log(verbose,'%r'%(exception))
+	logger.log(verbose,'%s'%(traceback.format_exc()))
+	return
 
 LAYOUT = ['row','col']
 GRID = [*LAYOUT,'axis','axes']
@@ -78,6 +83,7 @@ def Texify(string,texify={},usetex=True):
 	Returns:
 		string (str): Texified string
 	'''
+
 	if texify is None:
 		texify = {}
 	strings = {
@@ -105,6 +111,51 @@ def Texify(string,texify={},usetex=True):
 			string = None
 
 	return string
+
+def Valify(value,valify={},useval=True):
+	'''
+	Valify value
+	Args:
+		value (str): String to valify
+		valify (dict): Dictionary of valify translations of strings
+		useval (bool): Use value formatting
+	Returns:
+		value (str): Valified string
+	'''
+	if valify is None:
+		valify = {}
+	values = {
+		**valify,
+		**{to_number(value): valify[value] for value in valify},
+		None: valify.get('None',None),
+		'None': valify.get('None',None),
+		}
+
+	try:
+		value = valify.get(value,valify.get(str(value),value))
+	except:
+		pass
+
+	return value
+
+def Scientific(value,scientific={},usesci=True):
+	'''
+	Scientific notation value
+	Args:
+		string (str,int,float): Value to scientific notation
+		texify (dict): Dictionary of scientific notation options of values
+		usesci (bool): Use scientific notation formatting
+	Returns:
+		value (str): Scientific notation value
+	'''
+	if scientific is None:
+		scientific = {}
+
+	if usesci:
+		value = scinotation(value,**scientific)
+
+	return value
+
 
 def copier(key,value,copy):
 	'''
@@ -276,33 +327,6 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 			return default
 
 	return default
-
-
-def Valify(value,valify={},useval=True):
-	'''
-	Valify value
-	Args:
-		value (str): String to valify
-		valify (dict): Dictionary of valify translations of strings
-		useval (bool): Use value formatting
-	Returns:
-		value (str): Valified string
-	'''
-	if valify is None:
-		valify = {}
-	values = {
-		**valify,
-		**{to_number(value): valify[value] for value in valify},
-		None: valify.get('None',None),
-		'None': valify.get('None',None),
-		}
-
-	try:
-		value = valify.get(value,valify.get(str(value),value))
-	except:
-		pass
-
-	return value
 
 
 def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
@@ -504,6 +528,14 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		value,
 		valify={**(_valify if _valify is not None else {}),**(valify if valify is not None else {})},
 		useval=useval)
+
+	# Get scinotation
+	scientific = processes.get('scinotation',{})
+	usesci = processes.get('usesci',True)
+	processes['scinotation'] = lambda value,_scientific=scientific,usesci=usesci,**kwargs: Scientific(
+		value,
+		scientific={**_scientific,**kwargs},
+		usesci=usesci)
 
 	return data,plots,processes
 
@@ -1858,7 +1890,6 @@ def apply(data,plots,processes,verbose=None):
 
 			# groups = groups.agg(**applications).astype(dtype)
 
-
 			by = [*labels]
 
 			options = dict(as_index=False,dropna=False)
@@ -2023,9 +2054,8 @@ def apply(data,plots,processes,verbose=None):
 			try:
 				value = functions[name][key](value)
 			except Exception as exception:
+				logging(exception)
 				continue
-
-			setter(plots,{key:value},delimiter=delim,default=True)
 
 	return
 
@@ -2054,7 +2084,8 @@ def plotter(plots,processes,verbose=None):
 	configuration = processes['configuration']
 	texify = processes['texify']
 	valify = processes['valify']
-	
+	scinotation = processes['scinotation']
+
 	obj = 'ax'
 
 	# Check data
@@ -2110,6 +2141,10 @@ def plotter(plots,processes,verbose=None):
 							for variable in VARIABLES 
 							if axes in VARIABLES[variable] and variable in statistics and axes not in independent]
 						dim = len(dimensions)
+
+						for attr in ALL:
+							if (isinstance(data.get(attr),iterables) and all(i is None for i in data.get(attr))):
+								data[attr] = None
 
 						if all(data.get(attr) is None or isinstance(data.get(attr),str) for attr in ALL) or (isinstance(data[OTHER][OTHER].get(OTHER),dict) and any(data[OTHER].get(attr) is None for attr in data[OTHER][OTHER][OTHER])):
 							data.clear()
@@ -2801,7 +2836,7 @@ def plotter(plots,processes,verbose=None):
 						values[prop][label][key] = {
 							**{subkey:{} for subkey in ['texify','valify']},
 							**{subkey:{
-								**{kwarg:[0,0] for kwarg in ['scilimits']},
+								**{kwarg:[-1,-1] for kwarg in ['scilimits']},
 								**{kwarg: 0 for kwarg in ['decimals']},
 								**{kwarg: False for kwarg in ['one']},
 								} for subkey in ['scinotation']}
@@ -2948,7 +2983,7 @@ def plotter(plots,processes,verbose=None):
 						values[prop][label][key] = {
 							**{subkey:{} for subkey in ['texify','valify']},
 							**{subkey:{
-								**{kwarg:[0,0] for kwarg in ['scilimits']},
+								**{kwarg:[-1,-1] for kwarg in ['scilimits']},
 								**{kwarg: 0 for kwarg in ['decimals']},
 								**{kwarg: False for kwarg in ['one']},
 								} for subkey in ['scinotation']}
@@ -3674,10 +3709,7 @@ def plotter(plots,processes,verbose=None):
 								value = normalize[attr](attr,data)
 
 							for subslice in slices:
-								if (isinstance(subslice,slice) and 
-									(subslice.start not in [0,None]) or 
-									(subslice.stop not in [None]) or 
-									(subslice.step not in [1,None])):
+								if (isinstance(subslice,slice)):
 									value = value[subslice]
 
 							if any(options[option] for option in options):
@@ -3847,7 +3879,7 @@ def plotter(plots,processes,verbose=None):
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
 									'texify':dict(),
-									'scinotation':dict(decimals=2,scilimits=[-1,4] if scale in [None,'linear'] else [0,4],strip=True)}.items()
+									'scinotation':dict(decimals=2,scilimits=[-1,1] if scale in [None,'linear'] else [0,0],strip=True)}.items()
 								}
 
 							if value is not None:
