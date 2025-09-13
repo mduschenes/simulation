@@ -50,7 +50,8 @@ shift 8;
 JOB_ARGS=${@:-${JOB_ARGS[@]}}
 
 JOB_PATH=$(pwd)
-
+JOB_DATA=$(echo ${JOB_DATA/\~/"${HOME}"} | envsubst)
+JOB_TMP=${JOB_PATH}/tmp
 
 # Functions
 if [ ! -z ${JOB_CLEANUP} ]
@@ -130,15 +131,8 @@ else
 
 		echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
-		# if [[ ${TASK} == -1 || ${TASK} == 1 || ${TASK} == 2 ]]
-		# then
-		# 	echo ERROR - ${TASK}
-		# 	touch ${JOB_CLEANUP}
-		# 	kill -SIGUSR1 $$
-		# 	return
-		# fi
 
-		${CMDS[@]} ${TASK}
+		TASK=${TASK} ${CMDS[@]} ${TASK}
 
 
 		echo ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
@@ -193,8 +187,7 @@ JOBS=${JOB_PROCESSES:-1}
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${JOB_PATH})
-# EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
+EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${JOB_TMP}) #--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 [ ! -z ${JOB_ENVIRONMENT} ] && EXE+=(${JOB_ENVIRONMENT}='$(({%} - 1))')
 EXE+=(RUN)
 EXE+=({})
@@ -210,10 +203,14 @@ trap 'CLEANUP' SIGUSR1
 
 if [ ! -z ${JOB_DATA} ]
 then
+	mkdir -p ${JOB_DATA}
 	cd ${JOB_DATA}
 else
+	mkdir -p ${JOB_PATH}
 	cd ${JOB_PATH}
 fi
+mkdir -p ${JOB_TMP}
+
 
 echo $(pwd) ${EXE[@]} ${TASKS[@]}
 
@@ -225,7 +222,7 @@ cd ${JOB_PATH}
 
 
 # Cleanup
-find ${JOB_PATH} -type d -name "tmp[a-z,0-9,_]*" -delete
+rm -rf ${JOB_TMP}
 
 
 # Status
