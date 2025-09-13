@@ -2542,11 +2542,11 @@ def test_calculate(*args,**kwargs):
 			key = attr
 
 			if module.measure.architecture in ['array']:
-				value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel()
+				value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 			elif module.measure.architecture in ['tensor']:
-				value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel()
+				value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 			elif module.measure.architecture in ['tensor_quimb']:
-				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel()
+				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 
 			if verbose or True:
 				print(module.measure.architecture,attr,where,value.shape)
