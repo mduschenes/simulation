@@ -1270,9 +1270,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			args = []
 			kwds = {}
 			
-			_args = []
-			_kwds = {}
-
 			wrapper = None
 			functions = {}
 
@@ -1335,6 +1332,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			if attr in ['legend']:
+
+				kwds = {}
 
 				if kwargs[attr].get('merge'):
 					objects = obj.get_figure().axes
@@ -1462,20 +1461,26 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
 							else:
 								kwargs[attr][prop] = None
-				if kwargs[attr].get('join') is not None:
+
+				prop = 'join'
+				if kwargs[attr].get(prop) is not None:
 					n = min(len(handles),len(labels))
-					k = kwargs[attr].get('join',1)
-					handles = list(zip(*(handles[i*n//k:(i+1)*n//k] for i in range(k))))
-					labels = labels[:n//k]
+					k = kwargs[attr].get(prop,1)
+					indices = [slice(i,None,k) for i in range(k)]
+					handles = list(zip(*(handles[i] for i in indices)))
+					labels = labels[::k]
 					handler_map.update({tuple: matplotlib.legend_handler.HandlerTuple(None,pad=0.5)})
 
-				if kwargs[attr].get('flip') is True:
-					flip = kwargs[attr].get('flip',None)
+				prop = 'flip'
+				if kwargs[attr].get(prop) is True:
+					flip = kwargs[attr].get(prop,None)
 					ncol = kwargs[attr].get('ncol',1)
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
-				if kwargs[attr].get('keep') is not None:
-					keep = kwargs[attr]['keep']
+
+				prop = 'keep'
+				if kwargs[attr].get(prop) is not None:
+					keep = kwargs[attr][prop]
 					if (keep in ['unique']) or (isinstance(keep,list) and all(isinstance(i,str) for i in keep)):
 
 						if isinstance(keep,str):
@@ -1515,14 +1520,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									unique.append(k)
 								else:
 									unique.append(k)
-							if unique is not None:
-								labels,handles = [labels[i[j]] for i,j in zip(indexes,unique)],[handles[i[j]] for i,j in zip(indexes,unique)]
+							if unique is not None and labels:
+								try:
+									labels,handles = [labels[i[j]] for i,j in zip(indexes,unique)],[handles[i[j]] for i,j in zip(indexes,unique)]
+								except:
+									pass
 				
-				if kwargs[attr].get('multiline') is True:
+				prop = 'multiline'
+				if kwargs[attr].get(prop) is True:
 					pass
-				if kwargs[attr].get('sort') is not None:
 
-					if isinstance(kwargs[attr].get('sort'),dict): 
+				prop = 'sort'
+				if kwargs[attr].get(prop) is not None:
+
+					if isinstance(kwargs[attr].get(prop),dict):
 
 						funcs = {
 							**{
@@ -1537,7 +1548,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
 								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
 								for handler in funcs for types in funcs[handler]))]
-						indexes = [indexes.index(kwargs[attr].get('sort').get(i)) for i in kwargs[attr].get('sort') if kwargs[attr].get('sort').get(i) in indexes]
+						indexes = [indexes.index(kwargs[attr].get(prop).get(i)) for i in kwargs[attr].get(prop) if kwargs[attr].get(prop).get(i) in indexes]
 
 						handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
 
@@ -1585,6 +1596,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						indexes = []
 
 					patches = [matplotlib.patches.Patch(label=title) for title in titles]
+					# patches = [obj.plot([],marker='',linestyle='',label=title,alpha=0)[0] for title in titles]
 
 					handles = [
 						j for i in range(number) 
@@ -1627,25 +1639,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					funcs['labels']['position'] = func	
 
 					if indexes:
-						_kwds.update({
+						kwds.update({
 							**({'legendHandles': {
-									**_kwds.get('legendHandles',{}),
+									**kwds.get('legendHandles',{}),
 									**({
-										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
+										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_col') is not None else {}),	
+										} if kwargs[attr].get('set_title_col') is not None else {}),
 									}
 									}),
 							**({'legendLabels': {
-									**_kwds.get('legendLabels',{}),
+									**kwds.get('legendLabels',{}),
 									**({
-										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
+										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
-										} if kwargs[attr].get('set_title_col') is not None else {}),	
+										} if kwargs[attr].get('set_title_col') is not None else {}),
 									}
-									}),					
+									}),
 							})
-
 
 
 				if len(handles)>0 and len(labels)>0 and kwargs[attr].get('set_title_row') is not None:
@@ -1715,19 +1726,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					funcs['labels']['position'] = func	
 
 					if indexes:
-						_kwds.update({
+						kwds.update({
 							**({'legendHandles': {
-									**_kwds.get('legendHandles',{}),
+									**kwds.get('legendHandles',{}),
 									**({
-										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**_kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
+										**{'set_%s'%(prop): {**{i:funcs['handles'][prop] for i in indexes},**kwds.get('legendHandles',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['handles'] if funcs['handles'].get(prop) is not None},
 										} if kwargs[attr].get('set_title_row') is not None else {}),	
 									}
 									}),
 							**({'legendLabels': {
-									**_kwds.get('legendLabels',{}),
+									**kwds.get('legendLabels',{}),
 									**({
-										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**_kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
+										**{'set_%s'%(prop): {**{i:funcs['labels'][prop] for i in indexes},**kwds.get('legendLabels',{}).get('set_%s'%(prop),{})}
 										for prop in funcs['labels'] if funcs['labels'].get(prop) is not None},
 										} if kwargs[attr].get('set_title_row') is not None else {}),	
 									}
@@ -1738,18 +1749,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
 				
 
-				_kwds.update({
-					'set_zorder':kwargs[attr].get('set_zorder',{'level':1000}),
+				kwds.update({
+					'set_color':kwargs[attr].get('set_color'),
+					'set_alpha':kwargs[attr].get('set_alpha'),
 					'set_title':{
 						**({'title': kwargs[attr].get('set_title',kwargs[attr].get('title',None)),
 							'prop':{'size':kwargs[attr].get('prop',{}).get('size')},
 							} 
 							if any(kwargs[attr].get(prop) is not None for prop in ['set_title','title']) else {'title':None})},
+					'set_zorder':kwargs[attr].get('set_zorder',{'level':1000}),
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts','get_frame'] if isinstance(kwargs[attr].get(subattr),dict)},
-					**({'legendHandles': {**kwargs[attr].get('legendHandles',{}),**_kwds.get('legendHandles',{})}} if kwargs[attr].get('legendHandles') else {}),
-					**({'legendLabels': {**kwargs[attr].get('legendLabels',{}),**_kwds.get('legendLabels',{})}} if kwargs[attr].get('legendLabels') else {}),
+					**({'legendHandles': {**kwargs[attr].get('legendHandles',{}),**kwds.get('legendHandles',{})}} if kwargs[attr].get('legendHandles') else {}),
+					**({'legendLabels': {**kwargs[attr].get('legendLabels',{}),**kwds.get('legendLabels',{})}} if kwargs[attr].get('legendLabels') else {}),
 					**({'legendHandles': {
-							**_kwds.get('legendHandles',{}),						
+							**kwds.get('legendHandles',{}),
 							**({'set_%s'%(prop): [kwargs[attr]['set_%s'%(prop)]]*len(handles) if isinstance(kwargs[attr]['set_%s'%(prop)],scalars) else kwargs[attr]['set_%s'%(prop)]
 							for prop in ['alpha','color','marker','linestyle']
 							if kwargs[attr].get('set_%s'%(prop)) is not None} 
@@ -1757,6 +1770,65 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 						}),
 					})
+
+				def wrapper(objs,obj,attr,arguments,keywords,kwargs,kwds=kwds):
+
+					funcs = []
+
+					try:
+						for kwd in kwds:
+
+							if kwds[kwd] is None:
+								continue
+
+							if kwd in ['legendHandles','legendHandles']:
+								children = get_children(objs,kwd)
+								for i,child in enumerate(children):
+									for kwarg in kwds[kwd]:
+										if i in kwds[kwd][kwarg]:
+											key = getattr(child,kwarg)
+											if callable(kwds[kwd][kwarg][i]):
+												value = kwds[kwd][kwarg][i](kwarg,child)
+											else:
+												value = kwds[kwd][kwarg][i]
+											funcs.append((key,value))
+
+							elif kwd in ['set_color','set_alpha']:
+								children = getattr(objs,'legendHandles')
+								for i,child in enumerate(children):
+									child = copy(child)
+									key = getattr(child,kwd)
+									value = kwds[kwd]
+									if isinstance(value,list):
+										value = value[i]
+									children[i] = child
+									funcs.append((key,value))
+
+							elif kwd.startswith('set_'):
+								key = getattr(objs,kwd)
+								value = kwds[kwd]
+								funcs.append((key,value))
+
+							elif kwd.startswith('get_'):
+								for kwarg in kwds[kwd]:
+									key = getattr(getattr(objs,kwd)(),'set_%s'%(kwarg) if not kwarg.startswith('set_') else kwarg)
+									value = kwds[kwd][kwarg]
+									funcs.append((key,value))
+
+						for key,value in funcs:
+
+							if isinstance(value,dict):
+								key(**value)
+							elif isinstance(value,list):
+								key(*value)
+							else:
+								key(value)
+
+					except Exception as exception:
+						log(exception)
+
+					return
+
 
 				call = (
 					(not (
@@ -1930,8 +2002,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
-					def wrapper(obj,attr,arguments,keywords,kwargs):
-						y,x,plot = obj
+					def wrapper(objs,obj,attr,arguments,keywords,kwargs):
+						y,x,plot = objs
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
 							scale = sum(abs(u) for u in y) if keywords.get('log') else y.sum()
@@ -2749,85 +2821,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			if wrapper is not None:
 				try:
-					wrapper(_obj_,attr,args,_kwargs_,kwargs)
+					wrapper(_obj_,obj,attr,args,_kwargs_,kwargs)
 				except Exception as exception:
 					pass
 
-			for k in _kwds:
-
-				_attr_ = _obj_
-				for a in k.split(delimiter)[:-1]:
-					try:
-						_attr_ = getattr(_attr_,a)()
-					except:
-						_attr_ = getattr(_attr_,a)
-				a = k.split(delimiter)[-1]
-
-				try:
-					getattr(_attr_,a)(**_kwds[k])
-				except:
-					try:
-						if attr not in 'legend':
-							plt.setp(getattr(_attr_,a)(),**_kwds[k])
-						else:
-							raise
-					except:
-						try:
-							if attr not in ['legend']:
-								plt.setp(getattr(_attr_,a),**_kwds[k])
-							else:
-								raise
-						except:
-
-							try:
-								for _subattr_ in getattr(_attr_,a)():
-									for l in _kwds[k]:
-										getattr(_subattr_,l)(**_kwds[k][l])
-							except:
-								try:
-									for j,_subattr_ in enumerate(list(get_children(_obj_,a))):
-										for l in _kwds[k]:
-											try:
-												if isinstance(_kwds[k][l],list):
-													if callable(_kwds[k][l][j%len(_kwds[k][l])]):
-														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])](_subattr_,_obj_))
-													else:
-														getattr(_subattr_,l)(_kwds[k][l][j%len(_kwds[k][l])])
-												elif isinstance(_kwds[k][l],dict) and j%len(_kwds[k][l]) in _kwds[k][l]:
-													if callable(_kwds[k][l][j%len(_kwds[k][l])]):
-														getattr(_subattr_,l)(_kwds[k][l][j](_subattr_,_obj_))
-													else:
-														getattr(_subattr_,l)(_kwds[k][l][j])
-												else:
-													if callable(_kwds[k][l]):
-														getattr(_subattr_,l)(_kwds[k][l](_subattr_,_obj_))
-													else:
-														getattr(_subattr_,l)(_kwds[k][l])
-											except Exception as exception:
-												continue
-								except Exception as exception:
-									try:
-										for j,_subattr_ in enumerate(getattr(_attr_,a)):
-											for i,l in enumerate(_kwds[k]):
-												if _kwds[k][l] is not None:
-													v = getattr(_subattr_,'get_%s'%(l.replace('set_','')))()
-													v = _kwds[k][l][j%len(_kwds[k][l])]
-													getattr(_subattr_,'set_%s'%(l.replace('set_','')))(v)
-												else:
-													pass
-									except Exception as exception:
-										try:
-											v = getattr(_attr_,a)()
-											for i,l in enumerate(_kwds[k]):
-												if isinstance(_kwds[k][l],dict):
-													getattr(v,l)(**_kwds[k][l])
-												elif isinstance(_kwds[k][l],(list,)):
-													getattr(v,l)(*_kwds[k][l])
-												else:
-													getattr(v,l)(_kwds[k][l])
-										except Exception as exception:
-											pass	
-				
 			_obj = {'obj':_obj_,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count,'object':obj}
 			
 			objs.append(_obj)

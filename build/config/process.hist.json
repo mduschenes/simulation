@@ -2,7 +2,7 @@
 	"load": 0,
 	"dump": 1,
 	"tmp": "merge",
-	"chunk":10,
+	"chunk":100,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
@@ -16,8 +16,7 @@
 		"sample.state.M.noise.parameters": 0,
 		"info.array.N.M.noise.parameters": 0,
 		"info.state.N.M.noise.parameters": 0,
-		"information.array.N.M.noise.parameters": 1,
-		"information.state.N.M.noise.parameters": 1
+		"information.array.state.N.M.noise.parameters": 1
 	},
 	"configuration": [
 		[
@@ -608,8 +607,7 @@
 		],
 		[
 			[
-				"information.array.N.M.noise.parameters",
-				"information.state.N.M.noise.parameters"
+				"information.array.state.N.M.noise.parameters"
 			],
 			[
 				{
@@ -620,8 +618,22 @@
 						"ax.set_ylabel.size": 36,
 						"ax.set_xlabel.size": 36,
 						"ax.set_ylabel.y": null,
-						"ax.set_yticklabels": null,
-						"ax.set_xticklabels": null,
+						"ax.set_xticklabels.scinotation": {
+							"scilimits": [
+								1,
+								1
+							],
+							"decimals": 1,
+							"strip":true
+						},
+						"ax.set_yticklabels.scinotation": {
+							"scilimits": [
+								1,
+								1
+							],
+							"decimals": 1,
+							"strip":true
+						},
 						"ax.tick_params.left": true,
 						"ax.tick_params.bottom": true,
 						"ax.set_colorbar.texify":{"texify":{"noise.parameters":"$\\textrm{Noise} ~~ \\gamma$"}},

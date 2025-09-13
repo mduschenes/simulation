@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,copy
-from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap
+from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap,flatten
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
@@ -1687,8 +1687,8 @@ def apply(data,plots,processes,verbose=None):
 			properties[name] = properties.get(name,{})
 			functions[name] = functions.get(name,{})
 
-			dependent = [keys[name][axes] for axes in sorted(set([*dimensions[-1:],*statistics]),key=lambda i:[*dimensions[-1:],*statistics].index(i)) if keys[name][axes] in attributes and axes not in dimensions[:-1]]
-			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes  and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) not in ['array']]
+			dependent = [keys[name][axes] for axes in sorted(set([*dimensions[-1:],*statistics]),key=lambda i:[*dimensions[-1:],*statistics].index(i)) if keys[name][axes] in attributes and axes not in dimensions[:-1] and not any(keys[name][ax]==keys[name][axes] for ax in dimensions[:-1] if ax != axes and axes.startswith(ax))]
+			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes  and (keys[name][axes] not in dependent or all(keys[name][ax]==keys[name][axes] for ax in statistics if ax != axes and ax.startswith(axes))) and dtypes.get(keys[name][axes]) not in ['array']]
 			labels = [attr for attr in label if (attr in attributes) and ((not isinstance(label[attr],str)) or ((((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))))]
 			exceptions = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes and keys[name][axes] not in dependent and dtypes.get(keys[name][axes]) in ['array']]
 
@@ -1742,7 +1742,6 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
-
 			shapes = {prop: tuple(((min(properties[name][prop][grouping].shape[i] for grouping in properties[name][prop]),
 									max(properties[name][prop][grouping].shape[i] for grouping in properties[name][prop]))
 						for i in range(groups.ndim)))
@@ -1775,7 +1774,6 @@ def apply(data,plots,processes,verbose=None):
 							if attr is not None and attr in attributes
 							},
 			}
-
 
 			variables = [
 				*independent,
@@ -1879,6 +1877,12 @@ def apply(data,plots,processes,verbose=None):
 			key = name[:-3]
 			plts = copy(getter(plots,key,delimiter=delim))
 
+			def parser(string,axes,func):
+				attr = keys[name][axes]
+				source = delim.join(((attr,string,func))) if attr in [*independent,*dependent,*exceptions] else attr
+				destination = '%s%s'%(axes,func) if attr in [*independent,*dependent,*exceptions] and axes in dimensions else axes
+				return attr,source,destination
+
 			for i,group in enumerate(groupings[name]):
 
 				group = tuple(group)
@@ -1936,38 +1940,42 @@ def apply(data,plots,processes,verbose=None):
 							},
 						}
 
+					options = dict(deep=False)
+					metadata = grouping.copy(**options)
+
+					options = dict(mapper={source:destination for axes in funcs[string] for func in funcs[string][axes] for attr,source,destination in [parser(string,axes,func)]},axis='columns',inplace=True)
+					metadata.rename(**options)
+
 					value[destination] = obj
 
 					for axes in funcs[string]:
 						for func in funcs[string][axes]:
 
-							attr = keys[name][axes]
-
-							source = delim.join(((attr,string,func))) if attr in [*independent,*dependent,*exceptions] else attr
-							destination = '%s%s'%(axes,func) if attr in [*independent,*dependent,*exceptions] and axes in dimensions else axes
+							attr,source,destination = parser(string,axes,func)
 
 							if grouping.shape[0]:
 								if source in grouping:
+									obj = grouping[source]
 									try:
-										if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in grouping[source]):
+										if (dtypes[attr] in ['array']) or any(isinstance(i,tuple) for i in obj):
 											try:
-												obj = np.array([np.array(i) for i in grouping[source]])
+												obj = np.array([np.array(i) for i in obj])
 											except Exception as exception:
-												if process.get(string,{}).get(axes,{}).get(func) and function is not None:
-													obj = np.concatenate([np.array(i).flatten() for i in grouping[source]])
-												else:
-													raise exception
+												obj = [np.array(list(i)) for i in obj]
 										else:
-											obj = grouping[source].to_numpy()
+											obj = obj.to_numpy()
 										if indexes.get(attr) is not None:
-											obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
-										if obj.dtype.kind in ['O']:
+											if isinstance(obj,arrays):
+												obj = obj[:,indexes[attr].index(axes)].reshape((*obj.shape[:1],1,*obj.shape[2:]))
+											elif isinstance(obj,iterables):
+												obj = [i[indexes[attr].index(axes)].reshape((1,*i.shape[1:])) for i in obj]
+										if (isinstance(obj,arrays) and obj.dtype.kind in ['O']) or (isinstance(obj,iterables) and any(i.dtype.kind in ['O'] for i in obj)):
 											obj = None
-									except:
+									except Exception as exception:
 										obj = None
 								elif isinstance(source,Null):
 									source = delim.join(((dependent[-1],string,func)))
-									obj = None #np.arange(indexing,len(grouping[source].iloc[0])+indexing) if grouping[source].iloc[0] is not None else None
+									obj = None #np.arange(indexing,len(obj.iloc[0])+indexing) if obj.iloc[0] is not None else None
 								else:
 									obj = None #grouping.reset_index().index.to_numpy()
 
@@ -1977,12 +1985,12 @@ def apply(data,plots,processes,verbose=None):
 							else:
 								obj = None
 
-							if ((func in ['err']) or (attr in independent)) and (obj is not None) and (all(i is None for i in obj.flatten()) or any(all(not isinstance(j,(*arrays,*numbers)) for j in obj) or np.allclose(obj,i) for i in nulls)):
+							if ((func in ['err']) or (attr in independent)) and (obj is not None) and (all(i is None for i in flatten(obj)) or any(all(not isinstance(j,(*arrays,*numbers)) for j in obj) or all(np.allclose(j,i) for j in obj) for i in nulls)):
 								obj = None
 
 							if process.get(string,{}).get(axes,{}).get(func) is not None:
 								for attribute in process[string][axes][func]:
-									obj = process[string][axes][func][attribute](obj,value.get(destination),property)
+									obj = process[string][axes][func][attribute](obj,value.get(destination),metadata,property)
 
 							value[destination] = obj
 
@@ -2012,35 +2020,12 @@ def apply(data,plots,processes,verbose=None):
 			if not value:
 				continue
 
-			print('---')
-			print(value['x'])
-			print(value['y'])
-			print(value['xerr'])
-			print(value['yerr'])
-			print()
-
 			try:
-				value = function[name][key](value)
-			except:
-				pass
-
-			print(value['x'])
-			print(value['y'])
-			print(value['xerr'])
-			print(value['yerr'])
-			print()
+				value = functions[name][key](value)
+			except Exception as exception:
+				continue
 
 			setter(plots,{key:value},delimiter=delim,default=True)
-
-
-			value = getter(plots,key,delimiter=delim,default=None)
-
-			print(value['x'])
-			print(value['y'])
-			print(value['xerr'])
-			print(value['yerr'])
-			print()
-			exit()
 
 	return
 
@@ -2171,7 +2156,8 @@ def plotter(plots,processes,verbose=None):
 				if prop not in plots[instance][subinstance][obj]:
 					continue
 				
-				for data in search(plots[instance][subinstance][obj][prop]):
+				for index,_shape,data in search(plots[instance][subinstance][obj][prop],returns=True):
+				# for index,data in enumerate(search(plots[instance][subinstance][obj][prop])):
 
 					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
 						continue
@@ -2193,7 +2179,7 @@ def plotter(plots,processes,verbose=None):
 						if axes not in data or data[axes] is None or isinstance(data[axes],scalars):
 							continue
 
-						if not isinstance(data[axes],np.ndarray):
+						if not isinstance(data[axes],arrays):
 							data[axes] = np.array(data[axes])
 
 						if shapes and (axes not in independent):

@@ -141,12 +141,12 @@ def func_samples_err(data,*args,**kwargs):
 	data = tuple((None,))
 	return data
 
-def func_samples_process(data,values,properties,*args,**kwargs):
+def func_samples_process(data,values,metadata,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data = concatenate((values,data),axis=1)
 	return data
 
-def func_samples_process_err(data,values,properties,*args,**kwargs):
+def func_samples_process_err(data,values,metadata,properties,*args,**kwargs):
 	return data
 
 def func_hist(data,*args,attr=None,**kwargs):
@@ -170,12 +170,12 @@ def func_hist_err(data,*args,**kwargs):
 	data = tuple((None,None))
 	return data
 
-def func_hist_process(data,values,properties,*args,**kwargs):
+def func_hist_process(data,values,metadata,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data += values
 	return data
 
-def func_hist_process_err(data,values,properties,*args,**kwargs):
+def func_hist_process_err(data,values,metadata,properties,*args,**kwargs):
 	return data
 
 def func_hist_x(data,*args,**kwargs):
@@ -211,12 +211,12 @@ def func_sample_xerr(data,*args,**kwargs):
 	data = tuple((None,))
 	return data
 
-def func_sample_process(data,values,properties,*args,**kwargs):
+def func_sample_process(data,values,metadata,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data += values
 	return data
 
-def func_sample_process_err(data,values,properties,*args,**kwargs):
+def func_sample_process_err(data,values,metadata,properties,*args,**kwargs):
 	return
 
 def func_sample_function(data,*args,eps=None,**kwargs):
@@ -245,12 +245,12 @@ def func_info_yerr(data,*args,**kwargs):
 	data = data.reshape(*data.shape)
 	return data
 
-def func_info_process_y(data,values,properties,*args,**kwargs):
+def func_info_process_y(data,values,metadata,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data += values
 	return data
 
-def func_info_process_yerr(data,values,properties,*args,**kwargs):
+def func_info_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	return data
 
 def func_info_function_y(data,*args,**kwargs):
@@ -277,37 +277,86 @@ def func_info_function_y(data,*args,**kwargs):
 
 	return data
 
+def func_information_x(data,*args,**kwargs):
+	data = data.iloc[0]
+	return data
+
 def func_information_y(data,*args,**kwargs):
 	data = tuple(data)
+	return data
+
+def func_information_xerr(data,*args,**kwargs):
+	data = None
 	return data
 
 def func_information_yerr(data,*args,**kwargs):
 	data = tuple(data)
 	return data
 
-def func_information_process_y(data,values,properties,*args,**kwargs):
-	data = tuple((*values,*data)) if isinstance(values,arrays) else data
+def func_information_process_x(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if data is None else data
+	for key,i in zip(keys,data):
+		values[key] = i
+	data = values
 	return data
 
-def func_information_process_yerr(data,values,properties,*args,**kwargs):
-	data = tuple((*values,*data)) if isinstance(values,arrays) else data
+def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if data is None else data
+	for key,i in zip(keys,data):
+		values[key] = [*values.get(key,[]),*flatten(i)]
+	data = values
+	return data
+
+def func_information_process_xerr(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if data is None else data
+	for key,i in zip(keys,data):
+		values[key] = i
+	data = values
+	return data
+
+def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if data is None else data
+	for key,i in zip(keys,data):
+		values[key] = array([*flatten(values.get(key,[])),*flatten(i)])
+	data = values
 	return data
 
 def func_information_function(data,*args,**kwargs):
 
-	x = data['x']
-	y = data['y']
-	yerr = data['yerr']
+	keys = list(data['y']) if isinstance(data['y'],dict) else list(range(len(data['y']))) if data['y'] is not None else None
+	keys = array([keys.index(i) for i in natsorted(keys)]) if keys is not None else None
+
+	print(data['x'])
+	print(data['y'])
+	print(data['xerr'])
+	print(data['yerr'])
+	exit()
+
+	x = array([data['x'][key] for key in data['x']] if isinstance(data['x'],dict) else data['x'])[keys] if data['x'] is not None and len(data['x'])>1 else array(data['x']) if data['x'] is not None else None
+	y = array([data['y'][key] for key in data['y']] if isinstance(data['y'],dict) else data['y'])[keys] if data['y'] is not None and len(data['y'])>1 else array(data['y']) if data['y'] is not None else None
+	xerr = array([data['xerr'][key] for key in data['xerr']] if isinstance(data['xerr'],dict) else data['xerr'])[keys] if data['xerr'] is not None and len(data['xerr'])>1 else array(data['xerr']) if data['xerr'] is not None else None
+	yerr = array([data['yerr'][key] for key in data['yerr']] if isinstance(data['yerr'],dict) else data['yerr'])[keys] if data['yerr'] is not None and len(data['yerr'])>1 else array(data['yerr']) if data['yerr'] is not None else None
 	D = data['label']['D']
 	size = y.shape[-1]
 
 	y = addition(y,-1)/size
 	yerr = addition(yerr,-1)/size
+	xerr = None
 
 	data['x'] = 1/x
 	data['y'] = (x*log(D)+log(size)) - y
-	data['xerr'] = None
+	data['xerr'] = xerr
 	data['yerr'] = yerr - y**2
+
+	print(data['x'].shape,data['y'].shape,data['x'])
 
 	return data
 

@@ -12328,11 +12328,11 @@ def replace(iterable,elements):
 
 
 def flatten(iterable,types=iterables):
-	if not isinstance(iterable,types):
-		yield from [iterable]
+	if (not isinstance(iterable,types)) or (isinstance(iterable,arrays) and not iterable.shape):
+		yield iterable
 	else:
 		for obj in iterable:
-			yield from [obj] if not isinstance(obj,types) else flatten(obj,types=types)
+			yield from flatten(obj,types=types)
 
 def to_eval(a,represent=True):
 	'''
