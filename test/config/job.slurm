@@ -222,7 +222,7 @@ cd ${JOB_PATH}
 
 
 # Cleanup
-rm -rf ${JOB_TMP}
+# rm -rf ${JOB_TMP}
 
 
 # Status
