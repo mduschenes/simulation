@@ -20,7 +20,7 @@ for PATH in PATHS:
 from src.utils import argparser,copy
 from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap,flatten
 from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
-from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation
+from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation,texify,baseify
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
 from src.io import load,dump,merge,join,split,exists,glob
 from src.fit import fit
@@ -3853,11 +3853,81 @@ def plotter(plots,processes,verbose=None):
 
 					data[attr%(axes)] = texify(data[attr%(axes)],**options['texify'])
 
+			# Set ticks
+			attrs = ['set_%slim']
+			kwargs = ['%smin','%smax']
+			for attr in attrs:
+				for axes in ['',*AXES]:
+
+					for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
+
+						if not data:
+							continue
+
+						for kwarg in kwargs:
+
+							kwarg = kwarg%(axes)
+
+							if data.get(kwarg) is None:
+								continue
+
+							value = data[kwarg]
+
+							scale = [i.get('value') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
+							scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
+
+							base = [i.get('base') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
+							base = None if not base else 10 if all(i in [None,10] for i in base) else [i for i in base if i not in [10]][0]
+
+							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+								for attr,default in {
+									'baseify':dict(base=base)}.items()
+								}
+
+							if value is not None:
+								data[kwarg] = baseify(value,**options['baseify'])
+							else:
+								data[kwarg] = value
+
+
+			# Set ticks
+			attrs = ['set_%sticks','%saxis.set_ticks']
+			kwargs = ['ticks']
+			for attr in attrs:
+				for axes in ['',*AXES]:
+
+					for data in search(plots[instance][subinstance][obj].get(attr%(axes))):
+
+						if not data:
+							continue
+
+						for kwarg in kwargs:
+
+							if data.get(kwarg) is None:
+								continue
+
+							value = data[kwarg]
+
+							scale = [i.get('value') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
+							scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
+
+							base = [i.get('base') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
+							base = None if not base else 10 if all(i in [None,10] for i in base) else [i for i in base if i not in [10]][0]
+
+							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+								for attr,default in {
+									'baseify':dict(base=base)}.items()
+								}
+
+							if value is not None:
+								data[kwarg] = [baseify(i,**options['baseify']) for i in value]
+							else:
+								data[kwarg] = value
+
+
 			# Set tick labels
 			attrs = ['set_%sticklabels','%saxis.set_ticklabels']
-			subattr = 'set_%sscale'
 			kwargs = ['labels','ticklabels']
-			subkwarg = 'value'
 			for attr in attrs:
 				for axes in ['',*AXES]:
 					
@@ -3873,13 +3943,16 @@ def plotter(plots,processes,verbose=None):
 
 							value = data[kwarg]
 
-							scale = [i.get(subkwarg) for i in search(plots[instance][subinstance][obj].get(subattr%(axes))) if i and subkwarg in i and i.get('obj')==data.get('obj')]
+							scale = [i.get('value') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
 							scale = None if not scale else 'linear' if all(i in [None,'linear'] for i in scale) else [i for i in scale if i not in ['linear']][0]
+
+							base = [i.get('base') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
+							base = None if not base else 10 if all(i in [None,10] for i in base) else [i for i in base if i not in [10]][0]
 
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
 									'texify':dict(),
-									'scinotation':dict(decimals=2,scilimits=[-1,1] if scale in [None,'linear'] else [0,0],strip=True)}.items()
+									'scinotation':dict(decimals=2,scilimits=[-1,1] if scale in [None,'linear'] else [0,0],base=base,strip=True,usebase=True)}.items()
 								}
 
 							if value is not None:

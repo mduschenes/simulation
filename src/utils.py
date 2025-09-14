@@ -12595,23 +12595,27 @@ def to_index(position,shape):
 	return index
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=True,scilimits=[-1,1],error=None,usetex=False):
+def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,one=False,fraction=False,strip=True,error=None,usebase=False,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
 		number (str,int,float): Number to be processed
 		decimals (int): Number of decimals in base part of number (including leading ones digit)
+		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		base (int): Base of scientific notation
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
+		fraction (bool): Make number strings into float representations
 		strip (bool): Remove trailing zeros in float representation
-		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
+		usebase (bool): Convert number to flt,exp in other base
 		usetex (bool): Render string with Latex
 	Returns:
 		string (str): String with scientific notation format for number
 	'''
+
+	basis = 10
 
 	if decimals is None:
 		decimals = 1
@@ -12619,10 +12623,18 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 	if scilimits is None:
 		scilimits = [-1,1]
 
+	if not base:
+		base = basis
+
 	if strip and decimals > 1:
 		stripper = lambda string: string.rstrip('0')
 	else:
 		stripper = lambda string: string
+
+	if fraction:
+		if isinstance(number,str) and '/' in number and all(is_number(i) for i in number.split('/')):
+			number = number.split('/')
+			number = float(number[0])/float(number[1])
 
 	if not is_number(number):
 		return str(number)
@@ -12658,13 +12670,13 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 	elif is_naninf(number):
 		string = r'%s%%s%%s%%s'%(str(0))
 
-	elif isinstance(number,(float,dbl,int,itg)):		
-		string = '%0.*e'%(decimals-1,number)
-		string = string.split('e')
-		basechange = log(10)/log(base)
+	elif isinstance(number,numbers):
+		value = '%0.*e'%(decimals-1,number)
+		value = value.split('e')
+		basechange = log(basis)/log(base) if not usebase else 1
 		basechange = int(basechange) if int(basechange) == basechange else basechange
-		flt = string[0]
-		exp = str(int(string[1])*basechange)
+		exp = str(int(value[1])*basechange)
+		flt = value[0]
 
 		if int(exp) in range(*scilimits):
 			flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
@@ -12677,12 +12689,13 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,strip=Tru
 				)
 	
 		if error is not None and not isinstance(error,str):
-			error = '%0.*e'%(decimals-1,error)
-			error = error.split('e')
-			basechange = log(10)/log(base)
+			value = '%0.*e'%(decimals-1,error)
+			value = value.split('e')
+			basechange = log(basis)/log(base) if not usebase else 1
 			basechange = int(basechange) if int(basechange) == basechange else basechange
-			flt = error[0]
-			exp = str(int(error[1])*basechange)
+			exp = str(int(value[1])*basechange)
+			flt = value[0]
+
 			if int(exp) in range(*scilimits):
 				flt = stripper('%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))))
 				error = r'%s'%(flt)
@@ -12740,6 +12753,35 @@ def texify(string,usetex=False):
 		string = '$%s$'%(string)
 
 	return string
+
+def baseify(number,base=None,decimals=None):
+	'''
+	Convert number to flt,exp in other base
+	Args:
+		number (int,float): Number
+		base (int): Base of number
+		decimals: Decimals of mantissa
+	Returns:
+		number (float): Number in other base
+	'''
+
+	basis = 10
+
+	if not is_number(number) or base == basis:
+		return number
+
+	if not base:
+		base = basis
+
+	string = '%0.*e'%(decimals-1,number) if decimals else '%e'%(number)
+
+	flt,exp = map(float,string.split('e'))
+
+	number = float(flt)*(base**float(exp))
+
+	return number
+
+
 
 def uncertainty_propagation(x,y,xerr,yerr,operation):
 	'''
