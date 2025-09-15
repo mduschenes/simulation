@@ -2597,7 +2597,7 @@
 				]
 			},
 			"set_xticklabels": {
-				"ticklabels": [
+				"labels": [
 					1e-16,1e-12,1e-8,1e-4,1e0
 				],
 				"size":36
@@ -2619,7 +2619,7 @@
 				]
 			},
 			"set_yticklabels": {
-				"ticklabels": [
+				"labels": [
 					1e-16,1e-12,1e-8,1e-4,1e0
 				],
 				"size":36

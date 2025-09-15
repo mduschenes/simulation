@@ -652,7 +652,7 @@
 							]
 						},
 						"ax.set_xticklabels": {
-							"ticklabels": [
+							"labels": [
 								"1/64","1/32","1/16","1/8","1/4","1/2"
 							],
 							"size":36
@@ -674,7 +674,7 @@
 							]
 						},
 						"ax.set_yticklabels": {
-							"ticklabels": [
+							"labels": [
 								1e-2,1e-1,1e0,1e1,1e2
 							],
 							"size":36

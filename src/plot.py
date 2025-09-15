@@ -1138,9 +1138,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		attrs = {
 			**{'set_%slabel'%(axes):['%slabel'%(axes)]
 				for axes in AXES},
-			**{'set_%sticklabels'%(axes):['labels']
+			**{'set_%sticklabels'%(axes):['labels','ticklabels']
 				for axes in AXES},
-			**{'%saxis.set_ticklabels'%(axes):['labels']
+			**{'%saxis.set_ticklabels'%(axes):['labels','ticklabels']
 				for axes in AXES},					
 			**{k:[OTHER] for k in PLOTS},		
 			**{'set_title':[OTHER],'suptitle':['t'],
@@ -1180,25 +1180,30 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def attr_share(value,attr,kwarg,obj=None,share=None,**kwargs):
 		attrs = {
-			**{'set_%s'%(key):['%s'%(label)]
+			**{string%(key):['%s'%(label)]
+				for string in ['set_%s']
 				for axes in AXES 
 				for key,label in [('%slabel'%(axes),'%slabel'%(axes)),
 								  ('%sticks'%(axes),'ticks'),
-								  ('%sticklabels'%(axes),'labels')]
+								  ('%sticklabels'%(axes),'labels'),('%sticklabels'%(axes),'ticklabels')]
 				},
-			**{'%saxis.%s'%(axes,key):['ticks']
+			**{string%(axes,key):['ticks']
+				for string in ['%saxis.%s']
 				for axes in AXES
 				for key in ['set_ticks']
 				},
-			**{'%saxis.%s'%(axes,key):['labels']
+			**{string%(axes,key):['labels','ticklabels']
+				for string in ['%saxis.%s']
 				for axes in AXES
 				for key in ['set_ticklabels']
 				},
-			**{'%saxis.%s'%(axes,key):['labelsize']
+			**{string%(axes,key):['labelsize']
+				for string in ['%saxis.%s']
 				for axes in AXES
 				for key in ['set_tick_params']
 				},
-			**{'%saxis.set_%s_%s'%(axes,which,formatter):['ticker'] 
+			**{string%(axes,which,formatter):['ticker']
+				for string in ['%saxis.set_%s_%s']
 				for axes in AXES for which in WHICH for formatter in FORMATTER
 				},
 			**{k:[OTHER] for k in PLOTS},	
@@ -1223,7 +1228,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		def returns(value,attr,kwarg,obj):
 			if attr in [string%(axes) for string in ['set_%sticklabels','%saxis.set_ticklabels'] for axes in AXES]:
-				if kwarg in ['labels']:
+				if kwarg in ['labels','ticklabels']:
 					return []
 				else:
 					return None
@@ -2415,14 +2420,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				call = True
 
-			elif attr in ['set_%slabel'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['set_%slabel'] for axes in AXES]:
 				for axes in AXES:
 					if attr in ['set_%slabel'%(axes)]:
 						break
 				if (axes in kwargs[attr]) and (kwargs[attr].get(axes) is None) and all(kwargs.get('layout',{}).get(k) in [1,None] for k in LAYOUT[:2]):
 					kwargs[attr][axes] = 0.5
 
-			elif attr in ['%saxis.set_%s_%s'%(axes,which,formatter) for axes in AXES for which in WHICH for formatter in FORMATTER]:
+			elif attr in [string%(axes,which,formatter) for string in ['%saxis.set_%s_%s'] for axes in AXES for which in WHICH for formatter in FORMATTER]:
 				
 				class LogFormatterCustom(matplotlib.ticker.LogFormatterMathtext):
 					def __call__(self, x, pos=None):
@@ -2453,7 +2458,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				call = False
 
 
-			elif attr in ['set_%sscale'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['set_%sscale'] for axes in AXES]:
 				replacements = {
 					'base':lambda axes,key,attr,kwargs:('%s%s'%(key,axes) if (kwargs[attr].get('value') not in ['linear']) else None),
 					'base':lambda axes,key,attr,kwargs:('%s'%(key) if (kwargs[attr].get('value') not in ['linear']) else None),
@@ -2469,27 +2474,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 								break
 
-			elif attr in ['set_%sticks'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['set_%sticks','%saxis.set_ticks'] for axes in AXES]:
 				pass
 
-			elif attr in ['set_%sticklabels'%(axes) for axes in AXES]:
-				pass	
+			elif attr in [string%(axes) for string in ['set_%sticklabels','%saxis.set_ticklabels'] for axes in AXES]:
+				props = {'ticklabels':'labels'}
+				for prop in props:
+					if kwargs[attr].get(prop):
+						kwargs[attr][props[prop]] = kwargs[attr].pop(prop)
 
-			elif attr in ['%saxis.set_ticks'%(axes) for axes in AXES]:
-				pass
-
-			elif attr in ['%saxis.set_ticklabels'%(axes) for axes in AXES]:
-				pass			
-			
-			elif attr in ['set_zorder']:
+			elif attr in [string for string in ['set_zorder']]:
 				call = True
 				pass
 
-			elif attr in ['invert_%saxis'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['invert_%saxis'] for axes in AXES]:
 				call = True
 				pass
 
-			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['set_%sbreak'] for axes in AXES]:
 
 				props = ['transform']
 				for prop in props:
@@ -2507,7 +2509,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				call = len(args)>0		
 
-			elif attr in ['set_%snbins'%(axes) for axes in AXES]:
+			elif attr in [string%(axes) for string in ['set_%snbins'] for axes in AXES]:
 				axes = attr.replace('set_','').replace('nbins','')
 				which = 'major'
 				formatter = 'locator'
@@ -2523,7 +2525,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							getattr(getattr(matplotlib,prop),subprop)(**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs}))
 				call = False
 
-			# elif attr in ['%saxis.offsetText.set_fontsize'%(axes) for axes in AXES]:
+			# elif attr in [string%(axes) for string in ['%saxis.offsetText.set_fontsize'] for axes in AXES]:
 			# 	axes = attr.split(delimiter)[0].replace('axis','')
 			# 	getattr(getattr(getattr(obj,'%saxis'%(axes)),'offsetText'),'set_fontsize')(**{k:kwargs[attr][k] for k in kwargs[attr] if k not in nullkwargs})
 			# 	call = False
@@ -2693,7 +2695,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					}
 
 			for _attr,_props in {
-				**{'%saxis.%s'%(axes,key):['labelsize']
+				**{string%(axes,key):['labelsize']
+				for string in ['%saxis.%s']
 				for axes in AXES
 				for key in ['set_tick_params']},
 				}.items():
