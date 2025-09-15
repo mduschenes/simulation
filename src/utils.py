@@ -10683,6 +10683,28 @@ def permutations(*iterables,repeat=None):
 
 	return itertools.product(*iterables,repeat=repeat)
 
+
+def powerset(iterable):
+	'''
+	Get powerset of iterable
+	Args:
+		iterable (iterable,int): Iterables to get powerset
+	Returns:
+		iterables (generator[iterable]): Generator of powerset of iterable
+	'''
+
+	if isinstance(iterable,integers):
+		iterable = range(iterable)
+
+	try:
+		length = len(iterable)
+	except:
+		iterable = list(iterable)
+		length = len(iterable)
+
+	return (iterable for size in range(length+1) for iterable in itertools.combinations(iterable,size))
+
+
 def slicer(iterable,size):
 	'''
 	Get slices of iterable

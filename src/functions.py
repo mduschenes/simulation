@@ -195,12 +195,12 @@ def func_hist_yerr(data,*args,**kwargs):
 	return data
 
 def func_sample_y(data,*args,**kwargs):
-	data = sum((array(i) for i in data))
+	data = sum((np.array(i) for i in data))
 	data = data.reshape(1,*data.shape)
 	return data
 
 def func_sample_x(data,*args,**kwargs):
-	data = sum((array(i) for i in data))/len(data)
+	data = sum((np.array(i) for i in data))/len(data)
 	return data
 
 def func_sample_yerr(data,*args,**kwargs):
@@ -236,12 +236,12 @@ def func_sample_function_err(data,*args,eps=None,**kwargs):
 	return data
 
 def func_info_y(data,*args,**kwargs):
-	data = sum((array(i) for i in data))
+	data = sum((np.array(i) for i in data))
 	data = data.reshape(*data.shape)
 	return data
 
 def func_info_yerr(data,*args,**kwargs):
-	data = sum((array(i) for i in data))
+	data = sum((np.array(i) for i in data))
 	data = data.reshape(*data.shape)
 	return data
 
@@ -254,24 +254,24 @@ def func_info_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	return data
 
 def func_info_function_y(data,*args,**kwargs):
-	func = lambda x,n: n*exp(-n*x)
-	norm = lambda x: x/addition(x,-1)[...,None]
+	func = lambda x,n: n*np.exp(-n*x)
+	norm = lambda x: x/np.sum(x,axis=-1)[...,None]
 
 	size = min(len(data['x']),len(data['y']))
 
 	x = data['x']
-	z = array([*data['label']['sample.array.linear.x']])[None,:]
+	z = np.array([*data['label']['sample.array.linear.x']])[None,:]
 
 	n = ((data['label']['D'])**(x))[:,None]
 
-	y = array(data['y'])
+	y = np.array(data['y'])
 	y = norm(y)
 
 	z = func(z,n)
 	z = norm(z)
 
 	data['x'] = 1/x
-	data['y'] = -addition((y*(log(z)-log(y)))*((y!=0) & (z!=0)),-1)
+	data['y'] = -np.sum((y*(np.log(z)-np.log(y)))*((y!=0) & (z!=0)),axis=-1)
 	data['xerr'] = None
 	data['yerr'] = None
 
@@ -307,7 +307,7 @@ def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if data is None else data
 	for key,i in zip(keys,data):
-		values[key] = array([*values.get(key,[]),*flatten(i)])
+		values[key] = np.array([*values.get(key,[]),*flatten(i)])
 	data = values
 	return data
 
@@ -325,7 +325,7 @@ def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if data is None else data
 	for key,i in zip(keys,data):
-		values[key] = array([*values.get(key,[]),*flatten(i)])
+		values[key] = np.array([*values.get(key,[]),*flatten(i)])
 	data = values
 	return data
 
@@ -341,18 +341,18 @@ def func_information_function(data,*args,**kwargs):
 		elif all(i is None for i in data):
 			data = None
 		else:
-			data = array(data)
+			data = np.array(data)
 			eps = epsilon(data.dtype)
 			value = 0
-			data = inplace(data,(is_naninf(data))|(data<eps),value)
+			data[(is_naninf(data))|(data<eps)] = value
 
 		return data
 
 	func = {
 		'x':lambda attr,key,data:1/data[attr][key],
-		'y':lambda attr,key,data:(data['x'][key]*log(data['label']['D'])+log(data[attr][key].size)) - addition(data[attr][key])/data[attr][key].size,
+		'y':lambda attr,key,data:(data['x'][key]*np.log(data['label']['D'])+np.log(data[attr][key].size)) - np.mean(data[attr][key]),
 		'xerr':lambda attr,key,data:data[attr][key],
-		'yerr':lambda attr,key,data:addition(data[attr][key])/data[attr][key].size - (addition(data['y'][key])/data['y'][key].size)**2,
+		'yerr':lambda attr,key,data:np.mean(data[attr][key]) - (np.mean(data['y'][key]))**2,
 	}
 
 	func = {attr:parse([func[attr](attr,key,data) for key in keys]) for attr in func if attr in data} if keys is not None else {}
@@ -369,7 +369,7 @@ def func_histogram(obj,*args,**kwargs):
 
 def func_information(obj,*args,**kwargs):
 	n = obj.size
-	func = lambda obj,n: n*exp(-n*obj)
+	func = lambda obj,n: n*np.exp(-n*obj)
 	key = ['','err']
 	value = information(func,obj=obj,n=n)
 	value = addition(value)/n,addition(value**2)/n
@@ -377,10 +377,10 @@ def func_information(obj,*args,**kwargs):
 	return data
 
 def func_y(data):
-	return np.abs(np.array(data['y']))#*(data['N']*log(data['D']))/log(2)
+	return np.abs(np.array(data['y']))#*(data['N']*np.log(data['D']))/np.log(2)
 
 def func_yerr(data):
-	return np.abs(np.array(data['yerr']))#*(data['N']*log(data['D']))/log(2)
+	return np.abs(np.array(data['yerr']))#*(data['N']*np.log(data['D']))/np.log(2)
 
 def func_y_scale(data):
 	y = np.array(data['y'])
@@ -402,7 +402,7 @@ def func_line(data,attr=None):
 		return data
 	values = {i: data[i].mean() for i in ['D','N']}
 	data[attr] = 2*(sum(1/i for i in range(int(values['D']**(values['N']/2))+1,int(values['D']**(values['N'])))) -
-		   ((int(values['D']**(values['N']/2))-1)/(2*int(values['D']**(values['N']/2)))))/log(values['D']**(2*values['N']/2))
+		   ((int(values['D']**(values['N']/2))-1)/(2*int(values['D']**(values['N']/2)))))/np.log(values['D']**(2*values['N']/2))
 	return data
 
 def func_line_err(data):
@@ -415,10 +415,10 @@ def func_mutual_measure(data):
 	return np.array(data['mutual.quantum']) - np.array(data['discord.quantum'])
 
 def func_infidelity(data):
-	return 1 - np.abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+	return 1 - np.abs((1-np.array(data['y']))/(1-np.array(data['norm.pure'])))#*(data['N']*np.log(data['D']))/np.log(2)
 
 def func_infidelity_err(data):
-	return np.abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*log(data['D']))/log(2)
+	return np.abs((np.array(data['yerr']))/(1-np.array(data['norm.pure'])))#*(data['N']*np.log(data['D']))/np.log(2)
 
 def func_max_bond(data):
 	return data['D']**(data['N']//2) <= data['max_bond'] <= data['D']**(data['N'])
@@ -470,7 +470,7 @@ def func_spectrum(data,attr=None):
 		return
 	def func(data):
 		data = sorted(data,reverse=True)/max(np.abs(i) for i in data)
-		# data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/maximum(np.abs(data[i][~is_nan(data[i])])) for i in range(n)]
+		# data = [np.array([*sort((data[i][~is_nan(data[i])]))[::-1],*data[i][is_nan(data[i])]])/np.max(np.abs(data[i][~is_nan(data[i])])) for i in range(n)]
 		return data
 	data = (func(i) for i in data[attr])
 	data = to_tuple(data)
@@ -486,14 +486,14 @@ def func_spectrum_rank(data,attr=None,eps=None):
 			data = asscalar(
 				nonzero(
 					sort(
-						np.abs(data[~is_nan(data)])/maximum(np.abs(data[~is_nan(data)]))
+						np.abs(data[~is_nan(data)])/np.max(np.abs(data[~is_nan(data)]))
 					),eps=eps)
 				)
 		else:
 			data = asscalar(
 				nonzero(
 					sort(
-						np.abs(data[~is_nan(data)])/maximum(np.abs(data))
+						np.abs(data[~is_nan(data)])/np.max(np.abs(data))
 					),eps=eps)
 				)
 		return data
@@ -508,7 +508,7 @@ def func_spectrum_sign(data,attr=None,eps=None):
 	eps = 1e-16 if eps is None else eps
 	def func(data):
 		data = np.array(list(data))
-		data = np.abs(addition(data[data<eps])/addition(data[data>=eps]))
+		data = np.abs(np.sum(data[data<eps])/np.sum(data[data>=eps]))
 		return data
 	data = np.array([func(i) for i in data[attr]])
 	return data
@@ -537,33 +537,33 @@ def func_T_J(data):
 
 def func_variables_relative_mean(data):
 	out = np.array(data['variables.relative.mean'])
-	return (out/max(1,maximum(out)) if out.size else out)
+	return (out/max(1,np.max(out)) if out.size else out)
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = sort(np.abs(out))
-	out = (out/maximum(out) if out.size else out)
+	out = (out/np.max(out) if out.size else out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
 	return out
 
 def func_fisher_eigenvalues(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = np.abs(out)
-	out = (out/maximum(out) if out.size else out)
+	out = (out/np.max(out) if out.size else out)
 	out = to_tuple(out)
 	return out
 
 def func_hessian_rank(data):
 	out = np.array(list(data['hessian.eigenvalues']))
 	out = sort(np.abs(out))
-	out = (out/maximum(out) if out.size else out)
+	out = (out/np.max(out) if out.size else out)
 	out = asscalar(nonzero(out,axis=-1,eps=1e-16))
 	return out
 
 def func_hessian_eigenvalues(data):
 	out = np.array(list(data['hessian.eigenvalues']))
 	out = np.abs(out)
-	out = (out/maximum(out) if out.size else out)
+	out = (out/np.max(out) if out.size else out)
 	out = to_tuple(out)
 	return out
 
@@ -577,7 +577,7 @@ def func_objective_func_err(data):
 	return out
 
 def func_entropy(data):
-	out = np.array(data['entropy'])/log(data['D']**data['N'])
+	out = np.array(data['entropy'])/np.log(data['D']**data['N'])
 	return out
 
 def func_entropy_func(data):
@@ -614,12 +614,12 @@ def func_similarity_func_err(data):
 	return out
 
 def func_divergence(data):
-	out = np.array(data['divergence'])/log(data['D']**data['N'])
+	out = np.array(data['divergence'])/np.log(data['D']**data['N'])
 	return out
 
 def func_divergence_func(data):
 	# Incorrect
-	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))/log(data['D']**data['N'])
+	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))/np.log(data['D']**data['N'])
 	return out
 
 def func_divergence_func_err(data):

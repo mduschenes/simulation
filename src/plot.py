@@ -170,6 +170,22 @@ def hasattrs(obj,attr,delimiter=delimiter):
 		return hasattr(obj,attr)
 
 
+def inplace(obj,index,item,op=None,**kwargs):
+	'''
+	Apply operation with item at index of object
+	Args:
+		obj (object): Object to apply operation
+		index (object): Index to apply operation item
+		item (object): Item to operate with
+		op (str): Operation to apply at index, allowed strings in ['set','get','apply','add','multiply','divide','power','min','max']
+		kwargs (dict): Additional keyword arguments for operation
+	Returns:
+		obj (object): Object with applied item at index
+	'''
+	obj[index] = item
+	return obj
+
+
 def isiterable(obj,exceptions=()):
 	'''
 	Check if object is iterable
@@ -786,9 +802,9 @@ def set_data(data=None,scale=None,base=None,**kwargs):
 		if not isinstance(data,np.ndarray):
 			for i,value in enumerate(data):
 				if value == 0:
-					data[i] = nan
+					data = inplace(data,i,nan)
 		else:
-			data[data==0] = nan
+			data = inplace(data,data==0,nan)
 
 	return data
 
@@ -2117,7 +2133,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
 					y /= np.maximum(np.sum(y),1)
-				y[y==0] = nan
+				y = inplace(y,y==0,nan)
 
 				prop = 'edgecolor'
 				if isinstance(kwargs[attr].get(prop),dict):
