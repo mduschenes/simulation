@@ -350,7 +350,7 @@ def func_information_function(data,*args,**kwargs):
 
 	func = {
 		'x':lambda attr,key,data:1/data[attr][key],
-		'y':lambda attr,key,data:(data['x'][key]*np.log(data['label']['D'])+np.log(data[attr][key].size)) - np.mean(data[attr][key]),
+		'y':lambda attr,key,data:-(data['x'][key]*np.log(data['label']['D'])+np.log(data[attr][key].size)) + np.mean(data[attr][key]),
 		'xerr':lambda attr,key,data:data[attr][key],
 		'yerr':lambda attr,key,data:np.mean(data[attr][key]) - (np.mean(data['y'][key]))**2,
 	}
