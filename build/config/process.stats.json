@@ -1,5 +1,5 @@
 {
-	"load": 1,
+	"load": 0,
 	"dump": 1,
 	"tmp": "merge",
 	"chunk":60,
