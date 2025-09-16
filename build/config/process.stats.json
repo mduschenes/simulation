@@ -622,7 +622,7 @@
                             "ymax": 2e0
                         },
                         "ax.set_ynbins": {
-                            "nbins": 4
+                            "nbins": 3
                         },
                         "ax.set_yticks": {
                             "ticks": [
