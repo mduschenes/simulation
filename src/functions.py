@@ -329,7 +329,7 @@ def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs
 	data = values
 	return data
 
-def func_information_function(data,*args,**kwargs):
+def func_information_function(data,*args,function=None,**kwargs):
 
 	keys = data['y']
 	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
@@ -342,17 +342,30 @@ def func_information_function(data,*args,**kwargs):
 			data = None
 		else:
 			data = np.array(data)
-			eps = epsilon(data.dtype)
-			value = 0
-			data[(is_naninf(data))|(data<eps)] = value
+			# eps = epsilon(data.dtype)
+			# value = 0
+			# data[(is_naninf(data))|(data<eps)] = value
 
 		return data
 
+	default = lambda data,*args,**kwargs: 1
+	if function is None:
+		function = default
+	elif isinstance(function,str):
+		function = load(function,default=default)
+	def decorator(function):
+		def wrapper(attr,key,data,*args,**kwargs):
+			data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
+			return function(data,*args,**kwargs)
+		return wrapper
+
+	function = decorator(function)
+
 	func = {
 		'x':lambda attr,key,data:1/data[attr][key],
-		'y':lambda attr,key,data:-(data['x'][key]*np.log(data['label']['D'])+np.log(data[attr][key].size)) + np.mean(data[attr][key]),
+		'y':lambda attr,key,data: np.mean(data[attr][key]),
 		'xerr':lambda attr,key,data:data[attr][key],
-		'yerr':lambda attr,key,data:np.mean(data[attr][key]) - (np.mean(data['y'][key]))**2,
+		'yerr':lambda attr,key,data:np.sqrt((np.mean(data[attr][key]) - (np.mean(data[attr[0]][key]))**2)/(function(attr,key,data)*data[attr][key].size)),
 	}
 
 	func = {attr:parse([func[attr](attr,key,data) for key in keys]) for attr in func if attr in data} if keys is not None else {}
@@ -368,13 +381,22 @@ def func_histogram(obj,*args,**kwargs):
 	return data
 
 def func_information(obj,*args,**kwargs):
+	def func(x,n):
+		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
+		x /= addition(x)
+		return x
 	n = obj.size
-	func = lambda obj,n: n*np.exp(-n*obj)
 	key = ['','err']
-	value = information(func,obj=obj,n=n)
-	value = addition(value)/n,addition(value**2)/n
+	value = information(func,obj,n)
+	value = addition(value)/n/log(n),addition(value**2)/n/(log(n)**2)
 	data = dict(zip(key,value))
 	return data
+
+def func_size_array(data,*args,**kwargs):
+	return data['label']['D']**(2*data['x'])
+
+def func_size_state(data,*args,**kwargs):
+	return data['label']['D']**(1*data['x'])
 
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*np.log(data['D']))/np.log(2)

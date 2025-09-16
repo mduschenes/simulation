@@ -1,801 +1,750 @@
 {
-	"load": 0,
-	"dump": 1,
-	"tmp": "merge",
-	"chunk":60,
-	"plot": 1,
-	"process": 1,
-	"postprocess": 0,
-	"reset": 0,
-	"usetex": true,
-	"useval": true,
-	"instance": {
-		"hist.array.M.noise.parameters": 0,
-		"bar.array.M.noise.parameters": 0,
-		"sample.array.M.noise.parameters": 0,
-		"sample.state.M.noise.parameters": 0,
-		"info.array.N.M.noise.parameters": 0,
-		"info.state.N.M.noise.parameters": 0,
-		"information.array.state.N.M.noise.parameters": 1
-	},
-	"configuration": [
-		[
-			[
-				"hist.array.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"M": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"noise.parameters": null
-					},
-					"kwargs": {
-						"fig.set_size_inches":{"w":43,"h":43},
-						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
-						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.set_ylabel.scinotation": {
-							"scilimits": [
-								1,
-								2
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.hist.label.labels": null,
-						"ax.hist.color": {
-							"@N@": {
-								"value": {
-									"value": null,
-									"color": "viridis",
-									"values": [],
-									"norm": null,
-									"scale": "linear",
-									"alpha": 1
-								},
-								"type": "value"
-							}
-						},
-						"ax.hist.alpha": {
-							"@N@": [
-								0.8
-							]
-						},
-						"ax.set_colorbar.value": {
-							"@N@": {
-								"value": null,
-								"type": "index"
-							}
-						},
-						"ax.set_colorbar.set_label.label": "N",
-						"ax.set_colorbar.share": true,
-						"ax.set_colorbar.location": "right",
-						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
-						"ax.set_colorbar.anchor": [10,0.5],
-						"ax.set_colorbar.set_ticks.ticks":5,
-						"ax.set_colorbar.set_ticklabels.ticklabels": null,
-						"ax.legend": null,
-						"style.share.ax.legend": false,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_ylabel": "left",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right"
-					}
-				}
-			]
-		],
-		[
-			[
-				"bar.array.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"M": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"noise.parameters": null
-					},
-					"kwargs": {
-						"fig.set_size_inches":{"w":43,"h":43},
-						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
-						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.set_ylabel.scinotation": {
-							"scilimits": [
-								1,
-								2
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.bar.label.labels": null,
-						"ax.bar.color": {
-							"@N@": {
-								"value": {
-									"value": null,
-									"color": "viridis",
-									"values": [],
-									"norm": null,
-									"scale": "linear",
-									"alpha": 1
-								},
-								"type": "value"
-							}
-						},
-						"ax.bar.alpha": {
-							"@N@": [
-								0.8
-							]
-						},
-						"ax.set_colorbar.value": {
-							"@N@": {
-								"value": null,
-								"type": "index"
-							}
-						},
-						"ax.set_colorbar.set_label.label": "N",
-						"ax.set_colorbar.share": true,
-						"ax.set_colorbar.location": "right",
-						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
-						"ax.set_colorbar.anchor": [10,0.5],
-						"ax.set_colorbar.set_ticks.ticks":5,
-						"ax.set_colorbar.set_ticklabels.ticklabels": null,
-						"ax.legend": null,
-						"style.share.ax.legend": false,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_ylabel": "left",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right"
-					}
-				}
-			]
-		],
-		[
-			[
-				"sample.array.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"M": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"noise.parameters": null
-					},
-					"kwargs": {
-						"fig.set_size_inches":{"w":43,"h":43},
-						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
-						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.set_ylabel.scinotation": {
-							"scilimits": [
-								1,
-								2
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.bar.label.labels": null,
-						"ax.bar.color": {
-							"@N@": {
-								"value": {
-									"value": null,
-									"color": "viridis",
-									"values": [],
-									"norm": null,
-									"scale": "linear",
-									"alpha": 1
-								},
-								"values": null,
-								"type": "value"
-							}
-						},
-						"ax.bar.alpha": {
-							"@N@": [
-								0.8
-							]
-						},
-						"ax.bar.plots":false,
-						"ax.set_colorbar.value": {
-							"@N@": {
-								"value": null,
-								"values": null,
-								"type": "index"
-							}
-						},
-						"ax.set_colorbar.set_label.label": "N",
-						"ax.set_colorbar.share": true,
-						"ax.set_colorbar.location": "right",
-						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
-						"ax.set_colorbar.anchor": [10,0.5],
-						"ax.set_colorbar.set_ticks.ticks":5,
-						"ax.set_colorbar.set_ticklabels.ticklabels": null,
-						"ax.legend.set_label":false,
-						"ax.set_xscale": {
-							"value": "linear"
-						},
-						"ax.set_xlim": {
-							"xmin": -0.1,
-							"xmax": 1.1
-						},
-						"ax.set_xnbins": {
-							"nbins": 5
-						},
-						"ax.set_xticks": {
-							"ticks": [
-								0,0.2,0.4,0.6,0.8,1.0
-							]
-						},
-						"ax.set_xticklabels": {
-							"labels": [
-								0,0.2,0.4,0.6,0.8,1.0
-							],
-							"size": 36
-						},
-						"ax.set_xscale": {
-							"value": "log",
-							"base": 10
-						},
-						"ax.set_xlim": {
-							"xmin": 5e-17,
-							"xmax": 2e0
-						},
-						"ax.set_xnbins": {
-							"nbins": 5
-						},
-						"ax.set_xticks": {
-							"ticks": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							]
-						},
-						"ax.set_xticklabels": {
-							"labels": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							],
-							"size": 36
-						},
-						"ax.set_yscale": {
-							"value": "linear"
-						},
-						"ax.set_ylim": {
-							"ymin": -0.1,
-							"ymax": 1.1
-						},
-						"ax.set_ynbins": {
-							"nbins": 5
-						},
-						"ax.set_yticks": {
-							"ticks": [
-								0,0.2,0.4,0.6,0.8,1.0
-							]
-						},
-						"ax.set_yticklabels": {
-							"labels": [
-								0,0.2,0.4,0.6,0.8,1.0
-							],
-							"size": 36
-						},
-						"ax.set_yscale": {
-							"value": "log",
-							"base": 10
-						},
-						"ax.set_ylim": {
-							"ymin": 5e-17,
-							"ymax": 2e0
-						},
-						"ax.set_ynbins": {
-							"nbins": 4
-						},
-						"ax.set_yticks": {
-							"ticks": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							]
-						},
-						"ax.set_yticklabels": {
-							"labels": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							],
-							"size": 36
-						},
-						"style.share.ax.legend": true,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_ylabel": "left",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right"
-					}
-				}
-			]
-		],
-		[
-			[
-				"sample.state.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"M": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"noise.parameters": null
-					},
-					"kwargs": {
-						"fig.set_size_inches":{"w":43,"h":43},
-						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
-						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.set_ylabel.scinotation": {
-							"scilimits": [
-								1,
-								2
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.bar.label.labels": null,
-						"ax.bar.color": {
-							"@N@": {
-								"value": {
-									"value": null,
-									"color": "viridis",
-									"values": [],
-									"norm": null,
-									"scale": "linear",
-									"alpha": 1
-								},
-								"values": null,
-								"type": "value"
-							}
-						},
-						"ax.bar.alpha": {
-							"@N@": [
-								0.8
-							]
-						},
-						"ax.bar.plots":false,
-						"ax.set_colorbar.value": {
-							"@N@": {
-								"value": null,
-								"values": null,
-								"type": "index"
-							}
-						},
-						"ax.set_colorbar.set_label.label": "N",
-						"ax.set_colorbar.share": true,
-						"ax.set_colorbar.location": "right",
-						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
-						"ax.set_colorbar.anchor": [10,0.5],
-						"ax.set_colorbar.set_ticks.ticks":5,
-						"ax.set_colorbar.set_ticklabels.ticklabels": null,
-						"ax.legend.set_label":false,
-						"ax.set_xscale": {
-							"value": "log",
-							"base": 10
-						},
-						"ax.set_xlim": {
-							"xmin": 5e-17,
-							"xmax": 2e0
-						},
-						"ax.set_xnbins": {
-							"nbins": 5
-						},
-						"ax.set_xticks": {
-							"ticks": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							]
-						},
-						"ax.set_xticklabels": {
-							"labels": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							],
-							"size": 36
-						},
-						"ax.set_xscale": {
-							"value": "linear"
-						},
-						"ax.set_xlim": {
-							"xmin": -0.1,
-							"xmax": 1.1
-						},
-						"ax.set_xnbins": {
-							"nbins": 5
-						},
-						"ax.set_xticks": {
-							"ticks": [
-								0,0.2,0.4,0.6,0.8,1.0
-							]
-						},
-						"ax.set_xticklabels": {
-							"labels": [
-								0,0.2,0.4,0.6,0.8,1.0
-							],
-							"size": 36
-						},
-						"ax.set_yscale": {
-							"value": "log",
-							"base": 10
-						},
-						"ax.set_ylim": {
-							"ymin": 5e-17,
-							"ymax": 2e0
-						},
-						"ax.set_ynbins": {
-							"nbins": 4
-						},
-						"ax.set_yticks": {
-							"ticks": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							]
-						},
-						"ax.set_yticklabels": {
-							"labels": [
-								1e-16,
-								1e-12,
-								1e-8,
-								1e-4,
-								1e0
-							],
-							"size": 36
-						},
-						"ax.set_yscale": {
-							"value": "linear"
-						},
-						"ax.set_ylim": {
-							"ymin": -0.1,
-							"ymax": 1.1
-						},
-						"ax.set_ynbins": {
-							"nbins": 5
-						},
-						"ax.set_yticks": {
-							"ticks": [
-								0,0.2,0.4,0.6,0.8,1.0
-							]
-						},
-						"ax.set_yticklabels": {
-							"labels": [
-								0,0.2,0.4,0.6,0.8,1.0
-							],
-							"size": 36
-						},
-						"style.share.ax.legend": true,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_ylabel": "left",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right"
-					}
-				}
-			]
-		],
-		[
-
-			[
-				"info.array.N.M.noise.parameters",
-				"info.state.N.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-					},
-					"kwargs": {
-						"ax.set_ylabel.size": 36,
-						"ax.set_xlabel.size": 36,
-						"ax.set_ylabel.y": null,
-						"ax.set_yticklabels": null,
-						"ax.set_xticklabels": null,
-						"ax.set_colorbar.set_label.label": "noise.parameters",
-						"ax.set_colorbar.set_label.size": 36,
-						"ax.set_colorbar.fraction": 0.15,
-						"ax.set_colorbar.shrink": 1,
-						"ax.set_colorbar.aspect": 40,
-						"ax.set_colorbar.pad": 0.02,
-						"ax.set_colorbar.ax.tick_params.labelsize": 36,
-						"ax.legend.loc": null,
-						"ax.legend.title_fontsize": 36,
-						"ax.legend.fontsize": 36,
-						"ax.legend.prop.size": 36,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_ylabel": "middle_left",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right",
-						"style.share.ax.legend": "bottom_right",
-						"fig.set_size_inches": {
-							"w": 40,
-							"h": 30
-						}
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-					}
-				}
-			]
-		],
-		[
-			[
-				"information.array.state.N.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-					},
-					"kwargs": {
-						"ax.errorbar.label.labels": {},
-						"ax.errorbar.label.scinotation": {
-							"scilimits": [
-								0,
-								4
-							],
-							"decimals": 0,
-							"one": false
-						},
-						"ax.set_xlabel.xlabel":"\\textrm{Size} ~~ 1/N",
-						"ax.set_xlabel.size": 36,
-						"ax.set_ylabel.ylabel":"\\textrm{Divergence} ~~ \\textrm{KL}(p_{\\textrm{Data}},p_{\\textrm{Theory}})",
-						"ax.set_ylabel.size": 36,
-						"ax.set_ylabel.y": null,
-						"ax.set_xticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.set_yticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip":true
-						},
-						"ax.set_xscale": {
-							"value": "log",
-							"base": 2
-						},
-						"ax.set_xlim": {
-							"xmin":1e-7,
-							"xmax":1e0
-						},
-						"ax.set_xnbins": {
-							"nbins": 6
-						},
-						"ax.set_xticks": {
-							"ticks": [
-								1e-6,1e-5,1e-4,1e-3,1e-2,1e-1
-							]
-						},
-						"ax.set_xticklabels": {
-							"labels": [
-								"1/64","1/32","1/16","1/8","1/4","1/2"
-							],
-							"size":36
-						},
-						"ax.set_yscale": {
-							"value": "log",
-							"base": 10
-						},
-						"ax.set_ylim": {
-							"ymin": 5e-3,
-							"ymax": 2e2
-						},
-						"ax.set_ynbins": {
-							"nbins": 5
-						},
-						"ax.set_yticks": {
-							"ticks": [
-								1e-2,1e-1,1e0,1e1,1e2
-							]
-						},
-						"ax.set_yticklabels": {
-							"labels": [
-								1e-2,1e-1,1e0,1e1,1e2
-							],
-							"size":36
-						},
-						"ax.set_colorbar.set_label.label": "noise.parameters",
-						"ax.set_colorbar.set_label.size": 36,
-						"ax.set_colorbar.fraction": 0.15,
-						"ax.set_colorbar.shrink": 1,
-						"ax.set_colorbar.aspect": 40,
-						"ax.set_colorbar.pad": 0.02,
-						"ax.set_colorbar.ax.tick_params.labelsize": 36,
-						"ax.set_colorbar.scinotation": {
-							"scilimits": [
-								0,
-								0
-							],
-							"decimals": 0,
-							"one": false
-						},
-						"ax.legend.loc": null,
-						"ax.legend.title_fontsize": 36,
-						"ax.legend.fontsize": 36,
-						"ax.legend.prop.size": 36,
-						"ax.legend.scinotation": {
-							"scilimits": [
-								0,
-								0
-							],
-							"decimals": 0,
-							"one": false
-						},
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_ylabel": "middle_left",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right",
-						"style.share.ax.legend": "bottom_right",
-						"fig.set_size_inches": {
-							"w": 40,
-							"h": 30
-						}
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-					}
-				}
-			]
-		]
-	],
-	"join":{
-		"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}},
-		"bar.array.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}},
-		"sample.array.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}},
-		"sample.state.M.noise.parameters":{"ax":{"bar":["label","color","alpha"]}}
-	},
-	"join":null,	
-	"patterns": {
-		"max_bond": "S",
-		"cyclic": "periodic"
-	},
-	"texify": {
-		"iteration": "\\textrm{Iteration}",
-		"objective": "\\textrm{Infidelity}",
-		"grad.norm": "\\abs{\\textrm{Gradient}}",
-		"search.norm": "\\abs{\\textrm{Search Direction}}",
-		"alpha": "\\textrm{Learning Rate}",
-		"beta": "\\textrm{Conjugate Rate}",
-		"rank": "\\textrm{Rank}",
-		"entropy": "\\textrm{Entropy}",
-		"array": "\\textrm{Probability} ~~ p_{\\mu}",
-		"state": "\\textrm{State} ~~ \\rho_{\\sigma\\sigma}",
-		"array.kurtosis": "\\textrm{Probability Kurtosis} ~~ \\kappa(p)",
-		"state.kurtosis": "\\textrm{State Kurtosis} ~~ \\kappa(\\rho)",
-		"None": "D^{N}",
-		"key": "\\textrm{Key}",
-		"instance": "\\textrm{Instance}",
-		"instances.parameters.xy.seed": "\\textrm{Instance} \\theta^{xy}",
-		"instances.parameters.z.seed": "\\textrm{Instance} \\theta^{z}",
-		"instances.parameters.zz.seed": "\\textrm{Instance} \\theta^{zz}",
-		"instances.label.seed": "\\textrm{Instance} U",
-		"instances.noise.seed": "\\textrm{Instance} \\gamma",
-		"instances.state.seed": "\\textrm{Instance} \\psi",
-		"scheme": "\\textrm{Scheme}",
-		"svd": "\\textrm{SVD}",
-		"nmf": "\\textrm{NMF}",
-		"backend": "\\textrm{Backend}",
-		"jax": "\\textrm{Jax}",
-		"autograd": "\\textrm{Autograd}",
-		"S": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
-		"tau": "\\delta/T_{\\gamma}",
-		"T": "T/T_{\\gamma}",
-		"N":"\\textrm{Size} ~~ N",
-		"M":"\\textrm{Depth} ~~ M",
-		"noise.parameters":"\\textrm{Noise} ~~ \\gamma",
-		"noise.scale": "T_{\\gamma}",
-		"architecture": "\\textrm{Architecture}",
-		"constrained": "\\textrm{Constrained}",
-		"unconstrained": "\\textrm{Unconstrained}",
-		"parameters.xy.parameters": "\\theta",
-		"parameters.z.parameters": "\\nu",
-		"parameters.zz.parameters": "J",
-		"parameters.xy.method": "\\textrm{Constraints}",
-		"hyperparameters.c1": "c_{1}",
-		"hyperparameters.c2": "c_{2}",
-		"hyperparameters.optimizer": "\\textrm{Optimizer}",
-		"gd": "\\textrm{Gradient Descent}",
-		"cg": "\\textrm{Conjugate Gradient}",
-		"adam": "\\textrm{Adam}",
-		"ls": "\\textrm{Line Search}"
-	},
-	"valify": {
-		"None": 1e-20
-	},
-	"path": {
-		"plot": "plot.pdf",
-		"metadata": "data.json"
-	},
-	"kwargs": {}
+    "load": 0,
+    "dump": 1,
+    "tmp": "merge",
+    "chunk": 100,
+    "plot": 1,
+    "process": 1,
+    "postprocess": 0,
+    "reset": 0,
+    "usetex": true,
+    "useval": true,
+    "instance": {
+        "hist.array.M.noise.parameters": 0,
+        "bar.array.M.noise.parameters": 0,
+        "sample.array.M.noise.parameters": 1,
+        "sample.state.M.noise.parameters": 0,
+        "info.array.N.M.noise.parameters": 0,
+        "info.state.N.M.noise.parameters": 0,
+        "information.array.state.N.M.noise.parameters": 1
+    },
+    "configuration": [
+        [
+            [
+                "hist.array.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {
+                        "M": null
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {
+                        "noise.parameters": null
+                    },
+                    "kwargs": {
+                        "fig.set_size_inches": {
+                            "w": 43,
+                            "h": 43
+                        },
+                        "fig.subplots_adjust": {
+                            "wspace": 0.3,
+                            "hspace": 0.3
+                        },
+                        "ax.set_title.label": "M",
+                        "ax.set_ylabel.ylabel": "noise.parameters",
+                        "ax.set_ylabel.scinotation": {
+                            "scilimits": [
+                                1,
+                                2
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.hist.label.labels": null,
+                        "ax.hist.color": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "type": "value"
+                            }
+                        },
+                        "ax.hist.alpha": {
+                            "@N@": [
+                                0.8
+                            ]
+                        },
+                        "ax.set_colorbar.value": {
+                            "@N@": {
+                                "value": null,
+                                "type": "index"
+                            }
+                        },
+                        "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.share": true,
+                        "ax.set_colorbar.location": "right",
+                        "ax.set_colorbar.orientation": "vertical",
+                        "ax.set_colorbar.fraction": 0.02,
+                        "ax.set_colorbar.size": "1.5%",
+                        "ax.set_colorbar.pad": 0.5,
+                        "ax.set_colorbar.aspect": 62,
+                        "ax.set_colorbar.anchor": [
+                            10,
+                            0.5
+                        ],
+                        "ax.set_colorbar.set_ticks.ticks": 5,
+                        "ax.set_colorbar.set_ticklabels.ticklabels": null,
+                        "ax.legend": null,
+                        "style.share.ax.legend": false,
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_ylabel": "left",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right"
+                    }
+                }
+            ]
+        ],
+        [
+            [
+                "bar.array.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {
+                        "M": null
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {
+                        "noise.parameters": null
+                    },
+                    "kwargs": {
+                        "fig.set_size_inches": {
+                            "w": 43,
+                            "h": 43
+                        },
+                        "fig.subplots_adjust": {
+                            "wspace": 0.3,
+                            "hspace": 0.3
+                        },
+                        "ax.set_title.label": "M",
+                        "ax.set_ylabel.ylabel": "noise.parameters",
+                        "ax.set_ylabel.scinotation": {
+                            "scilimits": [
+                                1,
+                                2
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.bar.label.labels": null,
+                        "ax.bar.color": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "type": "value"
+                            }
+                        },
+                        "ax.bar.alpha": {
+                            "@N@": [
+                                0.8
+                            ]
+                        },
+                        "ax.set_colorbar.value": {
+                            "@N@": {
+                                "value": null,
+                                "type": "index"
+                            }
+                        },
+                        "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.share": true,
+                        "ax.set_colorbar.location": "right",
+                        "ax.set_colorbar.orientation": "vertical",
+                        "ax.set_colorbar.fraction": 0.02,
+                        "ax.set_colorbar.size": "1.5%",
+                        "ax.set_colorbar.pad": 0.5,
+                        "ax.set_colorbar.aspect": 62,
+                        "ax.set_colorbar.anchor": [
+                            10,
+                            0.5
+                        ],
+                        "ax.set_colorbar.set_ticks.ticks": 5,
+                        "ax.set_colorbar.set_ticklabels.ticklabels": null,
+                        "ax.legend": null,
+                        "style.share.ax.legend": false,
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_ylabel": "left",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right"
+                    }
+                }
+            ]
+        ],
+        [
+            [
+                "sample.array.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {
+                        "M": null
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {
+                        "noise.parameters": null
+                    },
+                    "kwargs": {
+                        "fig.set_size_inches": {
+                            "w": 43,
+                            "h": 43
+                        },
+                        "fig.subplots_adjust": {
+                            "wspace": 0.3,
+                            "hspace": 0.3
+                        },
+                        "ax.set_title.label": "M",
+                        "ax.set_ylabel.ylabel": "noise.parameters",
+                        "ax.set_ylabel.scinotation": {
+                            "scilimits": [
+                                1,
+                                2
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.bar.label.labels": null,
+                        "ax.bar.color": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "values": null,
+                                "type": "value"
+                            }
+                        },
+                        "ax.bar.alpha": {
+                            "@N@": [
+                                0.8
+                            ]
+                        },
+                        "ax.bar.plots": false,
+                        "ax.set_colorbar.value": {
+                            "@N@": {
+                                "value": null,
+                                "values": null,
+                                "type": "index"
+                            }
+                        },
+                        "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.share": true,
+                        "ax.set_colorbar.location": "right",
+                        "ax.set_colorbar.orientation": "vertical",
+                        "ax.set_colorbar.fraction": 0.02,
+                        "ax.set_colorbar.size": "1.5%",
+                        "ax.set_colorbar.pad": 0.5,
+                        "ax.set_colorbar.aspect": 62,
+                        "ax.set_colorbar.anchor": [
+                            10,
+                            0.5
+                        ],
+                        "ax.set_colorbar.set_ticks.ticks": 5,
+                        "ax.set_colorbar.set_ticklabels.ticklabels": null,
+                        "ax.legend.set_label": false,
+                        "ax.set_xscale": {
+                            "value": "log",
+                            "base": 10
+                        },
+                        "ax.set_xlim": {
+                            "xmin": 5e-17,
+                            "xmax": 2.0
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 5
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_yscale": {
+                            "value": "log",
+                            "base": 10
+                        },
+                        "ax.set_ylim": {
+                            "ymin": 5e-17,
+                            "ymax": 2.0
+                        },
+                        "ax.set_ynbins": {
+                            "nbins": 4
+                        },
+                        "ax.set_yticks": {
+                            "ticks": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ]
+                        },
+                        "ax.set_yticklabels": {
+                            "labels": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ],
+                            "size": 36
+                        },
+                        "style.share.ax.legend": true,
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_ylabel": "left",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right"
+                    }
+                }
+            ]
+        ],
+        [
+            [
+                "sample.state.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {
+                        "M": null
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {
+                        "noise.parameters": null
+                    },
+                    "kwargs": {
+                        "fig.set_size_inches": {
+                            "w": 43,
+                            "h": 43
+                        },
+                        "fig.subplots_adjust": {
+                            "wspace": 0.3,
+                            "hspace": 0.3
+                        },
+                        "ax.set_title.label": "M",
+                        "ax.set_ylabel.ylabel": "noise.parameters",
+                        "ax.set_ylabel.scinotation": {
+                            "scilimits": [
+                                1,
+                                2
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.bar.label.labels": null,
+                        "ax.bar.color": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "values": null,
+                                "type": "value"
+                            }
+                        },
+                        "ax.bar.alpha": {
+                            "@N@": [
+                                0.8
+                            ]
+                        },
+                        "ax.bar.plots": false,
+                        "ax.set_colorbar.value": {
+                            "@N@": {
+                                "value": null,
+                                "values": null,
+                                "type": "index"
+                            }
+                        },
+                        "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.share": true,
+                        "ax.set_colorbar.location": "right",
+                        "ax.set_colorbar.orientation": "vertical",
+                        "ax.set_colorbar.fraction": 0.02,
+                        "ax.set_colorbar.size": "1.5%",
+                        "ax.set_colorbar.pad": 0.5,
+                        "ax.set_colorbar.aspect": 62,
+                        "ax.set_colorbar.anchor": [
+                            10,
+                            0.5
+                        ],
+                        "ax.set_colorbar.set_ticks.ticks": 5,
+                        "ax.set_colorbar.set_ticklabels.ticklabels": null,
+                        "ax.legend.set_label": false,
+                        "ax.set_xscale": {
+                            "value": "linear"
+                        },
+                        "ax.set_xlim": {
+                            "xmin": -0.1,
+                            "xmax": 1.1
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 5
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                0,
+                                0.2,
+                                0.4,
+                                0.6,
+                                0.8,
+                                1.0
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                0,
+                                0.2,
+                                0.4,
+                                0.6,
+                                0.8,
+                                1.0
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_yscale": {
+                            "value": "linear"
+                        },
+                        "ax.set_ylim": {
+                            "ymin": -0.1,
+                            "ymax": 1.1
+                        },
+                        "ax.set_ynbins": {
+                            "nbins": 5
+                        },
+                        "ax.set_yticks": {
+                            "ticks": [
+                                0,
+                                0.2,
+                                0.4,
+                                0.6,
+                                0.8,
+                                1.0
+                            ]
+                        },
+                        "ax.set_yticklabels": {
+                            "labels": [
+                                0,
+                                0.2,
+                                0.4,
+                                0.6,
+                                0.8,
+                                1.0
+                            ],
+                            "size": 36
+                        },
+                        "style.share.ax.legend": true,
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_ylabel": "left",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right"
+                    }
+                }
+            ]
+        ],
+        [
+            [
+                "info.array.N.M.noise.parameters",
+                "info.state.N.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {},
+                    "kwargs": {
+                        "ax.set_ylabel.size": 36,
+                        "ax.set_xlabel.size": 36,
+                        "ax.set_ylabel.y": null,
+                        "ax.set_yticklabels": null,
+                        "ax.set_xticklabels": null,
+                        "ax.set_colorbar.set_label.label": "noise.parameters",
+                        "ax.set_colorbar.set_label.size": 36,
+                        "ax.set_colorbar.fraction": 0.15,
+                        "ax.set_colorbar.shrink": 1,
+                        "ax.set_colorbar.aspect": 40,
+                        "ax.set_colorbar.pad": 0.02,
+                        "ax.set_colorbar.ax.tick_params.labelsize": 36,
+                        "ax.legend.loc": null,
+                        "ax.legend.title_fontsize": 36,
+                        "ax.legend.fontsize": 36,
+                        "ax.legend.prop.size": 36,
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_ylabel": "middle_left",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right",
+                        "style.share.ax.legend": "bottom_right",
+                        "fig.set_size_inches": {
+                            "w": 40,
+                            "h": 30
+                        }
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {}
+                }
+            ]
+        ],
+        [
+            [
+                "information.array.state.N.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {},
+                    "kwargs": {
+                        "ax.errorbar.label.labels": {},
+                        "ax.errorbar.label.scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "ax.set_xlabel.xlabel": "\\textrm{Size} ~~ 1/N",
+                        "ax.set_xlabel.size": 36,
+                        "ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N})",
+                        "ax.set_ylabel.size": 36,
+                        "ax.set_ylabel.y": null,
+                        "ax.set_xticklabels.scinotation": {
+                            "scilimits": [
+                                1,
+                                1
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.set_yticklabels.scinotation": {
+                            "scilimits": [
+                                1,
+                                1
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.set_xscale": {
+                            "value": "log",
+                            "base": 2
+                        },
+                        "ax.set_xlim": {
+                            "xmin": 1e-05,
+                            "xmax": 1.0
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 4
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                0.0001,
+                                0.001,
+                                0.01,
+                                0.1
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                "1/16",
+                                "1/8",
+                                "1/4",
+                                "1/2"
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_yscale": {
+                            "value": "log",
+                            "base": 10
+                        },
+                        "ax.set_ylim": {
+                            "ymin": 5e-3,
+                            "ymax": 2e0
+                        },
+                        "ax.set_ynbins": {
+                            "nbins": 4
+                        },
+                        "ax.set_yticks": {
+                            "ticks": [
+                                1e-2,1e-1,1e0
+                            ]
+                        },
+                        "ax.set_yticklabels": {
+                            "labels": [
+                                1e-2,1e-1,1e0
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_colorbar.set_label.label": "noise.parameters",
+                        "ax.set_colorbar.set_label.size": 36,
+                        "ax.set_colorbar.fraction": 0.15,
+                        "ax.set_colorbar.shrink": 1,
+                        "ax.set_colorbar.aspect": 40,
+                        "ax.set_colorbar.pad": 0.02,
+                        "ax.set_colorbar.ax.tick_params.labelsize": 36,
+                        "ax.set_colorbar.scinotation": {
+                            "scilimits": [
+                                0,
+                                0
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "ax.legend.loc": null,
+                        "ax.legend.title_fontsize": 36,
+                        "ax.legend.fontsize": 36,
+                        "ax.legend.prop.size": 36,
+                        "ax.legend.scinotation": {
+                            "scilimits": [
+                                0,
+                                0
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_ylabel": "middle_left",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right",
+                        "style.share.ax.legend": "bottom_right",
+                        "fig.set_size_inches": {
+                            "w": 40,
+                            "h": 30
+                        }
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {}
+                }
+            ]
+        ]
+    ],
+    "join": null,
+    "patterns": {
+        "max_bond": "S",
+        "cyclic": "periodic"
+    },
+    "texify": {
+        "iteration": "\\textrm{Iteration}",
+        "objective": "\\textrm{Infidelity}",
+        "grad.norm": "\\abs{\\textrm{Gradient}}",
+        "search.norm": "\\abs{\\textrm{Search Direction}}",
+        "alpha": "\\textrm{Learning Rate}",
+        "beta": "\\textrm{Conjugate Rate}",
+        "rank": "\\textrm{Rank}",
+        "entropy": "\\textrm{Entropy}",
+        "array": "\\textrm{Probability} ~~ p_{\\mu}",
+        "state": "\\textrm{State} ~~ \\rho_{\\sigma\\sigma}",
+        "array.kurtosis": "\\textrm{Probability Kurtosis} ~~ \\kappa(p)",
+        "state.kurtosis": "\\textrm{State Kurtosis} ~~ \\kappa(\\rho)",
+        "None": "D^{N}",
+        "key": "\\textrm{Key}",
+        "instance": "\\textrm{Instance}",
+        "instances.parameters.xy.seed": "\\textrm{Instance} \\theta^{xy}",
+        "instances.parameters.z.seed": "\\textrm{Instance} \\theta^{z}",
+        "instances.parameters.zz.seed": "\\textrm{Instance} \\theta^{zz}",
+        "instances.label.seed": "\\textrm{Instance} U",
+        "instances.noise.seed": "\\textrm{Instance} \\gamma",
+        "instances.state.seed": "\\textrm{Instance} \\psi",
+        "scheme": "\\textrm{Scheme}",
+        "svd": "\\textrm{SVD}",
+        "nmf": "\\textrm{NMF}",
+        "backend": "\\textrm{Backend}",
+        "jax": "\\textrm{Jax}",
+        "autograd": "\\textrm{Autograd}",
+        "S": "\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N}",
+        "tau": "\\delta/T_{\\gamma}",
+        "T": "T/T_{\\gamma}",
+        "N": "\\textrm{Size} ~~ N",
+        "M": "\\textrm{Depth} ~~ M",
+        "noise.parameters": "\\textrm{Noise} ~~ \\gamma",
+        "noise.scale": "T_{\\gamma}",
+        "architecture": "\\textrm{Architecture}",
+        "constrained": "\\textrm{Constrained}",
+        "unconstrained": "\\textrm{Unconstrained}",
+        "parameters.xy.parameters": "\\theta",
+        "parameters.z.parameters": "\\nu",
+        "parameters.zz.parameters": "J",
+        "parameters.xy.method": "\\textrm{Constraints}",
+        "hyperparameters.c1": "c_{1}",
+        "hyperparameters.c2": "c_{2}",
+        "hyperparameters.optimizer": "\\textrm{Optimizer}",
+        "gd": "\\textrm{Gradient Descent}",
+        "cg": "\\textrm{Conjugate Gradient}",
+        "adam": "\\textrm{Adam}",
+        "ls": "\\textrm{Line Search}"
+    },
+    "valify": {
+        "None": 1e-20
+    },
+    "path": {
+        "plot": "plot.pdf",
+        "metadata": "data.json"
+    },
+    "kwargs": {}
 }

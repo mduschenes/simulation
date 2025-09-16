@@ -4142,7 +4142,7 @@ def plotter(plots,processes,verbose=None):
 
 				value = [split(path,file=True),instance,data[attr]]
 				value = [i for i in value if i is not None]
-				value = [split(path,directory=True),*(['plot'] if len(plots)>1 else []),delim.join(value)]
+				value = [split(path,directory=True),*(['plot'] if len(plots)>=1 else []),delim.join(value)]
 				value = join(*value,ext=split(path,ext=True))
 				
 				data[attr] = value

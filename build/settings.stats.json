@@ -60,8 +60,8 @@
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],
+		"jobs.job.cwd":["~/scratch/debug/test"],
+		"jobs.postprocess.cwd":["~/scratch/debug/test"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
