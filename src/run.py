@@ -351,7 +351,7 @@ def init(settings):
 							for string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items() if data is not None},
 						**{variable if variable is not None else basename(path):{data if data is not None else basename(path): settings[key] if job.get(keyword) else path}
 							for string in ['settings'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
-						**{variable:{data:settings[key].get(string,{})}
+						**{variable:{data:settings[key].get(string,{}) if settings[key].get(string) else None}
 							for string in ['plot','process'] if string in job[attr] for variable,data in (job[attr][string] if isinstance(job[attr][string],dict) else {job[attr][string]:job[attr][string]}).items()},
 						}
 				elif attr in ['patterns']:
