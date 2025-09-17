@@ -566,7 +566,7 @@
                         },
                         "ax.set_xlabel.xlabel": "\\textrm{Size} ~~ 1/N",
                         "ax.set_xlabel.size": 36,
-                        "ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N})",
+                        "ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1",
                         "ax.set_ylabel.size": 36,
                         "ax.set_ylabel.y": null,
                         "ax.set_xticklabels.scinotation": {

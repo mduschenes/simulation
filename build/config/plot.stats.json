@@ -1680,7 +1680,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N})$"
+                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Size} ~~ 1/N$"
@@ -2042,7 +2042,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N})$"
+                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Size} ~~ 1/N$"
@@ -2559,7 +2559,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N})$"
+                "ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Size} ~~ 1/N$"

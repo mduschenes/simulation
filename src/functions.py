@@ -335,17 +335,14 @@ def func_information_function(data,*args,function=None,**kwargs):
 	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
 	keys = natsorted(keys) if keys is not None else None
 
-	def parse(data):
+	def parse(attr,key,data):
 		if data is None:
 			data = None
 		elif all(i is None for i in data):
 			data = None
-		else:
+		if data is not None:
 			data = np.array(data)
-			# eps = epsilon(data.dtype)
-			# value = 0
-			# data[(is_naninf(data))|(data<eps)] = value
-
+			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
 		return data
 
 	default = lambda data,*args,**kwargs: 1
@@ -361,16 +358,39 @@ def func_information_function(data,*args,function=None,**kwargs):
 
 	function = decorator(function)
 
-	func = {
-		'x':lambda attr,key,data:1/data[attr][key],
-		'y':lambda attr,key,data: np.mean(data[attr][key]),
-		'xerr':lambda attr,key,data:data[attr][key],
-		'yerr':lambda attr,key,data:np.sqrt((np.mean(data[attr][key]) - (np.mean(data[attr[0]][key]))**2)/(function(attr,key,data)*data[attr][key].size)),
-	}
+	funcs = {}
 
-	func = {attr:parse([func[attr](attr,key,data) for key in keys]) for attr in func if attr in data} if keys is not None else {}
+	attr = 'x'
+	def func(attr,key,data):
+		data = 1/data[attr][key]
+		return data
+	funcs[attr] = func
 
-	data.update(func)
+	attr = 'y'
+	def func(attr,key,data):
+		number,size = function(attr,key,data),data[attr][key].size
+		data = np.mean(data[attr][key])
+		data = data/np.log(number) - 1
+		return data
+	funcs[attr] = func
+
+	attr = 'xerr'
+	def func(attr,key,data):
+		data = data[attr][key]
+		return data
+	funcs[attr] = func
+
+	attr = 'yerr'
+	def func(attr,key,data):
+		number,size = function(attr,key,data),data[attr][key].size
+		data = np.mean(data[attr][key]) - np.mean(data[attr[0]][key])**2
+		data = np.sqrt(data/(size*number))/np.log(size)
+		return data
+	funcs[attr] = func
+
+	funcs = {attr:parse(attr,key,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if attr in data} if keys is not None else {}
+
+	data.update(funcs)
 
 	return data
 
@@ -381,14 +401,16 @@ def func_histogram(obj,*args,**kwargs):
 	return data
 
 def func_information(obj,*args,**kwargs):
-	def func(x,n):
+	n = obj.size
+	eps = epsilon(obj.dtype)
+	def func(x,n=n,eps=eps):
 		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
 		x /= addition(x)
+		x = inplace(x,x<eps,1)
 		return x
-	n = obj.size
 	key = ['','err']
-	value = information(func,obj,n)
-	value = addition(value)/n/log(n),addition(value**2)/n/(log(n)**2)
+	value = information(func,obj)
+	value = addition(value)/n,addition(value**2)/n
 	data = dict(zip(key,value))
 	return data
 
