@@ -27,7 +27,7 @@ from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,l
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,epsilon
 from src.utils import orng as rng
-from src.utils import arrays,scalars,dataframes,integers,floats,nonzero,delim,nan
+from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
@@ -282,7 +282,7 @@ def func_information_x(data,*args,**kwargs):
 	return data
 
 def func_information_y(data,*args,**kwargs):
-	data = tuple(data)
+	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
 	return data
 
 def func_information_xerr(data,*args,**kwargs):
@@ -290,13 +290,13 @@ def func_information_xerr(data,*args,**kwargs):
 	return data
 
 def func_information_yerr(data,*args,**kwargs):
-	data = tuple(data)
+	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
 	return data
 
 def func_information_process_x(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if data is None else data
+	data = [data for key in keys] if not isinstance(data,iterables) else data
 	for key,i in zip(keys,data):
 		values[key] = i
 	data = values
@@ -305,7 +305,7 @@ def func_information_process_x(data,values,metadata,properties,*args,**kwargs):
 def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if data is None else data
+	data = [data for key in keys] if not isinstance(data,iterables) else data
 	for key,i in zip(keys,data):
 		values[key] = np.array([*values.get(key,[]),*flatten(i)])
 	data = values
@@ -314,7 +314,7 @@ def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
 def func_information_process_xerr(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if data is None else data
+	data = [data for key in keys] if not isinstance(data,iterables) else data
 	for key,i in zip(keys,data):
 		values[key] = i
 	data = values
@@ -323,19 +323,19 @@ def func_information_process_xerr(data,values,metadata,properties,*args,**kwargs
 def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if data is None else data
+	data = [data for key in keys] if not isinstance(data,iterables) else data
 	for key,i in zip(keys,data):
 		values[key] = np.array([*values.get(key,[]),*flatten(i)])
 	data = values
 	return data
 
-def func_information_function(data,*args,function=None,**kwargs):
+def func_information_function(data,*args,attribute=None,function=None,**kwargs):
 
 	keys = data['y']
 	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
 	keys = natsorted(keys) if keys is not None else None
 
-	def parse(attr,key,data):
+	def parse(attr,data):
 		if data is None:
 			data = None
 		elif all(i is None for i in data):
@@ -345,11 +345,14 @@ def func_information_function(data,*args,function=None,**kwargs):
 			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
 		return data
 
-	default = lambda data,*args,**kwargs: 1
+	if attribute is None or getter(data,attribute,delimiter=delim) is None:
+		attribute = None
+
+	func = lambda data,*args,**kwargs: 1
 	if function is None:
-		function = default
+		function = func
 	elif isinstance(function,str):
-		function = load(function,default=default)
+		function = load(function,default=func)
 	def decorator(function):
 		def wrapper(attr,key,data,*args,**kwargs):
 			data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
@@ -369,7 +372,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 	attr = 'y'
 	def func(attr,key,data):
 		number,size = function(attr,key,data),data[attr][key].size
-		data = np.mean(data[attr][key])
+		data = np.mean(data[attr][key]) +  np.log(np.sum(getter(data,attribute,delimiter=delim)[key]))
 		data = data/np.log(number) - 1
 		return data
 	funcs[attr] = func
@@ -383,14 +386,23 @@ def func_information_function(data,*args,function=None,**kwargs):
 	attr = 'yerr'
 	def func(attr,key,data):
 		number,size = function(attr,key,data),data[attr][key].size
+		obj = np.mean(data[attr][key])
 		data = np.mean(data[attr][key]) - np.mean(data[attr[0]][key])**2
 		data = np.sqrt(data/(size*number))/np.log(size)
 		return data
-	funcs[attr] = func
+	if attr:
+		funcs[attr] = func
 
-	funcs = {attr:parse(attr,key,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if attr in data} if keys is not None else {}
+	if attribute:
+		attr = attribute
+		def func(attr,key,data):
+			data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
+			return data
+		funcs[attr] = func
 
-	data.update(funcs)
+	funcs = {attr:parse(attr,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if getter(data,attr,delimiter=delim) is not None} if keys is not None else {}
+
+	setter(data,funcs,delimiter=delim,default=True)
 
 	return data
 
@@ -405,12 +417,12 @@ def func_information(obj,*args,**kwargs):
 	eps = epsilon(obj.dtype)
 	def func(x,n=n,eps=eps):
 		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
-		x /= addition(x)
+		# x /= addition(x)
 		x = inplace(x,x<eps,1)
 		return x
-	key = ['','err']
+	key = [None,'error','norm']
 	value = information(func,obj)
-	value = addition(value)/n,addition(value**2)/n
+	value = addition(value)/n,addition(value**2)/n,addition(func(obj))
 	data = dict(zip(key,value))
 	return data
 
@@ -999,19 +1011,3 @@ def layout(iterable,sort=False,group=False):
 
 def test(*args,**kwargs):
 	return args,kwargs
-
-# def func(data,*args,**kwargs):
-# 	if data is None:
-# 		data = {}
-	
-# 	default = {'index':[],'value':[]}
-
-# 	data.update({attr: default[attr] for attr in default if attr not in data})
-
-# 	data.update({attr: [*data[attr]] for attr in data})
-
-# 	for i in kwargs.get('indexes'):
-# 		data['index'].append(max(data['index'],default=-1)+1)
-# 		data['value'].append(i)
-
-# 	return

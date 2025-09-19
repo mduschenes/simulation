@@ -1652,9 +1652,12 @@ def apply(data,plots,processes,verbose=None):
 						continue
 
 					for axes in statistics:
+
 						if axes in dimensions or not obj[string].get(axes):
 							continue
+
 						axis = [ax for ax in dimensions if axes.startswith(ax) and obj[string].get(ax)]
+
 						for ax in axis:
 
 							obj[string][ax] = {
@@ -1666,6 +1669,7 @@ def apply(data,plots,processes,verbose=None):
 									**{attribute:obj[string][ax][function][attribute] for attribute in obj[string][ax][function] if attribute not in nulls},
 									} for func in [''] for function in nulls if function in obj[string][ax]},
 								}
+
 						if axis:
 							obj[string][axes] = {
 								**{func:{
@@ -1676,6 +1680,16 @@ def apply(data,plots,processes,verbose=None):
 										**{attribute:obj[string][axes][function][attribute] for attribute in obj[string][axes][function] if attribute not in nulls},
 										} for func in ['err'] for function in nulls if function in obj[string][axes]},
 								}
+
+					for axes in obj[string]:
+
+						if axes in statistics:
+							continue
+
+						if not isinstance(obj[string][axes],dict) or axes not in obj[string][axes]:
+							obj[string][axes] = {axes:obj[string][axes]}
+
+						obj[string][axes] = wrap(obj[string][axes],args=args,kwargs=kwargs,defaults=defaults)
 
 			function = wrap(function,args=args,kwargs=kwargs,defaults=defaults)
 
@@ -1781,9 +1795,13 @@ def apply(data,plots,processes,verbose=None):
 			shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
 
 			applications = {
-				**{attr : [(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]] 
+				**{attr : ([(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]]
 						  if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])] 
-						  for attr in attributes},
+						  if attr not in funcs[string] else
+						  [(attribute,funcs[string][attr][func][attribute]) for func in funcs[string][attr] for attribute in funcs[string][attr][func]])
+						  for attr in attributes
+						  for string in funcs
+						  },
 				**{attr : [(delim.join(((attr,string,func))),
 							{
 							'array':{
@@ -1799,7 +1817,7 @@ def apply(data,plots,processes,verbose=None):
 								**{'err':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
 								}[func],
 							}[dtypes[attr]])
-							for string in funcs for ax in [ax for ax in statistics if ax.startswith(axes) and funcs[string].get(ax)] for func in funcs[string][ax]
+							for string in funcs for ax in funcs[string] if ax in statistics for func in funcs[string][ax] if keys[name][ax]==attr
 							if delim.join(((attr,string,func))) not in data]
 							for axes in dimensions
 							for attr in [keys[name][ax] for ax in statistics if ax.startswith(axes)]
@@ -1909,9 +1927,14 @@ def apply(data,plots,processes,verbose=None):
 			plts = copy(getter(plots,key,delimiter=delim))
 
 			def parser(string,axes,func):
-				attr = keys[name][axes]
-				source = delim.join(((attr,string,func))) if attr in [*independent,*dependent,*exceptions] else attr
-				destination = '%s%s'%(axes,func) if attr in [*independent,*dependent,*exceptions] and axes in dimensions else axes
+				if axes in statistics:
+					attr = keys[name][axes]
+					source = delim.join(((attr,string,func))) if attr in [*independent,*dependent,*exceptions] else attr
+					destination = '%s%s'%(axes,func) if attr in [*independent,*dependent,*exceptions] and axes in dimensions else axes
+				else:
+					attr = axes
+					source = axes
+					destination = axes
 				return attr,source,destination
 
 			for i,group in enumerate(groupings[name]):
@@ -1962,6 +1985,7 @@ def apply(data,plots,processes,verbose=None):
 							'label':keys[name][axes] if not isinstance(keys[name][axes],Null) else None
 							} 
 							for axes in funcs[string]
+							if axes in statistics
 							for func in funcs[string][axes]
 							},
 						**{other: {attr: {subattr: keys[name][other][attr][subattr] 
@@ -1974,12 +1998,13 @@ def apply(data,plots,processes,verbose=None):
 					options = dict(deep=False)
 					metadata = grouping.copy(**options)
 
-					options = dict(mapper={source:destination for axes in funcs[string] for func in funcs[string][axes] for attr,source,destination in [parser(string,axes,func)]},axis='columns',inplace=True)
+					options = dict(mapper={source:destination for axes in funcs[string] if axes in statistics for func in funcs[string][axes] for attr,source,destination in [parser(string,axes,func)]},axis='columns',inplace=True)
 					metadata.rename(**options)
 
 					value[destination] = obj
 
 					for axes in funcs[string]:
+
 						for func in funcs[string][axes]:
 
 							attr,source,destination = parser(string,axes,func)
@@ -2005,7 +2030,6 @@ def apply(data,plots,processes,verbose=None):
 									except Exception as exception:
 										obj = None
 								elif isinstance(source,Null):
-									source = delim.join(((dependent[-1],string,func)))
 									obj = None #np.arange(indexing,len(obj.iloc[0])+indexing) if obj.iloc[0] is not None else None
 								else:
 									obj = None #grouping.reset_index().index.to_numpy()
@@ -2023,7 +2047,10 @@ def apply(data,plots,processes,verbose=None):
 								for attribute in process[string][axes][func]:
 									obj = process[string][axes][func][attribute](obj,value.get(destination),metadata,property)
 
-							value[destination] = obj
+							if destination in ALL:
+								value[destination] = obj
+							else:
+								value[other][destination] = obj
 
 					functions[name][key] = function
 
@@ -2037,7 +2064,6 @@ def apply(data,plots,processes,verbose=None):
 
 
 		del data
-
 
 	for name in functions:
 

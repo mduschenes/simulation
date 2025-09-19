@@ -9204,7 +9204,7 @@ class Callback(System):
 
 				elif attr in ['sample.array.information','sample.state.information']:
 
-					key = '{attr}{i}'
+					key = '{attr}.{i}'
 
 					value = getattrs(model,attributes[attr],delimiter=delim)(
 						parameters=parameters,
@@ -9212,7 +9212,7 @@ class Callback(System):
 						**keywords)
 
 					if isinstance(value,dict):
-						key = [key.format(attr=attr,i=i) for i in value]
+						key = [key.format(attr=attr,i=i) if i is not None else attr for i in value]
 						value = [value[i] for i in value]
 					else:
 						key = attr
