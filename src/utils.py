@@ -12468,6 +12468,20 @@ def to_tuple(a,dtype=None,**kwargs):
 	except:
 		return a
 
+def to_scalar(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to scalar
+	Args:
+		a (int,float,str,bool): Iterable to convert to scalar
+		dtype (datatype): Datatype of number
+	Returns:
+		out (int,float,str,bool): Scalar representation of iterable
+	'''
+	try:
+		return asscalar(a,dtype=dtype,**kwargs)
+	except:
+		return a
+
 def to_number(a,dtype=None,**kwargs):
 	'''
 	Convert object to number

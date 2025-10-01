@@ -19,17 +19,17 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,sh
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import backend,pi,e,nan,null,delim,scalars,arrays,tensors,objects,nulls,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
+from src.utils import backend,pi,e,nan,null,delim,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
+
+from src.run import setup
 
 from src.io import load,dump,join,split,exists
 
 from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
-
-from src.optimize import Objective,Metric
 
 delim = '.'
 separ = '_'
@@ -71,6 +71,7 @@ class Basis(Dict):
 		ndim = None,
 		dtype = None,
 
+		index = None,
 		architecture = None,
 
 		seed = None,
@@ -1239,6 +1240,7 @@ class Measure(System):
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N,)
 			kwargs (dict): Additional class keyword arguments
 		'''
+
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 
 		return self.func(parameters=parameters,state=state,**kwargs)
@@ -1371,8 +1373,8 @@ class Measure(System):
 			state (array,tensor,network): state of class of Probability state of shape (N,self.K) or (self.K**N)
 		'''
 
-		state = [*state] if isinstance(state,iterables) else [state] if state is not None else state
 		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+		state = [*state] if isinstance(state,iterables) else [state] if state is not None else state
 
 		if state is None:
 			return state
@@ -4900,7 +4902,10 @@ class Object(System):
 			N = self.N if N is None else N
 			D = self.D if D is None else D
 			d = Basis.dimensions(cls)
-			options = dict(index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system)
+			options = dict(
+				random=self.random,seed=seeder(self.seed),
+				index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
+				)
 
 			if not memory(D**N):
 				return data
@@ -7324,7 +7329,8 @@ class Objects(Object):
 			out (array): Return of function
 		'''
 
-		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+		parameters = self.parameters(parameters()) if callable(parameters) else self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+		state = state if state is not None else state
 
 		return self.func(parameters=parameters,state=state,**kwargs)
 
@@ -7339,6 +7345,10 @@ class Objects(Object):
 		Returns:
 			out (array): Return of function
 		'''
+
+		parameters = parameters() if callable(parameters) else parameters
+		state = state if state is not None else state
+
 		return self.gradient(parameters=parameters,state=state,**kwargs)
 
 
@@ -7352,6 +7362,10 @@ class Objects(Object):
 		Returns:
 			out (array): Return of function
 		'''
+
+		parameters = parameters() if callable(parameters) else parameters
+		state = state if state is not None else state
+
 		return self.gradient_automatic(parameters=parameters,state=state,**kwargs)
 
 
@@ -7365,6 +7379,10 @@ class Objects(Object):
 		Returns:
 			out (array): Return of function
 		'''
+
+		parameters = parameters() if callable(parameters) else parameters
+		state = state if state is not None else state
+
 		return self.gradient_finite(parameters=parameters,state=state,**kwargs)
 
 
@@ -7379,7 +7397,8 @@ class Objects(Object):
 			out (array): Return of function
 		'''
 
-		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+		parameters = self.parameters(parameters()) if callable(parameters) else self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+		state = state if state is not None else state
 
 		return self.gradient_analytical(parameters=parameters,state=state,**kwargs)
 
@@ -7575,6 +7594,7 @@ class Objects(Object):
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)} if kwargs is not None else defaults
 
 		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['N','local','locality'] and attr not in ['data','operator','where','string']},delimiter=delim,default=False)
+
 		setter(kwargs,dict(N=self.N,D=self.D,local=self.local,tensor=self.tensor,samples=self.samples),delimiter=delim,default=False)
 		setter(kwargs,dict(state=self.state,system=self.system),delimiter=delim,default=True)
 		setter(kwargs,dict(verbose=False),delimiter=delim,default=True)
@@ -7754,6 +7774,7 @@ class Objects(Object):
 		return data
 
 class Channel(Objects):
+
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Channel']}}
 
@@ -8159,45 +8180,27 @@ class Module(System):
 		options = self.options
 
 		def func(parameters,state,options=options,**kwargs):
-			M,N,index,size = self.M,self.N,None,len(self.data)
-			kwargs = [Dictionary(**{**dict(index=index,seed=self.seed,options=options),**kwargs}) for i in range(len(self.data))]
-			attrs = copy(kwargs)
+
+			M,N,index,size,seed = kwargs.get('M',self.M),kwargs.get('N',self.N),kwargs.get('index',None),kwargs.get('size',len(self.data)),seeder(kwargs.get('seed',self.seed))
+
+			state = state(seed=seed) if callable(state) else state
+			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+
+			parameters = parameters() if callable(parameters) else parameters
+			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
+
+			kwargs = [Dictionary(**{**dict(index=index,seed=seed,options=options),**kwargs}) for i in range(size)]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
-			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.transform(parameters=parameters,state=state)
 
-			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
-			parameters = parameters if parameters is not None else parameters
+			state = self.measure.transform(parameters=parameters,state=state)
 
 			for l in range(M):
 				for i,data in enumerate(self.data):
 
-					# print('index',l,i)
 					kwargs[i].index = (l,i)
 					state = data(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-					# spectrum = self.measure.spectrum_quantum(parameters=parameters,state=state)
-					# ratio = -addition(spectrum[spectrum<0])/addition(spectrum[spectrum>0])
-					# trace = self.measure.trace(parameters=parameters,state=state)
-
-					# if self.measure.architecture in ['tensor']:
-					# 	trace = trace.array().item()
-					# elif self.measure.architecture in ['tensor_quimb']:
-					# 	trace = representation_quimb(trace,to=self.measure.architecture,contraction=True)
-					# trace = trace.real-1
-					# data = state
-					# print('spectrum',ratio,spectrum[0],spectrum[1],spectrum[-2],spectrum[-1])
-					# print('trace',trace)
-					# # where = [i,i+1]
-					# # for i in data:
-					# # 	if i < min(where):
-					# # 		print(i,addition(data[i].data,(0,1)))
-					# # 	elif i > max(where):
-					# # 		print(i,addition(data[i].data,(-2,-1)))
-					# # print(where,addition(dot(data[min(where)].data,data[max(where)].data)))
-					# # print('data',data)
-					# print()
 
 			return state
 
@@ -8339,7 +8342,7 @@ class Module(System):
 			out (array): Return of function
 		'''
 
-		parameters = self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
+		parameters = self.parameters(parameters()) if callable(parameters) else self.parameters(parameters) if parameters is not None else self.parameters(self.parameters())
 		state = state if state is not None else state
 
 		return self.func(parameters=parameters,state=state,**kwargs)
@@ -8414,25 +8417,26 @@ class Module(System):
 		# Set path
 		path = join(self.path,root=self.cwd) if path is None else path
 
+		# Set callback
+		callback = self.callback if self.callback is not None else None
+
+		# Set key
+		key = self.key if self.key is not None else None
+
 		# Set data
 		data = {}
 
 		# Set options
 		options = dict(lock=self.lock,backup=self.backup)
 
-		# Set key
-		key = self.key if self.key is not None else None
-
-		# Set callback
-		callback = self.callback if self.callback is not None else None
-
 		# Set do
 		do = (path is not None) and (callback is not None) and ((not exists(path)) or (self.load(path) is None))
 
 		# Dump data
 		if do:
-			parameters = self.parameters()
-			state = self.state()
+
+			parameters = self.parameters
+			state = self.state
 			model = self
 			data = data
 			kwargs = {}
@@ -9025,7 +9029,7 @@ class Callback(System):
 
 
 class Callback(System):
-	def __init__(self,*args,attributes=None,arguments=None,keywords=None,options=None,**kwargs):
+	def __init__(self,*args,attributes=None,arguments=None,keywords=None,options=None,settings=None,**kwargs):
 		'''
 		Class for callback
 		Args:
@@ -9033,7 +9037,8 @@ class Callback(System):
 			args (tuple): Class arguments
 			arguments (dict,iterable): Class positional arguments
 			keywords (dict): Class keyword arguments
-			options (dict): Class keyword arguments
+			options (dict): Class options
+			settings (dict): Class settings
 			kwargs (dict): Class keyword arguments
 		'''
 
@@ -9081,6 +9086,9 @@ class Callback(System):
 		else:
 			options = {attr: {**options} for attr in attributes}
 
+		if settings is None:
+			settings = {}
+
 		for attr in attributes:
 			if isinstance(attributes[attr],dict) and all(prop in attributes[attr] for prop in ['func','args','kwargs']):
 				for prop in attributes[attr]:
@@ -9092,7 +9100,7 @@ class Callback(System):
 				if prop in attributes[attr]:
 					attributes[attr] = attributes[attr][prop]
 
-		setter(kwargs,dict(attributes=attributes,arguments=arguments,keywords=keywords,options=options),delimiter=delim,default=False)
+		setter(kwargs,dict(attributes=attributes,arguments=arguments,keywords=keywords,options=options,settings=settings),delimiter=delim,default=False)
 
 		super().__init__(*args,**kwargs)
 
@@ -9112,19 +9120,28 @@ class Callback(System):
 			status (int): status of callback
 		'''
 
-		attributes = {attr:self.attributes[attr]
-			for attr in self.attributes
-			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
-			}
-
 		status = True
 
 		logging = True
 
+		if model is None:
+			model = {}
 
+		if data is None:
+			data = {}
+
+		if optimizer is None:
+			optimizer = {}
+
+		attributes = {attr:self.attributes[attr]
+			for attr in self.attributes
+			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
+			}
 		attr = list(attributes)[0] if attributes else None
+
 		arguments = self.arguments.get(attr,())
 		keywords = self.keywords.get(attr,{})
+		settings = self.settings
 
 		options = {
 			**{key: model.options[key] for key in model.options}
@@ -9135,44 +9152,28 @@ class Callback(System):
 			**{key: kwargs.get(key) for key in kwargs if key in options},
 			}
 
-		obj = model(parameters=parameters,state=state,options=options)
+		settings = self.settings
+		opts = dict(index=False)
 
-		_obj = model(parameters=parameters,state=state,options=_options)
+		for settings in setup(settings=settings,**opts):
 
-		for attr in attributes:
+			obj = model(parameters=parameters,state=state,options=options,**settings.model)
 
-			arguments = self.arguments.get(attr,())
-			keywords = self.keywords.get(attr,{})
+			_obj = model(parameters=parameters,state=state,options=_options,**settings.model)
 
-			key = attr
+			for attr in attributes:
 
-			if attr in [
-				'objective','infidelity','norm','entanglement','entangling','trace',
-				'array','state',
-				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
-				'sample.array.information','sample.state.information',
-				'infidelity.quantum','infidelity.classical','infidelity.pure',
-				'norm.quantum','norm.classical','norm.pure',
-				'entanglement.quantum','entanglement.classical','entanglement.renyi',
-				'entangling.quantum','entangling.classical','entangling.renyi',
-				'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
-				'discord.quantum','discord.classical','discord.renyi',
-				'spectrum.quantum','spectrum.classical',
-				'rank.quantum','rank.classical',
-				]:
+				arguments = self.arguments.get(attr,())
+				keywords = self.keywords.get(attr,{})
+
+				key = attr
 
 				if attr in [
-					'objective','infidelity',
-					'infidelity.quantum','infidelity.classical','infidelity.pure',
-					]:
-					value = getattrs(model,attributes[attr],delimiter=delim)(
-						parameters=parameters,
-						state=obj,
-						other=_obj,
-						**keywords)
-				elif attr in [
-					'norm','entanglement','entangling','trace',
+					'objective','infidelity','norm','entanglement','entangling','trace',
 					'array','state',
+					'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+					'sample.array.information','sample.state.information',
+					'infidelity.quantum','infidelity.classical','infidelity.pure',
 					'norm.quantum','norm.classical','norm.pure',
 					'entanglement.quantum','entanglement.classical','entanglement.renyi',
 					'entangling.quantum','entangling.classical','entangling.renyi',
@@ -9181,91 +9182,120 @@ class Callback(System):
 					'spectrum.quantum','spectrum.classical',
 					'rank.quantum','rank.classical',
 					]:
-					value = getattrs(model,attributes[attr],delimiter=delim)(
-						parameters=parameters,
-						state=obj,
-						**keywords)
 
-				elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
+					if attr in [
+						'objective','infidelity',
+						'infidelity.quantum','infidelity.classical','infidelity.pure',
+						]:
+						value = getattrs(model,attributes[attr],delimiter=delim)(
+							parameters=parameters,
+							state=obj,
+							other=_obj,
+							**keywords)
+					elif attr in [
+						'norm','entanglement','entangling','trace',
+						'array','state',
+						'norm.quantum','norm.classical','norm.pure',
+						'entanglement.quantum','entanglement.classical','entanglement.renyi',
+						'entangling.quantum','entangling.classical','entangling.renyi',
+						'mutual.quantum','mutual.measure','mutual.classical','mutual.renyi',
+						'discord.quantum','discord.classical','discord.renyi',
+						'spectrum.quantum','spectrum.classical',
+						'rank.quantum','rank.classical',
+						]:
+						value = getattrs(model,attributes[attr],delimiter=delim)(
+							parameters=parameters,
+							state=obj,
+							**keywords)
 
-					key = '{attr}.{i}'
+					elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
 
-					value = getattrs(model,attributes[attr],delimiter=delim)(
-						parameters=parameters,
-						state=obj,
-						**keywords)
+						key = '{attr}.{i}'
 
-					if isinstance(value,dict):
-						key = [key.format(attr=attr,i=i) for i in value]
-						value = [value[i] for i in value]
+						value = getattrs(model,attributes[attr],delimiter=delim)(
+							parameters=parameters,
+							state=obj,
+							**keywords)
+
+						if isinstance(value,dict):
+							key = [key.format(attr=attr,i=i) for i in value]
+							value = [value[i] for i in value]
+						else:
+							key = attr
+							value = value
+
+					elif attr in ['sample.array.information','sample.state.information']:
+
+						key = '{attr}.{i}'
+
+						value = getattrs(model,attributes[attr],delimiter=delim)(
+							parameters=parameters,
+							state=obj,
+							**keywords)
+
+						if isinstance(value,dict):
+							key = [key.format(attr=attr,i=i) if i is not None else attr for i in value]
+							value = [value[i] for i in value]
+						else:
+							key = attr
+							value = value
+
+				elif attr in ['noise.parameters']:
+
+					value = 'model'
+					if hasattr(model,value):
+						value = getattr(model,value)
+						value = [model for index in value for model in value[index]]
 					else:
-						key = attr
+						value = model.data
+						value = [value[index] for index in value]
+
+					value = [model.parameters() for model in value if not model.unitary and not model.hermitian]
+
+					value = value[0] if value else None
+
+				elif hasattrs(model,attributes[attr],delimiter=delim):
+
+					value = getattrs(model,attributes[attr],delimiter=delim)
+
+					if callable(value):
+						value = value(parameters=parameters,state=obj,**kwargs)
+
+					if isinstance(value,dicts):
+						value = value
+					elif isinstance(value,iterables) and value:
+						value = value[-1]
+					else:
 						value = value
 
-				elif attr in ['sample.array.information','sample.state.information']:
+				elif hasattrs(optimizer,attributes[attr],delimiter=delim):
 
-					key = '{attr}.{i}'
+					value = getattrs(optimizer,attributes[attr],delimiter=delim)
 
-					value = getattrs(model,attributes[attr],delimiter=delim)(
-						parameters=parameters,
-						state=obj,
-						**keywords)
+					if callable(value):
+						value = value(parameters=parameters,state=obj,**kwargs)
 
-					if isinstance(value,dict):
-						key = [key.format(attr=attr,i=i) if i is not None else attr for i in value]
-						value = [value[i] for i in value]
-					else:
-						key = attr
-						value = value
-
-			elif attr in ['noise.parameters']:
-
-				if hasattr(model,'model'):
-					value = getattr(model,'model')
-					value = [model for index in value for model in value[index]]
 				else:
-					value = model.data
-					value = [value[index] for index in value]
 
-				value = [model.parameters() for model in value if not model.unitary and not model.hermitian]
+					value = None
 
-				value = value[0] if value else None
+				if isinstance(key,str):
+					key = [key]
+					value = [value]
 
-			elif hasattrs(model,attributes[attr],delimiter=delim):
-
-				value = getattrs(model,attributes[attr],delimiter=delim)
-
-				if callable(value):
-					value = value(parameters=parameters,state=obj,**kwargs)
-
-			elif hasattrs(optimizer,attributes[attr],delimiter=delim):
-
-				value = getattrs(optimizer,attributes[attr],delimiter=delim)
-
-				if callable(value):
-					value = value(parameters=parameters,state=obj,**kwargs)
-
-			else:
-
-				value = None
-
-			if isinstance(key,str):
-				key = [key]
-				value = [value]
-
-			for key,value in zip(key,value):
-				if not data.get(key) and not isinstance(data.get(key),list):
-					data[key] = []
-				data[key].append(value)
-
-		if logging:
-
-			msg = '\n'.join([
-				'%r f(x) = %s'%(optimizer.iteration if optimizer is not None else None,'%0.4e'%(data['objective'][-1]) if data.get('objective') else None),
-				'|x| = %s'%('%0.4e'%(norm(parameters)) if parameters is not None else None),
-				])
+				for key,value in zip(key,value):
+					if not data.get(key) and not isinstance(data.get(key),list):
+						data[key] = []
+					data[key].append(value)
 
 
-			model.log(msg)
+			if logging:
+
+				msg = '\n'.join([
+					f'{key} : {data[key][-1]}'
+					for key in data if len(data[key]) and (isinstance(data[key][-1],(*numbers,*scalars)) or (isinstance(data[key][-1],arrays) and data[key][-1].size <= 1))
+					])
+
+				model.log(msg)
 
 		return status

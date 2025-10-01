@@ -44,7 +44,7 @@ def permute(settings):
 	attr = 'permutations'
 
 	if settings.get(attr) is None:
-		permutations = []
+		permutations = [{}]
 		return permutations
 
 	permutations = settings.get(attr,{}).get('permutations')
@@ -87,45 +87,40 @@ def spawn(settings):
 	# Find keys of seeds in settings
 	items = ['seed']
 	types = (list,dict,)
-	exclude = ['seed','seed.seed','system.seed',
-		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim)],
+	exclude = ['seed','seed.seed','system.seed','callback.settings.seed','callback.settings.seed.seed',
+		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim,default={})],
 		*(attributes if attributes is not None else [])
 		]
 	seedlings = search(settings,items=items,returns=True,types=types)
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
+
+	seedlings = [seedling for seedling in seedlings]
 	count = max(1,len(seedlings))
+	groups = [[seedling for seedling in seedlings]]
 
-	if isinstance(size,(int,float)):
-		size = [int(size)]*count
-		groups = [[i for i in seedlings]]
+	if size is None:
+		size = [count,1]
+	elif isinstance(size,(int,float)):
+		size = [count,int(size)]
+	elif isinstance(size,list):
+		size = [count,*size] if len(size)>1 else [count,1,*size]
 	elif isinstance(size,dict):
-		size = [size.get(seedling,1) for seedling in seedlings]
-		groups = groups		
-	elif size is None:
-		size = [1]*count
-		groups = [[i for i in seedlings]]	
-	elif len(size) == 1:
-		size = [*size]*count
-		groups = groups
-	elif len(size) == count:
-		size = [i for i in size]
-		groups = groups
+		seedlings = [seedling for seedling in seedlings if seedling in size]
+		count = max(1,len(seedlings))
+		groups = [[seedling for seedling in seedlings]]
+		size = [count,1,max((size[seedling] if isinstance(size[seedling],int) else prod(size[seedling]) for seedling in seedlings),default=1)]
 	else:
-		size = [1]*count
-		groups = [[i for i in seedlings]]
-
-	shape = (*size,)
-	size = sum(size)
+		size = [count,1]
 
 	if size:
 		seeds = seeder(seed=seed,size=size,data=True)
-		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])] for i,seedling in enumerate(seedlings)}
+		seedlings = {seedling:seed for seedling,seed in zip(seedlings,seeds)}
 		seeds = permuter(seedlings,groups=groups)
 	else:
 		seeds = seeder(seed=seed,data=True)
-		seedlings = {seedling: seeds[i] for i,seedling in enumerate(seedlings)}
+		seedlings = {seedling:seed for seedling,seed in zip(seedlings,seeds)}
 		seeds = [{}]
 
 	return seed,seeds,seedlings
@@ -162,10 +157,8 @@ def iterate(settings,index=None,wrapper=None):
 	Iterate settings
 	Args:
 		settings (dict,str): settings
-		index (int): settings index
+		index (int,bool): settings index
 		wrapper (callable): settings wrapper
-	Returns:
-		settings (dict): settings
 	Yields:
 		key (str): settings key
 		setting (dict): settings values
@@ -200,7 +193,7 @@ def iterate(settings,index=None,wrapper=None):
 
 			i += 1
 
-			if index is not None and index is not True and i != index:
+			if (index is not None) and (index is not False) and (index is not True) and (i != index):
 				continue
 
 			key = (instance,number)
@@ -229,16 +222,13 @@ def iterate(settings,index=None,wrapper=None):
 			if wrapper is not None:
 				setting = wrapper(setting)
 
-			if index is True:
+			if (index is None) or (index is False) or ((index is True) or (i == index)):
 				yield key,setting,size
-				break
-			elif index is not None and i == index:
-				yield key,setting,size
-				break
-				
-			yield key,setting,size
 
-		if index is True:
+			if (index is True) or ((index is not None) and (index is not False) and (i == index)):
+				break
+
+		if (index is True) or ((index is not None) and (index is not False) and (i == index)):
 			break
 
 
@@ -247,7 +237,7 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 	Setup settings
 	Args:
 		settings (dict,str): settings
-		index (int): settings index
+		index (int,bool): settings index
 		device (str): settings device
 		job (str): settings job
 		path (str): settings path
@@ -277,16 +267,11 @@ def setup(settings,*args,index=None,device=None,job=None,path=None,env=None,exec
 	setter(settings,kwargs,delimiter=delim,default=True)
 	setter(settings,defaults,delimiter=delim,default=False)
 
-	if index is not None:
-		for key,setting,size in iterate(settings,index=index,wrapper=wrapper):
-			settings = setting
-			yield settings
-			break
-	else:
+	if index is None:
 		yield settings
-
-	return
-
+	else:
+		for key,settings,size in iterate(settings,index=index,wrapper=wrapper):
+			yield settings
 
 def init(settings):
 	'''

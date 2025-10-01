@@ -2248,7 +2248,8 @@
 								"yerr": {
 									"err": "src.functions.func_information_yerr"
 								},
-								"sample.state.information.norm": "src.functions.func_information_y"
+								"sample.state.information.norm": "src.functions.func_information_y",
+								"sample.array.information.norm": "src.functions.func_information_y"
 							}
 						},
 						"process": {
@@ -2265,13 +2266,14 @@
 								"yerr": {
 									"err": "src.functions.func_information_process_yerr"
 								},
-								"sample.state.information.norm": "src.functions.func_information_process_y"
+								"sample.state.information.norm": "src.functions.func_information_process_y",
+								"sample.array.information.norm": "src.functions.func_information_process_y"
 							}
 						},
 						"function": {
 							"func": "src.functions.func_information_function",
 							"args": [],
-							"kwargs": {"attribute":"label.sample.state.information.norm","function":"src.functions.func_size_state"}
+							"kwargs": {"function":"src.functions.func_size_state","attribute":"label.sample.state.information.norm","attributes":["label.sample.state.information.norm","label.sample.array.information.norm"]}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -2390,7 +2392,8 @@
 								"yerr": {
 									"err": "src.functions.func_information_yerr"
 								},
-								"sample.array.information.norm": "src.functions.func_information_y"
+								"sample.array.information.norm": "src.functions.func_information_y",
+								"sample.state.information.norm": "src.functions.func_information_y"
 							}
 						},
 						"process": {
@@ -2407,13 +2410,14 @@
 								"yerr": {
 									"err": "src.functions.func_information_process_yerr"
 								},
-								"sample.array.information.norm": "src.functions.func_information_process_y"
+								"sample.array.information.norm": "src.functions.func_information_process_y",
+								"sample.state.information.norm": "src.functions.func_information_process_y"
 							}
 						},
 						"function": {
 							"func": "src.functions.func_information_function",
 							"args": [],
-							"kwargs": {"attribute":"label.sample.array.information.norm","function":"src.functions.func_size_array"}
+							"kwargs": {"function":"src.functions.func_size_array","attribute":"label.sample.array.information.norm","attributes":["label.sample.state.information.norm","label.sample.array.information.norm"]}
 						},
 						"application": "agg",
 						"analysis": {},

@@ -1093,9 +1093,11 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 				def scalar(data):
 					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1				
 				def function(path,data):
+					# iterate = len(set(len(data[attr]) for attr in data if not scalar(data[attr])))==1
 					for attr in data:
 						if iterable(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
+							# data[attr] = [tuple(i) if ((not iterate) or not scalar(i)) else i for i in data[attr]]
 					# length = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
 					# data['__path__'] = [path]*length
 					return data

@@ -19,7 +19,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,copy
 from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap,flatten
-from src.utils import to_key_value,to_slice,to_tuple,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
+from src.utils import to_key_value,to_slice,to_tuple,to_scalar,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation,texify,baseify
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
 from src.io import load,dump,merge,join,split,exists,glob
@@ -1723,7 +1723,6 @@ def apply(data,plots,processes,verbose=None):
 					if attr in data else 'dtype') 
 					for attr in attributes}
 
-
 			if any((keys[name][axes] not in attributes) and (not isinstance(keys[name][axes],Null)) for axes in AXES if axes in keys[name]):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
@@ -1795,43 +1794,45 @@ def apply(data,plots,processes,verbose=None):
 			shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
 
 			applications = {
-				**{attr : ([(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]]
-						  if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])] 
-						  if attr not in funcs[string] else
-						  [(attribute,funcs[string][attr][func][attribute]) for func in funcs[string][attr] for attribute in funcs[string][attr][func]])
-						  for attr in attributes
-						  for string in funcs
-						  },
-				**{attr : [(delim.join(((attr,string,func))),
-							{
-							'array':{
-								**{'':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else mean for attribute in funcs[string][ax][func]},
-								**{'err':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else std for attribute in funcs[string][ax][func]},
-								}[func],
-							'object':{
-								**{'':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else first for attribute in funcs[string][ax][func]},
-								**{'err':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else none for attribute in funcs[string][ax][func]},
-								}[func],
-							'dtype':{
-								**{'':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
-								**{'err':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
-								}[func],
-							}[dtypes[attr]])
-							for string in funcs for ax in funcs[string] if ax in statistics for func in funcs[string][ax] if keys[name][ax]==attr
-							if delim.join(((attr,string,func))) not in data]
-							for axes in dimensions
-							for attr in [keys[name][ax] for ax in statistics if ax.startswith(axes)]
-							if attr is not None and attr in attributes
-							},
-			}
+					**{attr: ([(attr, {'array':mean,'object':first,'dtype':mean}[dtypes[attr]]
+							  if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])]
+							  if attr not in funcs[string] else
+							  [(attribute,funcs[string][attr][func][attribute]) for func in funcs[string][attr] for attribute in funcs[string][attr][func]])
+							  for attr in attributes
+							  for string in funcs
+					},
+					**{attr: [(delim.join(((attr,string,func))),
+						{
+						'array':{
+							**{'':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else mean for attribute in funcs[string][ax][func]},
+							**{'err':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else std for attribute in funcs[string][ax][func]},
+							}[func],
+						'object':{
+							**{'':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else first for attribute in funcs[string][ax][func]},
+							**{'err':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else none for attribute in funcs[string][ax][func]},
+							}[func],
+						'dtype':{
+							**{'':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
+							**{'err':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
+							}[func],
+						}[dtypes[attr]])
+						for string in funcs for ax in funcs[string] if ax in statistics for func in funcs[string][ax] if keys[name][ax]==attr
+						if delim.join(((attr,string,func))) not in data]
+						for axes in dimensions
+						for attr in [keys[name][ax] for ax in statistics if ax.startswith(axes)]
+						if attr is not None and attr in attributes
+					},
+				}
 
 			variables = [
 				*independent,
 				*dependent,
-				*[kwarg for attr in [*independent,*dependent] for kwarg,func in applications[attr]]
+				*[kwarg[0] for attr in [*independent,*dependent] for kwarg,func in applications[attr]]
 				]
 
-			dtype = {attr: data[attr].dtype for attr in applications if (attr in label or attr not in variables) and attr not in exceptions}
+			transforms = [kwarg[0] for string in funcs for attr in funcs[string] if attr in applications for kwarg in applications[attr]]
+
+			dtype = {attr: data[attr].dtype for attr in applications if ((attr in label) or (attr not in variables)) and (attr not in exceptions) and (attr not in transforms)}
 
 			if application is None or application in ['agg']:
 
@@ -1977,7 +1978,7 @@ def apply(data,plots,processes,verbose=None):
 							indexes[attr] = None
 
 					obj = {
-						**{attr: to_tuple(grouping[attr].iloc[0]) if dtype[attr] in ['object'] and isinstance(grouping[attr].iloc[0],iterables) else grouping[attr].iloc[0] if len(grouping[attr]) else None for attr in source},
+						**{attr: to_tuple(grouping[attr].iloc[0]) if (((attr in dtype) and (dtype.get(attr) in ['object'])) or ((attr not in dtype) and (grouping[attr].dtype.kind in ['O']))) and isinstance(grouping[attr].iloc[0],iterables) else grouping[attr].iloc[0] if len(grouping[attr]) else None for attr in source},
 						**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent,*exceptions] and axes in dimensions else axes:
 							{
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
@@ -2404,6 +2405,7 @@ def plotter(plots,processes,verbose=None):
 			data = [{attr: data[OTHER][attr] for attr in data[OTHER] if attr not in [*ALL,OTHER]}
 				for prop in PLOTS if prop in plots[instance][subinstance][obj] for data in search(plots[instance][subinstance][obj][prop]) if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))]
 			data = {attr:[i[attr] if isinstance(i[attr],scalars) else tuple(i[attr]) for i in data] for attr in set(attr for i in data for attr in i if all(attr in i for i in data))}
+			data = {attr:data[attr] if len(set(type(i) for i in data[attr]))==1 else [data[attr][0]] if data[attr] else data[attr] for attr in data}
 			data = {attr: sorted(set(data[attr]),key=lambda i:data[attr].index(i)) for attr in data}
 			data = {attr: [i if isinstance(i,scalars) else [*i] for i in data[attr]] for attr in data}
 
@@ -2841,7 +2843,7 @@ def plotter(plots,processes,verbose=None):
 					values[prop][label] = {}
 					
 					key = 'value'
-					values[prop][label][key] = list(sorted(set([tuple(i.tolist()) if isinstance(i,arrays) else i for i in labels[label]])))
+					values[prop][label][key] = list(sorted(set([tuple(i.tolist()) if isinstance(i,arrays) and not isinstance(i,scalars) else i for i in labels[label]])))
 
 					for key in ['include']:
 						values[prop][label][key] = False

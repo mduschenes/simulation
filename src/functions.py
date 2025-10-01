@@ -329,7 +329,7 @@ def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs
 	data = values
 	return data
 
-def func_information_function(data,*args,attribute=None,function=None,**kwargs):
+def func_information_function(data,*args,function=None,attribute=None,attributes=None,**kwargs):
 
 	keys = data['y']
 	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
@@ -345,9 +345,6 @@ def func_information_function(data,*args,attribute=None,function=None,**kwargs):
 			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
 		return data
 
-	if attribute is None or getter(data,attribute,delimiter=delim) is None:
-		attribute = None
-
 	func = lambda data,*args,**kwargs: 1
 	if function is None:
 		function = func
@@ -360,6 +357,21 @@ def func_information_function(data,*args,attribute=None,function=None,**kwargs):
 		return wrapper
 
 	function = decorator(function)
+
+
+	if attribute is None:
+		attribute = None
+	elif isinstance(attribute,str):
+		attribute = attribute if getter(data,attribute,delimiter=delim) is not None else None
+	else:
+		attribute = None
+
+	if attributes is None:
+		attributes = None
+	elif isinstance(attributes,(str,*iterables)):
+		attributes = [attr for attr in (attributes if not isinstance(attributes,str) else [attributes]) if getter(data,attr,delimiter=delim) is not None]
+	else:
+		attributes = None
 
 	funcs = {}
 
@@ -399,6 +411,13 @@ def func_information_function(data,*args,attribute=None,function=None,**kwargs):
 			data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
 			return data
 		funcs[attr] = func
+
+	if attributes:
+		for attr in attributes:
+			def func(attr,key,data):
+				data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
+				return data
+			funcs[attr] = func
 
 	funcs = {attr:parse(attr,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if getter(data,attr,delimiter=delim) is not None} if keys is not None else {}
 
