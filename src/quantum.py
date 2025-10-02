@@ -9138,7 +9138,7 @@ class Callback(System):
 
 		def insert(data,key,value,func=None):
 
-			func = 'append' if func is None else None
+			func = 'append' if func is None else func
 
 			if isinstance(key,str):
 				key = [key]
@@ -9310,19 +9310,16 @@ class Callback(System):
 
 				model.log(msg)
 
-
 		for attr in attributes:
 
 			arguments = self.arguments.get(attr,())
 			keywords = self.keywords.get(attr,{})
 
-			key = attr
-
-			if key in [
+			if attr in [
 				'sample.array.information','sample.state.information',
 				]:
 
-				key = key
+				key = attr
 				value = data.pop(key)
 
 				key = '{attr}.{i}'

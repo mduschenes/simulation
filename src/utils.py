@@ -7416,6 +7416,46 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 	return func
 
+def integral(func,bounds=None):
+	'''
+	Integrate function
+	Args:
+		func (callable): function to integrate
+		bounds (iterable): bounds to integrate
+	Returns:
+		data (array): integral of function
+	'''
+	return osp.integrate.quad(func,*bounds)[0]
+
+def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
+	'''
+	Kernel function
+	Args:
+		data (array): data to kernel
+		func (callable): function to kernel
+		grad (callable): function to kernel
+		func (callable): function to kernel
+		bounds (iterable): bounds to integrate
+		scale (int,float): scale of kernel
+	Returns:
+		func (callable): kernel function
+	'''
+
+	size = data.size
+	mu = 0
+	sigma = data.std(ddof=size>1)
+	function = lambda x,mu=mu,sigma=sigma: (1/sqrt(2*pi*sigma**2)*exp(-(1/2)*(((x-mu)/sigma)**2)))
+
+	scale = ((
+		integrate(lambda x: function(x)**2,bounds)[0]/
+		integrate(lambda x: function(x)*(x**2),bounds)[0]/
+		integrate(lambda x: hess(x)**2,bounds)[0]
+		)/size)**(1/5)
+
+	func = scipy.stats.gaussian_kde(data,scale).evaluate
+
+	return func
+
 def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
 	'''
 	Setup metrics

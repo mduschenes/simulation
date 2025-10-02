@@ -24,7 +24,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,epsilon
 from src.utils import orng as rng
@@ -451,32 +451,27 @@ def func_information(obj,*args,**kwargs):
 	n = obj.shape[-1]
 	eps = epsilon(obj.dtype)
 	bounds = [0,1]
+	scale = None
 	obj = obj.ravel()
 	def func(x,n=n,eps=eps):
 		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
 		return x
+	def grad(x,n=n,eps=eps):
+		x = ((-1)**1)*(n-1-1)*(n-1)*((1-x)**(n-2-1))
+		return x
 	def hess(x,n=n,eps=eps):
-		x = ((-1)**2)*(n-2)*(n-3)*(n-1)*((1-x)**(n-4))
+		x = ((-1)**2)*(n-1-2)*(n-1-1)*(n-1)*((1-x)**(n-2-2))
 		return x
 	def probability(obj):
-		size = obj.size
-		sigma = obj.std(ddof=size>1)
-		function = lambda x,mu=0,sigma=sigma: (1/sqrt(2*pi*sigma**2)*exp(-(1/2)*(((x-mu)/sigma)**2)))
-		scale = ((
-			scipy.integrate.quad(lambda x: function(x)**2,*bounds)[0]/
-			scipy.integrate.quad(lambda x: function(x)*(x**2),*bounds)[0]/
-			scipy.integrate.quad(lambda x: hess(x)**2,*bounds)[0]
-			)/size)**(1/5)
-		func = scipy.stats.gaussian_kde(obj,scale).evaluate
-		return func
+		return kernel(obj,func=func,grad=grad,hess=hess,bounds=bounds,scale=scale)
 	def entropy(func):
 		def function(x):
 			data = func(x).item()
 			return -data*log(data)
-		data = scipy.integrate.quad(function,*bounds)[0]
+		data = integral(function,bounds)
 		return data
 
-	data = entropy(probability(obj)) - addition(information(func,obj))
+	data = -addition(information(func,obj))/log(size)
 
 	key = [None,'error']
 	value = [data]*(size//n),[0]*(size//n)
