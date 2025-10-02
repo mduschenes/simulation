@@ -11,6 +11,7 @@ import scipy as sp
 import scipy.stats
 import scipy.special
 import scipy.optimize
+import scipy.integrate
 import pandas as pd
 from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
@@ -22,12 +23,12 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,information
+from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,epsilon
 from src.utils import orng as rng
-from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan
+from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan,pi
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
@@ -277,23 +278,23 @@ def func_info_function_y(data,*args,**kwargs):
 
 	return data
 
-def func_information_x(data,*args,**kwargs):
+def func_process_x(data,*args,**kwargs):
 	data = data.iloc[0]
 	return data
 
-def func_information_y(data,*args,**kwargs):
+def func_process_y(data,*args,**kwargs):
 	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
 	return data
 
-def func_information_xerr(data,*args,**kwargs):
+def func_process_xerr(data,*args,**kwargs):
 	data = None
 	return data
 
-def func_information_yerr(data,*args,**kwargs):
+def func_process_yerr(data,*args,**kwargs):
 	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
 	return data
 
-def func_information_process_x(data,values,metadata,properties,*args,**kwargs):
+def func_process_process_x(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if not isinstance(data,iterables) else data
@@ -302,7 +303,7 @@ def func_information_process_x(data,values,metadata,properties,*args,**kwargs):
 	data = values
 	return data
 
-def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
+def func_process_process_y(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if not isinstance(data,iterables) else data
@@ -311,7 +312,7 @@ def func_information_process_y(data,values,metadata,properties,*args,**kwargs):
 	data = values
 	return data
 
-def func_information_process_xerr(data,values,metadata,properties,*args,**kwargs):
+def func_process_process_xerr(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if not isinstance(data,iterables) else data
@@ -320,7 +321,7 @@ def func_information_process_xerr(data,values,metadata,properties,*args,**kwargs
 	data = values
 	return data
 
-def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs):
+def func_process_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	keys = metadata['x']
 	values = {} if not isinstance(values,dict) else values
 	data = [data for key in keys] if not isinstance(data,iterables) else data
@@ -329,7 +330,7 @@ def func_information_process_yerr(data,values,metadata,properties,*args,**kwargs
 	data = values
 	return data
 
-def func_information_function(data,*args,function=None,attribute=None,attributes=None,**kwargs):
+def func_process_function(data,*args,function=None,attribute=None,attributes=None,**kwargs):
 
 	keys = data['y']
 	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
@@ -431,7 +432,7 @@ def func_histogram(obj,*args,**kwargs):
 	data = dict(zip(key,value))
 	return data
 
-def func_information(obj,*args,**kwargs):
+def func_process(obj,*args,**kwargs):
 	n = obj.size
 	eps = epsilon(obj.dtype)
 	def func(x,n=n,eps=eps):
@@ -443,6 +444,44 @@ def func_information(obj,*args,**kwargs):
 	value = information(func,obj)
 	value = addition(value)/n,addition(value**2)/n,addition(func(obj))
 	data = dict(zip(key,value))
+	return data
+
+def func_information(obj,*args,**kwargs):
+	size = obj.size
+	n = obj.shape[-1]
+	eps = epsilon(obj.dtype)
+	bounds = [0,1]
+	obj = obj.ravel()
+	def func(x,n=n,eps=eps):
+		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
+		return x
+	def hess(x,n=n,eps=eps):
+		x = ((-1)**2)*(n-2)*(n-3)*(n-1)*((1-x)**(n-4))
+		return x
+	def probability(obj):
+		size = obj.size
+		sigma = obj.std(ddof=size>1)
+		function = lambda x,mu=0,sigma=sigma: (1/sqrt(2*pi*sigma**2)*exp(-(1/2)*(((x-mu)/sigma)**2)))
+		scale = ((
+			scipy.integrate.quad(lambda x: function(x)**2,*bounds)[0]/
+			scipy.integrate.quad(lambda x: function(x)*(x**2),*bounds)[0]/
+			scipy.integrate.quad(lambda x: hess(x)**2,*bounds)[0]
+			)/size)**(1/5)
+		func = scipy.stats.gaussian_kde(obj,scale).evaluate
+		return func
+	def entropy(func):
+		def function(x):
+			data = func(x).item()
+			return -data*log(data)
+		data = scipy.integrate.quad(function,*bounds)[0]
+		return data
+
+	data = entropy(probability(obj)) - addition(information(func,obj))
+
+	key = [None,'error']
+	value = [data]*(size//n),[0]*(size//n)
+	data = dict(zip(key,value))
+
 	return data
 
 def func_size_array(data,*args,**kwargs):

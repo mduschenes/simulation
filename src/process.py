@@ -1543,6 +1543,9 @@ def apply(data,plots,processes,verbose=None):
 
 	for data in database:
 
+		if data is None:
+			continue
+
 		updates = {}
 
 		def boolean(attr,data):
@@ -1618,7 +1621,7 @@ def apply(data,plots,processes,verbose=None):
 
 
 			if not funcs:
-				funcs = {None:None}
+				funcs = {'':None}
 
 			stats = {string:{axes: {**nulls} for axes in statistics} for string in funcs}
 

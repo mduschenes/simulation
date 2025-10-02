@@ -2203,7 +2203,564 @@
 			}
 		}
 	},
-	"information.array.state.N.M.noise.parameters": {
+	"process.array.state.N.M.noise.parameters": {
+		"fig": {
+			"set_size_inches": {
+				"w": 36,
+				"h": 12
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "N",
+					"y": "sample.state.process",
+					"xerr": "N",
+					"yerr": "sample.state.process.error",
+					"label": {
+						"label": {
+							"M": null,
+							"noise.parameters": null
+						},
+						"labels": {
+							"M": null,
+							"noise.parameters": null
+						},
+						"func": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_process_x"
+								},
+								"y": {
+									"": "src.functions.func_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_process_yerr"
+								},
+								"sample.state.process.norm": "src.functions.func_process_y",
+								"sample.array.process.norm": "src.functions.func_process_y"
+							}
+						},
+						"process": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_process_process_x"
+								},
+								"y": {
+									"": "src.functions.func_process_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_process_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_process_process_yerr"
+								},
+								"sample.state.process.norm": "src.functions.func_process_process_y",
+								"sample.array.process.norm": "src.functions.func_process_process_y"
+							}
+						},
+						"function": {
+							"func": "src.functions.func_process_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_state","attribute":"label.sample.state.process.norm","attributes":["label.sample.state.process.norm","label.sample.array.process.norm"]}
+						},
+						"application": "agg",
+						"analysis": {},
+						"wrapper": {},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": {
+								"M": null
+							},
+							"exclude": {}
+						},
+						"sort": {
+							"noise.parameters": null,
+							"M": null
+						},
+						"indexing": null,
+						"slice": null
+					},
+					"obj": null,
+					"plots": null,
+					"function": null,
+					"alpha": {
+						"@M@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@M@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",
+							"2",
+							"3",
+							"4"
+						]
+					},
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,
+					"markersize": 10,
+					"linestyle": ":",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				},
+				{
+					"x": "N",
+					"y": "sample.array.process",
+					"xerr": "N",
+					"yerr": "sample.array.process.error",
+					"label": {
+						"label": {
+							"M": null,
+							"noise.parameters": null
+						},
+						"labels": {
+							"M": null,
+							"noise.parameters": null
+						},
+						"func": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_process_x"
+								},
+								"y": {
+									"": "src.functions.func_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_process_yerr"
+								},
+								"sample.array.process.norm": "src.functions.func_process_y",
+								"sample.state.process.norm": "src.functions.func_process_y"
+							}
+						},
+						"process": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_process_process_x"
+								},
+								"y": {
+									"": "src.functions.func_process_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_process_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_process_process_yerr"
+								},
+								"sample.array.process.norm": "src.functions.func_process_process_y",
+								"sample.state.process.norm": "src.functions.func_process_process_y"
+							}
+						},
+						"function": {
+							"func": "src.functions.func_process_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_array","attribute":"label.sample.array.process.norm","attributes":["label.sample.state.process.norm","label.sample.array.process.norm"]}
+						},
+						"application": "agg",
+						"analysis": {},
+						"wrapper": {},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},
+						"legend": {
+							"include": {
+								"M": null
+							},
+							"exclude": {}
+						},
+						"sort": {
+							"noise.parameters": null,
+							"M": null
+						},
+						"indexing": null,
+						"slice": null
+					},
+					"obj": null,
+					"plots": null,
+					"function": null,
+					"alpha": {
+						"@M@": [
+							0.6,
+							0.8,
+							1.0
+						]
+					},
+					"marker": {
+						"@M@": [
+							"o",
+							"^",
+							"s",
+							"P",
+							"h",
+							"H",
+							"D",
+							"X",
+							"<",
+							"v",
+							">",
+							"8",
+							"x",
+							"1",
+							"2",
+							"3",
+							"4"
+						]
+					},
+					"markeredgecolor": "k",
+					"markeredgewidth": 2,
+					"markersize": 10,
+					"linestyle": "-",
+					"linewidth": 6,
+					"elinewidth": 4,
+					"capsize": 6,
+					"color": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
+					"ecolor": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"@noise.parameters@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 0.8,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.02,
+				"fraction": 0.15,
+				"aspect": 40,
+				"share": true,
+				"scinotation": {
+					"scilimits": [
+						0,
+						0
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_label": {
+					"label": "noise.parameters",
+					"labelpad": 10,
+					"size": 36
+				},
+				"set_ticks": {
+					"ticks": 5
+				},
+				"set_ticklabels": {
+					"ticklabels": [
+						0,
+						0.0001,
+						0.001,
+						0.01,
+						0.1
+					],
+					"size": 36
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 36,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_ylabel": {
+				"ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1$"
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Size} ~~ 1/N$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_xlim": {
+				"xmin": 5e-17,
+				"xmax": 2.0
+			},
+			"set_xnbins": {
+				"nbins": 5
+			},
+			"set_xticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-08,
+					0.0001,
+					1.0
+				]
+			},
+			"set_xticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-08,
+					0.0001,
+					1.0
+				],
+				"size": 36
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-17,
+				"ymax": 2.0
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-16,
+					1e-12,
+					1e-08,
+					0.0001,
+					1.0
+				]
+			},
+			"set_yticklabels": {
+				"labels": [
+					1e-16,
+					1e-12,
+					1e-08,
+					0.0001,
+					1.0
+				],
+				"size": 36
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {
+						"base": 10
+					}
+				}
+			},
+			"xaxis.set_minor_locator": null,
+			"xaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"yaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {
+						"base": 10
+					}
+				}
+			},
+			"yaxis.set_minor_locator": null,
+			"yaxis.set_minor_formatter": {
+				"ticker": {
+					"NullFormatter": {}
+				}
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "major",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 36,
+				"fontsize": 36,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 36
+				},
+				"scinotation": {
+					"scilimits": [
+						0,
+						0
+					],
+					"decimals": 0,
+					"one": false
+				},
+				"set_color": "gray",
+				"set_alpha": 0.6,
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.5,
+					0.225
+				],
+				"set_title": "%s~~\n\\textrm{Computational}~,~\\textrm{POVM}",
+				"set_title_col": null,
+				"set_title_row": null,
+				"ncol": 1,
+				"join": 2,
+				"keep": [
+					"marker",
+					"linestyle"
+				],
+				"merge": true,
+				"set_zorder": {
+					"level": 100
+				}
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 36
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "bottom_right",
+					"set_title": "top",
+					"set_xlabel": "bottom",
+					"set_ylabel": "left",
+					"set_yticks": true,
+					"set_yticklabels": "left",
+					"set_colorbar": "right"
+				}
+			}
+		}
+	},
+    "information.array.state.N.M.noise.parameters": {
 		"fig": {
 			"set_size_inches": {
 				"w": 36,
@@ -2234,47 +2791,9 @@
 							"M": null,
 							"noise.parameters": null
 						},
-						"func": {
-							"stat": {
-								"x": {
-									"": "src.functions.func_information_x"
-								},
-								"y": {
-									"": "src.functions.func_information_y"
-								},
-								"xerr": {
-									"err": "src.functions.func_information_xerr"
-								},
-								"yerr": {
-									"err": "src.functions.func_information_yerr"
-								},
-								"sample.state.information.norm": "src.functions.func_information_y",
-								"sample.array.information.norm": "src.functions.func_information_y"
-							}
-						},
-						"process": {
-							"stat": {
-								"x": {
-									"": "src.functions.func_information_process_x"
-								},
-								"y": {
-									"": "src.functions.func_information_process_y"
-								},
-								"xerr": {
-									"err": "src.functions.func_information_process_xerr"
-								},
-								"yerr": {
-									"err": "src.functions.func_information_process_yerr"
-								},
-								"sample.state.information.norm": "src.functions.func_information_process_y",
-								"sample.array.information.norm": "src.functions.func_information_process_y"
-							}
-						},
-						"function": {
-							"func": "src.functions.func_information_function",
-							"args": [],
-							"kwargs": {"function":"src.functions.func_size_state","attribute":"label.sample.state.information.norm","attributes":["label.sample.state.information.norm","label.sample.array.information.norm"]}
-						},
+						"func": {},
+						"process": {},
+						"function": {},
 						"application": "agg",
 						"analysis": {},
 						"wrapper": {},
@@ -2378,47 +2897,9 @@
 							"M": null,
 							"noise.parameters": null
 						},
-						"func": {
-							"stat": {
-								"x": {
-									"": "src.functions.func_information_x"
-								},
-								"y": {
-									"": "src.functions.func_information_y"
-								},
-								"xerr": {
-									"err": "src.functions.func_information_xerr"
-								},
-								"yerr": {
-									"err": "src.functions.func_information_yerr"
-								},
-								"sample.array.information.norm": "src.functions.func_information_y",
-								"sample.state.information.norm": "src.functions.func_information_y"
-							}
-						},
-						"process": {
-							"stat": {
-								"x": {
-									"": "src.functions.func_information_process_x"
-								},
-								"y": {
-									"": "src.functions.func_information_process_y"
-								},
-								"xerr": {
-									"err": "src.functions.func_information_process_xerr"
-								},
-								"yerr": {
-									"err": "src.functions.func_information_process_yerr"
-								},
-								"sample.array.information.norm": "src.functions.func_information_process_y",
-								"sample.state.information.norm": "src.functions.func_information_process_y"
-							}
-						},
-						"function": {
-							"func": "src.functions.func_information_function",
-							"args": [],
-							"kwargs": {"function":"src.functions.func_size_array","attribute":"label.sample.array.information.norm","attributes":["label.sample.state.information.norm","label.sample.array.information.norm"]}
-						},
+						"func": {},
+						"process": {},
+						"function": {},
 						"application": "agg",
 						"analysis": {},
 						"wrapper": {},

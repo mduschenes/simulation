@@ -1661,16 +1661,16 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	return function
 
 
-def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
+def entanglement(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	'''
-	Compute entropy of function
+	Compute entanglement entropy of function
 	Args:
-		func  (callable): Function to compute entropy
+		func  (callable): Function to compute entanglement entropy
 		shape (iterable[int]): Shape of function
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
 	Returns:
-		function (callable): Entropy of function
+		function (callable): Entanglement entropy of function
 	'''
 
 	if shape is None:
@@ -1845,20 +1845,31 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	return function
 
+def entropy(func,*args,**kwargs):
+	'''
+	Compute entropy of function
+	Args:
+		func  (callable): Function to compute entropy
+		args (iterable): Additional positional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		data (array): entropy of function
+	'''
+	data = func(*args,**kwargs)
+	return addition(data*(-log(data)))
+
 def information(func,*args,**kwargs):
 	'''
 	Compute information of function
 	Args:
 		func  (callable): Function to compute information
-		label  (callable,array): Label to compute information
-		shape (iterable[int]): Shape of function
-		hermitian (bool): function is hermitian
-		unitary (bool): function is unitary
+		args (iterable): Additional positional arguments
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		data (array): information of function
 	'''
-	return -log(func(*args,**kwargs))
-
+	data = func(*args,**kwargs)
+	return -log(data)
 
 def nullfunc(obj,*args,**kwargs):
 	'''

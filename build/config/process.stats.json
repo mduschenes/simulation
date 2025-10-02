@@ -12,10 +12,11 @@
     "instance": {
         "hist.array.M.noise.parameters": 0,
         "bar.array.M.noise.parameters": 0,
-        "sample.array.M.noise.parameters": 1,
+        "sample.array.M.noise.parameters": 0,
         "sample.state.M.noise.parameters": 0,
         "info.array.N.M.noise.parameters": 0,
         "info.state.N.M.noise.parameters": 0,
+        "process.array.state.N.M.noise.parameters": 0,
         "information.array.state.N.M.noise.parameters": 1
     },
     "configuration": [
@@ -548,6 +549,7 @@
         ],
         [
             [
+                "process.array.state.N.M.noise.parameters",
                 "information.array.state.N.M.noise.parameters"
             ],
             [

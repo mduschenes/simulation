@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
+from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entanglement,purity,similarity,divergence
 from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange
 from src.utils import tensor,matrix,network,mps,context
 from src.utils import contraction,gradient_contraction
@@ -1989,6 +1989,8 @@ class Measure(System):
 		if isinstance(attribute,str):
 			if hasattr(self,attribute):
 				attribute = getattr(self,attribute)
+		elif isinstance(attribute,objects):
+			attribute = attribute
 		elif not callable(attribute):
 			attribute = self.array
 
@@ -8597,7 +8599,7 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
-			'entropy':[],'purity':[],'similarity':[],'divergence':[],
+			'entanglement':[],'purity':[],'similarity':[],'divergence':[],
 
 			'N':[],'D':[],'d':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'backend':[],'architecture':[],'timestamp':[],
@@ -8711,7 +8713,7 @@ class Callback(System):
 			'search':True,
 			'parameters.relative':True,'parameters.relative.mean':True,
 			'variables':True,'variables.relative':True,'variables.relative.mean':True,
-			'entropy':True,'purity':True,'similarity':True,'divergence':True
+			'entanglement':True,'purity':True,'similarity':True,'divergence':True
 		}
 
 		attrs = relsort(track,attributes)
@@ -8904,13 +8906,13 @@ class Callback(System):
 						value = nonzero(value,eps=1e-12)
 						# value = (argmax(absolute(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
-				elif attr in ['entropy'] and (not do):
+				elif attr in ['entanglement'] and (not do):
 					value = default
 
-				elif attr in ['entropy'] and (do):
+				elif attr in ['entanglement'] and (do):
 					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 
-					function = entropy(model,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+					function = entanglement(model,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
 					value = function(parameters=parameters,state=state,**kwargs)
 
@@ -9046,6 +9048,7 @@ class Callback(System):
 			'objective','infidelity','norm','entanglement','entangling','trace',
 			'array','state',
 			'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+			'sample.array.process','sample.state.process',
 			'sample.array.information','sample.state.information',
 			'infidelity.quantum','infidelity.classical','infidelity.pure',
 			'norm.quantum','norm.classical','norm.pure',
@@ -9133,6 +9136,21 @@ class Callback(System):
 		if optimizer is None:
 			optimizer = {}
 
+		def insert(data,key,value,func=None):
+
+			func = 'append' if func is None else None
+
+			if isinstance(key,str):
+				key = [key]
+				value = [value]
+
+			for key,value in zip(key,value):
+				if not data.get(key) and not isinstance(data.get(key),list):
+					data[key] = []
+				getattr(data[key],func)(value)
+
+			return
+
 		attributes = {attr:self.attributes[attr]
 			for attr in self.attributes
 			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
@@ -9167,11 +9185,14 @@ class Callback(System):
 				keywords = self.keywords.get(attr,{})
 
 				key = attr
+				value = None
+				func = 'append'
 
 				if attr in [
 					'objective','infidelity','norm','entanglement','entangling','trace',
 					'array','state',
 					'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+					'sample.array.process','sample.state.process',
 					'sample.array.information','sample.state.information',
 					'infidelity.quantum','infidelity.classical','infidelity.pure',
 					'norm.quantum','norm.classical','norm.pure',
@@ -9208,23 +9229,10 @@ class Callback(System):
 							state=obj,
 							**keywords)
 
-					elif attr in ['sample.array.linear','sample.array.log','sample.state.linear','sample.state.log']:
-
-						key = '{attr}.{i}'
-
-						value = getattrs(model,attributes[attr],delimiter=delim)(
-							parameters=parameters,
-							state=obj,
-							**keywords)
-
-						if isinstance(value,dict):
-							key = [key.format(attr=attr,i=i) for i in value]
-							value = [value[i] for i in value]
-						else:
-							key = attr
-							value = value
-
-					elif attr in ['sample.array.information','sample.state.information']:
+					elif attr in [
+						'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log',
+						'sample.array.process','sample.state.process',
+						]:
 
 						key = '{attr}.{i}'
 
@@ -9239,6 +9247,18 @@ class Callback(System):
 						else:
 							key = attr
 							value = value
+
+					elif attr in [
+						'sample.array.information','sample.state.information',
+						]:
+
+						key = attr
+
+						value = getattrs(model,attributes[attr],delimiter=delim)(
+							parameters=parameters,
+							state=obj,
+							**{**keywords,**dict(function=None)}
+							)
 
 				elif attr in ['noise.parameters']:
 
@@ -9279,15 +9299,7 @@ class Callback(System):
 
 					value = None
 
-				if isinstance(key,str):
-					key = [key]
-					value = [value]
-
-				for key,value in zip(key,value):
-					if not data.get(key) and not isinstance(data.get(key),list):
-						data[key] = []
-					data[key].append(value)
-
+				insert(data,key,value,func=func)
 
 			if logging:
 
@@ -9297,5 +9309,40 @@ class Callback(System):
 					])
 
 				model.log(msg)
+
+
+		for attr in attributes:
+
+			arguments = self.arguments.get(attr,())
+			keywords = self.keywords.get(attr,{})
+
+			key = attr
+
+			if key in [
+				'sample.array.information','sample.state.information',
+				]:
+
+				key = key
+				value = data.pop(key)
+
+				key = '{attr}.{i}'
+				value = array(value)
+
+				value = getattrs(model,attributes[attr],delimiter=delim)(
+					parameters=parameters,
+					state=obj,
+					**{**keywords,**dict(attribute=value)}
+					)
+
+				if isinstance(value,dict):
+					key = [key.format(attr=attr,i=i) if i is not None else attr for i in value]
+					value = [value[i] for i in value]
+					func = 'extend' if any(isinstance(i,list) for i in value) else 'append'
+				else:
+					key = attr
+					value = value
+					func = 'append'
+
+				insert(data,key,value,func=func)
 
 		return status
