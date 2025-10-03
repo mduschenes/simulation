@@ -267,6 +267,8 @@
 		"layout":"configuration.options.layout",
 		"periodic":"measure.options.periodic",
 		
+		"samples":"samples",
+
 		"array":"measure.array",
 		"state":"measure.state",
 		
@@ -333,6 +335,8 @@
 		"layout":"configuration.options.layout",		
 		"periodic":"measure.options.periodic",
 		
+		"samples":"samples",
+
 		"array":"measure.array",
 		"state":"measure.state",
 
@@ -389,87 +393,7 @@
 	},
 	"options":{}	
 },
-"workflow": {
-	"path":{
-		"path":"~/scratch/scaling/data",
-		"cwd":"~/mnt/{host}/scratch/scaling",
-		"pwd":"~/mnt/{host}/code/tensor/build",
-		"format":"scaling.M.{M}.N.{N}.noise.{noise}.seed.{seed}",
-		"exe":["main.py"],
-		"data":["data.tmp.hdf5"],
-		"settings":["settings.json"],
-		"args":[],
-		"kwargs":{},
-		"job":{
-			"job":{
-				"job":"job.slurm",
-				"script":"job.sh",
-				"ext":"stderr",
-				"pattern":"#SBATCH --array=",
-				"options":["%100"],
-				"delimiter":",",
-				"dependency":null
-			},
-			"postprocess":{
-				"job":"postprocess.slurm",
-				"script":"postprocess.sh",
-				"ext":"stderr",
-				"pattern":"#SBATCH --dependency=",
-				"options":[],
-				"delimiter":",",
-				"dependency":"job"
-			}		
-		}
-	},
-	"hosts":["vector","beluga","cedar"],
-	"env":{"NUMPY_BACKEND":"numpy"},
-	"settings":{
-		"path":{
-			"string":["path"],
-			"key":["jobs.job.cwd;jobs.job.cwd","jobs.job.cwd;jobs.postprocess.cwd"],
-			"value":"scaling.M.{M}.N.{N}.noise.{noise}.seed.{seed}"
-		},
-		"N":{
-			"string":["4","6","8"],
-			"key":["permutations.permutations.module.N","permutations.permutations.model.N"],
-			"value":[
-				[4],
-				[6],
-				[8]
-			]
-		},
-		"M":{
-			"string":["1.18","20.50"],
-			"key":["permutations.permutations.module.M"],
-			"value":[
-				[1,2,4,6,8,10,12,14,16,18],
-				[20,25,30,35,40,45,50]
-			]
-		},
-		"noise":{
-			"string":["1e4.3e2","4e2.5e1","15e1.45e1"],
-			"key":["permutations.permutations.model.data.noise.parameters"],
-			"value":[
-				[1e-4,1e-3,2.5e-3,5e-3,7.5e-3,1e-2,2e-2,3e-2],
-				[4e-2,5e-2,6e-2,7e-2,8e-2,9e-2,1e-1,5e-1],
-				[1.5e-1,2e-1,2.5e-1,3e-1,3.5e-1,4e-1,4.5e-1]
-			]
-		},		
-		"seed":{
-			"string":["135792468","246813579"],
-			"key":["permutations.permutations.seed.seed"],
-			"value":[
-				[135792468],
-				[246813579]
-			]
-		}						
-	},
-	"function":"setup",
-	"options":{
-		"execute":false,
-		"verbose":true
-	}
-},
+"workflow": {},
 "process": {},
 "plot": {}
 }

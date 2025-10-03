@@ -2,7 +2,7 @@
     "load": 0,
     "dump": 1,
     "tmp": "merge",
-    "chunk": 100,
+    "chunk": 1e6,
     "plot": 1,
     "process": 1,
     "postprocess": 0,
@@ -555,7 +555,9 @@
             [
                 {
                     "position": "col",
-                    "value": {},
+                    "value": {
+                        "M":null
+                    },
                     "kwargs": {
                         "ax.errorbar.label.labels": {},
                         "ax.errorbar.label.scinotation": {
@@ -566,9 +568,11 @@
                             "decimals": 0,
                             "one": false
                         },
+                        "ax.set_title.label": "M",
+                        "ax.set_title.size": 36,
                         "ax.set_xlabel.xlabel": "\\textrm{Size} ~~ 1/N",
                         "ax.set_xlabel.size": 36,
-                        "ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1",
+                        "ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})",
                         "ax.set_ylabel.size": 36,
                         "ax.set_ylabel.y": null,
                         "ax.set_xticklabels.scinotation": {
@@ -652,7 +656,7 @@
                             "decimals": 0,
                             "one": false
                         },
-                        "ax.legend.loc": null,
+                        "ax.legend.loc": "lower right",
                         "ax.legend.title_fontsize": 36,
                         "ax.legend.fontsize": 36,
                         "ax.legend.prop.size": 36,
@@ -681,7 +685,9 @@
                 },
                 {
                     "position": "row",
-                    "value": {}
+                    "value": {
+                        "noise.parameters":null
+                    }
                 }
             ]
         ]

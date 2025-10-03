@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import copy,seeder,prod,delim,union,is_equal,funcpath,argparser
+from src.utils import copy,seeder,prod,delim,union,flatten,is_equal,funcpath,argparser
 from src.iterables import Dict,getter,setter,permuter,search
 from src.io import load,dump,join,split,basename,dirname,environ
 from src.call import launch,call,command
@@ -87,16 +87,15 @@ def spawn(settings):
 	# Find keys of seeds in settings
 	items = ['seed']
 	types = (list,dict,)
-	exclude = ['seed','seed.seed','system.seed','callback.settings.seed','callback.settings.seed.seed',
-		*[delim.join(['permutations','permutations',*attr.split(delim)]) for attr in getter(settings,'permutations.permutations',delimiter=delim,default={})],
+	exclude = ['seed','seed.seed','system.seed',
+		*[delim.join([string,*attr.split(delim)]) for string in [delim.join(i) for i in [['permutations','permutations']]] for attr in getter(settings,string,delimiter=delim,default={})],
+		*[delim.join([string,*index,element]) for string in [delim.join(i) for i in [['callback','settings']]] for index,shape,item in search(getter(settings,string,delimiter=delim,default={}),items=items,returns=True,types=types) if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)],
 		*(attributes if attributes is not None else [])
 		]
 	seedlings = search(settings,items=items,returns=True,types=types)
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings if all(isinstance(i,str) for i in index) for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
-
-	seedlings = [seedling for seedling in seedlings]
 	count = max(1,len(seedlings))
 	groups = [[seedling for seedling in seedlings]]
 

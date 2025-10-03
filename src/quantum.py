@@ -9159,7 +9159,8 @@ class Callback(System):
 
 		arguments = self.arguments.get(attr,())
 		keywords = self.keywords.get(attr,{})
-		settings = self.settings
+
+		configurations = list(setup(settings=self.settings,**dict(index=False)))
 
 		options = {
 			**{key: model.options[key] for key in model.options}
@@ -9170,10 +9171,7 @@ class Callback(System):
 			**{key: kwargs.get(key) for key in kwargs if key in options},
 			}
 
-		settings = self.settings
-		opts = dict(index=False)
-
-		for settings in setup(settings=settings,**opts):
+		for index,settings in enumerate(configurations):
 
 			obj = model(parameters=parameters,state=state,options=options,**settings.model)
 
@@ -9259,16 +9257,20 @@ class Callback(System):
 							state=obj,
 							**{**keywords,**dict(function=None)}
 							)
+				elif attr in ['samples']:
+
+					key = attr
+					value = len(configurations)
 
 				elif attr in ['noise.parameters']:
 
 					value = 'model'
 					if hasattr(model,value):
 						value = getattr(model,value)
-						value = [model for index in value for model in value[index]]
+						value = [model for i in value for model in value[i]]
 					else:
 						value = model.data
-						value = [value[index] for index in value]
+						value = [value[i] for i in value]
 
 					value = [model.parameters() for model in value if not model.unitary and not model.hermitian]
 
@@ -9303,10 +9305,10 @@ class Callback(System):
 
 			if logging:
 
-				msg = '\n'.join([
+				msg = '\n'.join([f'Statistics {index}/{len(configurations)}',*[
 					f'{key} : {data[key][-1]}'
 					for key in data if len(data[key]) and (isinstance(data[key][-1],(*numbers,*scalars)) or (isinstance(data[key][-1],arrays) and data[key][-1].size <= 1))
-					])
+					]])
 
 				model.log(msg)
 

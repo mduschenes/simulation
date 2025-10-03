@@ -10768,6 +10768,7 @@ def slicer(iterable,size):
 	if not size:
 		yield iterable
 	else:
+		size = int(size)
 		def iterate(item,items):
 			yield item
 			yield from itertools.islice(items,size-1)

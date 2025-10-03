@@ -2791,9 +2791,43 @@
 							"M": null,
 							"noise.parameters": null
 						},
-						"func": {},
-						"process": {},
-						"function": {},
+						"func": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_information_x"
+								},
+								"y": {
+									"": "src.functions.func_information_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_information_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_information_yerr"
+								}
+							}
+						},
+						"process": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_information_process_x"
+								},
+								"y": {
+									"": "src.functions.func_information_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_information_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_information_process_yerr"
+								}
+							}
+						},
+						"function": {
+							"func": "src.functions.func_information_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_state"}
+						},
 						"application": "agg",
 						"analysis": {},
 						"wrapper": {},
@@ -2897,9 +2931,43 @@
 							"M": null,
 							"noise.parameters": null
 						},
-						"func": {},
-						"process": {},
-						"function": {},
+						"func": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_information_x"
+								},
+								"y": {
+									"": "src.functions.func_information_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_information_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_information_yerr"
+								}
+							}
+						},
+						"process": {
+							"stat": {
+								"x": {
+									"": "src.functions.func_information_process_x"
+								},
+								"y": {
+									"": "src.functions.func_information_process_y"
+								},
+								"xerr": {
+									"err": "src.functions.func_information_process_xerr"
+								},
+								"yerr": {
+									"err": "src.functions.func_information_process_yerr"
+								}
+							}
+						},
+						"function": {
+							"func": "src.functions.func_information_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_array"}
+						},
 						"application": "agg",
 						"analysis": {},
 						"wrapper": {},
@@ -3048,7 +3116,7 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N}) - 1$"
+				"ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Size} ~~ 1/N$"
