@@ -769,10 +769,19 @@
 						"process": {
 							"stat": {
 								"y": {
-									"": "src.functions.func_sample_process",
-									"err": "src.functions.func_sample_process_err"
+									"": "src.functions.func_sample_process_y",
+									"err": "src.functions.func_sample_process_yerr"
+								},
+								"x": {
+									"": "src.functions.func_sample_process_x",
+									"err": "src.functions.func_sample_process_xerr"
 								}
 							}
+						},
+						"function": {
+							"func": "src.functions.func_sample_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_array"}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -1139,25 +1148,23 @@
 						"process": {
 							"stat": {
 								"y": {
-									"": "src.functions.func_sample_process",
-									"err": "src.functions.func_sample_process_err"
+									"": "src.functions.func_sample_process_y",
+									"err": "src.functions.func_sample_process_yerr"
+								},
+								"x": {
+									"": "src.functions.func_sample_process_x",
+									"err": "src.functions.func_sample_process_xerr"
 								}
 							}
 						},
+						"function": {
+							"func": "src.functions.func_sample_function",
+							"args": [],
+							"kwargs": {"function":"src.functions.func_size_state"}
+						},
 						"application": "agg",
 						"analysis": {},
-						"wrapper": {
-							"y": {
-								"func": "src.functions.func_sample_function",
-								"args": [],
-								"kwargs": {}
-							},
-							"yerr": {
-								"func": "src.functions.func_sample_function_err",
-								"args": [],
-								"kwargs": {}
-							}
-						},
+						"wrapper": {},
 						"scinotation": {
 							"scilimits": [
 								0,
