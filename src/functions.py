@@ -196,12 +196,12 @@ def func_hist_yerr(data,*args,**kwargs):
 	return data
 
 def func_sample_y(data,*args,**kwargs):
-	data = sum((np.array(i) for i in data))
+	data = sum(np.array(i) for i in data)
 	data = data.reshape(1,*data.shape)
 	return data
 
 def func_sample_x(data,*args,**kwargs):
-	data = sum((np.array(i) for i in data))/len(data)
+	data = data.iloc[0]
 	return data
 
 def func_sample_yerr(data,*args,**kwargs):
@@ -212,37 +212,86 @@ def func_sample_xerr(data,*args,**kwargs):
 	data = tuple((None,))
 	return data
 
-def func_sample_process(data,values,metadata,properties,*args,**kwargs):
+def func_sample_process_x(data,values,metadata,properties,*args,**kwargs):
+	return data
+
+def func_sample_process_y(data,values,metadata,properties,*args,**kwargs):
 	if isinstance(values,arrays):
 		data += values
 	return data
 
-def func_sample_process_err(data,values,metadata,properties,*args,**kwargs):
-	return
-
-def func_sample_function(data,*args,eps=None,**kwargs):
-	data = data['y']
-	if eps:
-		data = np.array(data)
-		boolean = data>0
-		data[boolean] = np.log(data[boolean])
-		key = boolean & (np.abs((data-data[boolean].max())/(((data-data[boolean].max())**2).mean()))>eps)
-		data[boolean] = np.exp(data[boolean])
-		value = 0
-		data[key] = value
+def func_sample_process_xerr(data,values,metadata,properties,*args,**kwargs):
 	return data
 
-def func_sample_function_err(data,*args,eps=None,**kwargs):
-	data = data['yerr']
+def func_sample_process_yerr(data,values,metadata,properties,*args,**kwargs):
+	return data
+
+def func_sample_function(data,*args,function=None,**kwargs):
+
+	def parse(attr,data):
+		nulls = {}
+		if data is None:
+			data = None
+		elif all(i is None for i in data):
+			data = None
+		if data is not None and attr in nulls:
+			data = np.array(data)
+			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
+		return data
+
+	func = lambda data,*args,**kwargs: 1
+	if function is None:
+		function = func
+	elif isinstance(function,str):
+		function = load(function,default=func)
+	def decorator(function):
+		def wrapper(attr,data,*args,**kwargs):
+			return function(data,*args,**kwargs)
+		return wrapper
+
+	function = decorator(function)
+
+	funcs = {}
+
+	attr = 'x'
+	def func(attr,data):
+		data = data[attr]
+		return data
+	funcs[attr] = func
+
+	attr = 'y'
+	def func(attr,data):
+		number,size = function(attr,data),data[attr].size
+		data = data[attr]
+		return data
+	funcs[attr] = func
+
+	attr = 'xerr'
+	def func(attr,data):
+		data = data[attr]
+		return data
+	funcs[attr] = func
+
+	attr = 'yerr'
+	def func(attr,data):
+		data = data[attr]
+		return data
+	if attr:
+		funcs[attr] = func
+
+	funcs = {attr:parse(attr,funcs[attr](attr,data)) for attr in funcs if getter(data,attr,delimiter=delim) is not None}
+
+	setter(data,funcs,delimiter=delim,default=True)
+
 	return data
 
 def func_info_y(data,*args,**kwargs):
-	data = sum((np.array(i) for i in data))
+	data = sum(np.array(i) for i in data)
 	data = data.reshape(*data.shape)
 	return data
 
 def func_info_yerr(data,*args,**kwargs):
-	data = sum((np.array(i) for i in data))
+	data = sum(np.array(i) for i in data)
 	data = data.reshape(*data.shape)
 	return data
 
@@ -337,162 +386,14 @@ def func_process_function(data,*args,function=None,attribute=None,attributes=Non
 	keys = natsorted(keys) if keys is not None else None
 
 	def parse(attr,data):
+		nulls = {'y':nan}
 		if data is None:
 			data = None
 		elif all(i is None for i in data):
 			data = None
-		if data is not None:
+		if data is not None and attr in nulls:
 			data = np.array(data)
-			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
-		return data
-
-	func = lambda data,*args,**kwargs: 1
-	if function is None:
-		function = func
-	elif isinstance(function,str):
-		function = load(function,default=func)
-	def decorator(function):
-		def wrapper(attr,key,data,*args,**kwargs):
-			data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
-			return function(data,*args,**kwargs)
-		return wrapper
-
-	function = decorator(function)
-
-
-	if attribute is None:
-		attribute = None
-	elif isinstance(attribute,str):
-		attribute = attribute if getter(data,attribute,delimiter=delim) is not None else None
-	else:
-		attribute = None
-
-	if attributes is None:
-		attributes = None
-	elif isinstance(attributes,(str,*iterables)):
-		attributes = [attr for attr in (attributes if not isinstance(attributes,str) else [attributes]) if getter(data,attr,delimiter=delim) is not None]
-	else:
-		attributes = None
-
-	funcs = {}
-
-	attr = 'x'
-	def func(attr,key,data):
-		data = 1/data[attr][key]
-		return data
-	funcs[attr] = func
-
-	attr = 'y'
-	def func(attr,key,data):
-		number,size = function(attr,key,data),data[attr][key].size
-		data = np.mean(data[attr][key]) +  np.log(np.sum(getter(data,attribute,delimiter=delim)[key]))
-		data = data/np.log(number) - 1
-		return data
-	funcs[attr] = func
-
-	attr = 'xerr'
-	def func(attr,key,data):
-		data = data[attr][key]
-		return data
-	funcs[attr] = func
-
-	attr = 'yerr'
-	def func(attr,key,data):
-		number,size = function(attr,key,data),data[attr][key].size
-		obj = np.mean(data[attr][key])
-		data = np.mean(data[attr][key]) - np.mean(data[attr[0]][key])**2
-		data = np.sqrt(data/(size*number))/np.log(size)
-		return data
-	if attr:
-		funcs[attr] = func
-
-	if attribute:
-		attr = attribute
-		def func(attr,key,data):
-			data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
-			return data
-		funcs[attr] = func
-
-	if attributes:
-		for attr in attributes:
-			def func(attr,key,data):
-				data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
-				return data
-			funcs[attr] = func
-
-	funcs = {attr:parse(attr,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if getter(data,attr,delimiter=delim) is not None} if keys is not None else {}
-
-	setter(data,funcs,delimiter=delim,default=True)
-
-	return data
-
-
-def func_process_x(data,*args,**kwargs):
-	data = data.iloc[0]
-	return data
-
-def func_process_y(data,*args,**kwargs):
-	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
-	return data
-
-def func_process_xerr(data,*args,**kwargs):
-	data = None
-	return data
-
-def func_process_yerr(data,*args,**kwargs):
-	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
-	return data
-
-def func_process_process_x(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = i
-	data = values
-	return data
-
-def func_process_process_y(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = np.array([*values.get(key,[]),*flatten(i)])
-	data = values
-	return data
-
-def func_process_process_xerr(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = i
-	data = values
-	return data
-
-def func_process_process_yerr(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = np.array([*values.get(key,[]),*flatten(i)])
-	data = values
-	return data
-
-def func_process_function(data,*args,function=None,attribute=None,attributes=None,**kwargs):
-
-	keys = data['y']
-	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
-	keys = natsorted(keys) if keys is not None else None
-
-	def parse(attr,data):
-		if data is None:
-			data = None
-		elif all(i is None for i in data):
-			data = None
-		if data is not None:
-			data = np.array(data)
-			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
+			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
 		return data
 
 	func = lambda data,*args,**kwargs: 1
@@ -634,13 +535,14 @@ def func_information_function(data,*args,function=None,**kwargs):
 	keys = natsorted(keys) if keys is not None else None
 
 	def parse(attr,data):
+		nulls = {'y':nan}
 		if data is None:
 			data = None
 		elif all(i is None for i in data):
 			data = None
-		if data is not None:
+		if data is not None and attr in nulls:
 			data = np.array(data)
-			data[(is_naninf(data))|(data<epsilon(data.dtype))] = {'x':0,'y':nan,'xerr':0,'yerr':0}.get(attr,0)
+			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
 		return data
 
 	func = lambda data,*args,**kwargs: 1

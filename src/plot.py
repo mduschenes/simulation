@@ -582,7 +582,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	if usetex:
 		string = r'$%s$'%(string.replace('$',''))
 	else:
-		string = string.replace('$','')
+		string = r'$%s$'%(string.replace('$',''))
 	return string
 
 
@@ -1137,11 +1137,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			return substring
 		attrs = {
 			**{'set_%slabel'%(axes):['%slabel'%(axes)]
-				for axes in AXES},
+				for axes in ['',AXES]},
 			**{'set_%sticklabels'%(axes):['labels','ticklabels']
-				for axes in AXES},
+				for axes in ['',AXES]},
 			**{'%saxis.set_ticklabels'%(axes):['labels','ticklabels']
-				for axes in AXES},					
+				for axes in ['',AXES]},
 			**{k:[OTHER] for k in PLOTS},		
 			**{'set_title':[OTHER],'suptitle':['t'],
 			'annotate':['s'],

@@ -89,7 +89,7 @@ def Texify(string,texify={},usetex=True):
 	strings = {
 		**texify,
 	}
-	nulls = {'$':'','\\textrm':'','\\text':''}
+	nulls = {'\\textrm':'\\text',r'\textrm':'\\text','\\text':'\\text',r'\text':'\\text','\\mathcal':'\\text',r'\mathcal':'\\text'}
 
 	if not isinstance(string,str) and string is not None:
 		string = str(string)
@@ -112,13 +112,14 @@ def Texify(string,texify={},usetex=True):
 
 	return string
 
-def Valify(value,valify={},useval=True):
+def Valify(value,valify={},useval=True,usetex=True):
 	'''
 	Valify value
 	Args:
 		value (str): String to valify
 		valify (dict): Dictionary of valify translations of strings
 		useval (bool): Use value formatting
+		usetex (bool): Use latex formatting
 	Returns:
 		value (str): Valified string
 	'''
@@ -138,13 +139,14 @@ def Valify(value,valify={},useval=True):
 
 	return value
 
-def Scientific(value,scientific={},usesci=True):
+def Scientific(value,scientific={},usesci=True,usetex=True):
 	'''
 	Scientific notation value
 	Args:
 		string (str,int,float): Value to scientific notation
 		texify (dict): Dictionary of scientific notation options of values
 		usesci (bool): Use scientific notation formatting
+		usetex (bool): Use latex formatting
 	Returns:
 		value (str): Scientific notation value
 	'''
@@ -152,7 +154,7 @@ def Scientific(value,scientific={},usesci=True):
 		scientific = {}
 
 	if usesci:
-		value = scinotation(value,**scientific)
+		value = scinotation(value,**{**scientific,**dict(usetex=usetex)})
 
 	return value
 
@@ -350,6 +352,8 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'ax': {},
 		'fig': {},
 		'style': {
+			'mplstyle': None,
+			'rcParams': {},
 			'layout': {
 				'nrows':1,'ncols':1,'index':1,
 				'left':None,'right':None,'top':None,'bottom':None,
@@ -512,6 +516,9 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 	processes['configuration'] = configuration
 
+	# Get usetex
+	usetex = processes.get('usetex',False)
+	processes['usetex'] = usetex
 
 	# Get texify
 	texify = processes.get('texify',{})
@@ -527,7 +534,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	processes['valify'] = lambda value,valify=None,_valify=valify,useval=useval: Valify(
 		value,
 		valify={**(_valify if _valify is not None else {}),**(valify if valify is not None else {})},
-		useval=useval)
+		useval=useval,usetex=usetex)
 
 	# Get scinotation
 	scientific = processes.get('scinotation',{})
@@ -535,7 +542,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	processes['scinotation'] = lambda value,_scientific=scientific,usesci=usesci,**kwargs: Scientific(
 		value,
 		scientific={**_scientific,**kwargs},
-		usesci=usesci)
+		usesci=usesci,usetex=usetex)
 
 	return data,plots,processes
 
@@ -2115,6 +2122,8 @@ def plotter(plots,processes,verbose=None):
 	texify = processes['texify']
 	valify = processes['valify']
 	scinotation = processes['scinotation']
+	usetex = processes['usetex']
+
 
 	obj = 'ax'
 
@@ -3337,7 +3346,7 @@ def plotter(plots,processes,verbose=None):
 
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
-								'texify':dict(),
+								'texify':dict(usetex=usetex),
 								'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
 							}
 
@@ -3458,7 +3467,7 @@ def plotter(plots,processes,verbose=None):
 
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
-									'texify':dict(),
+									'texify':dict(usetex=usetex),
 									'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
 								}
 
@@ -3480,7 +3489,7 @@ def plotter(plots,processes,verbose=None):
 
 				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 					for attr,default in {
-						'texify':dict(),
+						'texify':dict(usetex=usetex),
 						'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
 					}
 
@@ -3561,6 +3570,7 @@ def plotter(plots,processes,verbose=None):
 				value = [[i[k] for k in func(i,indexes)] for i in value if i]
 				value = [value[i] for i in index]
 				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
+
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					value = data[attr]%(value)
 				elif isinstance(data.get(attr),str):
@@ -3569,6 +3579,8 @@ def plotter(plots,processes,verbose=None):
 					value = value
 				else:
 					value = None
+
+				value = texify(value,**{**options['texify']})
 
 				data[attr] = value
 
@@ -3875,12 +3887,13 @@ def plotter(plots,processes,verbose=None):
 						
 						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 							for attr,default in {
-								'texify':dict(),
+								'texify':dict(usetex=usetex),
 								'scinotation':dict(decimals=1,scilimits=[0,4],one=False,strip=False)}.items()
 							}
 
 						separator = '~,~'
 						data[attr%(axes)] = separator.join(["%s = %s"%(texify(string,**options['texify']),texify(scinotation(objs.get(string),**options['scinotation']),**options['texify'])) if string in objs else string for string in data[attr%(axes)]])
+
 
 					data[attr%(axes)] = texify(data[attr%(axes)],**options['texify'])
 
@@ -3982,7 +3995,7 @@ def plotter(plots,processes,verbose=None):
 
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
-									'texify':dict(),
+									'texify':dict(usetex=usetex),
 									'scinotation':dict(decimals=2,scilimits=[-1,1] if scale in [None,'linear'] else [0,0],base=base,strip=True,usebase=True)}.items()
 								}
 
@@ -4163,9 +4176,15 @@ def plotter(plots,processes,verbose=None):
 			attr = 'mplstyle'
 			data = plots[instance][subinstance]['style']
 			if data.get(attr) is not None:
-				value = join(pwd,split(data.get(attr),file=True),ext=split(data.get(attr),ext=True))
+				value = join(pwd,split(data.get(attr),file=True),ext=split(data.get(attr),ext=True)) if usetex else None
 				data[attr] = value
-			
+
+			# rcParams
+			attr = 'rcParams'
+			data = plots[instance][subinstance]['style']
+			if data.get(attr) is not None:
+				data[attr]['text.usetex'] = data[attr].get('text.usetex',usetex) if usetex else usetex
+
 			# savefig
 			prop = 'savefig'
 			attr = 'fname'
