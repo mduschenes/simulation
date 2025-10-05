@@ -2474,15 +2474,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 								break
 
+			elif attr in [string%(axes) for string in ['set_%slim'] for axes in AXES]:
+				if not kwargs[attr] or all(kwarg in nullkwargs for kwarg in kwargs[attr]):
+					call = False
+
 			elif attr in [string%(axes) for string in ['set_%sticks','%saxis.set_ticks'] for axes in AXES]:
-				pass
+				if not kwargs[attr] or all(kwarg in nullkwargs for kwarg in kwargs[attr]):
+					call = False
 
 			elif attr in [string%(axes) for string in ['set_%sticklabels','%saxis.set_ticklabels'] for axes in AXES]:
 				props = {'ticklabels':'labels'}
 				for prop in props:
 					if kwargs[attr].get(prop):
 						kwargs[attr][props[prop]] = kwargs[attr].pop(prop)
-
+				if not kwargs[attr] or all(kwarg in nullkwargs for kwarg in kwargs[attr]):
+					call = False
 			elif attr in [string for string in ['set_zorder']]:
 				call = True
 				pass
