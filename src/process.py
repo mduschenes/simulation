@@ -159,7 +159,7 @@ def Scientific(value,scientific={},usesci=True,usetex=True):
 	return value
 
 
-def copier(key,value,copy):
+def copier(key,value,copy=None):
 	'''
 	Copy value based on associated key 
 
