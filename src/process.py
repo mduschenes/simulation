@@ -179,8 +179,6 @@ def copier(key,value,copy):
 
 
 
-
-
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
 	'''
 	Set nested value in iterable with nested elements keys
@@ -289,7 +287,6 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	'''
 	Get nested value in iterable with nested elements keys
-
 	Args:
 		iterable (dict): dictionary of values
 		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
@@ -329,6 +326,75 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 			return default
 
 	return default
+
+
+def popper(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+	'''
+	Pop nested value in iterable with nested elements keys
+	Args:
+		iterable (dict): dictionary of values
+		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if elements not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Value at nested keys elements of iterable
+	'''
+
+
+	# Convert string instance of elements to list, splitting string based on delimiter delimiter
+	if isinstance(elements,str):
+		if delimiter and (elements not in iterable):
+			elements = elements.split(delimiter)
+		else:
+			elements = [elements]
+
+	value = None
+
+	if len(elements) > 1:
+
+		elements,element = elements[:-1],elements[-1]
+
+		value = getter(iterable,elements,delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+
+	elif len(elements) == 1:
+
+		elements,element = [],elements[-1]
+
+		value = iterable
+
+	else:
+
+		return
+
+	if isinstance(value,dict) and element in value:
+		value = value.pop(element)
+	elif isinstance(value,list) and len(value) < element:
+		value = value.pop(element)
+	else:
+		value = None
+
+	return value
+
+def updater(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+	'''
+	Update nested value in iterable with nested elements keys
+	Args:
+		iterable (dict): dictionary of values
+		elements (dict[str,iterable[str]]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if elements not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Value at nested keys elements of iterable
+	'''
+
+	for element in elements:
+		value = popper(iterable,element,delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+		setter(iterable,{elements[element]:value},delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+
+	return
+
 
 
 def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):

@@ -28,7 +28,7 @@ from src.utils import arrays,scalars,iterables,integers,floats,pi,asarray,asscal
 
 from src.optimize import Metric
 
-from src.iterables import getter,setter,sizer,namespace,permuter,Dictionary
+from src.iterables import getter,setter,popper,updater,sizer,namespace,permuter,Dictionary
 from src.io import load,dump,join,split,edit
 
 
@@ -342,10 +342,12 @@ def test_getter(path=None,tol=None):
 		(lambda value,element,iterable: value==99),
 		(lambda value,element,iterable: isinstance(value,dict)),
 	]
+
+	default = None
 	
 	for element,test in zip(elements,tests):
 		iterable = iterables
-		value = getter(iterable,element,delimiter=delim)
+		value = getter(iterable,element,delimiter=delim,default=default)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
 	print('Passed')
@@ -360,18 +362,70 @@ def test_setter(path=None,tol=None):
 		{'hi.world':89},
 		{'hi.world':{'check':'new'}},
 	]
+
+	default = 'replace'
 	
-	test = lambda value,element,iterable,elements: value==elements[element]
-	
+	test = lambda value,element,iterable,elements,default=default: value==elements[element]
+
 	for element in elements:
 		iterable = copy(iterables)
-		setter(iterable,element,delimiter=delim,default='replace')
+		setter(iterable,element,delimiter=delim,default=default)
 		print(element)
 		print(iterables)
 		print(iterable)
 		print()
 		assert all(test(getter(iterable,elem,delimiter=delim),elem,iterable,element) for elem in element), "Incorrect setter %r , %r -> %r"%(iterables,element,iterable)
 	
+	print('Passed')
+
+	return
+
+def test_popper(path=None,tol=None):
+	iterables = {'hi':{'world':{'goodbye':False,'di':99}}}
+
+	elements = [
+		'hi.world.di',
+		'hi.world',
+		'hi'
+	]
+
+	default = 'DEFAULT'
+
+	test = lambda value,element,iterable,elements,default=default: value==default
+
+	for element in elements:
+		iterable = copy(iterables)
+		value = popper(iterable,element,delimiter=delim,default=default)
+		print(element,value,getter(iterable,element,delimiter=delim,default=default))
+		assert test(getter(iterable,element,delimiter=delim,default=default),element,iterable,elements), "Incorrect setter %r , %r -> %r"%(iterables,element,iterable)
+
+	print('Passed')
+
+	return
+
+def test_updater(path=None,tol=None):
+	iterables = {'hi':{'world':{'goodbye':False,'di':99}}}
+
+	elements = [
+		{'hi.world.di':'hi.world.new'},
+		{'hi.world':'hi.new'},
+		{'hi':'new'}
+	]
+
+	default = None
+
+	test = lambda value,element,iterable,elements,default=default: value==element
+
+	for element in elements:
+		key = list(element)[0]
+		iterable = copy(iterables)
+		value = popper(iterable,key,delimiter=delim,default=default)
+		iterable = copy(iterables)
+		updater(iterable,element,delimiter=delim,default=default)
+		for i in element:
+			print(i,element[i],getter(iterable,element[i].split(delim)[:-1],delimiter=delim,default=default) if element[i].count(delim) else iterable,value,getter(iterable,i,delimiter=delim,default=default))
+		assert test(getter(iterable,element[key],delimiter=delim,default=default),value,iterable,elements), "Incorrect setter %r , %r -> %r"%(iterables,element,iterable)
+
 	print('Passed')
 
 	return
@@ -1640,6 +1694,8 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_getter(path,tol)
 	# test_setter(path,tol)
+	# test_popper(path,tol)
+	test_updater(path,tol)
 	# test_sizer(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
@@ -1659,7 +1715,7 @@ if __name__ == '__main__':
 	# test_seed(path,tol)
 	# test_sortby(path,tol)
 	# test_sortgroupby(path,tol)
-	test_slicer(path,tol)
+	# test_slicer(path,tol)
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)
