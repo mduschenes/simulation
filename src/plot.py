@@ -1932,13 +1932,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				dim = 2
 
-				x,y,xerr,yerr = (kwargs[attr].get(i) for i in ['x','y','xerr','yerr'])
-				print(x)
-				print(y)
-				print(xerr)
-				print(yerr)
-				print()
-
 				prop = 'density'
 				subattr = 'y'
 				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
