@@ -1868,9 +1868,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				dim = 2
 		
 				prop = 'density'
-				if kwargs[attr].get(prop) in ['probability']:
-					y /= np.maximum(np.sum(y),1)
-					y = inplace(y,y==0,nan)
+				subattr = 'y'
+				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
+					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
+					kwargs[attr][subattr] = inplace(kwargs[attr][subattr],kwargs[attr][subattr]==0,nan)
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -1931,10 +1932,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				dim = 2
 
+				x,y,xerr,yerr = (kwargs[attr].get(i) for i in ['x','y','xerr','yerr'])
+				print(x)
+				print(y)
+				print(xerr)
+				print(yerr)
+				print()
+
 				prop = 'density'
-				if kwargs[attr].get(prop) in ['probability']:
-					y /= np.maximum(np.sum(y),1)
-					y = inplace(y,y==0,nan)
+				subattr = 'y'
+				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
+					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
+					kwargs[attr][subattr] = inplace(kwargs[attr][subattr],kwargs[attr][subattr]==0,nan)
 
 				props = '%s'
 				subattrs = 'set_%sscale'
