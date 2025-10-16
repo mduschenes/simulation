@@ -231,8 +231,8 @@
                             "decimals": 1,
                             "strip": true
                         },
-                        "ax.errorbar.label.labels": null,
-                        "ax.errorbar.color": {
+                        "ax.bar.label.labels": null,
+                        "ax.bar.color": {
                             "@N@": {
                                 "value": {
                                     "value": null,
@@ -246,12 +246,12 @@
                                 "type": "value"
                             }
                         },
-                        "ax.errorbar.alpha": {
+                        "ax.bar.alpha": {
                             "@N@": [
                                 0.8
                             ]
                         },
-                        "ax.errorbar.plots": false,
+                        "ax.bar.plots": false,
                         "ax.set_colorbar.value": {
                             "@N@": {
                                 "value": null,
@@ -382,8 +382,8 @@
                             "decimals": 1,
                             "strip": true
                         },
-                        "ax.errorbar.label.labels": null,
-                        "ax.errorbar.color": {
+                        "ax.bar.label.labels": null,
+                        "ax.bar.color": {
                             "@N@": {
                                 "value": {
                                     "value": null,
@@ -397,12 +397,12 @@
                                 "type": "value"
                             }
                         },
-                        "ax.errorbar.alpha": {
+                        "ax.bar.alpha": {
                             "@N@": [
                                 0.8
                             ]
                         },
-                        "ax.errorbar.plots": false,
+                        "ax.bar.plots": false,
                         "ax.set_colorbar.value": {
                             "@N@": {
                                 "value": null,
@@ -699,10 +699,12 @@
     },
     "replacements": {
         "sample.array.M.noise.parameters": {
-            "ax.bar":"ax.errorbar"
+            "ax.errorbar":"ax.bar",
+            "ax.bar":"ax.bar"
         },
         "sample.state.M.noise.parameters": {
-            "ax.bar":"ax.errorbar"
+            "ax.errorbar":"ax.bar",
+            "ax.bar":"ax.bar"
         }
     },
     "texify": {

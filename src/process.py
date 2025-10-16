@@ -390,6 +390,8 @@ def updater(iterable,elements,delimiter=False,default=None):
 		return
 
 	for element in elements:
+		if elements[element] == element:
+			continue
 		value = popper(iterable,element,delimiter=delimiter,default=default)
 		if value is default:
 			continue
