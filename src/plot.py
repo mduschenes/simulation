@@ -1864,8 +1864,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				nullkwargs.extend(['prop','join','merge','flip','update','keep','sort','multiline','none','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','set_marker','set_linestyle','title','get_title','get_texts','get_frame','set_label','set_title_col','set_title_row','legendLabels','legendHandles'])
 
 			elif attr in ['plot']:
+
 				dim = 2
 		
+				prop = 'density'
+				if kwargs[attr].get(prop) in ['probability']:
+					y /= np.maximum(np.sum(y),1)
+					y = inplace(y,y==0,nan)
+
 				props = '%s'
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
@@ -1886,7 +1892,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['density','scale','base','log','width','align','linewidth','edgecolor']])
 
 				call = len(args)>0		
 
@@ -1925,6 +1931,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				dim = 2
 
+				prop = 'density'
+				if kwargs[attr].get(prop) in ['probability']:
+					y /= np.maximum(np.sum(y),1)
+					y = inplace(y,y==0,nan)
+
 				props = '%s'
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
@@ -1957,12 +1968,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = err
 
-
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
 
 				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args)  if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:1] for k in AXES],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:1] for k in AXES],*['density','scale','base','log','width','align','linewidth','edgecolor']])
 				
 				call = len(args)>0			
 
