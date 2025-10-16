@@ -328,15 +328,14 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	return default
 
 
-def popper(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+def popper(iterable,elements,delimiter=False,default=None):
 	'''
 	Pop nested value in iterable with nested elements keys
 	Args:
 		iterable (dict): dictionary of values
 		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
-		default (object): default data to return if elements not in nested iterable
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		default (object): default data to return if elements not in nested iterable
 	Returns:
 		value (object): Value at nested keys elements of iterable
 	'''
@@ -355,7 +354,7 @@ def popper(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 
 		elements,element = elements[:-1],elements[-1]
 
-		value = getter(iterable,elements,delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+		value = getter(iterable,elements,delimiter=delimiter,default=default)
 
 	elif len(elements) == 1:
 
@@ -376,22 +375,24 @@ def popper(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 
 	return value
 
-def updater(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+def updater(iterable,elements,delimiter=False,default=None):
 	'''
 	Update nested value in iterable with nested elements keys
 	Args:
 		iterable (dict): dictionary of values
 		elements (dict[str,iterable[str]]): delimiter separated string or list to nested keys of location to get value
-		default (object): default data to return if elements not in nested iterable
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		default (object): default data to return if elements not in nested iterable
 	Returns:
 		value (object): Value at nested keys elements of iterable
 	'''
 
+	if elements is None:
+		return
+
 	for element in elements:
-		value = popper(iterable,element,delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
-		setter(iterable,{elements[element]:value},delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+		value = popper(iterable,element,delimiter=delimiter,default=default)
+		setter(iterable,{elements[element]:value},delimiter=delimiter,default=default)
 
 	return
 
@@ -459,11 +460,31 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 
 
 	# Process plots and processes dictionaries
-	attr = 'patterns'
-	patterns = processes.get(attr)
+	keys = processes.get('patterns')
 	for iterable in [plots,processes]:
-		regex(iterable,patterns)
-	processes[attr] = patterns
+		regex(iterable,keys)
+
+	iterable = plots
+	keys = processes.get('replacements')
+	if not isinstance(keys,dict):
+		pass
+	elif all(i in plots for i in keys):
+		for i in keys:
+			if not isinstance(keys[i],dict):
+				updater(plots,{i:keys[i]},delimiter=delim)
+			elif all(j in plots[i] for j in keys[i]):
+				for j in keys[i]:
+					if not isinstance(keys[i],dict):
+						updater(plots[i],{j:keys[i][j]},delimiter=delim)
+					else:
+						updater(plots[i][j],keys[i][j],delimiter=delim)
+			elif isinstance(plots[i],dict):
+				updater(plots[i],keys[i],delimiter=delim)
+			else:
+				pass
+	else:
+		updater(plots,replacements,delimiter=delim)
+
 
 	obj = 'ax'
 
@@ -501,6 +522,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'reset':None,
 		'chunk':None,
 		'patterns':None,
+		'replacements':None,
 		'join':None,
 		'plot':None,
 		'process':None,
@@ -1392,9 +1414,29 @@ def loader(data,plots,processes,verbose=None):
 			options = dict(default=func)
 			setter(plots,tmp,default=func)
 
-		patterns = processes.get('patterns')
-		regex(plots,patterns)
+		iterable = plots
+		keys = processes.get('patterns')
+		regex(iterable,keys)
 
+		keys = processes.get('replacements')
+		if not isinstance(keys,dict):
+			pass
+		elif all(i in iterable for i in keys):
+			for i in keys:
+				if not isinstance(keys[i],dict):
+					updater(iterable,{i:keys[i]},delimiter=delim)
+				elif all(j in iterable[i] for j in keys[i]):
+					for j in keys[i]:
+						if not isinstance(keys[i],dict):
+							updater(iterable[i],{j:keys[i][j]},delimiter=delim)
+						else:
+							updater(iterable[i][j],keys[i][j],delimiter=delim)
+				elif isinstance(iterable[i],dict):
+					updater(iterable[i],keys[i],delimiter=delim)
+				else:
+					pass
+		else:
+			updater(iterable,replacements,delimiter=delim)
 	else:
 
 		# Load data

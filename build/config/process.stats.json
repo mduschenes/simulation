@@ -231,8 +231,8 @@
                             "decimals": 1,
                             "strip": true
                         },
-                        "ax.bar.label.labels": null,
-                        "ax.bar.color": {
+                        "ax.errorbar.label.labels": null,
+                        "ax.errorbar.color": {
                             "@N@": {
                                 "value": {
                                     "value": null,
@@ -246,12 +246,12 @@
                                 "type": "value"
                             }
                         },
-                        "ax.bar.alpha": {
+                        "ax.errorbar.alpha": {
                             "@N@": [
                                 0.8
                             ]
                         },
-                        "ax.bar.plots": false,
+                        "ax.errorbar.plots": false,
                         "ax.set_colorbar.value": {
                             "@N@": {
                                 "value": null,
@@ -382,8 +382,8 @@
                             "decimals": 1,
                             "strip": true
                         },
-                        "ax.bar.label.labels": null,
-                        "ax.bar.color": {
+                        "ax.errorbar.label.labels": null,
+                        "ax.errorbar.color": {
                             "@N@": {
                                 "value": {
                                     "value": null,
@@ -397,12 +397,12 @@
                                 "type": "value"
                             }
                         },
-                        "ax.bar.alpha": {
+                        "ax.errorbar.alpha": {
                             "@N@": [
                                 0.8
                             ]
                         },
-                        "ax.bar.plots": false,
+                        "ax.errorbar.plots": false,
                         "ax.set_colorbar.value": {
                             "@N@": {
                                 "value": null,
@@ -696,6 +696,14 @@
     "patterns": {
         "max_bond": "S",
         "cyclic": "periodic"
+    },
+    "replacements": {
+        "sample.array.M.noise.parameters": {
+            "ax.bar":"ax.errorbar"
+        },
+        "sample.state.M.noise.parameters": {
+            "ax.bar":"ax.errorbar"
+        }
     },
     "texify": {
         "iteration": "\\textrm{Iteration}",

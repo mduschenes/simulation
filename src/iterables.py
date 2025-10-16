@@ -389,6 +389,8 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Nested value
 	'''
 
 	types = (dict,)
@@ -428,6 +430,8 @@ def popper(iterable,keys,delimiter=None,default=None,copy=False):
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Nested value
 	'''
 
 	key = keys
@@ -476,6 +480,9 @@ def updater(iterable,keys,delimiter=None,default=None,copy=False):
 		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	'''
+
+	if keys is None:
+		return
 
 	for key in keys:
 		value = popper(iterable,key,delimiter=delimiter,default=default,copy=copy)
