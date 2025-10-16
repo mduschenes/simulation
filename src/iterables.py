@@ -486,6 +486,8 @@ def updater(iterable,keys,delimiter=None,default=None,copy=False):
 
 	for key in keys:
 		value = popper(iterable,key,delimiter=delimiter,default=default,copy=copy)
+		if value is default:
+			continue
 		setter(iterable,{keys[key]:value},delimiter=delimiter,default=default,copy=copy)
 
 	return

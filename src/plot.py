@@ -608,6 +608,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 	'''
 
 	separator = '_'
+	eps = 1e-20
 
 	if isinstance(value,str):
 		value,color,values,colors,norm = None,None,None,None,None
@@ -662,17 +663,23 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 	if scale in ['linear',None]:
 		norm = matplotlib.colors.Normalize(**norm)  
 	elif scale in ['log']:
-		values = [i for i in values if is_number(i)]
 		base = 10 if base is None else base
-		norm.update({'vmin':min([i for i in values if i>0],default=0),'vmax':max([i for i in values if i>0],default=1)} if values else {})
-		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
+		number = [i for i in values if is_number(i) and i>0]
+		number = base**((np.min(np.log(number))-np.abs(np.min(np.diff(np.log(number)))))/np.log(base)) if len(number)>1 else number[0]/base if len(number)>0 else None
+		value = value if value and value>0 else number if number else value
+		values = [i if i>0 else number if number else i for i in values if is_number(i)]
+		norm.update({'vmin':min([i for i in values],default=eps),'vmax':max([i for i in values],default=1)} if values else {})
+		norm = {i:norm[i] if norm[i]>0 else eps for i in norm}
 		norm = {i: norm[i] if isinstance(norm[i],scalars) else norm[i] for i in norm}
 		norm = matplotlib.colors.LogNorm(**norm)
 	elif scale in ['symlog']:
-		values = [i for i in values if is_number(i)]
 		base = 10 if base is None else base
-		norm.update({'vmin':min([i for i in values if i>0],default=0),'vmax':max([i for i in values if i>0],default=1),'linthresh':norm.get('linthresh',min(values))} if values else {})
-		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
+		number = [i for i in values if is_number(i) and i>0]
+		number = base**((np.min(np.log(number))-np.abs(np.min(np.diff(np.log(number)))))/np.log(base)) if len(number)>1 else number[0]/base if len(number)>0 else None
+		value = value if value and value>0 else number if number else value
+		values = [i if i>0 else number if number else i for i in values if is_number(i)]
+		norm.update({'vmin':min([i for i in values],default=eps),'vmax':max([i for i in values],default=1),'linthresh':norm.get('linthresh',min(values))} if values else {})
+		norm = {i:norm[i] if norm[i]>0 else eps for i in norm}
 		norm = {i: norm[i] if isinstance(norm[i],scalars) else norm[i] for i in norm}
 		norm = matplotlib.colors.SymLogNorm(**norm)
 	else:
@@ -917,7 +924,6 @@ def get_children(obj,attr):
 		children (object): Children instances
 	'''
 	if attr in ['legendHandles']:
-
 		try:
 			tree = obj._legend_box.get_children()[1]
 			for column in tree.get_children():
@@ -1801,7 +1807,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if kwds[kwd] is None:
 								continue
 
-							if kwd in ['legendHandles','legendHandles']:
+							if kwd in ['legendHandles','legendLabels']:
 								children = get_children(objs,kwd)
 								for i,child in enumerate(children):
 									for kwarg in kwds[kwd]:
@@ -1816,7 +1822,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							elif kwd in ['set_color','set_alpha']:
 								children = list(get_children(objs,'legendHandles'))
 								for i,child in enumerate(children):
-									# child = copy(child)
 									key = getattr(child,kwd)
 									value = kwds[kwd]
 									if isinstance(value,list):

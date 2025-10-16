@@ -264,7 +264,6 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				i = i[e[index]]
 				index+=1
 
-			# try:
 			value = copier(element,func(e[index],element,i,elements),copy)
 
 			if isinstance(i,list) and (e[index] >= len(i)):
@@ -295,7 +294,7 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	Returns:
 		value (object): Value at nested keys elements of iterable
-	'''	
+	'''
 
 	# Convert string instance of elements to list, splitting string based on delimiter delimiter
 	if isinstance(elements,str):
@@ -320,7 +319,7 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 			e = 0
 			while e<len(elements):
 				i = i[elements[e]]
-				e+=1			
+				e+=1
 			return copier(elements[e-1],i,copy)
 		except:
 			return default
@@ -392,6 +391,8 @@ def updater(iterable,elements,delimiter=False,default=None):
 
 	for element in elements:
 		value = popper(iterable,element,delimiter=delimiter,default=default)
+		if value is default:
+			continue
 		setter(iterable,{elements[element]:value},delimiter=delimiter,default=default)
 
 	return
@@ -405,9 +406,9 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
 		plots (str,dict): Path to or dictionary of plot plots
 		processes (str,dict): Path to or dictionary of process plots
-		pwd (str): Root path of plots, processes		
+		pwd (str): Root path of plots, processes
 		cwd (str): Root path of data
-		verbose (bool): Verbosity		
+		verbose (bool): Verbosity
 	Returns:
 		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
 		plots (dict): Plot plots
@@ -451,10 +452,10 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		verbose = verbose,
 		)
 	processes = load(path,**options)
-	
+
 
 	# Parse process processes and plots
-	
+
 	if (plots is None) or (processes is None):
 		return data,plots,processes
 
@@ -468,23 +469,21 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	keys = processes.get('replacements')
 	if not isinstance(keys,dict):
 		pass
-	elif all(i in plots for i in keys):
+	elif any(i in iterable for i in keys):
 		for i in keys:
+			if i not in iterable:
+				continue
 			if not isinstance(keys[i],dict):
-				updater(plots,{i:keys[i]},delimiter=delim)
-			elif all(j in plots[i] for j in keys[i]):
-				for j in keys[i]:
-					if not isinstance(keys[i],dict):
-						updater(plots[i],{j:keys[i][j]},delimiter=delim)
-					else:
-						updater(plots[i][j],keys[i][j],delimiter=delim)
-			elif isinstance(plots[i],dict):
-				updater(plots[i],keys[i],delimiter=delim)
+				updater(iterable,{i:keys[i]},delimiter=delim)
+			elif any(j.split(delim)[0] in iterable[i] for j in keys[i]):
+				updater(iterable[i],keys[i],delimiter=delim)
+			elif isinstance(iterable[i],dict):
+				for j in iterable[i]:
+					updater(iterable[i][j],keys[i],delimiter=delim)
 			else:
 				pass
 	else:
-		updater(plots,replacements,delimiter=delim)
-
+		updater(iterable,keys,delimiter=delim)
 
 	obj = 'ax'
 
@@ -498,7 +497,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 			plots[instance] = {str(None): plots[instance]}
 
 		for subinstance in plots[instance]:
-			
+
 			setter(plots[instance][subinstance],defaults,delimiter=delim,default=False)
 
 			if not plots[instance][subinstance].get(obj):
@@ -664,7 +663,7 @@ def find(dictionary,verbose=None):
 	default = null
 	separator = '='
 	defaults = {
-				'func':{}, 
+				'func':{},
 				'include':None,
 				'exclude':None,
 				'sort':None,
@@ -688,7 +687,7 @@ def find(dictionary,verbose=None):
 				'function':None,
 				'wrapper':{},
 				'texify':{},
-				'valify': {},		
+				'valify': {},
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
 				'args':None,
 				'kwargs':None,
@@ -699,7 +698,7 @@ def find(dictionary,verbose=None):
 	for items in strings:
 		types = (list,dict,)
 		key = search(dictionary,items=items,returns=True,types=types)
-		
+
 		key = {tuple(index): dict(zip(items,item)) for index,shape,item in key}
 
 		key = {index:key[index] for index in key if index not in keys}
@@ -715,7 +714,7 @@ def find(dictionary,verbose=None):
 	for name in keys:
 
 		for attr in keys[name]:
-			
+
 			if attr in other:
 
 				if isinstance(keys[name][attr],dict):
@@ -742,7 +741,7 @@ def find(dictionary,verbose=None):
 					keys[name][attr] = {attr: keys[name][attr]}
 
 				setter(keys[name][attr],defaults,delimiter=delim,default=False)
-			
+
 			else:
 				if not keys[name][attr]:
 					keys[name][attr] = default
@@ -763,14 +762,14 @@ def parse(key,value,data,verbose=None):
 	Parse key and value condition for data, such that data[key] == value
 	Args:
 		key (str): key of condition
-		value (str,iterable,dict[str,str,iterable],callable): value of condition, allowed string in 
+		value (str,iterable,dict[str,str,iterable],callable): value of condition, allowed string in
 			[None,
 			'$value,$' (explicit value),
-			'@key,@' (data value), 
+			'@key,@' (data value),
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),
 			'*pattern,*' (regex pattern),
-			':func,:' (function type), 			
+			':func,:' (function type),
 			'<upper<' (exclusive upper bound value),
 			'>lower>' (exclusive lower bound value),
 			'<=upper<=' (inclusive upper bound value),
@@ -780,7 +779,7 @@ def parse(key,value,data,verbose=None):
 			]
 			or callable or string to load callable with signature value(key,data) -> bool
 		data (dataframe): data of condition
-		verbose (bool): Verbosity		
+		verbose (bool): Verbosity
 	Returns:
 		out (dataframe): Condition on data indices
 	'''
@@ -829,12 +828,12 @@ def parse(key,value,data,verbose=None):
 				for delimiter in delimiters:
 
 					if value.startswith(delimiter) and value.endswith(delimiter):
-					
+
 						values = value[len(delimiter):-len(delimiter)].split(separator)
 
 						if delimiter in ['$']: # Explicit value: value
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [i for value in values for i in [parser(value),value]]           
+							values = [i for value in values for i in [parser(value),value]]
 							values = [value for value in values if (value is not null)]
 							if values and (values is not null):
 								try:
@@ -844,8 +843,8 @@ def parse(key,value,data,verbose=None):
 
 						elif delimiter in ['@']: # Data value: key
 							parser = lambda value: (to_str(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
-						  
+							values = [parser(value) for value in values]
+
 							if values and (values is not null):
 								out = conditions([data[key]==data[value] for value in values if value in data],op='or')
 
@@ -867,7 +866,7 @@ def parse(key,value,data,verbose=None):
 							parser = lambda value: (to_int(value) if len(value)>0 else None)
 							values = [*(parser(value) for value in values),*[None]*(3-len(values))]
 							values = [value for value in values if (value is not null)]
-					
+
 							if values and (values is not null):
 								try:
 									out = np.sort(data[key].unique())
@@ -879,9 +878,9 @@ def parse(key,value,data,verbose=None):
 										out = ~ default
 
 						elif delimiter in [':']: # Data value: func
-							
+
 							parser = lambda value: (to_str(value) if len(value)>0 else null)
-							values = [i for value in values for i in [parser(value),value]]           
+							values = [i for value in values for i in [parser(value),value]]
 							values = [value for value in values if (value is not null)]
 
 							if values and (values is not null):
@@ -891,11 +890,11 @@ def parse(key,value,data,verbose=None):
 									if isinstance(default,bool):
 										out = not default
 									else:
-										out = ~ default								
+										out = ~ default
 
 						elif delimiter in ['*']: # Regex value pattern
 							def parser(value):
-								replacements = {'.':r'\.','*':'.'}							
+								replacements = {'.':r'\.','*':'.'}
 								if not len(value):
 									return value
 								value = r'%s'%(to_str(value))
@@ -906,58 +905,58 @@ def parse(key,value,data,verbose=None):
 
 							values = [parser(value) for value in values if (value is not None)]
 							values = [value for value in values if (value is not None)]
-					
+
 							if values and (values is not null):
 								out = conditions([data[key].str.contains(r'%s'%(value)) for value in values],op='or')
 
 						elif delimiter in ['<']: # Bound value: upper (exclusive)
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
-						  
+							values = [parser(value) for value in values]
+
 							if values and (values is not null):
 								out = conditions([data[key] < value for value in values],op='or')
 
 						elif delimiter in ['<=']: # Bound value: upper (inclusive)
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
-						  
+							values = [parser(value) for value in values]
+
 							if values and (values is not null):
 								out = conditions([data[key] <= value for value in values],op='or')
 
 						elif delimiter in ['>']: # Bound value: lower (exclusive)
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
-						  
+							values = [parser(value) for value in values]
+
 							if values and (values is not null):
 								out = conditions([data[key] > value for value in values],op='or')
 
 						elif delimiter in ['>=']: # Bound value: lower (inclusive)
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
-						  
+							values = [parser(value) for value in values]
+
 							if values and (values is not null):
 								out = conditions([data[key] >= value for value in values],op='or')
 
 						elif delimiter in ['==']: # Include value
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [i for value in values for i in [parser(value),value]]           
+							values = [i for value in values for i in [parser(value),value]]
 
 							if values and (values is not null):
-								out = conditions([data[key] == value for value in values],op='or')																												
+								out = conditions([data[key] == value for value in values],op='or')
 
 						elif delimiter in ['!=']: # Exclude value
 							parser = lambda value: (to_number(value) if len(value)>0 else null)
-							values = [parser(value) for value in values]           
+							values = [parser(value) for value in values]
 
 							if values and (values is not null):
-								out = conditions([data[key] != value for value in values],op='or')																												
+								out = conditions([data[key] != value for value in values],op='or')
 
 
 						if negate:
 							out = ~out
 
 						outs.append(out)
-					
+
 						break
 
 			out = conditions(outs,op='and')
@@ -975,7 +974,7 @@ def parse(key,value,data,verbose=None):
 					out = not default
 				else:
 					out = ~ default
-	
+
 	return out
 
 
@@ -984,10 +983,10 @@ def analyse(data,analyses=None,verbose=None):
 	Analyse data, cleaning data, removing outliers etc
 	Args:
 		data (dataframe): data of attributes
-		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
+		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form
 			{analysis:[({attr:value},kwargs)]},
 			allowed analysis strings in ['zscore','quantile','slice','parse','abs','log','log10','log2','replace','func']
-		verbose (bool): Verbosity			
+		verbose (bool): Verbosity
 	Returns:
 		out (dataframe): Analysed data
 	'''
@@ -1008,7 +1007,7 @@ def analyse(data,analyses=None,verbose=None):
 					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
-					out = {attr: ((out[attr].apply(function,**kwargs[attr]) <= value[attr]) if value[attr] > 0 else 
+					out = {attr: ((out[attr].apply(function,**kwargs[attr]) <= value[attr]) if value[attr] > 0 else
 								  (out[attr].apply(function,**kwargs[attr]) >= -value[attr]))
 							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
@@ -1017,12 +1016,12 @@ def analyse(data,analyses=None,verbose=None):
 				def func(attrs,data):
 					function = analysis
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
-					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
-					out = {attr: (((out[attr] > getattr(out[attr],function)(value[attr])) if value[attr] > 0 else 
+					out = {attr: (((out[attr] > getattr(out[attr],function)(value[attr])) if value[attr] > 0 else
 								   (out[attr] <= getattr(out[attr],function)(-value[attr]))) &
-								  ((out[attr] < getattr(out[attr],function)(1-value[attr])) if value[attr] > 0 else 
+								  ((out[attr] < getattr(out[attr],function)(1-value[attr])) if value[attr] > 0 else
 								   (out[attr] >= getattr(out[attr],function)(1+value[attr]))))
 							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
@@ -1031,22 +1030,22 @@ def analyse(data,analyses=None,verbose=None):
 				def func(attrs,data):
 					function = lambda data: np.argsort(data,axis=0).to_numpy().ravel()
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
-					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
 					out = {attr: (
-							(out[attr]>=out[attr].iloc[function(out[attr])[value[attr] if value[attr] < len(out[attr]) else 0]]) & 
-							(out[attr]<=out[attr].iloc[function(out[attr])[len(out[attr])-1-value[attr] if value[attr] < len(out[attr]) else -1]]) 
+							(out[attr]>=out[attr].iloc[function(out[attr])[value[attr] if value[attr] < len(out[attr]) else 0]]) &
+							(out[attr]<=out[attr].iloc[function(out[attr])[len(out[attr])-1-value[attr] if value[attr] < len(out[attr]) else -1]])
 							)
 							for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
-					return out					
+					return out
 			elif analysis in ['parse']:
 				def func(attrs,data):
 					function = parse
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}					
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
 					out = [function(attr,value[attr],out,verbose=verbose) for attr in attrs]
 					out = conditions(out,op='and')
 					return out
@@ -1076,7 +1075,7 @@ def analyse(data,analyses=None,verbose=None):
 							elif isinstance(value,str) and is_number(value):
 								value = to_number(value)
 							out[attr][function(out[attr],kwarg)] = value
-					return out					
+					return out
 			elif analysis in ['func']:
 				def func(attrs,data):
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
@@ -1106,7 +1105,7 @@ def analyse(data,analyses=None,verbose=None):
 							function = wrap(function)
 							if function is not None:
 								out = function(data,**kwargs[attr][kwarg])
-					return out					
+					return out
 			else:
 				continue
 
@@ -1166,7 +1165,7 @@ def sort(data,sorting,keys=None):
 		sorting = [sorting]
 	elif all(isinstance(attr,str) for attr in sorting):
 		sorting = [{attr : None for attr in sorting}]
-	
+
 	if keys is None or callable(keys):
 		keys = [keys for i in sorting]
 
@@ -1176,13 +1175,13 @@ def sort(data,sorting,keys=None):
 			attr if (attr in data) else '_'.join(attr.split('_')[:-1]) : {
 				'conditions':sorts[attr],
 				'sort': True if attr in data else False
-				} 
-			for attr in sorts 
+				}
+			for attr in sorts
 			if (attr in data) or ((attr.endswith('_')) and ('_'.join(attr.split('_')[:-1]) in data))
 			}
 
 		by = [attr for attr in sorts]
-		slices = conditions([parse(attr,sorts[attr].get('conditions'),data) for attr in sorts],op='and')	
+		slices = conditions([parse(attr,sorts[attr].get('conditions'),data) for attr in sorts],op='and')
 		ascending = [sorts[attr].get('sort',True) for attr in sorts]
 		ignore_index = False
 		indices = data[slices].index
@@ -1281,7 +1280,7 @@ def loader(data,plots,processes,verbose=None):
 		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
 		plots (str,dict): Path to or dictionary of plot plots
 		processes (str,dict): Path to or dictionary of process plots
-		verbose (bool): Verbosity		
+		verbose (bool): Verbosity
 	'''
 
 	if (data is None) or (plots is None) or (processes is None):
@@ -1292,11 +1291,11 @@ def loader(data,plots,processes,verbose=None):
 
 	# Set metadata
 	metadata = processes['path']['metadata']
-	
+
 	def func(key_iterable,key_elements,iterable,elements):
 		if (
-			(key_iterable == key_elements) and 
-			(key_iterable in PLOTS) and (key_elements in PLOTS) and 
+			(key_iterable == key_elements) and
+			(key_iterable in PLOTS) and (key_elements in PLOTS) and
 			isinstance(iterable.get(key_iterable),list)
 			):
 
@@ -1335,7 +1334,7 @@ def loader(data,plots,processes,verbose=None):
 				for j in range(len(iterable.get(key_iterable))):
 
 					if all((
-						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
+						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and
 						(len(datum[OTHER][OTHER][OTHER]) == len(labels)) and
 						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
 						)
@@ -1392,7 +1391,7 @@ def loader(data,plots,processes,verbose=None):
 
 		else:
 			out = elements.get(key_elements)
-		return out	
+		return out
 
 	if processes['load'] and not processes['reset']:
 
@@ -1400,7 +1399,7 @@ def loader(data,plots,processes,verbose=None):
 		path = metadata
 		options = dict(
 			default = None,
-			transform = None,			
+			transform = None,
 			verbose = verbose,
 			)
 		tmp = load(path,**options)
@@ -1421,22 +1420,22 @@ def loader(data,plots,processes,verbose=None):
 		keys = processes.get('replacements')
 		if not isinstance(keys,dict):
 			pass
-		elif all(i in iterable for i in keys):
+		elif any(i in iterable for i in keys):
 			for i in keys:
+				if i not in iterable:
+					continue
 				if not isinstance(keys[i],dict):
 					updater(iterable,{i:keys[i]},delimiter=delim)
-				elif all(j in iterable[i] for j in keys[i]):
-					for j in keys[i]:
-						if not isinstance(keys[i],dict):
-							updater(iterable[i],{j:keys[i][j]},delimiter=delim)
-						else:
-							updater(iterable[i][j],keys[i][j],delimiter=delim)
-				elif isinstance(iterable[i],dict):
+				elif any(j.split(delim)[0] in iterable[i] for j in keys[i]):
 					updater(iterable[i],keys[i],delimiter=delim)
+				elif isinstance(iterable[i],dict):
+					for j in iterable[i]:
+						updater(iterable[i][j],keys[i],delimiter=delim)
 				else:
 					pass
 		else:
-			updater(iterable,replacements,delimiter=delim)
+			updater(iterable,keys,delimiter=delim)
+
 	else:
 
 		# Load data
@@ -1445,8 +1444,8 @@ def loader(data,plots,processes,verbose=None):
 
 		try:
 			assert (
-				(not processes['reset']) and 
-				((processes['tmp'] in ['merge'] and exists(processes['path']['tmp'])) or 
+				(not processes['reset']) and
+				((processes['tmp'] in ['merge'] and exists(processes['path']['tmp'])) or
 				 (processes['tmp'] not in ['merge'] and any(exists(i) for i in glob(tmp)))
 				)
 				)
@@ -1490,8 +1489,8 @@ def loader(data,plots,processes,verbose=None):
 				wrapper = 'pd',
 				transform = None,
 				verbose = verbose,
-				)			
-			dump(tmp,path,**options)				
+				)
+			dump(tmp,path,**options)
 
 
 		# Get functions of data
@@ -1500,7 +1499,7 @@ def loader(data,plots,processes,verbose=None):
 		# Delete data
 		del data
 
-	
+
 	# Check plots
 	attr = 'instance'
 	for instance in list(plots):
@@ -1515,7 +1514,7 @@ def loader(data,plots,processes,verbose=None):
 			wrapper = None,
 			transform = None,
 			verbose = verbose,
-			)	
+			)
 		dump(plots,path,**options)
 
 	return
@@ -1528,7 +1527,7 @@ def apply(data,plots,processes,verbose=None):
 		data (dataframe): dataframe
 		plots (dict): plots
 		processes (dict): processes
-		verbose (bool): Verbosity		
+		verbose (bool): Verbosity
 	'''
 
 	if (data is None) or (plots is None) or (processes is None):
@@ -1545,12 +1544,12 @@ def apply(data,plots,processes,verbose=None):
 
 	def exp(obj,*args,**kwargs):
 		return np.exp(obj)
-	
+
 	def log(obj,*args,**kwargs):
-		return np.log(obj)		
+		return np.log(obj)
 
 	def sqrt(obj,*args,**kwargs):
-		return np.sqrt(obj)	
+		return np.sqrt(obj)
 
 	def first(obj,*args,**kwargs):
 		return obj.iloc[0]
@@ -1582,15 +1581,15 @@ def apply(data,plots,processes,verbose=None):
 
 	def none(obj,*args,**kwargs):
 		obj[...] = nan
-		# return obj			
-		return nan	
+		# return obj
+		return nan
 
 	def mean_default(obj,*args,**kwargs):
 		return obj.mean()
 	def std_default(obj,*args,**kwargs):
-		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))
 	def sem_default(obj,*args,**kwargs):
-		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))	
+		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
 
 	def mean_obj(obj,*args,**kwargs):
 		try:
@@ -1617,15 +1616,15 @@ def apply(data,plots,processes,verbose=None):
 			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		except:
 			obj = np.array([list(obj)[0]])
-			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))		
-		return obj	
+			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))
+		return obj
 
 	def mean_arithmetic(obj,*args,**kwargs):
 		return obj.mean()
 	def std_arithmetic(obj,*args,**kwargs):
-		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))
 	def sem_arithmetic(obj,*args,**kwargs):
-		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
 
 	def mean_geometric(obj,*args,**kwargs):
 		return exp(log(obj).mean())
@@ -1639,21 +1638,21 @@ def apply(data,plots,processes,verbose=None):
 	def std_log(obj,*args,**kwargs):
 		return exp(log(obj).std(ddof=kwargs.get('ddof',obj.shape[0]>1)))
 	def sem_log(obj,*args,**kwargs):
-		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))		
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))
 
 	def mean_bootstrap(obj,*args,**kwargs):
 		return bootstrap(obj,*args,**kwargs).mean()
 	def std_bootstrap(obj,*args,**kwargs):
-		return bootstrap(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+		return bootstrap(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))
 	def sem_bootstrap(obj,*args,**kwargs):
-		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
 
 	keys = find(plots)
 
 	database = [data] if isinstance(data,dicts) else data
 
 	groupings = {}
-	properties = {}	
+	properties = {}
 	functions = {}
 
 	for data in database:
@@ -1686,7 +1685,7 @@ def apply(data,plots,processes,verbose=None):
 				if updates[update].boolean(attr,data):
 					updates[update].func(attr,data)
 
-		dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
+		dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}
 		data = data.astype(dtype)
 
 		for name in keys:
@@ -1838,7 +1837,7 @@ def apply(data,plots,processes,verbose=None):
 
 			dtypes = {attr: (
 					('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
-					if attr in data else 'dtype') 
+					if attr in data else 'dtype')
 					for attr in attributes}
 
 			if any((keys[name][axes] not in attributes) and (not isinstance(keys[name][axes],Null)) for axes in AXES if axes in keys[name]):
@@ -1984,7 +1983,7 @@ def apply(data,plots,processes,verbose=None):
 				groups = groups.apply(func,**options).astype(dtype)
 
 			else:
-				
+
 				options = dict(level=0,axis=1)
 
 				groups = groups.droplevel(**options).astype(dtype)
@@ -1994,9 +1993,9 @@ def apply(data,plots,processes,verbose=None):
 			# 				column=attr,
 			# 				aggfunc={
 			# 					'array':mean,'object':first,'dtype':mean
-			# 					}[dtypes[attr]] 
+			# 					}[dtypes[attr]]
 			# 		  		if attr not in by else {'array':first,'object':first,'dtype':first}[dtypes[attr]])
-			# 				}						
+			# 				}
 			# 			  for attr in data},
 			# 	**{attr : {delim.join(((attr,string,func))): pd.NamedAgg(
 			# 				column=attr,
@@ -2004,25 +2003,25 @@ def apply(data,plots,processes,verbose=None):
 			# 					**{'array':{'':mean,'err':std}[func] for attribute in funcs[string][axes][func]},
 			# 				 	**{'object':{'':first,'err':none}[func] for attribute in funcs[string][axes][func]},
 			# 				 	**{'dtype':funcs[string][axes][func][attribute] for attribute in funcs[string][axes][func]},
-			# 					}[dtypes[attr]]) 
+			# 					}[dtypes[attr]])
 			# 				for string in funcs for func in funcs[string][axes]}
 			# 				for axes,attr in zip(statistics,[*independent,*exceptions,*dependent])
 			# 				},
-			# }		
+			# }
 
 			# by = [*labels]
-		
+
 			# variables = [
 			# 	*independent,
 			# 	*dependent,
 			# 	*[applications[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in applications[attr]]
 			# 	]
 			# applications = {kwarg: applications[attr][kwarg] for attr in applications for kwarg in applications[attr]}
-			
+
 			# droplevel = dict(level=0,axis=1)
 
 			# dtype = {attr: data[attr].dtype for attr in applications if attr in label or attr not in variables}
-		
+
 			# agg = applications
 
 			# groups = groups.agg(**applications).astype(dtype)
@@ -2071,7 +2070,7 @@ def apply(data,plots,processes,verbose=None):
 						break
 
 				logger.log(info,"Group : %d %r %r %r -> %r"%(i,dict(zip(label,group)) if group else group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
-				
+
 				for j,string in enumerate(funcs):
 
 					key = (*name[:-3],i,j,*name[-1:])
@@ -2102,14 +2101,14 @@ def apply(data,plots,processes,verbose=None):
 							'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 							'func':[j,string],
 							'label':keys[name][axes] if not isinstance(keys[name][axes],Null) else None
-							} 
+							}
 							for axes in funcs[string]
 							if axes in statistics
 							for func in funcs[string][axes]
 							},
-						**{other: {attr: {subattr: keys[name][other][attr][subattr] 
+						**{other: {attr: {subattr: keys[name][other][attr][subattr]
 							if not isinstance(keys[name][other][attr][subattr],Null) else None for subattr in keys[name][other][attr]}
-							if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] 
+							if isinstance(keys[name][other][attr],dict) else keys[name][other][attr]
 							for attr in keys[name][other]}
 							},
 						}
@@ -2211,7 +2210,7 @@ def plotter(plots,processes,verbose=None):
 	Args:
 		plots (dict): plots
 		processes (dict): processes
-		verbose (bool): Verbosity		
+		verbose (bool): Verbosity
 	'''
 
 	if (plots is None) or (processes is None):
@@ -2237,20 +2236,21 @@ def plotter(plots,processes,verbose=None):
 
 	# Check data
 	for instance in list(plots):
-		
+
 		for subinstance in list(plots[instance]):
-		
+
 			for prop in plots[instance][subinstance][obj]:
 
 				if isinstance(plots[instance][subinstance][obj].get(prop),dict):
 					plots[instance][subinstance][obj][prop] = [plots[instance][subinstance][obj][prop]]
-				
+
 				if prop in PLOTS:
 
 					for data in search(plots[instance][subinstance][obj][prop]):
 
 						if not data:
 							continue
+
 
 						if OTHER in data and OTHER in data[OTHER]:
 
