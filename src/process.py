@@ -3860,13 +3860,18 @@ def plotter(plots,processes,verbose=None):
 									data.pop(attr);
 									continue
 
+								if attr in [string for i in ['alpha'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
+									step = 1
+								else:
+									step = 0
+
 								if all(len(i)>1 for i in data[attr]['__items__']):
-									items = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+									items = [(data[attr]['__items__'].index(i)+step*1)/max(1,data[attr]['__size__']-1+step*2) for i in data[attr]['__items__']]
 								else:
 									items = [i[0] for i in data[attr]['__items__']]
 
 								value = data[attr]['__value__']
-								indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+								indices = [(data[attr]['__items__'].index(i)+step*1)/max(1,data[attr]['__size__']-1+step*2) for i in data[attr]['__items__']]
 
 								if isinstance(data[attr]['__value__'],str):
 									value = data[attr]['__value__']

@@ -224,7 +224,7 @@
                         "fig.savefig.fname":null,
                         "ax.set_title.label": "M",
                         "ax.set_ylabel.ylabel": "noise.parameters",
-                        "ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ p$",
+                        "ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ D^{2N} \\cdot p$",
                         "ax.set_ylabel.scinotation": {
                             "scilimits": [
                                 1,
@@ -233,12 +233,26 @@
                             "decimals": 1,
                             "strip": true
                         },
+                        "ax.bar.label.wrapper": {
+                            "x":{
+                                "func": "src.functions.func_sample_wrapper_x",
+                                "args": [],
+                                "kwargs": {"function":"array"}
+                            }
+                        },
                         "ax.bar.label.labels": null,
+                        "ax.bar.zorder": {
+                            "@N@": {
+                                "value": null,
+                                "values": null,
+                                "type": "index"
+                            }
+                        },
                         "ax.bar.color": {
                             "@N@": {
                                 "value": {
                                     "value": null,
-                                    "color": "viridis",
+                                    "color": "viridis_r",
                                     "values": [],
                                     "norm": null,
                                     "scale": "linear",
@@ -250,8 +264,15 @@
                         },
                         "ax.bar.alpha": {
                             "@N@": [
-                                0.8
+                                0.5
                             ]
+                        },
+                        "ax.bar.alpha": {
+                            "@N@": {
+                                "value": null,
+                                "values": null,
+                                "type": "index_r"
+                            }
                         },
                         "ax.bar.plots": false,
                         "ax.set_colorbar.value": {
@@ -261,6 +282,7 @@
                                 "type": "index"
                             }
                         },
+                        "ax.set_colorbar.color": "viridis_r",
                         "ax.set_colorbar.set_label.label": "N",
                         "ax.set_colorbar.share": true,
                         "ax.set_colorbar.location": "right",
@@ -325,6 +347,28 @@
                         "ax.set_xticklabels": {
                             "labels": [
                                 "2^{-2 \\cdot 22}","2^{-2 \\cdot 18}","2^{-2 \\cdot 14}","2^{-2 \\cdot 10}","2^{-2 \\cdot 6}","2^{-2 \\cdot 2}"
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_xscale": {
+                            "value": "log",
+                            "base": 4
+                        },
+                        "ax.set_xlim": {
+                            "xmin": 1e-17,
+                            "xmax":1e5
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 6
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                1e-16,1e-12,1e-8,1e-4,1e-0,1e4
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                "2^{-2 \\cdot 16}","2^{-2 \\cdot 12}","2^{-2 \\cdot 8}","2^{-2 \\cdot 4}","1","2^{2 \\cdot 4}"
                             ],
                             "size": 36
                         },
