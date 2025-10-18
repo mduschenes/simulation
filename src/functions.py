@@ -226,6 +226,21 @@ def func_sample_process_xerr(data,values,metadata,properties,*args,**kwargs):
 def func_sample_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	return data
 
+def func_sample_wrapper_x(data,*args,function=None,**kwargs):
+
+	if function is None:
+		size = 1
+	elif function in ['state']:
+		size = data['D']**data['N']
+	elif function in ['array']:
+		size = data['D']**(2*data['N'])
+
+	data = data['x']
+
+	data *= size
+
+	return data
+
 def func_sample_function(data,*args,function=None,**kwargs):
 
 	def parse(attr,data):
@@ -248,7 +263,6 @@ def func_sample_function(data,*args,function=None,**kwargs):
 		def wrapper(attr,data,*args,**kwargs):
 			return function(data,*args,**kwargs)
 		return wrapper
-
 	function = decorator(function)
 
 	funcs = {}

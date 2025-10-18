@@ -3384,8 +3384,12 @@ def plotter(plots,processes,verbose=None):
 
 						if value['type'] in ['value']:
 							value = items
+						elif value['type'] in ['value_r']:
+							value = items[::-1]
 						elif value['type'] in ['index']:
 							value = indices
+						elif value['type'] in ['index_r']:
+							value = indices[::-1]
 						else:
 							value = indices
 
@@ -3429,7 +3433,7 @@ def plotter(plots,processes,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					for kwarg in kwargs:
-					
+
 						if data[attr%(axes)].get(kwarg%(axes)) is None:
 							continue
 
@@ -3451,7 +3455,7 @@ def plotter(plots,processes,verbose=None):
 						continue
 
 					for kwarg in kwargs:
-					
+
 						if data[attr%(axes)].get(kwarg) is None:
 							continue
 
@@ -3467,7 +3471,7 @@ def plotter(plots,processes,verbose=None):
 							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
 						if isinstance(data[attr%(axes)].get(kwarg),integers):
-							
+
 							size = data[attr%(axes)][kwarg]
 
 							size = min(size,len(data.get('value',[])))
@@ -3570,7 +3574,7 @@ def plotter(plots,processes,verbose=None):
 			prop = 'legend'
 			attr = 'set_title'
 			for data in search(plots[instance][subinstance][obj].get(prop)):
-				
+
 				if not data:
 					continue
 
@@ -3587,33 +3591,33 @@ def plotter(plots,processes,verbose=None):
 						**{(prop,label):'%s'%(texify(label,**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})}))
 							for prop,label in natsorted(set((
 							(prop,label)
-							for prop in values 
+							for prop in values
 							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>=1))))))},
 						**{(prop,label):'%s'%(texify(label,**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})}))
 							for prop,label in natsorted(set((
 							(prop,label)
-							for prop in values 
+							for prop in values
 							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])>=1))))))},
 						**{(prop,label):'%s'%(texify(label,**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})}))
 							for prop,label in natsorted(set((
 							(prop,label)
-							for prop in values 					
-							for label in values[prop] 
-							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>=1)) and 
+							for prop in values
+							for label in values[prop]
+							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>=1)) and
 								not (values[prop][label]['other']))))))},
-					},					
+					},
 					{
 						**{(prop,label):'%s%s%s'%(
 							texify(label,**options['texify']),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})})
 									for value in values[prop][label]['value']]))
-							for prop in values 
+							for prop in values
 							for label in natsorted(set((
-							label 
+							label
 							for label in values[prop]
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])<1))))))},
@@ -3621,23 +3625,23 @@ def plotter(plots,processes,verbose=None):
 							texify(label,**options['texify']),' : ' if label else '',
 							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})})
 									for value in values[prop][label]['value']]))
-							for prop in values 
+							for prop in values
 							for label in natsorted(set((
-							label 
+							label
 							for label in values[prop]
-							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])<1))))))},
 					},
 					{
 						**{(prop,attr):'%s'%(texify(attr if '%s' not in attr else attr%(''),**{**options['texify'],**dict(texify={**(values[prop][label]['attr']['texify'] if isinstance(values[prop][label]['attr']['texify'],dict) else {}),**options['texify'].get('texify',{})})}))
 							for prop,attr in natsorted(set((
 							(prop,attr)
-							for prop in values 
+							for prop in values
 							for label in values[prop]
 							for attr in values[prop][label]['labels']
 							if attr is not None
 							)))},
-					},					
+					},
 					]
 
 				def func(value,index):
@@ -3725,7 +3729,7 @@ def plotter(plots,processes,verbose=None):
 
 				value = func(value,data[attr])
 
-				data[attr] = value				
+				data[attr] = value
 
 
 			# set kwargs data
@@ -3752,16 +3756,16 @@ def plotter(plots,processes,verbose=None):
 
 							if subslice:
 								subslice = [
-									conditions([parse(axes,subslice[axes],{axes: np.array(data[axes])},verbose=verbose) 
+									conditions([parse(axes,subslice[axes],{axes: np.array(data[axes])},verbose=verbose)
 									for axes in subslice if isinstance(subslice[axes],str)],op='and'),
-									*[slice(*to_slice(subslice[axes])) for axes in subslice 
+									*[slice(*to_slice(subslice[axes])) for axes in subslice
 									 if not isinstance(subslice[axes],str)]
 									]
 							else:
 								subslice = [slice(None)]
 						else:
 							subslice = [slice(*to_slice(subslice))]
-						
+
 						slices.extend(subslice)
 
 					slices = [
@@ -3805,8 +3809,6 @@ def plotter(plots,processes,verbose=None):
 						if data.get(attr) is None:
 							continue
 
-						value = data[attr]
-
 						if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER])):
 							options = dict(valify=data[OTHER][OTHER].get('valify'))
 						else:
@@ -3825,17 +3827,19 @@ def plotter(plots,processes,verbose=None):
 
 								data[attribute] = wrappers[attr][attribute](value)
 
+						value = data[attr]
+
 						if attr in [OTHER]:
 							if value[OTHER].get('labels') is not None:
 								for label in value[OTHER]['labels']:
 									if (label in value) and (label not in ALL) and not parse(label,value[OTHER]['labels'][label],value,verbose=verbose):
 										data.clear()
 										break
-						
+
 						elif attr in ALL:
-							
+
 							if isinstance(data.get(attr),scalars):
-								continue							
+								continue
 
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)
@@ -3848,7 +3852,7 @@ def plotter(plots,processes,verbose=None):
 								value = [valify(i,**options) for i in value]
 
 						else:
-							
+
 							delimiter = '__'
 							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 
@@ -3866,19 +3870,23 @@ def plotter(plots,processes,verbose=None):
 
 								if isinstance(data[attr]['__value__'],str):
 									value = data[attr]['__value__']
-								
+
 								elif isinstance(value,dict) and any(prop in value for prop in ['value','type']):
 									defaults = {'value':None,'type':None}
 									value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
 									if value['type'] in ['value']:
 										tmp = items
+									elif value['type'] in ['value_r']:
+										tmp = items[::-1]
 									elif value['type'] in ['index']:
 										tmp = indices
+									elif value['type'] in ['index_r']:
+										tmp = indices[::-1]
 									else:
 										tmp = indices
 									if isinstance(value['value'],dict):
-										if value['type'] in ['value','index']:
+										if value['type'] in ['value','index','value_r','index_r']:
 											prop = 'value'
 										elif value['type'] in value['value']:
 											prop = value['type']
@@ -3890,9 +3898,9 @@ def plotter(plots,processes,verbose=None):
 											value['value']['values'] = tmp
 									else:
 										if data[attr]['__index__'] is not None:
-											value['value'] = None
-										else:
 											value['value'] = tmp[data[attr]['__index__']]
+										else:
+											value['value'] = None
 
 									value = value['value']
 								elif isinstance(value,dict) and not any(prop in value for prop in ['value','type']):
@@ -3913,15 +3921,15 @@ def plotter(plots,processes,verbose=None):
 										value = value[0] if value else None
 									except:
 										value = [i for i in value if all(
-											((not isinstance(value[i][attr],iterables) and 
-												data[OTHER][attr] == value[i][attr]) or 
-											(isinstance(value[i][attr],iterables) and 
+											((not isinstance(value[i][attr],iterables) and
+												data[OTHER][attr] == value[i][attr]) or
+											(isinstance(value[i][attr],iterables) and
 												data[OTHER][attr] in value[i][attr]))
 											for attr in value[i] if attr in data[OTHER])]
 										value = value[0] if value else None
 								elif isinstance(value,iterables):
 									if data[attr]['__index__'] is not None:
-										value = value[data[attr]['__index__']%len(value)] 
+										value = value[data[attr]['__index__']%len(value)]
 
 								if attr in [string for i in ['color','ecolor'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									pass
@@ -3931,6 +3939,8 @@ def plotter(plots,processes,verbose=None):
 								elif attr in [string for i in ['zorder'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
 									if not isinstance(value,scalars):
 										value = 1000*data[attr]['__index__']
+									elif isinstance(value,float):
+										value = int(value*max(1,data[attr]['__size__']-1))
 								else:
 									pass
 
