@@ -12683,7 +12683,7 @@ def to_index(position,shape):
 	return index
 
 
-def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,one=False,fraction=False,strip=True,error=None,usebase=False,usetex=False):
+def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,one=False,fraction=False,strip=True,strings=True,error=None,usebase=False,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -12696,6 +12696,7 @@ def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,on
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		fraction (bool): Make number strings into float representations
 		strip (bool): Remove trailing zeros in float representation
+		strings (bool): Convert string into number
 		error (str,int,float): Error of number to be processed
 		usebase (bool): Convert number to flt,exp in other base
 		usetex (bool): Render string with Latex
@@ -12724,7 +12725,7 @@ def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,on
 			number = number.split('/')
 			number = float(number[0])/float(number[1])
 
-	if not is_number(number):
+	if not is_number(number) or ((not strings) and isinstance(number,str)):
 		return str(number)
 
 	try:
