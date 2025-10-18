@@ -467,26 +467,6 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 	for iterable in [plots,processes]:
 		regex(iterable,keys)
 
-	iterable = plots
-	keys = processes.get('replacements')
-	if not isinstance(keys,dict):
-		pass
-	elif any(i in iterable for i in keys):
-		for i in keys:
-			if i not in iterable:
-				continue
-			if not isinstance(keys[i],dict):
-				updater(iterable,{i:keys[i]},delimiter=delim)
-			elif any(j.split(delim)[0] in iterable[i] for j in keys[i]):
-				updater(iterable[i],keys[i],delimiter=delim)
-			elif isinstance(iterable[i],dict):
-				for j in iterable[i]:
-					updater(iterable[i][j],keys[i],delimiter=delim)
-			else:
-				pass
-	else:
-		updater(iterable,keys,delimiter=delim)
-
 	obj = 'ax'
 
 	for instance in list(plots):
@@ -1415,28 +1395,7 @@ def loader(data,plots,processes,verbose=None):
 			options = dict(default=func)
 			setter(plots,tmp,default=func)
 
-		iterable = plots
-		keys = processes.get('patterns')
-		regex(iterable,keys)
-
-		keys = processes.get('replacements')
-		if not isinstance(keys,dict):
-			pass
-		elif any(i in iterable for i in keys):
-			for i in keys:
-				if i not in iterable:
-					continue
-				if not isinstance(keys[i],dict):
-					updater(iterable,{i:keys[i]},delimiter=delim)
-				elif any(j.split(delim)[0] in iterable[i] for j in keys[i]):
-					updater(iterable[i],keys[i],delimiter=delim)
-				elif isinstance(iterable[i],dict):
-					for j in iterable[i]:
-						updater(iterable[i][j],keys[i],delimiter=delim)
-				else:
-					pass
-		else:
-			updater(iterable,keys,delimiter=delim)
+		regex(plots,processes.get('patterns'))
 
 	else:
 
@@ -2227,11 +2186,31 @@ def plotter(plots,processes,verbose=None):
 	cwd = processes['cwd']
 	fig = processes['fig']
 	ax = processes['ax']
+	replacements = processes['replacements']
 	configuration = processes['configuration']
 	texify = processes['texify']
 	valify = processes['valify']
 	scinotation = processes['scinotation']
 	usetex = processes['usetex']
+
+
+	if not isinstance(replacements,dict):
+		pass
+	elif any(i in plots for i in replacements):
+		for i in replacements:
+			if i not in plots:
+				continue
+			if not isinstance(replacements[i],dict):
+				updater(plots,{i:replacements[i]},delimiter=delim)
+			elif any(j.split(delim)[0] in plots[i] for j in replacements[i]):
+				updater(plots[i],replacements[i],delimiter=delim)
+			elif isinstance(plots[i],dict):
+				for j in plots[i]:
+					updater(plots[i][j],replacements[i],delimiter=delim)
+			else:
+				pass
+	else:
+		updater(plots,replacements,delimiter=delim)
 
 
 	obj = 'ax'

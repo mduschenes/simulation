@@ -707,6 +707,7 @@
             "ax.bar":"ax.bar"
         }
     },
+    "replacements":null,
     "texify": {
         "iteration": "\\textrm{Iteration}",
         "objective": "\\textrm{Infidelity}",
