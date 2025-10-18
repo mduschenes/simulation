@@ -154,9 +154,6 @@
 					],
 					"size": 36
 				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
-				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
@@ -269,6 +266,34 @@
 					"NullFormatter": {}
 				}
 			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				}
+			],
 			"set_aspect": {
 				"aspect": "auto"
 			},
@@ -539,9 +564,6 @@
 					],
 					"size": 36
 				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
-				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
@@ -654,6 +676,34 @@
 					"NullFormatter": {}
 				}
 			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				}
+			],
 			"set_aspect": {
 				"aspect": "auto"
 			},
@@ -921,9 +971,6 @@
 					],
 					"size": 36
 				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
-				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
@@ -1036,6 +1083,34 @@
 					"NullFormatter": {}
 				}
 			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				}
+			],
 			"set_aspect": {
 				"aspect": "auto"
 			},
@@ -1303,15 +1378,13 @@
 					],
 					"size": 36
 				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
-				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
 				},
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -1418,6 +1491,34 @@
 					"NullFormatter": {}
 				}
 			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"pad": 10,
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0
+				}
+			],
 			"set_aspect": {
 				"aspect": "auto"
 			},
@@ -1686,9 +1787,6 @@
 						1
 					],
 					"size": 36
-				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
@@ -2051,9 +2149,6 @@
 						1
 					],
 					"size": 36
-				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
@@ -2579,9 +2674,6 @@
 						0.1
 					],
 					"size": 36
-				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
@@ -3131,9 +3223,6 @@
 						0.1
 					],
 					"size": 36
-				},
-				"ax.xaxis.set_tick_params": {
-					"pad": 5
 				},
 				"ax.yaxis.set_tick_params": {
 					"pad": 5
