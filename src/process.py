@@ -2624,7 +2624,7 @@ def plotter(plots,processes,verbose=None):
 
 			data = metadata[instance][subinstance]
 
-			config = {position: {attr:(config['value'][attr] if config['value'][attr] else config['value'][attr]) if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
+			config = {position: {attr:(config['value'][attr] if config['value'][attr]) if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
 				for position in ['row','col'][:LAYOUTDIM]}
 
 			layout = {position: list(permuter({attr: sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i))
@@ -2633,7 +2633,7 @@ def plotter(plots,processes,verbose=None):
 			layout = {position: [{**i,**{attr:data[attr][0] for attr in data if len(data[attr])==1}} for i in layout[position]] for position in layout}
 			layout = [[{**i,**j} if all(parse(attr,config[position][attr],{**i,**j}) for position in config for attr in config[position]) else None for j in layout['col']] for i in layout['row']]
 
-			if (not layout) or (not any(i for i in layout)):
+			if (not layout):
 				continue
 
 			shapes = [len(layout),max(len(i) for i in layout)]
