@@ -2624,7 +2624,7 @@ def plotter(plots,processes,verbose=None):
 
 			data = metadata[instance][subinstance]
 
-			config = {position: {attr:(config['value'][attr] if config['value'][attr]) if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
+			config = {position: {attr:(config['value'][attr] if config['value'][attr] else config['value'][attr]) if isinstance(config['value'],dict) else None for config in configuration[instance] if config['position'] in [position,None] for attr in (config['value'] if isinstance(config['value'],(dict,*iterables)) else []) if attr in data}
 				for position in ['row','col'][:LAYOUTDIM]}
 
 			layout = {position: list(permuter({attr: sorted([i for i in data[attr] if parse(attr,config[position][attr],{attr:i})],key=lambda i: data[attr].index(i) if not isinstance(config[position][attr],iterables) else list(config[position][attr]).index(i))
