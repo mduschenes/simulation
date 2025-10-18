@@ -304,6 +304,28 @@
                             ],
                             "size": 36
                         },
+                        "ax.set_xscale": {
+                            "value": "log",
+                            "base": 2
+                        },
+                        "ax.set_xlim": {
+                            "xmin": 1e-24,
+                            "xmax":1e0
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 6
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                1e-22,1e-18,1e-14,1e-10,1e-6,1e-2
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                "\\frac{1}{2^{22}}","\\frac{1}{2^{18}}","\\frac{1}{2^{14}}","\\frac{1}{2^{10}}","\\frac{1}{2^{6}}","\\frac{1}{2^{2}}"
+                            ],
+                            "size": 36
+                        },
                         "ax.set_yscale": {
                             "value": "log",
                             "base": 10
@@ -612,10 +634,10 @@
                         },
                         "ax.set_xticklabels": {
                             "labels": [
-                                "1/16",
-                                "1/8",
-                                "1/4",
-                                "1/2"
+                                "16",
+                                "8",
+                                "4",
+                                "2"
                             ],
                             "size": 36
                         },
