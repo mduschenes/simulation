@@ -634,9 +634,16 @@ def func_information(obj,*args,**kwargs):
 	samples = prod(obj.shape[:-1])
 	n = obj.shape[-1]
 	eps = epsilon(obj.dtype)
+	default = 1
 	bounds = [0,1]
 	scale = None
 	obj = obj.ravel()
+	def decorator(func):
+		def wrapper(*args,**kwargs):
+			x = func(*args,**kwargs)
+			x = inplace(x,x<eps,default)
+			return x
+		return wrapper
 	def func(x,n=n,eps=eps):
 		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
 		return x
@@ -646,14 +653,17 @@ def func_information(obj,*args,**kwargs):
 	def hess(x,n=n,eps=eps):
 		x = ((-1)**2)*(n-1-2)*(n-1-1)*(n-1)*((1-x)**(n-2-2))
 		return x
-	def probability(obj):
-		return kernel(obj,func=func,grad=grad,hess=hess,bounds=bounds,scale=scale)
+	def probability(x,*args,**kwargs):
+		x = kernel(x,func=func,grad=grad,hess=hess,bounds=bounds,scale=scale)
+		return x
 	def entropy(func):
 		def function(x):
-			data = func(x).item()
-			return -data*log(data)
-		data = integral(function,bounds)
-		return data
+			x = asscalar(func(x))
+			return -x*log(x)
+		x = integral(function,bounds)
+		return x
+
+	func = decorator(func)
 
 	data = -information(func,obj)
 
