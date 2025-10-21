@@ -160,6 +160,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -570,6 +571,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -977,6 +979,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -1794,6 +1797,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -2156,6 +2160,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -2681,6 +2686,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -3230,6 +3236,7 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
+					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
