@@ -1450,7 +1450,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									for i in _obj():
 										getattr(i,_kwarg)(kwargs[attr][kwarg])
 								else:
-									_obj(**kwargs[attr][kwarg])
+									_obj(**{prop:kwargs[attr][kwarg][prop] for prop in kwargs[attr][kwarg] if kwargs[attr][kwarg].get(prop) is not None})
 							except Exception as exception:
 								continue
 						else:
