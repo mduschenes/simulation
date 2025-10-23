@@ -4336,7 +4336,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 		def function(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,data,parameters,state,**kwargs)
 
-	obj = state() if state is not None and state() is not None else state.identity() if data else None
+	obj = state() if state is not None and callable(state) and state() is not None else state if state is not None else state.identity() if state is not None else data[list(data)[0]].identity() if data else None
 
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)
 
@@ -4353,7 +4353,7 @@ def scheme(data,parameters=None,state=None,conj=False,size=None,compilation=None
 			return function(parameters,out,indices=i,**kwargs)
 
 		state = obj if state is None else state
-		return forloop(*indices,func,state,**kwargs)
+		return forloop(*indices,func,state)
 
 	func = wrapper(func,**kwargs)
 
@@ -4401,7 +4401,7 @@ def gradient_scheme(data,parameters=None,state=None,conj=False,size=None,compila
 		def gradient(parameters,state=state,indices=indices,**kwargs):
 			return switch(indices%length,grad,parameters,state,**kwargs)
 
-	obj = state() if state is not None and state() is not None else state.identity() if data else None
+	obj = state() if state is not None and callable(state) and state() is not None else state if state is not None else state.identity() if state is not None else data[list(data)[0]].identity() if data else None
 
 	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)
 
@@ -8571,7 +8571,7 @@ class Label(Operator):
 
 
 
-class Callback(System):
+class Callbacks(System):
 	def __init__(self,*args,**kwargs):
 		'''
 		Class for callback
@@ -8615,12 +8615,12 @@ class Callback(System):
 
 		return
 
-	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
+	def __call__(self,parameters,data,optimizer,model,metric,func,grad):
 		'''
 		Callback
 		Args:
 			parameters (array): parameters
-			track (dict): data tracking
+			data (dict): data tracking
 			optimizer (Optimizer): optimizer
 			model (object): Model instance
 			metric (str,callable): metric
@@ -8675,19 +8675,19 @@ class Callback(System):
 
 		other = (
 			(len(attributes['iteration']) == 1) or
-			(hyperparameters['modulo']['track'] is None) or
-			((hyperparameters['modulo']['track'] == -1) and (not status)) or
-			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+			(hyperparameters['modulo']['data'] is None) or
+			((hyperparameters['modulo']['data'] == -1) and (not status)) or
+			((hyperparameters['modulo']['data'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['data'] == 0))
 			)
 
 		tracking = ((not status) or done or init or other)
 
 		updates = {
-			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
-			**{attr: lambda i,attr,track,default: (track[attr][i])
+			**{attr: lambda i,attr,data,default: (data[attr][-1]) for attr in ['iteration.max','iteration.min']},
+			**{attr: lambda i,attr,data,default: (data[attr][i])
 				for attr in [
 					'parameters','grad','search']},
-			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
+			**{attr: lambda i,attr,data,default: (empty(data[attr][-1].shape) if ((i>0) and i<(len(data[attr])-1)) else data[attr][i])
 				for attr in [
 					'parameters','grad','search',
 					'parameters.relative',
@@ -8697,7 +8697,7 @@ class Callback(System):
 			**{attr: None for attr in [
 				'parameters.norm','grad.norm','search.norm',
 				]},
-			**{attr: lambda i,attr,track,default: (default if ((i>0) and (i<(len(track[attr])-1))) else track[attr][i])
+			**{attr: lambda i,attr,data,default: (default if ((i>0) and (i<(len(data[attr])-1))) else data[attr][i])
 				for attr in [
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
@@ -8716,8 +8716,8 @@ class Callback(System):
 			'entanglement':True,'purity':True,'similarity':True,'divergence':True
 		}
 
-		attrs = relsort(track,attributes)
-		size = min(len(track[attr]) for attr in track)
+		attrs = relsort(data,attributes)
+		size = min(len(data[attr]) for attr in data)
 		does = {**{attr: False for attr in attrs},**does,**hyperparameters.get('do',{})}
 
 
@@ -8725,10 +8725,10 @@ class Callback(System):
 
 			for attr in attrs:
 
-				if ((hyperparameters['length']['track'] is not None) and
-					(len(track[attr]) > hyperparameters['length']['track'])
+				if ((hyperparameters['length']['data'] is not None) and
+					(len(data[attr]) > hyperparameters['length']['data'])
 					):
-					_value = track[attr].pop(0)
+					_value = data[attr].pop(0)
 
 
 				index = -1 if ((not stop) or other) else -2
@@ -8742,7 +8742,7 @@ class Callback(System):
 					'variables','variables.relative'
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']:
-					default = empty(track[attr][-1].shape) if ((len(track[attr])>0) and isinstance(track[attr][-1],arrays)) else nan
+					default = empty(data[attr][-1].shape) if ((len(data[attr])>0) and isinstance(data[attr][-1],arrays)) else nan
 				else:
 					default = nan
 
@@ -8754,13 +8754,13 @@ class Callback(System):
 					value = attributes[attr][index]
 
 				if ((not stop) or other):
-					track[attr].append(value)
+					data[attr].append(value)
 
 				if attr in ['iteration.max']:
-					value = int(track['iteration'][-1])
+					value = int(data['iteration'][-1])
 
 				elif attr in ['iteration.min']:
-					value = int(track['iteration'][argmin(absolute(array(track['objective'],dtype=model.dtype)))])
+					value = int(data['iteration'][argmin(absolute(array(data['objective'],dtype=model.dtype)))])
 
 				elif attr in ['value']:
 					value = absolute(attributes[attr][index])
@@ -8847,14 +8847,13 @@ class Callback(System):
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
 						tmp.update(dict(data={i:False for i in tmp.data},state=False,label=tmp.label))
 
-					data = tmp.data
 					state = metric.state
 					label = metric.label
 
 					state.init(data=tmp.state)
 					label.init(state=state)
 
-					model.init(data=data,state=state)
+					model.init(data=tmp.data,state=state)
 
 					metric.init(model=model,state=state,label=label)
 
@@ -8862,19 +8861,17 @@ class Callback(System):
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = absolute(metric(model(parameters=parameters,state=state,**kwargs)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-						value = absolute((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs))))
+						value = absolute((data['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-						value = absolute((track['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs)))/(track['objective'][-1]))
+						value = absolute((data['objective'][-1] - metric(model(parameters=parameters,state=state,**kwargs)))/(data['objective'][-1]))
 
-
-					data = defaults.data
 					state = state
 					label = label
 
-					state.init(data=default.state)
+					state.init(data=defaults.state)
 					label.init(state=state)
 
-					model.init(data=data,state=state)
+					model.init(data=defaults.data,state=state)
 
 					metric.init(model=model,state=state,label=label)
 
@@ -8979,11 +8976,11 @@ class Callback(System):
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
-				track[attr][-1] = value
+				data[attr][-1] = value
 
 				if (not does[attr]) and (updates.get(attr) is not None):
-					for i in range(len(track[attr])):
-						track[attr][i] = updates[attr](i,attr,track,default)
+					for i in range(len(data[attr])):
+						data[attr][i] = updates[attr](i,attr,data,default)
 
 
 		logging = ((len(attributes['iteration']) == 1) or
@@ -9013,7 +9010,7 @@ class Callback(System):
 				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype
 				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1])
 				# 	for attr in attributes}),
-				# 'track: \t %s'%({attr: attributes[attr][-1].dtype
+				# 'data: \t %s'%({attr: attributes[attr][-1].dtype
 				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1])
 				# 	for attr in attributes}),
 				# 'x\n%s'%(to_string(parameters.round(4))),
@@ -9305,7 +9302,7 @@ class Callback(System):
 
 			if logging:
 
-				msg = '\n'.join([f'Statistics {index}/{len(configurations)}',*[
+				msg = '\n'.join([f'Statistics {index+1}/{len(configurations)}',*[
 					f'{key} : {data[key][-1]}'
 					for key in data if len(data[key]) and (isinstance(data[key][-1],(*numbers,*scalars)) or (isinstance(data[key][-1],arrays) and data[key][-1].size <= 1))
 					]])

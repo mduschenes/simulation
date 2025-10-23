@@ -901,13 +901,14 @@ elif backend in ['autograd','numpy']:
 
 if backend in ['jax','jax.autograd','quimb']:
 	
-	def switch(index,funcs,*args):
+	def switch(index,funcs,*args,**kwargs):
 		'''
 		Switch between indexed functions over operands
 		Args:
 			index (int): Index for function
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
 		Returns:
 			out (object): Return of function
 		'''	
@@ -919,21 +920,22 @@ if backend in ['jax','jax.autograd','quimb']:
 
 elif backend in ['autograd','numpy']:
 
-	def switch(index,funcs,*args):
+	def switch(index,funcs,*args,**kwargs):
 		'''
 		Switch between indexed functions over operands
 		Args:
 			index (int): Index for function
 			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
 		Returns:
 			out (object): Return of function
 		'''	
 
 		# TODO merge switch for different numpy backends (jax vs autograd)
 
-		# return jax.lax.switch(index,funcs,*args)
-		return funcs[index](*args)
+		# return jax.lax.switch(index,funcs,*args,**kwargs)
+		return funcs[index](*args,**kwargs)
 
 
 if backend in ['jax','jax.autograd','quimb']:

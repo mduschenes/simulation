@@ -42,7 +42,7 @@ import os,sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
 for PATH in PATHS:
-    sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
 from src.io import load
@@ -59,66 +59,45 @@ settings = arguments['settings']
 settings = load(settings,wrapper=Dict)
 
 # Load classes (from path of class i.e) src.quantum.py)
+Module = load(settings.cls.module)
 Model = load(settings.cls.model)
 State = load(settings.cls.state)
-Label = load(settings.cls.label)
-Call = load(settings.cls.callback)
+Callback = load(settings.cls.callback)
 
-# Get optimizer and system settings
-hyperparameters = settings.optimize
+# Get system settings
 system = settings.system
 
 # Initialize model classes (getting attributes common to previous model namespaces)
-model = Model(**{
-    **settings.model,
-    **dict(system=system)
-    })
-state = State(**{
-    **namespace(State,model),
-    **settings.state,
-    **dict(model=model,system=system)
-    })
-label = Label(**{
-    **namespace(Label,model),
-    **settings.label,
-    **dict(model=model,system=system)
-    })
+if Module is not None and Model is not None and State is not None:
 
-# Initialize label and model with state
-model.init(state=state)
-label.init(state=state)
+	model = Model(**{**settings.model,**dict(system=system)})
+	state = State(**{**namespace(State,model),**settings.state,**dict(system=system)})
+	callback = Callback(**{**settings.callback,**dict(system=system)})
 
-# Set optimizer arguments
-func = model.parameters.constraints if hasattr(model.parameters,'constraints') else None
-callback = Call(**{
-    **namespace(Call,model),
-    **settings.callback,
-    **dict(model=model,system=system)
-    })
-arguments = ()
-keywords = {}
+	module = Module(**{**settings.module,**namespace(Module,model),**dict(model=model,state=state,callback=callback,system=system)})
 
-# Initialize optimizer classes
-metric = Metric(state=state,label=label,
-    arguments=arguments,keywords=keywords,
-    hyperparameters=hyperparameters,system=system)
-func = Objective(model,
-    func=func,callback=callback,metric=metric,
-    hyperparameters=hyperparameters,system=system)
-callback = Callback(model,
-    func=func,callback=callback,metric=metric,
-    arguments=arguments,keywords=keywords,
-    hyperparameters=hyperparameters,system=system)
-optimizer = Optimizer(func=func,callback=callback,
-    arguments=arguments,keywords=keywords,
-    hyperparameters=hyperparameters,system=system)
+	module.init()
 
-# Get model parameters and state
-parameters = model.parameters()
-state = model.state()
+	model = module
 
-# Run optimizer
-parameters = optimizer(parameters,state=state)
+elif Model is not None and State is not None:
+
+	model = Model(**{**settings.model,**dict(system=system)})
+	state = State(**{**namespace(State,model),**settings.state,**dict(system=system)})
+
+	model.init(state=state)
+
+elif model is not None:
+
+	model = Model(**{**settings.model,**dict(system=system)})
+
+else:
+
+	model = None
+
+
+# Dump model
+model.dump()
 ```
 
 Example settings `settings.json`
@@ -126,93 +105,146 @@ Example settings `settings.json`
 ```python
 {
 "cls":{
-    "model":"src.quantum.Channel",
-    "label":"src.quantum.Label",
-    "state":"src.quantum.State",
-    "callback":"src.quantum.Callback"
-    },
+	"module":"src.quantum.Module",
+	"model":"src.quantum.Operators",
+	"state":"src.quantum.State",
+	"callback":"src.quantum.Callback"
+	},
+"module":{
+	"N":4,
+	"M":4,
+	"D":2,
+	"d":1,
+	"seed":123,
+	"string":"module",
+	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
+	"configuration":{},
+	"options":{}
+},
 "model":{
-    "data":{
-        "x":{
-            "operator":["X"],"where":"i","string":"x",
-            "parameters":null,
-            "variable":true
-        },
-        "y":{
-            "operator":["Y"],"where":"i","string":"y",
-            "parameters":null,
-            "variable":true
-        },      
-        "zz":{
-            "operator":["Z","Z"],"where":"i<j","string":"zz",
-            "parameters":[1,0,-1],
-            "variable":true
-        },
-        "noise":{
-            "operator":"depolarize","where":null,"string":"noise",
-            "parameters":1e-12,
-            "variable":false
-        }
-    },
-    "N":2,
-    "D":2,
-    "d":1,
-    "M":10,
-    "tau":1,
-    "P":1,
-    "space":"spin",
-    "time":"linear",
-    "lattice":"square"
-    },
-"system":{
-    "dtype":"complex",
-    "format":"array",
-    "device":"cpu",
-    "backend":null,
-    "architecture":null,
-    "seed":12345,
-    "key":null,
-    "instance":null,
-    "cwd":".",
-    "path":null,
-    "path":"data.hdf5",
-    "conf":"logging.conf",
-    "logger":"log.log",
-    "cleanup":false,
-    "verbose":"info"
-    },
-"optimize":{
-    "iterations":[0,25],
-    "optimizer":"cg",
-    "metric":"abs2",    
-    "alpha":1e-4,"beta":1e-4,
-    "search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-    "track":{
-        "iteration":[],"objective":[],
-        "alpha":[],"beta":[],
-        "purity":[],
-        "N":[],"D":[],"d":[],"M":[],"tau":[],"P":[],
-        "noise.parameters":[]
-        }   
-    },
-"label": {
-    "operator":"haar",
-    "where":null,
-    "string":"U",
-    "parameters":1,
-    "ndim":2,
-    "seed":null
-    },
+	"data":{
+		"unitary":{
+			"operator":"haar","where":"||ij||","string":"unitary",
+			"parameters":null,"variable":false,"seed":null
+		},
+		"noise":{
+			"operator":["depolarize"],"where":"||i.j||","string":"noise",
+			"parameters":1e-8,"variable":false
+		}
+	},
+	"N":4,
+	"M":1,
+	"D":2,
+	"d":1,
+	"local":true,
+	"tensor":true,
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square",
+	"seed":null
+	},
 "state": {
-    "operator":"zero",
-    "where":null,
-    "string":"psi",
-    "parameters":true,
-    "ndim":2,
-    "samples":1,
-    "seed":null
-    },
-"callback":{}
+	"operator":"haar",
+	"where":null,
+	"string":"psi",
+	"parameters":null,
+	"N":null,
+	"D":2,
+	"ndim":2,
+	"local":null,
+	"tensor":true,
+	"architecture":null,
+	"seed":null
+	},
+"system":{
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":null,
+	"architecture":null,
+	"base":null,
+	"seed":null,
+	"key":null,
+	"instance":null,
+	"cwd":"data",
+	"path":"data.hdf5",
+	"lock":true,
+	"backup":true,
+	"conf":"logging.conf",
+	"logger":null,
+	"cleanup":false,
+	"verbose":"info"
+	},
+"callback":{
+	"attributes":{
+		"N":"N","M":"M","d":"d","D":"D",
+		"key":"key","instance":"instance","timestamp":"timestamp",
+		"seed":"seed","seeding":"seeding",
+		"noise.parameters":"noise.parameters",
+		"operator":"measure.operator",
+		"S":"options.S",
+		"scheme":"options.scheme",
+		"layout":"configuration.options.layout",
+		"periodic":"measure.options.periodic",
+
+		"samples":"samples",
+
+		"array":"measure.array",
+		"state":"measure.state",
+
+		"sample.array.linear":"measure.sample",
+		"sample.array.log":"measure.sample",
+		"sample.state.linear":"measure.sample",
+		"sample.state.log":"measure.sample",
+		"sample.array.process":"measure.sample",
+		"sample.state.process":"measure.sample",
+		"sample.array.information":"measure.sample",
+		"sample.state.information":"measure.sample",
+
+		"infidelity.quantum":"measure.infidelity_quantum",
+		"infidelity.classical":"measure.infidelity_classical",
+		"infidelity.pure":"measure.infidelity_pure",
+		"norm.quantum":"measure.norm_quantum",
+		"norm.classical":"measure.norm_classical",
+		"norm.pure":"measure.norm_pure",
+
+		"entanglement.quantum":"measure.entanglement_quantum",
+		"entanglement.classical":"measure.entanglement_classical",
+		"entanglement.renyi":"measure.entanglement_renyi",
+		"entangling.quantum":"measure.entangling_quantum",
+		"entangling.classical":"measure.entangling_classical",
+		"entangling.renyi":"measure.entangling_renyi",
+
+		"mutual.quantum":"measure.mutual_quantum",
+		"mutual.measure":"measure.mutual_measure",
+		"mutual.classical":"measure.mutual_classical",
+		"mutual.renyi":"measure.mutual_renyi",
+		"discord.quantum":"measure.discord_quantum",
+		"discord.classical":"measure.discord_classical",
+		"discord.renyi":"measure.discord_renyi",
+
+		"spectrum.quantum":"measure.spectrum_quantum",
+		"spectrum.classical":"measure.spectrum_classical",
+		"rank.quantum":"measure.rank_quantum",
+		"rank.classical":"measure.rank_classical"
+	},
+	"keywords": {
+		"sample.array.linear":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.process":{"attribute":"array","function":"src.functions.func_process","settings":{}},
+		"sample.state.process":{"attribute":"state","function":"src.functions.func_process","settings":{}},
+		"sample.array.information":{"attribute":"array","function":"src.functions.func_information","settings":{}},
+		"sample.state.information":{"attribute":"state","function":"src.functions.func_information","settings":{}},
+		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
+		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
+		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
+	},
+	"options":{}
+	}
 }
 ```
 
@@ -220,23 +252,28 @@ Example data `data.hdf5`
 
 ```python
 data = {
-        'iteration':[0,1,2],
-        'parameters':[array([...]),array([...]),array([...])],
-        'value': [1e-1,1e-2,1e-3]
-    }
+		'N': 4,
+		'D': 2,
+		'd': 1,
+		'M': 10,
+		'S' : None,
+		'infidelity.classical': 1.1879386363489175e-14,
+		'entanglement.quantum': 0.45686812044843,
+		'mutual.measure': 0.11421606311097962
+	}
 ```
 
 ## Run
-Under `build`, please run 
+Under `build`, please run
 ```sh
-python main.py settings.json 
+python main.py settings.json
 ```
-to run all model permutations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster. 
+to run all model permutations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster.
 
 ## Plot
-Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory.  
+Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory.
 
-Any files stored as attribute-iterable format, i.e) `.hdf5` or `.json` files may be imported and processed within the `pandas` and `matplotlib` API frameworks. 
+Any files stored as attribute-iterable format, i.e) `.hdf5` or `.json` files may be imported and processed within the `pandas` and `matplotlib` API frameworks.
 
 Under `build`, please run
 ```sh
@@ -244,9 +281,9 @@ python processor.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.jso
 ```
 An example plot for optimization convergence is
 <!-- <object data="https://github.com/mduschenes/tensor/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://github.com/mduschenes/tensor/blob/master/plot.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/tensor/blob/master/plot.pdf">Download PDF</a>.</p>
-    </embed>
+	<embed src="https://github.com/mduschenes/tensor/blob/master/plot.pdf">
+		<p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/tensor/blob/master/plot.pdf">Download PDF</a>.</p>
+	</embed>
 </object> -->
 ![alt text](https://github.com/mduschenes/tensor/blob/dev/.data/plot.jpg?raw=true)
 
@@ -292,7 +329,7 @@ The hierarchy of inheritance of classes is as follows
 ## Settings
 Settings files `settings.json` are used to configure model, optimization, and job settings, and to define all permutations of settings intended to be run. The files should have the following fields:
 - `cls` : paths to classes for model (`model`,`label`,`state`,`callback`,...)
-- `boolean` : booleans for training, optimization, and saving, loading of models (`train`,`load`,`dump`)
+- `boolean` : booleans for calling, training, optimization, and saving, loading of models (`call`,`train`,`load`,`dump`)
 - `seed` : random seed settings (`seed`,`size`,...)
 - `permutations` : permutations of model settings
 - `model` : model instance settings (`data`,`N`,`M`,`D`,...)

@@ -1,47 +1,55 @@
 {
 "cls":{
-	"model":"src.quantum.Channel",
-	"label":"src.quantum.Label",
+	"module":"src.quantum.Module",
+	"model":"src.quantum.Operators",
 	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"
 	},
-"model":{
-	"data":{
-		"x":{
-			"operator":["X"],"where":"i","string":"x",
-			"parameters":"random",			
-			"variable":true
-		},
-		"y":{
-			"operator":["Y"],"where":"i","string":"y",
-			"parameters":"random",
-			"variable":true
-		},	
-		"z":{
-			"operator":["Z"],"where":"i","string":"z",
-			"parameters":"random",
-			"variable":false
-		},				
-		"zz":{
-			"operator":["Z","Z"],"where":"i<j","string":"zz",
-			"parameters":[0.5,-0.1,0.1],
-			"variable":false
-		},
-		"noise":{
-			"operator":"depolarize","where":null,"string":"noise",
-			"parameters":1e-6,
-			"variable":false
-		}
-	},
-	"N":2,
+"module":{
+	"N":4,
+	"M":10,
 	"D":2,
 	"d":1,
-	"M":50,
-	"tau":1,
-	"P":1,
+	"seed":123,
+	"string":"module",
+	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
+	"configuration":{},
+	"options":{}
+},
+"model":{
+	"data":{
+		"unitary":{
+			"operator":"haar","where":"||ij||","string":"unitary",
+			"parameters":null,"variable":false,"seed":null
+		},
+		"noise":{
+			"operator":["depolarize"],"where":"||i.j||","string":"noise",
+			"parameters":1e-8,"variable":false
+		}
+	},
+	"N":4,
+	"M":1,
+	"D":2,
+	"d":1,
+	"local":true,
+	"tensor":true,
 	"space":"spin",
 	"time":"linear",
-	"lattice":"square"
+	"lattice":"square",
+	"seed":null
+	},
+"state": {
+	"operator":"haar",
+	"where":null,
+	"string":"psi",
+	"parameters":null,
+	"N":null,
+	"D":2,
+	"ndim":2,
+	"local":null,
+	"tensor":true,
+	"architecture":null,
+	"seed":null
 	},
 "system":{
 	"dtype":"complex",
@@ -49,46 +57,87 @@
 	"device":"cpu",
 	"backend":null,
 	"architecture":null,
+	"base":null,
 	"seed":null,
 	"key":null,
 	"instance":null,
 	"cwd":"data",
-	"path":null,
 	"path":"data.hdf5",
+	"lock":true,
+	"backup":true,
 	"conf":"logging.conf",
-	"logger":"log.log",
+	"logger":null,
 	"cleanup":false,
 	"verbose":"info"
 	},
-"optimize":{
-	"iterations":[0,20],
-	"optimizer":"cg",
-	"metric":"abs2",	
-	"alpha":1e-4,"beta":1e-4,
-	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"track":{
-		"iteration":[],"objective":[],
-		"alpha":[],"beta":[],
-		"purity":[],
-		"N":[],"D":[],"d":[],"M":[],"tau":[],"P":[],
-		"noise.parameters":[]
-		}	
+"callback":{
+	"attributes":{
+		"N":"N","M":"M","d":"d","D":"D",
+		"key":"key","instance":"instance","timestamp":"timestamp",
+		"seed":"seed","seeding":"seeding",
+		"noise.parameters":"noise.parameters",
+		"operator":"measure.operator",
+		"S":"options.S",
+		"scheme":"options.scheme",
+		"layout":"configuration.options.layout",
+		"periodic":"measure.options.periodic",
+
+		"samples":"samples",
+
+		"array":"measure.array",
+		"state":"measure.state",
+
+		"sample.array.linear":"measure.sample",
+		"sample.array.log":"measure.sample",
+		"sample.state.linear":"measure.sample",
+		"sample.state.log":"measure.sample",
+		"sample.array.process":"measure.sample",
+		"sample.state.process":"measure.sample",
+		"sample.array.information":"measure.sample",
+		"sample.state.information":"measure.sample",
+
+		"infidelity.quantum":"measure.infidelity_quantum",
+		"infidelity.classical":"measure.infidelity_classical",
+		"infidelity.pure":"measure.infidelity_pure",
+		"norm.quantum":"measure.norm_quantum",
+		"norm.classical":"measure.norm_classical",
+		"norm.pure":"measure.norm_pure",
+
+		"entanglement.quantum":"measure.entanglement_quantum",
+		"entanglement.classical":"measure.entanglement_classical",
+		"entanglement.renyi":"measure.entanglement_renyi",
+		"entangling.quantum":"measure.entangling_quantum",
+		"entangling.classical":"measure.entangling_classical",
+		"entangling.renyi":"measure.entangling_renyi",
+
+		"mutual.quantum":"measure.mutual_quantum",
+		"mutual.measure":"measure.mutual_measure",
+		"mutual.classical":"measure.mutual_classical",
+		"mutual.renyi":"measure.mutual_renyi",
+		"discord.quantum":"measure.discord_quantum",
+		"discord.classical":"measure.discord_classical",
+		"discord.renyi":"measure.discord_renyi",
+
+		"spectrum.quantum":"measure.spectrum_quantum",
+		"spectrum.classical":"measure.spectrum_classical",
+		"rank.quantum":"measure.rank_quantum",
+		"rank.classical":"measure.rank_classical"
 	},
-"label": {
-	"operator":"haar",
-	"where":null,
-	"string":"U",
-	"parameters":true,
-	"ndim":2,
-	"seed":null
+	"keywords": {
+		"sample.array.linear":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.array.log":{"attribute":"array","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.state.linear":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
+		"sample.state.log":{"attribute":"state","function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
+		"sample.array.process":{"attribute":"array","function":"src.functions.func_process","settings":{}},
+		"sample.state.process":{"attribute":"state","function":"src.functions.func_process","settings":{}},
+		"sample.array.information":{"attribute":"array","function":"src.functions.func_information","settings":{}},
+		"sample.state.information":{"attribute":"state","function":"src.functions.func_information","settings":{}},
+		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
+		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
+		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
+		"discord.quantum":{"where":0.5},"discord.classical":{"where":0.5},"discord.renyi":{"where":0.5},
+		"spectrum.quantum":{"where":0.5},"spectrum.classical":{"where":0.5},"rank.quantum":{"where":0.5},"rank.classical":{"where":0.5}
 	},
-"state": {
-	"operator":"zero",
-	"where":null,
-	"string":"psi",
-	"parameters":true,
-	"ndim":2,
-	"seed":null
-	},
-"callback":{}
+	"options":{}
+	}
 }
