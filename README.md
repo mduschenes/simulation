@@ -279,7 +279,7 @@ Under `build`, please run
 ```sh
 python processor.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
-An example plot for optimization convergence is
+An example plot for operator entanglement scaling is
 <!-- <object data="https://github.com/mduschenes/tensor/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
 	<embed src="https://github.com/mduschenes/tensor/blob/master/plot.pdf">
 		<p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/tensor/blob/master/plot.pdf">Download PDF</a>.</p>
