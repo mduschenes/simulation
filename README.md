@@ -225,6 +225,18 @@ data = {
     }
 ```
 
+Example plotter in `plot.py`
+
+Under `examples`, please run
+```sh
+python main.py settings.json
+```
+to run optimization of model in `settings.json`, then run
+```sh
+python plot.py .
+```
+to plot data from optimization of model.
+
 ## Run
 Under `build`, please run 
 ```sh
