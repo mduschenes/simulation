@@ -3,7 +3,10 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844).
+This library is used in the preparation of the works, with associated branches:
+
+- *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844), with branch `overparameterization`.
+- *Simulation of Noisy Quantum Systems with Tensor Networks*, In Preparation, with branch `tensor`.
 
 ## Install
 After cloning the repository, please run 
