@@ -5,8 +5,8 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 This library is used in the preparation of the works, with associated branches:
 
-- *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844), with branch `overparameterization`.
-- *Simulation of Noisy Quantum Systems with Tensor Networks*, In Preparation, with branch `tensor`.
+- *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844). Please refer to branch `overparameterization` for density-matrix simulation code.
+- *Simulation of Noisy Quantum Systems with Tensor Networks*, In Preparation. Please refer to branch `tensor` for tensor network simulation code.
 
 ## Install
 After cloning the repository, please run 
