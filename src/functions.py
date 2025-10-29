@@ -121,13 +121,80 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 		data = mask(agg(data))
 
-	def func(data):
-		try:
-			return len(data)
-		except:
-			return data
+	return data
+
+def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,**kwargs):
+
+	independent = [independent] if isinstance(independent,str) else independent
+	dependent = [dependent] if isinstance(dependent,str) else dependent
+	attr = '__group__'
+
+	if independent is None or dependent is None or any(attr not in data for attr in independent) or any(attr not in data for attr in dependent):
+		return data
+
+	if seed is not None:
+		options = dict(seed=seed)
+		seeded(**options)
+
+	if isinstance(func,str):
+		func = load(func,default=func)
+	else:
+		func = 'mean'
+
+	def split(data):
+		options = dict(seed=seed)
+		key = seeded(**options)
+
+		options = dict(drop=True)
+		data = data.reset_index(**options)
+
+		options = dict(frac=1,random_state=rng)
+		data = data.sample(**options)
+
+		options = dict(drop=True)
+		data = data.reset_index(**options)
+
+		sample = None if samples is None else len(data) if samples < 0 else samples
+
+		data[attr] = data.index % sample
+
+		return data
+
+	def agg(data):
+
+		print(data[independent])
+		print(data[dependent])
+		print(data.index)
+		exit()
+
+		apply = func
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+		return data
+
+	if samples is not None:
+
+		by = independent
+		apply = split
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+
+		by = attr
+		apply = agg
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+
+	else:
+
+		data = agg(data)
 
 	return data
+
+def func_func_fit(data,**kwargs):
+	print(data['N'])
+	exit()
+	return data
+
 
 def func_samples(data,*args,**kwargs):
 	for i in data:
@@ -682,12 +749,12 @@ def func_size_state(data,*args,**kwargs):
 def func_transform(data,*args,**kwargs):
 
 	boolean = {
-		'attr':(lambda attr,data: all([
+		'attr':(lambda attr,data: False and all([
 			(
 			((key in data[attr]) and any(i not in value for i in data[attr][key][...])) or
 			((key in data[attr].attrs) and (data[attr].attrs[key] not in value))
 			)
-			for key,value in {'noise.parameters':[1e-2]}.items()
+			for key,value in {'noise.parameters':[]}.items()
 			])),
 		'key':(lambda key,data: data[key].ndim>1)
 		}
