@@ -502,6 +502,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'tmp':True,
 		'reset':None,
 		'chunk':None,
+		'transform':None,
 		'patterns':None,
 		'replacements':None,
 		'join':None,
@@ -1414,7 +1415,7 @@ def loader(data,plots,processes,verbose=None):
 			options = dict(
 				default = None,
 				wrapper = {'merge':'df'}.get(processes['tmp'],'pd'),
-				transform = None,
+				transform = processes['transform'],
 				chunk = processes['chunk'],
 				verbose = verbose,
 				)
@@ -1425,7 +1426,7 @@ def loader(data,plots,processes,verbose=None):
 			options = dict(
 				default = None,
 				wrapper = 'df',
-				transform = None,
+				transform = processes['transform'],
 				chunk = processes['chunk'],
 				verbose = verbose,
 				)

@@ -679,6 +679,29 @@ def func_size_array(data,*args,**kwargs):
 def func_size_state(data,*args,**kwargs):
 	return data['label']['D']**(1*data['x'])
 
+def func_transform(data,*args,**kwargs):
+
+	boolean = {
+		'attr':(lambda attr,data: all([
+			(
+			((key in data[attr]) and any(i not in value for i in data[attr][key][...])) or
+			((key in data[attr].attrs) and (data[attr].attrs[key] not in value))
+			)
+			for key,value in {'noise.parameters':[1e-2]}.items()
+			])),
+		'key':(lambda key,data: data[key].ndim>1)
+		}
+
+	for attr in data:
+		if boolean['attr'](attr,data):
+			del data[attr]
+		else:
+			for key in data[attr]:
+				if boolean['key'](key,data[attr]):
+					del data[attr][key]
+
+	return
+
 def func_y(data):
 	return np.abs(np.array(data['y']))#*(data['N']*np.log(data['D']))/np.log(2)
 

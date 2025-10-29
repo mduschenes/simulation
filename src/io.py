@@ -604,17 +604,17 @@ def serialize_json(obj,key='py/object',wr='r',ext=None,options=None,transform=No
 		wr (str): Read mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
-		kwargs (dict): Additional loading keyword arguments		
+		verbose (bool,int): Verbosity
+		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		obj (object): Serialized object
-	'''	
-	
+	'''
+
 	if isinstance(obj,dict) and key in obj:
 		obj = pickle.loads(str(obj[key]))
-	
+
 	return obj
 
 def deserialize_json(obj,key='py/object',wr='w',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
@@ -626,13 +626,13 @@ def deserialize_json(obj,key='py/object',wr='w',ext=None,options=None,transform=
 		wr (str): Dump mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
 		verbose (bool,int): Verbosity
-		kwargs (dict): Additional loading keyword arguments		
+		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		obj (object): De-Serialized object
-	'''	
+	'''
 	return obj
 
 
@@ -644,19 +644,26 @@ def load_json(path,wr='r',ext=None,options=None,transform=None,execute=None,verb
 		wr (str): Read mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
-		kwargs (dict): Additional loading keyword arguments	
+		verbose (bool,int): Verbosity
+		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		data (object): Object
 	'''
-	
+
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+	if callable(transform):
+		try:
+			transform(json.load(path,**options))
+		except:
+			pass
+
 	if isinstance(path,str):
 		raise ValueError
 	else:
 		data = json.load(path,**options)
-	
+
 	return data
 
 def dump_json(data,path,wr='w',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
@@ -668,15 +675,22 @@ def dump_json(data,path,wr='w',ext=None,options=None,transform=None,execute=None
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
 	'''
 
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+	if callable(transform):
+		try:
+			transform(data)
+		except:
+			pass
+
 	if isinstance(path,str):
 		raise ValueError
-	else:	
+	else:
 		json.dump(data,path,**options)
 
 	return
@@ -690,18 +704,25 @@ def merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=Non
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
 	'''
+
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+	if callable(transform):
+		try:
+			transform(data)
+		except:
+			pass
 
 	wr = 'r%s'%(wr[1:]) if wr is not None else wr
 	with (open(path,wr) if isinstance(path,str) else path) as obj:
 		try:
 			tmp = load_json(obj,wr=wr,ext=ext,options=options['load'],transform=transform,execute=execute,verbose=verbose,**kwargs)
 		except:
-			tmp = {}	
+			tmp = {}
 
 	_merge_json(data,tmp,wr=wr,ext=ext,options=options['load'],transform=transform,execute=execute,verbose=verbose,**kwargs)
 
@@ -709,7 +730,7 @@ def merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=Non
 	with (open(path,wr) if isinstance(path,str) else path) as obj:
 		dump_json(tmp,obj,wr=wr,ext=ext,options=options['dump'],transform=transform,execute=execute,verbose=verbose,**kwargs)
 
-	return	
+	return
 
 def _merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
 	'''
@@ -720,12 +741,12 @@ def _merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
-	'''	
-	
+	'''
+
 	wr = 'r'
 	length = len(path)
 	with (open(data,wr) if isinstance(data,str) else data) as obj:
@@ -733,8 +754,8 @@ def _merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 		for index,key in enumerate(obj):
 			name = str(length+index) if transform else key
 			path[name] = obj[key]
-	
-	return	
+
+	return
 
 def load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
 	'''
@@ -744,17 +765,27 @@ def load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verb
 		wr (str): Read mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		data (object): Object
-	'''	
+	'''
+
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+
+	if callable(transform):
+		try:
+			with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
+				transform(obj)
+			os.system(f'h5repack {path} {path}.tmp && mv {path}.tmp {path}')
+		except:
+			pass
 
 	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		data = _load_hdf5(obj,wr=wr,ext=ext,**kwargs)
-	
+
 	return data
 
 
@@ -766,27 +797,27 @@ def _load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,ver
 		wr (str): Read mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		data (object): Object
-	'''	
+	'''
 
 	data = {}
-	
+
 	if isinstance(path, h5py._hl.group.Group):
 		names = path
 		for name in names:
 			key = name
-			if isinstance(path[name], h5py._hl.group.Group):	
+			if isinstance(path[name], h5py._hl.group.Group):
 				data[key] = _load_hdf5(path[name],wr=wr,ext=ext,**kwargs)
 			else:
 				data[key] = path[name][...]
 				if data[key].dtype.kind in ['S','O']:
 					data[key] = data[key].astype(str)
-				
+
 		names = path.attrs
 		for name in names:
 			key = name
@@ -794,7 +825,7 @@ def _load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,ver
 
 	else:
 		data = path.value
-	
+
 	return data
 
 def dump_hdf5(data,path,wr='w',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
@@ -806,11 +837,18 @@ def dump_hdf5(data,path,wr='w',ext=None,options=None,transform=None,execute=None
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
-	'''	
+	'''
+
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+	if callable(transform):
+		try:
+			transform(data)
+		except:
+			pass
 
 	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		_dump_hdf5(data,obj,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
@@ -826,11 +864,11 @@ def _dump_hdf5(data,path,wr='w',ext=None,options=None,transform=None,execute=Non
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
-	'''		
+	'''
 	if isinstance(data,dict):
 		names = data
 		for name in names:
@@ -871,11 +909,18 @@ def merge_hdf5(data,path,wr='a',ext=None,options=None,transform=None,execute=Non
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
-	'''	
+	'''
+
+	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
+	if callable(transform):
+		try:
+			transform(data)
+		except:
+			pass
 
 	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
 		_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
@@ -892,12 +937,12 @@ def _merge_hdf5(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 		wr (str): Write mode
 		ext (str): Extension
 		options (dict): Options
-		transform (bool): Transform
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity		
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
-	'''	
-	
+	'''
+
 	wr = 'r'
 	length = len(path)
 	with (h5py.File(data,wr) if isinstance(data,str) else data) as obj:
@@ -906,8 +951,8 @@ def _merge_hdf5(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 			if name in path:
 				del path[name]
 			obj.copy(key,path,name)
-	
-	return	
+
+	return
 
 
 
@@ -920,14 +965,14 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		callables (bool): Allow functions to be pickled
 	Returns:
 		ispickleable (bool): Whether object can be pickled
-	'''	
+	'''
 	if isinstance(obj,dict):
-		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj} 
+		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj}
 		for k in pickleables:
 			if not pickleables[k] or (not callables and callable(pickleables[k])):
 				logger.log(debug,'Exception: Cannot pickle (key,value) %r, %r'%(k,obj[k]))
 				obj.pop(k);
-				pickleables[k] = True		
+				pickleables[k] = True
 		return all([pickleables[k] for k in pickleables])
 
 	ispickleable = False
@@ -951,10 +996,10 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 		obj (object): Object to json
 		path (str): Path to check if object can be written to
 		callables (bool): Allow functions to be written to json
-		kwargs (dict): Additional keyword arguments		
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		isjsonable (bool): Whether object can be written to json
-	'''	
+	'''
 	return
 
 
@@ -966,7 +1011,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		path (str,iterable,dict[str,str]): Path
 		wr (str): Read mode
 		default (object): Default return object if load fails
-		delimiter (str): Delimiter to separate file name from extension		
+		delimiter (str): Delimiter to separate file name from extension
 		chunk (int): Size of chunks of paths
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		func (callable): Function for data
@@ -975,7 +1020,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		timeout (int): Timeout of loading
 		cleanup (bool): Cleanup of loading
 		options (dict): Options of loading
-		transform (bool): Transform of loading		
+		transform (bool,str,callable): Transform of loading
 		execute (bool): Execute data load of loading
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
@@ -985,7 +1030,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 
 	if chunk:
 		return (
-			load(path,wr=wr,default=default,delimiter=delimiter,chunk=None,wrapper=wrapper,func=func,lock=lock,backup=backup,timeout=timeout,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) 
+			load(path,wr=wr,default=default,delimiter=delimiter,chunk=None,wrapper=wrapper,func=func,lock=lock,backup=backup,timeout=timeout,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 			for path in slicer(sorted(glob(path),key=memory),chunk)
 			)
 
@@ -996,7 +1041,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 	verbose = verbose if verbose is not None else False
 
 	args = {'path':path,'wrapper':wrapper}
-	kwargs.update({'wrapper':wrapper})	
+	kwargs.update({'wrapper':wrapper})
 
 	if path is None or not isinstance(path,(str,iterables)):
 		return default
@@ -1005,7 +1050,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		paths = [path]
 	else:
 		paths = path
-	
+
 	if not isinstance(path,dict):
 		paths = {path: path for path in paths}
 	else:
@@ -1031,19 +1076,19 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		if not isinstance(path,str):
 			data[name] = datum
 			continue
-	
+
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 
 		with Lock(lock=lock,path=path,timeout=timeout):
-			
+
 			with Backup(backup=backup,path=path):
 
 				for wr in wrs:
 					try:
 						datum = _load(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 						break
-					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
+					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 						try:
 							with open(path,wr) as obj:
@@ -1065,7 +1110,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 
 	wrappers = []
 	for wrapper in kwargs['wrapper']:
-		
+
 		if wrapper is None:
 			def wrapper(data):
 				return data
@@ -1084,14 +1129,14 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 					else:
 						pass
 				except:
-					pass	
+					pass
 		elif wrapper in ['df']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 				def iterable(data):
 					return not isinstance(data,scalars) and getattr(data,'size',len(data)) > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
 				def scalar(data):
-					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1				
+					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1
 				def function(path,data):
 					# iterate = len(set(len(data[attr]) for attr in data if not scalar(data[attr])))==1
 					for attr in data:
@@ -1122,7 +1167,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 							data = function(path,data[path])
 					except Exception as exception:
 						data = default
-				return data	
+				return data
 		elif wrapper in ['np']:
 			def wrapper(data):
 				options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
@@ -1130,7 +1175,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 					data = np.concatenate(tuple((np.array(data[path]) for path in data)),**options)
 				except ValueError:
 					data = default
-				return data	
+				return data
 		elif wrapper in ['array']:
 			def wrapper(data):
 				options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
@@ -1145,7 +1190,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		elif wrapper in ['merge']:
 			def wrapper(data):
 
-				data = {key:[i for path in data for i in data[path][key] if data[path] is not None] 
+				data = {key:[i for path in data for i in data[path][key] if data[path] is not None]
 					for key in set((key for path in data for key in data[path]))}
 
 				for key in data:
@@ -1201,14 +1246,14 @@ def _load(path,wr,ext,options=None,transform=None,execute=None,verbose=None,**kw
 		wr (str): Read mode
 		ext (str): Extension
 		options (dict): Options of loading
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
 		verbose (bool,int): Verbosity
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		data (object): Object
-	'''	
-	
+	'''
+
 	verbose = verbose if verbose is not None else False
 
 	wrappers = kwargs.pop('wrapper',None)
@@ -1282,16 +1327,16 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 		data (object): Object
 		path (str,iterable[str],dict[str,str]): Path
 		wr (str): Write mode
-		delimiter (str): Delimiter to separate file name from extension		
-		chunk (int): Size of chunks of paths		
+		delimiter (str): Delimiter to separate file name from extension
+		chunk (int): Size of chunks of paths
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
-		func (callable): Function for data		
+		func (callable): Function for data
 		lock (bool,str): Lock file of dumping
 		backup (bool,str): Backup file of dumping
 		timeout (int): Timeout of dumping
 		cleanup (bool): Cleanup of dumping
 		options (dict): Options of dumping
-		transform (bool): Transform of dumping		
+		transform (bool,str,callable): Transform of dumping
 		execute (bool): Execute data dump of dumping
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
@@ -1340,7 +1385,7 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 					return data
 		elif wrapper in ['merge']:
 			def wrapper(data):
-				return data			
+				return data
 		else:
 			def wrapper(data):
 				return data
@@ -1351,7 +1396,7 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 		paths = [path]
 	else:
 		paths = path
-	
+
 	if not isinstance(path,dict):
 		paths = {path: path for path in paths}
 	else:
@@ -1360,9 +1405,9 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 	funcs = {name:func if callable(func) else func.get(paths[name]) if isinstance(func,dict) else None for name in paths}
 
 	for name in paths:
-		
+
 		path = paths[name]
-		
+
 		func = funcs[name]
 
 		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
@@ -1382,7 +1427,7 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 
 			with Backup(backup=backup,path=path):
 
-				for wr in wrs:	
+				for wr in wrs:
 					try:
 						_dump(data,path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 						break
@@ -1395,7 +1440,7 @@ def dump(data,path,wr='w',delimiter=delimiter,chunk=None,wrapper=None,func=None,
 						except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 							logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 							pass
-		
+
 		logger.log(info*verbose,'Dump : %s'%(relpath(paths[name])))
 
 	return
@@ -1411,11 +1456,11 @@ def _dump(data,path,wr,ext,options=None,transform=None,execute=None,verbose=None
 		path (str,object): Path or file object
 		wr (str): Write mode
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
-		verbose (bool,int): Verbosity			
+		verbose (bool,int): Verbosity
 		kwargs (dict): Additional dumping keyword arguments
-	'''	
+	'''
 
 	wrappers = kwargs.pop('wrapper',None)
 
@@ -1439,8 +1484,8 @@ def _dump(data,path,wr,ext,options=None,transform=None,execute=None,verbose=None
 	elif ext in ['txt','sh']:
 		options = {}
 		path.dumplines(data,**options)
-	elif ext in ['pickle','pkl']:	
-		options = {**dict(protocol=pickle.HIGHEST_PROTOCOL),**kwargs}	
+	elif ext in ['pickle','pkl']:
+		options = {**dict(protocol=pickle.HIGHEST_PROTOCOL),**kwargs}
 		pickleable(data,callables=kwargs.pop('callables',True))
 		pickle.dump(data,path,**options)
 	elif ext in ['json']:
@@ -1472,16 +1517,16 @@ def merge(data,path,wr='a',delimiter=delimiter,chunk=None,wrapper=None,func=None
 		data (str,iterable[str],dict[str,str]): Paths to merge object
 		path (str): Path to merge object
 		wr (str): Write mode
-		delimiter (str): Delimiter to separate file name from extension		
-		chunk (int): Size of chunks of paths		
+		delimiter (str): Delimiter to separate file name from extension
+		chunk (int): Size of chunks of paths
 		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		func (callable): Function for data
 		lock (bool,str): Lock file of merging
 		backup (bool,str): Backup file of merging
 		timeout (int): Timeout of merging
-		cleanup (bool): Cleanup of merging		
-		options (dict): Options of merging		
-		transform (bool): Transform of merging
+		cleanup (bool): Cleanup of merging
+		options (dict): Options of merging
+		transform (bool,str,callable): Transform of merging
 		execute (bool): Execute data load of merging
 		verbose (bool,int): Verbose logging of merging
 		kwargs (dict): Additional appending keyword arguments
@@ -1500,7 +1545,7 @@ def merge(data,path,wr='a',delimiter=delimiter,chunk=None,wrapper=None,func=None
 		data = [data]
 	else:
 		data = data
-	
+
 	if not isinstance(data,dict):
 		data = {name: name for name in data}
 	else:
@@ -1517,12 +1562,12 @@ def merge(data,path,wr='a',delimiter=delimiter,chunk=None,wrapper=None,func=None
 
 		if not isinstance(name,str):
 			continue
-	
+
 		name = os.path.abspath(os.path.expandvars(os.path.expanduser(name)))
 		ext = split(name,ext=True,delimiter=delimiter)
 
 		with Lock(lock=lock,path=path,timeout=timeout):
-			
+
 			with Backup(backup=backup,path=path):
 
 				for wr in wrs:
@@ -1532,7 +1577,7 @@ def merge(data,path,wr='a',delimiter=delimiter,chunk=None,wrapper=None,func=None
 					try:
 						_merge(name,path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 						break
-					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
+					except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 						logger.log(debug,'Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 						try:
 							with open(path,wr) as obj:
@@ -1559,7 +1604,7 @@ def _merge(data,path,wr,ext,options=None,transform=None,execute=None,verbose=Non
 		path (str,object): Path or file object
 		wr (str): Write mode
 		options (dict): Options
-		transform (bool): Transform		
+		transform (bool,str,callable): Transform
 		execute (bool): Execute
 		verbose (bool,int): Verbosity	
 		kwargs (dict): Additional dumping keyword arguments
