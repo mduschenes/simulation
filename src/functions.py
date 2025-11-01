@@ -23,14 +23,16 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
+from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
-from src.utils import grouper,conditions,flatten,concatenate,inplace,epsilon
+from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan,pi
 
 from src.iterables import permuter,setter,getter,search,Dictionary
+
+from src.fit import fit
 
 from src.plot import ALL,AXES,DELIMITER
 
@@ -123,13 +125,14 @@ def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
-def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,**kwargs):
+def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,function=None,**kwargs):
 
-	independent = [independent] if isinstance(independent,str) else independent
-	dependent = [dependent] if isinstance(dependent,str) else dependent
+	independent = independent if isinstance(independent,str) else independent
+	dependent = dependent if isinstance(dependent,str) else dependent
 	attr = '__group__'
 
-	if independent is None or dependent is None or any(attr not in data for attr in independent) or any(attr not in data for attr in dependent):
+
+	if independent is None or dependent is None or independent not in data or dependent not in data:
 		return data
 
 	if seed is not None:
@@ -140,6 +143,17 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 		func = load(func,default=func)
 	else:
 		func = 'mean'
+
+	if function is None:
+		function = lambda data: 1
+	elif function in ['array']:
+		function = lambda data: (data['D']**(2*data['N'])).iloc[0]
+	elif function in ['state']:
+		function = lambda data: (data['D']**(1*data['N'])).iloc[0]
+	else:
+		function = load(function,default=lambda data:1)
+
+	keys = dict(zip(['x','y','xerr','yerr'],[f'{independent}',f'{dependent}',f'{independent}.error',f'{dependent}.error']))
 
 	def split(data):
 		options = dict(seed=seed)
@@ -162,14 +176,71 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	def agg(data):
 
-		print(data[independent])
-		print(data[dependent])
-		print(data.index)
-		exit()
+		def apply(data):
 
-		apply = func
+			apply = {}
+
+			def application(data,attr=None):
+				data = data[attr].iloc[0]
+				return data
+			for attr in data:
+				apply[attr] = partial(application,attr=attr)
+
+			attr = keys['x']
+			def application(data):
+				data = 1/data[keys['x']].iloc[0]
+				return data
+			apply[attr] = application
+
+			attr = keys['y']
+			def application(data):
+				number,size = function(data),data.size
+				data = data[keys['y']].mean()
+				# data = data/np.log(size*number)
+				return data
+			apply[attr] = application
+
+			attr = keys['xerr']
+			def application(data):
+				data = None
+				return data
+			apply[attr] = application
+
+			attr = keys['yerr']
+			def application(data):
+				number,size = function(data),data[attr].size
+				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
+				data = np.sqrt(data/(size*number))
+				# data = data/np.log(size*number)
+				return data
+			apply[attr] = application
+
+			apply = {attr:apply[attr] for attr in apply if attr in data}
+
+			value = {}
+			for attr in apply:
+				if isinstance(apply[attr],str):
+					value[attr] = getattr(data,apply[attr])
+				else:
+					value[attr] = apply[attr](data)
+				value[attr] = [value[attr]]
+
+			data = dataframe(value)
+
+			return data
+
+
+		attr = keys['y']
+		number,size = function(data),data[attr].size
+
+		by = independent
 		options = dict(by=by,apply=apply)
 		data = grouper(data,**options)
+
+		data = func(data,keys=keys)
+
+		data[attr] = data[attr]/np.log(size*number)
+
 		return data
 
 	if samples is not None:
@@ -190,9 +261,34 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
-def func_func_fit(data,**kwargs):
-	print(data['N'])
-	exit()
+def func_func_fit(data,keys,*args,**kwargs):
+
+	values = {key:data.get(keys[key]).to_numpy() for key in keys if keys[key] in data}
+	func = lambda parameters,x: parameters[0] - parameters[1]*x
+	parameters = array([0.0,1.0])
+	kwargs = {
+		'optimizer':'cg',
+		'alpha':1e-1,
+		'iterations':64,
+		'eps':{'value':1e-10},
+		'uncertainty':parameters.size<1000,
+		'verbose':0,
+		}
+	preprocess = lambda x,y,parameters: ((x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None)
+	postprocess = lambda x,y,parameters: ((x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None)
+
+	options = {
+		**values,
+		**dict(func=func,parameters=parameters,preprocess=preprocess,postprocess=postprocess,kwargs=kwargs),
+		}
+
+	func,y,parameters,yerr,cov,other = fit(**options)
+
+	key = keys['y']
+	value = func(parameters,0)
+
+	data[key] = value
+
 	return data
 
 
@@ -749,7 +845,7 @@ def func_size_state(data,*args,**kwargs):
 def func_transform(data,*args,**kwargs):
 
 	boolean = {
-		'attr':(lambda attr,data: False and all([
+		'attr':(lambda attr,data: all([
 			(
 			((key in data[attr]) and any(i not in value for i in data[attr][key][...])) or
 			((key in data[attr].attrs) and (data[attr].attrs[key] not in value))
@@ -766,6 +862,10 @@ def func_transform(data,*args,**kwargs):
 			for key in data[attr]:
 				if boolean['key'](key,data[attr]):
 					del data[attr][key]
+
+	path = data.filename
+	data.close()
+	os.system(f'h5repack {path} {path}.tmp && mv {path}.tmp {path}')
 
 	return
 

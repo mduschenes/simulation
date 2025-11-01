@@ -91,10 +91,10 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	funcs,conditions = piecewise(funcs,bounds)
 
 	_func = [None for i in range(n)]
-	_y = _y if _y is not None else y
+	_y = _y if _y is not None else y if _x is not None and x is not None and _x.shape == x.shape else None
 	_x = _x if _x is not None else x
 	_parameters = parameters
-	_yerr = zeros(_y.shape)
+	_yerr = zeros(_y.shape) if _y is not None else None
 	_covariance = covariance
 	_other = [None for i in range(n)]
 
@@ -102,7 +102,6 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		
 		condition = conditions(x)
 		_condition = conditions(_x)
-
 
 		returns = fitter(
 			x=x[condition[i]] if x is not None else x,
@@ -121,12 +120,11 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			)
 
 		_func[i] = returns[0]
-		_y = inplace(_y,_condition[i],returns[1] )
+		_y = inplace(_y,_condition[i],returns[1]) if _y is not None else None
 		_parameters[i] = returns[2]
-		_yerr = inplace(_yerr,_condition[i],returns[3])
+		_yerr = inplace(_yerr,_condition[i],returns[3]) if _yerr is not None else None
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]
-
 
 	if single:
 		_func,_y,_parameters,_yerr,_covariance,_other = _func[0],_y,_parameters[0],_yerr,_covariance[0],_other[0]
@@ -601,7 +599,7 @@ def transformation(x,y,parameters=None,axis=None,mode='linear',process=True,stan
 						if parameters is not None:
 							returns = _x,_parameters
 						else:
-							returns = _x
+							returns = _x,_y
 				else:
 					if y is not None:
 						if parameters is not None:

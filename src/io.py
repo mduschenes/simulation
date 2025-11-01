@@ -636,6 +636,23 @@ def deserialize_json(obj,key='py/object',wr='w',ext=None,options=None,transform=
 	return obj
 
 
+def context_json(path,wr='r',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
+	'''
+	Context object
+	Args:
+		path (str,object): Path or file object
+		wr (str): Read mode
+		ext (str): Extension
+		options (dict): Options
+		transform (bool,str,callable): Transform
+		execute (bool): Execute
+		verbose (bool,int): Verbosity
+		kwargs (dict): Additional loading keyword arguments
+	Returns:
+		data (object): Object
+	'''
+	return json.load(path,**options)
+
 def load_json(path,wr='r',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
 	'''
 	Load object
@@ -655,14 +672,16 @@ def load_json(path,wr='r',ext=None,options=None,transform=None,execute=None,verb
 	transform = transform if callable(transform) else load(transform) if isinstance(transform,str) and callable(load(transform)) else transform
 	if callable(transform):
 		try:
-			transform(json.load(path,**options))
+			obj = context_json(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
+			transform(obj)
 		except:
 			pass
 
 	if isinstance(path,str):
 		raise ValueError
 	else:
-		data = json.load(path,**options)
+		obj = context_json(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
+		data = obj
 
 	return data
 
@@ -757,6 +776,23 @@ def _merge_json(data,path,wr='a',ext=None,options=None,transform=None,execute=No
 
 	return
 
+def context_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
+	'''
+	Context object
+	Args:
+		path (str,object): Path or file object
+		wr (str): Read mode
+		ext (str): Extension
+		options (dict): Options
+		transform (bool,str,callable): Transform
+		execute (bool): Execute
+		verbose (bool,int): Verbosity
+		kwargs (dict): Additional loading keyword arguments
+	Returns:
+		data (object): Object
+	'''
+	return h5py.File(path,wr) if isinstance(path,str) else path
+
 def load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verbose=None,**kwargs):
 	'''
 	Load object
@@ -777,13 +813,14 @@ def load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verb
 
 	if callable(transform):
 		try:
-			with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
+			with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
 				transform(obj)
-			os.system(f'h5repack {path} {path}.tmp && mv {path}.tmp {path}')
-		except:
+		except Exception as exception:
+			print(exception)
+			exit()
 			pass
 
-	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
+	with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
 		data = _load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
 	return data
@@ -850,7 +887,7 @@ def dump_hdf5(data,path,wr='w',ext=None,options=None,transform=None,execute=None
 		except:
 			pass
 
-	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
+	with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
 		_dump_hdf5(data,obj,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 
 	return
@@ -922,7 +959,7 @@ def merge_hdf5(data,path,wr='a',ext=None,options=None,transform=None,execute=Non
 		except:
 			pass
 
-	with (h5py.File(path,wr) if isinstance(path,str) else path) as obj:
+	with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
 		_merge_hdf5(data,obj,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs)
 
 	return

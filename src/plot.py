@@ -45,7 +45,7 @@ VARIANTS = [*STATS,*[str(i) for i in range(1,DIM+1)]]
 FORMATS = ['lower','upper']
 DELIMITER = 'DELIMITER'
 DELIMITERS = ['','_']
-ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for variant in VARIANTS for fmt in FORMATS for axes in AXES ]
+ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for variant in VARIANTS for fmt in FORMATS for axes in AXES]
 STATISTICS = ['%s%s'%(axes,stats) for stats in STATS for axes in AXES]
 VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
 OBJS = ['ax','fig','style']
@@ -1853,7 +1853,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						logging(exception)
 
 					return
-
 
 				call = (
 					(not (

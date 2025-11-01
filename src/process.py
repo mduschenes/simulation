@@ -1312,6 +1312,7 @@ def loader(data,plots,processes,verbose=None):
 						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
 				else:
 					labels = {attr: None for attr in data[OTHER]}
+
 				k = None
 
 				for j in range(len(iterable.get(key_iterable))):
@@ -1417,6 +1418,7 @@ def loader(data,plots,processes,verbose=None):
 				wrapper = {'merge':'df'}.get(processes['tmp'],'pd'),
 				transform = processes['transform'],
 				chunk = processes['chunk'],
+				wr = 'r' if not processes['transform'] else 'a',
 				verbose = verbose,
 				)
 			data = load(path,**options)
@@ -1428,6 +1430,7 @@ def loader(data,plots,processes,verbose=None):
 				wrapper = 'df',
 				transform = processes['transform'],
 				chunk = processes['chunk'],
+				wr = 'r' if not processes['transform'] else 'a',
 				verbose = verbose,
 				)
 			data = load(path,**options)
@@ -1699,7 +1702,7 @@ def apply(data,plots,processes,verbose=None):
 			if not funcs:
 				funcs = {'':None}
 
-			stats = {string:{axes: {**nulls} for axes in statistics} for string in funcs}
+			stats = {string:{axes: {attr:nulls[attr] for attr in nulls if attr not in ['err'] or (attr and not axes.endswith(attr) and  ''.join([axes,attr]) not in statistics)} for axes in statistics} for string in funcs}
 
 			objs = [(funcs,stats),(process,process)]
 
