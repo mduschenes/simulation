@@ -2,7 +2,7 @@
     "load": 0,
     "dump": 1,
     "tmp": "merge",
-    "chunk": 200,
+    "chunk": null,
     "transform":null,
     "plot": 1,
     "process": 1,
