@@ -801,19 +801,36 @@ def func_information(obj,*args,**kwargs):
 	bounds = [0,1]
 	scale = None
 	obj = obj.ravel()
+
+	key = 'model'
+	model = kwargs.get(key)
+	if model is None:
+		model = []
+	elif hasattr(model,key):
+		model = getattr(model,key)
+		model = [data for i in model for data in model[i]]
+	else:
+		model = model.data
+		model = [model[i] for i in model]
+
+	variables = Dictionary(**{
+		'parameters':[data.parameters() for data in model if not data.unitary and not data.hermitian][0] if model else 0
+		})
+	p = variables.parameters
+
 	def decorator(func):
 		def wrapper(*args,**kwargs):
 			x = func(*args,**kwargs)
 			x = inplace(x,x<eps,default)
 			return x
 		return wrapper
-	def func(x,n=n,eps=eps):
-		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
+	def func(x,n=n,eps=eps,p=p):
+		x = (x>=(p/n))*(1/(1-p))*(n-1)*((1-((x-(p/n))/(1-p)))**(n-2)) #  (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
 		return x
-	def grad(x,n=n,eps=eps):
+	def grad(x,n=n,eps=eps,p=p):
 		x = ((-1)**1)*(n-1-1)*(n-1)*((1-x)**(n-2-1))
 		return x
-	def hess(x,n=n,eps=eps):
+	def hess(x,n=n,eps=eps,p=p):
 		x = ((-1)**2)*(n-1-2)*(n-1-1)*(n-1)*((1-x)**(n-2-2))
 		return x
 	def probability(x,*args,**kwargs):

@@ -2534,9 +2534,9 @@ def test_calculate(*args,**kwargs):
 				elif attr in ['sample.state.log']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.array.information']:
-					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict())
+					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict(model=module,state=state))
 				elif attr in ['sample.state.information']:
-					kwargs = dict(attribute="state",function="src.functions.func_information",settings=dict())
+					kwargs = dict(attribute="state",function="src.functions.func_information",settings=dict(model=module,state=state))
 
 				where = None
 

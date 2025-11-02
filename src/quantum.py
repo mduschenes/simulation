@@ -9375,7 +9375,7 @@ class Callback(System):
 				value = getattrs(model,attributes[attr],delimiter=delim)(
 					parameters=parameters,
 					state=obj,
-					**{**keywords,**dict(attribute=value)}
+					**{**keywords,**dict(attribute=value,settings=dict(model=model,state=obj))}
 					)
 
 				if isinstance(value,dict):
