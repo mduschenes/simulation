@@ -1418,7 +1418,7 @@ def loader(data,plots,processes,verbose=None):
 				wrapper = {'merge':'df'}.get(processes['tmp'],'pd'),
 				transform = processes['transform'],
 				chunk = processes['chunk'],
-				wr = 'r' if not processes['transform'] else 'a',
+				wr = 'r' if processes['transform'] is None else 'a',
 				verbose = verbose,
 				)
 			data = load(path,**options)
@@ -1430,7 +1430,7 @@ def loader(data,plots,processes,verbose=None):
 				wrapper = 'df',
 				transform = processes['transform'],
 				chunk = processes['chunk'],
-				wr = 'r' if not processes['transform'] else 'a',
+				wr = 'r' if processes['transform'] is None else 'a',
 				verbose = verbose,
 				)
 			data = load(path,**options)

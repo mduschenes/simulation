@@ -1507,10 +1507,22 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'keep'
 				if kwargs[attr].get(prop) is not None:
 					keep = kwargs[attr][prop]
-					if (keep in ['unique']) or (isinstance(keep,list) and all(isinstance(i,str) for i in keep)):
+					if (keep in ['unique']) or (isinstance(keep,list) and all(isinstance(i,(str,int)) for i in keep)):
+
+						indexes = []
 
 						if isinstance(keep,str):
+							if keep in ['first']:
+								indexes.append(0)
 							keep = ['marker','linestyle','alpha','color']
+						else:
+							for i in list(keep):
+								if i in ['first']:
+									indexes.append(0)
+									keep.remove(i)
+								elif isinstance(i,int):
+									indexes.append(i)
+									keep.remove(i)
 
 						unique = {
 							'labels':[label for label in labels],
@@ -1525,6 +1537,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						unique = [(i,*j) for index,(i,j) in enumerate(zip(unique['labels'],unique['handles']))]
 
 						unique = [unique.index(i) for i in sorted(set(unique),key=lambda i:unique.index(i))]
+
+						unique = [unique[i] for i in indexes] if indexes else unique
 
 						handles,labels = [handles[i] for i in unique],[labels[i] for i in unique]
 

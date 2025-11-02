@@ -846,6 +846,7 @@ def func_transform(data,*args,**kwargs):
 
 	boolean = {
 		'attr':(lambda attr,data: all([
+			value and
 			(
 			((key in data[attr]) and any(i not in value for i in data[attr][key][...])) or
 			((key in data[attr].attrs) and (data[attr].attrs[key] not in value))
