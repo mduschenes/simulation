@@ -344,15 +344,15 @@ class Time(System):
 
 		funcs =  {
 			'linear':{
-				'M': (lambda M,T,tau,P,time: round(self.T/self.tau)),
+				'M': (lambda M,T,tau,P,time: round(self.T/max(1,self.tau))),
 				'T': (lambda M,T,tau,P,time: self.M*self.tau),
-				'tau': (lambda M,T,tau,P,time: self.T/self.M),
+				'tau': (lambda M,T,tau,P,time: self.T/max(1,self.M)),
 				'P': (lambda M,T,tau,P,time: 1),
 				},
 			None:{
-				'M': (lambda M,T,tau,P,time: round(self.T/self.tau)),
+				'M': (lambda M,T,tau,P,time: round(self.T/max(1,self.tau))),
 				'T': (lambda M,T,tau,P,time: self.M*self.tau),
-				'tau': (lambda M,T,tau,P,time: self.T/self.M),
+				'tau': (lambda M,T,tau,P,time: self.T/max(1,self.M)),
 				'P': (lambda M,T,tau,P,time: 1 if P is None else P),				
 				},				
 			}
@@ -400,7 +400,7 @@ class Time(System):
 			self.tau = 1
 			self.P = self.P			
 		elif (self.M is None) and (self.T is None) and (self.tau is not None):
-			self.M = 1/self.tau
+			self.M = 1/max(1,self.tau)
 			self.T = 1
 			self.P = self.P
 		elif (self.M is not None) and (self.T is not None) and (self.tau is None):

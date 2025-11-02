@@ -663,11 +663,14 @@ class Basis(Dict):
 			shape=kwargs.shape if isinstance(kwargs.shape,iterables) and len(kwargs.shape) == 2 else kwargs.shape*2 if isinstance(kwargs.shape,iterables) else (kwargs.shape,)*2 if isinstance(kwargs.shape,integers) else (kwargs.D,)*2,
 			seed=kwargs.seed,
 			dtype=kwargs.dtype)[0]
-		if data is not None and data.ndim < max(
-			kwargs.ndim if kwargs.ndim is not None else 0,
-			len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
-			):
-			data = outer(data,data)
+		if kwargs.architecture is None or kwargs.architecture in ['array']:
+			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = outer(data,data)
+		elif kwargs.architecture in ['tensor']:
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
+			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
+				data = tensorprod([data,conjugate(data)])
+			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
 		return data
 
 	@classmethod
@@ -679,8 +682,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -695,8 +697,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -711,8 +712,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -727,8 +727,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -743,8 +742,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -759,8 +757,7 @@ class Basis(Dict):
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
 		elif kwargs.architecture in ['tensor']:
-			data = [data[i]*cls.element(D=kwargs.D,data=[i],dtype=kwargs.dtype) for i in range(kwargs.D)]
-			data = array([outer(i,i) for i in data])
+			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
 			data = transpose(reshape(data,(*[kwargs.D]*kwargs.ndim,*data.shape[-2:])),(-2,*range(kwargs.ndim),-1))
@@ -1414,7 +1411,6 @@ class Measure(System):
 
 				data = state[i] if not callable(state[i]) else state[i]()
 				size = max(0,(data.ndim-ndim)//2)
-
 				if size:
 					indices = [*[self.symbols[i] for i in range(size)],*self.indices[:ndim][::-1],*[self.symbols[size+i] for i in range(size)]]
 				else:
@@ -1427,19 +1423,26 @@ class Measure(System):
 				data.format(i)
 
 				if size:
-					data.transform(axes=[*[i for i in range(size)],-1,*[size+i for i in range(size)]])
+					options = dict(axes = [*[i for i in range(size)],-1,*[size+i for i in range(size)]])
+					data.transform(**options)
 
 				state[i] = data
 
 
 			if size:
-				options = Dictionary(constant=addition(dots(*(state[i]() for i in range(N)))))
+				settings = Dictionary(constant=addition(dots(*(state[i]() for i in range(N)))))
 				for i in [0,N-1]:
 					if i in [0]:
-						state[i].transform(func=lambda data,options=options:(1/sqrt(options.constant))*addition(data(),axis=0),shape=lambda data:{data.indices[0]:1,**dict(zip(data.indices[1:],data.shape[:]))})
+						options = dict(
+							func=lambda data,settings=settings:(1/sqrt(settings.constant))*addition(data(),axis=0),
+							shape=lambda data:{data.indices[0]:1,**dict(zip(data.indices[1:],data.shape[:]))}
+							)
 					elif i in [N-1]:
-						state[i].transform(func=lambda data,options=options:(1/sqrt(options.constant))*addition(data(),axis=-1),shape=lambda data:{**dict(zip(data.indices[:-1],data.shape[:])),data.indices[-1]:1})
-
+						options = dict(
+							func=lambda data,settings=settings:(1/sqrt(settings.constant))*addition(data(),axis=-1),
+							shape=lambda data:{**dict(zip(data.indices[:-1],data.shape[:])),data.indices[-1]:1}
+							)
+					state[i].transform(**options)
 
 			options = {**(self.options if self.options is not None else {}),**{}}
 
@@ -2060,9 +2063,9 @@ class Measure(System):
 
 		return data
 
-	def state(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def matrix(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
-		Class state
+		Class matrix
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
@@ -2075,7 +2078,7 @@ class Measure(System):
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(real(diag(data)))
+		func = lambda data,func=func: func(data)
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
@@ -2102,6 +2105,27 @@ class Measure(System):
 			data = representation_quimb(state,**{**dict(to=self.architecture,contraction=True),**kwargs})
 
 		data = func(data)
+
+		return data
+
+	def state(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+		'''
+		Class state
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
+		Returns:
+			data (object): data
+		'''
+
+		func = (lambda data:data) if not callable(func) else func
+		func = lambda data,func=func: func(real(diag(data)))
+
+		data = self.matrix(parameters=parameters,state=state,where=where,func=func,options=options)
 
 		return data
 
@@ -6624,7 +6648,7 @@ class State(Object):
 
 				seed = seeder(self.seed)
 
-				if self.architecture is None or self.architecture in ['array']:
+				if self.architecture is None or self.architecture in ['array','tensor']:
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
@@ -6639,22 +6663,34 @@ class State(Object):
 							options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 							for index,i in zip(options,data):
 								options[index].basis = options[index].basis.get(i)
-							if self.tensor is not None:
-								def function(parameters,state,options=options,**kwargs):
-									return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
-							else:
+							if self.architecture is None or self.architecture in ['array']:
+								if self.tensor is not None:
+									def function(parameters,state,options=options,**kwargs):
+										return options[list(options)[0]].tensor(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]))
+								else:
+									def function(parameters,state,options=options,**kwargs):
+										return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+							elif self.architecture in ['tensor']:
 								def function(parameters,state,options=options,**kwargs):
 									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
+							else:
+								raise NotImplementedError
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
 								options.basis = options.basis.get(i)
-							if self.tensor is not None:
-								def function(parameters,state,options=options,**kwargs):
-									return options.tensor(options.basis(**{**options,**kwargs}))
-							else:
+							if self.architecture is None or self.architecture in ['array']:
+								if self.tensor is not None:
+									def function(parameters,state,options=options,**kwargs):
+										return options.tensor(options.basis(**{**options,**kwargs}))
+								else:
+									def function(parameters,state,options=options,**kwargs):
+										return options.basis(**{**options,**kwargs})
+							elif self.architecture in ['tensor']:
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
+							else:
+								raise NotImplementedError
 					else:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
@@ -6669,22 +6705,34 @@ class State(Object):
 							options = {index: Dictionary(Basis.opts(options.basis.get(i),options)) for index,i in enumerate(data)}
 							for index,i in zip(options,data):
 								options[index].basis = options[index].basis.get(i)
-							if self.tensor is not None:
+							if self.architecture is None or self.architecture in ['array']:
+								if self.tensor is not None:
+									def function(parameters,state,options=options,**kwargs):
+										return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
+								else:
+									def function(parameters,state,options=options,**kwargs):
+										return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+							elif self.architecture in ['tensor']:
 								def function(parameters,state,options=options,**kwargs):
-									return options[list(options)[0]].tensor(swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes))
+									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 							else:
-								def function(parameters,state,options=options,**kwargs):
-									return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
+								raise NotImplementedError
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
 								options.basis = options.basis.get(i)
-							if self.tensor is not None:
-								def function(parameters,state,options=options,**kwargs):
-									return options.tensor(options.basis(**{**options,**kwargs}))
-							else:
+							if self.architecture is None or self.architecture in ['array']:
+								if self.tensor is not None:
+									def function(parameters,state,options=options,**kwargs):
+										return options.tensor(options.basis(**{**options,**kwargs}))
+								else:
+									def function(parameters,state,options=options,**kwargs):
+										return options.basis(**{**options,**kwargs})
+							elif self.architecture in ['tensor']:
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
+							else:
+								raise NotImplementedError
 				else:
 					raise NotImplementedError
 

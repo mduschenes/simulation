@@ -2201,11 +2201,12 @@ def test_calculate(*args,**kwargs):
 	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
 
 	kwargs = {
-		"module.N":[4],"module.M":[3],"module.seed":[123456789],
-		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],"model.seed":[123456789],
+		"module.N":[None],"module.M":[3],"module.seed":[123456789],
+		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],"model.architecture":["array"],"model.seed":[123456789],
 		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
 		"model.data.noise.where":["||i.j||"],"model.data.noise.parameters":[1e-3],"model.data.noise.seed":[None],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.architecture":["array"],"state.seed":[None],
+		"state.operator":["psi"],
 
 		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
@@ -2217,11 +2218,17 @@ def test_calculate(*args,**kwargs):
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
-		i['module.measure.architecture'] in [
+		(i['module.measure.architecture'] in [
 			"tensor",
 			"tensor_quimb",
 			"array",
-			] 
+			]) and
+		(i['state.architecture'] in [
+			"array",
+			] or
+		i['module.measure.architecture'] in [
+			"tensor"
+			])
 		)
 		]
 	func = None
@@ -2274,6 +2281,7 @@ def test_calculate(*args,**kwargs):
 			"N":4,
 			"D":2,
 			"local":True,
+			"tensor":True,
 			"space":"spin",
 			"time":"linear",
 			"lattice":"square",
@@ -2290,7 +2298,9 @@ def test_calculate(*args,**kwargs):
 			"parameters":None,
 			"D":2,
 			"ndim":2,
-			"local":False
+			"architecture":None,
+			"local":False,
+			"tensor":True
 			},
 		"callback":{
 			"attributes":{
@@ -2363,6 +2373,7 @@ def test_calculate(*args,**kwargs):
 			'square',
 			'array',
 			'state',
+			'matrix',
 			'sample.array.linear',
 			'sample.array.log',
 			'sample.state.linear',
@@ -2396,7 +2407,7 @@ def test_calculate(*args,**kwargs):
 
 
 		# Verbose
-		verbose = True
+		verbose = False
 		precision = 8
 
 		parse = lambda data: data.round(precision)
@@ -2448,6 +2459,7 @@ def test_calculate(*args,**kwargs):
 			value = representation_quimb(state.copy(),contraction=True).ravel()
 
 		if verbose:
+			print(key)
 			print(parse(value))
 
 		data[index][key] = value
@@ -2502,7 +2514,7 @@ def test_calculate(*args,**kwargs):
 				where = None
 
 			elif attr in [
-				'array','state',
+				'array','state','matrix',
 				]:
 
 				kwargs = dict()
@@ -2534,8 +2546,6 @@ def test_calculate(*args,**kwargs):
 				where = None
 
 			attribute = module.callback.attributes.get(attr,attr)
-
-			print(attr,attribute,getattrs(module.measure,attribute,delimiter=delim))
 
 			obj = getattrs(module.measure,attribute,delimiter=delim)(parameters=parameters,state=state,where=where,**kwargs)
 
