@@ -18,7 +18,8 @@
         "info.array.N.M.noise.parameters": 0,
         "info.state.N.M.noise.parameters": 0,
         "process.array.state.N.M.noise.parameters": 0,
-        "information.array.state.N.M.noise.parameters": 1
+        "information.array.state.N.M.noise.parameters": 1,
+        "information.array.state.M.noise.parameters": 1
     },
     "configuration": [
         [
@@ -211,7 +212,7 @@
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [0]
+                        "noise.parameters": [1e-1]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {
@@ -226,9 +227,9 @@
                             "wspace": 0.3,
                             "hspace": 0.3
                         },
-                        "fig.savefig.fname":null,
-                        "fig.savefig.fname":"M.noise.0",
-                        "fig.savefig.fname":"scale.M.noise.0",
+                        "fig.savefig.fname":"scale.M.noise.1",
+                        "fig.savefig.fname":"scale.M.noise.1",
+                        "fig.savefig.fname":"scale.M.noise.1",
                         "ax.set_title.label": "M",
                         "ax.set_ylabel.ylabel": "noise.parameters",
                         "ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ p$",
@@ -438,7 +439,7 @@
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [0]
+                        "noise.parameters": [1e-1]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {
@@ -453,9 +454,9 @@
                             "wspace": 0.3,
                             "hspace": 0.3
                         },
-                        "fig.savefig.fname":null,
-                        "fig.savefig.fname":"M.noise.0",
-                        "fig.savefig.fname":"scale.M.noise.0",
+                        "fig.savefig.fname":"scale.M.noise.1",
+                        "fig.savefig.fname":"scale.M.noise.1",
+                        "fig.savefig.fname":"scale.M.noise.1",
                         "ax.set_title.label": "M",
                         "ax.set_ylabel.ylabel": "noise.parameters",
                         "ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ p$",
@@ -583,6 +584,27 @@
                         "ax.set_xticklabels": {
                             "labels": [
                                 "2^{-22}","2^{-18}","2^{-14}","2^{-10}","2^{-6}","2^{-2}"
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_xscale": {
+                            "value": "linear"
+                        },
+                        "ax.set_xlim": {
+                            "xmin": -0.5,
+                            "xmax":4.5
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 9
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                0,0.5,1,1.5,2,2.5,3,3.5,4
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                "0","0.5","1","1.5","2","2.5","3","3.5","4"
                             ],
                             "size": 36
                         },
@@ -838,6 +860,148 @@
                     "position": "row",
                     "value": {
                         "noise.parameters":null
+                    }
+                }
+            ]
+        ],
+        [
+            [
+                "information.array.state.M.noise.parameters"
+            ],
+            [
+                {
+                    "position": "col",
+                    "value": {
+                    },
+                    "kwargs": {
+                        "ax.errorbar.label.labels": {"noise.parameters":null},
+                        "ax.errorbar.label.scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "ax.errorbar.plots":false,
+                        "ax.set_xlabel.xlabel": "$\\textrm{Depth} ~~ M$",
+                        "ax.set_xlabel.size": 36,
+                        "ax.set_ylabel.ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$",
+                        "ax.set_ylabel.size": 36,
+                        "ax.set_ylabel.y": null,
+                        "ax.set_xticklabels.scinotation": {
+                            "scilimits": [
+                                1,
+                                1
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.set_yticklabels.scinotation": {
+                            "scilimits": [
+                                1,
+                                1
+                            ],
+                            "decimals": 1,
+                            "strip": true
+                        },
+                        "ax.set_xscale": {
+                            "value": "log",
+                            "base": 2
+                        },
+                        "ax.set_xlim": {
+                            "xmin": 1e-1,
+                            "xmax": 1e7
+                        },
+                        "ax.set_xnbins": {
+                            "nbins": 5
+                        },
+                        "ax.set_xticks": {
+                            "ticks": [
+                                1e0,1e2,1e4,1e6
+                            ]
+                        },
+                        "ax.set_xticklabels": {
+                            "labels": [
+                                1e0,1e2,1e4,1e6
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_yscale": {
+                            "value": "log",
+                            "base": 10
+                        },
+                        "ax.set_ylim": {
+                            "ymin": 5e-17,
+                            "ymax": 2.0
+                        },
+                        "ax.set_ynbins": {
+                            "nbins": 5
+                        },
+                        "ax.set_yticks": {
+                            "ticks": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ]
+                        },
+                        "ax.set_yticklabels": {
+                            "labels": [
+                                1e-16,
+                                1e-12,
+                                1e-08,
+                                0.0001,
+                                1.0
+                            ],
+                            "size": 36
+                        },
+                        "ax.set_colorbar.set_label.label": "noise.parameters",
+                        "ax.set_colorbar.set_label.size": 36,
+                        "ax.set_colorbar.fraction": 0.15,
+                        "ax.set_colorbar.shrink": 1,
+                        "ax.set_colorbar.aspect": 40,
+                        "ax.set_colorbar.pad": 0.02,
+                        "ax.set_colorbar.ax.tick_params.labelsize": 36,
+                        "ax.set_colorbar.scinotation": {
+                            "scilimits": [
+                                0,
+                                0
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "ax.legend.loc": "lower right",
+                        "ax.legend.title_fontsize": 36,
+                        "ax.legend.fontsize": 36,
+                        "ax.legend.prop.size": 36,
+                        "ax.legend.scinotation": {
+                            "scilimits": [
+                                0,
+                                0
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "style.share.ax.set_title": "top",
+                        "style.share.ax.set_ylabel": "middle_left",
+                        "style.share.ax.set_xlabel": "bottom",
+                        "style.share.ax.set_yticks": true,
+                        "style.share.ax.set_xticks": true,
+                        "style.share.ax.set_yticklabels": true,
+                        "style.share.ax.set_xticklabels": true,
+                        "style.share.ax.set_colorbar": "bottom_right",
+                        "style.share.ax.legend": "bottom_right",
+                        "fig.set_size_inches": {
+                            "w": 40,
+                            "h": 30
+                        }
+                    }
+                },
+                {
+                    "position": "row",
+                    "value": {
                     }
                 }
             ]
