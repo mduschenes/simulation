@@ -47,18 +47,19 @@ def call(settings,*args,**kwargs):
 
 		model.init(state=state)
 
-	elif model is not None:
+	elif Model is not None:
 
 		model = Model(**{**settings.model,**dict(system=system)})
+
+		model.init()
 
 	else:
 
 		model = None
 
-
 	# Dump model
-	model.dump()
-
+	if model is not None:
+		model.dump()
 
 	return model
 
