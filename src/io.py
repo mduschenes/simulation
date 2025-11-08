@@ -816,8 +816,6 @@ def load_hdf5(path,wr='r',ext=None,options=None,transform=None,execute=None,verb
 			with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
 				transform(obj)
 		except Exception as exception:
-			print(exception)
-			exit()
 			pass
 
 	with context_hdf5(path,wr=wr,ext=ext,options=options,transform=transform,execute=execute,verbose=verbose,**kwargs) as obj:
