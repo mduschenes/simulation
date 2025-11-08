@@ -745,6 +745,8 @@ def func_information_function(data,*args,function=None,**kwargs):
 
 	attr = 'y'
 	def func(attr,key,data):
+		if None in data[attr][key]:
+			return 0
 		number,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key])
 		data = data/log(number)
@@ -759,6 +761,8 @@ def func_information_function(data,*args,function=None,**kwargs):
 
 	attr = 'yerr'
 	def func(attr,key,data):
+		if None in data[attr][key]:
+			return 0
 		number,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key]) - mean(data[attr[0]][key])**2
 		data = sqrt(data/(size*number))/log(size)
