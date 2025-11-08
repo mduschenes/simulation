@@ -1405,6 +1405,15 @@ def loader(data,plots,processes,verbose=None):
 		path = data
 		tmp = processes['path']['data'] if not exists(processes['path']['tmp']) else processes['path']['tmp']
 
+		options = dict(
+			default = None,
+			wrapper = 'df',
+			transform = processes['transform'] if (processes['tmp'] in ['transform']) or (processes['tmp'] in ['merge'] and exists(processes['path']['tmp'])) else None,
+			chunk = processes['chunk'],
+			wr = 'r' if processes['transform'] is None else 'a',
+			verbose = verbose,
+			)
+
 		try:
 			assert (
 				(not processes['reset']) and
@@ -1413,26 +1422,12 @@ def loader(data,plots,processes,verbose=None):
 				)
 				)
 			path = tmp
-			options = dict(
-				default = None,
-				wrapper = {'merge':'df'}.get(processes['tmp'],'pd'),
-				transform = processes['transform'],
-				chunk = processes['chunk'],
-				wr = 'r' if processes['transform'] is None else 'a',
-				verbose = verbose,
-				)
+			options.update(dict(wrapper = {'merge':'df'}.get(processes['tmp'],'pd')))
 			data = load(path,**options)
 			tmp = False
 		except Exception as exception:
 			path = data
-			options = dict(
-				default = None,
-				wrapper = 'df',
-				transform = processes['transform'],
-				chunk = processes['chunk'],
-				wr = 'r' if processes['transform'] is None else 'a',
-				verbose = verbose,
-				)
+			options.update(dict())
 			data = load(path,**options)
 			tmp = True
 
