@@ -961,12 +961,16 @@
                             ],
                             "size": 36
                         },
-                        "ax.set_colorbar.set_label.label": "noise.parameters",
+                       "ax.set_colorbar.set_label.label": "noise.parameters",
                         "ax.set_colorbar.set_label.size": 36,
                         "ax.set_colorbar.fraction": 0.15,
                         "ax.set_colorbar.shrink": 1,
                         "ax.set_colorbar.aspect": 40,
                         "ax.set_colorbar.pad": 0.02,
+                        "ax.set_colorbar.anchor": [
+                            1.25,
+                            0.5
+                        ],
                         "ax.set_colorbar.ax.tick_params.labelsize": 36,
                         "ax.set_colorbar.scinotation": {
                             "scilimits": [

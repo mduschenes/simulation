@@ -3815,7 +3815,7 @@
 					1.5,
 					0.225
 				],
-				"set_title": "\\textrm{Measurement Basis}",
+				"set_title": "\\textrm{Basis}",
 				"set_title_col": null,
 				"set_title_row": null,
 				"ncol": 1,
