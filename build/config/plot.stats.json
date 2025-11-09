@@ -3481,7 +3481,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"noise.parameters":"\\textrm{Computational}"},
+							"label": {"noise.parameters":"\\textrm{Comp}"},
 							"include": {
 								"noise.parameters": null
 							},
