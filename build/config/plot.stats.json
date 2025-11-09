@@ -2966,6 +2966,7 @@
 							"one": false
 						},
 						"legend": {
+							"label": {"M":"\\textrm{Comp}"},
 							"include": {
 								"M": null
 							},
@@ -3106,6 +3107,7 @@
 							"one": false
 						},
 						"legend": {
+							"label": {"M":"\\textrm{POVM}"},
 							"include": {
 								"M": null
 							},
@@ -3236,7 +3238,6 @@
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
-					"pad":5,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -3397,16 +3398,16 @@
 					1.5,
 					0.225
 				],
-				"set_title": "%s~~\n\\textrm{Computational}~,~\\textrm{POVM}",
+				"set_title": "\\textrm{Basis}",
 				"set_title_col": null,
 				"set_title_row": null,
 				"ncol": 1,
-				"join": 2,
+				"join": null,
 				"keep": [
 					"marker",
 					"linestyle"
 				],
-				"merge": true,
+				"merge": false,
 				"set_zorder": {
 					"level": 100
 				}

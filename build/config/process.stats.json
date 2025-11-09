@@ -91,7 +91,7 @@
                         "ax.set_colorbar.pad": 0.5,
                         "ax.set_colorbar.aspect": 62,
                         "ax.set_colorbar.anchor": [
-                            10,
+                            1,
                             0.5
                         ],
                         "ax.set_colorbar.set_ticks.ticks": 5,
@@ -820,6 +820,10 @@
                         "ax.set_colorbar.shrink": 1,
                         "ax.set_colorbar.aspect": 40,
                         "ax.set_colorbar.pad": 0.02,
+                        "ax.set_colorbar.anchor": [
+                            1.25,
+                            0.5
+                        ],
                         "ax.set_colorbar.ax.tick_params.labelsize": 36,
                         "ax.set_colorbar.scinotation": {
                             "scilimits": [
@@ -850,16 +854,16 @@
                         "style.share.ax.set_xticklabels": true,
                         "style.share.ax.set_colorbar": "bottom_right",
                         "style.share.ax.legend": "bottom_right",
+                        "fig.subplots_adjust":{"wspace":0.5,"hspace":0.1},
                         "fig.set_size_inches": {
-                            "w": 40,
-                            "h": 30
+                            "w": 45,
+                            "h": 20
                         }
                     }
                 },
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters":null
                     }
                 }
             ]
@@ -993,9 +997,10 @@
                         "style.share.ax.set_xticklabels": true,
                         "style.share.ax.set_colorbar": "bottom_right",
                         "style.share.ax.legend": "bottom_right",
+                        "fig.subplots_adjust":{"wspace":0.5,"hspace":0.1},
                         "fig.set_size_inches": {
-                            "w": 40,
-                            "h": 30
+                            "w": 45,
+                            "h": 20
                         }
                     }
                 },
