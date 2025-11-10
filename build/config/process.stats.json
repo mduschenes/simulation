@@ -294,6 +294,7 @@
                         },
                         "ax.set_colorbar.color": "viridis_r",
                         "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.set_label.size": 45,
                         "ax.set_colorbar.share": true,
                         "ax.set_colorbar.location": "right",
                         "ax.set_colorbar.orientation": "vertical",
@@ -307,7 +308,12 @@
                         ],
                         "ax.set_colorbar.set_ticks.ticks": 5,
                         "ax.set_colorbar.set_ticklabels.ticklabels": null,
-                        "ax.legend.set_label": false,
+                        "ax.set_colorbar.set_ticklabels.size": 45,
+                        "ax.set_colorbar.ax.tick_params.labelsize": 45,
+                        "ax.set_title.size": 45,
+                        "ax.set_xlabel.size": 45,
+                        "ax.set_ylabel.size": 45,
+                        "ax.yaxis.offsetText.set_fontsize.fontsize": 45,
                         "ax.set_xscale": {
                             "value": "log",
                             "base": 10
@@ -336,7 +342,7 @@
                                 0.0001,
                                 1.0
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_xscale": {
                             "value": "log",
@@ -358,7 +364,7 @@
                             "labels": [
                                 "2^{-2 \\cdot 22}","2^{-2 \\cdot 18}","2^{-2 \\cdot 14}","2^{-2 \\cdot 10}","2^{-2 \\cdot 6}","2^{-2 \\cdot 2}"
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_xscale": {
                             "value": "log",
@@ -380,7 +386,7 @@
                             "labels": [
                                 "2^{-2 \\cdot 16}","2^{-2 \\cdot 12}","2^{-2 \\cdot 8}","2^{-2 \\cdot 4}","1","2^{2 \\cdot 4}"
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_yscale": {
                             "value": "log",
@@ -410,8 +416,9 @@
                                 0.0001,
                                 1.0
                             ],
-                            "size": 36
+                            "size": 45
                         },
+                        "ax.legend.set_label": false,
                         "style.share.ax.legend": true,
                         "style.share.ax.set_title": "top",
                         "style.share.ax.set_xlabel": "bottom",
@@ -521,6 +528,7 @@
                         },
                         "ax.set_colorbar.color": "viridis_r",
                         "ax.set_colorbar.set_label.label": "N",
+                        "ax.set_colorbar.set_label.size": 45,
                         "ax.set_colorbar.share": true,
                         "ax.set_colorbar.location": "right",
                         "ax.set_colorbar.orientation": "vertical",
@@ -534,7 +542,12 @@
                         ],
                         "ax.set_colorbar.set_ticks.ticks": 5,
                         "ax.set_colorbar.set_ticklabels.ticklabels": null,
-                        "ax.legend.set_label": false,
+                        "ax.set_colorbar.set_ticklabels.size": 45,
+                        "ax.set_colorbar.ax.tick_params.labelsize": 45,
+                        "ax.set_title.size": 45,
+                        "ax.set_xlabel.size": 45,
+                        "ax.set_ylabel.size": 45,
+                        "ax.yaxis.offsetText.set_fontsize.fontsize": 45,
                         "ax.set_xscale": {
                             "value": "log",
                             "base": 10
@@ -563,7 +576,7 @@
                                 0.0001,
                                 1.0
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_xscale": {
                             "value": "log",
@@ -585,7 +598,7 @@
                             "labels": [
                                 "2^{-22}","2^{-18}","2^{-14}","2^{-10}","2^{-6}","2^{-2}"
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_xscale": {
                             "value": "linear"
@@ -606,7 +619,7 @@
                             "labels": [
                                 "0","0.5","1","1.5","2","2.5","3","3.5","4"
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_xscale": {
                             "value": "log",
@@ -628,7 +641,7 @@
                             "labels": [
                                 "2^{-16}","2^{-12}","2^{-8}","2^{-4}","1","2^{4}"
                             ],
-                            "size": 36
+                            "size": 45
                         },
                         "ax.set_yscale": {
                             "value": "log",
@@ -658,8 +671,9 @@
                                 0.0001,
                                 1.0
                             ],
-                            "size": 36
+                            "size": 45
                         },
+                        "ax.legend.set_label": false,
                         "style.share.ax.legend": true,
                         "style.share.ax.set_title": "top",
                         "style.share.ax.set_xlabel": "bottom",

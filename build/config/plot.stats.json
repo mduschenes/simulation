@@ -1212,8 +1212,8 @@
 		"ax": {
 			"bar": [
 				{
-					"x": "sample.state.linear.x",
-					"y": "sample.state.linear.y",
+					"x": "sample.state.log.x",
+					"y": "sample.state.log.y",
 					"label": {
 						"label": {
 							"N": null,
@@ -1984,8 +1984,8 @@
 			"errorbar": [
 				{
 					"x": "N",
-					"y": "sample.state.linear.y",
-					"yerr": "sample.state.linear.y",
+					"y": "sample.state.log.y",
+					"yerr": "sample.state.log.y",
 					"label": {
 						"label": {
 							"M": null,
