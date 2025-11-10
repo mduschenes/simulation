@@ -313,7 +313,7 @@
                         "ax.set_title.size": 45,
                         "ax.set_xlabel.size": 45,
                         "ax.set_ylabel.size": 45,
-                        "ax.yaxis.offsetText.set_fontsize.fontsize": 45,
+                        "ax.yaxis.offsetText.set_fontsize": {"fontsize": 45},
                         "ax.set_xscale": {
                             "value": "log",
                             "base": 10
@@ -547,7 +547,7 @@
                         "ax.set_title.size": 45,
                         "ax.set_xlabel.size": 45,
                         "ax.set_ylabel.size": 45,
-                        "ax.yaxis.offsetText.set_fontsize.fontsize": 45,
+                        "ax.yaxis.offsetText.set_fontsize": {"fontsize": 45},
                         "ax.set_xscale": {
                             "value": "log",
                             "base": 10
