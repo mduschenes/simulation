@@ -2482,42 +2482,42 @@ def test_calculate(*args,**kwargs):
 
 	
 		attrs = [
-			# 'trace',
-			# 'vectorize',
-			# 'measure',
-			# 'square',
-			# 'array',
-			# 'state',
-			# 'matrix',
-			# 'sample.array.linear',
-			# 'sample.array.log',
-			# 'sample.state.linear',
-			# 'sample.state.log',
-			# 'sample.array.information',
+			'trace',
+			'vectorize',
+			'measure',
+			'square',
+			'array',
+			'state',
+			'matrix',
+			'sample.array.linear',
+			'sample.array.log',
+			'sample.state.linear',
+			'sample.state.log',
+			'sample.array.information',
 			'sample.state.information',
-			# 'norm_quantum',
-			# 'norm_classical',
-			# 'norm_pure',
-			# 'infidelity_quantum',
-			# 'infidelity_classical',
-			# 'infidelity_pure',
-			# 'entanglement_quantum',
-			# 'entanglement_classical',
-			# 'entanglement_renyi',
-			# 'entangling_quantum',
-			# 'entangling_classical',
-			# 'entangling_renyi',
-			# 'mutual_quantum',
-			# 'mutual_measure',
-			# 'mutual_classical',
-			# 'mutual_renyi',
-			# 'discord_quantum',
-			# 'discord_classical',
-			# 'discord_renyi',
-			# 'spectrum_quantum',
-			# 'spectrum_classical',
-			# 'rank_quantum',
-			# 'rank_classical',
+			'norm_quantum',
+			'norm_classical',
+			'norm_pure',
+			'infidelity_quantum',
+			'infidelity_classical',
+			'infidelity_pure',
+			'entanglement_quantum',
+			'entanglement_classical',
+			'entanglement_renyi',
+			'entangling_quantum',
+			'entangling_classical',
+			'entangling_renyi',
+			'mutual_quantum',
+			'mutual_measure',
+			'mutual_classical',
+			'mutual_renyi',
+			'discord_quantum',
+			'discord_classical',
+			'discord_renyi',
+			'spectrum_quantum',
+			'spectrum_classical',
+			'rank_quantum',
+			'rank_classical',
 			]
 
 
@@ -3126,7 +3126,7 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
-	test_module(*args,**args)
-	# test_calculate(*args,**args)
+	# test_module(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
