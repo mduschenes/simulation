@@ -199,7 +199,7 @@ class Basis(Dict):
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else
 					  (options.D**options.N,)*cls.dimensions(attr,**options))
 				))
-		elif attr in ['gate']:
+		elif attr in ['gate','measure','clifford']:
 			options.update(dict(
 				shape=(options.shape if (getattr(options,'shape',None) is not None or any(obj is None for obj in (options.D,options.N,))) else
 					  (options.D**options.N,)*cls.dimensions(attr,**options))
@@ -263,7 +263,7 @@ class Basis(Dict):
 			locality = 1
 		elif attr in ['CNOT']:
 			locality = 2
-		elif attr in ['gate','clifford']:
+		elif attr in ['gate','measure','clifford']:
 			locality = options.N
 		elif attr in ['unitary']:
 			locality = options.N
@@ -337,7 +337,7 @@ class Basis(Dict):
 			dimension = 2
 		elif attr in ['CNOT']:
 			dimension = 2
-		elif attr in ['gate','clifford']:
+		elif attr in ['gate','measure','clifford']:
 			dimension = 2
 		elif attr in ['unitary']:
 			dimension = 2
@@ -429,7 +429,7 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['CNOT']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['gate','clifford']:
+		elif attr in ['gate','measure','clifford']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['unitary']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
@@ -621,6 +621,20 @@ class Basis(Dict):
 	# @decorator
 	def gate(cls,*args,**kwargs):
 		data = {1:[cls.I,cls.H,cls.S,cls.Q,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']]
+		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
+		index = choice(
+			data=len(data),
+			shape=(),
+			seed=kwargs['seed'],
+			dtype=int
+			)
+		data = switch(index,data)
+		return data
+
+	@classmethod
+	# @decorator
+	def measure(cls,*args,**kwargs):
+		data = {1:[cls.I,cls.H,cls.S,cls.Q]}[kwargs['N']]
 		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
 		index = choice(
 			data=len(data),
@@ -1389,14 +1403,13 @@ class Measure(System):
 		if state is None:
 			return state
 
-
 		if self.architecture is None or self.architecture in ['array']:
+
+			cls = array
 
 			N = len(state)
 			D = self.D
 			ndim = 2
-
-			cls = array
 
 			for i in range(N):
 
@@ -1412,13 +1425,13 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
+			cls = tensor
+
 			N = len(state)
 			D = self.D
 			ndim = 2
 
 			size = None
-
-			cls = tensor
 
 			for i in range(N):
 
@@ -1463,11 +1476,11 @@ class Measure(System):
 
 		elif self.architecture in ['tensor_quimb']:
 
+			cls = tensor_quimb
+
 			N = len(state)
 			D = self.D
 			ndim = 2
-
-			cls = tensor_quimb
 
 			for i in range(N):
 
@@ -1570,11 +1583,13 @@ class Measure(System):
 			D = max((obj.D for obj in model if boolean(obj) and obj.D is not None),default=None)
 			locality = len(where)
 
-			cls = state.__class__
+			cls = State
+			cls = state.__class__ if isinstance(state,cls) else cls
 			keywords = dict(tensor=True,local=False,verbose=False)
 			tmp = cls(**{**state,**keywords})
 
-			cls = {obj:obj.__class__ for obj in model}
+			cls = Object
+			cls = {obj:obj.__class__ if isinstance(obj,cls) else cls for obj in model}
 			keywords = {obj:dict(
 				state=tmp @ locality,
 				where=[where.index(i) for i in obj.where],
@@ -1603,9 +1618,7 @@ class Measure(System):
 			def func(parameters,state,where=where,model=model,options=options,**kwargs):
 				return model(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-
 		else:
-
 
 			parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
 			state = state if state is not None else state
@@ -1753,83 +1766,69 @@ class Measure(System):
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
-			data (str,iterable[str]): data of apply
+			data (dict[str,dict]): data of apply
 			where (float,int,iterable[int]): indices of function
 			func (callable): function of function
 			options (dict): options of function
 			kwargs (dict): Additional class keyword arguments
 		'''
 
-		return
+		settings = Dict(data)
 
-		if data is None:
-			return
+		model = load(settings.cls.model)
+		obj = load(settings.cls.state)
 
-		data = data if isinstance(data,str) else data
-		invariant = isinstance(data,str)
-		symmetry = self.symmetry is None
-		N = min((i for i in (self.N,len(data) if not invariant else self.N if self.N is not None else None) if i is not None),default=None)
-		D = self.D
-		seed = self.seed
-		dtype = self.dtype
+		model = model(**{**settings.model,**dict(N=self.N,D=self.D,system=self.system)})
+		obj = obj(**{**settings.state,**dict(D=self.D,system=self.system)})
 
-		where = where if where is not None else range(N) if N is not None else None
-		pointer = min(where) if where is not None else 0 if N is not None else None
+		print(model)
+		exit()
 
-		data = [data for i in where] if invariant else [data[i] for i in where]
-		seed = [seeder(seed)]*N if symmetry else seeder(seed,size=N)
-		options = [dict(D=D,dtype=dtype,seed=seed[i],system=self.system) for i in where]
+		parameters = model.parameters
+		obj = obj
 
-		data = [getattr(Basis,data[pointer])(**options[pointer])]*N if symmetry and invariant else [getattr(Basis,data[i])(**options[i]) if isinstance(data[i],str) else data[i] for i in where]
+		data = {index:[model.data[key]] for index,key in enumerate(model.data)}
 
-		if self.architecture is None or self.architecture in ['array']:
+		for index in data:
 
-			cls = array
+			model = data[index]
 
-			kwargs = dict(dtype=dtype)
+			settings = dict(
+					parameters = parameters,
+					state = obj,
+					model = model,
+					where = where,
+					options = options,
+					**kwargs
+					)
 
-			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
+			model = self.transform(**settings)
 
-		elif self.architecture in ['tensor']:
+			data[index] = model
 
-			cls = tensor
 
-			kwargs = dict(indices=[*self.inds[:1],*self.indices[:2]])
+		index,size,seed = None,len(data),seeder(self.seed)
 
-			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
+		parameters = parameters() if callable(parameters) else parameters
+		state = state
 
-		elif self.architecture in ['tensor_quimb']:
+		kwargs = [Dictionary(**{**dict(index=index,seed=seed,options=options),**kwargs}) for i in range(size)]
+		for i in range(size):
+			kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 
-			cls = tensor_quimb
+		print(data)
+		print(state.matrix())
 
-			kwargs = dict(inds=(*self.inds[:1],*self.indices[:2],),tags=(self.tag,*self.tags,))
+		for i in data:
+			kwargs[i].index = i
+			state = data[i](parameters=parameters,state=state,**kwargs[i])
+			seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 
-			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
+		print(state.matrix())
+		exit()
 
-		data = [data]*N if isinstance(data,objects) else data
 
-		if self.architecture is None or self.architecture in ['array']:
-
-			data = tensorprod(data)
-
-			subscripts = '...ij,jk->...ik'
-			shapes = (state.shape,data.shape)
-			einsummation = einsummand(subscripts,*shapes)
-			data = einsummation(state,tensorprod(data))
-
-		elif self.architecture in ['tensor']:
-
-			for i in range(N):
-				with context(data[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
-					state &= data[i]
-
-		elif self.architecture in ['tensor_quimb']:
-
-			for i in range(N):
-				with context_quimb(data[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1]}],tags=None)):
-					state &= data[i]
-
-		return
+		return state
 
 	def calculate(self,attribute=None,function=None,settings=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
@@ -1956,7 +1955,7 @@ class Measure(System):
 
 		elif isinstance(state,tensors):
 
-			raise NotImplementedError
+			raise NotImplementedError("State %s Not Implemented"%(state))
 
 		elif isinstance(state,matrices_quimb):
 
@@ -2238,15 +2237,17 @@ class Measure(System):
 
 		state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
+
 		where = tuple(i for i in range(N) if i not in where)
 
-		settings = dict(transformation=False)
-		state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+		settings = dict()
+		state = self.apply(parameters=parameters,state=state,data=data,where=where,options=options,**{**settings,**kwargs})
+
 
 		where = tuple(i for i in range(N) if i in where)
 
-		settings = dict()
-		self.apply(parameters=parameters,state=state,data=data,where=where,options=options,**{**settings,**kwargs})
+		settings = dict(transformation=False)
+		state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
 		if self.architecture is None or self.architecture in ['array']:
 
@@ -4353,7 +4354,7 @@ def trotter(iterable=None,p=None,verbose=False):
 	elif p is None:
 		return iterable
 	elif not isinstance(p,integers) or (p > P):
-		raise NotImplementedError('p = %r !< %d Not Implemented'%(p,P))
+		raise NotImplementedError("p = %r !< %d Not Implemented"%(p,P))
 
 	if iterable is None:
 		options = {i:1/p for i in range(P+1)}
@@ -6109,6 +6110,7 @@ class Gate(Object):
 		**{attr: Basis.T for attr in ['PI8','T']},
 		**{attr: Basis.CNOT for attr in ['CNOT','C','cnot']},
 		**{attr: Basis.gate for attr in ['gate']},
+		**{attr: Basis.measure for attr in ['measure']},
 		**{attr: Basis.clifford for attr in ['clifford']},
 		**{attr: Basis.identity for attr in ['IDENTITY','identity']},
 		}
@@ -6134,7 +6136,7 @@ class Gate(Object):
 		contract = None
 		gradient_contract = None
 
-		functions = ['gate','clifford']
+		functions = ['gate','measure','clifford']
 
 		do = not self.null()
 
@@ -6228,7 +6230,8 @@ class Gate(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 				else:
-					raise NotImplementedError
+
+					raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -6349,7 +6352,7 @@ class Pauli(Object):
 
 		else:
 
-			data = None
+			raise NotImplementedError("Parameters %s Not Implemented for Class %s"%(self.parameters,self.__class__))
 
 		variable = self.variable if self.variable is not None else None
 		constant = self.constant if self.constant is not None else None
@@ -6543,7 +6546,8 @@ class Haar(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 				else:
-					raise NotImplementedError
+
+					raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -6707,7 +6711,7 @@ class Noise(Object):
 
 		else:
 
-			data = None
+			raise NotImplementedError("Parameters %s Not Implemented for Class %s"%(self.parameters,self.__class__))
 
 		variable = self.variable if self.variable is not None else None
 		constant = True
@@ -6847,7 +6851,7 @@ class State(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 							else:
-								raise NotImplementedError
+								raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -6863,7 +6867,7 @@ class State(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 							else:
-								raise NotImplementedError
+								raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 					else:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
@@ -6889,7 +6893,7 @@ class State(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 							else:
-								raise NotImplementedError
+								raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 						else:
 							for i in data:
 								options = Dictionary(Basis.opts(options.basis.get(i),options))
@@ -6905,9 +6909,9 @@ class State(Object):
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 							else:
-								raise NotImplementedError
+								raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 				else:
-					raise NotImplementedError
+					raise NotImplementedError("Architecture %s Not Implemented for Class %s"%(self.architecture,self.__class__))
 
 				def func(parameters=None,state=None,**kwargs):
 					return function(parameters=parameters,state=state,**kwargs)
@@ -7026,6 +7030,8 @@ class Operator(Object):
 		setter(kwargs,dict(data=data,operator=operator,where=where,string=string,system=system),delimiter=delim,default=False)
 
 		classes = [Data,Gate,Pauli,Haar,Noise,State,Channel,Operators,Unitary,Hamiltonian,Object]
+
+		print(data,operator)
 
 		for subclass in classes:
 
@@ -7673,7 +7679,9 @@ class Objects(Object):
 
 		elif data is not None:
 
-			self.data = type(self.data)({index:data[i] for index,i in enumerate(data)})
+			data = self.configure(data)
+
+			self.data = type(self.data)(data)
 
 		return
 
@@ -7707,17 +7715,39 @@ class Objects(Object):
 
 		return
 
-	def layout(self,configuration=None):
+	def configure(self,data=None):
+		'''
+		Configure data for class
+		Args:
+			data (Object,iterable[Object],dict[str,Object): data for class
+			configuration (dict): configuration options for layout
+				key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		Returns:
+			data (dict[str,Object]): data for class
+		'''
+
+		cls = Object
+
+		data = {index:data[i] for index,i in enumerate(data)}
+
+		return data
+
+	def layout(self,data=None,configuration=None):
 		'''
 		Sort data of class
 		Args:
+			data (Object,iterable[Object],dict[str,Object): data for class
 			configuration (dict): configuration options for layout
 				key (object,iterable[object],iterable[callable],callable): group iterable by key, iterable of keys, callable, or iterable of callables, with signature key(value)
+		Returns:
+			data (dict([iterable[Object]])): data for class
 		'''
 
-		self.set()
+		boolean = data is None
 
-		data = self.get()
+		if boolean:
+			self.set()
+			data = self.get()
 
 		configuration = self.configuration if configuration is None else configuration
 
@@ -7725,9 +7755,11 @@ class Objects(Object):
 
 		data = {index: data[i] for index,i in enumerate(sortby(data,**options))}
 
-		self.set(data)
+		if boolean:
+			self.set(data)
+			data = None
 
-		return
+		return data
 
 	def extend(self,data=None,operator=None,where=None,string=None,kwargs=None):
 		'''
@@ -8373,15 +8405,15 @@ class Module(System):
 
 			state = state(seed=seed) if callable(state) else state
 			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+			state = self.measure.transform(parameters=parameters,state=state)
 
 			parameters = parameters() if callable(parameters) else parameters
 			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
+			parameters = parameters
 
 			kwargs = [Dictionary(**{**dict(index=index,seed=seed,options=options),**kwargs}) for i in range(size)]
 			for i in range(size):
 				kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
-
-			state = self.measure.transform(parameters=parameters,state=state)
 
 			for l in range(M):
 				for i,model in enumerate(data):
@@ -8447,20 +8479,7 @@ class Module(System):
 
 		elif model is not None:
 
-			cls = Object
-			if isinstance(model,cls) and isinstance(model.data,Dictionary):
-				model = {index:[model.data[key]] for index,key in enumerate(model.data)}
-			elif isinstance(model,cls) and not isinstance(model.data,dicts):
-				model = {None:[model]}
-			elif isinstance(model,dicts) and all(isinstance(model[key],cls) for key in model):
-				model = {index:[model[key]] for index,key in enumerate(model)}
-			elif isinstance(model,iterables) and all(isinstance(instance,cls) for instance in model):
-				model = {index:[instance] for index,instance in enumerate(model)}
-			elif isinstance(model,dicts) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
-				model = {index:[instance for instance in model[key]] for index,key in enumerate(model)}
-
-			else:
-				raise NotImplementedError("Incorrect model %r"%(model))
+			model = self.configure(model)
 
 			self.model = type(self.model)(model)
 
@@ -8496,17 +8515,53 @@ class Module(System):
 
 		return
 
-	def layout(self,configuration=None):
+	def configure(self,model=None):
+		'''
+		Configure models of class
+		Args:
+			model (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
+			configuration (dict): configuration options for layout
+				key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		Returns:
+			model (dict([iterable[Object]])): models for module
+		'''
+
+		cls = Object
+
+		if isinstance(model,cls) and isinstance(model.data,Dictionary):
+			model = {index:[model.data[key]] for index,key in enumerate(model.data)}
+		elif isinstance(model,cls) and not isinstance(model.data,dicts):
+			model = {None:[model]}
+		elif isinstance(model,dicts) and all(isinstance(model[key],cls) for key in model):
+			model = {index:[model[key]] for index,key in enumerate(model)}
+		elif isinstance(model,iterables) and all(isinstance(instance,cls) for instance in model):
+			model = {index:[instance] for index,instance in enumerate(model)}
+		elif isinstance(model,dicts) and all(not isinstance(model[key],cls) and all(isinstance(instance,cls) for instance in model[key]) for key in model):
+			model = {index:[instance for instance in model[key]] for index,key in enumerate(model)}
+
+		else:
+			raise NotImplementedError("Incorrect model %r"%(model))
+
+		return model
+
+	def layout(self,data=None,configuration=None):
 		'''
 		Sort models of class
 		Args:
+			data (Object,iterable[Object],dict[str,Object): model for module, iterable of models or dictionary of models
 			configuration (dict): configuration options for layout
 				key (str,callable): group iterable, with signature key(iterable,group=True,sort=True) -> callable(key) -> sortable object i.e) int,float,str,tuple
+		Returns:
+			data (dict([iterable[Object]])): models for module
 		'''
 
-		self.set()
+		boolean = data is None
 
-		model = self.get()
+		if boolean:
+			self.set()
+			model = self.get()
+		else:
+			model = data
 
 		configuration = self.configuration if configuration is None else configuration
 
@@ -8515,9 +8570,13 @@ class Module(System):
 
 		model = {index: [model[i] for i in group] for index,group in enumerate(groupby(model,**options))}
 
-		self.set(model)
+		if boolean:
+			self.set(model)
+			model = None
 
-		return
+		data = model
+
+		return data
 
 	def __call__(self,parameters=None,state=None,**kwargs):
 		'''

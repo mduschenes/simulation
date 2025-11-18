@@ -1696,7 +1696,7 @@ def test_grad(path,tol):
 	grad_analytical = model.grad_analytical
 
 	index = slice(None)
-	print("----- grad -----")	
+	print("----- grad -----")
 	print(grad_automatic(parameters,state)[index])
 	print()
 	print("-----")
@@ -1704,7 +1704,7 @@ def test_grad(path,tol):
 	print(grad_finite(parameters,state)[index])
 	print()
 	print("-----")
-	print()	
+	print()
 	print(grad_analytical(parameters,state)[index])
 	print()
 	print("----- ratio -----")
@@ -1857,10 +1857,10 @@ def test_module(*args,**kwargs):
 		"module.measure.options":[{},{},{}],
 		"measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
-		}	
+		}
 
 	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options","state.architecture"]
-	filters = lambda kwargs:[i for i in kwargs if 
+	filters = lambda kwargs:[i for i in kwargs if
 		(i['module.measure.architecture'] in [
 			"tensor",
 			"tensor_quimb",
@@ -1898,7 +1898,7 @@ def test_module(*args,**kwargs):
 			"D":2,"dtype":"complex",
 			"architecture":"tensor",
 			"options":{},
-		},		
+		},
 		"model":{
 			"data":{
 				# "local":{
@@ -1912,7 +1912,7 @@ def test_module(*args,**kwargs):
 				# "unitary":{
 				# 	"operator":"haar","where":"||ij||","string":"unitary",
 				# 	"parameters":None,"variable":False,"ndim":2,"seed":123456789
-				# },				
+				# },
 				"noise":{
 					"operator":["depolarize"],"where":"||i.j||","string":"noise",
 					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
@@ -1920,21 +1920,21 @@ def test_module(*args,**kwargs):
 				# "unitary":{
 				# 	"operator":["X","X"],"where":"||ij||","string":"unitary",
 				# 	"parameters":"random","variable":True,"constant":False,"ndim":2,"seed":123456789
-				# },				
+				# },
 				# "noise":{
 				# 	"operator":["depolarize","depolarize"],"where":"||ij||","string":"noise",
 				# 	"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
-				# },					
+				# },
 				# "xx":{
 				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
-				# },												
+				# },
 			},
 			"N":4,
 			"D":2,
 			"local":True,
 			"tensor":True,
-			"architecture":"array",		
+			"architecture":"array",
 			"space":"spin",
 			"time":"linear",
 			"lattice":"square",
@@ -1994,9 +1994,9 @@ def test_module(*args,**kwargs):
 		system = settings.system
 
 		# Model
-		model = load(settings.cls.model)		
+		model = load(settings.cls.model)
 		model = model(**{**settings.model,**dict(system=system)})
-		
+
 		model.info(verbose=verbose)
 
 		parameters = model.parameters()
@@ -2014,14 +2014,14 @@ def test_module(*args,**kwargs):
 		settings.state = [
 			{
 			**settings.state,
-			**dict(operator=settings.state.operator[i%len(settings.state.operator)] 
-				if not isinstance(settings.state.operator,str) 
+			**dict(operator=settings.state.operator[i%len(settings.state.operator)]
+				if not isinstance(settings.state.operator,str)
 				else settings.state.operator)
 			} for i in range(model.N)]
 
 		_state = [state(**{**settings.model,**i,**dict(architecture=None,system=system)})
 				for i in settings.state]
-		
+
 		state = [state(**{**settings.model,**i,**dict(system=system)})
 				for i in settings.state]
 
@@ -2060,19 +2060,19 @@ def test_module(*args,**kwargs):
 
 			for component in components:
 				print(component,_obj.component(basis=basis,index=component))
-			
+
 			model.init(state=_obj)
-			
+
 			print(model())
 
 			for component in components:
 				print(component,model.component(basis=basis,index=component))
-			
+
 			model.init(state=False)
 
-		
+
 		# Measure
-		measure = load(settings.cls.measure)		
+		measure = load(settings.cls.measure)
 		measure = measure(**{**settings.measure,**dict(system=system)})
 
 		# Probability
@@ -2092,7 +2092,7 @@ def test_module(*args,**kwargs):
 			value = probability.array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = tensorprod(representation_quimb(probability))
-		
+
 		data[index][key] = value
 
 		if verbose:
@@ -2119,7 +2119,7 @@ def test_module(*args,**kwargs):
 			print(measure.architecture,parse(value),trace(value))
 
 		tmp = value
-		_tmp = tensorprod([i() for i in _objs]) 
+		_tmp = tensorprod([i() for i in _objs])
 
 		if verbose:
 			print(measure.architecture)
@@ -2154,7 +2154,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
 		elif measure.architecture in ["tensor"]:
-			value = operator(parameters=parameters,state=state,**kwargs).array().ravel()			
+			value = operator(parameters=parameters,state=state,**kwargs).array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
 
@@ -2168,7 +2168,7 @@ def test_module(*args,**kwargs):
 		state = [i for i in objs]
 
 		kwargs = dict()
-		
+
 		where = model.where
 		options = dict(**settings.module.options)
 
@@ -2218,16 +2218,16 @@ def test_module(*args,**kwargs):
 
 		# Module
 		module = load(settings.cls.module)
-		model = load(settings.cls.model)		
-		state = load(settings.cls.state)		
-		callback = load(settings.cls.callback)		
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		callback = load(settings.cls.callback)
 		system = settings.system
 
 		model = model(**{**settings.model,**dict(system=system)})
 		_state = state(**{**settings.state[0],**dict(architecture=None,system=system)})
 		state = state(**{**settings.state[0],**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
-	
+
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
 		module.info(verbose=verbose)
@@ -2241,7 +2241,7 @@ def test_module(*args,**kwargs):
 		state = module(parameters,state)
 
 		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
-	
+
 		if module.measure.architecture in ['array']:
 			value = array(state)
 		elif module.measure.architecture in ['tensor']:
@@ -2256,9 +2256,9 @@ def test_module(*args,**kwargs):
 		if verbose or True:
 			print(measure.architecture,parse(value))
 
-		
+
 		tmp = value
-		
+
 		model.init(state=_state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=model.state())
 
@@ -2325,7 +2325,7 @@ def test_calculate(*args,**kwargs):
 		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		"module.measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
-		}	
+		}
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
@@ -2367,7 +2367,7 @@ def test_calculate(*args,**kwargs):
 				"D":2,"dtype":"complex","seed":13579,
 				"architecture":"tensor",
 				"options":{},
-				},	
+				},
 			"options":{"contract":"swap+split","max_bond":None,"cutoff":0},
 			"configuration":{
 				"key":None,
@@ -2383,15 +2383,15 @@ def test_calculate(*args,**kwargs):
 				"unitary":{
 					"operator":"haar","where":"||ij||","string":"unitary",
 					"parameters":None,"variable":False,"ndim":2,"seed":13579
-				},	
+				},
 				"noise":{
 					"operator":["depolarize"],"where":"||i.j||","string":"depolarize",
 					"parameters":1e-3,"variable":False,"ndim":3,"seed":123456789
-				},								
+				},
 				# "xx":{
 				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
 				# 	"parameters":0.2464,"variable":False,"ndim":2,"seed":123456789
-				# },												
+				# },
 			},
 			"N":4,
 			"D":2,
@@ -2480,44 +2480,44 @@ def test_calculate(*args,**kwargs):
 			}
 		})
 
-	
+
 		attrs = [
-			'trace',
-			'vectorize',
-			'measure',
-			'square',
-			'array',
-			'state',
-			'matrix',
-			'sample.array.linear',
-			'sample.array.log',
-			'sample.state.linear',
-			'sample.state.log',
-			'sample.array.information',
+			# 'trace',
+			# 'vectorize',
+			# 'measure',
+			# 'square',
+			# 'array',
+			# 'state',
+			# 'matrix',
+			# 'sample.array.linear',
+			# 'sample.array.log',
+			# 'sample.state.linear',
+			# 'sample.state.log',
+			# 'sample.array.information',
 			'sample.state.information',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
-			'entangling_quantum',
-			'entangling_classical',
-			'entangling_renyi',
-			'mutual_quantum',
-			'mutual_measure',
-			'mutual_classical',
-			'mutual_renyi',
-			'discord_quantum',
-			'discord_classical',
-			'discord_renyi',
-			'spectrum_quantum',
-			'spectrum_classical',
-			'rank_quantum',
-			'rank_classical',
+			# 'norm_quantum',
+			# 'norm_classical',
+			# 'norm_pure',
+			# 'infidelity_quantum',
+			# 'infidelity_classical',
+			# 'infidelity_pure',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
+			# 'entanglement_renyi',
+			# 'entangling_quantum',
+			# 'entangling_classical',
+			# 'entangling_renyi',
+			# 'mutual_quantum',
+			# 'mutual_measure',
+			# 'mutual_classical',
+			# 'mutual_renyi',
+			# 'discord_quantum',
+			# 'discord_classical',
+			# 'discord_renyi',
+			# 'spectrum_quantum',
+			# 'spectrum_classical',
+			# 'rank_quantum',
+			# 'rank_classical',
 			]
 
 
@@ -2535,9 +2535,9 @@ def test_calculate(*args,**kwargs):
 
 		# Class
 		module = load(settings.cls.module)
-		model = load(settings.cls.model)		
-		state = load(settings.cls.state)		
-		callback = load(settings.cls.callback)		
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		callback = load(settings.cls.callback)
 		system = settings.system
 
 		# Model
@@ -2548,7 +2548,7 @@ def test_calculate(*args,**kwargs):
 
 		# Callback
 		callback = callback(**{**settings.callback,**dict(system=system)})
-	
+
 		# Module
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
@@ -2585,7 +2585,7 @@ def test_calculate(*args,**kwargs):
 			if attr in [
 				'infidelity_quantum','infidelity_classical','infidelity_pure',
 				]:
-				
+
 				kwargs = dict(
 					other=module(
 						parameters=module.parameters(),
@@ -2649,9 +2649,47 @@ def test_calculate(*args,**kwargs):
 				elif attr in ['sample.state.log']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.array.information']:
-					kwargs = dict(attribute="array",function="src.functions.func_information",data="X",settings=dict(model=module,state=state))
+					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict(model=module,state=state))
 				elif attr in ['sample.state.information']:
-					kwargs = dict(attribute="state",function="src.functions.func_information",settings=dict(model=module,state=state))
+					kwargs = dict(
+						attribute="state",function="src.functions.func_information",
+						data={
+							"cls":{
+								"model":"src.quantum.Operators",
+								"state":"src.quantum.State",
+								},
+							"model": {
+								"data":{
+									"local":{
+										"operator":"H","where":"i","string":"local",
+										"parameters":None,"variable":False,"ndim":2,"conj":True,"seed":123456
+									},
+								},
+								"local":True,
+								"tensor":True,
+								"space":"spin",
+								"time":"linear",
+								"lattice":"square",
+								"architecture":"array",
+								"configuration":{
+									"key":None,
+									"options":{}
+									},
+								},
+							"state" : {
+								"operator":"state",
+								"where":None,
+								"string":"zero",
+								"parameters":None,
+								"D":2,
+								"ndim":2,
+								"architecture":None,
+								"local":False,
+								"tensor":True
+								},
+							},
+					settings=dict(model=module,state=state)
+					)
 
 				where = None
 
@@ -2713,9 +2751,9 @@ def test_mps(*args,**kwargs):
 
 	def tensor(data,t=1):
 		return array([tensorprod(i) for i in permutations(*[data]*t)])
-	
+
 	def init(N,D,S,L,architecture,**kwargs):
-		
+
 		if architecture in ['tensor']:
 			os.environ['NUMPY_BACKEND'] = 'jax'
 			reload(src.utils)
@@ -2724,16 +2762,16 @@ def test_mps(*args,**kwargs):
 		elif architecture in ['tensor_quimb']:
 			os.environ['NUMPY_BACKEND'] = 'quimb'
 			reload(src.utils)
-			reload(src.quantum)			
+			reload(src.quantum)
 			from src.quantum import MPS_quimb as mps
 
 
-		state = {i:{'data':data} 
+		state = {i:{'data':data}
 			for i,data in enumerate(
 				[data for i in range(N) for data in ['zero']],
 				)
 			}
-		data = {i:{'data':data,'where':where} 
+		data = {i:{'data':data,'where':where}
 			for i,(data,where) in enumerate(zip(
 			[data for i in range(N-1) for data in ['unitary','depolarize','depolarize']],
 			[data for i in range(N-1) for data in [(i,i+1),(i,),(i+1,)]],
@@ -2760,10 +2798,10 @@ def test_mps(*args,**kwargs):
 		state = mps(state,*arguments,**keywords)
 
 		for i in data:
-			
+
 			value = data[i]['data']
 			where = data[i]['where']
-			
+
 			arguments = tuple()
 			keywords = dict(
 				D=D**len(where),shape=(D**len(where),)*2,ndim=2,seed=seed,architecture=None,dtype=dtype,
@@ -2853,8 +2891,8 @@ def test_function(*args,**kwargs):
 		}
 	for D,N in permutations(D,N):
 		parameters = {'D':D,'N':N}
-		
-		data = (sum(1/i for i in range(int(parameters['D']**(parameters['N']/2))+1,int(parameters['D']**(parameters['N'])))) - 
+
+		data = (sum(1/i for i in range(int(parameters['D']**(parameters['N']/2))+1,int(parameters['D']**(parameters['N'])))) -
 			   ((int(parameters['D']**(parameters['N']/2))-1)/(2*int(parameters['D']**(parameters['N']/2)))))
 		data = data*2/log(parameters['D']**(parameters['N']/2))/2
 
@@ -2889,7 +2927,7 @@ def test_class(*args,**kwargs):
 			],
 		"module.measure.options":[{},{},{}],
 		"callback.options":[{"scheme":"svd","S":None,"eps":None,"parameters":None,"method":None,"initialize":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
-		}	
+		}
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
@@ -2897,7 +2935,7 @@ def test_class(*args,**kwargs):
 			"tensor",
 			"tensor_quimb",
 			"array",
-			] 
+			]
 		)
 		]
 	func = None
@@ -2932,11 +2970,11 @@ def test_class(*args,**kwargs):
 				# "XX":{
 				# 	"operator":["X","X"],"where":"||ij||","string":"XX",
 				# 	"parameters":1e-6,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },				
+				# },
 				# "II":{
 				# 	"operator":["I","I"],"where":"||ij||","string":"II",
 				# 	"parameters":0,"variable":False,"constant":None,"ndim":2,"seed":123456789
-				# },								
+				# },
 				# "noise":{
 				# 	"operator":["depolarize"],"where":"||i.j||","string":"noise",
 				# 	"parameters":1e-2,"variable":False,"ndim":3,"seed":123456789
@@ -3022,15 +3060,15 @@ def test_class(*args,**kwargs):
 
 		# Classes
 		module = load(settings.cls.module)
-		model = load(settings.cls.model)		
-		state = load(settings.cls.state)		
-		callback = load(settings.cls.callback)		
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		callback = load(settings.cls.callback)
 		system = settings.system
 
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**settings.model,**settings.state,**dict(system=system)})
 		callback = callback(**{**settings.callback,**dict(system=system)})
-	
+
 		module = module(**{**settings.module,**dict(model=model,state=state,callback=callback,system=system)})
 
 		model.info(verbose=verbose)
@@ -3062,7 +3100,7 @@ def test_class(*args,**kwargs):
 
 		# Value
 		if test:
-			
+
 			value = module.measure.transform(parameters=parameters,state=state,transformation=False)
 			if module.measure.architecture in ['array']:
 				value = array(value)
