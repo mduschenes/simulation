@@ -1680,7 +1680,7 @@ def test_grad(path,tol):
 	arguments = ()
 	keywords = {}
 
-	model = model(**{**settings.model,**dict(system=system)})
+	model = model(**{**settings.model,**dict(conj=False,system=system)})
 	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
@@ -1721,6 +1721,117 @@ def test_grad(path,tol):
 	print("Passed")
 
 	return
+
+
+def test_model(*args,**kwargs):
+
+	from importlib import reload
+	import src
+
+	os.environ['NUMPY_BACKEND'] = 'jax'
+	reload(src.utils)
+	reload(src.quantum)
+
+	kwargs = dict()
+
+	settings = Dict({
+		"cls":{
+			"model":"src.quantum.Operators",
+			"state":"src.quantum.State",
+			},
+		"model":{
+			"data":{
+				"unitary":{
+					"operator":"X","where":"i","string":"unitary",
+					"local":True,"tensor":True,"conj":1,
+					"parameters":0.5,"variable":True,"ndim":2,"seed":13579
+				},
+				"noise":{
+					"operator":"bitflip","where":"i","string":"noise",
+					"local":True,"tensor":True,"conj":0,
+					"parameters":0.1,"variable":True,"ndim":2,"seed":13579
+				},
+			},
+			"N":1,
+			"D":2,
+			"local":True,
+			"tensor":True,
+			"space":"spin",
+			"time":"linear",
+			"lattice":"square",
+			"architecture":"array",
+			"configuration":{
+				"key":None,
+				"options":{}
+				},
+			},
+		"state": {
+			"operator":"zero",
+			"where":None,
+			"string":"state",
+			"parameters":None,
+			"D":2,
+			"ndim":2,
+			"architecture":None,
+			"local":False,
+			"tensor":True
+			},
+		"system":{
+			"dtype":"complex",
+			"format":"array",
+			"device":"cpu",
+			"backend":None,
+			"architecture":None,
+			"base":None,
+			"seed":123456789,
+			"key":None,
+			"instance":None,
+			"cwd":"data",
+			"path":"data.hdf5",
+			"conf":"logging.conf",
+			"logger":None,
+			"cleanup":False,
+			"verbose":None
+			}
+		})
+
+
+	verbose = False
+	precision = 8
+
+	parse = lambda data: data.round(precision)
+
+	# Settings
+	setter(settings,kwargs,delimiter=delim,default="replace")
+	system = settings.system
+
+	# Model
+	model = load(settings.cls.model)
+	model = model(**{**settings.model,**dict(system=system)})
+
+	model.info(verbose=verbose)
+
+	# State
+	state = load(settings.cls.state)
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+
+	state.info(verbose=verbose)
+
+	# Call
+	model.init(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	print(parse(state))
+
+	state = model(parameters=parameters,state=state)
+
+	print(parse(state))
+
+	print("Passed")
+	return
+
 
 def test_module(*args,**kwargs):
 
@@ -2049,7 +2160,7 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		if verbose:
+		if verbose or True:
 			print(measure.architecture,parse(value))
 
 
@@ -2142,7 +2253,7 @@ def test_module(*args,**kwargs):
 		data[index][key] = value
 
 
-		if verbose:
+		if verbose or True:
 			print(measure.architecture,parse(value))
 
 		
@@ -2208,7 +2319,7 @@ def test_calculate(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.architecture":["array"],"state.seed":[None],
 		"state.operator":["psi"],
 
-		"module.measure.D":[2],"module.measure.operator":[["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
+		"module.measure.D":[2],"module.measure.operator":["povm",["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
 		"module.measure.architecture":["tensor","tensor_quimb","array"],
 		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
@@ -2218,6 +2329,7 @@ def test_calculate(*args,**kwargs):
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
 	filters = lambda kwargs:[i for i in kwargs if (
+		(
 		(i['module.measure.architecture'] in [
 			"tensor",
 			"tensor_quimb",
@@ -2229,6 +2341,9 @@ def test_calculate(*args,**kwargs):
 		i['module.measure.architecture'] in [
 			"tensor"
 			])
+		) and (
+		i['module.measure.operator'] in ["povm"]
+		)
 		)
 		]
 	func = None
@@ -2367,42 +2482,42 @@ def test_calculate(*args,**kwargs):
 
 	
 		attrs = [
-			'trace',
-			'vectorize',
-			'measure',
-			'square',
-			'array',
-			'state',
-			'matrix',
-			'sample.array.linear',
-			'sample.array.log',
-			'sample.state.linear',
-			'sample.state.log',
-			'sample.array.information',
+			# 'trace',
+			# 'vectorize',
+			# 'measure',
+			# 'square',
+			# 'array',
+			# 'state',
+			# 'matrix',
+			# 'sample.array.linear',
+			# 'sample.array.log',
+			# 'sample.state.linear',
+			# 'sample.state.log',
+			# 'sample.array.information',
 			'sample.state.information',
-			'norm_quantum',
-			'norm_classical',
-			'norm_pure',
-			'infidelity_quantum',
-			'infidelity_classical',
-			'infidelity_pure',
-			'entanglement_quantum',
-			'entanglement_classical',
-			'entanglement_renyi',
-			'entangling_quantum',
-			'entangling_classical',
-			'entangling_renyi',
-			'mutual_quantum',
-			'mutual_measure',
-			'mutual_classical',
-			'mutual_renyi',
-			'discord_quantum',
-			'discord_classical',
-			'discord_renyi',
-			'spectrum_quantum',
-			'spectrum_classical',
-			'rank_quantum',
-			'rank_classical',
+			# 'norm_quantum',
+			# 'norm_classical',
+			# 'norm_pure',
+			# 'infidelity_quantum',
+			# 'infidelity_classical',
+			# 'infidelity_pure',
+			# 'entanglement_quantum',
+			# 'entanglement_classical',
+			# 'entanglement_renyi',
+			# 'entangling_quantum',
+			# 'entangling_classical',
+			# 'entangling_renyi',
+			# 'mutual_quantum',
+			# 'mutual_measure',
+			# 'mutual_classical',
+			# 'mutual_renyi',
+			# 'discord_quantum',
+			# 'discord_classical',
+			# 'discord_renyi',
+			# 'spectrum_quantum',
+			# 'spectrum_classical',
+			# 'rank_quantum',
+			# 'rank_classical',
 			]
 
 
@@ -2534,7 +2649,7 @@ def test_calculate(*args,**kwargs):
 				elif attr in ['sample.state.log']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.array.information']:
-					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict(model=module,state=state))
+					kwargs = dict(attribute="array",function="src.functions.func_information",data="X",settings=dict(model=module,state=state))
 				elif attr in ['sample.state.information']:
 					kwargs = dict(attribute="state",function="src.functions.func_information",settings=dict(model=module,state=state))
 
@@ -3010,7 +3125,8 @@ if __name__ == "__main__":
 	# test_namespace(*args,**args)
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
-	# test_module(*args,**args)
-	test_calculate(*args,**args)
+	# test_model(*args,**args)
+	test_module(*args,**args)
+	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)

@@ -6863,7 +6863,7 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,**kwargs):
+def contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,conj=None,**kwargs):
 	'''
 	Contract data and state
 	Args:
@@ -6873,6 +6873,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 		attributes (dict): tensorized data and state attributes {N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
 		local (bool): local data contraction on state
 		tensor (bool): tensorized data contraction on state
+		conj (bool): conjugate data contraction on state
 		kwargs (dict): additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,where=where)
@@ -6919,6 +6920,15 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	size = len(shape) if shape is not None else 0
 	strings = [symbols(length+i) for i in range(size)]
 
+	if conj:
+		slices = slice(None,None,-1)
+		def transform(data):
+			return conjugate(data)
+	else:
+		slices = slice(None,None,1)
+		def transform(data):
+			return data
+
 	if data is None:
 
 		def function(data,state,*args,**kwargs):
@@ -6938,21 +6948,21 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 				if not local and not tensor:
 				
 					subscripts = (
-						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]]),
 						(*string,*[letters[j] for j in ['i','k'][:s]]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
-					
+
 					einsummation = einsummand(subscripts,*shapes)
-					
-					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return einsummation(data,state)
+
+					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(transform(data),state)
 
 				elif local and not tensor:
 
 					subscripts = (
-						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 						(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 						)
@@ -6965,14 +6975,14 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
-					
-					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return _shuffler(einsummation(data,shuffler(state)))
+
+					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return _shuffler(einsummation(transform(data),shuffler(state)))
 
 				elif not local and tensor:
 
 					subscripts = (
-						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
@@ -6980,13 +6990,13 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return einsummation(data,state)
+					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(transform(data),state)
 
 				elif local and tensor:
 
 					subscripts = (
-						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
@@ -6994,8 +7004,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 					einsummation = einsummand(subscripts,*shapes)
 
-					def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return einsummation(data,state)
+					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(transform(data),state)
 
 			else:
 
@@ -7004,7 +7014,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					if not local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
 							(*string,*[letters[j] for j in ['i','k'][:s]]),
 							)
@@ -7012,13 +7022,13 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state)
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state)
 
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 							(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 							)
@@ -7032,13 +7042,13 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return _shuffler(einsummation(data,shuffler(state)))
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return _shuffler(einsummation(transform(data),shuffler(state)))
 
 					elif not local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 							)
@@ -7046,13 +7056,13 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state)
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state)
 
 					elif local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 							)	
@@ -7060,32 +7070,32 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state)
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state)
 
 				elif s == 2:
 
 					if not local and not tensor:
 						
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
-							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k][slices]]),
 							(*string,*[letters[j] for j in ['i','l'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state,conjugate(data))
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state,conjugate(transform(data)))
 
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
-							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k][slices]]),
 							(*string,*[letters[j] for j in ['i','l'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
@@ -7098,38 +7108,38 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return _shuffler(einsummation(data,shuffler(state),conjugate(data)))
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return _shuffler(einsummation(transform(data),shuffler(state),conjugate(transform(data))))
 
 					elif not local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
-							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
 							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state,conjugate(data))
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state,conjugate(transform(data)))
 
 					elif local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
-							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
 							)	
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 
-						def function(data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(data,state,conjugate(data))
+						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(data),state,conjugate(transform(data)))
 
 	def func(data,state,function=function,**kwargs):
 		return function(data,state)
@@ -7139,7 +7149,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	return func
 
 
-def gradient_contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,**kwargs):
+def gradient_contraction(data=None,state=None,where=None,attributes=None,local=None,tensor=None,conj=None,**kwargs):
 	'''
 	Contract grad, data and state
 	Args:
@@ -7149,6 +7159,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 		attributes (dict): tensorized data and state shapes	{N:data,state number of components,D:data,state local dimensions,d:data number of dimensions,s:state number of dimensions,samples:samples of state}
 		local (bool): local data contraction on state
 		tensor (bool): tensorized data contraction on state
+		conj (bool): conjugate data contraction on state
 		kwargs (dict): additional keyword arguments for contraction
 	Returns:
 		func (callable): contracted data and state with signature func(grad,data,state,where=where)
@@ -7195,6 +7206,15 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 	size = len(shape) if shape is not None else 0
 	strings = [symbols(length+i) for i in range(size)]
 
+	if conj:
+		slices = slice(None,None,-1)
+		def transform(data):
+			return conjugate(data)
+	else:
+		slices = slice(None,None,1)
+		def transform(data):
+			return data
+
 	if data is None:
 
 		def function(grad,data,state,*args,**kwargs):
@@ -7214,7 +7234,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 				if not local and not tensor:
 				
 					subscripts = (
-						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]]),
 						(*string,*[letters[j] for j in ['i','k'][:s]]),
 						)
@@ -7222,13 +7242,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(grad,state)
 
 				elif local and not tensor:
 
 					subscripts = (
-						(*strings,*[letters[j] for j in ['i','j'][:k]]),
+						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 						(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 						)
@@ -7242,13 +7262,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 					
-					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return _shuffler(einsummation(grad,shuffler(state)))
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return _shuffler(einsummation(transform(grad),shuffler(state)))
 
 				elif not local and tensor:
 
 					subscripts = (
-						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
@@ -7256,13 +7276,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 					einsummation = einsummand(subscripts,*shapes)
 					
-					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return einsummation(grad,state)
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(transform(grad),state)
 
 				elif local and tensor:
 
 					subscripts = (
-						(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+						(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 						(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 						(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 						)
@@ -7270,8 +7290,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 					einsummation = einsummand(subscripts,*shapes)
 
-					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-						return einsummation(grad,state)
+					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+						return einsummation(transform(grad),state)
 
 			else:
 
@@ -7280,7 +7300,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					if not local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
 							(*string,*[letters[j] for j in ['i','k'][:s]]),
 							)
@@ -7288,13 +7308,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(grad,state)
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(grad),state)
 
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 							(*string,*[letters[j] for j in ['i','k'][:s]],*([letters[j] for j in ['l','m'][:s]] if L < N else [])),
 							)
@@ -7308,13 +7328,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return _shuffler(einsummation(grad,shuffler(state)))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return _shuffler(einsummation(transform(grad),shuffler(state)))
 
 					elif not local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 							)
@@ -7322,13 +7342,13 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(grad,state)
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(grad),state)
 
 					elif local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
 							)	
@@ -7336,33 +7356,33 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							return einsummation(grad,state)
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							return einsummation(transform(grad),state)
 
 				elif s == 2:
 
 					if not local and not tensor:
 						
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
-							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k][slices]]),
 							(*string,*[letters[j] for j in ['i','l'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							grad = einsummation(grad,state,conjugate(data))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
 
 					elif local and not tensor:
 
 						subscripts = (
-							(*strings,*[letters[j] for j in ['i','j'][:k]]),
+							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
-							(*strings,*[letters[j] for j in ['l','k'][:k]]),
+							(*strings,*[letters[j] for j in ['l','k'][:k][slices]]),
 							(*string,*[letters[j] for j in ['i','l'][:s]],*([letters[j] for j in ['m','n'][:s]] if L < N else [])),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N) if i in where)]*s,*([prod(D[i] for i in range(N) if i not in where)]*s if L<N else [])),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
@@ -7375,40 +7395,40 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							grad = _shuffler(einsummation(grad,shuffler(state),conjugate(data)))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = _shuffler(einsummation(transform(grad),shuffler(state),conjugate(transform(data))))
 							return grad + dagger(grad)
 
 					elif not local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
-							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
 							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							grad = einsummation(grad,state,conjugate(data))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
 
 					elif local and tensor:
 
 						subscripts = (
-							(*strings,*[letters[j].format(i) for j in ['i','j'][:k] for i in range(N) if i in where]),
+							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
-							(*strings,*[letters[j].format(i) for j in ['l','k'][:k] for i in range(N) if i in where]),							
+							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
 							)	
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
 						
-						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
-							grad = einsummation(grad,state,conjugate(data))
+						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
+							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
 
 	def func(grad,data,state,function=function,**kwargs):

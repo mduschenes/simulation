@@ -259,7 +259,7 @@ class Basis(Dict):
 			locality = options.N
 		elif attr in ['I','X','Y','Z']:
 			locality = 1
-		elif attr in ['H','S']:
+		elif attr in ['H','S','Q']:
 			locality = 1
 		elif attr in ['CNOT']:
 			locality = 2
@@ -333,7 +333,7 @@ class Basis(Dict):
 			dimension = options.ndim
 		elif attr in ['I','X','Y','Z']:
 			dimension = 2
-		elif attr in ['H','S']:
+		elif attr in ['H','S','Q']:
 			dimension = 2
 		elif attr in ['CNOT']:
 			dimension = 2
@@ -425,7 +425,7 @@ class Basis(Dict):
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['I','X','Y','Z']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
-		elif attr in ['H','S']:
+		elif attr in ['H','S','Q']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
 		elif attr in ['CNOT']:
 			shape = {i: [options.D]*options.N for i in range(options.ndim)}
@@ -598,6 +598,13 @@ class Basis(Dict):
 
 	@classmethod
 	@decorator
+	def Q(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+		data = (1/sqrt(2))*array([[1,1],[1j,-1j]],dtype=kwargs.dtype)
+		return data
+
+	@classmethod
+	@decorator
 	def T(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)
 		data = array([[1,0,],[0,(1+1j)/sqrt(2)]],dtype=kwargs.dtype)
@@ -613,7 +620,7 @@ class Basis(Dict):
 	@classmethod
 	# @decorator
 	def gate(cls,*args,**kwargs):
-		data = {1:[cls.I,cls.H,cls.S,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']]
+		data = {1:[cls.I,cls.H,cls.S,cls.Q,cls.T],2:[cls.identity,cls.CNOT]}[kwargs['N']]
 		data = [jit(func,D=kwargs['D']**kwargs['N'],dtype=kwargs['dtype']) for func in data]
 		index = choice(
 			data=len(data),
@@ -1078,69 +1085,69 @@ class Measure(System):
 		ndim = len(shape)
 		dtype = dtype
 
+		ind = 'u{}'
+		inds = ('u{}','v{}','w{}',)
+		indices = ('i{}','j{}',)
+		tag = 'I{}'
+		tags = ()
+		symbol = ('x{}','y{}',)
+		symbols = ('k{}','l{}','m{}','n{}',)
+
 		if self.architecture is None or self.architecture in ['array']:
 
 			cls = array
 
 			kwargs = dict(dtype=dtype)
-
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
+
+			kwargs = dict(dtype=dtype)
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+
+			kwargs = dict(dtype=dtype)
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
+			kwargs = dict(dtype=dtype)
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
+
+			kwargs = dict(dtype=dtype)
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 		elif self.architecture in ['tensor']:
 
-			self.ind = 'u{}'
-			self.inds = ('u{}','v{}','w{}',)
-			self.indices = ('i{}','j{}',)
-			self.symbol = ('x{}','y{}',)
-			self.symbols = ('k{}','l{}','m{}','n{}',)
-
 			cls = tensor
 
-			kwargs = dict(indices=[*self.inds[:1],*self.indices[:2]])
+			kwargs = dict(indices=[*inds[:1],*indices[:2]])
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[*self.inds[:2]])
+			kwargs = dict(indices=[*inds[:2]])
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[*self.inds[:3]])
+			kwargs = dict(indices=[*inds[:3]])
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[*self.inds[:1]])
+			kwargs = dict(indices=[*inds[:1]])
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
-			kwargs = dict(indices=[*self.inds[:1]])
+			kwargs = dict(indices=[*inds[:1]])
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 		elif self.architecture in ['tensor_quimb']:
 
-			self.ind = 'u{}'
-			self.inds = ('u{}','v{}','w{}',)
-			self.indices = ('i{}','j{}',)
-			self.tag = 'I{}'
-			self.tags = ()
-			self.symbol = ('x{}','y{}',)
-			self.symbols = ('k{}','l{}','m{}','n{}',)
-
 			cls = tensor_quimb
 
-			kwargs = dict(inds=(*self.inds[:1],*self.indices[:2],),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*inds[:1],*indices[:2],),tags=(tag,*tags,))
 			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds[:2],),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*inds[:2],),tags=(tag,*tags,))
 			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds[:3],),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*inds[:3],),tags=(tag,*tags,))
 			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds[:1],),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*inds[:1],),tags=(tag,*tags,))
 			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
 
-			kwargs = dict(inds=(*self.inds[:1],),tags=(self.tag,*self.tags,))
+			kwargs = dict(inds=(*inds[:1],),tags=(tag,*tags,))
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
 		basis = [basis]*N if isinstance(basis,objects) else basis
@@ -1178,6 +1185,14 @@ class Measure(System):
 		self.size = size
 		self.ndim =  ndim
 		self.dtype = dtype
+
+		self.ind = ind
+		self.inds = inds
+		self.indices = indices
+		self.tag = tag
+		self.tags = tags
+		self.symbol = symbol
+		self.symbols = symbols
 
 		self.variable = variable
 		self.constant = constant
@@ -1347,8 +1362,6 @@ class Measure(System):
 			return self.amplitude(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
 
 		elif transformation in [None,True,'probability','state'] and model is not None:
-
-			state = self.transform(parameters=parameters,state=state,transformation=transformation,where=where,func=func,options=options,**kwargs)
 
 			return self.operation(parameters=parameters,state=state,model=model,where=where,func=func,options=options,**kwargs)
 
@@ -1542,146 +1555,281 @@ class Measure(System):
 			options (dict): options of function
 			kwargs (dict): Additional class keyword arguments
 		Returns:
-			func (callable): operator with signature func(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
+			model (callable): operator with signature model(parameters,state,where,**kwargs) -> data (array) POVM operator of shape (self.K**N,self.K**N)
 		'''
 
-		parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
-		state = state if state is not None else state
+		if isinstance(model,iterables):
 
-		default = tuple()
-		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
+			wrapper = jit
+			boolean = lambda model: ((model is not None) and (not model.null()))
 
-		K = self.K
+			where = [i for obj in model if boolean(obj) and isinstance(obj.where,iterables) for i in obj.where]
+			where = sorted(set(where),key=lambda i:where.index(i))
+
+			N = max((obj.N for obj in model if boolean(obj) and obj.N is not None),default=len(where))
+			D = max((obj.D for obj in model if boolean(obj) and obj.D is not None),default=None)
+			locality = len(where)
+
+			cls = state.__class__
+			keywords = dict(tensor=True,local=False,verbose=False)
+			tmp = cls(**{**state,**keywords})
+
+			cls = {obj:obj.__class__ for obj in model}
+			keywords = {obj:dict(
+				state=tmp @ locality,
+				where=[where.index(i) for i in obj.where],
+				samples=[D**2]*locality,
+				tensor=True,
+				local=True,
+				verbose=False,
+				) for obj in model}
+			model = [wrapper(cls[obj](**{**obj,**keywords[obj]})) for obj in model]
+
+			if len(model) > 1:
+				def model(parameters,state,model=model,**kwargs):
+					for data in model:
+						state = data(parameters=parameters,state=state,**kwargs)
+					return state
+			else:
+				model, = model
+
+			parameters = parameters()
+			state = [state]*N
+
+			state = self.transform(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
+
+			model = self.transform(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
+
+			def func(parameters,state,where=where,model=model,options=options,**kwargs):
+				return model(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+
+		else:
+
+
+			parameters = self.parameters() if parameters is None else parameters() if callable(parameters) else parameters
+			state = state if state is not None else state
+
+			default = tuple()
+			where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)
+
+			K = self.K
+			D = self.D
+			ndim = 2
+			letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
+
+			if L:
+
+				if self.architecture is None or self.architecture in ['array']:
+					basis = [self.basis[i] for i in where]
+					inverse = [self.inverse[i] for i in where]
+				elif self.architecture in ['tensor']:
+					basis = [self.basis[i].array() for i in where]
+					inverse = [self.inverse[i].array() for i in where]
+				elif self.architecture in ['tensor_quimb']:
+					basis = [representation_quimb(self.basis[i]) for i in where]
+					inverse = [representation_quimb(self.inverse[i]) for i in where]
+
+				basis = array([tensorprod(i) for i in permutations(*[i for i in basis])],dtype=self.dtype)
+				inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)
+
+			else:
+
+				if self.architecture is None or self.architecture in ['array']:
+					basis = self.basis[self.pointer]
+					inverse = self.inverse[self.pointer]
+				elif self.architecture in ['tensor']:
+					basis = self.basis[self.pointer].array()
+					inverse = self.inverse[self.pointer].array()
+				elif self.architecture in ['tensor_quimb']:
+					basis = representation_quimb(self.basis[self.pointer])
+					inverse = representation_quimb(self.inverse[self.pointer])
+
+			if where is not None:
+				samples = [K]*L
+
+				shape = (*samples,*[*[D]*L]*2)
+				basis = reshape(basis,shape)
+
+				shape = (*samples,)*2
+				inverse = reshape(inverse,shape)
+
+				subscripts = (
+					(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
+					(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
+					(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
+					(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
+					)
+				shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
+
+				einsummation = einsummand(subscripts,*shapes)
+
+			else:
+
+				einsummation = None
+
+			if self.architecture is None or self.architecture in ['array']:
+
+				options = {**{option:self.options[option] for option in self.options if option not in []},**(options if options is not None else {})}
+
+				if model is not None and where:
+
+					shuffler = lambda state,K=K,N=N: reshape(state,[K]*N)
+					_shuffler = lambda state,K=K,N=N: reshape(state,[K**N])
+
+					subscripts = (
+						(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where]),
+						(*[letters['v'].format(i) for i in range(N)],),
+						(*[letters['u' if i in where else 'v'].format(i) for i in range(N)],),
+						)
+					shapes = ((*[K]*L,*[K]*L,),(*[K]*N,),)
+
+					function = einsummand(subscripts,*shapes)
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,function=function,options=options,**kwargs):
+						return _shuffler(function(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shuffler(state)))
+
+				else:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+						return None
+
+			elif self.architecture in ['tensor']:
+
+				options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
+
+				if model is not None and where:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
+						return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
+
+				else:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+						return None
+
+			elif self.architecture in ['tensor_quimb']:
+
+				options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
+
+				if model is not None and where:
+
+					options = options if options is not None else {}
+
+					shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
+						options.update(dict(max_bond=options.pop('S',options.get('max_bond'))))
+						return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
+
+				else:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+						return None
+
+			parameters = self.parameters() if parameters is None else parameters
+			wrapper = partial
+			kwargs = {}
+
+			func = wrapper(func,parameters=parameters,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs)
+
+		model = func
+
+		return model
+
+	def apply(self,parameters=None,state=None,data=None,where=None,func=None,options=None,**kwargs):
+		'''
+		Apply data to state
+		Args:
+			parameters (array): parameters of class
+			state (array,tensor,network): state of class
+			data (str,iterable[str]): data of apply
+			where (float,int,iterable[int]): indices of function
+			func (callable): function of function
+			options (dict): options of function
+			kwargs (dict): Additional class keyword arguments
+		'''
+
+		return
+
+		if data is None:
+			return
+
+		data = data if isinstance(data,str) else data
+		invariant = isinstance(data,str)
+		symmetry = self.symmetry is None
+		N = min((i for i in (self.N,len(data) if not invariant else self.N if self.N is not None else None) if i is not None),default=None)
 		D = self.D
-		ndim = 2
-		letters = {letter:f'{letter}{{}}' for letter in ['i','j','k','u','v','w']}
+		seed = self.seed
+		dtype = self.dtype
 
-		if L:
+		where = where if where is not None else range(N) if N is not None else None
+		pointer = min(where) if where is not None else 0 if N is not None else None
 
-			if self.architecture is None or self.architecture in ['array']:
-				basis = [self.basis[i] for i in where]
-				inverse = [self.inverse[i] for i in where]
-			elif self.architecture in ['tensor']:
-				basis = [self.basis[i].array() for i in where]
-				inverse = [self.inverse[i].array() for i in where]
-			elif self.architecture in ['tensor_quimb']:
-				basis = [representation_quimb(self.basis[i]) for i in where]
-				inverse = [representation_quimb(self.inverse[i]) for i in where]
+		data = [data for i in where] if invariant else [data[i] for i in where]
+		seed = [seeder(seed)]*N if symmetry else seeder(seed,size=N)
+		options = [dict(D=D,dtype=dtype,seed=seed[i],system=self.system) for i in where]
 
-			basis = array([tensorprod(i) for i in permutations(*[i for i in basis])],dtype=self.dtype)
-			inverse = array([tensorprod(i) for i in permutations(*[i for i in inverse])],dtype=self.dtype)
-
-		else:
-
-			if self.architecture is None or self.architecture in ['array']:
-				basis = self.basis[self.pointer]
-				inverse = self.inverse[self.pointer]
-			elif self.architecture in ['tensor']:
-				basis = self.basis[self.pointer].array()
-				inverse = self.inverse[self.pointer].array()
-			elif self.architecture in ['tensor_quimb']:
-				basis = representation_quimb(self.basis[self.pointer])
-				inverse = representation_quimb(self.inverse[self.pointer])
-
-		if where is not None:
-			samples = [K]*L
-
-			shape = (*samples,*[*[D]*L]*2)
-			basis = reshape(basis,shape)
-
-			shape = (*samples,)*2
-			inverse = reshape(inverse,shape)
-
-			subscripts = (
-				(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
-				(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
-				(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
-				(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
-				)
-			shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
-
-			einsummation = einsummand(subscripts,*shapes)
-
-		else:
-
-			einsummation = None
+		data = [getattr(Basis,data[pointer])(**options[pointer])]*N if symmetry and invariant else [getattr(Basis,data[i])(**options[i]) if isinstance(data[i],str) else data[i] for i in where]
 
 		if self.architecture is None or self.architecture in ['array']:
 
-			options = {**{option:self.options[option] for option in self.options if option not in []},**(options if options is not None else {})}
+			cls = array
 
-			if model is not None and where:
+			kwargs = dict(dtype=dtype)
 
-				shuffler = lambda state,K=K,N=N: reshape(state,[K]*N)
-				_shuffler = lambda state,K=K,N=N: reshape(state,[K**N])
-
-				subscripts = (
-					(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where]),
-					(*[letters['v'].format(i) for i in range(N)],),
-					(*[letters['u' if i in where else 'v'].format(i) for i in range(N)],),
-					)
-				shapes = ((*[K]*L,*[K]*L,),(*[K]*N,),)
-
-				function = einsummand(subscripts,*shapes)
-
-				options = options if options is not None else {}
-
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,function=function,options=options,**kwargs):
-					return _shuffler(function(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),shuffler(state)))
-
-			else:
-
-				options = options if options is not None else {}
-
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None
+			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
 
 		elif self.architecture in ['tensor']:
 
-			options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
+			cls = tensor
 
-			if model is not None and where:
+			kwargs = dict(indices=[*self.inds[:1],*self.indices[:2]])
 
-				options = options if options is not None else {}
-
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
-					return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
-
-			else:
-
-				options = options if options is not None else {}
-
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None
+			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
 
 		elif self.architecture in ['tensor_quimb']:
 
-			options = {**{option:self.options[option] for option in self.options if option not in ['periodic','cyclic']},**(options if options is not None else {})}
+			cls = tensor_quimb
 
-			if model is not None and where:
+			kwargs = dict(inds=(*self.inds[:1],*self.indices[:2],),tags=(self.tag,*self.tags,))
 
-				options = options if options is not None else {}
+			data = [cls(data[pointer],**kwargs)]*N if symmetry else [cls(data[i],**kwargs) for i in where]
 
-				shuffler = lambda state,K=K,L=L,d=2: reshape(state,[K**L]*d)
+		data = [data]*N if isinstance(data,objects) else data
 
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,shuffler=shuffler,options=options,**kwargs):
-					options.update(dict(max_bond=options.pop('S',options.get('max_bond'))))
-					return state.gate((einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse)),where=where,**options)
+		if self.architecture is None or self.architecture in ['array']:
 
-			else:
+			data = tensorprod(data)
 
-				options = options if options is not None else {}
+			subscripts = '...ij,jk->...ik'
+			shapes = (state.shape,data.shape)
+			einsummation = einsummand(subscripts,*shapes)
+			data = einsummation(state,tensorprod(data))
 
-				def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
-					return None
+		elif self.architecture in ['tensor']:
 
-		parameters = self.parameters() if parameters is None else parameters
-		wrapper = partial
-		kwargs = {}
+			for i in range(N):
+				with context(data[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
+					state &= data[i]
 
-		func = wrapper(func,parameters=parameters,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs)
+		elif self.architecture in ['tensor_quimb']:
 
-		return func
+			for i in range(N):
+				with context_quimb(data[i],key=i,formats=dict(inds=[{self.inds[0]:self.inds[1]}],tags=None)):
+					state &= data[i]
+
+		return
 
 	def calculate(self,attribute=None,function=None,settings=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
 		'''
@@ -1973,7 +2121,7 @@ class Measure(System):
 
 		return data
 
-	def sample(self,attribute=None,function=None,settings=None,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def sample(self,attribute=None,function=None,settings=None,parameters=None,state=None,data=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class sample
 		Args:
@@ -1981,6 +2129,7 @@ class Measure(System):
 			function (callable): function of data
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
+			data (str,iterable[str]): data of sample
 			where (float,int,iterable[int]): indices of function
 			func (callable): function of function
 			options (dict): options of function
@@ -2012,7 +2161,7 @@ class Measure(System):
 		settings.update({attr:getattr(self,attr) for attr in self if attr not in settings and not callable(getattr(self,attr))})
 
 		if callable(attribute):
-			data = attribute(parameters=parameters,state=state,where=where,func=func,options=options,**kwargs)
+			data = attribute(parameters=parameters,state=state,data=data,where=where,func=func,options=options,**kwargs)
 		else:
 			data = attribute
 
@@ -2021,12 +2170,13 @@ class Measure(System):
 
 		return data
 
-	def array(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def array(self,parameters=None,state=None,data=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class data
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
+			data (str,iterable[str]): data of sample
 			where (float,int,iterable[int]): indices of function
 			func (callable): function of function
 			options (dict): options of function
@@ -2063,12 +2213,13 @@ class Measure(System):
 
 		return data
 
-	def matrix(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def matrix(self,parameters=None,state=None,data=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class matrix
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
+			data (str,iterable[str]): data of sample
 			where (float,int,iterable[int]): indices of function
 			func (callable): function of function
 			options (dict): options of function
@@ -2092,6 +2243,11 @@ class Measure(System):
 		settings = dict(transformation=False)
 		state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
 
+		where = tuple(i for i in range(N) if i in where)
+
+		settings = dict()
+		self.apply(parameters=parameters,state=state,data=data,where=where,options=options,**{**settings,**kwargs})
+
 		if self.architecture is None or self.architecture in ['array']:
 
 			data = array(state)
@@ -2108,12 +2264,13 @@ class Measure(System):
 
 		return data
 
-	def state(self,parameters=None,state=None,where=None,func=None,options=None,**kwargs):
+	def state(self,parameters=None,state=None,data=None,where=None,func=None,options=None,**kwargs):
 		'''
 		Class state
 		Args:
 			parameters (array): parameters of class
 			state (array,tensor,network): state of class
+			data (str,iterable[str]): data of sample
 			where (float,int,iterable[int]): indices of function
 			func (callable): function of function
 			options (dict): options of function
@@ -2125,7 +2282,7 @@ class Measure(System):
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(diag(data)))
 
-		data = self.matrix(parameters=parameters,state=state,where=where,func=func,options=options)
+		data = self.matrix(parameters=parameters,state=state,data=data,where=where,func=func,options=options)
 
 		return data
 
@@ -4498,8 +4655,8 @@ class Object(System):
 
 	defaults = dict(
 		data=None,operator=None,where=None,string=None,system=None,
-		state=None,parameters=None,conj=False,
-		tensor=None,local=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
+		state=None,parameters=None,
+		tensor=None,local=None,conj=None,locality=None,number=None,variable=None,constant=None,symmetry=None,hermitian=None,unitary=None,
 		shape=None,size=None,ndim=None,dtype=None,
 		identity=None,
 		space=None,time=None,lattice=None,
@@ -4535,13 +4692,14 @@ class Object(System):
 		# 	number (int): number of operators within class
 		#	where (iterable[int]): indices of local action within space of size N
 
-
 		operator = self.operator if self.operator is not None else None
 		where = self.where if self.where is None or not isinstance(self.where,integers) else [self.where]
 		string = self.string
 
 		tensor = self.tensor if self.tensor is not None else None
 		local = self.local if self.local is not None else None
+		conj = self.conj if self.conj is not None else None
+
 		locality = self.locality if self.locality is not None else None
 		number = self.number if self.number is not None else None
 
@@ -4574,6 +4732,7 @@ class Object(System):
 			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
+		locality = locality
 		number = Basis.localities(attr=Basis.string,operator=[basis.get(i) for i in (operator if isinstance(operator,iterables) else operator.split(delim))],**options) if operator is not None else None if not self.null() else None
 
 		options = Dictionary(
@@ -4587,10 +4746,9 @@ class Object(System):
 			index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system
 			) if not self.null() else None
 
-		# Set tenor, local, locality, where
+		# Set tensor, local, locality, where
 
 		tensor = tensor
-
 		local = local
 
 		if locality is not None:
@@ -4675,6 +4833,8 @@ class Object(System):
 
 		tensor = tensor
 		local = local
+		conj = conj
+
 		locality = min((i for i in (locality if locality is not None else None,sum(i not in [default] for i in where) if isinstance(where,iterables) else None,locality if local else N) if i is not None),default=None) if locality is not None or isinstance(where,iterables) else None
 		number = number
 
@@ -4690,6 +4850,8 @@ class Object(System):
 
 		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
+		conj = conj if conj is not None else None
+
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
 
@@ -4747,6 +4909,8 @@ class Object(System):
 
 		self.tensor = tensor
 		self.local = local
+		self.conj = conj
+
 		self.locality = locality
 		self.number = number
 
@@ -4764,20 +4928,19 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		self.init(data=self.data,state=self.state,parameters=self.parameters,conj=self.conj)
+		self.init(data=self.data,state=self.state,parameters=self.parameters)
 
 		self.info()
 
 		return
 
-	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
+	def init(self,data=None,state=None,parameters=None,**kwargs):
 		'''
 		Initialize operator
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,Object): state of class
 			parameters (array,dict): parameters of class
-			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments
 		'''
 
@@ -4795,16 +4958,12 @@ class Object(System):
 		elif state is False:
 			state = None
 
-		if conj is None:
-			conj = False
-
 		for kwarg in kwargs:
 			if hasattr(self,kwarg):
 				setattr(self,kwarg,kwargs[kwarg])
 
 		self.data = data
 		self.state = state
-		self.conj = conj
 
 		self.spaces()
 
@@ -4858,6 +5017,8 @@ class Object(System):
 
 		tensor = self.tensor
 		local = self.local
+		conj = self.conj
+
 		locality = self.locality
 		number = self.number
 
@@ -4878,6 +5039,8 @@ class Object(System):
 
 		tensor = tensor if tensor is not None else None
 		local = local if local is not None else None
+		conj = conj if conj is not None else None
+
 		locality = max(locality,len(where)) if isinstance(where,iterables) else locality
 		number = number if number is not None else None
 
@@ -4892,6 +5055,8 @@ class Object(System):
 
 		self.tensor = tensor
 		self.local = local
+		self.conj = conj
+
 		self.locality = locality
 		self.number = number
 
@@ -4984,8 +5149,9 @@ class Object(System):
 			ndim = ndim if data is not None else None
 			dtype = dtype
 
-			local = self.local
 			tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+			local = self.local
+			conj = self.conj
 
 			data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in data] if data is not None else None
 			_data = [self.basis.get(i)(**Basis.opts(self.basis.get(i),options)) for i in _data] if data is not None else None
@@ -5006,7 +5172,6 @@ class Object(System):
 		else:
 
 			data = self.data
-
 
 		if (((self.data is not None) or (self.operator is not None))):
 
@@ -5078,8 +5243,9 @@ class Object(System):
 				where = None,
 				samples = None,
 				attributes = None,
-				local = None,
 				tensor = None,
+				local = None,
+				conj = None,
 				)
 		else:
 			if self.state is not None and self.state() is not None:
@@ -5087,8 +5253,9 @@ class Object(System):
 					kwargs = dict(
 						where = self.where,
 						attributes = Dictionary(N=self.state.N,D=self.state.D,d=self.ndim,s=self.state.ndim,samples=self.state.samples if self.state.samples is not None else self.samples,),
-						local = self.local is True,
 						tensor = self.tensor is not None,
+						local = self.local is True,
+						conj = self.conj,
 						)
 				else:
 					raise NotImplementedError("Incorrect state %r for locality %d, where %r"%(self.state,self.locality,self.where))
@@ -5096,8 +5263,9 @@ class Object(System):
 				kwargs = dict(
 					where = self.where,
 					attributes = Dictionary(N=self.N,D=self.D,d=self.ndim,s=Basis.dimension,samples=self.samples),
-					local = self.local is True,
 					tensor = self.tensor is not None,
+					local = self.local is True,
+					conj = self.conj,
 					)
 
 		kwargs = dict(**{**kwargs,**{attr: self.options[attr] for attr in self.options if attr not in kwargs}}) if self.options is not None else kwargs
@@ -5396,6 +5564,8 @@ class Object(System):
 
 			tensor = self.tensor
 			local = self.local
+			conj = self.conj
+
 			locality = self.locality*other
 			number = self.number
 			variable = self.variable
@@ -5418,8 +5588,6 @@ class Object(System):
 				state = None
 
 			parameters = self.parameters() if self.parameters is not None and self.parameters() is not None else self.parameters() if self.parameters is not None else None
-
-			conj = self.conj
 
 		elif isinstance(other,type(self)):
 
@@ -5444,6 +5612,8 @@ class Object(System):
 
 			tensor = self.tensor if self.tensor is not None else other.tensor if other.tensor is not None else None
 			local = all((self.local,other.local))
+			conj = all((self.conj,other.conj))
+
 			locality = sum((self.locality,other.locality))
 			number = max((self.number,other.number))
 			variable = all((self.variable,other.variable))
@@ -5471,7 +5641,6 @@ class Object(System):
 
 			parameters = self.parameters()*other.parameters() if self.parameters is not None and self.parameters() is not None and other.parameters is not None and other.parameters() is not None else self.parameters() if self.parameters is not None else other.parameters() if other.parameters is not None else None
 
-			conj = all((self.conj,other.conj))
 
 		else:
 
@@ -5482,9 +5651,9 @@ class Object(System):
 			**{attr: getattr(self,attr) for attr in self if not callable(getattr(self,attr))},
 			**dict(
 				data=data,operator=operator,where=where,string=string,
-				tensor=tensor,local=local,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
+				tensor=tensor,local=local,conj=conj,locality=locality,number=number,variable=variable,constant=constant,symmetry=symmetry,
 				N=N,D=D,shape=shape,size=size,ndim=ndim,
-				state=state,parameters=parameters,conj=conj
+				state=state,parameters=parameters,
 				)
 			}
 
@@ -5626,7 +5795,7 @@ class Object(System):
 
 			msg.append(string)
 
-		for attr in ['operator','where','locality','tensor','local','variable','constant','symmetry']:
+		for attr in ['operator','where','locality','tensor','local','conj','variable','constant','symmetry']:
 
 			obj = attr
 			if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5654,7 +5823,7 @@ class Object(System):
 					continue
 
 				string = []
-				for subattr in [None,'operator','variable','method','indices','local','tensor','where','shape','parameters']:
+				for subattr in [None,'operator','variable','method','indices','tensor','local','conj','where','shape','parameters']:
 
 					obj = subattr
 					if (display is not None and obj not in display) or (ignore is not None and obj in ignore):
@@ -5936,7 +6105,8 @@ class Gate(Object):
 		**{attr: Basis.Z for attr in ['z']},
 		**{attr: Basis.H for attr in ['HADAMARD','H']},
 		**{attr: Basis.S for attr in ['PHASE','S']},
-		**{attr: Basis.T for attr in ['TEE','T']},
+		**{attr: Basis.Q for attr in ['PHASEHADAMARD','Q']},
+		**{attr: Basis.T for attr in ['PI8','T']},
 		**{attr: Basis.CNOT for attr in ['CNOT','C','cnot']},
 		**{attr: Basis.gate for attr in ['gate']},
 		**{attr: Basis.clifford for attr in ['clifford']},
@@ -5988,8 +6158,9 @@ class Gate(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
-				local = self.local
 				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+				local = self.local
+				conj = self.conj
 
 				data = [*data,*_data] if not self.local else data
 
@@ -5999,7 +6170,7 @@ class Gate(Object):
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6029,7 +6200,7 @@ class Gate(Object):
 					else:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6302,8 +6473,9 @@ class Haar(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
-				local = self.local
 				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+				local = self.local
+				conj = self.conj
 
 				data = [*data,*_data] if not self.local else data
 
@@ -6313,7 +6485,7 @@ class Haar(Object):
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6343,7 +6515,7 @@ class Haar(Object):
 					else:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6641,8 +6813,9 @@ class State(Object):
 				ndim = ndim if data is not None else None
 				dtype = dtype
 
-				local = self.local
 				tensor = partial(self.tensor,N=self.locality if self.local else self.N,D=self.D,d=ndim) if self.tensor is not None else None
+				local = self.local
+				conj = self.conj
 
 				data = [*data,*_data] if not self.local else data
 
@@ -6652,7 +6825,7 @@ class State(Object):
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6694,7 +6867,7 @@ class State(Object):
 					else:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
-							local=local,tensor=tensor,
+							tensor=tensor,local=local,conj=conj,
 							random=self.random,seed=seed,
 							index=self.index,architecture=self.architecture,dtype=self.dtype,system=self.system,
 							data=self.data,operator=data,
@@ -6934,14 +7107,13 @@ class Objects(Object):
 
 		return
 
-	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
+	def init(self,data=None,state=None,parameters=None,**kwargs):
 		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
-			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments
 		'''
 
@@ -6995,17 +7167,6 @@ class Objects(Object):
 				return state
 
 		self.state = state
-
-
-		# Set conjugate
-		if conj is None:
-			conj = False
-		elif conj is True:
-			conj = True
-		elif conj is False:
-			conj = False
-
-		self.conj = conj
 
 
 		# Set parameters
@@ -7692,6 +7853,8 @@ class Objects(Object):
 
 		local = all(data[i].local for i in data if boolean(i,data)) if data is not None else None
 
+		conj = all(data[i].conj for i in data if boolean(i,data)) if data is not None else None
+
 		locality = len(where) if where is not None else None
 
 		number = max((data[i].number for i in data if boolean(i,data)),default=None) if data is not None else None
@@ -7727,6 +7890,8 @@ class Objects(Object):
 
 		self.tensor = tensor
 		self.local = local
+		self.conj = conj
+
 		self.locality = locality
 		self.number = number
 		self.variable = variable
@@ -7828,17 +7993,17 @@ class Channel(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['Channel']}}
 
-	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
+	def init(self,data=None,state=None,parameters=None,**kwargs):
 		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
-			conj (bool): conjugate
+			kwargs (dict): Additional class keyword arguments
 		'''
 
-		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
+		super().init(data=data,state=state,parameters=parameters,**kwargs)
 
 		# Set data
 		for i in self.data:
@@ -7894,18 +8059,17 @@ class Operators(Objects):
 	default = 'I'
 	basis = {**{attr: Basis.identity for attr in [default]}, **{attr: Basis.identity for attr in ['operators']}}
 
-	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
+	def init(self,data=None,state=None,parameters=None,**kwargs):
 		'''
 		Setup class functions
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,array,Object): state of class
 			parameters (dict,array,Parameters): parameters of class
-			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments
 		'''
 
-		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
+		super().init(data=data,state=state,parameters=parameters,**kwargs)
 
 		# Set data
 		for i in self.data:
@@ -8134,9 +8298,12 @@ class Module(System):
 		boolean = lambda model: ((model is not None) and (not model.null()))
 
 		N = max((model.N for index in self.model for model in self.model[index] if boolean(model) and model.N is not None),default=self.N)
-		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=None)
+		D = max((model.D for index in self.model for model in self.model[index] if boolean(model) and model.D is not None),default=self.D)
 
 		self.N = N
+		self.D = D
+
+		where = range(N)
 
 		# Measure
 		cls = Measure
@@ -8146,8 +8313,6 @@ class Module(System):
 
 		self.measure = measure
 
-		self.measure.info()
-
 		# Data
 
 		self.set(model=model)
@@ -8155,52 +8320,26 @@ class Module(System):
 		self.layout()
 
 		data = []
-		wrapper = jit
 
 		for index in self.model:
 
-			if not self.model[index]:
+			model = self.model[index]
+
+			if not model:
 				continue
 
-			where = [i for model in self.model[index] if boolean(model) and isinstance(model.where,iterables) for i in model.where]
-			where = sorted(set(where),key=lambda i:where.index(i))
+			settings = dict(
+				parameters = parameters,
+				state = state,
+				model = model,
+				where = where,
+				options = options,
+				**kwargs
+				)
 
-			N = max((model.N for model in self.model[index] if boolean(model) and model.N is not None),default=len(where))
-			D = max((model.D for model in self.model[index] if boolean(model) and model.D is not None),default=measure.D)
-			locality = len(where)
+			model = measure.transform(**settings)
 
-			cls = self.state.__class__
-			keywords = dict(local=False,tensor=True,verbose=False)
-			state = cls(**{**self.state,**keywords})
-
-			cls = {model:model.__class__ for model in self.model[index]}
-			keywords = {model:dict(
-				state=state @ locality,
-				where=[where.index(i) for i in model.where],
-				samples=[D**2]*locality,
-				local=True,
-				tensor=True,
-				verbose=False,
-				) for model in self.model[index]}
-			model = [wrapper(cls[model](**{**model,**keywords[model]})) for model in self.model[index]]
-
-			if len(model) > 1:
-				def model(parameters,state,model=model,**kwargs):
-					for func in model:
-						state = func(parameters=parameters,state=state,**kwargs)
-					return state
-			else:
-				model, = model
-
-			parameters = measure.parameters()
-			state = [self.state]*N
-
-			model = measure.transform(parameters=parameters,state=state,model=model,where=where,options=options,**kwargs)
-
-			def func(parameters,state,where=where,model=model,options=options,**kwargs):
-				return model(parameters=parameters,state=state,where=where,options=options,**kwargs)
-
-			data.append(func)
+			data.append(model)
 
 		self.data = data
 
@@ -8226,12 +8365,11 @@ class Module(System):
 
 		# Functions
 
-		data = self.data
 		options = self.options
 
 		def func(parameters,state,options=options,**kwargs):
 
-			M,N,index,size,seed = kwargs.get('M',self.M),kwargs.get('N',self.N),kwargs.get('index',None),kwargs.get('size',len(self.data)),seeder(kwargs.get('seed',self.seed))
+			data,M,N,index,size,seed = kwargs.get('data',self.data),kwargs.get('M',self.M),kwargs.get('N',self.N),kwargs.get('index',None),kwargs.get('size',len(kwargs.get('data',self.data))),seeder(kwargs.get('seed',self.seed))
 
 			state = state(seed=seed) if callable(state) else state
 			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
@@ -8246,10 +8384,10 @@ class Module(System):
 			state = self.measure.transform(parameters=parameters,state=state)
 
 			for l in range(M):
-				for i,data in enumerate(self.data):
+				for i,model in enumerate(data):
 
 					kwargs[i].index = (l,i)
-					state = data(parameters=parameters[l],state=state,**kwargs[i])
+					state = model(parameters=parameters[l],state=state,**kwargs[i])
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 
 			return state
@@ -8546,18 +8684,17 @@ class Label(Operator):
 	def __init__(self,*args,**kwargs):
 		return
 
-	def init(self,data=None,state=None,parameters=None,conj=False,**kwargs):
+	def init(self,data=None,state=None,parameters=None,**kwargs):
 		'''
 		Initialize class
 		Args:
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,Object): state of class
 			parameters (array,dict): parameters of class
-			conj (bool): conjugate
 			kwargs (dict): Additional class keyword arguments
 		'''
 
-		super().init(data=data,state=state,parameters=parameters,conj=conj,**kwargs)
+		super().init(data=data,state=state,parameters=parameters,**kwargs)
 
 		variable = self.variable
 		constant = self.constant
