@@ -1808,18 +1808,21 @@ class Measure(System):
 
 			data[index] = model
 
-		index,size,seed = None,len(data),seeder(self.seed)
+		index,size,seed,options = None,len(data),seeder(self.seed),options if options is not None else {}
 
 		parameters = parameters() if callable(parameters) else parameters
 		state = state
 
-		kwargs = [Dictionary(**{**dict(index=index,seed=seed),**kwargs}) for i in range(size)]
+		kwargs = [Dictionary(**{**dict(index=index,seed=seed,options=options),**kwargs}) for i in range(size)]
 		for i in range(size):
 			kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 
 		for i in data:
+
 			kwargs[i].index = i
+
 			state = data[i](parameters=parameters,state=state,**kwargs[i])
+
 			seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 
 		return state
@@ -8397,12 +8400,9 @@ class Module(System):
 			if isinstance(data,dicts):
 				data = [data[i] for i in data]
 
-			if not isinstance(state,State):
-				state = state(seed=seed) if callable(state) else state
-				state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-				state = self.measure.transform(parameters=parameters,state=state)
-			else:
-				state = state
+			state = state(seed=seed) if callable(state) else state
+			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+			state = self.measure.transform(parameters=parameters,state=state)
 
 			parameters = parameters() if callable(parameters) else parameters
 			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
