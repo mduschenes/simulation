@@ -1808,12 +1808,12 @@ class Measure(System):
 
 			data[index] = model
 
-		index,size,seed,options = None,len(data),seeder(self.seed),options if options is not None else {}
+		index,size,seed = None,len(data),seeder(self.seed)
 
 		parameters = parameters() if callable(parameters) else parameters
 		state = state
 
-		kwargs = [Dictionary(**{**dict(index=index,seed=seed,options=options),**kwargs}) for i in range(size)]
+		kwargs = [Dictionary(**{**dict(index=index,seed=seed),**kwargs}) for i in range(size)]
 		for i in range(size):
 			kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 
