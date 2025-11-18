@@ -1771,7 +1771,12 @@ class Measure(System):
 			func (callable): function of function
 			options (dict): options of function
 			kwargs (dict): Additional class keyword arguments
+		Returns:
+			state (array,tensor,network): state of class
 		'''
+
+		if data is None:
+			return state
 
 		settings = Dict(data)
 
@@ -1780,9 +1785,6 @@ class Measure(System):
 
 		model = model(**{**settings.model,**dict(N=self.N,D=self.D,system=self.system)})
 		obj = obj(**{**settings.state,**dict(D=self.D,system=self.system)})
-
-		print(model)
-		exit()
 
 		parameters = model.parameters
 		obj = obj
@@ -1806,8 +1808,7 @@ class Measure(System):
 
 			data[index] = model
 
-
-		index,size,seed = None,len(data),seeder(self.seed)
+		index,size,seed,options = None,len(data),seeder(self.seed),options if options is not None else {}
 
 		parameters = parameters() if callable(parameters) else parameters
 		state = state
@@ -1816,17 +1817,10 @@ class Measure(System):
 		for i in range(size):
 			kwargs[i].seed = seeder(seed=kwargs[i].seed,size=size)[i]
 
-		print(data)
-		print(state.matrix())
-
 		for i in data:
 			kwargs[i].index = i
 			state = data[i](parameters=parameters,state=state,**kwargs[i])
 			seed,kwargs[i].seed = rng.split(kwargs[i].seed)
-
-		print(state.matrix())
-		exit()
-
 
 		return state
 
@@ -2237,12 +2231,10 @@ class Measure(System):
 
 		state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-
 		where = tuple(i for i in range(N) if i not in where)
 
 		settings = dict()
 		state = self.apply(parameters=parameters,state=state,data=data,where=where,options=options,**{**settings,**kwargs})
-
 
 		where = tuple(i for i in range(N) if i in where)
 
@@ -7031,8 +7023,6 @@ class Operator(Object):
 
 		classes = [Data,Gate,Pauli,Haar,Noise,State,Channel,Operators,Unitary,Hamiltonian,Object]
 
-		print(data,operator)
-
 		for subclass in classes:
 
 			if any(isinstance(obj,subclass) for obj in [data if data is not None else operator if operator is not None else None]):
@@ -7520,14 +7510,15 @@ class Objects(Object):
 		attributes[attribute] = func
 
 		for attribute in attributes:
+
 			attr,attrs = attribute.split(delim)[0] if attribute.count(delim)>=0 else None,delim.join(attribute.split(delim)[1:]) if attribute.count(delim)>0 else None
-			size = len(kwargs.get(attr,[]))
 
-			for i in range(size):
-				if isinstance(kwargs[attr][i],nulls):
-					continue
-				attributes[attribute](i,attr,attrs,data,kwargs)
-
+			if attr in kwargs and isinstance(kwargs.get(attr),iterables):
+				size = len(kwargs.get(attr,[]))
+				for i in range(size):
+					if isinstance(kwargs[attr][i],nulls):
+						continue
+					attributes[attribute](i,attr,attrs,data,kwargs)
 
 		# Set class attributes
 		self.extend(**data,kwargs=kwargs)
@@ -8403,9 +8394,15 @@ class Module(System):
 
 			data,M,N,index,size,seed = kwargs.get('data',self.data),kwargs.get('M',self.M),kwargs.get('N',self.N),kwargs.get('index',None),kwargs.get('size',len(kwargs.get('data',self.data))),seeder(kwargs.get('seed',self.seed))
 
-			state = state(seed=seed) if callable(state) else state
-			state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
-			state = self.measure.transform(parameters=parameters,state=state)
+			if isinstance(data,dicts):
+				data = [data[i] for i in data]
+
+			if not isinstance(state,State):
+				state = state(seed=seed) if callable(state) else state
+				state = [state]*N if isinstance(state,arrays) or not isinstance(state,iterables) else state
+				state = self.measure.transform(parameters=parameters,state=state)
+			else:
+				state = state
 
 			parameters = parameters() if callable(parameters) else parameters
 			parameters = array([parameters]*M) if isinstance(parameters,scalars) or isinstance(parameters,arrays) and parameters.ndim == 1 else parameters
@@ -8419,7 +8416,9 @@ class Module(System):
 				for i,model in enumerate(data):
 
 					kwargs[i].index = (l,i)
+
 					state = model(parameters=parameters[l],state=state,**kwargs[i])
+
 					seed,kwargs[i].seed = rng.split(kwargs[i].seed)
 
 			return state
