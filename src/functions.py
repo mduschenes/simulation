@@ -196,6 +196,7 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 			def application(data):
 				number,size = function(data),data.size
 				data = data[keys['y']].mean()
+				data = abs(data)
 				# data = data/np.log(size*number)
 				return data
 			apply[attr] = application
@@ -210,6 +211,7 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 			def application(data):
 				number,size = function(data),data[attr].size
 				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
+				data = abs(data)
 				data = np.sqrt(data/(size*number))
 				# data = data/np.log(size*number)
 				return data
@@ -749,6 +751,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 			return 0
 		number,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key])
+		data = absolute(data)
 		data = data/log(number)
 		return data
 	funcs[attr] = func
@@ -765,6 +768,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 			return 0
 		number,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key]) - mean(data[attr[0]][key])**2
+		data = absolute(data)
 		data = sqrt(data/(size*number))/log(size)
 		return data
 	if attr:
@@ -782,29 +786,29 @@ def func_histogram(obj,*args,**kwargs):
 	data = dict(zip(key,value))
 	return data
 
-def func_process(obj,*args,**kwargs):
-	n = obj.size
-	eps = epsilon(obj.dtype)
+def func_process(data,*args,**kwargs):
+	n = data.size
+	eps = epsilon(data.dtype)
 	def func(x,n=n,eps=eps):
-		x = (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
+		x = (n-1)*((1-x)**(n-2)) # (n/(1-exp(-n)))*exp(-n*x) # n*exp(-n*x)
 		# x /= addition(x)
 		x = inplace(x,x<eps,1)
 		return x
 	key = [None,'error','norm']
-	value = information(func,obj)
-	value = addition(value)/n,addition(value**2)/n,addition(func(obj))
+	value = information(func,data)
+	value = addition(value)/n,addition(value**2)/n,addition(func(data))
 	data = dict(zip(key,value))
 	return data
 
-def func_information(obj,*args,**kwargs):
-	size = obj.size
-	samples = prod(obj.shape[:-1])
-	n = obj.shape[-1]
-	eps = epsilon(obj.dtype)
+def func_information(data,*args,**kwargs):
+	size = data.size
+	samples = prod(data.shape[:-1])
+	n = data.shape[-1]
+	eps = epsilon(data.dtype)
 	default = 1
 	bounds = [0,1]
 	scale = None
-	obj = obj.ravel()
+	data = data.ravel()
 
 	key = 'model'
 	model = kwargs.get(key)
@@ -818,9 +822,11 @@ def func_information(obj,*args,**kwargs):
 		model = [model[i] for i in model]
 
 	variables = Dictionary(**{
-		'parameters':[data.parameters() for data in model if not data.unitary and not data.hermitian][0] if model else 0
+		'parameters':[data.parameters() for data in model if not data.unitary and not data.hermitian][0] if model else 0,
+		'size':1 if size == max((data.D**data.N for data in model),default=1) else max((data.D**data.N for data in model),default=1)
 		})
 	p = variables.parameters
+	l = variables.size
 
 	def decorator(func):
 		def wrapper(*args,**kwargs):
@@ -828,13 +834,13 @@ def func_information(obj,*args,**kwargs):
 			x = inplace(x,x<eps,default)
 			return x
 		return wrapper
-	def func(x,n=n,eps=eps,p=p):
-		x = (x>=(p/n))*(1/(1-p))*(n-1)*((1-((x-(p/n))/(1-p)))**(n-2)) #  (n-1)*((1-x)**(n-2)) # (n/(1-np.exp(-n)))*np.exp(-n*obj) # n*np.exp(-n*obj)
+	def func(x,n=n,eps=eps,p=p,l=l):
+		x = ((x/l)>(p/n))*(1/l)*(1/max(p==1,1-p))*(n-1)*((1-(((x/l)-(p/n))/max(p==1,1-p)))**(n-2)) #  (n-1)*((1-x)**(n-2)) # (n/(1-exp(-n)))*exp(-n*x) # n*exp(-n*x)
 		return x
-	def grad(x,n=n,eps=eps,p=p):
+	def grad(x,n=n,eps=eps,p=p,l=l):
 		x = ((-1)**1)*(n-1-1)*(n-1)*((1-x)**(n-2-1))
 		return x
-	def hess(x,n=n,eps=eps,p=p):
+	def hess(x,n=n,eps=eps,p=p,l=l):
 		x = ((-1)**2)*(n-1-2)*(n-1-1)*(n-1)*((1-x)**(n-2-2))
 		return x
 	def probability(x,*args,**kwargs):
@@ -849,7 +855,7 @@ def func_information(obj,*args,**kwargs):
 
 	func = decorator(func)
 
-	data = -information(func,obj)
+	data = information(func,data)
 
 	key = [None,'error']
 	value = [addition(data)/size/samples]*samples,[addition(data**2)/size/samples]*samples

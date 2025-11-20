@@ -2154,7 +2154,7 @@ class Measure(System):
 			function = None
 
 		settings = {} if settings is None else settings
-		settings.update({attr:getattr(self,attr) for attr in self if attr not in settings and not callable(getattr(self,attr))})
+		settings.update({attr:getattr(self,attr) for attr in self if attr not in settings and not callable(getattr(self,attr)) and attr not in dict(data=None)})
 
 		if callable(attribute):
 			data = attribute(parameters=parameters,state=state,data=data,where=where,func=func,options=options,**kwargs)
