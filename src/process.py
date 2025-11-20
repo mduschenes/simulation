@@ -1254,6 +1254,9 @@ def wrap(function,attr=False,func=None,args=None,kwargs=None,options=None,defaul
 	else:
 		function = default
 
+	if not isinstance(function,(*iterables,dict)) and not callable(function):
+		function = default
+
 	return function
 
 def loader(data,plots,processes,verbose=None):
@@ -2931,7 +2934,14 @@ def plotter(plots,processes,verbose=None):
 			logger.log(info,"Configuring : %s %s"%(subinstance,
 				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
 				for attr in metadata[instance][subinstance] 
-				if (not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and (not isinstance(metadata[instance][subinstance][attr],arrays)) and (not isinstance(metadata[instance][subinstance][attr],iterables) or len(metadata[instance]) == 1 or len(metadata[instance][subinstance][attr])<len(metadata[instance])**2)}))
+				if ((not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and
+					(not isinstance(metadata[instance][subinstance][attr],arrays)) and
+					((not isinstance(metadata[instance][subinstance][attr],iterables)) or
+					 (len(metadata[instance]) == 1) or
+					 (len(metadata[instance][subinstance][attr])<2*len(metadata[instance])**1)) and
+					 (isinstance(metadata[instance][subinstance][attr],iterables) and not any(isinstance(i,iterables) for i in metadata[instance][subinstance][attr]))
+					 )
+					}))
 
 			for prop in information[instance][subinstance]:
 				
