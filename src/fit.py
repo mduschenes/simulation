@@ -100,29 +100,29 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	for i in range(n):
 		
-		condition = conditions(x)
-		_condition = conditions(_x)
+		condition = conditions(x) if conditions else None
+		_condition = conditions(_x) if conditions else None
 
 		returns = fitter(
-			x=x[condition[i]] if x is not None else x,
-			y=y[condition[i]] if y is not None else y,
-			_x=_x[_condition[i]] if _x is not None else _x,
-			_y=_y[_condition[i]] if _y is not None else _y,
+			x=x[condition[i]] if x is not None and condition is not None else x,
+			y=y[condition[i]] if y is not None and condition is not None else y,
+			_x=_x[_condition[i]] if _x is not None and condition is not None else _x,
+			_y=_y[_condition[i]] if _y is not None and condition is not None else _y,
 			func=func[i] if func is not None else func,
 			preprocess=preprocess[i] if preprocess is not None else preprocess,
 			postprocess=postprocess[i] if postprocess is not None else postprocess,
-			xerr=xerr[condition[i]] if xerr is not None else xerr,
-			yerr=yerr[condition[i]] if yerr is not None else yerr,
-			parameters=parameters[i] if parameters is not None else parameters,
+			xerr=xerr[condition[i]] if xerr is not None and condition is not None else xerr,
+			yerr=yerr[condition[i]] if yerr is not None and condition is not None else yerr,
+			parameters=parameters[i] if parameters is not None and condition is not None else parameters,
 			covariance=covariance[i] if covariance is not None else covariance,
 			intercept=intercept[i] if intercept is not None else intercept,
 			**(kwargs[i] if kwargs is not None and kwargs[i] is not None else {})
 			)
 
 		_func[i] = returns[0]
-		_y = inplace(_y,_condition[i],returns[1]) if _y is not None else None
+		_y = inplace(_y,_condition[i],returns[1]) if _y is not None and condition is not None else _y
 		_parameters[i] = returns[2]
-		_yerr = inplace(_yerr,_condition[i],returns[3]) if _yerr is not None else None
+		_yerr = inplace(_yerr,_condition[i],returns[3]) if _yerr is not None and condition is not None else _yerr
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]
 

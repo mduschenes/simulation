@@ -832,15 +832,15 @@ def test_shuffle(path=None,tol=None):
 
 	# axes = ((1,0,n-1),)
 
-	# b = shuffle(a,axes=axes,shape=shape,transformation=True)
+	# b = shuffle(a,axes=axes,shape=shape,transform=True)
 
-	# b = shuffle(a,axes=axes,shape=shape,transformation=True)
+	# b = shuffle(a,axes=axes,shape=shape,transform=True)
 
-	# b = shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)
+	# b = shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)
 
-	# assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transformation=True),axes=axes,shape=shape,transformation=False)), "Incorrect split and merge axis %r,%r"%(d,s)
+	# assert allclose(a,shuffle(shuffle(a,axes=axes,shape=shape,transform=True),axes=axes,shape=shape,transform=False)), "Incorrect split and merge axis %r,%r"%(d,s)
 
-	# assert allclose(shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transformation=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
+	# assert allclose(shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a),shuffle(a,axes=axes,shape=shape,transform=True,execute=False)(a)), "Incorrect split and merge axis %r,%r"%(d,s)
 
 
 	n = 5
@@ -859,12 +859,12 @@ def test_shuffle(path=None,tol=None):
 	options = dict(
 		axes = [[i] for i in range(n)],
 		shape = [k,n,d],
-		transformation=True,
+		transform=True,
 		) if where is not None else None
 	_options = dict(
 		axes = [[i] for i in range(n-l)],
 		shape = [k,n-l,d],
-		transformation=False,
+		transform=False,
 		) if where is not None else None
 
 	function = lambda data: data[tuple(slice(None) if i not in where else where[i] for i in range(n))]
@@ -1169,10 +1169,10 @@ def test_action(path=None,tol=None):
 
 			if state.ndim == 2:
 				func = lambda state,data=tmp: einsum('ij,jk...,kl->il...',data,state,dagger(data))
-				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transformation=True)),shape=shape,axes=axes,transformation=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
 			elif state.ndim == 1:
 				func = lambda state,data=tmp: einsum('ij,j...->i...',data,state)
-				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transformation=True)),shape=shape,axes=axes,transformation=False)
+				function = lambda state: shuffle(func(shuffle(state,shape=shape,axes=axes,transform=True)),shape=shape,axes=axes,transform=False)
 
 		elif attr in ['exact']:
 

@@ -2494,14 +2494,22 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def dtype(self):
 			return self.data.dtype
 
+		@classmethod
+		def indexer(cls,index=None,string=None,strings=None):
+			return characters(10)
+
 		def tensor(self,where=None):
 			return self.data
 
 		def array(self):
-			return self.data
+			return self.tensor()
+
+		def matrix(self):
+			return self.array()
 
 		def format(self,*format,**formats):
-			self.indices = [i.format(*format,**formats) for i in self.indices]
+			if format or formats:
+				self.indices = [i.format(*format,**formats) for i in self.indices]
 			return
 
 		def transform(self,data=None,indices=None,func=None,shape=None,axes=None,conj=None):
@@ -2614,6 +2622,20 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			objects = [obj for obj in objects if obj is not None]
 			indices = [i for obj in objects for i in obj.indices if ((indices is None) or (i in indices))]
 			return sorted(set(i for i in indices if sum(i in obj.indices for obj in objects)<2),key=lambda i: indices.index(i))
+
+		@classmethod
+		def common(cls,*objects,indices=None):
+			'''
+			Common of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj for obj in objects if obj is not None]
+			indices = [i for obj in objects for i in obj.indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if sum(i in obj.indices for obj in objects)>1),key=lambda i: indices.index(i))
 
 		@classmethod
 		def contraction(cls,*objects,indices=None):
@@ -2851,12 +2873,26 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		def indices(self):
 			return {i:self[i].indices for i in self}
 
+		@classmethod
+		def indexer(cls,index=None,string=None,strings=None):
+			index = None if index is True else None if index is False else index
+			string = characters(10) if string is None else string
+			strings = '|' if strings is None else strings
+			if (index is None) or (index.startswith(strings) and index.endswith(strings)):
+				string = f'{strings}{string}{strings}'
+			else:
+				string = index
+			return string
+
 		def tensor(self,where=None):
 			where = self if where is None else where
 			return {i:self[i].data for i in where}
 
 		def array(self):
 			return self.contraction(self)
+
+		def matrix(self):
+			return self.array()
 
 		def format(self,*format,**formats):
 			for i in self:
@@ -2930,6 +2966,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
 			data = {i: copy(data) for i,data in enumerate(obj[key] for obj in objects for key in obj)}
+			indices = {index:cls.indexer() for index in cls.common(*(data[i] for i in data)) if cls.indexer(index)==index}
+			for i in data:
+				data[i].transform(indices=indices)
 			return data
 
 		@classmethod
@@ -2973,6 +3012,20 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
 			indices = [i for obj in objects for key in obj for i in obj[key].indices if ((indices is None) or (i in indices))]
 			return sorted(set(i for i in indices if sum(i in obj[key].indices for obj in objects for key in obj)<2),key=lambda i: indices.index(i))
+
+		@classmethod
+		def common(cls,*objects,indices=None):
+			'''
+			Common of tensors
+			Args:
+				objects (iterable[tensor]): Tensors
+				indices (iterable[int,str]): Indices of tensors
+			Returns:
+				indices (iterable[int,str]): Indices of tensors
+			'''
+			objects = [obj if isinstance(obj,cls) else {None:obj} for obj in objects if obj is not None]
+			indices = [i for obj in objects for key in obj for i in obj[key].indices if ((indices is None) or (i in indices))]
+			return sorted(set(i for i in indices if sum(i in obj[key].indices for obj in objects for key in obj)>1),key=lambda i: indices.index(i))
 
 		@classmethod
 		def contraction(cls,*objects,indices=None):
@@ -3065,33 +3118,32 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 	class context(object):
 		'''
-		Update tensor within context with formats
+		Update object within context with formats
 		Args:
-			objs (iterable[tensor]): Tensors to update
+			objs (iterable[object]): Objects to update
 			formats (object): Formats for indices
 			indices (iterable[dict]): Formats of indices to update, [{index:format}]
+			mutable (bool,iterable[bool]): Mutable objects
 		'''
-		def __init__(self,*objs,formats=None,indices=None):
+		def __init__(self,*objs,formats=None,indices=None,mutable=None):
 
-			self.objs = [obj for obj in objs]
+			self.objs = [obj for i,obj in enumerate(objs)]
 			self.formats = formats if isinstance(formats,iterables) else [formats] if formats is not None else []
-			self.indices = [index if index is not None else {} for index in indices] if isinstance(indices,iterables) else [indices if indices is not None else {} for obj in objs]
-			self.attributes = [[] for obj in objs]
+			self.indices = [index if index is not None else {} for index in indices] if isinstance(indices,iterables) else [indices if indices is not None else {} for i,obj in enumerate(objs)]
+			self.mutable = [False if not mutable else True if (isinstance(mutable,iterables) and mutable[i]) or mutable else False for i,obj in enumerate(objs)]
+
+			self.attributes = [{} for i,obj in enumerate(objs)]
 
 			indexes = range(len(objs))
 
 			def enter(obj,formats,indices,attributes):
-				attributes.extend(obj.indices)
-				indexes = [*obj.indices]
-				for i,index in enumerate(indexes):
-					if index in indices:
-						indexes[i] = indices[index]
-				obj.indices = indexes
+				attributes.update({(index.format(*formats) if index not in indices else indices[index].format(*formats)) if formats else (index if index not in indices else indices[index]):index for index in obj.indices})
+				obj.transform(indices=indices)
 				obj.format(*formats)
 				return
 
 			def exit(obj,formats,indices,attributes):
-				obj.indices = attributes
+				obj.transform(indices=attributes)
 				return
 
 			self.indexes = indexes
@@ -3107,6 +3159,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 		def __exit__(self,type,value,traceback):
 			for i in self.indexes:
+				if self.mutable[i]:
+					continue
 				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
 	
@@ -3163,20 +3217,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			D = self.D if self.D is not None else 0
 			S = self.S if self.S is not None else 0
 
-			if callable(self.strings):
-				strings = self.strings
-			else:
-				def strings(index=None,string=None,strings=None):
-					strings = '|' if strings is None else strings
-					if (index is None) or (index.startswith(strings) and index.endswith(strings)):
-						string = f'{strings}{characters(4) if string is None else string}{strings}'
-					else:
-						string = index
-					return string
+			indexer = self.indexer
 
 			if setup is None or setup is True:
 				
-				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,indexer=indexer,**kwargs):
 
 					classes = tensors
 
@@ -3193,9 +3238,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						data = transpose(reshape(data,shape),axes)
 
 					indices = [
-						strings(string=symbols(index)),
+						indexer(index=True,string=symbols(index)),
 						*((indices[max(1,(data.ndim-2)//2):min(-1,-(data.ndim-2)//2)] if len(indices)==3 else indices) if isinstance(indices,iterables) else [indices] if indices is not None else f'{string}' if string is not None else f'{index}'),
-						strings(string=symbols(index+1)),
+						indexer(index=True,string=symbols(index+1)),
 						]
 
 					parameters = parameters if parameters is not None else parameters
@@ -3206,7 +3251,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 			elif setup is False:
 
-				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,strings=strings,**kwargs):
+				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,indexer=indexer,**kwargs):
 					
 					classes = tensors
 
@@ -3221,8 +3266,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.D = max(D,max((max(self[i].shape[1:-1],default=1) for i in self),default=D))
 			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=S))
 			
-			self.strings = strings
-
 			orientation = self.orientation
 			if not callable(orientation):
 				def orientation(i,where):
@@ -3287,7 +3330,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					func[L] = function
 			self.func = func
 
-			self.index()
+			indices = self.indexer(self)
+			self.transform(indices={i:indices for i in self})
 
 			return
 
@@ -3436,7 +3480,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
 						z = dot(x,dot(z,y))
 						a = dot(x,dot(a,y))
-						print('diff',allclose(z,a),addition(abs2(z-a)))
+						debug('diff',allclose(z,a),addition(abs2(z-a)))
 					except:
 						pass
 
@@ -3767,6 +3811,19 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			return scheme
 
+		@classmethod
+		def indexer(cls,index=None,string=None,strings=None):
+			if isinstance(index,dict):
+				indices = index
+				indices = {index:cls.indexer(index,string=string,strings=strings) for i in indices for index in indices[i].indices}
+			else:
+				index = super().indexer(index=index,string=string,strings=strings)
+				indices = index
+			return indices
+
+		def tensor(self,where=None):
+			return super().tensor(where=where)
+
 		def array(self):
 			return super().array()
 
@@ -3774,7 +3831,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			
 			data = self.array()
 
-			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.strings(index)==index}
+			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.indexer(index)==index}
 			
 			if indices is None:
 				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in sorted(set(indexes[index][0] for index in indexes))}
@@ -3791,11 +3848,6 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			data = reshape(addition(transpose(data,axes),axis),shape)
 
 			return data
-
-		def index(self):
-			indices = {index:self.strings(index) for i in self for index in self[i].indices}
-			self.transform(indices={i:indices for i in self})
-			return
 
 		def copy(self,deep=False,**kwargs):
 			kwargs.update(dict(N=self.N,D=self.D,S=self.S,setup=False))
@@ -5950,7 +6002,7 @@ def nndsvd(a=None,u=None,v=None,size=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	print('svd',size,s.min()/s.max())	
+	debug('svd',size,s.min()/s.max())
 
 	u,v,s = u[:,:size],v[:size,:],s[:size]
 
@@ -6514,7 +6566,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			stats[attr] = stats[attr][~is_nan(stats[attr])]
 
 		try:
-			print(method,{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats})
+			debug(method,{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats})
 		except:
 			pass
 
@@ -6543,7 +6595,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 
 		return u,v,stats
 
-	print(dict(method=method,architecture=architecture,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
+	debug(dict(method=method,architecture=architecture,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
 
 	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,architecture=architecture,stats=stats,**kwargs)
 
@@ -6973,8 +7025,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+					shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 
 					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return _shuffler(einsummation(transform(data),shuffler(state)))
@@ -7039,8 +7091,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 						
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(data),shuffler(state)))
@@ -7105,8 +7157,8 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 						
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(data),shuffler(state),conjugate(transform(data))))
@@ -7259,8 +7311,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 					axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-					shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-					_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+					shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+					_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 					
 					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return _shuffler(einsummation(transform(grad),shuffler(state)))
@@ -7325,8 +7377,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 						
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(grad),shuffler(state)))
@@ -7392,8 +7444,8 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shape = {**{axis:samples[axis] for axis in range(length)},**{length+axis: [D[i] for i in range(N)] for axis in range(s)}}
 						axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]]
 
-						shuffler = shuffle(state,shape=shape,axes=axes,transformation=True,execute=False)
-						_shuffler = shuffle(state,shape=shape,axes=axes,transformation=False,execute=False)
+						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
+						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
 						
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							grad = _shuffler(einsummation(transform(grad),shuffler(state),conjugate(transform(data))))
@@ -10955,7 +11007,7 @@ def moveaxis(a,source,destination):
 	return np.moveaxis(a,source,destination)
 
 
-def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
+def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 	'''
 	Split and swap, and group axis
 	
@@ -10964,12 +11016,12 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 	and axes are grouped by n components
 		axes: [[i,j,...],...,[k,l,...]] for i,j,k,l,... in [n]
 	
-	If transformation: array gets split with shape to
+	If transform: array gets split with shape to
 		shape -> (*(dimension_ij for j in range(n) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and grouped with axes to
 		shape -> (*(prod(dimension_ij for j in axis) for axis in axes for i in range(ndim) ),*(dimensions_i for i in range(ndims)))
 	
-	If not transformation, shape is assumed to be previously split and grouped, and is reverse grouped and split
+	If not transform, shape is assumed to be previously split and grouped, and is reverse grouped and split
 	
 	Example:
 		shape(a) = (s,xyz,uvw) with shape = {1:(x,y,z),2:(u,v,w),0:s}, axes = ((2,0))
@@ -10982,7 +11034,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			n: 2
 			sort: [1,2,0]
 		
-		transformation: (s,xyz,uvw) ->
+		transform: (s,xyz,uvw) ->
 			split.func-> (xyz,uvw,s)
 			split.reshape-> (x,y,z,u,v,w,s)
 			split.transpose-> (x,u,y,v,z,w,s)
@@ -10990,7 +11042,7 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 			group.transpose-> (z,x,w,u,y,v,s)
 			group.reshape-> (zx,wu,y,v,s)
 
-		~transformation: (zx,wu,y,v,s) ->
+		~transform: (zx,wu,y,v,s) ->
 			group.reshape-> (z,x,w,u,y,v,s)
 			group.transpose-> (x,u,y,v,z,w,s)
 			group.func-> (x,u,y,v,z,w,s)
@@ -11012,10 +11064,10 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 					size: prod(shape)*prod(shapes),
 					ndim: len(shape)+len(shapes)		
 				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
-		transformation (bool): transformation of array options
+		transform (bool): transform of array options
 			True,None: split and swap and group axes
 			False: reverse split, and swap, and group
-		execute (bool): Execute transformations or return function with precomputed axes and shapes
+		execute (bool): Execute transforms or return function with precomputed axes and shapes
 	Returns:
 		a (array): reordered array
 	'''
@@ -11124,11 +11176,11 @@ def shuffle(a=None,axes=None,shape=None,transformation=None,execute=True):
 
 	axes,shape,shapes,ndim,ndims,n,sort = parse(axes,shape)
 
-	if transformation is None or transformation is True:
+	if transform is None or transform is True:
 
 		return group(split(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 		
-	elif transformation is False:
+	elif transform is False:
 		
 		return _split(_group(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 
@@ -11141,7 +11193,7 @@ def swap(a=None,axes=None,shape=None,execute=True):
 		shape (dict[int,iterable[int] or int]): shape of array of form 
 			dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
 			iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
-		execute (bool): Execute transformations or return function with precomputed axes and shapes
+		execute (bool): Execute transforms or return function with precomputed axes and shapes
 	Returns:
 		a (array): shuffled array
 	'''
@@ -11188,9 +11240,9 @@ def swap(a=None,axes=None,shape=None,execute=True):
 		return axes,shape,_axes,_shape	
 
 	axes,shape,_axes,_shape = permute(axes,shape)
-	transformation = True
+	transform = True
 
-	return shuffle(shuffle(a,axes=axes,shape=shape,transformation=transformation,execute=execute),axes=_axes,shape=_shape,transformation=not transformation,execute=execute)
+	return shuffle(shuffle(a,axes=axes,shape=shape,transform=transform,execute=execute),axes=_axes,shape=_shape,transform=not transform,execute=execute)
 
 
 def broadcast_to(a,shape):
@@ -12235,7 +12287,7 @@ def piecewises(func,shape,include=None,**kwargs):
 		return func
 
 
-def piecewise(func,bounds,**kwargs):
+def piecewise(func,bounds=None,**kwargs):
 	'''
 	Compute piecewise curve from func
 	Args:
@@ -12246,6 +12298,9 @@ def piecewise(func,bounds,**kwargs):
 		func (callable): Piecewise function with signature func(x,*args,**kwargs)
 		conditions (callable): Conditions for piecewise domains with signature conditions(x) -> iterable[bool]
 	'''
+
+	if bounds is None:
+		return func,bounds
 
 	if callable(func) or isinstance(func,str):
 		func = [func]

@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,choice,allclose,asscalar,is_array,is_nan,product
 from src.utils import einsum,symbols,conjugate,dagger,dot,addition,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
-from src.utils import shuffle,swap,seeder,rng,copy
+from src.utils import shuffle,swap,seeder,rng,copy,context
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
@@ -1367,11 +1367,22 @@ def test_layout(*args,**kwargs):
 
 def test_measure(*args,**kwargs):
 
+	from importlib import reload
+	import src
+
+	os.environ['NUMPY_BACKEND'] = 'quimb'
+	reload(src.utils)
+	reload(src.quantum)
+
+	from src.utils import representation_quimb,tensors_quimb,matrices_quimb,objects_quimb
+
 	kwargs = {
-		"measure.operator":["pauli","tetrad"],
-		"state.D":[4,4],
+		"measure.operator":["pauli"],
+		"measure.architecture":["tensor","array","tensor_quimb"],
 		}
-	groups = [["measure.operator","state.D",]]
+	groups = None
+
+	data = {}
 
 	for index,kwargs in enumerate(permuter(kwargs,groups=groups)):
 
@@ -1396,10 +1407,12 @@ def test_measure(*args,**kwargs):
 				"where":None,
 				"string":"psi",
 				"parameters":True,
-				"N":3,"D":4,"ndim":1,
+				"D":2,"ndim":2,
 				"system":{"seed":123,"dtype":"complex","architecture":"array"}
 				}
 			})
+
+		data[index] = {}
 
 		setter(settings,kwargs,delimiter=delim,default=True)
 
@@ -1410,14 +1423,29 @@ def test_measure(*args,**kwargs):
 		measure = measure(**settings.measure)
 		state = state(**settings.state)
 
-		measure.init(state=state)
+		parameters = measure.parameters()
+		state = [state]*measure.N
+		kwargs = dict()
 
-		print(settings["measure"]["operator"])
-		print(measure,len(measure),measure.D,state.D)
-		print(measure.inverse)
-		print()
+		state = measure.transform(parameters=parameters,state=state,**kwargs)
 
-		assert allclose(sum(i for i in measure.basis[measure.pointer]),basis.I(D=measure.D,dtype=measure.dtype)), "Incorrect %r basis"%(measure)
+		key = 'state'
+		if measure.architecture in ['array']:
+			value = array(state).ravel()
+		elif measure.architecture in ['tensor']:
+			value = measure.tensor(parameters=parameters,state=state,**kwargs).array().ravel()
+		elif measure.architecture in ['tensor_quimb']:
+			value = representation_quimb(state,contraction=True).ravel()
+
+		data[index][key] = value
+
+
+	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent calculations"
+
+
+	os.environ['NUMPY_BACKEND'] = 'jax'
+	reload(src.utils)
+	reload(src.quantum)
 
 	print("Passed")
 
@@ -1984,6 +2012,8 @@ def test_module(*args,**kwargs):
 
 		data[index] = {}
 
+		svd = True
+
 		verbose = False
 		precision = 8
 
@@ -2089,7 +2119,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(probability)
 		elif measure.architecture in ["tensor"]:
-			value = probability.array().ravel()
+			value = measure.tensor(parameters=parameters,state=probability,**kwargs).array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = tensorprod(representation_quimb(probability))
 
@@ -2154,7 +2184,7 @@ def test_module(*args,**kwargs):
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
 		elif measure.architecture in ["tensor"]:
-			value = operator(parameters=parameters,state=state,**kwargs).array().ravel()
+			value = measure.tensor(parameters=parameters,state=operator(parameters=parameters,state=state,**kwargs),**kwargs).array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
 
@@ -2162,7 +2192,6 @@ def test_module(*args,**kwargs):
 
 		if verbose or True:
 			print(measure.architecture,parse(value))
-
 
 		parameters = model.parameters()
 		state = [i for i in objs]
@@ -2240,14 +2269,14 @@ def test_module(*args,**kwargs):
 
 		state = module(parameters,state)
 
-		state = module.measure.transform(parameters=parameters,state=state,transformation=False)
+		state = module.measure.transform(parameters=parameters,state=state,transform=False)
 
 		if module.measure.architecture in ['array']:
-			value = array(state)
+			value = array(state).ravel()
 		elif module.measure.architecture in ['tensor']:
-			value = state.matrix()
+			value = state.matrix().ravel()
 		elif module.measure.architecture in ['tensor_quimb']:
-			value = representation_quimb(state,to=module.measure.architecture,contraction=True)
+			value = representation_quimb(state,to=module.measure.architecture,contraction=True).ravel()
 
 		key = 'model'
 		data[index][key] = value
@@ -2255,7 +2284,6 @@ def test_module(*args,**kwargs):
 
 		if verbose or True:
 			print(measure.architecture,parse(value))
-
 
 		tmp = value
 
@@ -2274,17 +2302,17 @@ def test_module(*args,**kwargs):
 
 	print({i:list(data[i]) for i in data})
 
-	# for i in data:
-	# 	for j in data:
-	# 		if i >= j:
-	# 			continue
-	# 		for attr in data[i]:
-	# 			boolean = equalizer(data[i][attr],data[j][attr])
-	# 			if not boolean:
-	# 				print(attr,i,j)
-	# 				print(data[i][attr])
-	# 				print(data[j][attr])
-	# 				print()
+	for i in data:
+		for j in data:
+			if i >= j:
+				continue
+			for attr in data[i]:
+				boolean = equalizer(data[i][attr],data[j][attr])
+				if not boolean:
+					print(attr,i,j)
+					print(data[i][attr])
+					print(data[j][attr])
+					print()
 
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent models"
 
@@ -2486,15 +2514,8 @@ def test_calculate(*args,**kwargs):
 			'vectorize',
 			'measure',
 			'square',
-			'array',
 			'state',
 			'matrix',
-			'sample.array.linear',
-			'sample.array.log',
-			'sample.state.linear',
-			'sample.state.log',
-			'sample.array.information',
-			'sample.state.information',
 			'norm_quantum',
 			'norm_classical',
 			'norm_pure',
@@ -2518,6 +2539,12 @@ def test_calculate(*args,**kwargs):
 			'spectrum_classical',
 			'rank_quantum',
 			'rank_classical',
+			'sample.array.linear',
+			'sample.array.log',
+			'sample.state.linear',
+			'sample.state.log',
+			'sample.array.information',
+			'sample.state.information',
 			]
 
 
@@ -2567,11 +2594,11 @@ def test_calculate(*args,**kwargs):
 		# Test
 		key = 'state'
 		if module.measure.architecture in ['array']:
-			value = array(state)
+			value = array(state).ravel()
 		elif module.measure.architecture in ['tensor']:
-			value = state.array().ravel()
+			value = module.measure.tensor(parameters=parameters,state=state,**kwargs).array().ravel()
 		elif module.measure.architecture in ['tensor_quimb']:
-			value = representation_quimb(state.copy(),contraction=True).ravel()
+			value = representation_quimb(state,contraction=True).ravel()
 
 		if verbose:
 			print(key)
@@ -2629,7 +2656,7 @@ def test_calculate(*args,**kwargs):
 				where = None
 
 			elif attr in [
-				'array','state','matrix',
+				'state','matrix',
 				]:
 
 				kwargs = dict()
@@ -2641,15 +2668,15 @@ def test_calculate(*args,**kwargs):
 				]:
 
 				if attr in ['sample.array.linear']:
-					kwargs = dict(attribute="array",function="src.functions.func_histogram",settings=dict(bins=1000,scale="linear",base=10,range=[0,1]))
+					kwargs = dict(attribute=["tensor","array"],function="src.functions.func_histogram",settings=dict(bins=1000,scale="linear",base=10,range=[0,1]))
 				elif attr in ['sample.array.log']:
-					kwargs = dict(attribute="array",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
+					kwargs = dict(attribute=["tensor","array"],function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.state.linear']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="linear",base=10,range=[0,1]))
 				elif attr in ['sample.state.log']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.array.information']:
-					kwargs = dict(attribute="array",function="src.functions.func_information",settings=dict(model=module,state=state))
+					kwargs = dict(attribute=["tensor","array"],function="src.functions.func_information",settings=dict(model=module,state=state))
 				elif attr in ['sample.state.information']:
 					kwargs = dict(
 						attribute="state",function="src.functions.func_information",
@@ -2704,12 +2731,36 @@ def test_calculate(*args,**kwargs):
 
 			key = attr
 
-			if module.measure.architecture in ['array']:
-				value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
-			elif module.measure.architecture in ['tensor']:
-				value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
-			elif module.measure.architecture in ['tensor_quimb']:
-				value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+			if attr in [
+				'trace','vectorize','measure',
+				]:
+
+				if module.measure.architecture in ['array']:
+					value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+				elif module.measure.architecture in ['tensor']:
+					value = module.measure.tensor(parameters=parameters,state=obj,where=[i for i in range(module.measure.N) if i not in where] if where else None).array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+				elif module.measure.architecture in ['tensor_quimb']:
+					value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+
+			elif attr in [
+				'state','matrix',
+				'square',
+				'norm_quantum','norm_classical','norm_pure',
+				'infidelity_quantum','infidelity_classical','infidelity_pure',
+				'entanglement_quantum','entanglement_classical','entanglement_renyi','entangling_quantum','entangling_classical','entangling_renyi',
+				'mutual_quantum','mutual_measure','mutual_classical','mutual_renyi',
+				'discord_quantum','discord_classical','discord_renyi',
+				'spectrum_quantum','spectrum_classical',
+				'rank_quantum','rank_classical',
+				'sample.array.linear','sample.array.log','sample.state.linear','sample.state.log','sample.array.information','sample.state.information',
+				]:
+
+				if module.measure.architecture in ['array']:
+					value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+				elif module.measure.architecture in ['tensor']:
+					value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
+				elif module.measure.architecture in ['tensor_quimb']:
+					value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 
 			if verbose or True:
 				print(module.measure.architecture,attr,where,value.shape)
@@ -3101,7 +3152,7 @@ def test_class(*args,**kwargs):
 		# Value
 		if test:
 
-			value = module.measure.transform(parameters=parameters,state=state,transformation=False)
+			value = module.measure.transform(parameters=parameters,state=state,transform=False)
 			if module.measure.architecture in ['array']:
 				value = array(value)
 			elif module.measure.architecture in ['tensor']:
@@ -3164,7 +3215,7 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
-	# test_module(*args,**args)
-	test_calculate(*args,**args)
+	test_module(*args,**args)
+	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
