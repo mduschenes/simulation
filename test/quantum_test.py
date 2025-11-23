@@ -1378,7 +1378,7 @@ def test_measure(*args,**kwargs):
 
 	kwargs = {
 		"measure.operator":["pauli"],
-		"measure.architecture":["tensor","array","tensor_quimb"],
+		"measure.architecture":["tensor","tensor.quasi","array","tensor_quimb"],
 		}
 	groups = None
 
@@ -1432,7 +1432,7 @@ def test_measure(*args,**kwargs):
 		key = 'state'
 		if measure.architecture in ['array']:
 			value = array(state).ravel()
-		elif measure.architecture in ['tensor']:
+		elif measure.architecture in ['tensor','tensor.quasi']:
 			value = measure.tensor(parameters=parameters,state=state,**kwargs).array().ravel()
 		elif measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,contraction=True).ravel()
@@ -1878,9 +1878,9 @@ def test_module(*args,**kwargs):
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.operator":["zero"],
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
-		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"module.measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
 		"state.architecture":["array","array","array"],
-		"measure.architecture":["tensor","tensor_quimb","array"],
+		"measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
 		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		"module.measure.options":[{},{},{}],
 		"measure.options":[{},{},{}],
@@ -1891,6 +1891,7 @@ def test_module(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if
 		(i['module.measure.architecture'] in [
 			"tensor",
+			"tensor.quasi",
 			"tensor_quimb",
 			"array"
 			])
@@ -2061,7 +2062,7 @@ def test_module(*args,**kwargs):
 
 		if tmp.architecture is None or tmp.architecture in ['array']:
 			tmp = tmp().ravel()
-		elif tmp.architecture in ['tensor']:
+		elif tmp.architecture in ['tensor','tensor.quasi']:
 			tmp = tmp().ravel()
 		elif tmp.architecture in ['tensor_quimb']:
 			tmp = tmp().ravel()
@@ -2118,7 +2119,7 @@ def test_module(*args,**kwargs):
 		key = "probability"
 		if measure.architecture in ["array"]:
 			value = array(probability)
-		elif measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor","tensor.quasi"]:
 			value = measure.tensor(parameters=parameters,state=probability,**kwargs).array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = tensorprod(representation_quimb(probability))
@@ -2138,7 +2139,7 @@ def test_module(*args,**kwargs):
 		key = "amplitude"
 		if measure.architecture in ["array"]:
 			value = array(amplitude)
-		elif measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor","tensor.quasi"]:
 			value = amplitude.matrix()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(amplitude,to=measure.architecture,contraction=True)
@@ -2183,7 +2184,7 @@ def test_module(*args,**kwargs):
 		key = "operator"
 		if measure.architecture in ["array"]:
 			value = array(operator(parameters=parameters,state=state,**kwargs))
-		elif measure.architecture in ["tensor"]:
+		elif measure.architecture in ["tensor","tensor.quasi"]:
 			value = measure.tensor(parameters=parameters,state=operator(parameters=parameters,state=state,**kwargs),**kwargs).array().ravel()
 		elif measure.architecture in ["tensor_quimb"]:
 			value = representation_quimb(operator(parameters=parameters,state=state,**kwargs),to=measure.architecture,contraction=True)
@@ -2227,7 +2228,7 @@ def test_module(*args,**kwargs):
 
 		if measure.architecture in ['array']:
 			tmp = array(tmp)
-		elif measure.architecture in ['tensor']:
+		elif measure.architecture in ['tensor','tensor.quasi']:
 			tmp = tmp.matrix()
 		elif measure.architecture in ['tensor_quimb']:
 			tmp = representation_quimb(tmp,to=measure.architecture,contraction=True)
@@ -2273,7 +2274,7 @@ def test_module(*args,**kwargs):
 
 		if module.measure.architecture in ['array']:
 			value = array(state).ravel()
-		elif module.measure.architecture in ['tensor']:
+		elif module.measure.architecture in ['tensor','tensor.quasi']:
 			value = state.matrix().ravel()
 		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,to=module.measure.architecture,contraction=True).ravel()
@@ -2349,10 +2350,10 @@ def test_calculate(*args,**kwargs):
 
 		"module.measure.D":[2],"module.measure.operator":["povm",["povm","pauli","tetrad","povm","povm","pauli","tetrad","povm","povm","pauli","tetrad","povm"]],"module.measure.symmetry":[None],
 
-		"module.measure.architecture":["tensor","tensor_quimb","array"],
-		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
-		"module.measure.options":[{},{},{}],
-		"callback.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"module.measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
+		"module.options":[{"scheme":"svd","S":None},{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"module.measure.options":[{},{},{},{}],
+		"callback.options":[{"scheme":"svd","S":None},{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
 		}
 
 	groups = ["module.measure.architecture","module.options","module.measure.options","callback.options"]
@@ -2360,6 +2361,7 @@ def test_calculate(*args,**kwargs):
 		(
 		(i['module.measure.architecture'] in [
 			"tensor",
+			"tensor.quasi",
 			"tensor_quimb",
 			"array",
 			]) and
@@ -2367,7 +2369,8 @@ def test_calculate(*args,**kwargs):
 			"array",
 			] or
 		i['module.measure.architecture'] in [
-			"tensor"
+			"tensor",
+			"tensor.quasi",
 			])
 		) and (
 		i['module.measure.operator'] in ["povm"]
@@ -2595,13 +2598,13 @@ def test_calculate(*args,**kwargs):
 		key = 'state'
 		if module.measure.architecture in ['array']:
 			value = array(state).ravel()
-		elif module.measure.architecture in ['tensor']:
+		elif module.measure.architecture in ['tensor','tensor.quasi']:
 			value = module.measure.tensor(parameters=parameters,state=state,**kwargs).array().ravel()
 		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,contraction=True).ravel()
 
-		if verbose:
-			print(key)
+		if verbose or True:
+			print(key,module.measure.architecture)
 			print(parse(value))
 
 		data[index][key] = value
@@ -2737,7 +2740,7 @@ def test_calculate(*args,**kwargs):
 
 				if module.measure.architecture in ['array']:
 					value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
-				elif module.measure.architecture in ['tensor']:
+				elif module.measure.architecture in ['tensor','tensor.quasi']:
 					value = module.measure.tensor(parameters=parameters,state=obj,where=[i for i in range(module.measure.N) if i not in where] if where else None).array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 				elif module.measure.architecture in ['tensor_quimb']:
 					value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
@@ -2757,7 +2760,7 @@ def test_calculate(*args,**kwargs):
 
 				if module.measure.architecture in ['array']:
 					value = array(obj).ravel() if isinstance(obj,arrays) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
-				elif module.measure.architecture in ['tensor']:
+				elif module.measure.architecture in ['tensor','tensor.quasi']:
 					value = obj.array().ravel() if isinstance(obj,tensors) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
 				elif module.measure.architecture in ['tensor_quimb']:
 					value = representation_quimb(obj,to=module.measure.architecture,contraction=True).ravel() if isinstance(obj,tensors_quimb) else array(obj).ravel() if not isinstance(obj,dict) else array([obj[i] for i in obj])
@@ -2805,7 +2808,7 @@ def test_mps(*args,**kwargs):
 
 	def init(N,D,S,L,architecture,**kwargs):
 
-		if architecture in ['tensor']:
+		if architecture in ['tensor','tensor.quasi']:
 			os.environ['NUMPY_BACKEND'] = 'jax'
 			reload(src.utils)
 			reload(src.quantum)
@@ -2864,7 +2867,7 @@ def test_mps(*args,**kwargs):
 
 			value = einsum('uij,wji,wv->uv',tensor(measure,len(where)),value,tensor(inverse,len(where)))
 
-			if architecture in ['tensor']:
+			if architecture in ['tensor','tensor.quasi']:
 				value = basis.shuffle(value,shape=[D**2]*len(where))
 			elif architecture in ['tensor_quimb']:
 				pass
@@ -2882,6 +2885,7 @@ def test_mps(*args,**kwargs):
 	L = 2
 	T = 1
 	architecture = 'tensor'
+	# architecture = 'tensor.quasi'
 	# architecture = 'tensor_quimb'
 	architecture = 'all'
 	parameters = 1e-3,
@@ -2902,6 +2906,15 @@ def test_mps(*args,**kwargs):
 	if architecture in ['tensor','all']:
 		for i in range(T):
 			state,data = init(N,D,S,L,architecture='tensor')
+			for k in range(M):
+				for i in data:
+					value,where = data[i]['data'],data[i]['where']
+					state = state(value,where=where,options=options)
+		print(state)
+
+	if architecture in ['tensor.quasi','all']:
+		for i in range(T):
+			state,data = init(N,D,S,L,architecture='tensor.quasi')
 			for k in range(M):
 				for i in data:
 					value,where = data[i]['data'],data[i]['where']
@@ -2964,7 +2977,7 @@ def test_class(*args,**kwargs):
 		"model.N":[4],"model.D":[2],"model.M":[2],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],
 
-		"module.measure.architecture":["tensor","tensor_quimb","array"],
+		"module.measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
 		"state.architecture":["array","array","array"],
 		"module.options":[
 			# {"scheme":"nmf","S":None,"eps":1e-16,"iters":5e5,"parameters":None,"method":"mu","initialize":"nndsvda","metric":"norm","architecture":"joint","key":seeder(123)},
@@ -2984,6 +2997,7 @@ def test_class(*args,**kwargs):
 	filters = lambda kwargs:[i for i in kwargs if (
 		i['module.measure.architecture'] in [
 			"tensor",
+			"tensor.quasi",
 			"tensor_quimb",
 			"array",
 			]
@@ -3099,7 +3113,7 @@ def test_class(*args,**kwargs):
 		# Backend
 		if settings.module.measure.architecture in ["array"]:
 			pass
-		elif settings.module.measure.architecture in ["tensor"]:
+		elif settings.module.measure.architecture in ["tensor","tensor.quasi"]:
 			pass
 		elif settings.module.measure.architecture in ["tensor_quimb"]:
 			from importlib import reload
@@ -3137,7 +3151,7 @@ def test_class(*args,**kwargs):
 
 			if module.measure.architecture in ['array']:
 				value = array(value)
-			elif module.measure.architecture in ['tensor']:
+			elif module.measure.architecture in ['tensor','tensor.quasi']:
 				value = value.array().item()
 			elif module.measure.architecture in ['tensor_quimb']:
 				value = representation_quimb(value,to=module.measure.architecture,contraction=True)
@@ -3155,7 +3169,7 @@ def test_class(*args,**kwargs):
 			value = module.measure.transform(parameters=parameters,state=state,transform=False)
 			if module.measure.architecture in ['array']:
 				value = array(value)
-			elif module.measure.architecture in ['tensor']:
+			elif module.measure.architecture in ['tensor','tensor.quasi']:
 				value = value.matrix()
 			elif module.measure.architecture in ['tensor_quimb']:
 				value = representation_quimb(value,to=module.measure.architecture,contraction=True)
@@ -3176,7 +3190,7 @@ def test_class(*args,**kwargs):
 		# Backend
 		if module.measure.architecture in ["array"]:
 			pass
-		elif module.measure.architecture in ["tensor"]:
+		elif module.measure.architecture in ["tensor","tensor.quasi"]:
 			pass
 		elif module.measure.architecture in ["tensor_quimb"]:
 			os.environ.pop('NUMPY_BACKEND')
@@ -3215,7 +3229,7 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
-	test_module(*args,**args)
-	# test_calculate(*args,**args)
+	# test_module(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)

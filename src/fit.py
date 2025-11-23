@@ -113,7 +113,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			postprocess=postprocess[i] if postprocess is not None else postprocess,
 			xerr=xerr[condition[i]] if xerr is not None and condition is not None else xerr,
 			yerr=yerr[condition[i]] if yerr is not None and condition is not None else yerr,
-			parameters=parameters[i] if parameters is not None and condition is not None else parameters,
+			parameters=parameters[i] if parameters is not None else parameters,
 			covariance=covariance[i] if covariance is not None else covariance,
 			intercept=intercept[i] if intercept is not None else intercept,
 			**(kwargs[i] if kwargs is not None and kwargs[i] is not None else {})

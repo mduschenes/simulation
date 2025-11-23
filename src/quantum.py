@@ -687,7 +687,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -702,7 +702,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -717,7 +717,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -732,7 +732,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -747,7 +747,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -762,7 +762,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -777,7 +777,7 @@ class Basis(Dict):
 		if kwargs.architecture is None or kwargs.architecture in ['array']:
 			if data is not None and data.ndim < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = reshape(data,(*data.shape,*[1]*(kwargs.ndim if kwargs.ndim is not None else 0)))
 			if data is not None and (data.ndim-2) < (kwargs.ndim if kwargs.ndim is not None else 0):
 				data = tensorprod([data,conjugate(data)])
@@ -796,7 +796,7 @@ class Basis(Dict):
 				len(kwargs.shape) if not isinstance(kwargs.shape,int) else 0
 				):
 				data = outer(data,data)
-		elif kwargs.architecture in ['tensor']:
+		elif kwargs.architecture in ['tensor','tensor.quasi']:
 			data = array([outer(i,i) for i in data])
 			if data is not None and 1 < max(
 				kwargs.ndim if kwargs.ndim is not None else 0,
@@ -1150,6 +1150,28 @@ class Measure(System):
 			kwargs = dict(indices=[*inds[:1]])
 			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
 
+		elif self.architecture in ['tensor.quasi']:
+
+			cls = tensor
+
+			kwargs = dict(indices=[*inds[:1],*indices[:2]])
+			basis = [cls(basis[pointer],**kwargs)]*N if symmetry else [cls(basis[i],**kwargs) for i in where]
+
+			kwargs = dict(indices=[*inds[:2]])
+			transformation = [cls(transformation[pointer],**kwargs)]*N if symmetry else [cls(transformation[i],**kwargs) for i in where]
+
+			kwargs = dict(indices=[*inds[:2]])
+			inverse = [cls(inverse[pointer],**kwargs)]*N if symmetry else [cls(inverse[i],**kwargs) for i in where]
+
+			kwargs = dict(indices=[*inds[:3]])
+			structure = [cls(structure[pointer],**kwargs)]*N if symmetry else [cls(structure[i],**kwargs) for i in where]
+
+			kwargs = dict(indices=[*inds[:1]])
+			ones = [cls(ones[pointer],**kwargs)]*N if symmetry else [cls(ones[i],**kwargs) for i in where]
+
+			kwargs = dict(indices=[*inds[:1]])
+			zeros = [cls(zeros[pointer],**kwargs)]*N if symmetry else [cls(zeros[i],**kwargs) for i in where]
+
 		elif self.architecture in ['tensor_quimb']:
 
 			cls = tensor_quimb
@@ -1239,6 +1261,17 @@ class Measure(System):
 			def func(parameters=None,state=None,**kwargs):
 				N = state.N
 				for i in range(N):
+					with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
+						state &= self.inverse[i] & self.basis[i]
+				return state
+			def gradient(parameters=None,state=None,**kwargs):
+				return 0
+
+		elif self.architecture in ['tensor.quasi']:
+
+			def func(parameters=None,state=None,**kwargs):
+				N = state.N
+				for i in range(N):
 					with context(self.basis[i],formats=i):
 						state &= self.basis[i]
 				return state
@@ -1246,6 +1279,7 @@ class Measure(System):
 				return 0
 
 		elif self.architecture in ['tensor_quimb']:
+
 			def func(parameters=None,state=None,**kwargs):
 				N = state.L
 				for i in range(N):
@@ -1454,8 +1488,58 @@ class Measure(System):
 
 				data = cls(data=data,indices=indices)
 
-				with context(self.basis[i],self.inverse[i]):
-					data &= self.inverse[i] & self.basis[i]
+				data &= self.basis[i]
+
+				data.format(i)
+
+				if size:
+					options = dict(axes = [*[i for i in range(size)],-1,*[size+i for i in range(size)]])
+					data.transform(**options)
+
+				state[i] = data
+
+
+			if size:
+				settings = Dictionary(constant=addition(dots(*(state[i]() for i in range(N)))))
+				for i in [0,N-1]:
+					if i in [0]:
+						options = dict(
+							func=lambda data,settings=settings:(1/sqrt(settings.constant))*addition(data(),axis=0),
+							shape=lambda data:{data.indices[0]:1,**dict(zip(data.indices[1:],data.shape[:]))}
+							)
+					elif i in [N-1]:
+						options = dict(
+							func=lambda data,settings=settings:(1/sqrt(settings.constant))*addition(data(),axis=-1),
+							shape=lambda data:{**dict(zip(data.indices[:-1],data.shape[:])),data.indices[-1]:1}
+							)
+					state[i].transform(**options)
+
+			options = {**(self.options if self.options is not None else {}),**{}}
+
+			state = mps(state,**options)
+
+		elif self.architecture in ['tensor.quasi']:
+
+			cls = tensor
+
+			N = len(state)
+			D = self.D
+			ndim = 2
+
+			size = None
+
+			for i in range(N):
+
+				data = state[i] if not callable(state[i]) else state[i]()
+				size = max(0,(data.ndim-ndim)//2)
+				if size:
+					indices = [*[self.symbols[i] for i in range(size)],*self.indices[:ndim][::-1],*[self.symbols[size+i] for i in range(size)]]
+				else:
+					indices = [*self.indices[:ndim][::-1]]
+
+				data = cls(data=data,indices=indices)
+
+				data &= self.inverse[i] & self.basis[i]
 
 				data.format(i)
 
@@ -1549,6 +1633,14 @@ class Measure(System):
 			state = einsum('u...,uv,vij->ij...',state,inverse,basis)
 
 		elif self.architecture in ['tensor']:
+
+			state = state.copy()
+
+			for i in where:
+				with context(self.basis[i],self.inverse[i],formats=i,indices=[{self.inds[0]:self.inds[1]},None]):
+					state &= self.inverse[i] & self.basis[i]
+
+		elif self.architecture in ['tensor.quasi']:
 
 			state = state.copy()
 
@@ -1650,6 +1742,9 @@ class Measure(System):
 				elif self.architecture in ['tensor']:
 					basis = [self.basis[i].array() for i in where]
 					inverse = [self.inverse[i].array() for i in where]
+				elif self.architecture in ['tensor.quasi']:
+					basis = [self.basis[i].array() for i in where]
+					inverse = [self.inverse[i].array() for i in where]
 				elif self.architecture in ['tensor_quimb']:
 					basis = [representation_quimb(self.basis[i]) for i in where]
 					inverse = [representation_quimb(self.inverse[i]) for i in where]
@@ -1663,6 +1758,9 @@ class Measure(System):
 					basis = self.basis[self.pointer]
 					inverse = self.inverse[self.pointer]
 				elif self.architecture in ['tensor']:
+					basis = self.basis[self.pointer].array()
+					inverse = self.inverse[self.pointer].array()
+				elif self.architecture in ['tensor.quasi']:
 					basis = self.basis[self.pointer].array()
 					inverse = self.inverse[self.pointer].array()
 				elif self.architecture in ['tensor_quimb']:
@@ -1685,7 +1783,6 @@ class Measure(System):
 						(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
 						(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
 						(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
-						(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 						)
 					shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
 
@@ -1702,11 +1799,31 @@ class Measure(System):
 					inverse = reshape(inverse,shape)
 
 					subscripts = (
+						(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
+						(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
+						(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
+						)
+
+					shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
+
+					einsummation = einsummand(subscripts,*shapes)
+
+				elif self.architecture in ['tensor.quasi']:
+
+					samples = [K]*L
+
+					shape = (*samples,*[*[D]*L]*2)
+					basis = reshape(basis,shape)
+
+					shape = (*samples,)*2
+					inverse = reshape(inverse,shape)
+
+					subscripts = (
 						(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
 						(*[letters['v'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
 						(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['w'].format(i) for i in range(N) if i in where],),
-						(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 						)
+
 					shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
 
 					einsummation = einsummand(subscripts,*shapes)
@@ -1725,7 +1842,6 @@ class Measure(System):
 						(*[letters['u'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['i','j'][:ndim] for i in range(N) if i in where)),
 						(*[letters['w'].format(i) for i in range(N) if i in where],*(letters[j].format(i) for j in ['j','i'][:ndim] for i in range(N) if i in where)),
 						(*[letters['w'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
-						(*[letters['u'].format(i) for i in range(N) if i in where],*[letters['v'].format(i) for i in range(N) if i in where],),
 						)
 					shapes = ((*samples,*[*[D]*L]*2),(*samples,*[*[D]*L]*2),(*samples,)*2,)
 
@@ -1766,6 +1882,24 @@ class Measure(System):
 						return None
 
 			elif self.architecture in ['tensor']:
+
+				options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
+
+				if model is not None and where:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,einsummation=einsummation,options=options,**kwargs):
+						return state(einsummation(basis,model(parameters=parameters,state=basis,**kwargs),inverse),where=where,options=options)
+
+				else:
+
+					options = options if options is not None else {}
+
+					def func(parameters,state,where=where,model=model,basis=basis,inverse=inverse,options=options,**kwargs):
+						return None
+
+			elif self.architecture in ['tensor.quasi']:
 
 				options = {**(self.options if self.options is not None else {}),**(options if options is not None else {})}
 
@@ -1952,6 +2086,8 @@ class Measure(System):
 		if self.architecture is None or self.architecture in ['array']:
 			N = int(round(log(state.size)/log(self.K)/state.ndim)) if isinstance(state,arrays) else len(state) if isinstance(state,iterables) else len(where) if where is not None else None
 		elif self.architecture in ['tensor']:
+			N = state.N if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else len(where) if where is not None else None
+		elif self.architecture in ['tensor.quasi']:
 			N = state.N if isinstance(state,tensors) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else len(where) if where is not None else None
 		elif self.architecture in ['tensor_quimb']:
 			N = state.L if isinstance(state,tensors_quimb) else int(round(log(state.size)/log(self.D)/state.ndim)) if isinstance(state,arrays) else None
@@ -2257,6 +2393,10 @@ class Measure(System):
 
 			data = state.copy()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = state.copy()
+
 			inds = sorted(set(ind for index in data.complement(*(data[i] for i in data)) if data.indexer(index)==index for ind in self.inds if any(ind.format(i)==index for i in where)),key=lambda i:self.inds.index(i))
 			objs = [obj for obj in data]
 			indexes = {}
@@ -2305,6 +2445,10 @@ class Measure(System):
 			data = state
 
 		elif self.architecture in ['tensor']:
+
+			data = state.array()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = state.array()
 
@@ -2359,6 +2503,10 @@ class Measure(System):
 
 			data = state.matrix()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = state.matrix()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = representation_quimb(state,**{**dict(to=self.architecture,contraction=True),**kwargs})
@@ -2384,6 +2532,8 @@ class Measure(System):
 
 		func = (lambda data:data) if not callable(func) else func
 		func = lambda data,func=func: func(real(diag(data)))
+
+		state = state.copy()
 
 		data = self.matrix(parameters=parameters,state=state,data=data,where=where,func=func,options=options)
 
@@ -2433,9 +2583,15 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			data = state.copy()
+			data = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.tensor(parameters=parameters,state=data,where=where,options=options,**kwargs)
+			for i in where:
+				with context(self.ones[i],formats=i):
+					data &= self.ones[i]
+
+		elif self.architecture in ['tensor.quasi']:
+
+			data = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			for i in where:
 				with context(self.ones[i],formats=i,indices={self.inds[0]:self.inds[1]}):
@@ -2497,9 +2653,17 @@ class Measure(System):
 
 		elif self.architecture in ['tensor']:
 
-			data = state.copy()
+			data = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
-			data = self.tensor(parameters=parameters,state=data,where=where,options=options,**kwargs)
+			for i in where:
+				self.zeros[i].set(array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+				with context(self.zeros[i],formats=i):
+					data &= self.zeros[i]
+				self.zeros[i].set(array([0 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
+
+		elif self.architecture in ['tensor.quasi']:
+
+			data = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 			for i in where:
 				self.zeros[i].set(array([1 if k==where[i] else 0 for k in range(self.K)],dtype=self.dtype))
@@ -2551,6 +2715,25 @@ class Measure(System):
 			data = einsum('...u,uv,...v->...',state,inverse,other)
 
 		elif self.architecture in ['tensor']:
+
+			other = state if other is None else other
+
+			state = state.copy()
+			other = other.copy()
+
+			for i in where:
+				with context(self.inverse[i],formats=i):
+					state &= self.inverse[i]
+
+			indices = {self.inds[0].format(i):self.inds[1].format(i) for i in range(N)}
+
+			other.transform(indices={index:indices for index in other})
+
+			state &= other
+
+			data = state
+
+		elif self.architecture in ['tensor.quasi']:
 
 			other = state if other is None else other
 
@@ -2632,6 +2815,23 @@ class Measure(System):
 			data = einsum('us,sp,vp->uv',data,inverse,data)
 
 		elif self.architecture in ['tensor']:
+
+			state = state.copy()
+			other = state.copy()
+
+			for i in where:
+				with context(self.inverse[i],formats=i):
+					state &= self.inverse[i]
+
+			indices = {self.inds[0].format(i):self.inds[1].format(i) for i in range(N)}
+
+			other.transform(indices={index:indices for index in other})
+
+			state &= other
+
+			data = state
+
+		elif self.architecture in ['tensor.quasi']:
 
 			state = state.copy()
 			other = state.copy()
@@ -2737,6 +2937,20 @@ class Measure(System):
 
 			data = addition(sqrt(absolute(data)))
 
+		elif self.architecture in ['tensor.quasi']:
+
+			settings = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+			other = self.transform(parameters=parameters,state=other,where=where,options=options,**{**settings,**kwargs})
+
+			state = state.matrix()
+			other = other.matrix()
+
+			state = dot(state,other)
+			data = self.eig(parameters=parameters,state=state,options=options,**kwargs)
+
+			data = addition(sqrt(absolute(data)))
+
 		elif self.architecture in ['tensor_quimb']:
 
 			settings = dict(transform=False)
@@ -2799,6 +3013,19 @@ class Measure(System):
 
 			data = dot(state,other)
 
+		elif self.architecture in ['tensor.quasi']:
+
+			function = sqrt
+			kwargs = {}
+
+			state = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
+			other = self.tensor(parameters=parameters,state=other,where=where,options=options,**kwargs)
+
+			state = function(ravel(state.array()),**kwargs)
+			other = function(ravel(other.array()),**kwargs)
+
+			data = dot(state,other)
+
 		elif self.architecture in ['tensor_quimb']:
 
 			function = sqrt
@@ -2846,6 +3073,14 @@ class Measure(System):
 			data = data/sqrt(state*other)
 
 		elif self.architecture in ['tensor']:
+
+			data = self.square(parameters=parameters,state=state,other=other,where=where,options=options,**kwargs)
+			state = self.square(parameters=parameters,state=state,other=state,where=where,options=options,**kwargs)
+			other = self.square(parameters=parameters,state=other,other=other,where=where,options=options,**kwargs)
+
+			data = (data.array()/sqrt(state.array()*other.array())).item()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = self.square(parameters=parameters,state=state,other=other,where=where,options=options,**kwargs)
 			state = self.square(parameters=parameters,state=state,other=state,where=where,options=options,**kwargs)
@@ -2922,6 +3157,12 @@ class Measure(System):
 
 			data = data.array().item()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.array().item()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			settings = dict(contraction=True)
@@ -2966,6 +3207,12 @@ class Measure(System):
 
 			data = data.array().item()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.array().item()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			settings = dict(contraction=True)
@@ -3005,6 +3252,12 @@ class Measure(System):
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.array().item()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
@@ -3104,6 +3357,25 @@ class Measure(System):
 
 			data = data.item()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+
+			state = state.matrix()
+
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+			data = data.item()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			state = state.copy()
@@ -3176,6 +3448,24 @@ class Measure(System):
 
 			data = data.item()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.tensor(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			state = state.array().ravel()
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.entropy(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.item()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			where = tuple(i for i in range(N) if i not in where)
@@ -3223,6 +3513,18 @@ class Measure(System):
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.square(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = data.array().item()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3327,6 +3629,29 @@ class Measure(System):
 			where = tuple(i for i in range(N) if i not in where)
 
 			for i in where:
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[0],self.inds[1]:self.symbol[0]},{self.inds[0]:self.symbol[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}]):
+					data &= self.inverse[i] & self.basis[i]
+				with context(self.inverse[i],self.basis[i],formats=i,indices=[{self.inds[0]:self.inds[1],self.inds[1]:self.symbol[1]},{self.inds[0]:self.symbol[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}]):
+					data &= self.inverse[i] & self.basis[i].transform(conj=True)
+
+			indices = [[symbol.format(i) for i in where for symbol in symbols] for symbols in [self.symbols[:2],self.symbols[2:4]]]
+			data = data.matrix(indices=indices)
+
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array()
+
+			data = self.eig(parameters=parameters,state=data,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor.quasi']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			for i in where:
 				with context(self.basis[i],formats=i,indices={self.inds[0]:self.inds[0],self.indices[0]:self.symbols[0],self.indices[1]:self.symbols[1]}):
 					data &= self.basis[i]
 				with context(self.basis[i],formats=i,indices={self.inds[0]:self.inds[1],self.indices[0]:self.symbols[2],self.indices[1]:self.symbols[3]}):
@@ -3419,6 +3744,22 @@ class Measure(System):
 
 			where = tuple(i for i in range(N) if i not in where)
 
+			data = data.matrix()
+
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array()
+
+			data = self.eig(parameters=parameters,state=data,**kwargs)
+
+			data = self.entropy(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor.quasi']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
 			data = self.tensor(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 			data = data.matrix()
@@ -3494,6 +3835,32 @@ class Measure(System):
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			data = self.vectorize(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			other = data.copy()
+
+			indices = {**{self.inds[0].format(i):self.symbol[0].format(i) for i in range(N)},**{self.inds[1].format(i):self.symbol[1].format(i) for i in range(N)}}
+
+			other.transform(indices={index:indices for index in other})
+
+			for i in where:
+				with context(self.inverse[i],formats=i,indices={self.inds[1]:self.symbol[1],self.inds[0]:self.inds[0]}):
+					data &= self.inverse[i]
+				with context(self.inverse[i],formats=i,indices={self.inds[1]:self.symbol[0],self.inds[0]:self.inds[1]}):
+					other &= self.inverse[i]
+
+			data &= other
+
+			data = data.array().item()
+
+			data /= self.vectorize(parameters=parameters,state=state,options=options,**kwargs).array().item()**2
+
+		elif self.architecture in ['tensor.quasi']:
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -3635,6 +4002,25 @@ class Measure(System):
 			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
 			data -= tmp
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.D**L)
+			data -= tmp
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = 0
@@ -3712,6 +4098,43 @@ class Measure(System):
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
+
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			tmp = state
+			data += self.entanglement_quantum(parameters=parameters,state=tmp,where=where,options=options,**kwargs)*log(self.D**L)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			for index in permutations(*[range(self.K)]*(N-L)):
+
+				index = dict(zip(where,index))
+				tmp = self.measure(parameters=parameters,state=state,where=index,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				norm = self.trace(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				settings = dict(transform=False)
+				tmp = self.transform(parameters=parameters,state=tmp,where=index,**{**settings,**kwargs})
+
+				tmp = tmp.matrix()
+
+				norm = norm.array()
+
+				tmp /= norm
+
+				tmp = self.eig(parameters=parameters,state=tmp,**kwargs)
+
+				index = tuple(i for i in range(N) if i not in where)
+				tmp = self.entropy(parameters=parameters,state=tmp,where=index,**kwargs)
+
+				data -= norm*tmp
+
+			data = data.item()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = 0
 
@@ -3850,6 +4273,27 @@ class Measure(System):
 
 			data = data.item()
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)*log(self.K**L)
+			data -= tmp
+
+			data = data.item()
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = 0
@@ -3915,6 +4359,27 @@ class Measure(System):
 			data = data.item()
 
 		elif self.architecture in ['tensor']:
+
+			data = 0
+
+			where = tuple(i for i in range(N) if i in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
+			data += tmp
+
+			where = tuple(i for i in range(N) if i not in where)
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
+			data += tmp
+
+			where = tuple(i for i in range(N))
+			L = len(where)
+			tmp = self.entanglement_renyi(parameters=parameters,state=state,where=where,options=options,**kwargs)
+			data -= tmp
+
+			data = data.item()
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = 0
 
@@ -4009,6 +4474,10 @@ class Measure(System):
 
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = self.mutual_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs) - self.mutual_measure(parameters=parameters,state=state,where=where,options=options,**kwargs)
@@ -4045,6 +4514,10 @@ class Measure(System):
 
 			data = 0
 
+		elif self.architecture in ['tensor.quasi']:
+
+			data = 0
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = 0
@@ -4078,6 +4551,10 @@ class Measure(System):
 			data = 0
 
 		elif self.architecture in ['tensor']:
+
+			data = 0
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = 0
 
@@ -4148,6 +4625,23 @@ class Measure(System):
 			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			state = self.trace(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			where = tuple(i for i in range(N) if i not in where)
+
+			settings = dict(transform=False)
+			state = self.transform(parameters=parameters,state=state,where=where,options=options,**{**settings,**kwargs})
+
+			state = state.matrix()
+
+			where = tuple(i for i in range(N) if i in where)
+
+			data = self.eig(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor.quasi']:
 
 			where = tuple(i for i in range(N) if i not in where)
 
@@ -4242,6 +4736,25 @@ class Measure(System):
 
 			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
+		elif self.architecture in ['tensor.quasi']:
+
+			state = self.tensor(parameters=parameters,state=state,options=options,**kwargs)
+
+			state = state.array().ravel()
+
+			K = self.K
+			ndim = state.ndim
+
+			settings = dict(
+				axes = [[i for i in range(N) if i in where],[i for i in range(N) if i not in where]],
+				shape = [K,N,ndim],
+				transform=True,
+				)
+
+			state = shuffle(state,**settings)
+
+			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
 		elif self.architecture in ['tensor_quimb']:
 
 			data = self.svd(parameters=parameters,state=state,where=where,options=options,**kwargs)
@@ -4277,6 +4790,12 @@ class Measure(System):
 			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
+
+			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = self.spectrum_quantum(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
@@ -4319,6 +4838,12 @@ class Measure(System):
 			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
 
 		elif self.architecture in ['tensor']:
+
+			data = self.spectrum_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)
+
+			data = self.rank(parameters=parameters,state=data,where=where,options=options,**kwargs)
+
+		elif self.architecture in ['tensor.quasi']:
 
 			data = self.spectrum_classical(parameters=parameters,state=state,where=where,options=options,**kwargs)
 
@@ -5284,7 +5809,7 @@ class Object(System):
 				else:
 					data = swap(tensorprod(data),axes=axes,shape=shape) if data is not None else None
 				data = array(data,dtype=dtype) if data is not None else None
-			elif self.architecture in ['tensor']:
+			elif self.architecture in ['tensor','tensor.quasi']:
 				data = tensorprod(data) if data is not None else None
 			elif self.architecture in ['tensor_quimb']:
 				data = tensorprod(data) if data is not None else None
@@ -5334,7 +5859,7 @@ class Object(System):
 
 		if self.architecture is None or self.architecture in ['array']:
 			data = self.tensor(data,N=self.locality if self.local else self.N,D=self.D,d=self.ndim) if self.tensor is not None else data
-		elif self.architecture in ['tensor']:
+		elif self.architecture in ['tensor','tensor.quasi']:
 			data = data
 		elif self.architecture in ['tensor_quimb']:
 			data = data
@@ -6959,7 +7484,7 @@ class State(Object):
 
 				seed = seeder(self.seed)
 
-				if self.architecture is None or self.architecture in ['array','tensor']:
+				if self.architecture is None or self.architecture in ['array','tensor','tensor.quasi']:
 					if self.local:
 						options = Dictionary(
 							D=self.D,N=self.locality//self.number,ndim=ndim,
@@ -6981,7 +7506,7 @@ class State(Object):
 								else:
 									def function(parameters,state,options=options,**kwargs):
 										return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
-							elif self.architecture in ['tensor']:
+							elif self.architecture in ['tensor','tensor.quasi']:
 								def function(parameters,state,options=options,**kwargs):
 									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 							else:
@@ -6997,7 +7522,7 @@ class State(Object):
 								else:
 									def function(parameters,state,options=options,**kwargs):
 										return options.basis(**{**options,**kwargs})
-							elif self.architecture in ['tensor']:
+							elif self.architecture in ['tensor','tensor.quasi']:
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 							else:
@@ -7023,7 +7548,7 @@ class State(Object):
 								else:
 									def function(parameters,state,options=options,**kwargs):
 										return swap(tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options]),axes=options[list(options)[0]].axes,shape=options[list(options)[0]].shapes)
-							elif self.architecture in ['tensor']:
+							elif self.architecture in ['tensor','tensor.quasi']:
 								def function(parameters,state,options=options,**kwargs):
 									return tensorprod([options[i].basis(**{**options[i],**kwargs}) for i in options])
 							else:
@@ -7039,7 +7564,7 @@ class State(Object):
 								else:
 									def function(parameters,state,options=options,**kwargs):
 										return options.basis(**{**options,**kwargs})
-							elif self.architecture in ['tensor']:
+							elif self.architecture in ['tensor','tensor.quasi']:
 								def function(parameters,state,options=options,**kwargs):
 									return options.basis(**{**options,**kwargs})
 							else:
