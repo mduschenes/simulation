@@ -220,46 +220,46 @@
 
 #### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
 #text.usetex         : False  ## use latex for all text handling. The following fonts
-                              ## are supported through the usual rc parameter settings:
-                              ## new century schoolbook, bookman, times, palatino,
-                              ## zapf chancery, charter, serif, sans-serif, helvetica,
-                              ## avant garde, courier, monospace, computer modern roman,
-                              ## computer modern sans serif, computer modern typewriter
-                              ## If another font is desired which can loaded using the
-                              ## LaTeX \usepackage command, please inquire at the
-                              ## matplotlib mailing list
+							  ## are supported through the usual rc parameter settings:
+							  ## new century schoolbook, bookman, times, palatino,
+							  ## zapf chancery, charter, serif, sans-serif, helvetica,
+							  ## avant garde, courier, monospace, computer modern roman,
+							  ## computer modern sans serif, computer modern typewriter
+							  ## If another font is desired which can loaded using the
+							  ## LaTeX \usepackage command, please inquire at the
+							  ## matplotlib mailing list
 #text.latex.preamble :      ## IMPROPER USE OF THIS FEATURE WILL LEAD TO LATEX FAILURES
-                            ## AND IS THEREFORE UNSUPPORTED. PLEASE DO NOT ASK FOR HELP
-                            ## IF THIS FEATURE DOES NOT DO WHAT YOU EXPECT IT TO.
-                            ## text.latex.preamble is a single line of LaTeX code that
-                            ## will be passed on to the LaTeX system. It may contain
-                            ## any code that is valid for the LaTeX "preamble", i.e.
-                            ## between the "\documentclass" and "\begin{document}"
-                            ## statements.
-                            ## Note that it has to be put on a single line, which may
-                            ## become quite long.
-                            ## The following packages are always loaded with usetex, so
-                            ## beware of package collisions: color, geometry, graphicx,
-                            ## type1cm, textcomp.
-                            ## Adobe Postscript (PSSNFS) font packages may also be
-                            ## loaded, depending on your font settings.
+							## AND IS THEREFORE UNSUPPORTED. PLEASE DO NOT ASK FOR HELP
+							## IF THIS FEATURE DOES NOT DO WHAT YOU EXPECT IT TO.
+							## text.latex.preamble is a single line of LaTeX code that
+							## will be passed on to the LaTeX system. It may contain
+							## any code that is valid for the LaTeX "preamble", i.e.
+							## between the "\documentclass" and "\begin{document}"
+							## statements.
+							## Note that it has to be put on a single line, which may
+							## become quite long.
+							## The following packages are always loaded with usetex, so
+							## beware of package collisions: color, geometry, graphicx,
+							## type1cm, textcomp.
+							## Adobe Postscript (PSSNFS) font packages may also be
+							## loaded, depending on your font settings.
 #text.latex.preview : False
 
 #text.hinting : auto   ## May be one of the following:
-                       ##   none: Perform no hinting
-                       ##   auto: Use FreeType's autohinter
-                       ##   native: Use the hinting information in the
-                       #              font file, if available, and if your
-                       #              FreeType library supports it
-                       ##   either: Use the native hinting information,
-                       #              or the autohinter if none is available.
-                       ## For backward compatibility, this value may also be
-                       ## True === 'auto' or False === 'none'.
+					   ##   none: Perform no hinting
+					   ##   auto: Use FreeType's autohinter
+					   ##   native: Use the hinting information in the
+					   #              font file, if available, and if your
+					   #              FreeType library supports it
+					   ##   either: Use the native hinting information,
+					   #              or the autohinter if none is available.
+					   ## For backward compatibility, this value may also be
+					   ## True === 'auto' or False === 'none'.
 #text.hinting_factor : 8 ## Specifies the amount of softness for hinting in the
-                         ## horizontal direction.  A value of 1 will hint to full
-                         ## pixels.  A value of 2 will hint to half pixels etc.
+						 ## horizontal direction.  A value of 1 will hint to full
+						 ## pixels.  A value of 2 will hint to half pixels etc.
 #text.antialiased : True ## If True (default), the text will be antialiased.
-                         ## This only affects the Agg backend.
+						 ## This only affects the Agg backend.
 
 ## The following settings allow you to select the fonts in math mode.
 ## They map from a TeX font name to a fontconfig font pattern.
@@ -273,15 +273,15 @@
 #mathtext.bf  : sans:bold
 #mathtext.sf  : sans
 #mathtext.fontset : dejavusans ## Should be 'dejavusans' (default),
-                               ## 'dejavuserif', 'cm' (Computer Modern), 'stix',
-                               ## 'stixsans' or 'custom'
+							   ## 'dejavuserif', 'cm' (Computer Modern), 'stix',
+							   ## 'stixsans' or 'custom'
 #mathtext.fallback_to_cm : True  ## When True, use symbols from the Computer Modern
-                                 ## fonts when a symbol can not be found in one of
-                                 ## the custom math fonts.
+								 ## fonts when a symbol can not be found in one of
+								 ## the custom math fonts.
 #mathtext.default : it ## The default font to use for math.
-                       ## Can be any of the LaTeX font names, including
-                       ## the special name "regular" for the same font
-                       ## used in regular text.
+					   ## Can be any of the LaTeX font names, including
+					   ## the special name "regular" for the same font
+					   ## used in regular text.
 
 #### AXES
 ## default face and edge color, default tick sizes,
@@ -301,42 +301,42 @@
 #axes.labelweight    : normal  ## weight of the x and y labels
 #axes.labelcolor     : black
 #axes.axisbelow      : line    ## draw axis gridlines and ticks below
-                               ## patches (True); above patches but below
-                               ## lines ('line'); or above all (False)
+							   ## patches (True); above patches but below
+							   ## lines ('line'); or above all (False)
 #axes.formatter.limits : -7, 7 ## use scientific notation if log10
-                               ## of the axis range is smaller than the
-                               ## first or larger than the second
+							   ## of the axis range is smaller than the
+							   ## first or larger than the second
 #axes.formatter.use_locale : False ## When True, format tick labels
-                                   ## according to the user's locale.
-                                   ## For example, use ',' as a decimal
-                                   ## separator in the fr_FR locale.
+								   ## according to the user's locale.
+								   ## For example, use ',' as a decimal
+								   ## separator in the fr_FR locale.
 #axes.formatter.use_mathtext : False ## When True, use mathtext for scientific
-                                     ## notation.
+									 ## notation.
 #axes.formatter.min_exponent: 0 ## minimum exponent to format in scientific notation
 #axes.formatter.useoffset      : True    ## If True, the tick label formatter
-                                         ## will default to labeling ticks relative
-                                         ## to an offset when the data range is
-                                         ## small compared to the minimum absolute
-                                         ## value of the data.
+										 ## will default to labeling ticks relative
+										 ## to an offset when the data range is
+										 ## small compared to the minimum absolute
+										 ## value of the data.
 #axes.formatter.offset_threshold : 4     ## When useoffset is True, the offset
-                                         ## will be used when it can remove
-                                         ## at least this number of significant
-                                         ## digits from tick labels.
+										 ## will be used when it can remove
+										 ## at least this number of significant
+										 ## digits from tick labels.
 #axes.spines.left   : True   ## display axis spines
 #axes.spines.bottom : True
 #axes.spines.top    : True
 #axes.spines.right  : True
 #axes.unicode_minus  : True    ## use unicode for the minus symbol
-                               ## rather than hyphen.  See
-                               ## http://en.wikipedia.org/wiki/Plus_and_minus_signs#Character_codes
+							   ## rather than hyphen.  See
+							   ## http://en.wikipedia.org/wiki/Plus_and_minus_signs#Character_codes
 #axes.prop_cycle    : cycler('color', ['1f77b4', 'ff7f0e', '2ca02c', 'd62728', '9467bd', '8c564b', 'e377c2', '7f7f7f', 'bcbd22', '17becf'])
-                      ## color cycle for plot lines  as list of string
-                      ## colorspecs: single letter, long name, or web-style hex
+					  ## color cycle for plot lines  as list of string
+					  ## colorspecs: single letter, long name, or web-style hex
 					  ## Note the use of string escapes here ('1f77b4', instead of 1f77b4)
-                      ## as opposed to the rest of this file.
+					  ## as opposed to the rest of this file.
 #axes.autolimit_mode : data ## How to scale axes limits to the data.
-                            ## Use "data" to use data limits, plus some margin
-                            ## Use "round_number" move to the nearest "round" number
+							## Use "data" to use data limits, plus some margin
+							## Use "round_number" move to the nearest "round" number
 #axes.xmargin        : .05  ## x margin.  See `axes.Axes.margins`
 #axes.ymargin        : .05  ## y margin See `axes.Axes.margins`
 #polaraxes.grid      : True    ## display grid on polar axes
@@ -414,7 +414,7 @@
 #legend.facecolor     : inherit  ## inherit from axes.facecolor; or color spec
 #legend.edgecolor     : 0.8      ## background patch boundary color
 #legend.fancybox      : True     ## if True, use a rounded box for the
-                                 ## legend background, else a rectangle
+								 ## legend background, else a rectangle
 #legend.shadow        : False    ## if True, give background a shadow effect
 #legend.numpoints     : 1        ## the number of marker points in the legend line
 #legend.scatterpoints : 1        ## number of scatter points
@@ -440,25 +440,25 @@
 #figure.edgecolor : white      ## figure edgecolor
 #figure.frameon : True         ## enable figure frame
 #figure.max_open_warning : 20  ## The maximum number of figures to open through
-                               ## the pyplot interface before emitting a warning.
-                               ## If less than one this feature is disabled.
+							   ## the pyplot interface before emitting a warning.
+							   ## If less than one this feature is disabled.
 ## The figure subplot parameters.  All dimensions are a fraction of the
 #figure.subplot.left    : 0.125  ## the left side of the subplots of the figure
 #figure.subplot.right   : 0.9    ## the right side of the subplots of the figure
 #figure.subplot.bottom  : 0.11   ## the bottom of the subplots of the figure
 #figure.subplot.top     : 0.88   ## the top of the subplots of the figure
 #figure.subplot.wspace  : 0.2    ## the amount of width reserved for space between subplots,
-                                 ## expressed as a fraction of the average axis width
+								 ## expressed as a fraction of the average axis width
 #figure.subplot.hspace  : 0.2    ## the amount of height reserved for space between subplots,
-                                 ## expressed as a fraction of the average axis height
+								 ## expressed as a fraction of the average axis height
 
 ## Figure layout
 #figure.autolayout : False     ## When True, automatically adjust subplot
-                               ## parameters to make the plot fit the figure
-                               ## using `tight_layout`
+							   ## parameters to make the plot fit the figure
+							   ## using `tight_layout`
 #figure.constrained_layout.use: False ## When True, automatically make plot
-                                      ## elements fit on the figure. (Not compatible
-                                      ## with `autolayout`, above).
+									  ## elements fit on the figure. (Not compatible
+									  ## with `autolayout`, above).
 #figure.constrained_layout.h_pad : 0.04167 ## Padding around axes objects. Float representing
 #figure.constrained_layout.w_pad : 0.04167 ##  inches. Default is 3./72. inches (3 pts)
 #figure.constrained_layout.hspace : 0.02   ## Space between subplot groups. Float representing
@@ -472,9 +472,9 @@
 #image.origin : upper             ## lower | upper
 #image.resample  : True
 #image.composite_image : True     ## When True, all the images on a set of axes are
-                                  ## combined into a single composite image before
-                                  ## saving a figure as a vector graphics file,
-                                  ## such as a PDF.
+								  ## combined into a single composite image before
+								  ## saving a figure as a vector graphics file,
+								  ## such as a PDF.
 
 #### CONTOUR PLOTS
 #contour.negative_linestyle : dashed ## string or on-off ink sequence
@@ -485,8 +485,8 @@
 
 #### HISTOGRAM PLOTS
 #hist.bins : 10                   ## The default number of histogram bins.
-                                  ## If Numpy 1.11 or later is
-                                  ## installed, may also be `auto`
+								  ## If Numpy 1.11 or later is
+								  ## installed, may also be `auto`
 
 #### SCATTER PLOTS
 #scatter.marker : o               ## The default marker type for scatter plots.
@@ -495,30 +495,30 @@
 #### Agg rendering
 #### Warning: experimental, 2008/10/10
 #agg.path.chunksize : 0           ## 0 to disable; values in the ange
-                                  ## 10000 to 100000 can improve speed slightly
-                                  ## and prevent an Agg rendering failure
-                                  ## when plotting very large data sets,
-                                  ## especially if they are very gappy.
-                                  ## It may cause minor artifacts, though.
-                                  ## A value of 20000 is probably a good
-                                  ## starting point.
+								  ## 10000 to 100000 can improve speed slightly
+								  ## and prevent an Agg rendering failure
+								  ## when plotting very large data sets,
+								  ## especially if they are very gappy.
+								  ## It may cause minor artifacts, though.
+								  ## A value of 20000 is probably a good
+								  ## starting point.
 #### PATHS
 #path.simplify : True   ## When True, simplify paths by removing "invisible"
-                        ## points to reduce file size and increase rendering
-                        ## speed
+						## points to reduce file size and increase rendering
+						## speed
 #path.simplify_threshold : 0.111111111111  ## The threshold of similarity below which
-                                           ## vertices will be removed in the
-                                           ## simplification process
+										   ## vertices will be removed in the
+										   ## simplification process
 #path.snap : True ## When True, rectilinear axis-aligned paths will be snapped to
-                  ## the nearest pixel when certain criteria are met.  When False,
-                  ## paths will never be snapped.
+				  ## the nearest pixel when certain criteria are met.  When False,
+				  ## paths will never be snapped.
 #path.sketch : None ## May be none, or a 3-tuple of the form (scale, length,
-                    ## randomness).
-                    ## *scale* is the amplitude of the wiggle
-                    ## perpendicular to the line (in pixels).  *length*
-                    ## is the length of the wiggle along the line (in
-                    ## pixels).  *randomness* is the factor by which
-                    ## the length is randomly scaled.
+					## randomness).
+					## *scale* is the amplitude of the wiggle
+					## perpendicular to the line (in pixels).  *length*
+					## is the length of the wiggle along the line (in
+					## pixels).  *randomness* is the factor by which
+					## the length is randomly scaled.
 #path.effects : []  ##
 
 #### SAVING FIGURES
@@ -530,17 +530,17 @@
 #savefig.edgecolor   : white    ## figure edgecolor when saving
 #savefig.format      : png      ## png, ps, pdf, svg
 #savefig.bbox        : standard ## 'tight' or 'standard'.
-                                ## 'tight' is incompatible with pipe-based animation
-                                ## backends but will workd with temporary file based ones:
-                                ## e.g. setting animation.writer to ffmpeg will not work,
-                                ## use ffmpeg_file instead
+								## 'tight' is incompatible with pipe-based animation
+								## backends but will workd with temporary file based ones:
+								## e.g. setting animation.writer to ffmpeg will not work,
+								## use ffmpeg_file instead
 #savefig.pad_inches  : 0.1      ## Padding to be used when bbox is set to 'tight'
 #savefig.jpeg_quality: 95       ## when a jpeg is saved, the default quality parameter.
 #savefig.directory   : ~        ## default directory in savefig dialog box,
-                                ## leave empty to always use current working directory
+								## leave empty to always use current working directory
 #savefig.transparent : False    ## setting that controls whether figures are saved with a
-                                ## transparent background by default
-#savefig.orientation : portrait	## Orientation of saved figure
+								## transparent background by default
+#savefig.orientation : portrait ## Orientation of saved figure
 
 ### tk backend params
 #tk.window_focus   : False    ## Maintain shell focus for TkAgg
@@ -549,15 +549,15 @@
 #ps.papersize      : letter   ## auto, letter, legal, ledger, A0-A10, B0-B10
 #ps.useafm         : False    ## use of afm fonts, results in small files
 #ps.usedistiller   : False    ## can be: None, ghostscript or xpdf
-                                          ## Experimental: may produce smaller files.
-                                          ## xpdf intended for production of publication quality files,
-                                          ## but requires ghostscript, xpdf and ps2eps
+										  ## Experimental: may produce smaller files.
+										  ## xpdf intended for production of publication quality files,
+										  ## but requires ghostscript, xpdf and ps2eps
 #ps.distiller.res  : 6000      ## dpi
 #ps.fonttype       : 3         ## Output Type 3 (Type3) or Type 42 (TrueType)
 
 ### pdf backend params
 #pdf.compression   : 6   ## integer from 0 to 9
-                         ## 0 disables compression (good for debugging)
+						 ## 0 disables compression (good for debugging)
 #pdf.fonttype       : 3         ## Output Type 3 (Type3) or Type 42 (TrueType)
 #pdf.use14corefonts : False
 #pdf.inheritcolor : False
@@ -568,7 +568,7 @@
    ##     none: Assume fonts are installed on the machine where the SVG will be viewed.
    ##     path: Embed characters as paths -- supported by most SVG renderers
 #svg.hashsalt : None           ## if not None, use this string as hash salt
-                               ## instead of uuid4
+							   ## instead of uuid4
 ### pgf parameter
 #pgf.rcfonts : True
 #pgf.preamble :            ## see text.latex.preamble for documentation
@@ -599,27 +599,27 @@
 
 ###ANIMATION settings
 #animation.html :  none            ## How to display the animation as HTML in
-                                   ## the IPython notebook. 'html5' uses
-                                   ## HTML5 video tag; 'jshtml' creates a
-                                   ## Javascript animation
+								   ## the IPython notebook. 'html5' uses
+								   ## HTML5 video tag; 'jshtml' creates a
+								   ## Javascript animation
 #animation.writer : ffmpeg         ## MovieWriter 'backend' to use
 #animation.codec : h264            ## Codec to use for writing movie
 #animation.bitrate: -1             ## Controls size/quality tradeoff for movie.
-                                   ## -1 implies let utility auto-determine
+								   ## -1 implies let utility auto-determine
 #animation.frame_format:  png      ## Controls frame format used by temp files
 #animation.html_args:              ## Additional arguments to pass to html writer
 #animation.ffmpeg_path:  ffmpeg    ## Path to ffmpeg binary. Without full path
-                                   ## $PATH is searched
+								   ## $PATH is searched
 #animation.ffmpeg_args:            ## Additional arguments to pass to ffmpeg
 #animation.avconv_path:  avconv    ## Path to avconv binary. Without full path
-                                   ## $PATH is searched
+								   ## $PATH is searched
 #animation.avconv_args:            ## Additional arguments to pass to avconv
 #animation.convert_path:  convert  ## Path to ImageMagick's convert binary.
-                                   ## On Windows use the full path since convert
-                                   ## is also the name of a system tool.
+								   ## On Windows use the full path since convert
+								   ## is also the name of a system tool.
 #animation.convert_args:           ## Additional arguments to pass to convert
 #animation.embed_limit : 20.0      ## Limit, in MB, of size of base64 encoded
-                                   ## animation in HTML (i.e. IPython notebook)
+								   ## animation in HTML (i.e. IPython notebook)
 
 
 
@@ -647,7 +647,7 @@
 font.size : 30
 #font.weight : bold
 #axes.labelweight : bold
-axes.linewidth : 2  
+axes.linewidth : 2
 #axes.prop_cycle : cycler(color='tab10')
 
 #   # matplotlib.rcParams['font.family'] = 'sans-serif'
@@ -656,5 +656,5 @@ axes.linewidth : 2
 #   # matplotlib.rcParams['mathtext.fontset'] = 'dejavusans'
 #   # matplotlib.rcParams['figure.autolayout'] = True
 
-      
+
 ### //
