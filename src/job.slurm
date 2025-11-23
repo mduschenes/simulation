@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-##SBATCH --account=mduschenes
+#SBATCH --account=def-rgmelko
 #SBATCH --job-name=submit
 #SBATCH --output=%x.%j.stdout
 #SBATCH --error=%x.%j.stderr
 
-#SBATCH --partition=cpu
+##SBATCH --partition=cpu
 #SBATCH --time=06:00:00
 #SBATCH --mem=16G
 #SBATCH --nodes=1
