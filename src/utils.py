@@ -12760,7 +12760,7 @@ def to_index(position,shape):
 	return index
 
 
-def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,one=False,fraction=False,strip=True,strings=True,error=None,usebase=False,usetex=False):
+def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,one=False,fraction=False,integral=False,strip=True,strings=True,error=None,usebase=False,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -12772,6 +12772,7 @@ def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,on
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		fraction (bool): Make number strings into float representations
+		integral (bool): Keep number as integer
 		strip (bool): Remove trailing zeros in float representation
 		strings (bool): Convert string into number
 		error (str,int,float): Error of number to be processed
@@ -12801,6 +12802,9 @@ def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,on
 		if isinstance(number,str) and '/' in number and all(is_number(i) for i in number.split('/')):
 			number = number.split('/')
 			number = float(number[0])/float(number[1])
+
+	if integral and isinstance(number,int):
+		return str(number)
 
 	if not is_number(number) or ((not strings) and isinstance(number,str)):
 		return str(number)
@@ -12920,20 +12924,21 @@ def texify(string,usetex=False):
 
 	return string
 
-def baseify(number,base=None,decimals=None):
+def baseify(number,base=None,decimals=None,integral=False):
 	'''
 	Convert number to flt,exp in other base
 	Args:
 		number (int,float): Number
 		base (int): Base of number
 		decimals: Decimals of mantissa
+		integral (bool): Keep number as integer
 	Returns:
 		number (float): Number in other base
 	'''
 
 	basis = 10
 
-	if not is_number(number) or base == basis:
+	if not is_number(number) or base == basis or (integral and isinstance(number,int)):
 		return number
 
 	if not base:

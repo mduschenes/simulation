@@ -1069,7 +1069,7 @@ def analyse(data,analyses=None,verbose=None):
 							function = kwargs[attr][kwarg]
 							function = wrap(function)
 							if function is not None:
-								out = function(data,**kwargs[attr])
+								out = function(out,**kwargs[attr])
 					return out
 			elif isinstance(analyses[analysis],(str,dict,*iterables)):
 				if isinstance(analyses[analysis],str):
@@ -1079,15 +1079,11 @@ def analyse(data,analyses=None,verbose=None):
 				else:
 					analyses[analysis] = {analysis:{i:{} for i in analyses[analysis]}}
 				def func(attrs,data):
-					value = {attr: {i:i for i in attrs[attr]} for attr in attrs}
-					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					attrs = wrap(attrs)
 					out = data
 					for attr in attrs:
-						for kwarg in kwargs[attr]:
-							function = value[attr][kwarg]
-							function = wrap(function)
-							if function is not None:
-								out = function(data,**kwargs[attr][kwarg])
+						for attribute in attrs[attr]:
+							out = attrs[attr][attribute](out)
 					return out
 			else:
 				continue
@@ -4041,7 +4037,7 @@ def plotter(plots,processes,verbose=None):
 
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
-									'baseify':dict(base=base)}.items()
+									'baseify':dict(base=base,integral=True)}.items()
 								}
 
 							if value is not None:
@@ -4075,7 +4071,7 @@ def plotter(plots,processes,verbose=None):
 
 							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
 								for attr,default in {
-									'baseify':dict(base=base)}.items()
+									'baseify':dict(base=base,integral=True)}.items()
 								}
 
 							if value is not None:

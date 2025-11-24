@@ -3467,7 +3467,7 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.state.information":{"src.functions.func_func_group":{"samples":null,"seed":123,"independent":"N","dependent":"sample.state.information","func":"src.functions.func_func_fit","function":"state"}}
+							"sample.state.information":{"func":"src.functions.func_func_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":"N","dependent":"sample.state.information","func":"src.functions.func_func_fit","function":"state"}}
 						},
 						"function": {},
 						"application": "agg",
@@ -3545,7 +3545,7 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.array.information":{"src.functions.func_func_group":{"samples":null,"seed":123,"independent":"N","dependent":"sample.array.information","func":"src.functions.func_func_fit","function":"array"}}
+							"sample.array.information":{"func":"src.functions.func_func_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":"N","dependent":"sample.array.information","func":"src.functions.func_func_fit","function":"array"}}
 						},
 						"function": {},
 						"application": "agg",
