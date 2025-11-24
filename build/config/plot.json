@@ -63,14 +63,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -376,14 +376,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -694,14 +694,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1012,14 +1012,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1323,14 +1323,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1634,14 +1634,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -1945,14 +1945,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2256,14 +2256,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2527,7 +2527,7 @@
 							"max_bond": null
 						},
 						"wrapper": {
-							"mutual.measure": null,
+							"mutual.measure": null,							
 							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
@@ -2568,14 +2568,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -2879,14 +2879,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3207,14 +3207,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3484,7 +3484,7 @@
 						},
 						"analysis":{
 							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
-						},
+						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3521,14 +3521,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3820,7 +3820,7 @@
 						},
 						"analysis":{
 							"discord.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}							
-						},
+						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3855,9 +3855,9 @@
 							"X"
 						]
 					},
-					"marker": "o",
+					"marker": "o",					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 16,
 					"linestyle": "-",
 					"linewidth": 6,
@@ -3876,7 +3876,7 @@
 							"type": "value"
 						}
 					},
-					"color":"viridis_0.25",
+					"color":"viridis_0.25",					
 					"ecolor": {
 						"@noise.parameters@": {
 							"value": {
@@ -3914,7 +3914,7 @@
 						},
 						"analysis":{
 							"mutual.quantum":{"src.functions.func_stat_group":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}							
-						},
+						},								
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3924,7 +3924,7 @@
 							"one": false
 						},
 						"legend": {
-							"label":"Mutual %s",
+							"label":"Mutual %s",							
 							"include": [
 								"max_bond"
 							]
@@ -3949,9 +3949,9 @@
 							"X"
 						]
 					},
-					"marker": "^",
+					"marker": "^",					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -4018,7 +4018,7 @@
 							"one": false
 						},
 						"legend": {
-							"label":"Mutual %s",
+							"label":"Mutual %s",													
 							"include": [
 								"max_bond"
 							]
@@ -4045,7 +4045,7 @@
 					},
 					"marker": "s",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": "--",
 					"linewidth": 6,
@@ -4064,7 +4064,7 @@
 							"type": "value"
 						}
 					},
-					"color":"viridis_0.75",
+					"color":"viridis_0.75",					
 					"ecolor": {
 						"@noise.parameters@": {
 							"value": {
@@ -4225,7 +4225,7 @@
 					-2,
 					-4
 				]
-			},
+			},			
 			"yaxis.set_major_formatter": {
 				"ticker": {}
 			},
@@ -4389,14 +4389,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -4700,14 +4700,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -5011,14 +5011,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -5329,14 +5329,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -5647,14 +5647,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -5958,14 +5958,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -6275,7 +6275,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -6377,7 +6377,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -6417,6 +6418,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -6576,7 +6582,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -6678,7 +6684,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -6718,6 +6725,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -6877,7 +6889,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -6979,7 +6991,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -7179,7 +7192,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -7281,7 +7294,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -7321,6 +7335,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -7481,7 +7500,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -7583,7 +7602,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -7623,6 +7643,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -7782,7 +7807,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -7884,7 +7909,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -7924,6 +7950,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -8083,7 +8114,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -8185,7 +8216,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -8225,6 +8257,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -8384,7 +8421,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -8486,7 +8523,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -8546,6 +8584,11 @@
 					4,
 					5
 				]
+			},			
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -8705,7 +8748,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -8807,7 +8850,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -8847,6 +8891,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -9006,7 +9055,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -9108,7 +9157,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -9148,6 +9198,11 @@
 					0.8,
 					1
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -9246,7 +9301,7 @@
 				}
 			}
 		}
-	},
+	},							
 	"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
@@ -9308,7 +9363,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -9386,7 +9441,7 @@
 					},
 					"marker": "^",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": "-",
 					"linewidth": 6,
@@ -9486,7 +9541,7 @@
 				"obj":"twinx",
 				"ylabel": "$\\textrm{Classical Infidelity of Max Quantum Entangling} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
 				}
-			],
+			],				
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
 			},
@@ -9500,7 +9555,8 @@
 				}
 			],
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -9596,7 +9652,12 @@
 					1.0
 				]
 				}
-			],
+			],			
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
+			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
 				"ticker": {
@@ -9631,7 +9692,7 @@
 			"yaxis.set_tick_params":{
 				"obj":"twinx",
 				"labelsize":30
-			},
+			},			
 			"tick_params": [
 				{
 					"axis": "y",
@@ -9665,14 +9726,14 @@
 					"width": 1
 				},
 				{
-					"obj":"twinx",
+					"obj":"twinx",					
 					"axis": "y",
 					"which": "minor",
 					"length": 4,
 					"width": 0.5
 				},
 				{
-					"obj":"twinx",
+					"obj":"twinx",					
 					"axis": "x",
 					"which": "major",
 					"length": 8,
@@ -9749,7 +9810,7 @@
 					"set_yticks.twinx": true,
 					"set_yticklabels": "left",
 					"set_yticklabels.twinx": "right",
-					"yaxis.set_tick_params.twinx":"right",
+					"yaxis.set_tick_params.twinx":"right",					
 					"yaxis.set_major_formatter.twinx": "right",
 					"yaxis.set_minor_formatter.twinx":"right",
 					"set_colorbar": "right"
@@ -9818,7 +9879,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -9896,7 +9957,7 @@
 					},
 					"marker": "^",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": "-",
 					"linewidth": 6,
@@ -9996,7 +10057,7 @@
 				"obj":"twinx",
 				"ylabel": "$\\textrm{Classical Infidelity of Max Renyi Entangling} ~~ 1-\\sqrt{p_{\\chi}}\\cdot\\sqrt{p}$"
 				}
-			],
+			],				
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Bond Dimension} ~~ \\chi$"
 			},
@@ -10010,7 +10071,8 @@
 				}
 			],
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -10106,7 +10168,12 @@
 					1.0
 				]
 				}
-			],
+			],			
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
+			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
 				"ticker": {
@@ -10141,7 +10208,7 @@
 			"yaxis.set_tick_params":{
 				"obj":"twinx",
 				"labelsize":30
-			},
+			},			
 			"tick_params": [
 				{
 					"axis": "y",
@@ -10175,14 +10242,14 @@
 					"width": 1
 				},
 				{
-					"obj":"twinx",
+					"obj":"twinx",					
 					"axis": "y",
 					"which": "minor",
 					"length": 4,
 					"width": 0.5
 				},
 				{
-					"obj":"twinx",
+					"obj":"twinx",					
 					"axis": "x",
 					"which": "major",
 					"length": 8,
@@ -10259,7 +10326,7 @@
 					"set_yticks.twinx": true,
 					"set_yticklabels": "left",
 					"set_yticklabels.twinx": "right",
-					"yaxis.set_tick_params.twinx":"right",
+					"yaxis.set_tick_params.twinx":"right",					
 					"yaxis.set_major_formatter.twinx": "right",
 					"yaxis.set_minor_formatter.twinx":"right",
 					"set_colorbar": "right"
@@ -10349,9 +10416,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -10379,7 +10446,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -10665,9 +10732,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -10695,7 +10762,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -10981,9 +11048,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -11011,7 +11078,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -11298,9 +11365,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -11328,7 +11395,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -11614,9 +11681,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -11644,7 +11711,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -11930,9 +11997,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -11960,7 +12027,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -12246,9 +12313,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -12276,7 +12343,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -12413,7 +12480,7 @@
 					4,
 					5
 				]
-			},
+			},			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}
@@ -12582,9 +12649,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -12612,7 +12679,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -12898,9 +12965,9 @@
 							"^",
 							"s"
 						]
-					},
+					},					
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -12928,7 +12995,7 @@
 								"values": [],
 								"norm": null,
 								"scale": "log",
-								"base": 2,
+								"base": 2,								
 								"alpha": 1
 							},
 							"type": "value"
@@ -13209,7 +13276,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -13311,7 +13378,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -13351,6 +13419,11 @@
 					40,
 					50
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -13510,7 +13583,7 @@
 					},
 					"marker": "o",
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -13612,7 +13685,8 @@
 				"fontsize": 20
 			},
 			"set_xscale": {
-				"value": "linear"
+				"value": "log",
+				"base": 2
 			},
 			"set_xlim": {
 				"xmin": 1.5,
@@ -13652,6 +13726,11 @@
 					40,
 					50
 				]
+			},
+			"xaxis.set_major_formatter": {
+				"ticker": {
+					"LogFormatterMathtext": {"base": 2}
+				}
 			},
 			"xaxis.set_minor_locator": null,
 			"xaxis.set_minor_formatter": {
@@ -13822,14 +13901,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -14152,14 +14231,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -14730,7 +14809,7 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
@@ -14782,7 +14861,7 @@
 						},
 						"analysis": {
 							"spectrum.quantum":{"src.functions.func_stat_group":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
-						},
+						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -14829,7 +14908,7 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
@@ -14923,7 +15002,7 @@
 			}, 
 			"set_title": {
 				"label": "N"
-			},
+			},			          
 			"set_ylabel": {
 				"ylabel": "\\textrm{Eigen/Singular Values of } \\rho_{\\chi} ~~ ${\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 			},
@@ -15078,7 +15157,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$","max_bond":"$\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N} ~~ \\textrm{at} ~~ M_{\\gamma\\chi}$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$","max_bond":"$\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N} ~~ \\textrm{at} ~~ M_{\\gamma\\chi}$"},				
 				"set_title_col":["\\textrm{Quantum}","\\textrm{Classical}"],
 				"set_title_row":null,
 				"set_color": "grey",
@@ -15147,7 +15226,7 @@
 						"label": {
 							"N": null,
 							"M": null,
-							"max_bond":null,
+							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.quantum@"
@@ -15390,7 +15469,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$"},				
 				"set_title_col":["\\textrm{Quantum}"],
 				"set_color": "grey",
 				"markerscale": 1.2,
@@ -15458,7 +15537,7 @@
 						"label": {
 							"N": null,
 							"M": null,
-							"max_bond":null,
+							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.classical@"
@@ -15589,7 +15668,7 @@
 			},
 			"set_title": {
 				"label": "N"
-			},
+			},			            
 			"set_ylabel": {
 				"ylabel": "\\textrm{Singular Values of } \\rho_{\\chi} ~~ ${\\sigma_{i}}/{\\sigma_{\\textrm{max}}}$"
 			},
@@ -15701,7 +15780,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$"},				
 				"set_title_col":["\\textrm{Classical}"],
 				"set_color": "grey",
 				"markerscale": 1.2,
@@ -15823,7 +15902,7 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
@@ -15910,7 +15989,7 @@
 						0.01,
 						0.05,
 						0.1
-					],
+					],					
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -15926,7 +16005,7 @@
 			}, 
 			"set_title": {
 				"label": "N"
-			},
+			},			          
 			"set_ylabel": {
 				"ylabel": "\\textrm{Ratio of } \\mp \\textrm{Eigenvalues of } \\rho_{\\chi} ~~ $\\abs{{\\sum_{\\lambda < 0}\\lambda}~/~{\\sum_{\\lambda \\geq 0}\\lambda}}$"
 			},
@@ -16190,14 +16269,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -16501,14 +16580,14 @@
 							">",
 							"8",
 							"x",
-							"1",
+							"1",							
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,
+					"markeredgewidth": 2,					
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -16765,7 +16844,7 @@
 						"label": {
 							"N": null,
 							"M": "$0,10,25,50$",
-							"max_bond":null,
+							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -17000,7 +17079,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
 				"set_color": "grey",
 				"markerscale": 1.2,
 				"handlelength": 3,
@@ -17066,7 +17145,7 @@
 						"label": {
 							"N": null,
 							"M": "$0,10,25,50$",
-							"max_bond":null,
+							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -17215,7 +17294,7 @@
 				"nbins": 5
 			},
 			"set_xlim":{"xmin":-2,"xmax":18},
-			"set_xticks":{"ticks":[0,4,8,12,16]},
+			"set_xticks":{"ticks":[0,4,8,12,16]},			
 			"set_ynbins": {
 				"nbins": 4
 			},
@@ -17306,7 +17385,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
 				"set_color": "grey",
 				"markerscale": 1.2,
 				"handlelength": 3,
@@ -17372,7 +17451,7 @@
 						"label": {
 							"N": null,
 							"M": null,
-							"max_bond":null,
+							"max_bond":null,							
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -17523,7 +17602,7 @@
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Probability}~~ p$",
 				"size": 40
-			},
+			},			
 			"yaxis.offsetText.set_fontsize": {
 				"fontsize": 40
 			},
@@ -17624,7 +17703,7 @@
 					1e0
 				],
 				"size": 36
-			},
+			},											
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}
@@ -17646,7 +17725,7 @@
 				"ticker": {
 					"NullFormatter": {}
 				}
-			},
+			},						
 			"set_aspect": {
 				"aspect": "auto"
 			},
@@ -17664,7 +17743,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$"},
+				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
 				"markerscale": 2,
 				"handlelength": 3,
 				"framealpha": 0.8,
