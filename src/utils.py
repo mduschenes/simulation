@@ -5035,15 +5035,14 @@ if backend in ['jax','quimb']:
 		else:
 			out = func(key,shape,bounds,dtype)
 
-
-		if scale in ['normalize']:
+		if isinstance(scale,(*arrays,*numbers)):
+			out = out*scale
+		elif scale in ['normalize']:
 			out = out/out.sum()
 		elif scale in ['1']:
 			out = out/out.sum()
 		elif scale in ['2']:
 			out = out/sqrt(addition(conjugate(out)*out))
-		elif scale is not None:
-			out = out*scale
 
 		if complex:
 			out = out[0] + 1j*out[1]
@@ -5451,14 +5450,14 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			out = func(key,shape,bounds,dtype)
 
 
-		if scale in ['normalize']:
+		if isinstance(scale,(*arrays,*numbers)):
+			out = out*scale
+		elif scale in ['normalize']:
 			out = out/out.sum()
 		elif scale in ['1']:
 			out = out/out.sum()
 		elif scale in ['2']:
 			out = out/sqrt(addition(conjugate(out)*out))
-		elif scale is not None:
-			out = out*scale
 
 		if complex:
 			out = out[0] + 1j*out[1]
@@ -6734,12 +6733,14 @@ def nansem(a,axis=None,ddof=None):
 	return nanstd(a,axis=axis,ddof=ddof)/np.sqrt(size)
 
 # @partial(jit,static_argnums=(2,3,4,))
-def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,seed=None):
+def bootstrapper(a,size,random=None,scale=None,shape=(),axis=None,replace=True,weights=None,key=None,seed=None,**kwargs):
 	'''
 	Compute bootstrapped data
 	Args:
 		a (array): array to compute bootstrapped sampling
-		size (int): Number of bootstrap samplings, defaults to first element of shape if None
+		size (int,iterable[int]): Number of bootstrap samplings, defaults to first element of shape if None
+		random (str): random type of bootstrapping
+		scale (array): scale of bootstrapping
 		shape (int,iterable): Size or shape of sample
 		axis (int): axis to compute over. Flattens array if None.
 		replace (bool): Sample with replacement
@@ -6750,18 +6751,28 @@ def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,
 		out (array): bootstrapped sample of array of shape [*a.shape[:axis],*shape,*a.shape[axis+1:]]
 	'''
 
-	if seed is not None:
-		key = seed
+	key = key if seed is None else seed
 
-	if isinstance(shape,integers):
-		shape = (size,shape)
-	elif size is not None:
-		shape = (size,*shape)
+	size = 1 if size is None else size
 
-	if is_dataframe(a):
+	random = 'gaussian' if random is None else random
+
+	scale = 1 if not isinstance(scale,arrays) else scale
+
+	shape = a.shape if shape is None else shape
+
+	if random not in ['sample']:
+		shape = (*([size] if not isinstance(size,iterables) else size),*a.shape)
+		scale = scale.reshape(*[1]*(len(shape)-scale.ndim),*scale.shape)
+		return a.reshape(*[1]*(len(shape)-a.ndim),*a.shape) + rand(random=random,shape=shape,key=key,scale=scale)
+	elif is_dataframe(a):
+		shape = size
+		scale = None
 		return a.sample(shape,replace=replace,weights=weights,random_state=key)
 	else:
-		return rand(shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
+		shape = size
+		scale = None
+		return rand(random=random,shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
 
 def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 	'''

@@ -26,7 +26,7 @@ for PATH in PATHS:
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
-from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon
+from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan,pi
 
@@ -52,6 +52,47 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	attr = slice(None) if attr is None else attr
 	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
 	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
+
+def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwargs):
+
+	if y not in data:
+		return data
+
+	if func is None:
+		func = 'argmax'
+	elif isinstance(func,str):
+		func = load(func,default=func)
+
+	def func(data,func=func):
+		options = {
+			**dict(
+				a = data[y].to_numpy(),
+				scale = data[yerr].to_numpy(),
+				),
+			**kwargs
+			}
+		a = bootstrapper(**options)
+
+		if isinstance(func,str):
+			index = getattr(np,func)(a,axis=-1)
+
+		data = {**{attr:[data[attr].iloc[0]] for attr in data},**{y:[a[...,index].mean().item()],yerr:[(a[...,index].std()/np.sqrt(a[...,index].size)).item()]}}
+
+		data = dataframe(data)
+
+		return data
+
+	def agg(data):
+		by = x
+		agg = {**{attr:[(attr,'first')] for attr in data},**{y:[(y,'mean'),(yerr,'sem')]}}
+		options = dict(by=by,agg=agg)
+		data = grouper(data,**options)
+		data = func(data)
+		return data
+
+	data = agg(data)
+
+	return data
 
 def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,sort=None,**kwargs):
 

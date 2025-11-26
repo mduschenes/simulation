@@ -22,12 +22,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"objective": null,
@@ -36,7 +36,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond",
+								"S",
 								"N"
 							]
 						}
@@ -49,7 +49,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -328,12 +328,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.classical": null,
@@ -350,7 +350,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -362,7 +362,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -646,12 +646,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"norm.classical": null,
@@ -668,7 +668,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -680,7 +680,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -964,12 +964,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entanglement.classical": null,
@@ -986,7 +986,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -998,7 +998,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -1275,12 +1275,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.classical": null,
@@ -1297,7 +1297,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -1309,7 +1309,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -1586,12 +1586,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entanglement.renyi": null,
@@ -1608,7 +1608,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -1620,7 +1620,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -1897,12 +1897,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.renyi": null,
@@ -1919,7 +1919,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -1931,7 +1931,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -2208,12 +2208,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.quantum": null,
@@ -2230,7 +2230,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -2242,7 +2242,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -2519,12 +2519,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.measure": null,							
@@ -2542,7 +2542,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -2554,7 +2554,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -2831,12 +2831,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.classical": null,
@@ -2853,7 +2853,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -2865,7 +2865,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -3159,12 +3159,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.renyi": null,
@@ -3181,7 +3181,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -3193,7 +3193,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -3470,21 +3470,18 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.quantum": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
-						"analysis":{
-							"discord.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
-						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3495,7 +3492,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -3507,7 +3504,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -3521,14 +3518,14 @@
 							">",
 							"8",
 							"x",
-							"1",							
+							"1",
 							"2",
 							"3",
 							"4"
 						]
 					},
 					"markeredgecolor": "k",
-					"markeredgewidth": 2,					
+					"markeredgewidth": 2,
 					"markersize": 10,
 					"linestyle": ":",
 					"linewidth": 6,
@@ -3772,7 +3769,7 @@
 				"ax": {
 					"legend": "bottom_right",
 					"set_title": "top",
-					"set_xlabel": "bottom",                    
+					"set_xlabel": "bottom",
 					"set_ylabel": "left",
 					"set_yticks": true,
 					"set_yticklabels": "left",
@@ -3804,23 +3801,20 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.quantum": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr",
 							"y": null,
-							"yerr": null							
+							"yerr": null
 						},
-						"analysis":{
-							"discord.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":4,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
-						},						
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3832,7 +3826,7 @@
 						"legend": {
 							"label":"Discord %s",
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -3844,7 +3838,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -3898,12 +3892,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.quantum": null,
@@ -3912,9 +3906,6 @@
 							"y": null,
 							"yerr": null							
 						},
-						"analysis":{
-							"mutual.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}
-						},								
 						"scinotation": {
 							"scilimits": [
 								0,
@@ -3926,7 +3917,7 @@
 						"legend": {
 							"label":"Mutual %s",							
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -3938,7 +3929,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -3992,16 +3983,13 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": [1e-18]
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
-						"analysis":{
-							"mutual.measure":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":4,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}
-						},		
 						"wrapper": {
 							"mutual.measure": "src.functions.func_mutual_measure",
 							"y": "src.functions.func_y",
@@ -4020,7 +4008,7 @@
 						"legend": {
 							"label":"Mutual %s",													
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -4032,7 +4020,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -4341,12 +4329,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.classical": null,
@@ -4363,7 +4351,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -4375,7 +4363,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -4652,12 +4640,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.renyi": null,
@@ -4674,7 +4662,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -4686,7 +4674,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -4963,12 +4951,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.quantum": null,
@@ -4985,7 +4973,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -4997,7 +4985,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -5281,12 +5269,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"norm.quantum": null,
@@ -5303,7 +5291,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -5315,7 +5303,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -5599,12 +5587,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entanglement.quantum": null,
@@ -5621,7 +5609,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -5633,7 +5621,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -5910,12 +5898,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.quantum": null,
@@ -5932,7 +5920,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -5944,7 +5932,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -6198,7 +6186,7 @@
 			}
 		}
 	},
-	"max_bond.entangling.quantum.noise.parameters.N":{
+	"S.entangling.quantum.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -6214,27 +6202,11 @@
 			"close": {}
 		},
 		"ax": {
-			"axhline": {
-				"x": "max_bond",
-				"y": "entangling.quantum",
-				"label": {
-					"label": {
-						"N": null,
-						"scheme": null,
-						"noise.parameters": null
-					},
-					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"max_bond":null}},
-					"analysis": {"entangling.quantum":{"func":"src.functions.func_line","args":[],"kwargs":{"attr":"entangling.quantum"}}}
-				},
-				"linestyle":"--",
-				"linewidth": 4,
-				"color":"k",
-				"alpha":0.8
-			},
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "entangling.quantum",
+					"yerr": "entangling.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -6242,10 +6214,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.quantum","yerr":"entangling.quantum.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.quantum": null,
@@ -6262,7 +6234,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -6309,6 +6281,23 @@
 					}
 				}
 			],
+			"axhline": {
+				"x": "S",
+				"y": "entangling.quantum",
+				"label": {
+					"label": {
+						"N": null,
+						"scheme": null,
+						"noise.parameters": null
+					},
+					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"S":null}},
+					"analysis": {"entangling.quantum":{"func":"src.functions.func_line","args":[],"kwargs":{"attr":"entangling.quantum"}}}
+				},
+				"linestyle":"--",
+				"linewidth": 4,
+				"color":"k",
+				"alpha":0.8
+			},
 			"set_colorbar": {
 				"value": {
 					"@noise.parameters@": {
@@ -6522,7 +6511,7 @@
 			}
 		}
 	},
-	"max_bond.entangling.renyi.noise.parameters.N":{
+	"S.entangling.renyi.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -6540,8 +6529,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "entangling.renyi",
+					"yerr": "entangling.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -6549,10 +6539,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.renyi","yerr":"entangling.renyi.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.renyi": null,
@@ -6569,7 +6559,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -6829,7 +6819,7 @@
 			}
 		}
 	},
-	"max_bond.infidelity.classical.noise.parameters.N":{
+	"S.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -6847,8 +6837,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "infidelity.classical",
+					"yerr": "infidelity.classical.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -6856,10 +6847,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"infidelity.classical","yerr":"infidelity.classical.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.classical": null,
@@ -6876,7 +6867,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -7132,7 +7123,7 @@
 			}
 		}
 	},
-	"max_bond.mutual.quantum.noise.parameters.N":{
+	"S.mutual.quantum.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -7150,8 +7141,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "mutual.quantum",
+					"yerr": "mutual.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -7159,10 +7151,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.quantum","yerr":"mutual.quantum.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.quantum": null,
@@ -7179,7 +7171,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -7439,7 +7431,7 @@
 			}
 		}
 	},
-	"max_bond.mutual.measure.noise.parameters.N":{
+	"S.mutual.measure.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -7457,8 +7449,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "mutual.measure",
+					"yerr": "mutual.measure.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -7466,10 +7459,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.measure":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.measure","yerr":"mutual.measure.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.measure": null,
@@ -7487,7 +7480,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -7747,7 +7740,7 @@
 			}
 		}
 	},
-	"max_bond.mutual.classical.noise.parameters.N":{
+	"S.mutual.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -7765,8 +7758,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "mutual.classical",
+					"yerr": "mutual.classical.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -7774,10 +7768,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.classical","yerr":"mutual.classical.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.classical": null,
@@ -7794,7 +7788,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -8054,7 +8048,7 @@
 			}
 		}
 	},
-	"max_bond.mutual.renyi.noise.parameters.N":{
+	"S.mutual.renyi.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -8072,8 +8066,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "mutual.renyi",
+					"yerr": "mutual.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -8081,10 +8076,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"mutual.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.renyi","yerr":"mutual.renyi.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"mutual.renyi": null,
@@ -8101,7 +8096,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -8361,7 +8356,7 @@
 			}
 		}
 	},
-	"max_bond.discord.quantum.noise.parameters.N":{
+	"S.discord.quantum.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -8379,8 +8374,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "discord.quantum",
+					"yerr": "discord.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -8388,10 +8384,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.quantum","yerr":"discord.quantum.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.quantum": null,
@@ -8408,7 +8404,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -8688,7 +8684,7 @@
 			}
 		}
 	},
-	"max_bond.discord.classical.noise.parameters.N":{
+	"S.discord.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -8706,8 +8702,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "discord.classical",
+					"yerr": "discord.classical.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -8715,10 +8712,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.classical","yerr":"discord.classical.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.classical": null,
@@ -8735,7 +8732,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -8995,7 +8992,7 @@
 			}
 		}
 	},
-	"max_bond.discord.renyi.noise.parameters.N":{
+	"S.discord.renyi.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -9013,8 +9010,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "discord.renyi",
+					"yerr": "discord.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -9022,10 +9020,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"discord.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.renyi","yerr":"discord.renyi.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"discord.renyi": null,
@@ -9042,7 +9040,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -9302,7 +9300,7 @@
 			}
 		}
 	},							
-	"max_bond.entangling.quantum.infidelity.classical.noise.parameters.N":{
+	"S.entangling.quantum.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 48,
@@ -9320,8 +9318,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "entangling.quantum",
+					"yerr": "entangling.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -9329,10 +9328,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.quantum","yerr":"entangling.quantum.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.quantum": null,
@@ -9349,7 +9348,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							],
 							"label":"$\\textrm{Quantum Entangling}$"
 						}
@@ -9397,8 +9396,9 @@
 					}
 				},
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "infidelity.classical",
+					"yerr": "infidelity.classical.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -9406,10 +9406,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"infidelity.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"infidelity.classical","yerr":"infidelity.classical.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.classical": null,
@@ -9426,7 +9426,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							],
 							"label":"$\\textrm{Classical Infidelity}$"
 						}
@@ -9818,7 +9818,7 @@
 			}
 		}		
 	},
-	"max_bond.entangling.renyi.infidelity.classical.noise.parameters.N":{
+	"S.entangling.renyi.infidelity.classical.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 48,
@@ -9836,8 +9836,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "entangling.renyi",
+					"yerr": "entangling.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -9845,10 +9846,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.renyi","yerr":"entangling.renyi.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"entangling.renyi": null,
@@ -9865,7 +9866,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							],
 							"label":"$\\textrm{Renyi Entangling}$"
 						}
@@ -9913,8 +9914,9 @@
 					}
 				},
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "infidelity.classical",
+					"yerr": "infidelity.classical.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -9922,10 +9924,10 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"infidelity.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"infidelity.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.renyi","yerr":"entangling.renyi.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.classical": null,
@@ -9942,7 +9944,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							],
 							"label":"$\\textrm{Classical Infidelity}$"
 						}
@@ -10334,7 +10336,7 @@
 			}
 		}		
 	},
-	"noise.parameters.entangling.quantum.max_bond.N": {
+	"noise.parameters.entangling.quantum.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -10350,35 +10352,19 @@
 			"close": {}
 		},
 		"ax": {
-			"axhline": {
-				"x": "noise.parameters",
-				"y": "entangling.quantum",
-				"label": {
-					"label": {
-						"N": null,
-						"scheme": null,
-						"max_bond": null
-					},
-					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"noise.parameters":null}},
-					"analysis": {"entangling.quantum":{"func":"src.functions.func_line","args":[],"kwargs":{"attr":"entangling.quantum"}}}
-				},
-				"linestyle":"--",
-				"linewidth": 4,
-				"color":"k",
-				"alpha":0.8
-			},
 			"errorbar": [
 				{
 					"x": "noise.parameters",
 					"y": "entangling.quantum",
+					"yerr": "entangling.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"entangling.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"entangling.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.quantum","yerr":"entangling.quantum.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10425,7 +10411,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -10439,7 +10425,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -10454,9 +10440,26 @@
 					}
 				}
 			],
+			"axhline": {
+				"x": "noise.parameters",
+				"y": "entangling.quantum",
+				"label": {
+					"label": {
+						"N": null,
+						"scheme": null,
+						"S": null
+					},
+					"legend":{"label":"$\\bar{\\mathcal{S}}_{\\ket{\\psi}}^{N/2}$","include":{"noise.parameters":null}},
+					"analysis": {"entangling.quantum":{"func":"src.functions.func_line","args":[],"kwargs":{"attr":"entangling.quantum"}}}
+				},
+				"linestyle":"--",
+				"linewidth": 4,
+				"color":"k",
+				"alpha":0.8
+			},
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -10667,7 +10670,7 @@
 			}
 		}
 	},
-	"noise.parameters.entangling.renyi.max_bond.N": {
+	"noise.parameters.entangling.renyi.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -10687,14 +10690,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "entangling.renyi",
+					"yerr": "entangling.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"entangling.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"entangling.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"entangling.renyi","yerr":"entangling.renyi.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -10741,7 +10745,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -10755,7 +10759,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -10772,7 +10776,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -10983,7 +10987,7 @@
 			}
 		}
 	},
-	"noise.parameters.mutual.quantum.max_bond.N": {
+	"noise.parameters.mutual.quantum.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -11003,14 +11007,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "mutual.quantum",
+					"yerr": "mutual.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"mutual.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.quantum"]}}
+							"mutual.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.quantum","yerr":"mutual.quantum.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11057,7 +11062,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11071,7 +11076,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11088,7 +11093,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -11299,7 +11304,7 @@
 			}
 		}
 	},
-	"noise.parameters.mutual.measure.max_bond.N": {
+	"noise.parameters.mutual.measure.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -11319,14 +11324,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "mutual.measure",
+					"yerr": "mutual.measure.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"mutual.measure":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.measure"]}}
+							"mutual.measure.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.measure","yerr":"mutual.measure.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11374,7 +11380,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11388,7 +11394,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11405,7 +11411,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -11616,7 +11622,7 @@
 			}
 		}
 	},
-	"noise.parameters.mutual.classical.max_bond.N": {
+	"noise.parameters.mutual.classical.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -11636,14 +11642,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "mutual.classical",
+					"yerr": "mutual.classical.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"mutual.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.classical"]}}
+							"mutual.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.classical","yerr":"mutual.classical.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -11690,7 +11697,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11704,7 +11711,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -11721,7 +11728,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -11932,7 +11939,7 @@
 			}
 		}
 	},
-	"noise.parameters.mutual.renyi.max_bond.N": {
+	"noise.parameters.mutual.renyi.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -11952,14 +11959,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "mutual.renyi",
+					"yerr": "mutual.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"mutual.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["mutual.renyi"]}}
+							"mutual.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"mutual.renyi","yerr":"mutual.renyi.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12006,7 +12014,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12020,7 +12028,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12037,7 +12045,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -12248,7 +12256,7 @@
 			}
 		}
 	},
-	"noise.parameters.discord.quantum.max_bond.N": {
+	"noise.parameters.discord.quantum.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -12268,14 +12276,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "discord.quantum",
+					"yerr": "discord.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"discord.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.quantum"]}}
+							"discord.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.quantum","yerr":"discord.quantum.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12322,7 +12331,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12336,7 +12345,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12353,7 +12362,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -12584,7 +12593,7 @@
 			}
 		}
 	},
-	"noise.parameters.discord.classical.max_bond.N": {
+	"noise.parameters.discord.classical.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -12604,14 +12613,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "discord.classical",
+					"yerr": "discord.classical.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"discord.classical":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.classical"]}}
+							"discord.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.classical","yerr":"discord.classical.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12658,7 +12668,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12672,7 +12682,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12689,7 +12699,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -12900,7 +12910,7 @@
 			}
 		}
 	},
-	"noise.parameters.discord.renyi.max_bond.N": {
+	"noise.parameters.discord.renyi.S.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -12920,14 +12930,15 @@
 				{
 					"x": "noise.parameters",
 					"y": "discord.renyi",
+					"yerr": "discord.renyi.error",
 					"label": {
 						"label": {
 							"N": null,
 							"scheme": null,
-							"max_bond": null
+							"S": null
 						},
 						"analysis": {
-							"discord.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["discord.renyi"]}}
+							"discord.renyi.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"discord.renyi","yerr":"discord.renyi.error"}}
 						},	                        						
 						"labels": {
 							"noise.parameters": null,"N":null
@@ -12974,7 +12985,7 @@
 					"elinewidth": 4,
 					"capsize": 6,
 					"color": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -12988,7 +12999,7 @@
 						}
 					},
 					"ecolor": {
-						"@max_bond@": {
+						"@S@": {
 							"value": {
 								"value": null,
 								"color": "viridis_r",
@@ -13005,7 +13016,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@max_bond@": {
+					"@S@": {
 						"value": null,
 						"type": "index"
 					}
@@ -13216,7 +13227,7 @@
 			}
 		}
 	},
-	"max_bond.M.quantum.noise.parameters.N":{
+	"S.M.quantum.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -13234,8 +13245,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "M",
+					"yerr": "M.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -13243,13 +13255,13 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"M.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"M.quantum","yerr":"M.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
-							"entangling.quantum": null,
+							"M": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
@@ -13263,7 +13275,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -13523,7 +13535,7 @@
 			}
 		}
 	},
-	"max_bond.M.renyi.noise.parameters.N":{
+	"S.M.renyi.noise.parameters.N":{
 		"fig": {
 			"set_size_inches": {
 				"w": 40,
@@ -13541,8 +13553,9 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "max_bond",
+					"x": "S",
 					"y": "M",
+					"yerr": "M.error",
 					"label": {
 						"label": {
 							"N": null,
@@ -13550,13 +13563,13 @@
 							"noise.parameters": null
 						},
 						"analysis": {
-							"entangling.renyi":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.renyi"]}}
+							"M.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"M","yerr":"M.error"}}
 						},	                        						
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
-							"entangling.renyi": null,
+							"M": null,
 							"y": "src.functions.func_y",
 							"yerr": "src.functions.func_yerr"
 						},
@@ -13570,7 +13583,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -13853,12 +13866,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"infidelity.pure": null,
@@ -13875,7 +13888,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -13887,7 +13900,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -14183,12 +14196,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"norm.pure": null,
@@ -14205,7 +14218,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -14217,7 +14230,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -14749,10 +14762,11 @@
 				{
 					"x": null,
 					"y": "spectrum.quantum",
+					"yerr": "spectrum.quantum.error",
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond":null,
+							"S":null,
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -14761,7 +14775,7 @@
 							"rank.quantum":{"func":"src.functions.func_spectrum_rank","args":[],"kwargs":{"attr":"spectrum.quantum"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.quantum.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"spectrum.quantum","yerr":"spectrum.quantum.error"}}
 						},	   
 						"scinotation": {
 							"scilimits": [
@@ -14772,7 +14786,7 @@
 							"one": false
 						},
 						"legend": {
-							"include":{"M":null,"max_bond":null,"rank":null},
+							"include":{"M":null,"S":null,"rank":null},
 							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
@@ -14782,7 +14796,7 @@
 						]
 					},
 					"alpha": {
-						"@max_bond@": [
+						"@S@": [
 							0.2,
 							0.3,
 							0.4,
@@ -14795,7 +14809,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -14848,10 +14862,11 @@
 				{
 					"x": null,
 					"y": "spectrum.classical",
+					"yerr": "spectrum.classical.error",
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond":null,
+							"S":null,
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -14860,7 +14875,7 @@
 							"rank.classical":{"func":"src.functions.func_spectrum_rank","args":[],"kwargs":{"attr":"spectrum.classical"}}
 						},
 						"analysis": {
-							"spectrum.quantum":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":["M"],"dependent":["entangling.quantum"]}}
+							"spectrum.classical.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"argmax","size":1000,"random":"gaussian","seed":123,"x":"M","xerr":null,"y":"spectrum.classical","yerr":"spectrum.classical.error"}}
 						},						
 						"scinotation": {
 							"scilimits": [
@@ -14871,7 +14886,7 @@
 							"one": false
 						},
 						"legend": {
-							"include":{"M":null,"max_bond":null,"rank":null},
+							"include":{"M":null,"S":null,"rank":null},
 							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
@@ -14881,7 +14896,7 @@
 						]
 					},
 					"alpha": {
-						"@max_bond@": [
+						"@S@": [
 							0.2,
 							0.3,
 							0.4,
@@ -14894,7 +14909,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -15157,7 +15172,7 @@
 				"prop": {
 					"size": 25
 				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$","max_bond":"$\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N} ~~ \\textrm{at} ~~ M_{\\gamma\\chi}$"},				
+				"texify": {"M":"$\\textrm{Depth} ~ M$","rank": "$\\textrm{Rank}~ r$","S":"$\\textrm{Bond Dimension} ~~ \\chi \\leq D^{N} ~~ \\textrm{at} ~~ M_{\\gamma\\chi}$"},
 				"set_title_col":["\\textrm{Quantum}","\\textrm{Classical}"],
 				"set_title_row":null,
 				"set_color": "grey",
@@ -15226,7 +15241,7 @@
 						"label": {
 							"N": null,
 							"M": null,
-							"max_bond":null,							
+							"S":null,
 							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.quantum@"
@@ -15537,7 +15552,7 @@
 						"label": {
 							"N": null,
 							"M": null,
-							"max_bond":null,							
+							"S":null,
 							"scheme": null,
 							"noise.parameters": [1e-4],
 							"rank":"@rank.classical@"
@@ -15846,7 +15861,7 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond":null,
+							"S":null,
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -15864,7 +15879,7 @@
 							"one": false
 						},
 						"legend": {
-							"include":{"M":null,"max_bond":null},
+							"include":{"M":null,"S":null},
 							"exclude":{"M":null,"scheme":null}
 						},
 						"slice": [
@@ -15874,7 +15889,7 @@
 						]
 					},
 					"alpha": {
-						"@max_bond@": [
+						"@S@": [
 							0.2,
 							0.3,
 							0.4,
@@ -15888,7 +15903,7 @@
 					},
 					"alpha":0.8,
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -16221,12 +16236,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"array.kurtosis":{"func":"src.functions.func_kurtosis","args":[],"kwargs":{"attr":"array"}},
@@ -16243,7 +16258,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -16255,7 +16270,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -16532,12 +16547,12 @@
 					"label": {
 						"label": {
 							"N": null,
-							"max_bond": null,
+							"S": null,
 							"scheme": null,
 							"noise.parameters": null
 						},
 						"labels": {
-							"max_bond": null
+							"S": null
 						},
 						"wrapper": {
 							"state.kurtosis":{"func":"src.functions.func_kurtosis","args":[],"kwargs":{"attr":"state"}},
@@ -16554,7 +16569,7 @@
 						},
 						"legend": {
 							"include": [
-								"max_bond"
+								"S"
 							]
 						}
 					},
@@ -16566,7 +16581,7 @@
 						]
 					},
 					"marker": {
-						"@max_bond@": [
+						"@S@": [
 							"o",
 							"^",
 							"s",
@@ -16844,7 +16859,7 @@
 						"label": {
 							"N": null,
 							"M": "$0,10,25,50$",
-							"max_bond":null,							
+							"S":null,
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -17145,7 +17160,7 @@
 						"label": {
 							"N": null,
 							"M": "$0,10,25,50$",
-							"max_bond":null,							
+							"S":null,
 							"scheme": null,
 							"noise.parameters": null
 						},
@@ -17426,368 +17441,5 @@
 				}
 			}
 		}		
-	},
-	"hist.array.M.noise.parameters": {
-		"fig": {
-			"set_size_inches": {
-				"w": 32,
-				"h": 32
-			},
-			"subplots_adjust": {},
-			"tight_layout": {},
-			"savefig": {
-				"fname": null,
-				"bbox_inches": "tight",
-				"pad_inches": 0.4
-			},
-			"close": {}
-		},
-		"ax": {
-			"hist": [
-				{
-					"x": null,
-					"y": "array",
-					"label": {
-						"label": {
-							"N": null,
-							"M": null,
-							"max_bond":null,							
-							"scheme": null,
-							"noise.parameters": null
-						},
-                        "func": {
-                            "stat": {
-                                "y": {
-                                    "": "src.functions.func_samples",
-                                    "err": "src.functions.func_samples_err"
-                                }
-                            }
-                        },
-						"analysis":{
-							"array":{"func":"src.functions.func_stat_group","args":[],"kwargs":{"samples":4,"seed":123,"independent":null,"dependent":["array"]}}
-						},  
-						"analysis":{},                      
-						"wrapper":{
-						},
-						"scinotation": {
-							"scilimits": [
-								0,
-								4
-							],
-							"decimals": 0,
-							"one": false
-						},
-						"legend": {
-							"include":{"M":null},
-							"exclude":{"scheme":null}
-						},
-						"indexing":1,
-						"slice": null
-					},
-					"obj":null,
-					"plots":{"errorbar":"label"},
-					"plots":false,
-					"bins":1000,
-					"range":[0,1],
-					"density":"probability",
-					"log":true,
-					"alpha": {
-						"@M@": [
-							0.4,
-							0.6,
-							0.8,
-							1
-						]
-					},
-					"alpha.errorbar": {
-						"@M@": [
-							0.4,
-							0.6,
-							0.8,
-							1
-						]
-					},
-					"marker.errorbar": {
-						"@M@": [
-							"o",
-							"^",
-							"s",
-							"P"
-						]
-					},
-					"markersize.errorbar": 10,
-					"linestyle.errorbar": "",
-					"elinewidth.errorbar": 6,
-					"capsize.errorbar": 6,
-					"color": {
-						"@noise.parameters@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": null,
-								"scale": "log",
-								"alpha": 1
-							},
-							"type": "value"
-						}
-					},
-					"color.errorbar": "black",
-					"ecolor.errorbar": "black"
-				}			                    
-			],
-			"set_colorbar": {
-				"value": {
-					"@noise.parameters@": {
-						"value": null,
-						"type": "index"
-					}
-				},
-				"color": "viridis",
-				"norm": [
-					0,
-					1
-				],
-				"scale": "linear",
-				"alpha": 1,
-				"segments": 100,
-				"size": "3%",
-				"pad": 0.02,
-				"share":true,
-				"scinotation": {
-					"scilimits": [
-						0,
-						4
-					],
-					"decimals": 0,
-					"one": false
-				},
-				"set_label": {
-					"label": "$\\textrm{Noise Scale} ~~ \\gamma$",
-					"labelpad": 10,
-					"size": 40
-				},
-				"set_ticks": {
-					"ticks": 5
-				},
-				"set_ticklabels": {
-					"ticklabels": [
-						0.0001,
-						0.001,
-						0.01,
-						0.1,
-						1
-					],
-					"size": 40
-				},
-				"ax.yaxis.set_tick_params": {
-					"pad": 5
-				},
-				"ax.tick_params": {
-					"labelsize": 40,
-					"which": "major",
-					"size": 10,
-					"length": 8,
-					"width": 1
-				}
-			},
-			"set_title": {
-				"label": "N",
-				"size": 40
-			},
-			"set_ylabel": {
-				"ylabel": "$\\textrm{Count}$",
-				"size": 40
-			},
-			"set_xlabel": {
-				"xlabel": "$\\textrm{Probability}~~ p$",
-				"size": 40
-			},			
-			"yaxis.offsetText.set_fontsize": {
-				"fontsize": 40
-			},
-			"set_xscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_xlim": {
-				"xmin": 5e-7,
-				"xmax": 2e0
-			},
-			"set_xnbins": {
-				"nbins": 4
-			},
-			"set_xticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},
-			"set_yscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_ylim": {
-				"ymin": 5e-7,
-				"ymax": 2e0
-			},
-			"set_ynbins": {
-				"nbins": 4
-			},
-			"set_yticks": {
-				"ticks": [
-					1e-6,
-					1e-4,
-					1e-2,
-					1e0
-				]
-			},	
-			"set_xscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_xlim": {
-				"xmin": 5e-17,
-				"xmax": 2e0
-			},
-			"set_xnbins": {
-				"nbins": 5
-			},
-			"set_xticks": {
-				"ticks": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},
-			"set_xticklabels": {
-				"labels": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				],
-				"size": 36
-			},
-			"set_yscale": {
-				"value": "log",
-				"base": 10
-			},
-			"set_ylim": {
-				"ymin": 5e-17,
-				"ymax": 2e0
-			},
-			"set_ynbins": {
-				"nbins": 4
-			},
-			"set_yticks": {
-				"ticks": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				]
-			},	
-			"set_yticklabels": {
-				"labels": [
-					1e-16,
-					1e-12,
-					1e-8,
-					1e-4,
-					1e0
-				],
-				"size": 36
-			},											
-			"xaxis.set_major_formatter": {
-				"ticker": {
-					"LogFormatterMathtext": {"base": 10}
-				}
-			},
-			"xaxis.set_minor_locator": null,
-			"xaxis.set_minor_formatter": {
-				"ticker": {
-					"NullFormatter": {}
-				}
-			},
-			"yaxis.set_major_formatter": {
-				"ticker": {
-					"LogFormatterMathtext": {"base": 10}
-				}
-			},
-			"yaxis.set_minor_locator": null,
-			"yaxis.set_minor_formatter": {
-				"ticker": {
-					"NullFormatter": {}
-				}
-			},						
-			"set_aspect": {
-				"aspect": "auto"
-			},
-			"grid": {
-				"visible": true,
-				"which": "major",
-				"axis": "both"
-			},
-			"legend": {
-				"title_fontsize": 25,
-				"fontsize": 25,
-				"get_title": {
-					"ha": "center"
-				},
-				"prop": {
-					"size": 25
-				},
-				"texify": {"M":"$\\textrm{Depth} ~ M$"},				
-				"markerscale": 2,
-				"handlelength": 3,
-				"framealpha": 0.8,
-				"loc": [
-					1.15,
-					0.395
-				],
-				"set_color": "black",
-				"set_linestyle": "-",
-				"set_alpha": 0.5,
-				"get_frame":{"set_edgecolor":{"color":"black"},"set_alpha":{"alpha":0.3}},
-				"keep":["marker","linestyle","alpha"],
-				"ncol": 1,
-				"merge": true,
-				"set_zorder": {
-					"level": 100
-				}
-			}
-		},
-		"style": {
-			"texify": null,
-			"mplstyle": "plot.mplstyle",
-			"rcParams": {
-				"font.size": 40
-			},
-			"layout": {
-				"nrows": 1,
-				"ncols": 1,
-				"index": 1
-			},
-			"share": {
-				"ax": {
-					"legend": "bottom_right",
-					"set_title": "top",
-					"set_xlabel": "bottom",                    
-					"set_xticks": true,                    
-					"set_xticklabels": true,                    
-					"set_ylabel": "left",
-					"set_yticks": true,
-					"set_yticklabels": true,
-					"set_colorbar": "right"
-				}
-			}
-		}		
 	}
-
 }

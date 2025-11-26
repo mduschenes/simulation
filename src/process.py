@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,copy
-from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrap,flatten
+from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrapper,flatten
 from src.utils import to_key_value,to_slice,to_tuple,to_scalar,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
 from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation,texify,baseify
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
@@ -1216,11 +1216,13 @@ def wrap(function,attr=False,func=None,args=None,kwargs=None,options=None,defaul
 		if callable(obj['func']):
 			pass
 		elif isinstance(obj['func'],str):
-			obj['func'] = defaults.get(obj['func'],obj['func'])
-			try:
-				obj['func'] = load(obj['func'],**{**dict(default=default),**options})
-			except:
-				obj['func'] = obj['func']
+			if obj['func'] in defaults:
+				obj['func'] = defaults.get(obj['func'],obj['func'])
+			else:
+				try:
+					obj['func'] = load(obj['func'],**{**dict(default=default),**options})
+				except:
+					obj['func'] = obj['func']
 		else:
 			obj['func'] = obj['func']
 
@@ -1600,11 +1602,11 @@ def apply(data,plots,processes,verbose=None):
 		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))
 
 	def mean_bootstrap(obj,*args,**kwargs):
-		return bootstrap(obj,*args,**kwargs).mean()
+		return bootstrapper(obj,*args,**kwargs).mean()
 	def std_bootstrap(obj,*args,**kwargs):
-		return bootstrap(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return bootstrapper(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))
 	def sem_bootstrap(obj,*args,**kwargs):
-		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return bootstrapper(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
 
 	keys = find(plots)
 
@@ -1654,6 +1656,7 @@ def apply(data,plots,processes,verbose=None):
 			other = OTHER
 			nulls = {'':mean,'err':std}
 			defaults = {
+				'mean':mean,'std':std,
 				'mean_log':mean_log,'std_log':std_log,'sem_log':sem_log,
 				'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
 				'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
@@ -1692,81 +1695,6 @@ def apply(data,plots,processes,verbose=None):
 			function = {attr: function[attr] for attr in function}
 			wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
 
-
-			if not funcs:
-				funcs = {'':None}
-
-			stats = {string:{axes: {attr:nulls[attr] for attr in nulls if attr not in ['err'] or (attr and not axes.endswith(attr) and  ''.join([axes,attr]) not in statistics)} for axes in statistics} for string in funcs}
-
-			objs = [(funcs,stats),(process,process)]
-
-			for obj,strings in objs:
-				for string in list(obj):
-
-					if obj.get(string) is None:
-						obj[string] = {}
-
-					for axes in STATISTICS:
-
-						if axes not in keys[name] or axes not in strings[string]:
-							if axes in obj[string]:
-								obj[string].pop(axes)
-							continue
-
-						if obj[string].get(axes) is None:
-							obj[string][axes] = {}
-
-						for func in strings[string][axes]:
-
-							if func not in obj[string][axes] and not ((axes in dimensions and any(ax.startswith(axes) for ax in statistics if ax != axes and obj[string].get(ax))) or (axes not in dimensions and any(axes.startswith(ax) for ax in dimensions if ax != axes and obj[string].get(ax)))):
-								obj[string][axes][func] = strings[string][axes][func]
-
-						obj[string][axes] = wrap(obj[string][axes],args=args,kwargs=kwargs,defaults=defaults)
-
-					if not obj.get(string):
-						obj.pop(string)
-						continue
-
-					for axes in statistics:
-
-						if axes in dimensions or not obj[string].get(axes):
-							continue
-
-						axis = [ax for ax in dimensions if axes.startswith(ax) and obj[string].get(ax)]
-
-						for ax in axis:
-
-							obj[string][ax] = {
-								**{func:{
-									**{attribute:obj[string][ax][func][attribute] for attribute in obj[string][ax][func] if attribute not in nulls},
-									} for func in obj[string][ax] if func not in nulls},
-								**{func:{
-									**{func:obj[string][ax][function][attribute] for attribute in obj[string][ax][function] if attribute in nulls},
-									**{attribute:obj[string][ax][function][attribute] for attribute in obj[string][ax][function] if attribute not in nulls},
-									} for func in [''] for function in nulls if function in obj[string][ax]},
-								}
-
-						if axis:
-							obj[string][axes] = {
-								**{func:{
-									**{attribute:obj[string][axes][func][attribute] for attribute in obj[string][axes][func] if attribute not in nulls},
-									} for func in obj[string][axes] if func not in nulls},
-									**{func:{
-										**{func:obj[string][axes][function][attribute] for attribute in obj[string][axes][function] if attribute in nulls},
-										**{attribute:obj[string][axes][function][attribute] for attribute in obj[string][axes][function] if attribute not in nulls},
-										} for func in ['err'] for function in nulls if function in obj[string][axes]},
-								}
-
-					for axes in obj[string]:
-
-						if axes in statistics:
-							continue
-
-						if not isinstance(obj[string][axes],dict) or axes not in obj[string][axes]:
-							obj[string][axes] = {axes:obj[string][axes]}
-
-						obj[string][axes] = wrap(obj[string][axes],args=args,kwargs=kwargs,defaults=defaults)
-
 			function = wrap(function,args=args,kwargs=kwargs,defaults=defaults)
 
 			wrappers = wrap(wrappers,args=args,kwargs=kwargs,defaults=defaults)
@@ -1786,13 +1714,11 @@ def apply(data,plots,processes,verbose=None):
 					except:
 						pass
 
-
 			attributes = list(set((
 				*[attr for attr in data],
 				*[attr for attr in analyses if any(i in attr for i in data)],
 				*[attribute for attr in wrappers for attribute in wrappers[attr] if wrappers[attr][attribute] and attribute in data],
 				)))
-
 
 			dtypes = {attr: (
 					('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype')
@@ -1803,6 +1729,86 @@ def apply(data,plots,processes,verbose=None):
 				key,value = name,None
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
+
+			if not funcs and all(keys[name][axes] in attributes for axes in statistics):
+
+				funcs = {'':{axes:{'':{'':first}} for axes in statistics}}
+
+			else:
+
+				if not funcs:
+					funcs = {'':None}
+
+				stats = {string:{axes: {attr:nulls[attr] for attr in nulls if attr not in ['err'] or (attr and not axes.endswith(attr) and  ''.join([axes,attr]) not in statistics)} for axes in statistics} for string in funcs}
+
+				objs = [(funcs,stats),(process,process)]
+
+				for obj,strings in objs:
+					for string in list(obj):
+
+						if obj.get(string) is None:
+							obj[string] = {}
+
+						for axes in STATISTICS:
+
+							if axes not in keys[name] or axes not in strings[string]:
+								if axes in obj[string]:
+									obj[string].pop(axes)
+								continue
+
+							if obj[string].get(axes) is None:
+								obj[string][axes] = {}
+
+							for func in strings[string][axes]:
+
+								if func not in obj[string][axes] and not ((axes in dimensions and any(ax.startswith(axes) for ax in statistics if ax != axes and obj[string].get(ax))) or (axes not in dimensions and any(axes.startswith(ax) for ax in dimensions if ax != axes and obj[string].get(ax)))):
+									obj[string][axes][func] = strings[string][axes][func]
+
+							obj[string][axes] = wrap(obj[string][axes],args=args,kwargs=kwargs,defaults=defaults)
+
+						if not obj.get(string):
+							obj.pop(string)
+							continue
+
+						for axes in statistics:
+
+							if axes in dimensions or not obj[string].get(axes):
+								continue
+
+							axis = [ax for ax in dimensions if axes.startswith(ax) and obj[string].get(ax)]
+
+							for ax in axis:
+
+								obj[string][ax] = {
+									**{func:{
+										**{attribute:obj[string][ax][func][attribute] for attribute in obj[string][ax][func] if attribute not in nulls},
+										} for func in obj[string][ax] if func not in nulls},
+									**{func:{
+										**{func:obj[string][ax][function][attribute] for attribute in obj[string][ax][function] if attribute in nulls},
+										**{attribute:obj[string][ax][function][attribute] for attribute in obj[string][ax][function] if attribute not in nulls},
+										} for func in [''] for function in nulls if function in obj[string][ax]},
+									}
+
+							if axis:
+								obj[string][axes] = {
+									**{func:{
+										**{attribute:obj[string][axes][func][attribute] for attribute in obj[string][axes][func] if attribute not in nulls},
+										} for func in obj[string][axes] if func not in nulls},
+										**{func:{
+											**{func:obj[string][axes][function][attribute] for attribute in obj[string][axes][function] if attribute in nulls},
+											**{attribute:obj[string][axes][function][attribute] for attribute in obj[string][axes][function] if attribute not in nulls},
+											} for func in ['err'] for function in nulls if function in obj[string][axes]},
+									}
+
+						for axes in obj[string]:
+
+							if axes in statistics:
+								continue
+
+							if not isinstance(obj[string][axes],dict) or axes not in obj[string][axes]:
+								obj[string][axes] = {axes:obj[string][axes]}
+
+							obj[string][axes] = wrap(obj[string][axes],args=args,kwargs=kwargs,defaults=defaults)
 
 			groupings[name] = groupings.get(name,())
 			properties[name] = properties.get(name,{})
@@ -1856,7 +1862,7 @@ def apply(data,plots,processes,verbose=None):
 				groups = groups.groupby(by=by,**options)
 
 			if (
-				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) or
+				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) and
 				(not all(attr in data for attr in [*independent,*dependent,*exceptions]))
 				):
 				key,value = name,None
@@ -1878,7 +1884,7 @@ def apply(data,plots,processes,verbose=None):
 							  for string in funcs
 					},
 					**{attr: [(delim.join(((attr,string,func))),
-						{
+						({
 						'array':{
 							**{'':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else mean for attribute in funcs[string][ax][func]},
 							**{'err':funcs[string][ax][func][attribute] if callable(funcs[string][ax][func][attribute]) else std for attribute in funcs[string][ax][func]},
@@ -1891,12 +1897,12 @@ def apply(data,plots,processes,verbose=None):
 							**{'':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
 							**{'err':funcs[string][ax][func][attribute] for attribute in funcs[string][ax][func]},
 							}[func],
-						}[dtypes[attr]])
-						for string in funcs for ax in funcs[string] if ax in statistics for func in funcs[string][ax] if keys[name][ax]==attr
+						}[dtypes[attr]] if delim.join(((attr,string,func))) not in data else first))
+						for string in funcs if funcs[string] for ax in funcs[string] if ax in statistics for func in funcs[string][ax] if keys[name][ax]==attr
 						if delim.join(((attr,string,func))) not in data]
 						for axes in dimensions
 						for attr in [keys[name][ax] for ax in statistics if ax.startswith(axes)]
-						if attr is not None and attr in attributes
+						if attr is not None and attr in attributes and any(funcs[string] for string in funcs)
 					},
 				}
 
@@ -2138,7 +2144,6 @@ def apply(data,plots,processes,verbose=None):
 					data.drop(columns=attr)
 				else:
 					data[attr] = tmp[attr]
-
 
 		del data
 
@@ -2929,15 +2934,14 @@ def plotter(plots,processes,verbose=None):
 
 			logger.log(info,"Configuring : %s %s"%(subinstance,
 				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
-				for attr in metadata[instance][subinstance] 
-				if ((not sorting[instance][subinstance] or attr in sorting[instance][subinstance]) and
-					(not isinstance(metadata[instance][subinstance][attr],arrays)) and
-					((not isinstance(metadata[instance][subinstance][attr],iterables)) or
-					 (len(metadata[instance]) == 1) or
-					 (len(metadata[instance][subinstance][attr])<2*len(metadata[instance])**1)) and
-					 (isinstance(metadata[instance][subinstance][attr],iterables) and not any(isinstance(i,iterables) for i in metadata[instance][subinstance][attr]))
-					 )
-					}))
+				for attr in set(attr
+					for prop in information[instance][subinstance]
+					for data in search(plots[instance][subinstance][obj][prop])
+					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
+					for attr in data[OTHER][OTHER][OTHER]
+					if ((attr in metadata[instance][subinstance]) and not isinstance(metadata[instance][subinstance][attr],iterables) or (len(metadata[instance][subinstance])>1))
+					)
+				}))
 
 			for prop in information[instance][subinstance]:
 				

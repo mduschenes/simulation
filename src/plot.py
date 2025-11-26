@@ -809,9 +809,9 @@ def set_data(data=None,scale=None,base=None,**kwargs):
 		if not isinstance(data,np.ndarray):
 			for i,value in enumerate(data):
 				if value == 0:
-					data = inplace(data,i,nan)
+					data = inplace(data.astype(float),i,nan)
 		else:
-			data = inplace(data,data==0,nan)
+			data = inplace(data.astype(float),data==0,nan)
 
 	return data
 
@@ -1889,7 +1889,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattr = 'y'
 				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
 					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
-					kwargs[attr][subattr] = inplace(kwargs[attr][subattr],kwargs[attr][subattr]==0,nan)
+					kwargs[attr][subattr] = inplace(kwargs[attr][subattr].astype(float),kwargs[attr][subattr]==0,nan)
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -1954,7 +1954,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattr = 'y'
 				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
 					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
-					kwargs[attr][subattr] = inplace(kwargs[attr][subattr],kwargs[attr][subattr]==0,nan)
+					kwargs[attr][subattr] = inplace(kwargs[attr][subattr].astype(float),kwargs[attr][subattr]==0,nan)
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -2168,7 +2168,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'density'
 				if kwargs[attr].get(prop) in ['probability']:
 					y /= np.maximum(np.sum(y),1)
-				y = inplace(y,y==0,nan)
+				y = inplace(y.astype(float),y==0,nan)
 
 				prop = 'edgecolor'
 				if isinstance(kwargs[attr].get(prop),dict):

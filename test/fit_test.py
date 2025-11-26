@@ -196,22 +196,29 @@ def test_fit(path=None,tol=None):
 
 	def model(index=None,*args,**kwargs):
 		data = load('data/data.json')
-		for key in data:
-			yield data[key]['value']['parameters'],data[key]['value']['x'],data[key]['value']['y'],data[key]['value']['xerr'],data[key]['value']['yerr'],data[key]['key']
-			return
-	fig,ax = None,None
-	for index,(parameters,x,y,xerr,yerr,label) in enumerate(model()):
 
-		options = dict(
-			label='$\\textrm{Function}$',
-			color='viridis_0.5',alpha=0.8,
-			marker='o',linestyle='--',
-			markersize=7,
-			linewidth=4,
-			elinewidth=3,
-			capsize=4
-		)
-		fig,ax = plot(x,y,xerr,yerr,fig=fig,ax=ax,**options)
+		def func(parameters,x):
+			y = parameters[0] + parameters[1]*x
+			return y
+
+		key = list(data)[0]
+		value = (func,*(data[key]['value'][attr] for attr in ['parameters','x','y','xerr','yerr']),data[key]['key'])
+
+		return value
+
+	func,parameters,x,y,xerr,yerr,label = model()
+
+	options = dict(
+		label='$\\textrm{Function}$',
+		color='viridis_0.5',alpha=0.8,
+		marker='o',linestyle='--',
+		markersize=7,
+		linewidth=4,
+		elinewidth=3,
+		capsize=4
+	)
+
+	fig,ax = plot(x,y,xerr,yerr,**options)
 
 	return
 
@@ -221,10 +228,6 @@ def test_fit(path=None,tol=None):
 	yerr_ = yerr
 	parameters_ = parameters
 	_cov_ = cov(model,shapes=shapes,label=y_,weights=yerr_,metric=metric)(parameters_,x_)
-
-	def func(parameters,x):
-		y = parameters[0] + parameters[1]*x
-		return y
 
 	_n = n*10
 	_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),_n)

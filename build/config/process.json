@@ -61,8 +61,7 @@
 		"None.spectrum.classical.M.noise.parameters": 1,
 		"None.spectrum.quantum.classical.M.noise.parameters": 1,
 		"None.array.M.noise.parameters": 1,
-		"None.state.M.noise.parameters": 1,
-		"hist.array.M.noise.parameters": 1
+		"None.state.M.noise.parameters": 1
 	},
 	"configuration": [
 		[
@@ -236,93 +235,9 @@
 					}
 				}
 			]
-		],
-		[
-			[
-				"hist.array.M.noise.parameters"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"M": [
-							0,
-							10,
-							20,
-							30,
-							40,
-							50
-						]
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"noise.parameters": [
-							0.0001,
-							0.005,
-							0.01,
-							0.025,
-							0.1
-						]
-					},
-					"kwargs": {
-						"fig.set_size_inches":{"w":43,"h":43},
-						"fig.subplots_adjust":{"wspace":0.3,"hspace":0.3},
-						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
-						"ax.hist.label.labels": {"N":[4,6,8]},
-						"ax.hist.color": {
-							"@N@": {
-								"value": {
-									"value": null,
-									"color": "viridis",
-									"values": [],
-									"norm": null,
-									"scale": "linear",
-									"alpha": 1
-								},
-								"type": "value"
-							}
-						},
-						"ax.hist.alpha": {
-							"@N@": [
-								0.8
-							]
-						},
-						"ax.set_colorbar.value": {
-							"@N@": {
-								"value": null,
-								"type": "index"
-							}
-						},
-						"ax.set_colorbar.set_label.label": "$\\textrm{System Size} ~~ N$",
-						"ax.set_colorbar.share": true,
-						"ax.set_colorbar.location": "right",
-						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
-						"ax.set_colorbar.anchor": [10,0.5],
-						"ax.set_colorbar.set_ticks.ticks":3,
-						"ax.set_colorbar.set_ticklabels.ticklabels": [4,6,8],
-						"ax.legend": null,
-						"style.share.ax.legend": false,
-						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
-						"style.share.ax.set_xticks": true,
-						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_ylabel": "left",
-						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right"
-					}
-				}
-			]
-		]		
+		]
 	],
-	"join":{"hist.array.M.noise.parameters":{"ax":{"hist":["label","color","alpha"]}}},
+	"join":{},
 	"patterns": {
 		"max_bond": "S",
 		"cyclic": "periodic"
