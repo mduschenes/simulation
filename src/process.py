@@ -1730,7 +1730,7 @@ def apply(data,plots,processes,verbose=None):
 				setter(plots,{key:value},delimiter=delim,default=True)
 				continue
 
-			if not funcs and all(keys[name][axes] in attributes for axes in statistics):
+			if not funcs and any(keys[name][axes] in attributes for axes in statistics if axes not in dimensions):
 
 				funcs = {'':{axes:{'':{'':first}} for axes in statistics}}
 

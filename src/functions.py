@@ -60,8 +60,10 @@ def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwarg
 
 	if func is None:
 		func = 'argmax'
+	if hasattr(np,func):
+		func = lambda a,func=func: a[...,getattr(np,func)(a,axis=-1)]
 	elif isinstance(func,str):
-		func = load(func,default=func)
+		func = load(func,default=lambda a:np.mean(a,axis=-1))
 
 	def func(data,func=func):
 		options = {
@@ -73,10 +75,9 @@ def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwarg
 			}
 		a = bootstrapper(**options)
 
-		if isinstance(func,str):
-			index = getattr(np,func)(a,axis=-1)
+		a = func(a)
 
-		data = {**{attr:[data[attr].iloc[0]] for attr in data},**{y:[a[...,index].mean().item()],yerr:[(a[...,index].std()/np.sqrt(a[...,index].size)).item()]}}
+		data = {**{attr:[data[attr].iloc[0]] for attr in data},**{y:[a.mean().item()],yerr:[(a.std(ddof=a.size>1)/np.sqrt(a.size)).item()]}}
 
 		data = dataframe(data)
 
@@ -303,6 +304,77 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 		data = agg(data)
 
 	return data
+
+def func_func_apply(data,*args,**kwargs):
+	def apply(data):
+
+		apply = {}
+
+		def application(data,attr=None):
+			data = data[attr].iloc[0]
+			return data
+		for attr in data:
+			apply[attr] = partial(application,attr=attr)
+
+		attr = keys['x']
+		def application(data):
+			data = 1/data[keys['x']].iloc[0]
+			return data
+		apply[attr] = application
+
+		attr = keys['y']
+		def application(data):
+			number,size = function(data),data.size
+			data = data[keys['y']].mean()
+			data = abs(data)
+			# data = data/np.log(size*number)
+			return data
+		apply[attr] = application
+
+		attr = keys['xerr']
+		def application(data):
+			data = None
+			return data
+		apply[attr] = application
+
+		attr = keys['yerr']
+		def application(data):
+			number,size = function(data),data[attr].size
+			data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
+			data = abs(data)
+			data = np.sqrt(data/(size*number))
+			# data = data/np.log(size*number)
+			return data
+		apply[attr] = application
+
+		apply = {attr:apply[attr] for attr in apply if attr in data}
+
+		value = {}
+		for attr in apply:
+			if isinstance(apply[attr],str):
+				value[attr] = getattr(data,apply[attr])
+			else:
+				value[attr] = apply[attr](data)
+			value[attr] = [value[attr]]
+
+		data = dataframe(value)
+
+		return data
+
+
+	attr = keys['y']
+	number,size = function(data),data[attr].size
+
+	by = independent
+	options = dict(by=by,apply=apply)
+	data = grouper(data,**options)
+
+	data = func(data,keys=keys)
+
+	data[attr] = data[attr]/np.log(size*number)
+
+	return data
+
 
 def func_func_fit(data,keys,*args,**kwargs):
 

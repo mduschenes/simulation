@@ -3457,6 +3457,7 @@
 				{
 					"x": "M",
 					"y": "sample.state.information",
+					"yerr": "sample.state.information.error",
 					"label": {
 						"label": {
 							"noise.parameters": null
@@ -3467,7 +3468,7 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.state.information":{"func":"src.functions.func_func_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":"N","dependent":"sample.state.information","func":"src.functions.func_func_fit","function":"state"}}
+							"sample.state.information.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"src.functions.func_func_fit","function":"state","size":1000,"random":"gaussian","seed":123,"x":"N","xerr":null,"y":"sample.state.information","yerr":"sample.state.information.error"}}
 						},
 						"function": {},
 						"application": "agg",
@@ -3535,6 +3536,7 @@
 				{
 					"x": "M",
 					"y": "sample.array.information",
+					"yerr": "sample.array.information.error",
 					"label": {
 						"label": {
 							"noise.parameters": null
@@ -3545,7 +3547,7 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.array.information":{"func":"src.functions.func_func_group","args":[],"kwargs":{"samples":null,"seed":123,"independent":"N","dependent":"sample.array.information","func":"src.functions.func_func_fit","function":"array"}}
+							"sample.array.information.error":{"func":"src.functions.func_stat_bootstrap","args":[],"kwargs":{"func":"src.functions.func_func_fit","function":"array","size":1000,"random":"gaussian","seed":123,"x":"N","xerr":null,"y":"sample.array.information","yerr":"sample.array.information.error"}}
 						},
 						"function": {},
 						"application": "agg",
