@@ -1201,13 +1201,21 @@ def wrap(function,attr=False,func=None,args=None,kwargs=None,options=None,defaul
 	strings.update({'func':func,'args':args,'kwargs':kwargs,'attr':attr})
 
 	def boolean(obj):
-		return obj is None or isinstance(obj,str) or callable(obj) or (isinstance(obj,dict) and any(string in strings for string in obj))
+		return (
+			(obj is None) or
+			isinstance(obj,str) or
+			callable(obj) or
+			(isinstance(obj,dict) and any(string in strings for string in obj)) or
+			(isinstance(obj,dict) and (len(obj)==1) and (not any(attr in strings for attr in obj)) and all(isinstance(obj[attr],dict) for attr in obj) and (not all(string in obj[attr] for string in strings if string not in ['attr'] for attr in obj)))
+			)
 
 	def parser(obj):
 		if obj is None or isinstance(obj,str) or callable(obj):
 			obj = {**strings,**{'func':obj}}
 		elif isinstance(obj,dict) and any(string in strings for string in obj):
 			obj = {string:obj.get(string,strings[string]) for string in strings}
+		elif isinstance(obj,dict) and (len(obj)==1) and (not any(attr in strings for attr in obj)) and all(isinstance(obj[attr],dict) for attr in obj) and (not all(string in obj[attr] for string in strings if string not in ['attr'] for attr in obj)):
+			obj = {**strings,**{'func':attr for attr in obj},**{'kwargs':obj[attr] for attr in obj}}
 		else:
 			obj = {**strings}
 
@@ -1692,8 +1700,8 @@ def apply(data,plots,processes,verbose=None):
 
 			funcs = copy(funcs)
 			process = copy(process)
-			function = {attr: function[attr] for attr in function}
-			wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+			function = {attr: copy(function[attr]) for attr in function}
+			wrappers = {attr: copy(wrappers[attr]) for attr in wrappers if attr not in ALL}
 
 			function = wrap(function,args=args,kwargs=kwargs,defaults=defaults)
 
@@ -2245,7 +2253,7 @@ def plotter(plots,processes,verbose=None):
 							else:
 								wrappers = {attr: wrappers[attr] for attr in wrappers}
 							
-							wrappers = {attr: wrappers[attr] for attr in wrappers if attr not in ALL}
+							wrappers = {attr: copy(wrappers[attr]) for attr in wrappers if attr not in ALL}
 
 							wrappers = wrap(wrappers)
 
@@ -3449,7 +3457,9 @@ def plotter(plots,processes,verbose=None):
 						if data[attr%(axes)].get(kwarg%(axes)) is None:
 							continue
 
-						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+						options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+									{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+									default)
 							for attr,default in {
 								'texify':dict(usetex=usetex),
 								'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
@@ -3570,7 +3580,11 @@ def plotter(plots,processes,verbose=None):
 							else:
 								value = [i for i in value]
 
-							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+
+
+							options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+										{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+										default)
 								for attr,default in {
 									'texify':dict(usetex=usetex),
 									'scinotation':dict(decimals=1,scilimits=[0,4],base=base,strip=True,usebase=True,strings=False)}.items()
@@ -3592,7 +3606,9 @@ def plotter(plots,processes,verbose=None):
 
 				separator = ',~'
 
-				options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+				options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+							{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+							default)
 					for attr,default in {
 						'texify':dict(usetex=usetex),
 						'scinotation':dict(decimals=1,scilimits=[0,4],strip=False)}.items()
@@ -3793,7 +3809,7 @@ def plotter(plots,processes,verbose=None):
 					else:
 						wrappers = {attr: wrappers[attr] for attr in wrappers}
 
-					wrappers = {attr: wrappers[attr] for attr in wrappers if attr in ALL}
+					wrappers = {attr: copy(wrappers[attr]) for attr in wrappers if attr in ALL}
 
 					wrappers = wrap(wrappers)
 
@@ -3963,7 +3979,6 @@ def plotter(plots,processes,verbose=None):
 
 						data[attr] = value
 
-
 			# set title and axes label
 			prop = 'set_%slabel'
 			attr = '%slabel'
@@ -4001,7 +4016,10 @@ def plotter(plots,processes,verbose=None):
 								elif i not in objs:
 									objs[i] = metadata[instance][subinstance][i]
 						
-						options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+
+						options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+									{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+									default)
 							for attr,default in {
 								'texify':dict(usetex=usetex),
 								'scinotation':dict(decimals=1,scilimits=[0,4],one=False,strip=False)}.items()
@@ -4108,7 +4126,9 @@ def plotter(plots,processes,verbose=None):
 							base = [i.get('base') for i in search(plots[instance][subinstance][obj].get('set_%sscale'%(axes))) if i and i.get('obj')==data.get('obj')]
 							base = None if not base else 10 if all(i in [None,10] for i in base) else [i for i in base if i not in [10]][0]
 
-							options = {attr: data.get(attr,dict()) if isinstance(data.get(attr),dict) else default
+							options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+										{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+										default)
 								for attr,default in {
 									'texify':dict(usetex=usetex),
 									'scinotation':dict(decimals=2,scilimits=[-1,1] if scale in [None,'linear'] else [0,0],base=base,strip=True,usebase=True,strings=False)}.items()

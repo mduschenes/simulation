@@ -1652,28 +1652,28 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					
 					funcs = {'handles':{},'labels':{}}
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 0
 					funcs['handles']['width'] = func
 					
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 0
 					funcs['handles']['height'] = func		
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return False
 					funcs['handles']['visible'] = func	
 					
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return False
 					funcs['handles']['in_layout'] = func	
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 'left'
 					funcs['labels']['ha'] = func
 					
-					def func(attr,obj):
-						x = -max([0.95*label.get_window_extent().width for label in obj.get_texts()])
+					def func(attr,obj,objs):
+						x = -max([0.95*label.get_window_extent().width for label in objs.get_texts()])
 						y = 0
 						return (x,y)
 					funcs['labels']['position'] = func	
@@ -1739,27 +1739,27 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					funcs = {'handles':{},'labels':{}}
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 0
 					funcs['handles']['width'] = func
 					
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 0
 					funcs['handles']['height'] = func		
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return False
 					funcs['handles']['visible'] = func	
 					
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return False
 					funcs['handles']['in_layout'] = func	
 
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						return 'right'
 					funcs['labels']['ha'] = func										
 					
-					def func(attr,obj):
+					def func(attr,obj,objs):
 						x = max([0*label.get_window_extent().width for label in obj.get_texts()])
 						y = 0
 						return (x,y)
@@ -1828,7 +1828,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										if i in kwds[kwd][kwarg]:
 											key = getattr(child,kwarg)
 											if callable(kwds[kwd][kwarg][i]):
-												value = kwds[kwd][kwarg][i](kwarg,child)
+												value = kwds[kwd][kwarg][i](kwarg,child,objs)
 											else:
 												value = kwds[kwd][kwarg][i]
 											funcs.append((key,value))
