@@ -194,7 +194,7 @@ def test_fit(path=None,tol=None):
 
 		return fig,ax
 
-	def model(index=None,*args,**kwargs):
+	def model(*args,**kwargs):
 		data = load('data/data.json')
 
 		def func(parameters,x):
@@ -206,7 +206,10 @@ def test_fit(path=None,tol=None):
 
 		return value
 
-	func,parameters,x,y,xerr,yerr,label = model()
+	args = ()
+	kwargs = {}
+
+	func,parameters,x,y,xerr,yerr,label = model(*args,**kwargs)
 
 	options = dict(
 		label='$\\textrm{Function}$',

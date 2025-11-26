@@ -126,12 +126,12 @@ def train(settings,*args,**kwargs):
 		optimizer (object): Model optimizer
 	'''
 
-	for settings in setup(settings,*args,**kwargs):
+	model = None
+	parameters = None
+	state = None
+	optimizer = None
 
-		model = None
-		parameters = None
-		state = None
-		optimizer = None
+	for settings in setup(settings,*args,**kwargs):
 
 		if settings.boolean.load:
 
