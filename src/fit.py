@@ -16,9 +16,10 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace,bootstrapper
-from src.utils import exp,log,absolute,sqrt,nanmean,nanstd,nansem,nansqrt,is_naninf,allclose
+from src.utils import exp,log,exp10,log10,absolute,sqrt,nanmean,nanstd,nansem,nansqrt,is_naninf,allclose
 from src.utils import nan,null,arrays,scalars,delim
 
+from src.io import load,dump
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
 
@@ -60,6 +61,8 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	if bootstrap is not None:
 
+		bootstrap.update({key:bootstrap.get(key,value) for key,value in dict(scale=yerr).items()})
+
 		Y = bootstrapper(y,**bootstrap)
 		size = len(Y)
 		X = [x]*size
@@ -67,19 +70,18 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		_X = [_x]*size
 		data = []
 		other = []
-		stats = ['r']
 
 		for index,(x,y,_x,_y) in enumerate(zip(X,Y,_X,_Y)):
 
 			_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,kwargs=kwargs)
 
+			_x = x if _x is None else _x
 			_y = _func(_parameters,_x)
 
 			data.append(_y)
 			other.append(dict(_func=_func,_parameters=_parameters,_covariance=_covariance,_other=_other))
 
 			logger.log(msg="Index = %d/%d \t\t %s"%(index+1,size,'\t'.join(['%s: %0.3e'%(stat,_other[stat]) for stat in _other])),verbose=kwargs.get('verbose'))
-
 
 		data = array(data)
 
@@ -93,7 +95,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 		return _func,_y,_parameters,_yerr,_covariance,_other
 
-	single = callable(func) or isinstance(func,str)
+	single = callable(func) or isinstance(func,str) or func is None
 
 	if single:
 		func = [func]
@@ -102,10 +104,10 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	n = len(func)
 
-	if preprocess is None or callable(preprocess):
+	if preprocess is None or callable(preprocess) or isinstance(preprocess,str):
 		preprocess = [preprocess for i in range(n)]
 
-	if postprocess is None or callable(postprocess):
+	if postprocess is None or callable(postprocess) or isinstance(postprocess,str):
 		postprocess = [postprocess for i in range(n)]
 
 	if parameters is None or isinstance(parameters,(arrays,*scalars)):
@@ -123,7 +125,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	n = min(len(i) for i in [func,preprocess,postprocess,parameters,covariance,intercept,kwargs])
 
 	funcs = func
-	funcs = [lambda x,parameters,func=func,**kwargs: func(parameters,x,**kwargs) for func in funcs]
+	funcs = [func for func in funcs]
 	funcs,conditions = piecewise(funcs,bounds)
 
 	_func = [None for i in range(n)]
@@ -281,7 +283,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_parameters = lstsq(x,y)
 
 		_y = func(_parameters,_x)
-		
+
 		if yerr is not None:
 			if yerr.ndim == 1:
 				yerr = diag(yerr)
@@ -289,7 +291,8 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_covariance = None
 		_grad = None
 
-		# _covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
+		_covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
+		_grad = None
 		# _grad = dot(dot(x.T,x),_parameters) - dot(y.T,x)
 
 		if _covariance is None or _grad is None:
@@ -299,7 +302,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		elif _covariance.ndim == 2:
 			_yerr = sqrt(diag(dot(dot(_grad,_covariance),_grad.T)))
 
-	elif isinstance(func,str):
+	elif isinstance(func,str) and not load(func):
 
 		kwargs.update({'kind':func})
 		
@@ -323,9 +326,12 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 
 			_yerr /= 1
 
-	elif callable(func) or not isinstance(func,(str,array)):
+	elif callable(func) or not isinstance(func,(array)) or isinstance(func,str):
 
 		kwargs.update({'parameters':parameters,'yerr':yerr,'xerr':xerr})
+
+		if isinstance(func,str):
+			func = load(func,default=func)
 
 		if not callable(func):
 			func,_parameters,_covariance = piecewise_fit(func,x,y,**kwargs)
@@ -352,7 +358,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		def func(parameters,x,*args,z=z,**kwargs):
 			return z			
 
-	r = (((y - func(_parameters,x))**2).sum()/((y - y.mean())**2).sum())
+	r = (((y - func(_parameters,x))**2).sum()/((y - y.mean())**2).sum()) if y.size>1 else 0
 
 	_other = {'1-r':r}
 
@@ -402,9 +408,15 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_jac = _invgrad[i][i]
 			_covariance = dot(dot(_jac,_covariance),_jac.T)
 
-	x,y,parameters = invtransform(x,y,parameters)
+	if parameters is not None:
+		x,y,parameters = invtransform(x,y,parameters)
+	else:
+		x,y = invtransform(x,y)
 
-	_x,_y,_parameters = invtransform(_x,_y,_parameters)
+	if _parameters is not None:
+		_x,_y,_parameters = invtransform(_x,_y,_parameters)
+	else:
+		_x,_y = invtransform(_x,_y)
 
 	if intercept:
 		def _func(parameters,x,*args,**kwargs):
@@ -585,13 +597,35 @@ def transformation(x,y,parameters=None,axis=None,mode='linear',process=True,stan
 		mode (str): Method of transformation, allowed strings in ['linear']
 		process (bool,str): Process data
 		standardize (bool,str): Standardize data
-		preprocess (callable): Function to preprocess data with signature x,y,parameters = preprocess(x,y,parameters) (with parameters argument/return optional)
-		postprocess (callable): Function to postprocess data with signature x,y,parameters = postprocess(x,y,parameters) (with parameters argument/return optional)
+		preprocess (callable,str): Function to preprocess data with signature x,y,parameters = preprocess(x,y,parameters) (with parameters argument/return optional)
+		postprocess (callable,str): Function to postprocess data with signature x,y,parameters = postprocess(x,y,parameters) (with parameters argument/return optional)
 		kwargs (dict): Additional keyword arguments for transformation
 	Returns:
 		transform (callable): transformation function
 		invtransform (callable): inverse transformation function
 	'''
+
+	funcs = {
+		'log': (lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None)),
+		'log10': (lambda x,y,parameters: (log10(x) if x is not None else None,log10(y) if y is not None else None,parameters if parameters is not None else None)),
+		'log.log': (lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None)),
+		'log10.log10': (lambda x,y,parameters: (log10(x) if x is not None else None,log10(y) if y is not None else None,parameters if parameters is not None else None)),
+		'log.None': (lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)),
+		'log10.None': (lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)),
+		'None.log': (lambda x,y,parameters: ((x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None)),
+		'None.log10': (lambda x,y,parameters: ((x) if x is not None else None,log10(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp': (lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp10': (lambda x,y,parameters: (exp10(x) if x is not None else None,exp10(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp.exp': (lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp10.exp10': (lambda x,y,parameters: (exp10(x) if x is not None else None,exp10(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp.None': (lambda x,y,parameters: (exp(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)),
+		'exp10.None': (lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)),
+		'None.exp': (lambda x,y,parameters: ((x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None)),
+		'None.exp10': (lambda x,y,parameters: ((x) if x is not None else None,exp10(y) if y is not None else None,parameters if parameters is not None else None)),
+		}
+
+	preprocess = funcs.get(preprocess,load(preprocess,default=preprocess)) if not callable(preprocess) else preprocess
+	postprocess = funcs.get(postprocess,load(postprocess,default=postprocess)) if not callable(postprocess) else postprocess
 
 	if mode is None or mode in ['linear']:
 		func = preprocess

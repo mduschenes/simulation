@@ -1083,7 +1083,8 @@ def analyse(data,analyses=None,verbose=None):
 					out = data
 					for attr in attrs:
 						for attribute in attrs[attr]:
-							out = attrs[attr][attribute](out)
+							if attrs[attr][attribute] is not None:
+								out = attrs[attr][attribute](out)
 					return out
 			else:
 				continue

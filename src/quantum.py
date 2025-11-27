@@ -2329,14 +2329,14 @@ class Measure(System):
 			data (object): data
 		'''
 
-		if isinstance(attribute,str) or isinstance(attribute,iterables):
+		if isinstance(attribute,objects):
+			attribute = attribute
+		elif isinstance(attribute,str) or isinstance(attribute,iterables):
 			attrs = [getattr(self,attr) for attr in ([attribute] if isinstance(attribute,str) else attribute) if hasattr(self,attr)]
 			def attribute(parameters=None,state=None,data=None,where=None,func=None,options=None,attrs=attrs,**kwargs):
 				for attr in attrs:
 					state = attr(parameters=parameters,state=state,data=data,where=where,func=func,options=options,**kwargs)
 				return state
-		elif isinstance(attribute,objects):
-			attribute = attribute
 		elif not callable(attribute):
 			attribute = self.array
 
@@ -2435,7 +2435,7 @@ class Measure(System):
 		'''
 
 		func = (lambda data:data) if not callable(func) else func
-		func = lambda data,func=func: func(ravel(data))
+		func = lambda data,func=func: func(real(ravel(data)))
 
 		default = range
 		where,L,N = self.where(parameters=parameters,state=state,where=where,func=default,options=options)

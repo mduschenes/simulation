@@ -305,104 +305,155 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
-def func_func_apply(data,*args,**kwargs):
-	def apply(data):
 
-		apply = {}
+def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwargs):
 
-		def application(data,attr=None):
-			data = data[attr].iloc[0]
-			return data
-		for attr in data:
-			apply[attr] = partial(application,attr=attr)
-
-		attr = keys['x']
-		def application(data):
-			data = 1/data[keys['x']].iloc[0]
-			return data
-		apply[attr] = application
-
-		attr = keys['y']
-		def application(data):
-			number,size = function(data),data.size
-			data = data[keys['y']].mean()
-			data = abs(data)
-			# data = data/np.log(size*number)
-			return data
-		apply[attr] = application
-
-		attr = keys['xerr']
-		def application(data):
-			data = None
-			return data
-		apply[attr] = application
-
-		attr = keys['yerr']
-		def application(data):
-			number,size = function(data),data[attr].size
-			data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
-			data = abs(data)
-			data = np.sqrt(data/(size*number))
-			# data = data/np.log(size*number)
-			return data
-		apply[attr] = application
-
-		apply = {attr:apply[attr] for attr in apply if attr in data}
-
-		value = {}
-		for attr in apply:
-			if isinstance(apply[attr],str):
-				value[attr] = getattr(data,apply[attr])
-			else:
-				value[attr] = apply[attr](data)
-			value[attr] = [value[attr]]
-
-		data = dataframe(value)
-
+	if y not in data:
 		return data
 
 
-	attr = keys['y']
-	number,size = function(data),data[attr].size
+	def func(data,func=func):
 
-	by = independent
-	options = dict(by=by,apply=apply)
-	data = grouper(data,**options)
+		if hasattr(np,func):
 
-	data = func(data,keys=keys)
+			func = lambda a,func=func: a[...,getattr(np,func)(a,axis=-1)]
 
-	data[attr] = data[attr]/np.log(size*number)
+			options = {
+				**dict(
+					a = data[y].to_numpy(),
+					scale = data[yerr].to_numpy(),
+					),
+				**kwargs
+				}
+			a = bootstrapper(**options)
+
+			a = func(a)
+
+			data = {**{attr:[data[attr].iloc[0]] for attr in data},**{y:[a.mean().item()],yerr:[(a.std(ddof=a.size>1)/np.sqrt(a.size)).item()]}}
+
+		else:
+
+			func = load(func,default=func)
+
+			data = func(data,keys,**kwargs)
+
+		data = dataframe(data)
+
+		return data
+
+	def agg(data):
+		by = x
+		agg = {**{attr:[(attr,'first')] for attr in data},**{y:[(y,'mean'),(yerr,'sem')]}}
+		options = dict(by=by,agg=agg)
+		data = grouper(data,**options)
+		data = func(data)
+		return data
+
+	data = agg(data)
 
 	return data
 
+def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**settings):
 
-def func_func_fit(data,keys,*args,**kwargs):
+	keys = dict(zip(['x','y','xerr','yerr'],[f'{x}',f'{y}',f'{x}.error',f'{y}.error']))
 
-	values = {key:data.get(keys[key]).to_numpy() for key in keys if keys[key] in data}
-	func = lambda parameters,x: parameters[0] - parameters[1]*x
-	parameters = array([0.0,1.0])
-	kwargs = {
-		'optimizer':'cg',
-		'alpha':1e-1,
-		'iterations':64,
-		'eps':{'value':1e-10},
-		'uncertainty':parameters.size<1000,
-		'verbose':0,
-		}
-	preprocess = lambda x,y,parameters: ((x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None)
-	postprocess = lambda x,y,parameters: ((x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None)
+	def agg(data,function=function):
 
-	options = {
-		**values,
-		**dict(func=func,parameters=parameters,preprocess=preprocess,postprocess=postprocess,kwargs=kwargs),
-		}
+		if function is None:
+			function = lambda data: 1
+		elif function in ['array']:
+			function = lambda data: (data['D']**(2*data['N'])).iloc[0]
+		elif function in ['state']:
+			function = lambda data: (data['D']**(1*data['N'])).iloc[0]
+		else:
+			function = load(function,default=lambda data:1)
 
-	func,y,parameters,yerr,cov,other = fit(**options)
+		def apply(data):
 
-	key = keys['y']
-	value = func(parameters,0)
+			apply = {}
 
-	data[key] = value
+			def application(data,attr=None):
+				data = data[attr].iloc[0]
+				return data
+			for attr in data:
+				apply[attr] = partial(application,attr=attr)
+
+			attr = keys['x']
+			def application(data):
+				data = 1/data[keys['x']].iloc[0]
+				return data
+			apply[attr] = application
+
+			attr = keys['y']
+			def application(data):
+				number,size = function(data),data.size
+				data = data[keys['y']].mean()
+				data = abs(data)
+				# data = data/np.log(size*number)
+				return data
+			apply[attr] = application
+
+			attr = keys['xerr']
+			def application(data):
+				data = None
+				return data
+			apply[attr] = application
+
+			attr = keys['yerr']
+			def application(data):
+				number,size = function(data),data[attr].size
+				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
+				data = abs(data)
+				data = np.sqrt(data/(size*number))
+				# data = data/np.log(size*number)
+				return data
+			apply[attr] = application
+
+			apply = {attr:apply[attr] for attr in apply if attr in data}
+
+			value = {}
+			for attr in apply:
+				if isinstance(apply[attr],str):
+					value[attr] = getattr(data,apply[attr])
+				else:
+					value[attr] = apply[attr](data)
+				value[attr] = [value[attr]]
+
+			data = dataframe(value)
+
+			return data
+
+		attr = keys['y']
+		number,size = function(data),data[attr].size
+
+		by = keys['x']
+		options = dict(by=by,apply=apply)
+		data = grouper(data,**options)
+
+		indices = data[keys['y']]>0
+		values = {key:data.get(keys[key])[indices].to_numpy() for key in keys if keys[key] in data}
+
+		func,y,parameters,yerr,cov,other = fit(**values,**settings)
+
+		x = None
+		y = parameters[-1].item()
+		yerr = cov[-1][-1].item()
+
+		data = {attr:[data[attr].iloc[0]] for attr in data}
+
+		attr = keys['y']
+		data[attr] = y
+		data[attr] = data[attr]/np.log(size*number)
+
+		attr = keys['yerr']
+		data[attr] = yerr
+		data[attr] = data[attr]/np.log(size*number)
+
+		data = dataframe(data)
+
+		return data
+
+	data = agg(data)
 
 	return data
 

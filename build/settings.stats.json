@@ -7,7 +7,7 @@
 	},
 "seed":{
 	"seed":123,
-	"size":7,
+	"size":4,
 	"reset":null,
 	"group":null,
 	"index":null
@@ -60,8 +60,8 @@
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
 
-		"jobs.job.cwd":["~/scratch/debug/test"],
-		"jobs.postprocess.cwd":["~/scratch/debug/test"],
+		"jobs.job.cwd":["~/scratch/test"],
+		"jobs.postprocess.cwd":["~/scratch/test"],
 
 		"jobs.job.pwd":["~/files/uw/research/code/tensor/code/build/config"],
 		"jobs.postprocess.pwd":["~/files/uw/research/code/tensor/code/build/config"],
@@ -173,7 +173,7 @@
 	"seed":null,
 	"key":null,
 	"instance":null,
-	"cwd":null,
+	"cwd":"data/${TASK}",
 	"path":"data.hdf5",
 	"lock":true,
 	"backup":true,

@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import np,onp,backend,context
 from src.io import load,dump,join,split,edit
-from src.utils import array,ones,zeros,rand,linspace,logspace,gradient,sort,norm,allclose,log10,exp10,absolute,sqrt,inf,mean,std,sem,bootstrapper,scinotation
+from src.utils import array,ones,zeros,rand,linspace,logspace,gradient,sort,norm,allclose,log10,exp10,absolute,sqrt,inf,mean,std,sem,bootstrapper,scinotation,delim,separ,blank
 from src.fit import fit,cov
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -133,13 +133,15 @@ def test_err(path=None,tol=None):
 def test_fit(path=None,tol=None):
 
 
-	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,**options):
+	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 		def setup(options):
+
+			options = {} if options is None else options
 			for option in options:
 				if option in ['color','ecolor']:
 					if isinstance(options[option],str):
-						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+						value = options[option].split(separ) if options[option].count(separ) else (options[option],0.5)
 						value = getattr(plt.cm,str(value[0]))(float(value[1]))
 				else:
 					value = options[option]
@@ -150,9 +152,10 @@ def test_fit(path=None,tol=None):
 			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else 'config/plot.mplstyle'
 			settings['fill_between'] = options.pop('fill_between') if options.get('fill_between') else None
 
-			return settings
+			return options,settings
 
-		settings = setup(options)
+
+		options,settings = setup(options)
 
 		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
 
@@ -205,7 +208,7 @@ def test_fit(path=None,tol=None):
 		return fig,ax
 
 	def model(*args,**kwargs):
-		data = load('data/data.json')
+		data = load('examples/stats/data.json')
 
 		def func(parameters,x):
 			y = parameters[0] - parameters[1]*x
@@ -213,8 +216,17 @@ def test_fit(path=None,tol=None):
 
 		data = {attr:array(data[list(data)[0]]['value'][attr]) if data[list(data)[0]]['value'].get(attr) is not None else None for attr in ['x','y','xerr','yerr']}
 
-		settings = dict(func='lstsq',parameters=array([2.,1.]),intercept=True)
-		# settings = dict(func=func,parameters=array([2.,1.]),intercept=False)
+		settings = dict(
+			func='lstsq',
+			# func=func,
+			parameters=array([2.,1.]),
+			intercept=True,
+			# intercept=False,
+			preprocess="log10.log10",
+			postprocess="exp10.exp10",
+			bootstrap=dict(size=3,random='gaussian',seed=123),
+			_x=linspace(0,1,100),_y = None,
+			)
 
 		return data,settings
 
@@ -229,7 +241,7 @@ def test_fit(path=None,tol=None):
 	# Plot
 	fig,ax = None,None
 	options = dict(
-		path='data/plot.pdf',mplstyle=None,
+		path='examples/stats/plot.pdf',mplstyle=None,
 		label='$\\textrm{Data}$',
 		color='viridis_0.5',alpha=0.8,
 		marker='o',linestyle=':',
@@ -239,12 +251,9 @@ def test_fit(path=None,tol=None):
 		capsize=4
 	)
 
-	fig,ax = plot(fig=fig,ax=ax,**data,**options)
+	fig,ax = plot(**data,fig=fig,ax=ax,options=options)
 
 	# Fit
-
-	_x = linspace(0,1,100)
-	_y = None
 
 	kwargs = {
 		'process':True,
@@ -258,29 +267,26 @@ def test_fit(path=None,tol=None):
 		'alpha':1e-4,'beta':1e-6,
 		"c1":1e-2,"c2":1e-1,"maxiter":2000,
 		'path':None,
-		'verbose':True,
+		'verbose':False,
 	}
 
-	preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,log10(y) if y is not None else None,parameters if parameters is not None else None)
-	postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,exp10(y) if y is not None else None,parameters if parameters is not None else None)
-	bootstrap = dict(size=3,random='gaussian',scale=data['yerr'],seed=123)
-
 	_func,_y,_parameters,_yerr,_covariance,_other = fit(
-		x=data['x'],y=data['y'],
-		_x=_x,_y=_y,
-		preprocess=preprocess,postprocess=postprocess,bootstrap=bootstrap,
-		kwargs=kwargs,
+		**data,
 		**settings,
+		kwargs=kwargs,
 		)
-
 
 	# Plot
 
-	data = dict(x=_x,y=_y,yerr=_yerr)
+	x = settings['_x']
+	y = _func(_parameters,x)
+	yerr = _yerr
+
+	data = dict(x=x,y=y,yerr=yerr)
 
 	options = dict(
-		path='data/plot.pdf',mplstyle='data/plot.mplstyle',
-		label='$\\textrm{Model}~~%s$'%('\t'.join(['\\overline{%s}^{(%d)}: %s'%(stat,bootstrap['size'],scinotation(_other[stat],decimals=3)) for stat in _other])),
+		path='examples/stats/plot.pdf',mplstyle='examples/stats/plot.mplstyle',
+		label='$\\textrm{Model}~~%s$'%('\t'.join(['\\overline{%s}: %s'%(stat,scinotation(_other[stat],decimals=3)) for stat in _other])),
 		fill_between=dict(
 			interpolate=True,
 			where=None,
@@ -295,7 +301,7 @@ def test_fit(path=None,tol=None):
 		capsize=4
 	)
 
-	fig,ax = plot(fig=fig,ax=ax,**data,**options)
+	fig,ax = plot(**data,fig=fig,ax=ax,options=options)
 
 	print('Passed')
 

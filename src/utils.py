@@ -233,13 +233,14 @@ if backend in ['jax','jax.autograd','quimb']:
 
 	nan = np.nan
 	inf = np.inf
-	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
-	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	integers = (int,np.integer,getattr(onp,'int',int),onp.integer,)
+	floats = (float,np.floating,getattr(onp,'float',float),onp.floating,)
+	complexes = (np.complex64,np.complex128,)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
 
 	nones = (type(None),)
-	numbers = (*integers,*floats,*booleans,)
+	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 	dataframes = (pd.DataFrame,)
@@ -252,6 +253,7 @@ if backend in ['jax','jax.autograd','quimb']:
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'
+	blank = ''
 
 
 	def debug(*obj,**objs):
@@ -281,11 +283,12 @@ elif backend in ['autograd']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	complexes = (np.complex64,np.complex128,)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
 
 	nones = (type(None),)
-	numbers = (*integers,*floats,*booleans,)
+	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
 	dataframes = (pd.DataFrame,)
@@ -298,6 +301,7 @@ elif backend in ['autograd']:
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
+	blank = ''
 
 	def debug(*args,**kwargs):
 		print(*args,**kwargs)
@@ -318,11 +322,12 @@ elif backend in ['numpy']:
 	inf = np.inf
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	complexes = (np.complex64,np.complex128,)
 	booleans = (bool,np.bool_,)
 	strings = (str,)
 
 	nones = (type(None),)
-	numbers = (*integers,*floats,*booleans,)
+	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
 	dataframes = (pd.DataFrame,)
@@ -335,6 +340,7 @@ elif backend in ['numpy']:
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
 	separ = '_'	
+	blank = ''
 
 	def debug(*args,**kwargs):
 		print(*args,**kwargs)
