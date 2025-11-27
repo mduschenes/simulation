@@ -13,10 +13,10 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,dot,diag,partial,where
+from src.utils import jit,gradient,hessian,dot,einsum,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace,bootstrapper
-from src.utils import exp,log,exp10,log10,absolute,sqrt,nanmean,nanstd,nansem,nansqrt,is_naninf,allclose
+from src.utils import exp,log,exp10,log10,absolute,sqrt,prod,nanmean,nanstd,nansem,nansqrt,is_naninf,allclose
 from src.utils import nan,null,arrays,scalars,delim
 
 from src.io import load,dump
@@ -61,37 +61,24 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	if bootstrap is not None:
 
-		bootstrap.update({key:bootstrap.get(key,value) for key,value in dict(scale=yerr).items()})
+		options = {key:bootstrap.get(key,value) for key,value in dict(scale=yerr).items()}
+		bootstrap.update(options)
 
-		Y = bootstrapper(y,**bootstrap)
-		size = len(Y)
-		X = [x]*size
-		_Y = [_y]*size
-		_X = [_x]*size
-		data = []
-		other = []
+		y = bootstrapper(y,**bootstrap).T
+		yerr = yerr #diag(yerr)[...,None] if yerr is not None and yerr.ndim == 1 else yerr[...,None] if yerr is not None and yerr.ndim == 2 else None
+		size = y.shape[-1]
+		options = dict(axis=-1,ddof=size>1)
 
-		for index,(x,y,_x,_y) in enumerate(zip(X,Y,_X,_Y)):
+		_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,kwargs=kwargs)
 
-			_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,kwargs=kwargs)
+		_x = x if _x is None else  _x
+		_y = _func(_parameters,_x)
 
-			_x = x if _x is None else _x
-			_y = _func(_parameters,_x)
-
-			data.append(_y)
-			other.append(dict(_func=_func,_parameters=_parameters,_covariance=_covariance,_other=_other))
-
-			logger.log(msg="Index = %d/%d \t\t %s"%(index+1,size,'\t'.join(['%s: %0.3e'%(stat,_other[stat]) for stat in _other])),verbose=kwargs.get('verbose'))
-
-		data = array(data)
-
-		_y = nanmean(data,axis=0)
-		_yerr = nansem(data,axis=0,ddof=len(data)>1)
-
-		_func = lambda parameters,x,*args,other=other,**kwargs: nanmean(array([i['_func'](parameters,x) for i in other if i['_func'] is not None]),axis=0)
-		_parameters = nanmean(array([i['_parameters'] for i in other if i['_parameters'] is not None]),axis=0)
-		_covariance = nanmean(array([i['_covariance'] for i in other if i['_covariance'] is not None]),axis=0)
-		_other = {stat:nanmean(array([i['_other'][stat] for i in other if i['_other'] is not None and i['_other'].get(stat)]),axis=0) for stat in set(stat for i in other if i['_other'] for stat in i['_other'])}
+		_y,_yerr = nanmean(_y,**options),nansem(_y,**options)
+		_func = _func if _func is not None else None
+		_parameters = nanmean(_parameters,**options) if _parameters is not None else None
+		_covariance = nanmean(_covariance,**options) if _covariance is not None else None
+		_other = {stat:nanmean(_other[stat],**options) if _other[stat] is not None else None for stat in _other} if _other is not None else None
 
 		return _func,_y,_parameters,_yerr,_covariance,_other
 
@@ -201,7 +188,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if xerr is None:
 		xerr = None
 	if yerr is None:
-		yerr = ones(y.size)
+		yerr = None
 	if parameters is None:
 		parameters = None
 	if covariance is None:
@@ -230,18 +217,22 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if xerr is not None:
 		i = 0
 		if xerr.ndim == 1:
-			jac = diag(invgrad[i][i])
-			xerr = absolute((1/jac)*xerr)
-		else:
+			jac = diag(invgrad[i][i]) if invgrad[i][i].ndim == 2 else einsum('iuiu->iu',invgrad[i][i])
+			xerr = absolute(xerr*(1/jac)) if jac.ndim == 1 else absolute(xerr[:,None]*(1/jac))
+		elif xerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			jac = invgrad[i][i]
 			xerr = lstsq(jac.T,lstsq(jac,xerr).T).T
 
 	if yerr is not None:
 		i = 1
 		if yerr.ndim == 1:
-			jac = diag(invgrad[i][i])
-			yerr = absolute((1/jac)*yerr)
-		else:
+			jac = diag(invgrad[i][i]) if invgrad[i][i].ndim == 2 else einsum('iuiu->iu',invgrad[i][i])
+			yerr = absolute(yerr*(1/jac)) if jac.ndim == 1 else absolute(yerr[:,None]*(1/jac))
+		elif yerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			jac = invgrad[i][i]
 			yerr = lstsq(jac.T,lstsq(jac,yerr).T).T
 			
@@ -249,18 +240,22 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if _xerr is not None:
 		i = 0
 		if _xerr.ndim == 1:
-			_jac = diag(_invgrad[i][i])
-			_xerr = absolute((1/_jac)*_xerr)
-		else:
+			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_xerr = absolute(_xerr*(1/_jac)) if _jac.ndim == 1 else absolute(_xerr[:,None]*(1/_jac))
+		elif _xerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			_jac = invgrad[i][i]
 			_xerr = lstsq(_jac.T,lstsq(_jac,_xerr).T).T
 
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
-			_jac = diag(_invgrad[i][i])
-			_yerr = absolute((1/_jac)*_yerr)
-		else:
+			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_yerr = absolute(_yerr*(1/_jac)) if _jac.ndim == 1 else absolute(_yerr[:,None]*(1/_jac))
+		elif _yerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			_jac = invgrad[i][i]
 			_yerr = lstsq(_jac.T,lstsq(_jac,_yerr).T).T
 
@@ -271,12 +266,12 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			return y
 
 		if intercept:
-			x = array([x,ones(x.size)]).T
+			x = array([x,ones(x.shape)]).T
 		else:
 			x = array([x]).T
 		
 		if intercept:
-			_x = array([_x,ones(_x.size)]).T
+			_x = array([_x,ones(_x.shape)]).T
 		else:
 			_x = array([_x]).T
 
@@ -291,8 +286,11 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_covariance = None
 		_grad = None
 
-		_covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
-		_grad = None
+		if _yerr is None:
+			_covariance = None
+		elif _yerr.ndim in [1,2]:
+			_covariance = lstsq(dot(x.T,x),dot(x.T,sqrt(yerr)))
+			_covariance = einsum('i...,j...->ij...',_covariance,_covariance)
 		# _grad = dot(dot(x.T,x),_parameters) - dot(y.T,x)
 
 		if _covariance is None or _grad is None:
@@ -358,55 +356,45 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		def func(parameters,x,*args,z=z,**kwargs):
 			return z			
 
-	r = (((y - func(_parameters,x))**2).sum()/((y - y.mean())**2).sum()) if y.size>1 else 0
+	r = (((y - func(_parameters,x))**2).sum(axis=0)/((y - y.mean(axis=0))**2).sum(axis=0)) if y.size>1 else 0
 
 	_other = {'1-r':r}
-
-	invgrad = gradtransform(x,y,parameters)
-	if xerr is not None:
-		i = 0
-		if xerr.ndim == 1:
-			jac = diag(invgrad[i][i])
-			xerr = absolute(jac*xerr)
-		else:
-			jac = invgrad[i][i]
-			xerr = dot(dot(jac,xerr),jac.T)
-	if yerr is not None:
-		i = 1
-		if yerr.ndim == 1:
-			jac = diag(invgrad[i][i])
-			yerr = absolute(jac*yerr)
-		else:
-			jac = invgrad[i][i]
-			yerr = dot(dot(jac,yerr),jac.T)
 
 	_invgrad = gradtransform(_x,_y,_parameters)
 	if _xerr is not None:
 		i = 0
 		if _xerr.ndim == 1:
-			_jac = diag(_invgrad[i][i])
-			_xerr = absolute(_jac*_xerr)
-		else:
+			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_xerr = absolute(_xerr*(1/_jac)) if _jac.ndim == 1 else absolute(_xerr[:,None]*(1/_jac))
+		elif _xerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			_jac = _invgrad[i][i]
 			_xerr = dot(dot(_jac,_xerr),_jac.T)
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
-			_jac = diag(_invgrad[i][i])
-			_yerr = absolute(_jac*_yerr)
-		else:
+			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_yerr = absolute(_yerr*(1/_jac)) if _jac.ndim == 1 else absolute(_yerr[:,None]*(1/_jac))
+		elif _yerr.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			_jac = _invgrad[i][i]
 			_yerr = dot(dot(_jac,_yerr),_jac.T)
-
 
 	if _covariance is not None:
 		i = 2
 		if _covariance.ndim == 1:
-			_jac = diag(_invgrad[i][i])
+			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_covariance = absolute(_jac*_covariance)
-		else:
+		elif _covariance.ndim == 2:
+			if invgrad[i][i].ndim > 2:
+				raise NotImplementedError
 			_jac = _invgrad[i][i]
 			_covariance = dot(dot(_jac,_covariance),_jac.T)
+		elif _covariance.ndim == 3:
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim == 2 else einsum('iuju->iju',_invgrad[i][i])
+			_covariance = einsum('iju,jku,lku->ilu',_jac,_covariance,_jac)
 
 	if parameters is not None:
 		x,y,parameters = invtransform(x,y,parameters)

@@ -6654,13 +6654,14 @@ def spectrum(func,shape=None,axes=None,compute_v=False,hermitian=False):
 
 	return wrapper
 
-@partial(jit,static_argnums=(1,))
-def mean(a,axis=None):
+@partial(jit,static_argnums=(1,2,))
+def mean(a,axis=None,ddof=None):
 	'''
 	Compute mean of array along axis
 	Args:
 		a (array): array to compute mean
 		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
 	Returns:
 		out (array): mean of array
 	'''
@@ -6700,13 +6701,14 @@ def sem(a,axis=None,ddof=None):
 		size = int(product([a.shape[ax] for ax in axis]))
 	return std(a,axis=axis,ddof=ddof)/np.sqrt(size)
 
-@partial(jit,static_argnums=(1,))
-def nanmean(a,axis=None):
+@partial(jit,static_argnums=(1,2,))
+def nanmean(a,axis=None,ddof=None):
 	'''
 	Compute nanmean of array along axis
 	Args:
 		a (array): array to compute nanmean
 		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
 	Returns:
 		out (array): nanmean of array
 	'''

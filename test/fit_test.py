@@ -225,7 +225,7 @@ def test_fit(path=None,tol=None):
 			preprocess="log10.log10",
 			postprocess="exp10.exp10",
 			bootstrap=dict(size=3,random='gaussian',seed=123),
-			_x=linspace(0,1,100),_y = None,
+			_x=logspace(-20,0,100),_y = None,
 			)
 
 		return data,settings

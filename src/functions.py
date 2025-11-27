@@ -305,54 +305,6 @@ def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,
 
 	return data
 
-
-def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwargs):
-
-	if y not in data:
-		return data
-
-
-	def func(data,func=func):
-
-		if hasattr(np,func):
-
-			func = lambda a,func=func: a[...,getattr(np,func)(a,axis=-1)]
-
-			options = {
-				**dict(
-					a = data[y].to_numpy(),
-					scale = data[yerr].to_numpy(),
-					),
-				**kwargs
-				}
-			a = bootstrapper(**options)
-
-			a = func(a)
-
-			data = {**{attr:[data[attr].iloc[0]] for attr in data},**{y:[a.mean().item()],yerr:[(a.std(ddof=a.size>1)/np.sqrt(a.size)).item()]}}
-
-		else:
-
-			func = load(func,default=func)
-
-			data = func(data,keys,**kwargs)
-
-		data = dataframe(data)
-
-		return data
-
-	def agg(data):
-		by = x
-		agg = {**{attr:[(attr,'first')] for attr in data},**{y:[(y,'mean'),(yerr,'sem')]}}
-		options = dict(by=by,agg=agg)
-		data = grouper(data,**options)
-		data = func(data)
-		return data
-
-	data = agg(data)
-
-	return data
-
 def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**settings):
 
 	keys = dict(zip(['x','y','xerr','yerr'],[f'{x}',f'{y}',f'{x}.error',f'{y}.error']))
