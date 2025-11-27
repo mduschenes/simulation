@@ -1600,7 +1600,7 @@ def test_tensor(path=None,tol=None):
 
 def test_network(path=None,tol=None):
 
-	from src.utils import rand,tensor,network,context
+	from src.utils import rand,tensor,network,contexts
 
 	N = 3
 	shapes = {'x{}':11,'y{}':5,'z{}':9,'s{}':3,'u{}':14,'v{}':17,'w{}':23,'t{}':8,'q{}':6,'r{}':5}
@@ -1675,7 +1675,7 @@ def test_network(path=None,tol=None):
 	print(obj.indices)
 
 	for i in range(N):
-		with context(*(obj[i] for i in obj),formats=i,indices=indices):
+		with contexts(*(obj[i] for i in obj),formats=i,indices=indices):
 			print(i,obj.indices)
 			assert obj.indices == {key:[index.format(i) for index in obj[key].indices] for key in obj}
 

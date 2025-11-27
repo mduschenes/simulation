@@ -207,6 +207,14 @@ class none(object):
 	def __call__(self,*args,**kwargs):
 		return self.default
 
+class context(object):
+	def __init__(self,obj=None):
+		self.obj = obj
+	def __enter__(self,*args,**kwargs):
+		return self.obj
+	def __exit__(self, *args,**kwargs):
+		pass
+
 null = Null()
 
 
@@ -3116,7 +3124,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			return self
 
-	class context(object):
+	class contexts(object):
 		'''
 		Update object within context with formats
 		Args:
@@ -4091,7 +4099,7 @@ if backend in ['quimb']:
 		return obj
 
 
-	class context_quimb(object):
+	class contexts_quimb(object):
 		'''
 		Update tensor attributes within context with key
 		Args:
@@ -6757,13 +6765,13 @@ def bootstrapper(a,size,random=None,scale=None,shape=(),axis=None,replace=True,w
 
 	random = 'gaussian' if random is None else random
 
-	scale = 1 if not isinstance(scale,arrays) else scale
+	scale = 1 if scale is None else scale
 
 	shape = a.shape if shape is None else shape
 
 	if random not in ['sample']:
 		shape = (*([size] if not isinstance(size,iterables) else size),*a.shape)
-		scale = scale.reshape(*[1]*(len(shape)-scale.ndim),*scale.shape)
+		scale = scale.reshape(*[1]*(len(shape)-scale.ndim),*scale.shape) if isinstance(scale,arrays) else scale
 		return a.reshape(*[1]*(len(shape)-a.ndim),*a.shape) + rand(random=random,shape=shape,key=key,scale=scale)
 	elif is_dataframe(a):
 		shape = size

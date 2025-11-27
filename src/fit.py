@@ -15,8 +15,8 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
-from src.utils import norm,inv,lstsq,interp,piecewise,inplace
-from src.utils import exp,log,absolute,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
+from src.utils import norm,inv,lstsq,interp,piecewise,inplace,bootstrapper
+from src.utils import exp,log,absolute,sqrt,nanmean,nanstd,nansem,nansqrt,is_naninf,allclose
 from src.utils import nan,null,arrays,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
@@ -30,7 +30,7 @@ debug = 0
 
 class cov(Covariance):pass
 
-def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,kwargs={}):
+def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,bootstrap=None,kwargs={}):
 	'''
 	Fit of data
 	Args:
@@ -47,6 +47,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		covariance (array,iterable[array]): Model parameters error in preprocessed frame
 		intercept (bool,iterable[bool]): Include intercept in fit
 		bounds (iterable[object]): piecewise domains
+		bootstrap (dict): bootstrap fits
 		kwargs (dict[str,object],iterable[dict[str,object]]): Additional keyword arguments for fitting
 	Returns:
 		_func (callable): Fit function in postprocessed frame with signature func(parameters,x)
@@ -56,6 +57,41 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		_covariance (array): Fit model parameters error
 		_other (dict[str,object]): Other fit returns		
 	'''	
+
+	if bootstrap is not None:
+
+		Y = bootstrapper(y,**bootstrap)
+		size = len(Y)
+		X = [x]*size
+		_Y = [_y]*size
+		_X = [_x]*size
+		data = []
+		other = []
+		stats = ['r']
+
+		for index,(x,y,_x,_y) in enumerate(zip(X,Y,_X,_Y)):
+
+			_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,kwargs=kwargs)
+
+			_y = _func(_parameters,_x)
+
+			data.append(_y)
+			other.append(dict(_func=_func,_parameters=_parameters,_covariance=_covariance,_other=_other))
+
+			logger.log(msg="Index = %d/%d \t\t %s"%(index+1,size,'\t'.join(['%s: %0.3e'%(stat,_other[stat]) for stat in _other])),verbose=kwargs.get('verbose'))
+
+
+		data = array(data)
+
+		_y = nanmean(data,axis=0)
+		_yerr = nansem(data,axis=0,ddof=len(data)>1)
+
+		_func = lambda parameters,x,*args,other=other,**kwargs: nanmean(array([i['_func'](parameters,x) for i in other if i['_func'] is not None]),axis=0)
+		_parameters = nanmean(array([i['_parameters'] for i in other if i['_parameters'] is not None]),axis=0)
+		_covariance = nanmean(array([i['_covariance'] for i in other if i['_covariance'] is not None]),axis=0)
+		_other = {stat:nanmean(array([i['_other'][stat] for i in other if i['_other'] is not None and i['_other'].get(stat)]),axis=0) for stat in set(stat for i in other if i['_other'] for stat in i['_other'])}
+
+		return _func,_y,_parameters,_yerr,_covariance,_other
 
 	single = callable(func) or isinstance(func,str)
 
@@ -243,12 +279,25 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_x = array([_x]).T
 
 		_parameters = lstsq(x,y)
-		_y = func(x)
+
+		_y = func(_parameters,_x)
 		
-		if yerr.dim == 1:
-			yerr = diag(yerr)
-		
-		_covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
+		if yerr is not None:
+			if yerr.ndim == 1:
+				yerr = diag(yerr)
+
+		_covariance = None
+		_grad = None
+
+		# _covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
+		# _grad = dot(dot(x.T,x),_parameters) - dot(y.T,x)
+
+		if _covariance is None or _grad is None:
+			_yerr = None
+		elif _covariance.ndim == 1:
+			_yerr = absolute(diag(_grad)*_covariance)
+		elif _covariance.ndim == 2:
+			_yerr = sqrt(diag(dot(dot(_grad,_covariance),_grad.T)))
 
 	elif isinstance(func,str):
 
@@ -287,7 +336,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_y = func(_parameters,_x)
 		_grad = grad(_parameters,_x)
 
-		if _covariance is None:
+		if _covariance is None or _grad is None:
 			pass
 		elif _covariance.ndim == 1:
 			_yerr = absolute(diag(_grad)*_covariance)
@@ -303,9 +352,9 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		def func(parameters,x,*args,z=z,**kwargs):
 			return z			
 
-	r = 1 - (((y - func(_parameters,x))**2).sum()/((y - y.mean())**2).sum())
+	r = (((y - func(_parameters,x))**2).sum()/((y - y.mean())**2).sum())
 
-	_other = {'r':r}
+	_other = {'1-r':r}
 
 	invgrad = gradtransform(x,y,parameters)
 	if xerr is not None:
@@ -357,12 +406,19 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 
 	_x,_y,_parameters = invtransform(_x,_y,_parameters)
 
-	def _func(parameters,x,*args,**kwargs):
-		x,parameters = transform(x=x,parameters=parameters)
-		y = func(parameters,x,*args,**kwargs)
-		y = invtransform(y=y)
-		return y
-	
+	if intercept:
+		def _func(parameters,x,*args,**kwargs):
+			x,parameters = transform(x=x,parameters=parameters)
+			y = func(parameters,array([x,ones(x.shape)]).T,*args,**kwargs)
+			y = invtransform(y=y)
+			return y
+	else:
+		def _func(parameters,x,*args,**kwargs):
+			x,parameters = transform(x=x,parameters=parameters)
+			y = func(parameters,x,*args,**kwargs)
+			y = invtransform(y=y)
+			return y
+
 	return _func,_y,_parameters,_yerr,_covariance,_other
 
 

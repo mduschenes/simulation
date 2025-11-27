@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,vmap,partial,array,zeros,ones,identity,empty,rand,haar,choice,allclose,asscalar,is_array,is_nan,product
 from src.utils import einsum,symbols,conjugate,dagger,dot,addition,tensorprod,reshape,transpose,trace,real,imag,sqrtm,sqrt,cos,sin,abs2,log,log2,log10
-from src.utils import shuffle,swap,seeder,rng,copy,context
+from src.utils import shuffle,swap,seeder,rng,copy,contexts
 from src.utils import arrays,tensors,iterables,scalars,integers,floats,pi,e,delim
 from src.iterables import permutations
 from src.io import load,dump,glob
