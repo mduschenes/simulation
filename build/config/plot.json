@@ -3650,26 +3650,6 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 1.1
-			},
-			"set_ynbins": {
-				"nbins": 6
-			},
-			"set_yticks": {
-				"ticks": [
-					0,
-					0.2,
-					0.4,
-					0.6,
-					0.8,
-					1
-				]
-			},
-			"set_yscale": {
-				"value": "linear"
-			},
-			"set_ylim": {
 				"ymin": -0.5,
 				"ymax": 5.5
 			},
@@ -3684,6 +3664,26 @@
 					3,
 					4,
 					5
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -0.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					0.2,
+					0.4,
+					0.6,
+					0.8,
+					1
 				]
 			},
 			"yaxis.set_major_formatter": {
@@ -4160,26 +4160,6 @@
 				"value": "linear"
 			},
 			"set_ylim": {
-				"ymin": -0.1,
-				"ymax": 1.1
-			},
-			"set_ynbins": {
-				"nbins": 6
-			},
-			"set_yticks": {
-				"ticks": [
-					0,
-					0.2,
-					0.4,
-					0.6,
-					0.8,
-					1
-				]
-			},
-			"set_yscale": {
-				"value": "linear"
-			},
-			"set_ylim": {
 				"ymin": -0.5,
 				"ymax": 5.5
 			},
@@ -4213,7 +4193,26 @@
 					-2,
 					-4
 				]
-			},			
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -1.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					-1,
+					-0.5,
+					0,
+					0.5,
+					1
+				]
+			},
 			"yaxis.set_major_formatter": {
 				"ticker": {}
 			},
@@ -8545,6 +8544,26 @@
 				"value": "linear"
 			},
 			"set_ylim": {
+				"ymin": -0.5,
+				"ymax": 5.5
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
 				"ymin": -0.1,
 				"ymax": 1.1
 			},
@@ -8561,26 +8580,6 @@
 					1
 				]
 			},
-			"set_yscale": {
-				"value": "linear"
-			},
-			"set_ylim": {
-				"ymin": -0.5,
-				"ymax": 5.5
-			},
-			"set_ynbins": {
-				"nbins": 6
-			},
-			"set_yticks": {
-				"ticks": [
-					0,
-					1,
-					2,
-					3,
-					4,
-					5
-				]
-			},			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 2}
@@ -12454,6 +12453,26 @@
 				"value": "linear"
 			},
 			"set_ylim": {
+				"ymin": -0.5,
+				"ymax": 5.5
+			},
+			"set_ynbins": {
+				"nbins": 6
+			},
+			"set_yticks": {
+				"ticks": [
+					0,
+					1,
+					2,
+					3,
+					4,
+					5
+				]
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
 				"ymin": -0.1,
 				"ymax": 1.1
 			},
@@ -12470,26 +12489,6 @@
 					1
 				]
 			},
-			"set_yscale": {
-				"value": "linear"
-			},
-			"set_ylim": {
-				"ymin": -0.5,
-				"ymax": 5.5
-			},
-			"set_ynbins": {
-				"nbins": 6
-			},
-			"set_yticks": {
-				"ticks": [
-					0,
-					1,
-					2,
-					3,
-					4,
-					5
-				]
-			},			
 			"xaxis.set_major_formatter": {
 				"ticker": {
 					"LogFormatterMathtext": {"base": 10}
