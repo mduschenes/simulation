@@ -51,7 +51,7 @@ VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] f
 OBJS = ['ax','fig','style']
 OBJ = 'ax'
 OTHER = 'label'
-SPECIAL = ['obj','plots','attributes','function']
+SPECIAL = ['obj','plots','data','function']
 NOTATION = ['texify','scinotation']
 CHILDREN = ['twin','secondary']
 WHICH = ['major','minor']
@@ -779,41 +779,41 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,base=None,alp
 
 	return value,color,values,colors,norm
 
-def set_data(data=None,scale=None,base=None,**kwargs):
+def set_value(value=None,scale=None,base=None,**kwargs):
 	'''
-	Set data
+	Set value
 	Args:
-		data (int,float,iterable[int,float]): Data
+		value (int,float,iterable[int,float]): value
 		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
 		base (int): Scale base for normalization		
 		kwargs (dict): Additional keyword arguments
 	Returns:
-		data (array): Data
+		value (array): value
 	'''
 
 	if isinstance(scale,str):
 		scale = [scale]
 
-	if ((data is None) or 
+	if ((value is None) or
 	   (scale is None)):
 	
-	   data = None
+	   value = None
 
 	elif ((scale is None) or
 		  (not any(i in ['log'] for i in scale))):
 	
-		data = data
+		value = value
 	
 	elif ((not isinstance(scale,str) and any(i in ['log'] for i in scale))):
 
-		if not isinstance(data,np.ndarray):
-			for i,value in enumerate(data):
-				if value == 0:
-					data = inplace(data.astype(float),i,nan)
+		if not isinstance(value,np.ndarray):
+			for i,obj in enumerate(value):
+				if obj == 0:
+					value = inplace(value.astype(float),i,nan)
 		else:
-			data = inplace(data.astype(float),data==0,nan)
+			value = inplace(value.astype(float),value==0,nan)
 
-	return data
+	return value
 
 
 def set_err(err=None,value=None,scale=None,base=None,**kwargs):
@@ -1321,7 +1321,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			obj = get_obj(obj,kwargs[attr].get('obj'))
 
-			attributes = kwargs[attr].get('attributes')
+			data = kwargs[attr].get('data')
 		
 			function = kwargs[attr].get('function')
 
@@ -1811,6 +1811,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						}),
 					})
 
+
 				def function(objs,obj,attr,arguments,keywords,kwargs,kwds=kwds):
 
 					funcs = []
@@ -1825,7 +1826,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								children = get_children(objs,kwd)
 								for i,child in enumerate(children):
 									for kwarg in kwds[kwd]:
-										if i in kwds[kwd][kwarg]:
+										if (
+											(isinstance(kwds[kwd][kwarg],dict) and (all(isinstance(j,int) for j in kwds[kwd][kwarg]) and (i in kwds[kwd][kwarg]))) or
+											(isinstance(kwds[kwd][kwarg],list) and (i<len(kwds[kwd][kwarg])))
+											):
 											key = getattr(child,kwarg)
 											if callable(kwds[kwd][kwarg][i]):
 												value = kwds[kwd][kwarg][i](kwarg,child,objs)
@@ -1900,12 +1904,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if kwargs[attr].get(prop) is None:
 						continue
 
-					data = kwargs[attr].get(prop)
+					value = kwargs[attr].get(prop)
 					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					
-					data = set_data(data=data,scale=scale)
 
-					kwargs[attr][prop] = data
+					value = set_value(value=value,scale=scale)
+
+					kwargs[attr][prop] = value
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
 
@@ -1927,12 +1931,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if kwargs[attr].get(prop) is None:
 						continue
 
-					data = kwargs[attr].get(prop)
+					value = kwargs[attr].get(prop)
 					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					
-					data = set_data(data=data,scale=scale)
 
-					kwargs[attr][prop] = data
+					value = set_value(value=value,scale=scale)
+
+					kwargs[attr][prop] = value
 
 				if attr in ['axvline']:
 					args.extend([kwargs[attr].get(k) for k in [AXES[0]] if k in kwargs[attr]])
@@ -1965,12 +1969,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if kwargs[attr].get(prop) is None:
 						continue
 
-					data = kwargs[attr].get(prop)
+					value = kwargs[attr].get(prop)
 					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					
-					data = set_data(data=data,scale=scale)
 
-					kwargs[attr][prop] = data
+					value = set_value(value=value,scale=scale)
+
+					kwargs[attr][prop] = value
 
 				props = '%serr'
 				subprops ='%s'
@@ -2094,7 +2098,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 						if callable(function):
-							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,attributes=attributes)
+							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,data=data)
 
 						kwds[attr]['x'] = x
 						kwds[attr]['y'] = y
@@ -2199,7 +2203,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						yerr = None
 
 						if callable(function):
-							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,attributes=attributes)
+							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,data=data)
 
 						kwds[attr]['x'] = x
 						kwds[attr]['y'] = y
@@ -2234,12 +2238,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if kwargs[attr].get(prop) is None:
 						continue
 
-					data = kwargs[attr].get(prop)
+					value = kwargs[attr].get(prop)
 					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					
-					data = set_data(data=data,scale=scale)
 
-					kwargs[attr][prop] = data
+					value = set_value(value=value,scale=scale)
+
+					kwargs[attr][prop] = value
 
 				props = '%serr'
 				subprops ='%s'
@@ -2302,12 +2306,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if kwargs[attr].get(prop) is None:
 						continue
 
-					data = kwargs[attr].get(prop)
+					value = kwargs[attr].get(prop)
 					scale = [i[-1].get('value') for i in search(kwargs.get(subattr),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					
-					data = set_data(data=data,scale=scale)
 
-					kwargs[attr][prop] = data
+					value = set_value(value=value,scale=scale)
+
+					kwargs[attr][prop] = value
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim]])
 

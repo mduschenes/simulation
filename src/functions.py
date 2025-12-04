@@ -1264,9 +1264,9 @@ def func_divergence_func_err(data):
 	return out
 
 
-def func_fit_histogram(args,kwargs,attributes):
+def func_fit_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
-	def process(args,kwargs,attributes):
+	def process(args,kwargs,data):
 
 		x,y,xerr,yerr = args
 
@@ -1285,13 +1285,13 @@ def func_fit_histogram(args,kwargs,attributes):
 		# size = max(10,len(y)//100)
 		# y = np.convolve(y,window(size),**options)
 
-		attributes['d'] = attributes['D']**attributes['N']
+		data['d'] = data['D']**data['N']
 
 		return x,y,xerr,yerr
 
-	x,y,xerr,yerr = process(args,kwargs,attributes)
+	x,y,xerr,yerr = process(args,kwargs,data)
 
-	func = lambda parameters,x: parameters[0]*attributes['d']*np.exp(-parameters[1]*attributes['d']*x)
+	func = lambda parameters,x: parameters[0]*data['d']*np.exp(-parameters[1]*data['d']*x)
 	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
 
 	model = scipy.optimize.leastsq
@@ -1323,13 +1323,13 @@ def func_fit_histogram(args,kwargs,attributes):
 		for prop in ['set_%sscale'%(axes) for axes in AXES]:
 			if not kwargs.get(prop):
 				continue
-			values = [data for data in search(kwargs.get(prop)) if data]
-			if (len(set(data.get('value') for data in values)) == 1) or not any(data.get('value') not in [None,'linear'] or data.get('obj') not in [None] for data in values):
+			values = [value for value in search(kwargs.get(prop)) if value]
+			if (len(set(value.get('value') for value in values)) == 1) or not any(value.get('value') not in [None,'linear'] or value.get('obj') not in [None] for value in values):
 				continue
-			values = [data.get('value') for data in values if data.get('obj')==kwargs[attr].get('obj')]
+			values = [value.get('value') for value in values if value.get('obj')==kwargs[attr].get('obj')]
 			if not values:
 				continue
-			string = 'Linear' if all(data=='linear' for data in values) else 'Log'
+			string = 'Linear' if all(value=='linear' for value in values) else 'Log'
 			string = '~(\\textrm{%s})'%(string)
 			break
 
@@ -1347,13 +1347,104 @@ def func_fit_histogram(args,kwargs,attributes):
 	attr = 'legend'
 	kwarg = 'set_title'
 	if kwargs.get(attr):
-		for data in search(kwargs[attr]):
-			if not data or not data.get(kwarg):
+		for value in search(kwargs[attr]):
+			if not value or not value.get(kwarg):
 				continue
 			string = 'P(p) = \\alpha D^{N} e^{-\\beta D^{N} p}'
-			# data[kwarg] = '%s ~:~ %s'%(data[kwarg],string) if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
-			data[kwarg] = '%s'%(string) if string else '' #if isinstance(data.get(kwarg),str) and not data.get(kwarg).replace('$','').endswith(string) else data[kwarg]
-			data[kwarg] = texify(data[kwarg],**options['texify'])
+			# value[kwarg] = '%s ~:~ %s'%(value[kwarg],string) if isinstance(value.get(kwarg),str) and not value.get(kwarg).replace('$','').endswith(string) else value[kwarg]
+			value[kwarg] = '%s'%(string) if string else '' #if isinstance(value.get(kwarg),str) and not value.get(kwarg).replace('$','').endswith(string) else value[kwarg]
+			value[kwarg] = texify(value[kwarg],**options['texify'])
+
+	return x,y,xerr,yerr
+
+
+def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
+
+	if function is None:
+		def function(data=data):
+			data['d'] = 1
+			return
+		def func(x,data=data):
+			return (data['d']-1)*(1-x)**(data['d']-2)
+	elif function in ['array']:
+		def function(data=data):
+			data['d'] = data['D']**(1*data['N'])
+			return
+		def func(x,data=data):
+			return (data['d']-1)*(1-x)**(data['d']-2)
+	elif function in ['state']:
+		def function(data=data):
+			data['d'] = data['D']**(1*data['N'])
+			return
+		def func(x,data=data):
+			return (data['d']-1)*(1-x)**(data['d']-2)
+	else:
+		def function(data=data):
+			data['d'] = 1
+			return
+		def func(x,data=data):
+			return (data['d']-1)*(1-x)**(data['d']-2)
+
+	def process(args,kwargs,data):
+
+		x,y,xerr,yerr = args
+
+		kwargs.update({})
+
+		function(data)
+
+		indices = (y != 0) & (~is_nan(y)) if y is not None else None
+
+		if not indices.any():
+			return x,y,xerr,yerr
+
+		x = x[indices] if x is not None else None
+		y = y[indices] if y is not None else None
+		xerr = xerr[indices] if xerr is not None else None
+		yerr = yerr[indices] if yerr is not None else None
+
+		return x,y,xerr,yerr
+
+	x,y,xerr,yerr = process(args,kwargs,data)
+
+	x = x
+	y = func(x)
+	xerr = None
+	yerr = None
+
+	attr = 'errorbar'
+	kwarg = 'label'
+	if kwargs.get(attr) and kwargs[attr].get(kwarg):
+		options = {
+			'texify':dict(usetex=True),
+			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
+			}
+		string = ''
+		for prop in ['set_%sscale'%(axes) for axes in AXES]:
+			if not kwargs.get(prop):
+				continue
+			values = [value for value in search(kwargs.get(prop)) if value]
+			if (len(set(value.get('value') for value in values)) == 1) or not any(value.get('value') not in [None,'linear'] or value.get('obj') not in [None] for value in values):
+				continue
+			values = [value.get('value') for value in values if value.get('obj')==kwargs[attr].get('obj')]
+			if not values:
+				continue
+			string = '$(d-1)(1-p)^{d-2}$' if all(value=='linear' for value in values) else '$(d-1)(1-p)^{d-2}$'
+			string = '~ %s'%(string)
+			break
+
+		string = texify(string,**options['texify'])
+		kwargs[attr][kwarg] = string
+
+	attr = 'legend'
+	kwarg = 'set_title'
+	if kwargs.get(attr):
+		for value in search(kwargs[attr]):
+			if not value or not value.get(kwarg):
+				continue
+			string = 'P(p)'
+			value[kwarg] = '%s'%(string) if string else ''
+			value[kwarg] = texify(value[kwarg],**options['texify'])
 
 	return x,y,xerr,yerr
 

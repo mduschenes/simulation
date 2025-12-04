@@ -20,7 +20,7 @@ for PATH in PATHS:
 from src.utils import argparser,copy
 from src.utils import array,dataframe,series,concatenate,expand_dims,conditions,prod,bootstrapper,flatten
 from src.utils import to_key_value,to_slice,to_tuple,to_scalar,to_number,to_str,to_int,to_float,to_position,to_index,is_iterable,is_number,is_int,is_float,is_nan,is_numeric
-from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,iterables,dicts,delim,null,Null,scinotation,texify,baseify
+from src.utils import e,pi,nan,arrays,scalars,numbers,integers,floats,complexes,iterables,dicts,delim,null,Null,scinotation,texify,baseify
 from src.iterables import search,inserter,indexer,constructor,sizer,permuter,regex,Dict
 from src.io import load,dump,merge,join,split,exists,glob
 from src.fit import fit
@@ -1485,6 +1485,7 @@ def loader(data,plots,processes,verbose=None):
 			transform = None,
 			verbose = verbose,
 			)
+
 		dump(plots,path,**options)
 
 	return
@@ -1648,6 +1649,19 @@ def apply(data,plots,processes,verbose=None):
 			data[attr][data[attr].isna()] = 'none'
 			return
 		update = 'str'
+		updates[update] = Dict(boolean=boolean,func=func)
+
+		def boolean(attr,data):
+			boolean = data[attr].any()
+			return boolean
+		def func(attr,data):
+			obj = data[attr].iloc[0]
+			if isinstance(obj,tuple) and any(isinstance(i,complexes) for i in flatten(obj)):
+				data[attr] = [to_tuple(i.real for i in flatten(obj)) for obj in data[attr]]
+			elif isinstance(obj,complexes):
+				data[attr] = data[attr].to_numpy().real
+			return
+		update = 'field'
 		updates[update] = Dict(boolean=boolean,func=func)
 
 		for update in updates:
@@ -4141,8 +4155,8 @@ def plotter(plots,processes,verbose=None):
 								data[kwarg] = value
 
 
-			# set attributes
-			attr = 'attributes'
+			# set data
+			attr = 'data'
 			for prop in PLOTS:
 
 				if not plots[instance][subinstance][obj].get(prop):
@@ -4168,14 +4182,18 @@ def plotter(plots,processes,verbose=None):
 
 				for data in search(plots[instance][subinstance][obj][prop]):
 
-					if not data or data.get(attr) is None:
+					if not data:
 						continue
 
-					value = data[attr]
+					attributes = [attribute for attribute in data if attribute.split(delim)[0] in [attr] and data.get(attribute)]
 
-					value = wrap(value)
+					for attribute in attributes:
 
-					data[attr] = value
+						value = data[attribute]
+
+						value = wrap(value)
+
+						data[attribute] = value
 
 
 			# set label
