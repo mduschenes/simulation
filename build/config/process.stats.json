@@ -25,13 +25,13 @@
                 {
                     "position": "col",
                     "value": {
-                        "M": [3]
+                        "M": null
                     }
                 },
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [1e-4]
+                        "noise.parameters": [0]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {
@@ -258,13 +258,13 @@
                 {
                     "position": "col",
                     "value": {
-                        "M": [3]
+                        "M": null
                     }
                 },
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [1e-4]
+                        "noise.parameters": [0]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {
