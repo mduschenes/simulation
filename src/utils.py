@@ -85,6 +85,7 @@ if backend in ['jax','jax.autograd','quimb']:
 	import jax
 	import jax.numpy as np
 	import jax.scipy as sp
+	import jax.scipy.special as spsp
 
 	import jax.example_libraries.optimizers
 	from jax.tree_util import register_pytree_node_class as register
@@ -94,7 +95,7 @@ if backend in ['jax','jax.autograd','quimb']:
 
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
-	
+
 	config = {
 		'jax_platforms':'',
 		'jax_platform_name':'',
@@ -133,7 +134,7 @@ elif backend in ['autograd']:
 		'''
 		if not callable(is_leaf):
 			types = (dict,tuple,list,) if is_leaf is None else (*is_leaf,) if isinstance(is_leaf,iterables) else (is_leaf,)
-			is_leaf = lambda tree,types=types: isinstance(tree,types)	
+			is_leaf = lambda tree,types=types: isinstance(tree,types)
 
 		if not callable(func):
 			return
@@ -247,7 +248,7 @@ if backend in ['jax','jax.autograd','quimb']:
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,dataframes)	
+	dicts = (dict,dataframes)
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -295,12 +296,12 @@ elif backend in ['autograd']:
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,dataframes,)	
+	dicts = (dict,dataframes,)
 	nulls = (Null,)
-	
+
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
-	separ = '_'	
+	separ = '_'
 	blank = ''
 
 	def debug(*args,**kwargs):
@@ -336,10 +337,10 @@ elif backend in ['numpy']:
 	iterables = (*arrays,*generators,list,tuple,set,range,)
 	dicts = (dict,dataframes,)
 	nulls = (Null,)
-	
+
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
 	delim = '.'
-	separ = '_'	
+	separ = '_'
 	blank = ''
 
 	def debug(*args,**kwargs):
@@ -461,7 +462,7 @@ class argparser(argparse.ArgumentParser):
 			arguments = {
 				'--%s'%(argument.replace('--','')):{
 					**default(argument),
-					**(arguments[argument] if isinstance(arguments[argument],dict) else 
+					**(arguments[argument] if isinstance(arguments[argument],dict) else
 					   dict(default=arguments[argument]))
 					}
 				for argument in arguments
@@ -493,7 +494,7 @@ class argparser(argparse.ArgumentParser):
 
 			name = '--%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			
+
 			for null in nulls:
 				if null in options:
 					for option in nulls[null]:
@@ -582,17 +583,17 @@ def removal(obj,index):
 
 
 def finfo(dtype=float):
-	'''	
+	'''
 	Get machine precision information for dtype
 	Args:
 		dtype (datatype): Datatype to get machine precision
 	Returns:
 		finfo (finfo): Machine precision information
-	'''	
+	'''
 	return np.finfo(dtype)
 
 def epsilon(dtype=float,eps=None):
-	'''	
+	'''
 	Get machine precision epsilon for dtype
 	Args:
 		dtype (datatype): Datatype to get machine precision
@@ -612,7 +613,7 @@ def epsilon(dtype=float,eps=None):
 	return eps
 
 if backend in ['jax','jax.autograd','quimb']:
-	
+
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
 		Apply operation with item at index of object
@@ -625,7 +626,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		Returns:
 			obj (object): Object with applied item at index
 		'''
-		
+
 		# TODO merge indexing for different numpy backends (jax vs autograd)
 
 		op = 'set' if op is None else op
@@ -646,7 +647,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		return obj[index]
 
 elif backend in ['autograd','numpy']:
-	
+
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
 		Apply operation with item at index of object
@@ -659,7 +660,7 @@ elif backend in ['autograd','numpy']:
 		Returns:
 			obj (object): Object with applied item at index
 		'''
-		
+
 		# TODO merge indexing for different numpy backends (jax vs autograd)
 
 		op = 'set' if op is None else op
@@ -675,9 +676,9 @@ elif backend in ['autograd','numpy']:
 		elif op in ['multiply']:
 			obj[index] *= item
 		elif op in ['divide']:
-			obj[index] /= item						
+			obj[index] /= item
 		elif op in ['power']:
-			obj[index] **= item						
+			obj[index] **= item
 		elif op in ['min']:
 			obj[index] = min(obj[index],item)
 		elif op in ['max']:
@@ -730,13 +731,13 @@ elif backend in ['autograd','numpy']:
 		# TODO merge jit for different numpy backends (jax vs autograd)
 
 		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-		return wraps(func)(partial(func,**kwargs))		
+		return wraps(func)(partial(func,**kwargs))
 
 
 if backend in ['jax','jax.autograd','quimb']:
 
-	# @partial(jit,static_argnums=(2,))	
-	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	# @partial(jit,static_argnums=(2,))
+	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize function over input axis of iterables
 		Args:
@@ -772,8 +773,8 @@ if backend in ['jax','jax.autograd','quimb']:
 
 elif backend in ['autograd','numpy']:
 
-	# @partial(jit,static_argnums=(2,))	
-	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	# @partial(jit,static_argnums=(2,))
+	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize function over input axis of iterables
 		Args:
@@ -809,8 +810,8 @@ elif backend in ['autograd','numpy']:
 
 if backend in ['jax','jax.autograd','quimb']:
 
-	# @partial(jit,static_argnums=(2,))	
-	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	# @partial(jit,static_argnums=(2,))
+	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize function over input axis of iterables
 		Args:
@@ -834,8 +835,8 @@ if backend in ['jax','jax.autograd','quimb']:
 
 elif backend in ['autograd','numpy']:
 
-	# @partial(jit,static_argnums=(2,))	
-	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	# @partial(jit,static_argnums=(2,))
+	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize function over input axis of iterables
 		Args:
@@ -861,7 +862,7 @@ elif backend in ['autograd','numpy']:
 if backend in ['jax','jax.autograd','quimb']:
 
 	# @partial(jit,static_argnums=(2,))
-	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize indexed functions over operands
 		Args:
@@ -870,7 +871,7 @@ if backend in ['jax','jax.autograd','quimb']:
 			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
-			kwargs (dict): Additional keyword arguments for func	
+			kwargs (dict): Additional keyword arguments for func
 		Returns:
 			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 		'''
@@ -888,7 +889,7 @@ if backend in ['jax','jax.autograd','quimb']:
 elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))
-	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		'''
 		Vectorize indexed functions over operands
 		Args:
@@ -897,7 +898,7 @@ elif backend in ['autograd','numpy']:
 			out_axes (int,iterable): Output axis of func return
 			axis_names (object): hashable Python object used to identify the mapped
 				axis so that parallel collectives can be applied.
-			kwargs (dict): Additional keyword arguments for func	
+			kwargs (dict): Additional keyword arguments for func
 		Returns:
 			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 		'''
@@ -914,7 +915,7 @@ elif backend in ['autograd','numpy']:
 
 
 if backend in ['jax','jax.autograd','quimb']:
-	
+
 	def switch(index,funcs,*args,**kwargs):
 		'''
 		Switch between indexed functions over operands
@@ -925,7 +926,7 @@ if backend in ['jax','jax.autograd','quimb']:
 			kwargs (dict): Keyword arguments for function
 		Returns:
 			out (object): Return of function
-		'''	
+		'''
 
 		# TODO merge switch for different numpy backends (jax vs autograd)
 
@@ -944,7 +945,7 @@ elif backend in ['autograd','numpy']:
 			kwargs (dict): Keyword arguments for function
 		Returns:
 			out (object): Return of function
-		'''	
+		'''
 
 		# TODO merge switch for different numpy backends (jax vs autograd)
 
@@ -953,9 +954,9 @@ elif backend in ['autograd','numpy']:
 
 
 if backend in ['jax','jax.autograd','quimb']:
-	
-	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
+
+	# @partial(jit,static_argnums=(2,))
+	def cond(pred,true_fun,false_fun,*operands):
 		'''
 		Conditionally evaluate functions
 		Args:
@@ -968,8 +969,8 @@ if backend in ['jax','jax.autograd','quimb']:
 		'''
 		return jax.lax.cond(pred,true_fun,false_fun,*operands)
 
-	# @partial(jit,static_argnums=(2,))	
-	def forloop(start,end,func,out):	
+	# @partial(jit,static_argnums=(2,))
+	def forloop(start,end,func,out):
 		'''
 		Perform loop of func from start to end indices
 		Args:
@@ -985,10 +986,10 @@ if backend in ['jax','jax.autograd','quimb']:
 
 		return jax.lax.fori_loop(start,end,func,out)
 
-	# @partial(jit,static_argnums=(2,))	
-	def whileloop(cond,func,out):	
+	# @partial(jit,static_argnums=(2,))
+	def whileloop(cond,func,out):
 		'''
-		Perform loop of func while cond 
+		Perform loop of func while cond
 		Args:
 			cond (callable): Condition for loop with signature cond(out)
 			func (callable): Function that acts on iterables with signature func(i,out)
@@ -1003,8 +1004,8 @@ if backend in ['jax','jax.autograd','quimb']:
 
 elif backend in ['autograd','numpy']:
 
-	# @partial(jit,static_argnums=(2,))	
-	def cond(pred,true_fun,false_fun,*operands):	
+	# @partial(jit,static_argnums=(2,))
+	def cond(pred,true_fun,false_fun,*operands):
 		'''
 		Conditionally evaluate functions
 		Args:
@@ -1020,8 +1021,8 @@ elif backend in ['autograd','numpy']:
 		else:
 			return false_fun(*operands)
 
-	# @partial(jit,static_argnums=(2,))	
-	def forloop(start,end,func,out):	
+	# @partial(jit,static_argnums=(2,))
+	def forloop(start,end,func,out):
 		'''
 		Perform loop of func from start to end indices
 		Args:
@@ -1037,12 +1038,12 @@ elif backend in ['autograd','numpy']:
 
 		for i in range(start,end):
 			out = func(i,out)
-		return out		
+		return out
 
-	# @partial(jit,static_argnums=(2,))	
-	def whileloop(cond,func,out):	
+	# @partial(jit,static_argnums=(2,))
+	def whileloop(cond,func,out):
 		'''
-		Perform loop of func while cond 
+		Perform loop of func while cond
 		Args:
 			cond (callable): Condition for loop with signature cond(out)
 			func (callable): Function that acts on iterables with signature func(i,out)
@@ -1068,7 +1069,7 @@ def value_and_gradient(func,grad=None,returns=False):
 		value_and_grad (callable): Value and Gradient of function
 		func (callable): Function
 		grad (callable): Gradient
-	'''	
+	'''
 	def _value_and_grad(func,grad):
 		def _func_and_grad(*args,**kwargs):
 			return func(*args,**kwargs),grad(*args,**kwargs)
@@ -1126,8 +1127,8 @@ def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
 		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic		
-		kwargs : Additional keyword arguments	
+		holomorphic (bool): Whether function is holomorphic
+		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -1136,7 +1137,7 @@ def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 		if args:
 			x,args = args[argnums],(args[:argnums],args[argnums+1:])
 		else:
-			x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
+			x,args = kwargs.pop(list(kwargs)[argnums]),((),args)
 		size,shape = x.size,x.shape
 		vectors = eye(size).reshape((size,*shape))
 
@@ -1154,7 +1155,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		shifts (int): Number of eigenvalues of shifted values
 		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic				
+		holomorphic (bool): Whether function is holomorphic
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
@@ -1167,7 +1168,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 		if args:
 			x,args = args[argnums],(args[:argnums],args[argnums+1:])
 		else:
-			x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
+			x,args = kwargs.pop(list(kwargs)[argnums]),((),args)
 		size,shape = x.size,x.shape
 		vectors = eye(size).reshape((size,*shape))
 		out = vmap(vmap(lambda v,s: s*func(*args[0],x+pi/4/s*v,*args[1],**kwargs),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
@@ -1186,7 +1187,7 @@ if backend in ['jax','jax.autograd','quimb']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1217,7 +1218,7 @@ elif backend in ['autograd']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1248,7 +1249,7 @@ elif backend in ['numpy']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1268,7 +1269,7 @@ if backend in ['jax','jax.autograd','quimb']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1289,7 +1290,7 @@ if backend in ['jax','jax.autograd','quimb']:
 				if args:
 					x,args = args[argnums],(args[:argnums],args[argnums+1:])
 				else:
-					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args)
 				ndim = x.ndim
 				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
@@ -1307,7 +1308,7 @@ elif backend in ['autograd']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1318,7 +1319,7 @@ elif backend in ['autograd']:
 		argnum = argnums
 
 		if not isinstance(argnum,integers):
-			
+
 			move = False
 			def _grad(*args,**kwargs):
 				grads = [[None for axis in argnum] for axis in argnum]
@@ -1338,7 +1339,7 @@ elif backend in ['autograd']:
 				if args:
 					x,args = args[argnums],(args[:argnums],args[argnums+1:])
 				else:
-					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args)
 				ndim = x.ndim
 				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
@@ -1355,7 +1356,7 @@ elif backend in ['numpy']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic	
+			holomorphic (bool): Whether function is holomorphic
 			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
@@ -1376,8 +1377,8 @@ if backend in ['jax','jax.autograd','quimb']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic		
-			kwargs : Additional keyword arguments		
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
 		'''
@@ -1389,7 +1390,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		# if holomorphic:
 		# 	_grad = jit(autograd.grad(func,argnum=argnum))
 		# else:
-		# 	_grad = jit(autograd.grad(func,argnum=argnum))	
+		# 	_grad = jit(autograd.grad(func,argnum=argnum))
 
 		if move:
 			@jit
@@ -1397,9 +1398,9 @@ if backend in ['jax','jax.autograd','quimb']:
 				if args:
 					x,args = args[argnums],(args[:argnums],args[argnums+1:])
 				else:
-					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args)
 				ndim = x.ndim
-				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
 			grad = _grad
 
@@ -1415,8 +1416,8 @@ elif backend in ['autograd']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic		
-			kwargs : Additional keyword arguments		
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
 		'''
@@ -1428,14 +1429,14 @@ elif backend in ['autograd']:
 		if holomorphic:
 			_grad = jit(autograd.grad(func,argnum=argnum))
 		else:
-			_grad = jit(autograd.grad(func,argnum=argnum))	
+			_grad = jit(autograd.grad(func,argnum=argnum))
 
 		if move:
 			@jit
 			def grad(*args,**kwargs):
 				x,args = args[0],args[1:]
 				ndim = x.ndim
-				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
 			grad = _grad
 
@@ -1451,8 +1452,8 @@ elif backend in ['numpy']:
 			func (callable): Function to differentiate
 			move (bool): Move differentiated axis to beginning of dimensions
 			argnums (int,iterable[int]): Arguments of func to derive with respect to
-			holomorphic (bool): Whether function is holomorphic		
-			kwargs : Additional keyword arguments		
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments
 		Returns:
 			grad (callable): Gradient of function
 		'''
@@ -1478,15 +1479,15 @@ if backend in ['jax','jax.autograd','quimb']:
 		Returns:
 			grad (callable): Hessian of function
 		'''
-		
+
 		# TODO merge grad for different numpy backends (jax vs autograd)
-		
+
 		grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 		# argnum = argnums
 		# if holomorphic:
 		# 	grad = jit(autograd.hessian(func,argnum=argnum))
 		# else:
-		# 	grad = jit(autograd.hessian(func,argnum=argnum))	
+		# 	grad = jit(autograd.hessian(func,argnum=argnum))
 
 		return grad
 
@@ -1509,17 +1510,17 @@ elif backend in ['autograd']:
 		Returns:
 			grad (callable): Hessian of function
 		'''
-		
+
 		# TODO merge grad for different numpy backends (jax vs autograd)
-		
+
 		# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 		argnum = argnums
 		if holomorphic:
 			grad = jit(autograd.hessian(func,argnum=argnum))
 		else:
-			grad = jit(autograd.hessian(func,argnum=argnum))	
+			grad = jit(autograd.hessian(func,argnum=argnum))
 
-		return grad		
+		return grad
 
 elif backend in ['numpy']:
 
@@ -1579,14 +1580,14 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	if hermitian:
 
 		if ndim == 1:
-			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 		elif ndim == 2:
 			shapes = [[shapes[0],shapes[1],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
 			wrappers = [lambda out,*operands,shape=shape: out, lambda out,*operands,shape=shape: 2*real(out)]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
-	
+
 
 		if shapes is not None:
 			einsummations = [
@@ -1604,7 +1605,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 		# @jit
 		def function(*args,**kwargs):
-			
+
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
@@ -1623,7 +1624,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 			out = real(out)
 
-			return out			
+			return out
 
 
 	elif unitary:
@@ -1638,8 +1639,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		else:
 			shapes = None
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]			
-		
+			wrappers = [lambda out,*operands,shape=shape: out/sqrt(prod(shape)),lambda out,*operands,shape=shape: -2*out,lambda out,*operands,shape=shape: 2*out/sqrt(prod(shape))]
+
 		if shapes is not None:
 			einsummations = [
 				lambda *operands,einsummation=einsummand(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
@@ -1649,7 +1650,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 			einsummations = [
 				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsummand(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-				]	
+				]
 
 		@jit
 		def function(*args,**kwargs):
@@ -1666,7 +1667,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 			tmp = einsummations[2](conjugate(gradient),gradient)
 			out += tmp
-			
+
 			out = real(out)
 
 			return out
@@ -1709,7 +1710,7 @@ def entanglement(func,shape=None,hermitian=None,unitary=None,**kwargs):
 			out = func(*args,**kwargs)
 
 			out = reshape(out,shape)
-			
+
 			out = eig(out,compute_v=False,hermitian=hermitian)
 
 			out = absolute(out)
@@ -1751,7 +1752,7 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	else:
 		def function(*args,**kwargs):
 			out = func(*args,**kwargs)
-			
+
 			out = reshape(out,shape)
 
 			out = real(einsum('ij,ij->',out,conjugate(out)))
@@ -1802,7 +1803,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 			out = reshape(out,shape)
 
 			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
-			
+
 			out = absolute((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
 
 			return out
@@ -1930,7 +1931,7 @@ def datatype(dtype):
 	Returns:
 		dtype (datatype): Underlying datatype
 	'''
-	
+
 	return np.dtype(dtype).type(0).real.dtype
 
 def arrayify(cls,new,*classes):
@@ -1941,7 +1942,7 @@ def arrayify(cls,new,*classes):
 
 	attr = 'setup'
 	for attr in attrs:
-		
+
 		if attr in ['setup']:
 			def func(self,data=None,indices=None,**kwargs):
 				'''
@@ -2013,7 +2014,7 @@ def arrayify(cls,new,*classes):
 
 	attrs = ['shape','size','ndim','dtype']
 	for attr in attrs:
-		
+
 		if attr in ['shape']:
 			@property
 			def func(self):
@@ -2027,13 +2028,13 @@ def arrayify(cls,new,*classes):
 		elif attr in ['ndim']:
 			@property
 			def func(self):
-				return self.data.ndim				
+				return self.data.ndim
 
 		elif attr in ['dtype']:
 			@property
 			def func(self):
 				return self.data.dtype
-	
+
 		if not hasattr(new,attr):
 			setattr(new,attr,func)
 
@@ -2041,7 +2042,7 @@ def arrayify(cls,new,*classes):
 		"__abs__","__neg__","__pos__",
 		)
 	def wrapper(attr):
-		
+
 		attribute = getattr(cls,attr)
 
 		@wraps(attribute)
@@ -2060,7 +2061,7 @@ def arrayify(cls,new,*classes):
 		"__gt__","__ge__","__lt__","__le__","__eq__","__ne__",
 		)
 	def wrapper(attr):
-		
+
 		attribute = getattr(cls,attr)
 
 		@wraps(attribute)
@@ -2070,19 +2071,19 @@ def arrayify(cls,new,*classes):
 			else:
 				return new(data=attribute(self.data,other,*args,**kwargs),indices=self.indices)
 
-		return func	
+		return func
 	for attr in attrs:
 		setattr(new,attr,wrapper(attr))
 
 	attrs = [
-		key for key,value in dict(inspect.getmembers(cls)).items() 
-		if isinstance(value,property) and 
-		not key.startswith('_') and 
-		key not in dir(new) and 
+		key for key,value in dict(inspect.getmembers(cls)).items()
+		if isinstance(value,property) and
+		not key.startswith('_') and
+		key not in dir(new) and
 		key not in ['at']
 		]
 	def wrapper(attr):
-		
+
 		attribute = getattr(cls,attr)
 
 		@property
@@ -2094,19 +2095,19 @@ def arrayify(cls,new,*classes):
 			else:
 				return data
 
-		return func	
+		return func
 	for attr in attrs:
 		setattr(new,attr,wrapper(attr))
 
 	attrs = [
 		key for key,value in dict(inspect.getmembers(cls)).items()
-		if callable(value) and 
-		not key.startswith('_') and 
-		key not in dir(new) and 
+		if callable(value) and
+		not key.startswith('_') and
+		key not in dir(new) and
 		key not in []
 		]
 	def wrapper(attr):
-		
+
 		attribute = getattr(cls,attr)
 
 		@wraps(attribute)
@@ -2170,7 +2171,7 @@ if backend in ['jax','quimb']:
 		Flatten tree
 		Args:
 			tree (pytree): Tree to flatten
-			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves			
+			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves
 		Yields:
 			node (object): Nodes of tree
 		'''
@@ -2181,7 +2182,7 @@ if backend in ['jax','quimb']:
 		Flatten tree
 		Args:
 			tree (pytree): Tree to flatten
-			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves			
+			is_leaf (type,iterable[type],callable): Boolean whether tree nodes are leaves
 		Returns:
 			flat (array): Flattened tree
 		'''
@@ -2209,7 +2210,7 @@ if backend in ['jax','quimb']:
 			b (pytree): Pytree object to perform function
 		Returns:
 			tree_map (pytree): Return pytree of function call
-		'''	
+		'''
 		return dot(ravel(a),ravel(b))
 
 	@tree_func
@@ -2238,7 +2239,7 @@ if backend in ['jax','quimb']:
 
 
 elif backend in ['jax.autograd','autograd','numpy']:
-	
+
 	def tree_ravel(tree,is_leaf=None):
 		'''
 		Flatten tree
@@ -2248,10 +2249,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Yields:
 			node (object): Nodes of tree
 		'''
-		
+
 		if not callable(is_leaf):
 			types = (dict,tuple,list,) if is_leaf is None else (*is_leaf,) if isinstance(is_leaf,iterables) else (is_leaf,)
-			is_leaf = lambda tree,types=types: isinstance(tree,types)			
+			is_leaf = lambda tree,types=types: isinstance(tree,types)
 
 		if is_leaf(tree):
 			for key in tree:
@@ -2296,7 +2297,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			b (pytree): Pytree object to perform function
 		Returns:
 			tree_map (pytree): Return pytree of function call
-		'''	
+		'''
 		return dot(ravel(a),ravel(b))
 
 	@tree_func
@@ -2321,7 +2322,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Returns:
 			tree_map (pytree): Return pytree of function call
 		'''
-		return a[index]	
+		return a[index]
 
 def decorator(*arguments,function=None,**keywords):
 	'''
@@ -2338,7 +2339,7 @@ def decorator(*arguments,function=None,**keywords):
 			kwargs = {**keywords,**kwargs}
 			return func(*args,**kwargs)
 		return wrapped
-	return wrapper	
+	return wrapper
 
 
 def wrapper(function,*arguments,**keywords):
@@ -2360,7 +2361,7 @@ def wrapper(function,*arguments,**keywords):
 			args,kwargs = function(args,kwargs)
 			return func(*args,**kwargs)
 		return wrapped
-	return wrapper	
+	return wrapper
 
 
 
@@ -2376,7 +2377,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			out (array): array
 		'''
 		def __new__(cls,*args,**kwargs):
-			return np.array(*args,**kwargs)			
+			return np.array(*args,**kwargs)
 
 	class tensor(object):
 		'''
@@ -2408,7 +2409,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Initialize class
 			Args:
-				kwargs (dict): Additional class keyword arguments			
+				kwargs (dict): Additional class keyword arguments
 			'''
 			return
 
@@ -2421,8 +2422,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				parameters (array,dict,callable): Class parameters
 				string (str): Class string
 				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
-				kwargs (dict): Additional class keyword arguments				
-			'''		
+				kwargs (dict): Additional class keyword arguments
+			'''
 
 			if setup is None or setup is True:
 
@@ -2438,7 +2439,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					if callable(indices):
 						indices = indices(**kwargs)
-		
+
 					parameters = parameters if parameters is not None else parameters
 
 					string = str(string) if string is not None else string
@@ -2462,7 +2463,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			elif setup is False:
 
 				def setup(index,data,indices,parameters,string,**kwargs):
-					
+
 					classes = self.__class__
 
 					if isinstance(data,classes):
@@ -2482,7 +2483,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			classes = arrays
 			options = {}
 
-			if not isinstance(data,classes): 
+			if not isinstance(data,classes):
 				data = cls(data)
 
 			self.data = data
@@ -2539,7 +2540,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				self.data = reshape(self.data,[shape[i] for i in shape])
 				self.indices = [i for i in shape]
 			if axes is not None:
-				axes = axes if not callable(axes) else axes(self)				
+				axes = axes if not callable(axes) else axes(self)
 				self.data = transpose(self.data,axes)
 				self.indices = [self.indices[i] for i in axes]
 			if conj is not None:
@@ -2590,7 +2591,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Returns:
 				data (array): Tensor data
 				indices (iterable[int,str]): Tensor indices
-			'''	
+			'''
 			data = cls.contraction(*objects,indices=indices)
 			indices = cls.complement(*objects,indices=indices)
 			return data,indices
@@ -2670,8 +2671,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				other (iterable[tensor]): Tensor
 			Returns:
-				obj (tensor): Tensor				
-			'''			
+				obj (tensor): Tensor
+			'''
 			return self.join(self,other)
 
 		def __iand__(self,other):
@@ -2681,13 +2682,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				objects (iterable[tensor]): Tensors
 				indices (iterable[int,str]): Indices of tensors
 			Returns:
-				obj (tensor): Tensor				
+				obj (tensor): Tensor
 			'''
 			return self.append(other)
 
 		def __len__(self):
 			return len(self.data)
-		
+
 		def __iter__(self):
 			yield from self.data
 
@@ -2708,7 +2709,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 		def __repr__(self):
 			return str(self)
-		
+
 		def __hash__(self):
 			return hash(self.data)
 
@@ -2733,7 +2734,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				parameters (array): Class parameters
 				where (float,int,iterable[int]): Class indices
 				options (dict): Class options
-				kwargs (dict): Additional class keyword arguments		
+				kwargs (dict): Additional class keyword arguments
 			Returns:
 				data (dict): Class data
 			'''
@@ -2792,7 +2793,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Initialize class
 			Args:
-				kwargs (dict): Additional class keyword arguments			
+				kwargs (dict): Additional class keyword arguments
 			'''
 			return
 
@@ -2803,15 +2804,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict,iterable,array,tensor,object,callable): Class data
 				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 				parameters (array,dict,callable): Class parameters
-				string (str): Class string		
-				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string		
-				kwargs (dict): Additional class keyword arguments				
+				string (str): Class string
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
+				kwargs (dict): Additional class keyword arguments
 			'''
 
 			if setup is None or setup is True:
-				
+
 				def setup(index,data,indices,parameters,string,**kwargs):
-					
+
 					classes = tensors
 
 					if isinstance(data,classes):
@@ -2819,7 +2820,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					if callable(data):
 						data = data(**kwargs)
-					
+
 					if callable(indices):
 						indices = indices(**kwargs)
 
@@ -2832,7 +2833,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			elif setup is False:
 
 				def setup(index,data,indices,parameters,string,**kwargs):
-					
+
 					classes = self.__class__
 
 					if isinstance(data,classes):
@@ -3061,8 +3062,8 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			Args:
 				other (iterable[tensor,network]): Tensor
 			Returns:
-				obj (tensor): Tensor				
-			'''			
+				obj (tensor): Tensor
+			'''
 			return self.join(self,other)
 
 		def __iand__(self,other):
@@ -3072,13 +3073,13 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				objects (iterable[tensor,network]): Tensors
 				indices (iterable[int,str]): Indices of tensors
 			Returns:
-				obj (tensor): Tensor				
+				obj (tensor): Tensor
 			'''
-			return self.append(other) 
+			return self.append(other)
 
 		def __len__(self):
 			return len(self.data)
-		
+
 		def __iter__(self):
 			yield from self.data
 
@@ -3099,7 +3100,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 		def __repr__(self):
 			return str(self)
-		
+
 		def __hash__(self):
 			return hash((self[i] for i in self))
 
@@ -3124,7 +3125,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				parameters (array): Class parameters
 				where (float,int,iterable[int]): Class indices
 				options (dict): Class options
-				kwargs (dict): Additional class keyword arguments		
+				kwargs (dict): Additional class keyword arguments
 			Returns:
 				data (dict): Class data
 			'''
@@ -3177,7 +3178,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					continue
 				self.exit(self.objs[i],self.formats,self.indices[i],self.attributes[i])
 			return
-	
+
 	class mps(network):
 		'''
 		matrix product state tensor network class
@@ -3193,7 +3194,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 		'''
 
 		defaults = dict(strings=None,orientation=None,scheme=None,func=None)
-		
+
 		def __init__(self,data=None,indices=None,parameters=None,string=None,N=None,D=None,S=None,**kwargs):
 
 			self.N = N
@@ -3211,7 +3212,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Initialize class
 			Args:
-				kwargs (dict): Additional class keyword arguments			
+				kwargs (dict): Additional class keyword arguments
 			'''
 			return
 
@@ -3222,9 +3223,9 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data (dict,iterable,array,tensor,object,callable): Class data
 				indices (dict,iterable[int,str,iterable[int,str]],callable): Class indices
 				parameters (array,dict,callable): Class parameters
-				string (str): Class string		
-				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string						
-				kwargs (dict): Additional class keyword arguments				
+				string (str): Class string
+				setup (callable): Class setup with signature setup(index,data,indices,parameters,string,**kwargs) -> data,indices,parameters,string
+				kwargs (dict): Additional class keyword arguments
 			'''
 
 			N = self.N if self.N is not None else 0
@@ -3234,7 +3235,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			indexer = self.indexer
 
 			if setup is None or setup is True:
-				
+
 				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,indexer=indexer,**kwargs):
 
 					classes = tensors
@@ -3248,7 +3249,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					if data.ndim == 1:
 						shape = [1,*data.shape,1]
 						axes = range(data.ndim+2)
-						
+
 						data = transpose(reshape(data,shape),axes)
 
 					indices = [
@@ -3266,7 +3267,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			elif setup is False:
 
 				def setup(index,data,indices,parameters,string,N=N,D=D,S=S,indexer=indexer,**kwargs):
-					
+
 					classes = tensors
 
 					if isinstance(data,classes):
@@ -3279,7 +3280,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			self.N = max(N,max(self)+1)
 			self.D = max(D,max((max(self[i].shape[1:-1],default=1) for i in self),default=D))
 			self.S = max(S,max((max(self[i].shape[0],self[i].shape[-1]) for i in self),default=S))
-			
+
 			orientation = self.orientation
 			if not callable(orientation):
 				def orientation(i,where):
@@ -3336,11 +3337,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 							x,y = addition(u,(0,1)),addition(v,(-2,-1))
 							u,v = dotr(u,reciprocal(x)),dotl(v,reciprocal(y))
-							z = z*x*y 
+							z = z*x*y
 
 							norm = lambda a: addition(abs2(a))
 
-							return einsum(subscripts,data,*(state[i]() for i in where))						
+							return einsum(subscripts,data,*(state[i]() for i in where))
 					func[L] = function
 			self.func = func
 
@@ -3353,15 +3354,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			'''
 			Update class data
 			Args:
-				data (array,iterable[array,dict],dict,mps): Class data		
+				data (array,iterable[array,dict],dict,mps): Class data
 				shape (iterable[int]): Shape of data
 				axes (iterable[int]): Class axes
 				orientation (callable): Class orientation with signature orientation(i,where) -> int
 				where (float,int,iterable[int],callable): Class indices
-				kwargs (dict): Additional class keyword arguments				
+				kwargs (dict): Additional class keyword arguments
 			Returns:
-				data (dict): Class data		
-			'''	
+				data (dict): Class data
+			'''
 
 			data = self.tensor() if data is None else data
 
@@ -3388,7 +3389,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					index = orientation(i,where)
 
 					if index is None:
-						
+
 						continue
 
 					elif index < 0:
@@ -3413,7 +3414,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 								data[i+1] = dot(v,data[i+1])
 							elif v.ndim == 1:
 								data[i+1] = dotl(data[i+1],v)
-					
+
 					elif index > 0:
 
 						state = data[i]
@@ -3421,15 +3422,15 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						axes = axes
 
 						state = self.organize(data=state,where=i,scheme=scheme,transform=True,conj=True,**kwargs)
-						
+
 						u,v,s = self.scheme[scheme](state,**{**defaults,**kwargs,**options,**dict(conj=True)})
 
 						state = self.organize(data=v,where=i,scheme=scheme,shape=[s,*shape[1:]],axes=axes,transform=True,conj=True,**kwargs)
-						
+
 						data[i] = state
 
 
-						if s is not None:	
+						if s is not None:
 							data[i-1] = data[i-1][...,:s]
 
 						if u is not None:
@@ -3471,7 +3472,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(i+1,N))),-1),(state[i].shape[-1],-1))
 								else:
 									objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
-									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)	
+									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
 					elif scheme in ['nmf'] and (architecture in ['marginal']):
 						for index,i in enumerate(objects):
 							if index == 0:
@@ -3525,10 +3526,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				scheme (str): Scheme for class data, allowed strings in [None,'svd','nmf','qr','stq','eig','spectrum','probability']
 				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
-				kwargs (dict): Additional class keyword arguments		
+				kwargs (dict): Additional class keyword arguments
 			Returns:
 				data (array): Class data
-			'''			
+			'''
 
 			if scheme is None or scheme in ['svd','qr','eig','spectrum']:
 				pass
@@ -3558,10 +3559,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 						)
 
 					data = transpose(reshape(einsum(subscripts,*(data[i] for i in where)),shape),axes)
-					
+
 				elif isinstance(data,tuple):
 					raise NotImplementedError(f"Not Implemented {data}")
-				
+
 				elif isinstance(data,arrays):
 					if data.ndim == 1:
 						if not conj:
@@ -3576,7 +3577,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							axes = range(data.ndim) if axes is None else axes
 						else:
 							shape = [*data.shape] if shape is None else shape
-							axes = range(data.ndim) if axes is None else axes					
+							axes = range(data.ndim) if axes is None else axes
 					elif data.ndim == 3:
 						if not conj:
 							shape = [data.shape[0]*prod(data.shape[1:-1]),data.shape[-1]] if shape is None else shape
@@ -3593,20 +3594,20 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							axes = range(data.ndim) if axes is None else axes
 					else:
 						raise NotImplementedError(f"Not Implemented {data}")
-					
+
 					data = reshape(transpose(data,axes),shape)
 
 			else:
 
 				if isinstance(data,dict):
 					raise NotImplementedError(f"Not Implemented {data}")
-			
+
 				elif isinstance(data,tuple):
 					where = range(len(data)) if where is None else [where] if not isinstance(where,iterables) else [*where]
 					shape = [[*data[0].shape[:2],-1],[-1,*data[1].shape[-2:]]] if shape is None else shape
 					axes = [range(data[0].ndim+1),range(data[1].ndim+1)] if axes is None else axes
 					data = [transpose(reshape(data,shape),axes) for data,shape,axes in zip(data,shape,axes)]
-					
+
 				elif isinstance(data,arrays):
 					if data.ndim == 1:
 						if not conj:
@@ -3651,10 +3652,10 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				shape (iterable[int]): Shape of data
 				where (float,int,iterable[int]): Class indices
 				transform (bool): Forward or backward transform data
-				kwargs (dict): Additional class keyword arguments		
+				kwargs (dict): Additional class keyword arguments
 			Returns:
 				data (array): Class data
-			'''	
+			'''
 
 			if transform:
 				n,d = len(shape),data.ndim
@@ -3664,7 +3665,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				data = transpose(reshape(data,shape),axes)
 			else:
 				n,d = len(shape),data.ndim//len(shape)
-				where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]		
+				where = [j*n+i for indices in ([range(n)] if where is None else [where,sorted(set(range(n))-set(where))]) for j in range(d) for i in indices]
 				shape = [prod(shape)]*d
 				axes = [where.index(j*n+i) for j in range(d) for i in range(n)]
 				data = reshape(transpose(data,axes),shape)
@@ -3699,7 +3700,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
 					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
@@ -3713,7 +3714,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s = u,dotl(v,s),size
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
 					# u,v,s = dotr(u,s),dotl(v,s),size
-					return u,v,s				
+					return u,v,s
 			elif scheme in ['svd']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
@@ -3724,14 +3725,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					# s = sqrt(s)*reciprocal(sqrt(addition(s)))
 					# u,v,s = dotr(u,s),dotl(v,s),size
 					return u,v,s
-			
+
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
-					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)					
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					u,v,data = (conjugate(transpose(v)) if v is not None else v,conjugate(transpose(u)) if u is not None else u,[conjugate(transpose(i)) for i in data[::-1]] if data is not None else data) if conj else (u,v,data)
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
@@ -3743,16 +3744,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u,v,s,stats = nmf(real(a),**{**kwargs,**options,**dict(data=data,size=size,architecture=architecture)})
 					u,v,s = u[:,:,:size],v[:size,:,:],s[:size]
 					u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),size
-					u,v,s = u[:,:,:size],v[:size,:,:],s					
+					u,v,s = u[:,:,:size],v[:size,:,:],s
 					u,v,s = u,v,size
-					u,v,s = cmplx(u),cmplx(v),s		
+					u,v,s = cmplx(u),cmplx(v),s
 					return u,v,s
 
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					a = conjugate(transpose(a)) if conj else a
-					size = min(*a.shape) if size is None else min(*a.shape,size)    
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					size = min(*a.shape) if size is None else min(*a.shape,size)
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					u,v,s = (conjugate(transpose(v)),conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
@@ -3763,14 +3764,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					defaults = dict(mode='reduced')
 					u,v = qrs(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					u,v,s = u[:,:size],v[:size,:],size
-					return u,v,s				
-			
+					return u,v,s
+
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (*a.shape[:1],prod(a.shape[1:])) if conj else (prod(a.shape[:-1]),*a.shape[-1:])
 					size = min(*shape,*([] if size is None else [size]))
 					a = conjugate(transpose(a)) if conj else a
-					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					u,v,s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					u,v,s = (v,conjugate(transpose(u)),s) if conj else (u,v,s)
 					return u,v,s
 				return decorator
@@ -3781,48 +3782,48 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 					u = a[:,:,:size]
 					s = addition(u,(0,1))
 					u,v,s = dotr(u,reciprocal(s)),s,size
-					return u,v,s				
-			
+					return u,v,s
+
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = a.shape
 					size = min(*shape,*([] if size is None else [size]))
-					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					return s
 				return decorator
 
 			if scheme in ['eig']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
-					defaults = dict(compute_v=False,hermitian=False)	
-					size = min(*a.shape) if size is None else min(*a.shape,size)    
+					defaults = dict(compute_v=False,hermitian=False)
+					size = min(*a.shape) if size is None else min(*a.shape,size)
 					s = eig(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
-					s = s[:size]					
+					s = s[:size]
 					return s
 			elif scheme in ['spectrum']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
-					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)							
+					defaults = dict(compute_uv=False,full_matrices=False,hermitian=False)
 					s = svd(a,**{**defaults,**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
-					s = s[:size]					
+					s = s[:size]
 					return s
 
 			def wrapper(func):
 				def decorator(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**kwargs):
 					shape = (prod(a.shape[:-1]),*a.shape[-1:])
-					size = min(*shape,*([] if size is None else [size]))	
-					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs) 
+					size = min(*shape,*([] if size is None else [size]))
+					s = func(a,u,v,data=data,size=size,conj=conj,architecture=architecture,**kwargs)
 					return s
 				return decorator
 
 			if scheme in ['probability']:
 				@wrapper
 				def scheme(a,u=None,v=None,data=None,size=None,conj=None,architecture=None,**options):
-					data = [real(i) for i in data] if data is not None else data				
+					data = [real(i) for i in data] if data is not None else data
 					u,v,s,stats = nmf(real(a),**{**kwargs,**options,**dict(data=data,size=size,conj=conj,architecture=architecture)})
 					s = s[:size]
 					return s
-			
+
 			return scheme
 
 		@classmethod
@@ -3842,11 +3843,11 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 			return super().array()
 
 		def matrix(self,indices=None):
-			
+
 			data = self.array()
 
 			indexes = {i:index for i,index in enumerate(self.complement(self)) if self.indexer(index)==index}
-			
+
 			if indices is None:
 				axes = {index: [i for i in indexes if indexes[i].startswith(index)] for index in sorted(set(indexes[index][0] for index in indexes))}
 			else:
@@ -3875,16 +3876,16 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 				parameters (array): Class parameters
 				where (float,int,iterable[int]): Class indices
 				options (dict): Class options
-				kwargs (dict): Additional class keyword arguments		
+				kwargs (dict): Additional class keyword arguments
 			Returns:
 				data (dict): Class data
 			'''
 
 			state = self
-			options = {} if options is None else options		
+			options = {} if options is None else options
 			where = [*state] if where is None else [where] if not isinstance(where,iterables) else [*where]
 
-			shape = [state[i].shape for i in where]		
+			shape = [state[i].shape for i in where]
 			orientation = self.orientation
 			size = options.get('S',options.get('size'))
 			conj = options.get('conj')
@@ -3907,7 +3908,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 	tensors = (tensor,matrix,network,)
 	objects = (*arrays,*tensors)
-	
+
 if backend in ['quimb']:
 
 	class tensor_quimb(qtn.Tensor):
@@ -4000,7 +4001,7 @@ if backend in ['quimb']:
 			obj (object): Contraction of object
 		'''
 
-		options = dict(output_inds=where) 
+		options = dict(output_inds=where)
 
 		obj = obj.contract(**{**kwargs,**options})
 
@@ -4026,7 +4027,7 @@ if backend in ['quimb']:
 			return obj
 
 		for i in where:
-			options = dict(ind=i) 
+			options = dict(ind=i)
 			obj = obj.sum_reduce(**{**kwargs,**options})
 
 		return obj
@@ -4043,7 +4044,7 @@ if backend in ['quimb']:
 			obj (object): Fused object
 		'''
 
-		options = dict(fuse_map=where) 
+		options = dict(fuse_map=where)
 
 		obj = obj.fuse(**{**kwargs,**options})
 
@@ -4065,7 +4066,7 @@ if backend in ['quimb']:
 
 		if not isinstance(obj,tensors_quimb):
 			return obj
-		
+
 		if contraction:
 			obj = contract_quimb(obj,**kwargs)
 
@@ -4077,11 +4078,11 @@ if backend in ['quimb']:
 			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
 
 		elif to in ['tensor_quimb']:
-			axes = tuple(i 
-				for i in sorted(set((i 
+			axes = tuple(i
+				for i in sorted(set((i
 				for i in (tuple(sorted(i for i in obj.inds if i.startswith(string) and not i.startswith('_')))
-				for string in tuple(sorted(set(i[0] 
-				for i in obj.inds)))) if i))) 
+				for string in tuple(sorted(set(i[0]
+				for i in obj.inds)))) if i)))
 				)
 			where = tuple(j for i in axes for j in i)
 			arguments = tuple(axes)
@@ -4098,7 +4099,7 @@ if backend in ['quimb']:
 		elif to:
 			obj,structure = qtn.pack(obj)
 			obj = array([ravel(obj[i]) for i in obj]) if not isinstance(obj,arrays) else obj
-		
+
 		if func is not None:
 			obj = func(obj)
 
@@ -4120,28 +4121,28 @@ if backend in ['quimb']:
 			elif isinstance(formats,str):
 				formats = [formats]
 			if not isinstance(formats,dict):
-				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
+				formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs]
 					for attr in formats}
 			else:
 				if key is None:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs]
+						if not isinstance(formats[attr],iterables) else
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])]
 						for attr in formats}
 				elif isinstance(key,iterables):
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}		
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs]
+						if not isinstance(formats[attr],iterables) else
+						[{**{index:index for index in self.attributes(obj,attr)},**{i.format(k):format[i].format(k) for k in key for i in format}} for obj,format in zip(objs,formats[attr])]
+						for attr in formats}
 				else:
-					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs] 
-						if not isinstance(formats[attr],iterables) else 
-						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])] 
-						for attr in formats}					
+					formats = {attr: [{index:index for index in self.attributes(obj,attr)} for obj in objs]
+						if not isinstance(formats[attr],iterables) else
+						[{**{index:index for index in self.attributes(obj,attr)},**format} for obj,format in zip(objs,formats[attr])]
+						for attr in formats}
 
 			attributes = [attr for attr in formats]
 			formats = [{attr: formats[attr][i] for attr in formats} for i,obj in enumerate(objs)]
-			
+
 			def func(key,i,attr,objs,attrs,formats,*args,**kwargs):
 				obj = objs[i]
 				if key is None:
@@ -4152,7 +4153,7 @@ if backend in ['quimb']:
 					attrs = {attrs[i][attr][index]:formats[i][attr][index].format(key) for index in attrs[i][attr]}
 				self.attributes(obj,attr,attrs=attrs,*args,**kwargs)
 				return
-			
+
 			def _func(key,i,attr,objs,attrs,formats,*args,**kwargs):
 				obj = objs[i]
 				if key is None:
@@ -4186,7 +4187,7 @@ if backend in ['quimb']:
 				for attr in self._funcs[i]:
 					self._funcs[i][attr](self.key,i,attr,self.objs,self.attrs,self.formats,*self.args,**self.kwargs)
 			return
-		
+
 		def __len__(self):
 			return len(self.objs)
 
@@ -4201,7 +4202,7 @@ if backend in ['quimb']:
 				attributes = dict(inds='reindex',tags='retag',sites='reindex_sites')
 				wrapper = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj[list(obj)[-1]] if obj else obj)
 				wrappers = dict(inds=lambda obj:obj,tags=lambda obj:obj,sites=lambda obj:obj)
-				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))	
+				return wrappers[attr](getattr(obj,attributes[attr])(wrapper[attr](attrs),**kwargs))
 
 
 
@@ -4526,7 +4527,7 @@ if backend in ['jax','quimb']:
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
-		'''	
+		'''
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
@@ -4566,7 +4567,7 @@ if backend in ['jax','quimb']:
 			seed = orng.randint(*bounds)
 
 		orng.seed(seed)
-		
+
 		key = rng.key(seed)
 
 		return key
@@ -4581,7 +4582,7 @@ if backend in ['jax','quimb']:
 
 		def __init__(self,seed):
 			self.seed = None
-			self.key = None			
+			self.key = None
 			self.init(seed)
 			return
 
@@ -4606,7 +4607,7 @@ if backend in ['jax','quimb']:
 				seed = orng.randint(*bounds)
 			else:
 				orng.seed(seed)
-			
+
 			key = rng.key(seed)
 
 			return key
@@ -4622,7 +4623,7 @@ if backend in ['jax','quimb']:
 			return keys
 
 		def fold(self,folds=None,seed=None):
-			self.init(seed)			
+			self.init(seed)
 			if folds is None:
 				return self.key
 			key = rng.fold_in(self.key,self.hashes(folds))
@@ -4638,12 +4639,12 @@ if backend in ['jax','quimb']:
 			'''
 			if hashes is None:
 				return hashes
-			
+
 			if isinstance(hashes,integers):
 				hashes = (hashes,)
 
 			keys = hashlib.sha1()
-			
+
 			for key in hashes:
 				if isinstance(key, str):
 				  keys.update(key.encode('utf-8'))
@@ -4651,7 +4652,7 @@ if backend in ['jax','quimb']:
 				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
 				else:
 				  raise ValueError(f'Expected int or string, got: {key}')
-			
+
 			keys = keys.digest()
 			hashes = int.from_bytes(keys[:4], byteorder='big')
 			hashes = np.uint32(hashes)
@@ -4677,7 +4678,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
-		'''	
+		'''
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
@@ -4689,7 +4690,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed = asndarray(seed,dtype=uint)
 
 		if size:
-			bounds = [0,2**32]			
+			bounds = [0,2**32]
 			key = generator.randint(*bounds,size=size)
 		else:
 			key = seed
@@ -4713,7 +4714,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed = orng.randint(*bounds)
 
 		orng.seed(seed)
-		
+
 		key = seed
 
 		return key
@@ -4752,7 +4753,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				seed = orng.randint(*bounds)
 
 			orng.seed(seed)
-			
+
 			key = seed
 
 			return key
@@ -4768,7 +4769,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			return keys
 
 		def fold(self,folds=None,seed=None):
-			self.init(seed)			
+			self.init(seed)
 			if folds is None:
 				return self.key
 			key = self.key
@@ -4784,12 +4785,12 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			'''
 			if hashes is None:
 				return hashes
-			
+
 			if isinstance(hashes,integers):
 				hashes = (hashes,)
 
 			keys = hashlib.sha1()
-			
+
 			for key in hashes:
 				if isinstance(key, str):
 				  keys.update(key.encode('utf-8'))
@@ -4797,7 +4798,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
 				else:
 				  raise ValueError(f'Expected int or string, got: {key}')
-			
+
 			keys = keys.digest()
 			hashes = int.from_bytes(keys[:4], byteorder='big')
 			hashes = onp.uint32(hashes)
@@ -4823,11 +4824,11 @@ if backend in ['jax','quimb']:
 			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
@@ -4837,7 +4838,7 @@ if backend in ['jax','quimb']:
 			shape = (shape,)
 
 		key = seed if seed is not None else key
-		
+
 		key = seeder(key)
 
 		generator = rng
@@ -4870,19 +4871,19 @@ if backend in ['jax','quimb']:
 				# out = asarray(generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
 				return out
 		elif random in ['randint']:
-			def func(key,shape,bounds,dtype):		
-				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1]).astype(dtype)		
-				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
+			def func(key,shape,bounds,dtype):
+				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1]).astype(dtype)
+				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
 				return out
 		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
-				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
+				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)
 				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
 				return out
 		elif random in ['constant']:
 			def func(key,shape,bounds,dtype):
 				out = (1/prod(shape))*ones(shape,dtype=datatype(dtype))
-				return out			
+				return out
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
 				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
@@ -4890,7 +4891,7 @@ if backend in ['jax','quimb']:
 						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
-				return out			
+				return out
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -4920,7 +4921,7 @@ if backend in ['jax','quimb']:
 						Q,R = qr(out[i,j])
 						R = diag(R)
 						R = diag(R/absolute(R))
-						
+
 						out = inplace(out,(i,j),dot(Q,R))
 
 				out = out.reshape(shape)
@@ -4930,7 +4931,7 @@ if backend in ['jax','quimb']:
 				# Create random matrices versus vectors
 				shape = shapes
 				if ndim == 1: # Random vector
-					out = out[...,0] 
+					out = out[...,0]
 				else:
 					out = out[:,:]
 
@@ -4939,7 +4940,7 @@ if backend in ['jax','quimb']:
 
 		elif random in ['hermitian','symmetric']:
 			def func(key,shape,bounds,dtype):
-			
+
 				bounds = [-1,1]
 				subrandom = 'gaussian'
 				subdtype = 'complex'
@@ -4949,7 +4950,7 @@ if backend in ['jax','quimb']:
 					shape = [*shape]*2
 					ndim = len(shape)
 
-				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
 				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
 
@@ -4988,7 +4989,7 @@ if backend in ['jax','quimb']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out			
+				return out
 		elif random in ['plus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
@@ -5003,7 +5004,7 @@ if backend in ['jax','quimb']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out	
+				return out
 		elif random in ['minus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
@@ -5019,7 +5020,7 @@ if backend in ['jax','quimb']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out				
+				return out
 		elif random in ['zeros']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape,dtype=dtype)
@@ -5027,7 +5028,7 @@ if backend in ['jax','quimb']:
 		elif random in ['ones']:
 			def func(key,shape,bounds,dtype):
 				out = ones(shape,dtype=dtype)
-				return out	
+				return out
 		elif random in ['linspace']:
 			def func(key,shape,bounds,dtype):
 				num = shape[0] if not isinstance(shape,integers) else shape
@@ -5076,11 +5077,11 @@ if backend in ['jax','quimb']:
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = getattr(rng,random)
@@ -5095,11 +5096,11 @@ if backend in ['jax','quimb']:
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.normal
@@ -5115,10 +5116,10 @@ if backend in ['jax','quimb']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.randint
@@ -5133,10 +5134,10 @@ if backend in ['jax','quimb']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.permutation
@@ -5152,10 +5153,10 @@ if backend in ['jax','quimb']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.choice
@@ -5167,10 +5168,10 @@ if backend in ['jax','quimb']:
 		Get random string
 		Args:
 			n (int): Number of characters
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			string (str): Random string
-		'''			
+		'''
 		return ''.join(choices(character,k=n))
 
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
@@ -5180,11 +5181,11 @@ if backend in ['jax','quimb']:
 			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
-			kwargs (dict): Additional keyword arguments for random			
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		real,imag = rng.split(seed if key is None else key)
 
@@ -5198,7 +5199,7 @@ if backend in ['jax','quimb']:
 		Q,R = qr(out)
 		R = diag(R)
 		R = diag(R/absolute(R))
-		
+
 		out = dot(Q,R)
 
 		return out
@@ -5210,11 +5211,11 @@ if backend in ['jax','quimb']:
 			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
-			kwargs (dict): Additional keyword arguments for random			
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
 
@@ -5232,14 +5233,14 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
@@ -5249,7 +5250,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			shape = (shape,)
 
 		key = seed if seed is not None else key
-		
+
 		key = seeder(key)
 
 		generator = orng
@@ -5268,9 +5269,9 @@ elif backend in ['jax.autograd','autograd','numpy']:
 					bounds[i] = [0,1][i]
 				else:
 					bounds[i] = float(bounds)
-		
+
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		samplerandoms = ['choice','constant']		
+		samplerandoms = ['choice','constant']
 		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
@@ -5284,19 +5285,19 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				out = generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 				return out
 		elif random in ['randint']:
-			def func(key,shape,bounds,dtype):		
-				# out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
-				out = generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
+			def func(key,shape,bounds,dtype):
+				# out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				out = generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 				return out
 		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
-				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
-				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
+				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)
+				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)
 				return out
 		elif random in ['constant']:
 			def func(key,shape,bounds,dtype):
 				out = (1/prod(shape))*ones(shape,dtype=datatype(dtype))
-				return out			
+				return out
 		elif random in ['choice']:
 			def func(key,shape,bounds,dtype):
 				kwds = {('array','a'):None,('weights','p'):None,('replace','replace'):True,('axis','axis'):0}
@@ -5304,7 +5305,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 						**{kwd:kwargs.get(attr,kwds[attr,kwd]) for attr,kwd in kwds}
 					}
 				out = generator.choice(**kwds)
-				return out					
+				return out
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -5335,7 +5336,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 						Q,R = qr(out[i,j])
 						R = diag(R)
 						R = diag(R/absolute(R))
-						
+
 						out = inplace(out,(i,j),dot(Q,R))
 
 				out = out.reshape(shape)
@@ -5345,7 +5346,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				# Create random matrices versus vectors
 				shape = shapes
 				if ndim == 1: # Random vector
-					out = out[...,0] 
+					out = out[...,0]
 				else: # Random matrix
 					out = out
 
@@ -5353,7 +5354,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		elif random in ['hermitian','symmetric']:
 			def func(key,shape,bounds,dtype):
-			
+
 				bounds = [-1,1]
 				subrandom = 'normal'
 				subdtype = 'complex'
@@ -5363,7 +5364,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 					shape = [*shape]*2
 					ndim = len(shape)
 
-				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
 				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
 
@@ -5402,7 +5403,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out			
+				return out
 		elif random in ['plus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
@@ -5417,7 +5418,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out	
+				return out
 		elif random in ['minus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
@@ -5433,7 +5434,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				elif ndim == 4:
 					out = outer(out,out)
 					out = array([[out]*shape[1]]*shape[0])
-				return out				
+				return out
 		elif random in ['zeros']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape,dtype=dtype)
@@ -5441,17 +5442,17 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		elif random in ['ones']:
 			def func(key,shape,bounds,dtype):
 				out = ones(shape,dtype=dtype)
-				return out	
+				return out
 		elif random in ['linspace']:
 			def func(key,shape,bounds,dtype):
 				num = shape[0] if not isinstance(shape,integers) else shape
 				out = linspace(*bounds,num,dtype=dtype)
-				return out					
+				return out
 		elif random in ['logspace']:
 			def func(key,shape,bounds,dtype):
 				num = shape[0] if not isinstance(shape,integers) else shape
 				out = logspace(*bounds,num,dtype=dtype)
-				return out								
+				return out
 		else:
 			def func(key,shape,bounds,dtype):
 				# out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
@@ -5491,10 +5492,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = getattr(rng,random)
@@ -5509,11 +5510,11 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			random (str): Type of random distribution, allowed strings in ['uniform','normal']
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
+			dtype (datatype): Datatype of array
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.normal
@@ -5529,10 +5530,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.randint
@@ -5547,10 +5548,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.permutation
@@ -5566,10 +5567,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			dtype (datatype): Datatype of array
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		key = seed if key is None else key
 		generator = rng.choice
@@ -5581,10 +5582,10 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Get random string
 		Args:
 			n (int): Number of characters
-			kwargs (dict): Additional keyword arguments for random				
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			string (str): Random string
-		'''			
+		'''
 		return ''.join(choices(character,k=n))
 
 	def haar(shape=(),seed=None,key=None,dtype=None,**kwargs):
@@ -5594,11 +5595,11 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array	
-			kwargs (dict): Additional keyword arguments for random				
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		real,imag = seed if key is None else key,seed if key is None else key
 
@@ -5613,7 +5614,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		Q,R = qr(out)
 		R = diag(R)
 		R = diag(R/absolute(R))
-		
+
 		out = dot(Q,R)
 
 		return out
@@ -5625,11 +5626,11 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			shape (iterable): Shape of random array
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-			dtype (datatype): Datatype of array		
-			kwargs (dict): Additional keyword arguments for random			
+			dtype (datatype): Datatype of array
+			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
-		'''	
+		'''
 
 		out = haar(shape=shape,seed=seed,key=key,dtype=dtype,**kwargs)
 
@@ -5648,12 +5649,12 @@ def timestamp(format=None,time=None):
 	'''
 	if format is None:
 		format = '%d.%M.%Y.%H.%M.%S.%f'
-	
+
 	if time is None:
 		time = datetime.datetime.now()
 
 	timestamp = time.strftime(format)
-	
+
 	return timestamp
 
 def reduce(func,data,*args,**kwargs):
@@ -5707,7 +5708,7 @@ def _svd(A,k=None):
 	if k > r:
 		S = onp.concatenate((S,onp.zeros(k-r)),axis=0)
 	else:
-		S = S[:k]		
+		S = S[:k]
 	if k > q:
 		V = onp.concatenate((V,onp.zeros((k-q,m))),axis=0)
 	else:
@@ -5768,7 +5769,7 @@ def schur(a,compute_v=False,output=None,**kwargs):
 	'''
 	_schur = sp.linalg.schur
 	output = {True:'complex',False:'real'}[is_complexdtype(a.dtype)] if output is None else output
-	
+
 	triangular,unitary = _schur(a,outut=output)
 
 	if compute_v:
@@ -5783,7 +5784,7 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 		a (array): Array to compute eigenvalues of shape (...,n,n)
 		full_matrices (bool): Compute full matrices of right,left singular values
 		compute_uv (bool): Compute U,V in addition to singular values
-		hermitian (bool): Whether array is Hermitian				
+		hermitian (bool): Whether array is Hermitian
 	Returns:
 		singular (array): Array of singular values of shape (...,n)
 		rightvectors (array): Array of right singular vectors of shape (...,n,n)
@@ -5800,7 +5801,7 @@ def svds(a,full_matrices=True,compute_uv=False,hermitian=False,**kwargs):
 		a (array): Array to compute eigenvalues of shape (...,n,n)
 		full_matrices (bool): Compute full matrices of right,left singular values
 		compute_uv (bool): Compute U,V in addition to singular values
-		hermitian (bool): Whether array is Hermitian				
+		hermitian (bool): Whether array is Hermitian
 	Returns:
 		singular (array): Array of singular values of shape (...,n)
 		rightvectors (array): Array of right singular vectors of shape (...,n,n)
@@ -5894,11 +5895,11 @@ def solve(a,b,method=None,**kwargs):
 	elif method in ['triangular']:
 		return solve_triangular(a,b,**kwargs)
 	elif method in ['cholesky']:
-		return solve_chol(a,b,**kwargs)	
+		return solve_chol(a,b,**kwargs)
 	elif method in ['lu']:
-		return solve_lu(a,b,**kwargs)				
+		return solve_lu(a,b,**kwargs)
 	else:
-		return solve_solve(a,b,**kwargs)		
+		return solve_solve(a,b,**kwargs)
 
 def solve_solve(a,b,**kwargs):
 	'''
@@ -5931,7 +5932,7 @@ def solve_chol(a,b,lower=False,**kwargs):
 	Args:
 		a (array): Array for linear system
 		b (array): Array for linear data
-		lower (bool): Array a is lower-triangular		
+		lower (bool): Array a is lower-triangular
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		x (object): Returns of linear solver
@@ -6003,7 +6004,7 @@ def nndsvd(a=None,u=None,v=None,size=None,eps=None):
 		x,y,z = cond(z_positive>z_negative,true,false,x_positive,y_positive,z_positive,x_negative,y_negative,z_negative)
 
 		u,v,s = inplace(u,(slices,i),sqrt(z)*x),inplace(v,(i,slices),sqrt(z)*y),inplace(s,i,1)
-		
+
 		x = u,v,s
 
 		return x
@@ -6032,7 +6033,7 @@ def nmfd(u,v,size=None,eps=None):
 		u (array): Array of nmf of shape (n,...,k)
 		v (array): Array of nmf of shape (k,...,m)
 		size (int): Size of nmf
-		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype		
+		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		u (array): u array of nmf of shape (n,...,k)
 		v (array): v array of nmf of shape (k,...,m)
@@ -6052,20 +6053,20 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 		data (array,iterable[array]): Data of nmf
 		size (int): Size of nmf
 		eps (int,float): Epsilon tolerance, defaults to epsilon precision of array dtype
-		iters (int,float,iterable[eps,float]): Number of iterations		
+		iters (int,float,iterable[eps,float]): Number of iterations
 		parameters (int,float,array,dict,object): Parameters of nmf
 		method (str,iterable[str]): Method of nmf, allowed strings in ['mu','kl','hals']
 		initialize (str): Initialization of nmf, allowed strings in ['rand','nndsvd','nndsvda','nndsvdr']
 		metric (str): Metric of nmf, allowed strings in ['norm','abs','div']
 		architecture (str): Architecture of nmf, allowed strings in ['marginal','joint']
 		stats (stats): Statistics of nmf
-		kwargs (dict): Additional keyword arguments	
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		u (array): u array of nmf of shape (n,...,k)
 		v (array): v array of nmf of shape (k,...,m)
 		s (array): s array of nmf of shape (k,)
 		stats (stats): Statistics of nmf
-	'''	
+	'''
 
 	data = [ones((a.shape[0],u.shape[0]),dtype=a.dtype),ones((v.shape[-1],a.shape[-1]),dtype=a.dtype)] if data is None else data
 	size = min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:]))) if size is None else min(*(prod(a.shape[:a.ndim//2]),prod(a.shape[a.ndim//2:])),size)
@@ -6085,7 +6086,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 				u,s,v = svd(a,**options)
 				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))			
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 				u,v = u*z,v*z
 			elif architecture in ['joint']:
@@ -6094,16 +6095,16 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 				u,s,v = svd(a,**options)
 				u,v,s = dotr(u,sqrt(absolute(s))),dotl(v,sqrt(absolute(s))),None
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))			
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
 				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif initialize in ['rand']:
 			if architecture is None:
-				options = {**dict(dtype=a.dtype),**kwargs}					
+				options = {**dict(dtype=a.dtype),**kwargs}
 				u = random(shape=[*a.shape[:-1],size],**options)
-				v = random(shape=[size,*a.shape[1:]],**options)				
+				v = random(shape=[size,*a.shape[1:]],**options)
 			elif architecture in ['marginal']:
 				options = {**dict(dtype=dtype),**kwargs}
 				u = random(shape=[*shape[:len(shape)//2],size],**options)
@@ -6117,43 +6118,43 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
-				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))						
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif initialize in ['nndsvd']:
 			if architecture is None:
 				options = dict(u=u,v=v,size=size,eps=eps)
-				u,v,s = nndsvd(a,**options)	
+				u,v,s = nndsvd(a,**options)
 			elif architecture in ['marginal']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)		
+				u,v,s = nndsvd(a,**options)
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))					
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-				u,v = u*z,v*z				
+				u,v = u*z,v*z
 			elif architecture in ['joint']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)		
+				u,v,s = nndsvd(a,**options)
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))					
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
-				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif initialize in ['nndsvda']:
 			if architecture is None:
 				options = dict(u=u,v=v,size=size,eps=eps)
-				u,v,s = nndsvd(a,**options)		
+				u,v,s = nndsvd(a,**options)
 				x = mean(a)/a.size
-				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)				
+				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
 			elif architecture in ['marginal']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)	
+				u,v,s = nndsvd(a,**options)
 
 				x = addition(a)/a.size
 				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
-				
+
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
 				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
@@ -6161,61 +6162,61 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			elif architecture in ['joint']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)	
+				u,v,s = nndsvd(a,**options)
 
 				x = addition(a)/a.size
 				u,v = inplace(u,u<=eps,x),inplace(v,v<=eps,x)
-				
+
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
 				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
-				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif initialize in ['nndsvdr']:
 			if architecture is None:
-				options = dict(u=u,v=v,size=size,eps=eps)			
-				u,v,s = nndsvd(a,**options)		
-				options = {**dict(dtype=a.dtype),**kwargs}			
+				options = dict(u=u,v=v,size=size,eps=eps)
+				u,v,s = nndsvd(a,**options)
+				options = {**dict(dtype=a.dtype),**kwargs}
 				i = u<=eps
 				j = v<=eps
 				x = random(shape=(addition(i),),**options)
 				y = random(shape=(addition(j),),**options)
-				u,v = inplace(u,i,x),inplace(v,j,y)				
+				u,v = inplace(u,i,x),inplace(v,j,y)
 			elif architecture in ['marginal']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)		
-				
+				u,v,s = nndsvd(a,**options)
+
 				options = {**dict(dtype=dtype),**kwargs}
 				i = u<=eps
 				j = v<=eps
 				x = random(shape=(addition(i),),**options)
 				y = random(shape=(addition(j),),**options)
 				u,v = inplace(u,i,x),inplace(v,j,y)
-				
+
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))		
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
 				u,v = u*z,v*z
 			elif architecture in ['joint']:
 				options = dict(u=u,v=v,size=size,eps=eps)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
-				u,v,s = nndsvd(a,**options)		
-				
+				u,v,s = nndsvd(a,**options)
+
 				options = {**dict(dtype=dtype),**kwargs}
 				i = u<=eps
 				j = v<=eps
 				x = random(shape=(addition(i),),**options)
 				y = random(shape=(addition(j),),**options)
 				u,v = inplace(u,i,x),inplace(v,j,y)
-				
+
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
-				v = reshape(v,(-1,*shape[len(shape)//2:],))	
+				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
-				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))				
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		elif u is None or v is None:
 			if architecture is None:
 				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
@@ -6229,7 +6230,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 				u = reshape(u,(*shape[:len(shape)//2],-1,))
 				v = reshape(v,(-1,*shape[len(shape)//2:],))
 				z = reciprocal(sqrt(einsum('a,b,auc,cvb->',*data,u,v)))
-				u,v = u*z,v*z				
+				u,v = u*z,v*z
 			elif architecture in ['joint']:
 				options = dict(full_matrices=False,compute_uv=True,hermitian=False)
 				a = reshape(a,(prod(shape[:len(shape)//2]),prod(shape[len(shape)//2:])))
@@ -6240,11 +6241,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 				z = reciprocal(sqrt(einsum('xa,by,aug,gvb->',*data,u,v)))
 				u,v = u*z,v*z
 			else:
-				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))					
+				raise NotImplementedError("Initialize %s Not Implemented for Architecture %s"%(initialize,architecture))
 		return u,v
-	
+
 	def func(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,method=None,initialize=None,metric=None,architecture=None,stats=None,**kwargs):
-		
+
 		def null(x):
 			return x
 
@@ -6252,79 +6253,79 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			return sqrt(addition(abs2(a)))
 
 		if method is None:
-			
+
 			if architecture is None:
-			
+
 				def func(x):
 					return x
-			
+
 			elif architecture in ['marginal']:
-		
-				def func(x):
-					return x				
-		
-			elif architecture in ['joint']:
-		
+
 				def func(x):
 					return x
-		
+
+			elif architecture in ['joint']:
+
+				def func(x):
+					return x
+
 			else:
 				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
-		
+
 		elif method in ['mu']:
 
 			if architecture is None:
-				
+
 				def func(x):
 					x['u'] = (dot(x['a'],transpose(x['v']))/dot(u,dot(x['v'],transpose(x['v']))))*u
 					x['v'] = (dot(transpose(u),x['a'])/dot(dot(transpose(u),u),x['v']))*x['v']
 					return x
-			
+
 			elif architecture in ['marginal']:
-				
+
 				def func(x):
 					x['u'] = einsum('uv,a,gvb,b->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nuk,n,kvb,b,a,gvl,l->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
 					x['v'] = einsum('a,aug,b,uv->gvb',x['x'],x['u'],x['y'],x['a'])*reciprocal(einsum('a,aug,b,l,lun,k,nvk->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
-					return x				
-			
+					return x
+
 			elif architecture in ['joint']:
-			
+
 				def func(x):
 					x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a'],x['x'],x['v'],x['y'])*reciprocal(einsum('nul,xn,lvk,ky,xa,gvt,ty->aug',x['u'],x['x'],x['v'],x['y'],x['x'],x['v'],x['y']))*x['u']
 					x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a'],x['x'],x['u'],x['y'])*reciprocal(einsum('xn,nug,by,xk,kul,ty,lvt->gvb',x['x'],x['u'],x['y'],x['x'],x['u'],x['y'],x['v']))*x['v']
 					return x
-			
+
 			else:
 				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
-		
+
 		elif method in ['kl']:
 
 			if architecture is None:
-				
+
 				def func(x):
 					x['u'] = einsum('uv,gv,g->ug',x['a']*reciprocal(einsum('ug,gv->uv',x['u'],x['v'])),x['v'],reciprocal(addition(x['v'],1)))
 					x['v'] = einsum('uv,ug,g->gv',x['a']*reciprocal(einsum('ug,gv->uv',x['u'],x['v'])),x['u'],reciprocal(addition(x['u'],0)))
-					return x				
-			
+					return x
+
 			elif architecture in ['marginal']:
-				
+
 				def func(x):
 					x['u'] = einsum('a,gvb,b,uv,ag->aug',x['x'],x['v'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,gc,c->ag',x['x'],addition(x['v'],1),x['y'])))*x['u']
 					x['v'] = einsum('a,aug,b,uv,gb->gvb',x['x'],x['u'],x['y'],x['a']*reciprocal(einsum('nuk,n,kvl,l->uv',x['u'],x['x'],x['v'],x['y'])),reciprocal(einsum('a,ag,b->gb',x['x'],addition(x['u'],1),x['y'])))*x['v']
 					return x
 			elif architecture in ['joint']:
-			
+
 				def func(x):
 					x['u'] = einsum('xuvy,xa,gvb,by->aug',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['v'],x['y'])*reciprocal(einsum('xa,gvb,by->ag',x['x'],x['v'],x['y'])[:,None,:])*x['u']
 					x['v'] = einsum('xuvy,xa,aug,by->gvb',x['a']*reciprocal(einsum('xa,aug,gvb,by->xuvy',x['x'],x['u'],x['v'],x['y'])),x['x'],x['u'],x['y'])*reciprocal(einsum('xa,aug,by->gb',x['x'],x['u'],x['y'])[:,None,:])*x['v']
 					return x
-			
+
 			else:
-				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))					
+				raise NotImplementedError("Method %s Not Implemented for Architecture %s"%(method,architecture))
 		elif method in ['hals']:
 
 			if architecture is None:
-			
+
 				def func(x):
 					i = x['i']%length
 
@@ -6339,11 +6340,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 					x['e'] += einsum('u,v->uv',x['u'][s],z)
 					x['u'] = inplace(x['u'],s,maximums(einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('u,u->',z,z)+parameters),eps)
 					x['e'] -= einsum('u,v->uv',x['u'][s],z)
-					
+
 					return x
 
 			elif architecture in ['marginal']:
-			
+
 				def func(x):
 
 					i = x['i']%length
@@ -6365,11 +6366,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 					# w = einsum('v,u->uv',z,x['u'][s])
 					x['e'] += einsum('v,u->uv',z,x['u'][s])
 					x['u'] = inplace(x['u'],s,maximums((einsum('uv,v->u',x['e'],z)+parameters*x['u'][s])*reciprocal(einsum('v,v->',z,z)+parameters),eps))
-					# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))			
+					# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('v,u->uv',z,x['u'][s]))))
 					x['e'] -= einsum('v,u->uv',z,x['u'][s])
 
 					return x
-		
+
 			elif architecture in ['joint']:
 
 				def func(x):
@@ -6396,8 +6397,8 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 					# x['u'] = inplace(x['u'],s,x['u'][s]*addition(w)*reciprocal(addition(einsum('xvy,u->xuvy',z,x['u'][s]))))
 					x['e'] -= einsum('xvy,u->xuvy',z,x['u'][s])
 
-					return x						
-		
+					return x
+
 		else:
 			if architecture is None:
 
@@ -6407,7 +6408,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			elif architecture in ['marginal']:
 
 				def func(x):
-					return x				
+					return x
 
 			elif architecture in ['joint']:
 
@@ -6518,8 +6519,8 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			x['x'] = data[0]
 			x['y'] = data[-1]
 			x['z'] = dotr(dotl(a,x['x']),x['y'])
-			
-			x['a'] = addition(x['z'],(0,-1))			
+
+			x['a'] = addition(x['z'],(0,-1))
 			x['u'] = u
 			x['v'] = v
 			x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
@@ -6535,19 +6536,19 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			x['u'] = u
 			x['v'] = v
 			x['e'] = x['a']-dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])
-		
+
 		x['stats'] = {attr: array([*(stats[attr] if stats else []),*nan*ones(iterations+(1 if not stats else 0))]) for attr in functions}
 		x['iteration'] = stats['iteration'][-1] if stats else 0
 		x['i'] = 0
 
 		def statistics(x):
-			for attr in functions:			
+			for attr in functions:
 				x['stats'][attr] = inplace(x['stats'][attr],number + x['i']//iteration,functions[attr](x))
 			return x
 
 		def condition(x):
 			return (x['stats']['error'][number + x['i']//iteration] > eps) & (x['i'] <= iters)
-			
+
 		def decorator(func):
 			def wrapper(x):
 				x = func(x)
@@ -6834,7 +6835,7 @@ def grouper(data,by=None,filter=None,apply=None,agg=None,index=None,**kwargs):
 	elif apply is not None:
 		options = {}
 		data = data.apply(apply,**options)
-	
+
 	if agg is not None and by is not None:
 		options = dict(level=0,axis=1)
 		data = data.agg(agg).astype(dtype)
@@ -6866,15 +6867,40 @@ def nansqrt(a):
 
 def factorial(n,exact=True):
 	'''
-	Compute factorial n!
+	Compute factorial function: n!
 	Args:
-		n (int): Number to compute factorial
+		n (int,float): Number to compute factorial
 		exact (bool): Compute factorial exactly
 	Returns:
 		n (int,float): Factorial of n
 	'''
-	n = ospsp.factorial(n,exact=exact)
-	return n
+	return ospsp.factorial(n,exact=exact)
+
+
+def gammaln(n,exact=True):
+	'''
+	Compute log-gamma function: log(Gamma(n))
+	Args:
+		n (int,float): Number to compute gamma
+		exact (bool): Compute factorial exactly
+	Returns:
+		n (int,float): gammaln of n
+	'''
+	return spsp.gammaln(n)
+
+
+def binom(n,k,exact=True):
+	'''
+	Compute binomial function: choose(n,k)
+	Args:
+		n (int,float): Number to compute binomial
+		k (int): Number to compute binomial
+		exact (bool): Compute factorial exactly
+	Returns:
+		n (int,float): binomial of n,k
+	'''
+	return exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
+
 
 if backend in ['jax','jax.autograd','quimb']:
 

@@ -24,11 +24,13 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,binom,absolute,maximum,minimum,sort,integral,kernel,mean,std
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan,pi
+
+from src.quantum import measurement
 
 from src.iterables import permuter,setter,getter,search,Dictionary
 
@@ -95,230 +97,14 @@ def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwarg
 
 	return data
 
-def func_stat_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,sort=None,**kwargs):
-
-	independent = [independent] if isinstance(independent,str) else independent
-	dependent = [dependent] if isinstance(dependent,str) else dependent
-
-	if independent is None or dependent is None or any(attr not in data for attr in independent) or any(attr not in data for attr in dependent):
-		return data
-
-	if seed is not None:
-		options = dict(seed=seed)
-		seeded(**options)
-
-	if func is None:
-		func = 'mean'
-	if sort is None:
-		sort = 'idxmax'
-
-	if isinstance(func,str):
-		pass
-	if isinstance(sort,str):
-		sort = lambda data,sort=sort: getattr(data.abs(),sort)()
-
-	def split(data):
-		options = dict(seed=seed)
-		key = seeded(**options)
-
-		options = dict(drop=True)
-		data = data.reset_index(**options)
-
-		options = dict(frac=1,random_state=rng)
-		data = data.sample(**options)
-
-		options = dict(drop=True)
-		data = data.reset_index(**options)
-
-		data[attr] = data.index % samples
-
-		return data
-
-	def agg(data):
-		by = independent
-		agg = {**{attr:'first' for attr in data},**{attr:func for attr in dependent}}
-		options = dict(by=by,agg=agg)
-		data = grouper(data,**options)
-		return data
-
-	def mask(data):
-		booleans = {attr:lambda data,attr=attr:(data[attr].index == sort(data[attr])) for attr in dependent}
-		boolean = conditions([booleans[attr](data) for attr in booleans],op='and')
-		data = data[boolean]
-		return data
-
-	if samples is not None:
-
-		attr = '__group__'
-
-		by = independent
-		apply = split
-		options = dict(by=by,apply=apply)
-		data = grouper(data,**options)
-
-		by = attr
-		apply = lambda data: mask(agg(data))
-		options = dict(by=by,apply=apply)
-		data = grouper(data,**options)
-
-	else:
-
-		data = mask(agg(data))
-
-	return data
-
-def func_func_group(data,samples=None,seed=None,independent=None,dependent=None,func=None,function=None,**kwargs):
-
-	independent = independent if isinstance(independent,str) else independent
-	dependent = dependent if isinstance(dependent,str) else dependent
-	attr = '__group__'
-
-
-	if independent is None or dependent is None or independent not in data or dependent not in data:
-		return data
-
-	if seed is not None:
-		options = dict(seed=seed)
-		seeded(**options)
-
-	if isinstance(func,str):
-		func = load(func,default=func)
-	else:
-		func = 'mean'
-
-	if function is None:
-		function = lambda data: 1
-	elif function in ['array']:
-		function = lambda data: (data['D']**(2*data['N'])).iloc[0]
-	elif function in ['state']:
-		function = lambda data: (data['D']**(1*data['N'])).iloc[0]
-	else:
-		function = load(function,default=lambda data:1)
-
-	keys = dict(zip(['x','y','xerr','yerr'],[f'{independent}',f'{dependent}',f'{independent}.error',f'{dependent}.error']))
-
-	def split(data):
-		options = dict(seed=seed)
-		key = seeded(**options)
-
-		options = dict(drop=True)
-		data = data.reset_index(**options)
-
-		options = dict(frac=1,random_state=rng)
-		data = data.sample(**options)
-
-		options = dict(drop=True)
-		data = data.reset_index(**options)
-
-		sample = None if samples is None else len(data) if samples < 0 else samples
-
-		data[attr] = data.index % sample
-
-		return data
-
-	def agg(data):
-
-		def apply(data):
-
-			apply = {}
-
-			def application(data,attr=None):
-				data = data[attr].iloc[0]
-				return data
-			for attr in data:
-				apply[attr] = partial(application,attr=attr)
-
-			attr = keys['x']
-			def application(data):
-				data = 1/data[keys['x']].iloc[0]
-				return data
-			apply[attr] = application
-
-			attr = keys['y']
-			def application(data):
-				number,size = function(data),data.size
-				data = data[keys['y']].mean()
-				data = abs(data)
-				# data = data/np.log(size*number)
-				return data
-			apply[attr] = application
-
-			attr = keys['xerr']
-			def application(data):
-				data = None
-				return data
-			apply[attr] = application
-
-			attr = keys['yerr']
-			def application(data):
-				number,size = function(data),data[attr].size
-				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
-				data = abs(data)
-				data = np.sqrt(data/(size*number))
-				# data = data/np.log(size*number)
-				return data
-			apply[attr] = application
-
-			apply = {attr:apply[attr] for attr in apply if attr in data}
-
-			value = {}
-			for attr in apply:
-				if isinstance(apply[attr],str):
-					value[attr] = getattr(data,apply[attr])
-				else:
-					value[attr] = apply[attr](data)
-				value[attr] = [value[attr]]
-
-			data = dataframe(value)
-
-			return data
-
-
-		attr = keys['y']
-		number,size = function(data),data[attr].size
-
-		by = independent
-		options = dict(by=by,apply=apply)
-		data = grouper(data,**options)
-
-		data = func(data,keys=keys)
-
-		data[attr] = data[attr]/np.log(size*number)
-
-		return data
-
-	if samples is not None:
-
-		by = independent
-		apply = split
-		options = dict(by=by,apply=apply)
-		data = grouper(data,**options)
-
-		by = attr
-		apply = agg
-		options = dict(by=by,apply=apply)
-		data = grouper(data,**options)
-
-	else:
-
-		data = agg(data)
-
-	return data
-
 def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**settings):
 
 	keys = dict(zip(['x','y','xerr','yerr'],[f'{x}',f'{y}',f'{x}.error',f'{y}.error']))
 
 	def agg(data,function=function):
 
-		if function is None:
-			function = lambda data: 1
-		elif function in ['array']:
-			function = lambda data: (data['D']**(2*data['N'])).iloc[0]
-		elif function in ['state']:
-			function = lambda data: (data['D']**(1*data['N'])).iloc[0]
-		else:
-			function = load(function,default=lambda data:1)
+		def function(data,*args,function=function,**kwargs):
+			return measurement(data,*args,function=function,**kwargs)
 
 		def apply(data):
 
@@ -338,10 +124,10 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 
 			attr = keys['y']
 			def application(data):
-				number,size = function(data),data.size
+				info,size = function(data),data.size
 				data = data[keys['y']].mean()
 				data = abs(data)
-				# data = data/np.log(size*number)
+				# data = data/np.log(size*info.dimension)
 				return data
 			apply[attr] = application
 
@@ -353,11 +139,11 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 
 			attr = keys['yerr']
 			def application(data):
-				number,size = function(data),data[attr].size
+				info,size = function(data),data[attr].size
 				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
 				data = abs(data)
-				data = np.sqrt(data/(size*number))
-				# data = data/np.log(size*number)
+				data = np.sqrt(data/(size*info.dimension))
+				# data = data/np.log(size*info.dimension)
 				return data
 			apply[attr] = application
 
@@ -376,7 +162,7 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 			return data
 
 		attr = keys['y']
-		number,size = function(data),data[attr].size
+		info,size = function(data),data[attr].size
 
 		by = keys['x']
 		options = dict(by=by,apply=apply)
@@ -395,11 +181,11 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 
 		attr = keys['y']
 		data[attr] = y
-		data[attr] = data[attr]/np.log(size*number)
+		data[attr] = data[attr]/np.log(size*info.dimension)
 
 		attr = keys['yerr']
 		data[attr] = yerr
-		data[attr] = data[attr]/np.log(size*number)
+		data[attr] = data[attr]/np.log(size*info.dimension)
 
 		data = dataframe(data)
 
@@ -509,6 +295,10 @@ def func_sample_process_yerr(data,values,metadata,properties,*args,**kwargs):
 
 def func_sample_wrapper_x(data,*args,function=None,**kwargs):
 
+
+	def function(data,*args,function=function,**kwargs):
+		return measurement(data,*args,function=function,**kwargs)
+
 	if function is None:
 		size = 1
 	elif function in ['state']:
@@ -535,16 +325,8 @@ def func_sample_function(data,*args,function=None,**kwargs):
 			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
 		return data
 
-	func = lambda data,*args,**kwargs: 1
-	if function is None:
-		function = func
-	elif isinstance(function,str):
-		function = load(function,default=func)
-	def decorator(function):
-		def wrapper(attr,data,*args,**kwargs):
-			return function(data,*args,**kwargs)
-		return wrapper
-	function = decorator(function)
+	def function(data,*args,function=function,**kwargs):
+		return measurement(data,*args,function=function,**kwargs)
 
 	funcs = {}
 
@@ -556,7 +338,6 @@ def func_sample_function(data,*args,function=None,**kwargs):
 
 	attr = 'y'
 	def func(attr,data):
-		number,size = function(attr,data),data[attr].size
 		data = data[attr]
 		return data
 	funcs[attr] = func
@@ -580,48 +361,6 @@ def func_sample_function(data,*args,function=None,**kwargs):
 
 	return data
 
-def func_info_y(data,*args,**kwargs):
-	data = sum(np.array(i) for i in data)
-	data = data.reshape(*data.shape)
-	return data
-
-def func_info_yerr(data,*args,**kwargs):
-	data = sum(np.array(i) for i in data)
-	data = data.reshape(*data.shape)
-	return data
-
-def func_info_process_y(data,values,metadata,properties,*args,**kwargs):
-	if isinstance(values,arrays):
-		data += values
-	return data
-
-def func_info_process_yerr(data,values,metadata,properties,*args,**kwargs):
-	return data
-
-def func_info_function_y(data,*args,**kwargs):
-	func = lambda x,n: n*np.exp(-n*x)
-	norm = lambda x: x/np.sum(x,axis=-1)[...,None]
-
-	size = min(len(data['x']),len(data['y']))
-
-	x = data['x']
-	z = np.array([*data['label']['sample.array.linear.x']])[None,:]
-
-	n = ((data['label']['D'])**(x))[:,None]
-
-	y = np.array(data['y'])
-	y = norm(y)
-
-	z = func(z,n)
-	z = norm(z)
-
-	data['x'] = 1/x
-	data['y'] = -np.sum((y*(np.log(z)-np.log(y)))*((y!=0) & (z!=0)),axis=-1)
-	data['xerr'] = None
-	data['yerr'] = None
-
-	return data
-
 def func_process_x(data,*args,**kwargs):
 	data = data.iloc[0]
 	return data
@@ -636,139 +375,6 @@ def func_process_xerr(data,*args,**kwargs):
 
 def func_process_yerr(data,*args,**kwargs):
 	data = tuple(data) if isinstance(data,iterables) and len(data)>1 else data
-	return data
-
-def func_process_process_x(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = i
-	data = values
-	return data
-
-def func_process_process_y(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = np.array([*values.get(key,[]),*flatten(i)])
-	data = values
-	return data
-
-def func_process_process_xerr(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = i
-	data = values
-	return data
-
-def func_process_process_yerr(data,values,metadata,properties,*args,**kwargs):
-	keys = metadata['x']
-	values = {} if not isinstance(values,dict) else values
-	data = [data for key in keys] if not isinstance(data,iterables) else data
-	for key,i in zip(keys,data):
-		values[key] = np.array([*values.get(key,[]),*flatten(i)])
-	data = values
-	return data
-
-def func_process_function(data,*args,function=None,attribute=None,attributes=None,**kwargs):
-
-	keys = data['y']
-	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
-	keys = natsorted(keys) if keys is not None else None
-
-	def parse(attr,data):
-		nulls = {'y':nan}
-		if data is None:
-			data = None
-		elif all(i is None for i in data):
-			data = None
-		if data is not None and attr in nulls:
-			data = np.array(data)
-			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
-		return data
-
-	func = lambda data,*args,**kwargs: 1
-	if function is None:
-		function = func
-	elif isinstance(function,str):
-		function = load(function,default=func)
-	def decorator(function):
-		def wrapper(attr,key,data,*args,**kwargs):
-			data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
-			return function(data,*args,**kwargs)
-		return wrapper
-
-	function = decorator(function)
-
-
-	if attribute is None:
-		attribute = None
-	elif isinstance(attribute,str):
-		attribute = attribute if getter(data,attribute,delimiter=delim) is not None else None
-	else:
-		attribute = None
-
-	if attributes is None:
-		attributes = None
-	elif isinstance(attributes,(str,*iterables)):
-		attributes = [attr for attr in (attributes if not isinstance(attributes,str) else [attributes]) if getter(data,attr,delimiter=delim) is not None]
-	else:
-		attributes = None
-
-	funcs = {}
-
-	attr = 'x'
-	def func(attr,key,data):
-		data = 1/data[attr][key]
-		return data
-	funcs[attr] = func
-
-	attr = 'y'
-	def func(attr,key,data):
-		number,size = function(attr,key,data),data[attr][key].size
-		data = np.mean(data[attr][key]) +  np.log(np.sum(getter(data,attribute,delimiter=delim)[key]))
-		data = data/np.log(number) - 1
-		return data
-	funcs[attr] = func
-
-	attr = 'xerr'
-	def func(attr,key,data):
-		data = data[attr][key]
-		return data
-	funcs[attr] = func
-
-	attr = 'yerr'
-	def func(attr,key,data):
-		number,size = function(attr,key,data),data[attr][key].size
-		obj = np.mean(data[attr][key])
-		data = np.mean(data[attr][key]) - np.mean(data[attr[0]][key])**2
-		data = np.sqrt(data/(size*number))/np.log(size)
-		return data
-	if attr:
-		funcs[attr] = func
-
-	if attribute:
-		attr = attribute
-		def func(attr,key,data):
-			data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
-			return data
-		funcs[attr] = func
-
-	if attributes:
-		for attr in attributes:
-			def func(attr,key,data):
-				data = np.log(np.sum(getter(data,attr,delimiter=delim)[key]))
-				return data
-			funcs[attr] = func
-
-	funcs = {attr:parse(attr,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if getter(data,attr,delimiter=delim) is not None} if keys is not None else {}
-
-	setter(data,funcs,delimiter=delim,default=True)
-
 	return data
 
 def func_information_x(data,*args,**kwargs):
@@ -840,18 +446,9 @@ def func_information_function(data,*args,function=None,**kwargs):
 			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
 		return data
 
-	func = lambda data,*args,**kwargs: 1
-	if function is None:
-		function = func
-	elif isinstance(function,str):
-		function = load(function,default=func)
-	def decorator(function):
-		def wrapper(attr,key,data,*args,**kwargs):
-			data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
-			return function(data,*args,**kwargs)
-		return wrapper
-
-	function = decorator(function)
+	def function(attr,key,data,*args,function=function,**kwargs):
+		data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
+		return measurement(data,*args,function=function,**kwargs)
 
 	funcs = {}
 
@@ -865,10 +462,10 @@ def func_information_function(data,*args,function=None,**kwargs):
 	def func(attr,key,data):
 		if None in data[attr][key]:
 			return 0
-		number,size = function(attr,key,data),data[attr][key].size
+		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key])
 		data = absolute(data)
-		data = data/log(number)
+		data = data/log(info.dimension)
 		return data
 	funcs[attr] = func
 
@@ -882,10 +479,10 @@ def func_information_function(data,*args,function=None,**kwargs):
 	def func(attr,key,data):
 		if None in data[attr][key]:
 			return 0
-		number,size = function(attr,key,data),data[attr][key].size
+		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key]) - mean(data[attr[0]][key])**2
 		data = absolute(data)
-		data = sqrt(data/(size*number))/log(size)
+		data = sqrt(data/(size*info.dimension))/log(size)
 		return data
 	if attr:
 		funcs[attr] = func
@@ -896,94 +493,31 @@ def func_information_function(data,*args,function=None,**kwargs):
 
 	return data
 
-def func_histogram(obj,*args,**kwargs):
+def func_histogram(x,*args,**kwargs):
 	key = ['x','y']
-	value = histogram(obj,*args,**kwargs)
+	value = histogram(x,*args,**kwargs)
 	data = dict(zip(key,value))
 	return data
 
-def func_process(data,*args,**kwargs):
-	n = data.size
-	eps = epsilon(data.dtype)
-	def func(x,n=n,eps=eps):
-		x = (n-1)*((1-x)**(n-2)) # (n/(1-exp(-n)))*exp(-n*x) # n*exp(-n*x)
-		# x /= addition(x)
-		x = inplace(x,x<eps,1)
-		return x
-	key = [None,'error','norm']
-	value = information(func,data)
-	value = addition(value)/n,addition(value**2)/n,addition(func(data))
-	data = dict(zip(key,value))
-	return data
+def func_information(x,*args,**kwargs):
 
-def func_information(data,*args,**kwargs):
-	size = data.size
-	samples = prod(data.shape[:-1])
-	n = data.shape[-1]
-	eps = epsilon(data.dtype)
-	default = 1
-	bounds = [0,1]
-	scale = None
-	data = data.ravel()
+	data = kwargs.get('model')
+	function = kwargs.get('function')
 
-	key = 'model'
-	model = kwargs.get(key)
-	if model is None:
-		model = []
-	elif hasattr(model,key):
-		model = getattr(model,key)
-		model = [data for i in model for data in model[i]]
-	else:
-		model = model.data
-		model = [model[i] for i in model]
+	def function(data,*args,function=function,**kwargs):
+		return measurement(data,*args,function=function,**kwargs)
 
-	variables = Dictionary(**{
-		'parameters':[data.parameters() for data in model if not data.unitary and not data.hermitian][0] if model else 0,
-		'size':1 if size == max((data.D**data.N for data in model),default=1) else max((data.D**data.N for data in model),default=1)
-		})
-	p = variables.parameters
-	l = variables.size
-
-	def decorator(func):
-		def wrapper(*args,**kwargs):
-			x = func(*args,**kwargs)
-			x = inplace(x,x<eps,default)
-			return x
-		return wrapper
-	def func(x,n=n,eps=eps,p=p,l=l):
-		x = ((x/l)>(p/n))*(1/l)*(1/max(p==1,1-p))*(n-1)*((1-(((x/l)-(p/n))/max(p==1,1-p)))**(n-2)) #  (n-1)*((1-x)**(n-2)) # (n/(1-exp(-n)))*exp(-n*x) # n*exp(-n*x)
-		return x
-	def grad(x,n=n,eps=eps,p=p,l=l):
-		x = ((-1)**1)*(n-1-1)*(n-1)*((1-x)**(n-2-1))
-		return x
-	def hess(x,n=n,eps=eps,p=p,l=l):
-		x = ((-1)**2)*(n-1-2)*(n-1-1)*(n-1)*((1-x)**(n-2-2))
-		return x
-	def probability(x,*args,**kwargs):
-		x = kernel(x,func=func,grad=grad,hess=hess,bounds=bounds,scale=scale)
-		return x
-	def entropy(func):
-		def function(x):
-			x = asscalar(func(x))
-			return -x*log(x)
-		x = integral(function,bounds)
-		return x
-
-	func = decorator(func)
+	info = function(data)
+	func = info.probability
 
 	data = information(func,data)
 
 	key = [None,'error']
-	value = [addition(data)/size/samples]*samples,[addition(data**2)/size/samples]*samples
+	value = mean(data,axis=-1),mean(data**2,axis=-1)
+
 	data = dict(zip(key,value))
 
 	return data
-
-def func_size_array(data,*args,**kwargs):
-	return data['label']['D']**(2*data['x'])
-
-def func_size_state(data,*args,**kwargs):
-	return data['label']['D']**(1*data['x'])
 
 def func_transform(data,*args,**kwargs):
 
@@ -1285,13 +819,13 @@ def func_fit_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 		# size = max(10,len(y)//100)
 		# y = np.convolve(y,window(size),**options)
 
-		data['d'] = data['D']**data['N']
+		data['dim'] = data['D']**data['N']
 
 		return x,y,xerr,yerr
 
 	x,y,xerr,yerr = process(args,kwargs,data)
 
-	func = lambda parameters,x: parameters[0]*data['d']*np.exp(-parameters[1]*data['d']*x)
+	func = lambda parameters,x: parameters[0]*data['dim']*np.exp(-parameters[1]*data['dim']*x)
 	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
 
 	model = scipy.optimize.leastsq
@@ -1360,38 +894,18 @@ def func_fit_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
 def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
-	if function is None:
-		def function(data=data):
-			data['d'] = 1
-			return
-		def func(x,data=data):
-			return (data['d']-1)*(1-x)**(data['d']-2)
-	elif function in ['array']:
-		def function(data=data):
-			data['d'] = data['D']**(1*data['N'])
-			return
-		def func(x,data=data):
-			return (data['d']-1)*(1-x)**(data['d']-2)
-	elif function in ['state']:
-		def function(data=data):
-			data['d'] = data['D']**(1*data['N'])
-			return
-		def func(x,data=data):
-			return (data['d']-1)*(1-x)**(data['d']-2)
-	else:
-		def function(data=data):
-			data['d'] = 1
-			return
-		def func(x,data=data):
-			return (data['d']-1)*(1-x)**(data['d']-2)
+	def function(data,*args,function=function,**kwargs):
+		return measurement(data,*args,function=function,**kwargs)
+
+	info = function(data)
+
+	func = info.probability
 
 	def process(args,kwargs,data):
 
 		x,y,xerr,yerr = args
 
 		kwargs.update({})
-
-		function(data)
 
 		indices = (y != 0) & (~is_nan(y)) if y is not None else None
 

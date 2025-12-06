@@ -168,8 +168,8 @@ def test_fit(path=None,tol=None):
 
 			ax.errorbar(*arguments,**options)
 
-			ax.set_ylabel(ylabel="$y$")
-			ax.set_xlabel(xlabel="$1/x$")
+			ax.set_ylabel(ylabel="$\\textrm{Cross Entropy}(P|D) = -\\sum_{p \\sim D} \\log{P(p)}$")
+			ax.set_xlabel(xlabel="$1/N$")
 
 			ax.set_xscale(value="log",base=2)
 			ax.set_yscale(value="log",base=10)
@@ -185,12 +185,13 @@ def test_fit(path=None,tol=None):
 			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
 
 			if settings.get('fill_between'):
-				ax.fill_between(x,y,y-yerr,**settings.get('fill_between'))
-				ax.fill_between(x,y+yerr,y,**settings.get('fill_between'))
+				ax.fill_between(x,y,y-yerr,**{attr:settings.get('fill_between')[attr] for attr in settings.get('fill_between') if attr not in ['label']})
+				ax.fill_between(x,y+yerr,y,**{attr:settings.get('fill_between')[attr] for attr in settings.get('fill_between') if attr not in []})
 
 			ax.grid(visible=True)
 
 			ax.legend(
+				*([obj[i] for i in {1:[0],2:[0,1],3:[1,2,0]}[len(obj)]] for obj in ax.get_legend_handles_labels()),
 				loc="lower right",
 				ncol=1,
 				title_fontsize=22,
@@ -224,7 +225,7 @@ def test_fit(path=None,tol=None):
 			# intercept=False,
 			preprocess="log10.log10",
 			postprocess="exp10.exp10",
-			bootstrap=dict(size=3,random='gaussian',seed=123),
+			bootstrap=dict(size=64,random='gaussian',seed=123),
 			_x=logspace(-20,0,100),_y = None,
 			)
 
@@ -245,10 +246,10 @@ def test_fit(path=None,tol=None):
 		label='$\\textrm{Data}$',
 		color='viridis_0.5',alpha=0.8,
 		marker='o',linestyle=':',
-		markersize=7,
+		markersize=9,
 		linewidth=4,
-		elinewidth=3,
-		capsize=4
+		elinewidth=4,
+		capsize=5
 	)
 
 	fig,ax = plot(**data,fig=fig,ax=ax,options=options)
@@ -286,8 +287,9 @@ def test_fit(path=None,tol=None):
 
 	options = dict(
 		path='examples/stats/plot.pdf',mplstyle='examples/stats/plot.mplstyle',
-		label='$\\textrm{Model}~~%s$'%('\t'.join(['\\overline{%s}: %s'%(stat,scinotation(_other[stat],decimals=3)) for stat in _other])),
+		label='$\\textrm{Model}~~%s$'%('\t'.join(['\\overline{%s}: %s'%({'1-r':'1-R^{2}'}.get(stat,stat),scinotation(_other[stat],decimals=3)) for stat in _other])),
 		fill_between=dict(
+			label="$%d-\\textrm{Fold Bootstrap Error}$"%(settings['bootstrap']['size']),
 			interpolate=True,
 			where=None,
 			zorder=0,

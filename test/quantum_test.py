@@ -1875,16 +1875,19 @@ def test_module(*args,**kwargs):
 	kwargs = {
 		"module.N":[2],"module.M":[5],"module.measure.operator":["tetrad"],
 		"model.N":[2],"model.D":[2],"model.M":[5],"model.ndim":[2],"model.local":[True],"model.tensor":[True],
-		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.operator":["zero"],
+		"model.data.unitary.operator":[["X","X"]],"model.data.unitary.parameters":[0.5],"model.data.unitary.where":["||ij||"],"model.data.unitary.variable":[True],"model.data.unitary.constant":[None],"model.data.unitary.seed":[123456789],
+		"model.data.noise.operator":["depolarize"],"model.data.noise.parameters":[0],"model.data.noise.where":["||i.j||"],"model.data.noise.variable":[False],"model.data.noise.constant":[None],"model.data.noise.seed":[None],
+		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.operator":["zero"],"state.local":[False],"state.tensor":[True],"state.architecture":["array"],"state.seed":[None],
+
 		"measure.N":[2],"measure.D":[2],"measure.operator":["tetrad"],
 
 		"module.measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
-		"state.architecture":["array","array","array"],
+		"state.architecture":["array","array","array","array"],
 		"measure.architecture":["tensor","tensor.quasi","tensor_quimb","array"],
-		"module.options":[{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
-		"module.measure.options":[{},{},{}],
-		"measure.options":[{},{},{}],
-		"callback.options":[{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
+		"module.options":[{"scheme":"svd","S":None},{"scheme":"svd","S":None},{"contract":"swap+split","max_bond":None,"cutoff":0},{}],
+		"module.measure.options":[{},{},{},{}],
+		"measure.options":[{},{},{},{}],
+		"callback.options":[{"scheme":"svd","S":None},{"scheme":"svd","S":None},{"contract":True,"max_bond":None,"cutoff":0},{}],
 		}
 
 	groups = ["module.measure.architecture","measure.architecture","module.options","module.measure.options","measure.options","callback.options","state.architecture"]
@@ -1944,7 +1947,7 @@ def test_module(*args,**kwargs):
 				# },
 				"noise":{
 					"operator":["depolarize"],"where":"||i.j||","string":"noise",
-					"parameters":1e-6,"variable":False,"ndim":3,"seed":123456789
+					"parameters":1e-3,"variable":False,"constant":None,"ndim":3,"seed":123456789
 				},
 				# "unitary":{
 				# 	"operator":["X","X"],"where":"||ij||","string":"unitary",
@@ -2191,7 +2194,7 @@ def test_module(*args,**kwargs):
 
 		data[index][key] = value
 
-		if verbose or True:
+		if verbose:
 			print(measure.architecture,parse(value))
 
 		parameters = model.parameters()
@@ -2283,7 +2286,7 @@ def test_module(*args,**kwargs):
 		data[index][key] = value
 
 
-		if verbose or True:
+		if verbose:
 			print(measure.architecture,parse(value))
 
 		tmp = value
@@ -2291,7 +2294,7 @@ def test_module(*args,**kwargs):
 		model.init(state=_state @ module.N)
 		_tmp = model(parameters=module.parameters(),state=model.state())
 
-		if verbose:
+		if verbose or True:
 			print(parse(tmp))
 			print(parse(_tmp))
 
@@ -2300,23 +2303,7 @@ def test_module(*args,**kwargs):
 
 		assert allclose(tmp,_tmp),"Incorrect Module <-> Model conversion"
 
-
-	print({i:list(data[i]) for i in data})
-
-	for i in data:
-		for j in data:
-			if i >= j:
-				continue
-			for attr in data[i]:
-				boolean = equalizer(data[i][attr],data[j][attr])
-				if not boolean:
-					print(attr,i,j)
-					print(data[i][attr])
-					print(data[j][attr])
-					print()
-
 	assert all(equalizer(data[i],data[j]) for i in data for j in data if i < j), "Error - Inconsistent models"
-
 
 	os.environ['NUMPY_BACKEND'] = 'jax'
 	reload(src.utils)
@@ -2343,8 +2330,8 @@ def test_calculate(*args,**kwargs):
 	kwargs = {
 		"module.N":[None],"module.M":[3],"module.seed":[123456789],
 		"model.N":[4],"model.D":[2],"model.M":[1],"model.ndim":[2],"model.local":[True],"model.tensor":[True],"model.architecture":["array"],"model.seed":[123456789],
-		"model.data.unitary.where":["||ij||"],"model.data.unitary.parameters":[None],"model.data.unitary.seed":[123456789],
-		"model.data.noise.where":["||i.j||"],"model.data.noise.parameters":[1e-3],"model.data.noise.seed":[None],
+		"model.data.unitary.operator":["haar"],"model.data.unitary.parameters":[None],"model.data.unitary.where":["||ij||"],"model.data.unitary.variable":[False],"model.data.unitary.constant":[None],"model.data.unitary.seed":[123456789],
+		"model.data.noise.operator":["depolarize"],"model.data.noise.parameters":[1e-3],"model.data.noise.where":["||i.j||"],"model.data.noise.variable":[False],"model.data.noise.constant":[None],"model.data.noise.seed":[None],
 		"state.N":[None],"state.D":[2],"state.ndim":[2],"state.local":[False],"state.tensor":[True],"state.architecture":["array"],"state.seed":[None],
 		"state.operator":["psi"],
 
@@ -2413,11 +2400,11 @@ def test_calculate(*args,**kwargs):
 				# },
 				"unitary":{
 					"operator":"haar","where":"||ij||","string":"unitary",
-					"parameters":None,"variable":False,"ndim":2,"seed":13579
+					"parameters":None,"variable":False,"constant":None,"ndim":2,"seed":123456789
 				},
 				"noise":{
 					"operator":["depolarize"],"where":"||i.j||","string":"depolarize",
-					"parameters":1e-3,"variable":False,"ndim":3,"seed":123456789
+					"parameters":1e-3,"variable":False,"constant":None,"ndim":3,"seed":123456789
 				},
 				# "xx":{
 				# 	"operator":["X","X"],"where":"<ij>","string":"xx",
@@ -2603,7 +2590,7 @@ def test_calculate(*args,**kwargs):
 		elif module.measure.architecture in ['tensor_quimb']:
 			value = representation_quimb(state,contraction=True).ravel()
 
-		if verbose or True:
+		if verbose:
 			print(key,module.measure.architecture)
 			print(parse(value))
 
@@ -3229,7 +3216,7 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
-	# test_module(*args,**args)
-	test_calculate(*args,**args)
+	test_module(*args,**args)
+	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)

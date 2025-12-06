@@ -19,7 +19,7 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,sh
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import backend,pi,e,nan,null,delim,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
+from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -34,6 +34,91 @@ from src.parameters import Parameters,Parameter
 delim = '.'
 separ = '_'
 memory = lambda size:size<2**20
+
+def measurement(data,*args,function=None,**kwargs):
+	'''
+	Measurement information
+	Args:
+		data (dict,dataframe,Object): Data
+		function (str): Measurement function, allowed strings in ['array','state']
+		args (iterable): Additional positional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		info (dict): Measurement info
+	'''
+
+	cls = Object
+	if isinstance(data,cls):
+		if isinstance(data,Objects):
+			models = [model for i in model.model for model in data.model[i]]
+			model = data
+		elif isinstance(data,Object):
+			models = [model[i] for i in data.data]
+			model = None
+		else:
+			models = []
+			model = None
+
+		data = {
+			'D': max(model.D for model in models),
+			'N': max(model.N for model in models),
+			'noise.parameters':[model.parameters() for model in models if not model.unitary and not model.hermitian][0] if model else 0,
+			'operator': model.measure.operator if model is not None else None.
+			}
+
+		function = model.measure.operator if model is not None and function is None else function if function is not None else None
+
+	info = Dictionary()
+
+	if function is None:
+		info.dimension = data['D']**(1*data['N'])
+		info.dim = data['D']**(1*data['N'])
+		info.env = 1
+		info.locality = 1
+		info.scale = 1
+	elif function in ['array']:
+		info.dimension = data['D']**(2*data['N'])
+		info.dim = data['D']**(1*data['N'])
+		info.env = info.dim
+		info.locality = 1
+		info.scale = info.dim
+	elif function in ['state']:
+		info.dimension = data['D']**(1*data['N'])
+		info.dim = data['D']**(1*data['N'])
+		info.env = info.dim
+		info.locality = 1
+		info.scale = 1
+	else:
+		info.dimension = data['D']**(1*data['N'])
+		info.dim = data['D']**(1*data['N'])
+		info.env = 1
+		info.locality = 1
+		info.scale = 1
+
+	def func(x,info,*args,**kwargs):
+
+		eps,default = epsilon(x.dtype),1
+
+		x = (
+			(info.locality*(info.dim-info.locality)*info.env/info.dim)*
+			binom(info.dim*info.env,info.locality*info.env)*
+			((info.scale*x)**(info.locality*info.env-1))*
+			((1-info.scale*x)**((info.dim-info.locality)*info.env-1))
+			)
+
+		x = inplace(x,x<eps,default)
+
+		return x
+	info.probability = func
+
+	for key in info:
+		if isinstance(info[key],dataframes):
+			info[key] = info[key].iloc[0]
+		elif callable(info[key]):
+			info[key] = partial(info[key],info=info)
+
+	return info
+
 
 class Basis(Dict):
 	'''
@@ -10064,7 +10149,9 @@ class Callback(System):
 		arguments = self.arguments.get(attr,())
 		keywords = self.keywords.get(attr,{})
 
-		configurations = list(setup(settings=self.settings,**dict(index=False)))
+		settings = dict(index=False)
+
+		configurations = list(setup(settings=self.settings,**settings))
 
 		options = {
 			**{key: model.options[key] for key in model.options}
@@ -10161,6 +10248,7 @@ class Callback(System):
 							state=obj,
 							**{**keywords,**dict(function=None)}
 							)
+
 				elif attr in ['samples']:
 
 					key = attr
@@ -10231,10 +10319,12 @@ class Callback(System):
 				key = '{attr}.{i}'
 				value = array(value)
 
+				settings = dict(model=model,state=obj,function=attr.split(delim)[1])
+
 				value = getattrs(model,attributes[attr],delimiter=delim)(
 					parameters=parameters,
 					state=obj,
-					**{**keywords,**dict(attribute=value,settings=dict(model=model,state=obj))}
+					**{**keywords,**dict(attribute=value,settings=settings)}
 					)
 
 				if isinstance(value,dict):

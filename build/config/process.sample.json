@@ -10,49 +10,9 @@
 	"usetex": true,
 	"useval": true,
 	"instance": {
-		"hist": 0,
-		"bar": 0,
 		"sample": 1
 	},
 	"configuration": [
-		[
-			[
-				"hist"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"N": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"T": null
-					}
-				}				
-			]
-		],
-		[
-			[
-				"bar"
-			],
-			[
-				{
-					"position": "col",
-					"value": {
-						"N": null
-					}
-				},
-				{
-					"position": "row",
-					"value": {
-						"T": null
-					}
-				}				
-			]
-		],
 		[
 			[
 				"sample"
@@ -74,8 +34,6 @@
 		]				
 	],
 	"join":{
-		"hist":{"ax":{"hist":["label","color","alpha"]}},
-		"bar":{"ax":{"bar":["label","color","alpha"]}},
 		"sample":{"ax":{"bar":["label","color","alpha"]}}
 	},
 	"join":null,

@@ -52,7 +52,7 @@
 						"function": {
 							"func": "src.functions.func_sample_function",
 							"args": [],
-							"kwargs": {"function":"src.functions.func_size_array"}
+							"kwargs": {"function": "array"}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -465,7 +465,7 @@
 						"function": {
 							"func": "src.functions.func_sample_function",
 							"args": [],
-							"kwargs": {"function":"src.functions.func_size_state"}
+							"kwargs": {"function": "state"}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -891,7 +891,7 @@
 						"function": {
 							"func": "src.functions.func_information_function",
 							"args": [],
-							"kwargs": {"function":"src.functions.func_size_state"}
+							"kwargs": {"function": "state"}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -1032,7 +1032,7 @@
 						"function": {
 							"func": "src.functions.func_information_function",
 							"args": [],
-							"kwargs": {"function":"src.functions.func_size_array"}
+							"kwargs": {"function": "array"}
 						},
 						"application": "agg",
 						"analysis": {},
