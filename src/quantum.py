@@ -98,7 +98,10 @@ def measurement(data,*args,function=None,**kwargs):
 		info.scale = 1
 		info.constant = 0
 
-	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else info.constant
+	try:
+		info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env)
+	except:
+		pass
 
 	def func(x,info,*args,**kwargs):
 
