@@ -2666,7 +2666,7 @@ def test_calculate(*args,**kwargs):
 				elif attr in ['sample.state.log']:
 					kwargs = dict(attribute="state",function="src.functions.func_histogram",settings=dict(bins=1000,scale="log",base=10,range=[1e-20,1e0]))
 				elif attr in ['sample.array.information']:
-					kwargs = dict(attribute=["tensor","array"],function="src.functions.func_information",settings=dict(model=module,state=state))
+					kwargs = dict(attribute=["tensor","array"],function="src.functions.func_information",settings=dict(model=module,state=state,function='array'))
 				elif attr in ['sample.state.information']:
 					kwargs = dict(
 						attribute="state",function="src.functions.func_information",
@@ -2705,7 +2705,7 @@ def test_calculate(*args,**kwargs):
 								"tensor":True
 								},
 							},
-					settings=dict(model=module,state=state)
+					settings=dict(model=module,state=state,function='state')
 					)
 
 				where = None
@@ -3216,7 +3216,7 @@ if __name__ == "__main__":
 	# test_objective(*args,**args)
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
-	test_module(*args,**args)
-	# test_calculate(*args,**args)
+	# test_module(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)

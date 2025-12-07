@@ -24,7 +24,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,binom,absolute,maximum,minimum,sort,integral,kernel,mean,std
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper
 from src.utils import orng as rng
@@ -36,7 +36,7 @@ from src.iterables import permuter,setter,getter,search,Dictionary
 
 from src.fit import fit
 
-from src.plot import ALL,AXES,DELIMITER
+from src.plot import ALL,AXES,OTHER,DELIMITER
 
 from src.io import load,dump
 
@@ -169,6 +169,7 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 		data = grouper(data,**options)
 
 		indices = data[keys['y']]>0
+
 		values = {key:data.get(keys[key])[indices].to_numpy() for key in keys if keys[key] in data}
 
 		func,y,parameters,yerr,cov,other = fit(**values,**settings)
@@ -295,20 +296,12 @@ def func_sample_process_yerr(data,values,metadata,properties,*args,**kwargs):
 
 def func_sample_wrapper_x(data,*args,function=None,**kwargs):
 
-
 	def function(data,*args,function=function,**kwargs):
 		return measurement(data,*args,function=function,**kwargs)
 
-	if function is None:
-		size = 1
-	elif function in ['state']:
-		size = data['D']**data['N']
-	elif function in ['array']:
-		size = data['D']**(2*data['N'])
+	info = function(data)
 
-	data = data['x']
-
-	data *= size
+	data = data['x']*info.dimension
 
 	return data
 
@@ -444,10 +437,17 @@ def func_information_function(data,*args,function=None,**kwargs):
 		if data is not None and attr in nulls:
 			data = np.array(data)
 			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
+		elif isinstance(data,iterables):
+			data = np.array(data)
 		return data
 
 	def function(attr,key,data,*args,function=function,**kwargs):
 		data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
+		data = {
+			**({attr:data[attr] for attr in data if attr in ALL} if any(attr in ALL for attr in data) else {}),
+			**({attr:data[OTHER][attr] for attr in data[OTHER] if attr not in ALL} if (OTHER in data) else {}),
+			**({data[OTHER][attr][OTHER]:data[attr] for attr in data[OTHER] if attr in ALL and attr in data and data.get(attr) is not None} if (OTHER in data) else {}),
+			}
 		return measurement(data,*args,function=function,**kwargs)
 
 	funcs = {}
@@ -464,7 +464,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 			return 0
 		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key])
-		data = absolute(data)
+		data = abs(data)
 		data = data/log(info.dimension)
 		return data
 	funcs[attr] = func
@@ -481,7 +481,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 			return 0
 		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key]) - mean(data[attr[0]][key])**2
-		data = absolute(data)
+		data = abs(data)
 		data = sqrt(data/(size*info.dimension))/log(size)
 		return data
 	if attr:
@@ -493,21 +493,22 @@ def func_information_function(data,*args,function=None,**kwargs):
 
 	return data
 
-def func_histogram(x,*args,**kwargs):
+def func_histogram(data,*args,**kwargs):
 	key = ['x','y']
-	value = histogram(x,*args,**kwargs)
+	value = histogram(data,*args,**kwargs)
 	data = dict(zip(key,value))
 	return data
 
-def func_information(x,*args,**kwargs):
+def func_information(data,*args,**kwargs):
 
-	data = kwargs.get('model')
+	model = kwargs.get('model')
 	function = kwargs.get('function')
 
 	def function(data,*args,function=function,**kwargs):
 		return measurement(data,*args,function=function,**kwargs)
 
-	info = function(data)
+	info = function(model)
+
 	func = info.probability
 
 	data = information(func,data)

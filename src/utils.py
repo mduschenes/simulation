@@ -4,7 +4,7 @@
 import os,sys,itertools,ast,operator
 from copy import deepcopy as copy
 from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
-from math import prod
+from math import prod,comb
 
 import inspect
 import typing
@@ -244,11 +244,11 @@ if backend in ['jax','jax.autograd','quimb']:
 	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
-	dataframes = (pd.DataFrame,)
+	dataframes = (pd.DataFrame,pd.Series,)
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,dataframes)
+	dicts = (dict,pd.DataFrame,)
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -292,11 +292,11 @@ elif backend in ['autograd']:
 	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox,pd.Series,)
-	dataframes = (pd.DataFrame,)
+	dataframes = (pd.DataFrame,pd.Series,)
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,dataframes,)
+	dicts = (dict,pd.DataFrame,)
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -331,11 +331,11 @@ elif backend in ['numpy']:
 	numbers = (*integers,*floats,*complexes,*booleans,)
 	scalars = (*numbers,*strings,*nones)
 	arrays = (np.ndarray,onp.ndarray,pd.Series,)
-	dataframes = (pd.DataFrame,)
+	dataframes = (pd.DataFrame,pd.Series,)
 
 	generators = (typing.Generator,)
 	iterables = (*arrays,*generators,list,tuple,set,range,)
-	dicts = (dict,dataframes,)
+	dicts = (dict,pd.DataFrame,)
 	nulls = (Null,)
 
 	character = ascii_uppercase + ascii_lowercase + ascii_digits
@@ -1886,6 +1886,11 @@ def information(func,*args,**kwargs):
 		data (array): information of function
 	'''
 	data = func(*args,**kwargs)
+
+	eps,default = epsilon(data.dtype),1
+
+	data = inplace(data,data<eps,default)
+
 	return -log(data)
 
 def nullfunc(obj,*args,**kwargs):
@@ -6899,7 +6904,8 @@ def binom(n,k,exact=True):
 	Returns:
 		n (int,float): binomial of n,k
 	'''
-	return exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
+
+	return comb(n,k) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
 
 
 if backend in ['jax','jax.autograd','quimb']:
@@ -10576,9 +10582,9 @@ def vstack(a):
 
 def concat(df,*args,**kwargs):
 	'''
-	Concatenate dataframes
+	Concatenate dataframe
 	Args:
-		df (dataframe): dataframes to concatenate
+		df (dataframe): dataframe to concatenate
 		args (iterable): Positional arguments
 		kwargs (dict): Keyword arguments
 	Returns:

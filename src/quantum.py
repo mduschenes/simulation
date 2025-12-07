@@ -16,7 +16,7 @@ from src.utils import tensor,matrix,network,mps,contexts
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp
+from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,binom
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
@@ -63,7 +63,6 @@ def measurement(data,*args,function=None,**kwargs):
 			'D': max(model.D for model in models),
 			'N': max(model.N for model in models),
 			'noise.parameters':[model.parameters() for model in models if not model.unitary and not model.hermitian][0] if model else 0,
-			'operator': model.measure.operator if model is not None else None.
 			}
 
 		function = model.measure.operator if model is not None and function is None else function if function is not None else None
@@ -97,8 +96,6 @@ def measurement(data,*args,function=None,**kwargs):
 
 	def func(x,info,*args,**kwargs):
 
-		eps,default = epsilon(x.dtype),1
-
 		x = (
 			(info.locality*(info.dim-info.locality)*info.env/info.dim)*
 			binom(info.dim*info.env,info.locality*info.env)*
@@ -106,15 +103,15 @@ def measurement(data,*args,function=None,**kwargs):
 			((1-info.scale*x)**((info.dim-info.locality)*info.env-1))
 			)
 
-		x = inplace(x,x<eps,default)
-
 		return x
 	info.probability = func
 
 	for key in info:
 		if isinstance(info[key],dataframes):
 			info[key] = info[key].iloc[0]
-		elif callable(info[key]):
+
+	for key in info:
+		if callable(info[key]):
 			info[key] = partial(info[key],info=info)
 
 	return info
