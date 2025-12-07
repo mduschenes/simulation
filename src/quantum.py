@@ -75,35 +75,42 @@ def measurement(data,*args,function=None,**kwargs):
 		info.env = 1
 		info.locality = 1
 		info.scale = 1
+		info.constant = 0
 	elif function in ['array']:
 		info.dimension = data['D']**(2*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = info.dim
+		info.env = data['D']**(1*data['N'])
 		info.locality = 1
 		info.scale = info.dim
+		info.constant = 0
 	elif function in ['state']:
 		info.dimension = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = info.dim
+		info.env = data['D']**(1*data['N'])
 		info.locality = 1
 		info.scale = 1
+		info.constant = 0
 	else:
 		info.dimension = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
 		info.env = 1
 		info.locality = 1
 		info.scale = 1
+		info.constant = 0
+
+	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else info.constant
 
 	def func(x,info,*args,**kwargs):
 
-		x = (
-			(info.locality*(info.dim-info.locality)*info.env/info.dim)*
-			binom(info.dim*info.env,info.locality*info.env)*
-			((info.scale*x)**(info.locality*info.env-1))*
-			((1-info.scale*x)**((info.dim-info.locality)*info.env-1))
-			)
+		x = ((info.scale*x)**(info.locality*info.env-1))*((1-info.scale*x)**((info.dim-info.locality)*info.env-1))
+
+		if info.constant:
+			x *= info.constant
+		else:
+			x = (x-x.min())/(x.max()-x.min())
 
 		return x
+
 	info.probability = func
 
 	for key in info:

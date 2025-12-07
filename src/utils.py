@@ -6891,10 +6891,10 @@ def gammaln(n,exact=True):
 	Returns:
 		n (int,float): gammaln of n
 	'''
-	return spsp.gammaln(n)
+	return ospsp.gammaln(n)
 
 
-def binom(n,k,exact=True):
+def binom(n,k,exact=False):
 	'''
 	Compute binomial function: choose(n,k)
 	Args:
@@ -6904,8 +6904,7 @@ def binom(n,k,exact=True):
 	Returns:
 		n (int,float): binomial of n,k
 	'''
-
-	return comb(n,k) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
+	return onp.exp(gammaln(n+1,exact=exact)-gammaln(n-k+1,exact=exact)-gammaln(k+1,exact=exact)) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
 
 
 if backend in ['jax','jax.autograd','quimb']:

@@ -69,6 +69,7 @@ PATHS = {
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nan = np.nan
 delimiter='.'
+separator = '_'
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
 	'''
@@ -879,12 +880,40 @@ def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 
 	return err
 
+
+def set_scale(value,scale=None,**kwargs):
+	'''
+	Set scale of value
+	Args:
+		value (array): value
+		scale (str,array): scale of value, allowed strings in ['probability','maximum']
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		value (array): value
+		scale (array): scale of value
+	'''
+	tmp = scale
+	if scale is None:
+		scale = 1
+	elif not isinstance(scale,str):
+		scale = scale
+	elif scale in ['probability'] or scale.startswith('probability'):
+		scale = (1 if scale in ['probability'] else float(scale.split(separator)[-1]))*np.maximum(np.sum(np.abs(value)),1)
+	elif scale in ['maximum'] or scale.startswith('maximum'):
+		scale = (1 if scale in ['maximum'] else float(scale.split(separator)[-1]))*np.maximum(np.max(np.abs(value)),1)
+	else:
+		scale = 1
+	value /= scale
+	value = inplace(value.astype(float),value==0,nan)
+	return value,scale
+
 def get_obj(obj,attr=None,**kwargs):
 	'''
 	Return object relative to to obj
 	Args:
 		obj (object): Object instance
 		attr (str): attribute
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		instance (object): Object instance
 	'''
@@ -1891,9 +1920,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		
 				prop = 'density'
 				subattr = 'y'
-				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
-					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
-					kwargs[attr][subattr] = inplace(kwargs[attr][subattr].astype(float),kwargs[attr][subattr]==0,nan)
+				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
+					value = kwargs[attr][subattr]
+					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					kwargs[attr][subattr] = value
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -1956,9 +1986,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				subattr = 'y'
-				if kwargs[attr].get(prop) in ['probability'] and kwargs[attr].get(subattr) is not None:
-					kwargs[attr][subattr] /= np.maximum(np.sum(kwargs[attr][subattr]),1)
-					kwargs[attr][subattr] = inplace(kwargs[attr][subattr].astype(float),kwargs[attr][subattr]==0,nan)
+				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
+					value = kwargs[attr][subattr]
+					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					kwargs[attr][subattr] = value
 
 				props = '%s'
 				subattrs = 'set_%sscale'
@@ -2055,12 +2086,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								kwargs[attr][prop] = kwargs[attr].get(prop,value)
 
 				prop = 'density'
-				if kwargs[attr].get(prop) in ['probability']:
+				if kwargs[attr].get(prop) is not None:
 					def function(objs,obj,attr,arguments,keywords,kwargs):
 						y,x,plot = objs
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-							scale = sum(abs(u) for u in y) if keywords.get('log') else y.sum()
+							value = y
+							value,scale = set_scale(value,scale=kwargs[attr][prop])
 							for patch in plot.patches:
 								patch.set_height(patch.get_height()/scale)
 							plot.datavalues = plot.datavalues/scale
@@ -2170,8 +2202,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					kwargs[attr][prop] = width
 
 				prop = 'density'
-				if kwargs[attr].get(prop) in ['probability']:
-					y /= np.maximum(np.sum(y),1)
+				if kwargs[attr].get(prop) is not None:
+					value = y
+					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					y = value
+
 				y = inplace(y.astype(float),y==0,nan)
 
 				prop = 'edgecolor'

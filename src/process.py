@@ -2057,7 +2057,13 @@ def apply(data,plots,processes,verbose=None):
 						property = properties[name][prop][group]
 						break
 
-				logger.log(info,"Group : %d %r %r %r -> %r"%(i,dict(zip(label,group if isinstance(group,tuple) else (group,))) if group else group,tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes  else '',groups.get_group(group).shape))
+				logger.log(info,"Group : %d %r %r %r -> %r"%(
+					i,
+					dict(zip(label,group if isinstance(group,tuple) else (group,))) if ((isinstance(group,tuple) and group) or (not isinstance(group,tuple))) else group,
+					tuple((value for attr in label if attr not in by for value in (label[attr] if isinstance(label[attr],iterables) else [label[attr]]))),
+					shapes.get(group) if group in shapes else shapes.get((group,)) if not isinstance(group,tuple) and (group,) in shapes else '',
+					groups.get_group(group).shape),
+					)
 
 				for j,string in enumerate(funcs):
 

@@ -31,7 +31,7 @@
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [0]
+                        "noise.parameters": [1e-2]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {
@@ -264,7 +264,7 @@
                 {
                     "position": "row",
                     "value": {
-                        "noise.parameters": [0]
+                        "noise.parameters": [1e-2]
                     },
                     "kwargs": {
                         "fig.set_size_inches": {

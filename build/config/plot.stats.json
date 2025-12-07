@@ -100,7 +100,7 @@
 					"scale": "log",
 					"base": 10,
 					"log": true,
-					"density": "probability",
+					"density": "maximum_1e2",
 					"width": true,
 					"align": "center",
 					"linewidth": 2,
@@ -108,7 +108,7 @@
 						"color": "black",
 						"alpha": 0
 					},
-					"density.errorbar": "probability",
+					"density.errorbar": "maximum_1e2",
 					"alpha.errorbar": {
 						"@M@": [
 							0.4,
@@ -513,7 +513,7 @@
 					"scale": "log",
 					"base": 10,
 					"log": true,
-					"density": "probability",
+					"density": "maximum_1e2",
 					"width": true,
 					"align": "center",
 					"linewidth": 2,
@@ -521,7 +521,7 @@
 						"color": "black",
 						"alpha": 0
 					},
-					"density.errorbar": "probability",
+					"density.errorbar": "maximum_1e2",
 					"alpha.errorbar": {
 						"@M@": [
 							0.4,
