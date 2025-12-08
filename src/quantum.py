@@ -47,13 +47,16 @@ def measurement(data,*args,function=None,**kwargs):
 		info (dict): Measurement info
 	'''
 
-	cls = Object
+	cls = (Module,Objects,Object)
 	if isinstance(data,cls):
-		if isinstance(data,Objects):
-			models = [model for i in model.model for model in data.model[i]]
+		if isinstance(data,Module):
+			models = [model for i in data.model for model in data.model[i]]
+			model = data
+		elif isinstance(data,Objects):
+			models = [data.data[i] for i in data.data]
 			model = data
 		elif isinstance(data,Object):
-			models = [model[i] for i in data.data]
+			models = [model]
 			model = None
 		else:
 			models = []
@@ -103,7 +106,7 @@ def measurement(data,*args,function=None,**kwargs):
 
 	info.data = logspace(
 		(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-5)/log(info.dimension),
-		(-log(info.dim))/log(info.dimension),
+		(-log(info.scale))/log(info.dimension),
 		num=1000,base=info.dimension
 		)
 
