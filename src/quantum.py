@@ -66,6 +66,9 @@ def measurement(data,*args,function=None,**kwargs):
 			'operator': model.measure.operator if model is not None else None,
 			}
 
+	elif isinstance(data,dataframes):
+		data = {attr:data[attr].iloc[0] for attr in data}
+
 	info = Dictionary()
 
 	if function is None:
@@ -99,18 +102,14 @@ def measurement(data,*args,function=None,**kwargs):
 		info.scale = 1
 
 	info.data = logspace(
-		min(0,(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-3)/log(info.dimension)),
-		min(1,-log(info.dim)/log(info.dimension)),
+		(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-5)/log(info.dimension),
+		(-log(info.dim))/log(info.dimension),
 		num=1000,base=info.dimension
 		)
 
 	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else 1
 
 	info.func = lambda x,info,*args,**kwargs: probability(x=x*info.scale,function='beta',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
-
-	for key in info:
-		if isinstance(info[key],dataframes):
-			info[key] = info[key].iloc[0]
 
 	for key in info:
 		if callable(info[key]):
