@@ -65,7 +65,7 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {
 			'D': max(model.D for model in models),
 			'N': max(model.N for model in models),
-			'noise.parameters':[model.parameters() if model.parameters() is None or model.parameters().item() != 0 else None for model in models if not model.unitary and not model.hermitian][0] if model else None,
+			'noise.parameters':[model.parameters() for model in models if not model.unitary and not model.hermitian][0] if model else None,
 			'operator': model.measure.operator if model is not None else None,
 			}
 
@@ -85,14 +85,14 @@ def measurement(data,*args,function=None,**kwargs):
 		info.dimension = data['D']
 		info.size = data['D']**(2*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N']) if data['noise.parameters'] is not None else 1
+		info.env = data['D']**(1*data['N']) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = data['D']**(1*data['N'])
 	elif function in ['state']:
 		info.dimension = data['D']
 		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N']) if data['noise.parameters'] is not None else 1
+		info.env = data['D']**(1*data['N']) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = 1
 	else:
