@@ -6906,6 +6906,26 @@ def binom(n,k,exact=False):
 	'''
 	return onp.exp(gammaln(n+1,exact=exact)-gammaln(n-k+1,exact=exact)-gammaln(k+1,exact=exact)) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
 
+def logprod(a,b):
+	'''
+	Compute product of powers as sum of logarithms prod(a**b) -> exp(sum(b*log(a)))
+	Args:
+		a (array): products
+		b (array): powers
+	Returns:
+		a (array): product
+	'''
+
+	eps,null,axis = 1e-20,1,0
+
+	a = inplace(a,a<eps,null)
+	a = b*log(a)
+	a -= maximum(a,axis=axis)
+	a = addition(a,axis=axis)
+	a = exp(a)
+	a /= addition(a)
+
+	return a
 
 if backend in ['jax','jax.autograd','quimb']:
 
@@ -7584,9 +7604,23 @@ def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 		integrate(lambda x: hess(x)**2,bounds)[0]
 		)/size)**(1/5)
 
-	func = scipy.stats.gaussian_kde(data,scale).evaluate
+	func = osp.stats.gaussian_kde(data,scale).evaluate
 
 	return func
+
+def probability(x,function,*args,**kwargs):
+	'''
+	Probability distribution
+	Args:
+		x (array): probability data
+		function (str): probability function
+		args (iterable): Positional arguments
+		kwargs (dict): Keyword arguments
+	Returns:
+		x (array): probability data
+	'''
+	return getattr(sp.stats,function).pdf(x,*args,**kwargs) if isinstance(function,str) else function(x,*args,**kwargs)
+
 
 def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
 	'''
@@ -8950,19 +8984,17 @@ def addition(a,axis=None):
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
 	return np.sum(a,axis=axis)
 
-def product(a):
+@partial(jit,static_argnums=(1,))
+def product(a,axis=None):
 	'''
 	Get product of elements in iterable
 	Args:
 		a (iterable): Array to compute product of elements
+		axis (int): axis to perform addition
 	Returns:
 		out (array): Reduced array of product of elements
 	'''
-	try:
-		out = onp.prod(a)
-	except:
-		out = 0
-	return out
+	return np.prod(a,axis=axis)
 
 @jit
 def dotr(a,b):
@@ -10461,27 +10493,29 @@ def argmin(a,axis=None):
 	return np.argmin(a,axis=axis)
 
 
-@jit
-def maximum(a):
+@partial(jit,static_argnums=(1,))
+def maximum(a,axis=None):
 	'''
 	Calculate maximum of array a
 	Args:
 		a (array): Array to compute maximum
+		axis (int): Axis to compute maximum
 	Returns:
 		out (array): Maximum of array a
 	'''
-	return np.max(a)
+	return np.max(a,axis=axis)
 
-@jit
-def minimum(a):
+@partial(jit,static_argnums=(1,))
+def minimum(a,axis=None):
 	'''
-	Calculate maximum of array a
+	Calculate minimum of array a
 	Args:
-		a (array): Array to compute maximum
+		a (array): Array to compute minimum
+		axis (int): Axis to compute minimum
 	Returns:
 		out (array): Maximum of array a
 	'''
-	return np.min(a)
+	return np.min(a,axis=axis)
 
 
 @jit

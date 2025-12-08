@@ -422,6 +422,9 @@ def is_inf(obj):
 def is_naninf(obj):
 	return is_nan(obj) or is_inf(obj)
 
+def is_naninfs(obj):
+	return np.logical_or(np.isnan(obj),np.isinf(obj))
+
 
 def is_number(a,*args,**kwargs):
 	'''
@@ -892,19 +895,24 @@ def set_scale(value,scale=None,**kwargs):
 		value (array): value
 		scale (array): scale of value
 	'''
-	tmp = scale
+
+	value = inplace(value.astype(float),is_naninfs(value),0)
+
 	if scale is None:
 		scale = 1
 	elif not isinstance(scale,str):
 		scale = scale
 	elif scale in ['probability'] or scale.startswith('probability'):
-		scale = (1 if scale in ['probability'] else float(scale.split(separator)[-1]))*np.maximum(np.sum(np.abs(value)),1)
+		scale = (1 if scale in ['probability'] else float(scale.split(separator)[-1]))*np.sum(np.abs(value))
 	elif scale in ['maximum'] or scale.startswith('maximum'):
-		scale = (1 if scale in ['maximum'] else float(scale.split(separator)[-1]))*np.maximum(np.max(np.abs(value)),1)
+		scale = (1 if scale in ['maximum'] else float(scale.split(separator)[-1]))*np.max(np.abs(value))
 	else:
 		scale = 1
-	value /= scale
+
+	value = np.exp(np.log(value)-np.log(scale))
+
 	value = inplace(value.astype(float),value==0,nan)
+
 	return value,scale
 
 def get_obj(obj,attr=None,**kwargs):
@@ -1945,7 +1953,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args) if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['density','scale','base','log','width','align','linewidth','edgecolor']])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['density','scale','base','log','width','align']])
 
 				call = len(args)>0		
 
@@ -2027,7 +2035,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				args = [arg if ((arg is not None) or (i>0)) else range(max((len(arg) for arg in args if arg is not None),default=0)) for i,arg in enumerate(args)  if (arg is not None) or (i==0)]
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:1] for k in AXES],*['density','scale','base','log','width','align','linewidth','edgecolor']])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:1] for k in AXES],*['density','scale','base','log','width','align']])
 				
 				call = len(args)>0			
 

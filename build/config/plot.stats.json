@@ -125,9 +125,12 @@
 							"P"
 						]
 					},
+					"alpha.errorbar": 0.8,
+					"marker.errorbar": "",
 					"markersize.errorbar": 10,
-					"linestyle.errorbar": "--",
-					"elinewidth.errorbar": 6,
+					"linestyle.errorbar": "-",
+					"linewidth.errorbar": 8,
+					"elinewidth.errorbar": 8,
 					"capsize.errorbar": 6,
 					"color": {
 						"@noise.parameters@": {
@@ -538,9 +541,12 @@
 							"P"
 						]
 					},
+					"alpha.errorbar": 0.8,
+					"marker.errorbar": "",
 					"markersize.errorbar": 10,
-					"linestyle.errorbar": "--",
-					"elinewidth.errorbar": 6,
+					"linestyle.errorbar": "-",
+					"linewidth.errorbar": 8,
+					"elinewidth.errorbar": 8,
 					"capsize.errorbar": 6,
 					"color": {
 						"@noise.parameters@": {

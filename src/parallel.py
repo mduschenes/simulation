@@ -1091,7 +1091,7 @@ class Parallel(object):
 			iterations = range(size)
 		elif isinstance(iterations,(tuple,list)):
 			size,repeat = iterations
-			iterations = product(range(size),repeat=repeat)
+			iterations = itertools.product(range(size),repeat=repeat)
 
 		with multiprocessing.Pool(processes=self.processes) as parallel:
 

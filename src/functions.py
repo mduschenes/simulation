@@ -127,7 +127,7 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 				info,size = function(data),data.size
 				data = data[keys['y']].mean()
 				data = abs(data)
-				# data = data/np.log(size*info.dimension)
+				# data = data/np.log(size*info.size)
 				return data
 			apply[attr] = application
 
@@ -142,8 +142,8 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 				info,size = function(data),data[attr].size
 				data = data[keys['yerr']].mean() - data[keys['y']].mean()**2
 				data = abs(data)
-				data = np.sqrt(data/(size*info.dimension))
-				# data = data/np.log(size*info.dimension)
+				data = np.sqrt(data/(size*info.size))
+				# data = data/np.log(size*info.size)
 				return data
 			apply[attr] = application
 
@@ -182,11 +182,11 @@ def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**setting
 
 		attr = keys['y']
 		data[attr] = y
-		data[attr] = data[attr]/np.log(size*info.dimension)
+		data[attr] = data[attr]/np.log(size*info.size)
 
 		attr = keys['yerr']
 		data[attr] = yerr
-		data[attr] = data[attr]/np.log(size*info.dimension)
+		data[attr] = data[attr]/np.log(size*info.size)
 
 		data = dataframe(data)
 
@@ -301,7 +301,7 @@ def func_sample_wrapper_x(data,*args,function=None,**kwargs):
 
 	info = function(data)
 
-	data = data['x']*info.dimension
+	data = data['x']*info.size
 
 	return data
 
@@ -465,7 +465,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key])
 		data = abs(data)
-		data = data/log(info.dimension)
+		data = data/log(info.size)
 		return data
 	funcs[attr] = func
 
@@ -482,7 +482,7 @@ def func_information_function(data,*args,function=None,**kwargs):
 		info,size = function(attr,key,data),data[attr][key].size
 		data = mean(data[attr][key]) - mean(data[attr[0]][key])**2
 		data = abs(data)
-		data = sqrt(data/(size*info.dimension))/log(size)
+		data = sqrt(data/(size*info.size))/log(size)
 		return data
 	if attr:
 		funcs[attr] = func
@@ -509,7 +509,7 @@ def func_information(data,*args,**kwargs):
 
 	info = function(model)
 
-	func = info.probability
+	func = info.func
 
 	data = information(func,data)
 
@@ -900,32 +900,25 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
 	info = function(data)
 
-	func = info.probability
-
 	def process(args,kwargs,data):
 
 		x,y,xerr,yerr = args
 
-		kwargs.update({})
+		x = info.data
+		func = info.func
 
-		indices = (y != 0) & (~is_nan(y)) if y is not None else None
+		x = x
+		y = func(x)
 
-		if not indices.any():
-			return x,y,xerr,yerr
+		x = np.array(x)
+		y = np.array(y)
 
-		x = x[indices] if x is not None else None
-		y = y[indices] if y is not None else None
-		xerr = xerr[indices] if xerr is not None else None
-		yerr = yerr[indices] if yerr is not None else None
+		xerr = None
+		yerr = None
 
 		return x,y,xerr,yerr
 
 	x,y,xerr,yerr = process(args,kwargs,data)
-
-	x = x
-	y = func(x)
-	xerr = None
-	yerr = None
 
 	attr = 'errorbar'
 	kwarg = 'label'
@@ -934,20 +927,7 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 			'texify':dict(usetex=True),
 			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
 			}
-		string = ''
-		for prop in ['set_%sscale'%(axes) for axes in AXES]:
-			if not kwargs.get(prop):
-				continue
-			values = [value for value in search(kwargs.get(prop)) if value]
-			if (len(set(value.get('value') for value in values)) == 1) or not any(value.get('value') not in [None,'linear'] or value.get('obj') not in [None] for value in values):
-				continue
-			values = [value.get('value') for value in values if value.get('obj')==kwargs[attr].get('obj')]
-			if not values:
-				continue
-			string = '$(d-1)(1-p)^{d-2}$' if all(value=='linear' for value in values) else '$(d-1)(1-p)^{d-2}$'
-			string = '~ %s'%(string)
-			break
-
+		string = '$p^{ls-1}(1-p)^{(d-l)s-1}$'
 		string = texify(string,**options['texify'])
 		kwargs[attr][kwarg] = string
 

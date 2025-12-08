@@ -11,15 +11,15 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entanglement,purity,similarity,divergence
-from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange
+from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange,logspace,linspace
 from src.utils import tensor,matrix,network,mps,contexts
 from src.utils import contraction,gradient_contraction
-from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel
+from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel,logprod
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,binom
+from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,exp10,binom,probability
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
-from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype
+from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary,is_naninf
+from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype,anything,allthing
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -33,7 +33,7 @@ from src.parameters import Parameters,Parameter
 
 delim = '.'
 separ = '_'
-memory = lambda size:size<2**20
+memory = lambda size,limit=2**20:size<limit if isinstance(size,numbers) else allthing(size<limit)
 
 def measurement(data,*args,function=None,**kwargs):
 	'''
@@ -62,59 +62,51 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {
 			'D': max(model.D for model in models),
 			'N': max(model.N for model in models),
-			'noise.parameters':[model.parameters() for model in models if not model.unitary and not model.hermitian][0] if model else 0,
+			'noise.parameters':[model.parameters() if model.parameters() is None or model.parameters().item() != 0 else None for model in models if not model.unitary and not model.hermitian][0] if model else None,
+			'operator': model.measure.operator if model is not None else None,
 			}
-
-		function = model.measure.operator if model is not None and function is None else function if function is not None else None
 
 	info = Dictionary()
 
 	if function is None:
-		info.dimension = data['D']**(1*data['N'])
+		info.dimension = data['D']
+		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = 1
+		info.env = 1 if data['noise.parameters'] is not None else 1
 		info.locality = 1
 		info.scale = 1
-		info.constant = 0
 	elif function in ['array']:
-		info.dimension = data['D']**(2*data['N'])
+		info.dimension = data['D']
+		info.size = data['D']**(2*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N'])
+		info.env = data['D']**(1*data['N']) if data['noise.parameters'] is not None else 1
 		info.locality = 1
-		info.scale = info.dim
-		info.constant = 0
+		info.scale = data['D']**(1*data['N'])
 	elif function in ['state']:
-		info.dimension = data['D']**(1*data['N'])
+		info.dimension = data['D']
+		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N'])
+		info.env = data['D']**(1*data['N']) if data['noise.parameters'] is not None else 1
 		info.locality = 1
 		info.scale = 1
-		info.constant = 0
 	else:
-		info.dimension = data['D']**(1*data['N'])
+		info.dimension = data['D']
+		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
+		info.env = 1 if data['noise.parameters'] is not None else 1
 		info.env = 1
 		info.locality = 1
 		info.scale = 1
-		info.constant = 0
 
-	try:
-		info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env)
-	except:
-		pass
+	info.data = logspace(
+		min(0,(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-3)/log(info.dimension)),
+		min(1,-log(info.dim)/log(info.dimension)),
+		num=1000,base=info.dimension
+		)
 
-	def func(x,info,*args,**kwargs):
+	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else 1
 
-		x = ((info.scale*x)**(info.locality*info.env-1))*((1-info.scale*x)**((info.dim-info.locality)*info.env-1))
-
-		if info.constant:
-			x *= info.constant
-		else:
-			x = (x-x.min())/(x.max()-x.min())
-
-		return x
-
-	info.probability = func
+	info.func = lambda x,info,*args,**kwargs: probability(x=x*info.scale,function='beta',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
 
 	for key in info:
 		if isinstance(info[key],dataframes):
