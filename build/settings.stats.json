@@ -53,9 +53,9 @@
 		"state.operator":["haar"],
 		"state.local":[false],
 		"state.tensor":[true],
+		"state.architecture":["array"],
 		"state.D":[2],
 		"state.ndim":[2],
-		"state.architecture":[null],
 		"state.parameters":[null],
 
 		"callback.options":[{"scheme":"svd","S":null,"eps":null,"iters":null,"parameters":null,"method":null,"initialize":null,"metric":null,"seed":null}],
@@ -143,11 +143,12 @@
 	"M":1,
 	"D":2,
 	"d":1,
-	"local":true,
-	"tensor":true,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
+	"local":true,
+	"tensor":true,
+	"architecture":null,
 	"seed":null
 	},
 "state": {
@@ -159,7 +160,7 @@
 	"D":2,
 	"ndim":2,
 	"local":null,
-	"tensor":true,	
+	"tensor":true,
 	"architecture":null,
 	"seed":null	
 	},
@@ -276,8 +277,6 @@
 		"sample.array.log":"measure.sample",
 		"sample.state.linear":"measure.sample",
 		"sample.state.log":"measure.sample",
-		"sample.array.process":"measure.sample",
-		"sample.state.process":"measure.sample",
 		"sample.array.information":"measure.sample",
 		"sample.state.information":"measure.sample",
 
@@ -313,10 +312,44 @@
 		"sample.array.log":{"attribute":["tensor","array"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
 		"sample.state.linear":{"attribute":["state"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
 		"sample.state.log":{"attribute":["state"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
-		"sample.array.process":{"attribute":["tensor","array"],"function":"src.functions.func_process","settings":{}},
-		"sample.state.process":{"attribute":["state"],"function":"src.functions.func_process","settings":{}},
 		"sample.array.information":{"attribute":["tensor","array"],"function":"src.functions.func_information","settings":{}},
-		"sample.state.information":{"attribute":["state"],"function":"src.functions.func_information","settings":{}},
+		"sample.state.information":{"attribute":["state"],"function":"src.functions.func_information","settings":{},
+			"data":{
+				"cls":{
+					"model":"src.quantum.Operators",
+					"state":"src.quantum.State"
+					},
+				"model": {
+					"data":{
+						"measure":{
+							"operator":"measure","where":"i","string":"measure",
+							"parameters":null,"variable":false,"ndim":2,"conj":true,"seed":null
+						}
+					},
+					"local":true,
+					"tensor":true,
+					"space":"spin",
+					"time":"linear",
+					"lattice":"square",
+					"architecture":"array",
+					"configuration":{
+						"key":null,
+						"options":{}
+						}
+					},
+				"state" : {
+					"operator":"state",
+					"where":null,
+					"string":"zero",
+					"parameters":null,
+					"D":2,
+					"ndim":2,
+					"architecture":null,
+					"local":false,
+					"tensor":true
+					}
+			}
+		},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":0.5},"entanglement.renyi":{"where":0.5},
 		"entangling.quantum":{"where":0.5},"entangling.classical":{"where":0.5},"entangling.renyi":{"where":0.5},
 		"mutual.quantum":{"where":0.5},"mutual.measure":{"where":0.5},"mutual.classical":{"where":0.5},"mutual.renyi":{"where":0.5},
@@ -344,8 +377,6 @@
 		"sample.array.log":"measure.sample",
 		"sample.state.linear":"measure.sample",
 		"sample.state.log":"measure.sample",
-		"sample.array.process":"measure.sample",
-		"sample.state.process":"measure.sample",
 		"sample.array.information":"measure.sample",
 		"sample.state.information":"measure.sample",
 
@@ -381,8 +412,6 @@
 		"sample.array.log":{"attribute":["tensor","array"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
 		"sample.state.linear":{"attribute":["state"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"linear","base":10,"range":[0,1]}},
 		"sample.state.log":{"attribute":["state"],"function":"src.functions.func_histogram","settings":{"bins":1000,"scale":"log","base":10,"range":[1e-20,1e0]}},
-		"sample.array.process":{"attribute":["tensor","array"],"function":"src.functions.func_process","settings":{}},
-		"sample.state.process":{"attribute":["state"],"function":"src.functions.func_process","settings":{}},
 		"sample.array.information":{"attribute":["tensor","array"],"function":"src.functions.func_information","settings":{}},
 		"sample.state.information":{"attribute":["state"],"function":"src.functions.func_information","settings":{}},
 		"entanglement.quantum":{"where":0.5},"entanglement.classical":{"where":1.0},"entanglement.renyi":{"where":0.5},

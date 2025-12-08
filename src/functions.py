@@ -514,7 +514,7 @@ def func_information(data,*args,**kwargs):
 	data = information(func,data)
 
 	key = [None,'error']
-	value = mean(data,axis=-1),mean(data**2,axis=-1)
+	value = [*mean(data,axis=-1)],[*mean(data**2,axis=-1)]
 
 	data = dict(zip(key,value))
 
