@@ -86,7 +86,7 @@
 						"func": "src.functions.func_plot_histogram",
 						"args": [],
 						"kwargs" : {
-							"function":"array",
+							"function": "array",
 							"settings":{
 								"func":"lstsq","intercept":true,"parameters":null,
 								"bootstrap":{"size":5,"random":"gaussian","seed":123},
@@ -145,11 +145,11 @@
 							"P"
 						]
 					},
-					"alpha.errorbar": 0.8,
+					"alpha.errorbar": 0.9,
 					"marker.errorbar": "",
 					"markersize.errorbar": 10,
 					"linestyle.errorbar": "-",
-					"linewidth.errorbar": 8,
+					"linewidth.errorbar": 12,
 					"elinewidth.errorbar": 8,
 					"capsize.errorbar": 6,
 					"color": {
@@ -500,7 +500,7 @@
 						"function": {
 							"func": "src.functions.func_sample_function",
 							"args": [],
-							"kwargs": {"function":"state"},
+							"kwargs": {"function": "state"}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -534,7 +534,7 @@
 						"func": "src.functions.func_plot_histogram",
 						"args": [],
 						"kwargs" : {
-							"function":"state",
+							"function": "state",
 							"settings":{
 								"func":"lstsq","intercept":true,"parameters":null,
 								"bootstrap":{"size":5,"random":"gaussian","seed":123},
@@ -593,11 +593,11 @@
 							"P"
 						]
 					},
-					"alpha.errorbar": 0.8,
+					"alpha.errorbar": 0.9,
 					"marker.errorbar": "",
 					"markersize.errorbar": 10,
 					"linestyle.errorbar": "-",
-					"linewidth.errorbar": 8,
+					"linewidth.errorbar": 12,
 					"elinewidth.errorbar": 8,
 					"capsize.errorbar": 6,
 					"color": {
@@ -1481,7 +1481,7 @@
 								"func":"src.functions.func_func_fit",
 								"args":[],
 								"kwargs":{
-									"function":"state",
+									"function": "state",
 									"x":"N","xerr":null,"y":"sample.state.information","yerr":"sample.state.information.error",
 									"settings":{
 										"func":"lstsq","intercept":true,"parameters":null,
@@ -1586,7 +1586,7 @@
 								"func":"src.functions.func_func_fit",
 								"args":[],
 								"kwargs":{
-									"function":"array",
+									"function": "array",
 									"x":"N","xerr":null,"y":"sample.array.information","yerr":"sample.array.information.error",
 									"settings":{
 										"func":"lstsq","intercept":true,"parameters":null,
