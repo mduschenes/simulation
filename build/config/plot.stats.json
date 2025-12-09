@@ -88,15 +88,10 @@
 						"kwargs" : {
 							"function": "array",
 							"settings":{
-								"func":"lstsq","intercept":true,"parameters":null,
-								"bootstrap":{"size":5,"random":"gaussian","seed":123},
-								"preprocess":"log10.log10",
-								"postprocess":"exp10.exp10",
 								"kwargs":{
-									"process":true,"standardize":true,
-									"metric":"lstsq",
+									"process":false,"standardize":false,
 									"optimizer":"cg",
-									"iterations":3,
+									"iterations":100,
 									"eps":{"value":1e-20},
 									"value":{"value":1},
 									"uncertainty":true,
@@ -536,15 +531,10 @@
 						"kwargs" : {
 							"function": "state",
 							"settings":{
-								"func":"lstsq","intercept":true,"parameters":null,
-								"bootstrap":{"size":5,"random":"gaussian","seed":123},
-								"preprocess":"log10.log10",
-								"postprocess":"exp10.exp10",
 								"kwargs":{
-									"process":true,"standardize":true,
-									"metric":"lstsq",
+									"process":false,"standardize":false,
 									"optimizer":"cg",
-									"iterations":3,
+									"iterations":100,
 									"eps":{"value":1e-20},
 									"value":{"value":1},
 									"uncertainty":true,

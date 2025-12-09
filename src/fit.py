@@ -201,7 +201,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 
 	defaults = {
 		'metric':'lstsq',
-		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
+		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,*([yerr.shape] if yerr is not None else []))),
 		}
 	setter(kwargs,defaults,delimiter=delim,default=False)
 
@@ -240,7 +240,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if _xerr is not None:
 		i = 0
 		if _xerr.ndim == 1:
-			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim <= 1 else diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_xerr = absolute(_xerr*(1/_jac)) if _jac.ndim == 1 else absolute(_xerr[:,None]*(1/_jac))
 		elif _xerr.ndim == 2:
 			if invgrad[i][i].ndim > 2:
@@ -251,7 +251,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
-			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim <= 1 else diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_yerr = absolute(_yerr*(1/_jac)) if _jac.ndim == 1 else absolute(_yerr[:,None]*(1/_jac))
 		elif _yerr.ndim == 2:
 			if invgrad[i][i].ndim > 2:
@@ -292,6 +292,8 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_covariance = lstsq(dot(x.T,x),dot(x.T,sqrt(yerr)))
 			_covariance = einsum('i...,j...->ij...',_covariance,_covariance)
 		# _grad = dot(dot(x.T,x),_parameters) - dot(y.T,x)
+
+		_grad = _grad if _grad is None else array([[_grad]]) if _grad.ndim == 0 else array([_grad]) if _grad.ndim == 1 else _grad
 
 		if _covariance is None or _grad is None:
 			_yerr = None
@@ -340,6 +342,8 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_y = func(_parameters,_x)
 		_grad = grad(_parameters,_x)
 
+		_grad = _grad if _grad is None else array([[_grad]]) if _grad.ndim == 0 else array([_grad]) if _grad.ndim == 1 else _grad
+
 		if _covariance is None or _grad is None:
 			pass
 		elif _covariance.ndim == 1:
@@ -361,10 +365,11 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	_other = {'1-r':r}
 
 	_invgrad = gradtransform(_x,_y,_parameters)
+
 	if _xerr is not None:
 		i = 0
 		if _xerr.ndim == 1:
-			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim <= 1 else diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_xerr = absolute(_xerr*(1/_jac)) if _jac.ndim == 1 else absolute(_xerr[:,None]*(1/_jac))
 		elif _xerr.ndim == 2:
 			if invgrad[i][i].ndim > 2:
@@ -374,7 +379,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
-			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim <= 1 else diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_yerr = absolute(_yerr*(1/_jac)) if _jac.ndim == 1 else absolute(_yerr[:,None]*(1/_jac))
 		elif _yerr.ndim == 2:
 			if invgrad[i][i].ndim > 2:
@@ -385,7 +390,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if _covariance is not None:
 		i = 2
 		if _covariance.ndim == 1:
-			_jac = diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
+			_jac = _invgrad[i][i] if _invgrad[i][i].ndim <= 1 else diag(_invgrad[i][i]) if _invgrad[i][i].ndim == 2 else einsum('iuiu->iu',_invgrad[i][i])
 			_covariance = absolute(_jac*_covariance)
 		elif _covariance.ndim == 2:
 			if invgrad[i][i].ndim > 2:
@@ -478,7 +483,7 @@ def curve_fit(func,x,y,**kwargs):
 		'alpha':1e-10 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-20,
 		'beta':1e-10 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-20,
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
-		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
+		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,*([covariance.shape] if covariance is not None else []))),
 		}
 	setter(kwargs,defaults,delimiter=delim,default=False)
 

@@ -814,14 +814,23 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,
 			def func(parameters,x,info=info):
 				info.env = parameters
 				return info.func(x)
-			objective = lambda parameters,x,y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
 
-			model = scipy.optimize.leastsq
-			parameters = info.env
-			options = dict()
+			# indices = y>epsilon()
+			# x,y = array(x[indices]),array(y[indices])
+			# parameters = array([float(info.env)])
+
+			# objective = lambda parameters,x=x,y=y,func=func: addition(absolute(func(parameters,x)-y)**2)/addition(absolute(y)**2)
+			# options = {**dict(func=objective,parameters=parameters),**settings}
+
+			# func,y,parameters,yerr,cov,other = fit(x,y,**options)
 
 			indices = y>epsilon()
 			x,y = x[indices],y[indices]
+			parameters = info.env
+
+			model = scipy.optimize.leastsq
+			objective = lambda parameters,x,y=y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
+			options = dict()
 
 			parameters,status = model(objective,parameters,(x,y),**options)
 
