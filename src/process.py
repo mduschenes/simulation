@@ -692,50 +692,13 @@ def find(dictionary,verbose=None):
 
 		keys.update(key)
 
-	return keys
-
 	for name in keys:
 
 		for attr in keys[name]:
 
 			if attr in other:
 
-				if isinstance(keys[name][attr],dict):
-					if attr in keys[name][attr]:
-						keys[name][attr] = {prop: keys[name][attr][prop] if (prop != attr) or (keys[name][attr][prop] is not None) else default for prop in keys[name][attr]}
-					else:
-						keys[name][attr] = {prop: keys[name][attr][prop] if keys[name][attr][prop] is not None else default for prop in keys[name][attr]}
-				elif isinstance(keys[name][attr],str):
-					keys[name][attr] = dict((parser(keys[name][attr],separator=separator,default=default),))
-				elif keys[name][attr] is not None:
-					keys[name][attr] = {attr: dict((parser(prop,separator=separator,default=default) for prop in keys[name][attr]))}
-				else:
-					keys[name][attr] = {attr:{}}
-
-
-				if attr in keys[name][attr]:
-					if isinstance(keys[name][attr][attr],dict):
-						keys[name][attr][attr] = {prop: keys[name][attr][attr][prop] if keys[name][attr][attr][prop] is not None else default for prop in keys[name][attr][attr]}
-					elif isinstance(keys[name][attr][attr],str):
-						keys[name][attr][attr] = dict((parser(keys[name][attr][attr],separator=separator,default=default)),)
-					else:
-						keys[name][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[name][attr][attr]))
-				else:
-					keys[name][attr] = {attr: keys[name][attr]}
-
 				setter(keys[name][attr],defaults,delimiter=delim,default=False)
-
-			else:
-				if not keys[name][attr]:
-					keys[name][attr] = default
-				elif isinstance(keys[name][attr],dict):
-					keys[name][attr] = keys[name][attr][list(keys[name][attr])[0]]
-				elif isinstance(keys[name][attr],str):
-					keys[name][attr] = keys[name][attr] if keys[name][attr] not in [''] else default
-				else:
-					keys[name][attr] = keys[name][attr][0]
-
-	keys = copy(keys)
 
 	return keys
 

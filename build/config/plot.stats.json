@@ -66,10 +66,8 @@
 							"one": false
 						},
 						"legend": {
-							"include": {
-								"M": null
-							},
-							"exclude": {}
+							"include": false,
+							"exclude": null
 						},
 						"sort": {
 							"noise.parameters": null,
@@ -87,7 +85,29 @@
 					"function.errorbar": {
 						"func": "src.functions.func_plot_histogram",
 						"args": [],
-						"kwargs" : {"function":"array"}
+						"kwargs" : {
+							"function":"array",
+							"settings":{
+								"func":"lstsq","intercept":true,"parameters":null,
+								"bootstrap":{"size":5,"random":"gaussian","seed":123},
+								"preprocess":"log10.log10",
+								"postprocess":"exp10.exp10",
+								"kwargs":{
+									"process":true,"standardize":true,
+									"metric":"lstsq",
+									"optimizer":"cg",
+									"iterations":3,
+									"eps":{"value":1e-20},
+									"value":{"value":1},
+									"uncertainty":true,
+									"alpha":1e-4,"beta":1e-6,
+									"c1":1e-2,"c2":1e-1,"maxiter":2000,
+									"path":null,
+									"verbose":false
+								}
+							}
+
+						}
 					},
 					"alpha": {
 						"@M@": [
@@ -145,7 +165,19 @@
 							"type": "value"
 						}
 					},
-					"color.errorbar": "black",
+					"color.errorbar": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
 					"ecolor.errorbar": "black",
 					"zorder.errorbar": 1000
 				}
@@ -345,16 +377,16 @@
 			},
 			"legend": {
 				"set_title": "%s",
-				"title_fontsize": 25,
-				"fontsize": 25,
+				"title_fontsize": 45,
+				"fontsize": 45,
 				"get_title": {
 					"ha": "center"
 				},
 				"prop": {
-					"size": 25
+					"size": 45
 				},
 				"texify": {},
-				"markerscale": 1.2,
+				"markerscale": 1,
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": "upper right",
@@ -468,7 +500,28 @@
 						"function": {
 							"func": "src.functions.func_sample_function",
 							"args": [],
-							"kwargs": {"function": "state"}
+							"kwargs": {
+								"function":"state",
+								"settings":{
+									"func":"lstsq","intercept":true,"parameters":null,
+									"bootstrap":{"size":5,"random":"gaussian","seed":123},
+									"preprocess":"log10.log10",
+									"postprocess":"exp10.exp10",
+									"kwargs":{
+										"process":true,"standardize":true,
+										"metric":"lstsq",
+										"optimizer":"cg",
+										"iterations":3,
+										"eps":{"value":1e-20},
+										"value":{"value":1},
+										"uncertainty":true,
+										"alpha":1e-4,"beta":1e-6,
+										"c1":1e-2,"c2":1e-1,"maxiter":2000,
+										"path":null,
+										"verbose":false
+									}
+								}
+							}
 						},
 						"application": "agg",
 						"analysis": {},
@@ -482,10 +535,8 @@
 							"one": false
 						},
 						"legend": {
-							"include": {
-								"M": null
-							},
-							"exclude": {}
+							"include": false,
+							"exclude": null
 						},
 						"sort": {
 							"noise.parameters": null,
@@ -561,7 +612,19 @@
 							"type": "value"
 						}
 					},
-					"color.errorbar": "black",
+					"color.errorbar": {
+						"@noise.parameters@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": null,
+								"scale": "log",
+								"alpha": 1
+							},
+							"type": "value"
+						}
+					},
 					"ecolor.errorbar": "black",
 					"zorder.errorbar": 1000
 				}
@@ -761,16 +824,16 @@
 			},
 			"legend": {
 				"set_title": "%s",
-				"title_fontsize": 25,
-				"fontsize": 25,
+				"title_fontsize": 45,
+				"fontsize": 45,
 				"get_title": {
 					"ha": "center"
 				},
 				"prop": {
-					"size": 25
+					"size": 45
 				},
 				"texify": {},
-				"markerscale": 1.2,
+				"markerscale": 1,
 				"handlelength": 3,
 				"framealpha": 0.8,
 				"loc": "upper right",
@@ -1413,28 +1476,30 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.state.information.error":{
+							"sample.state.information.error": {
 								"func":"src.functions.func_func_fit",
 								"args":[],
 								"kwargs":{
-									"x":"N","xerr":null,"y":"sample.state.information","yerr":"sample.state.information.error",
 									"function":"state",
-									"func":"lstsq","intercept":true,"parameters":null,
-									"bootstrap":{"size":5,"random":"gaussian","seed":123},
-									"preprocess":"log10.log10",
-									"postprocess":"exp10.exp10",
-									"kwargs":{
-										"process":true,"standardize":true,
-										"metric":"lstsq",
-										"optimizer":"cg",
-										"iterations":3,
-										"eps":{"value":1e-20},
-										"value":{"value":1},
-										"uncertainty":true,
-										"alpha":1e-4,"beta":1e-6,
-										"c1":1e-2,"c2":1e-1,"maxiter":2000,
-										"path":null,
-										"verbose":false
+									"x":"N","xerr":null,"y":"sample.state.information","yerr":"sample.state.information.error",
+									"settings":{
+										"func":"lstsq","intercept":true,"parameters":null,
+										"bootstrap":{"size":5,"random":"gaussian","seed":123},
+										"preprocess":"log10.log10",
+										"postprocess":"exp10.exp10",
+										"kwargs":{
+											"process":true,"standardize":true,
+											"metric":"lstsq",
+											"optimizer":"cg",
+											"iterations":3,
+											"eps":{"value":1e-20},
+											"value":{"value":1},
+											"uncertainty":true,
+											"alpha":1e-4,"beta":1e-6,
+											"c1":1e-2,"c2":1e-1,"maxiter":2000,
+											"path":null,
+											"verbose":false
+										}
 									}
 								}
 							}
@@ -1516,28 +1581,30 @@
 						"func": {},
 						"process": {},
 						"analysis": {
-							"sample.array.information.error":{
+							"sample.array.information.error": {
 								"func":"src.functions.func_func_fit",
 								"args":[],
 								"kwargs":{
-									"x":"N","xerr":null,"y":"sample.array.information","yerr":"sample.array.information.error",
 									"function":"array",
-									"func":"lstsq","intercept":true,"parameters":null,
-									"bootstrap":{"size":5,"random":"gaussian","seed":123},
-									"preprocess":"log10.log10",
-									"postprocess":"exp10.exp10",
-									"kwargs":{
-										"process":true,"standardize":true,
-										"metric":"lstsq",
-										"optimizer":"cg",
-										"iterations":3,
-										"eps":{"value":1e-20},
-										"value":{"value":1},
-										"uncertainty":true,
-										"alpha":1e-4,"beta":1e-6,
-										"c1":1e-2,"c2":1e-1,"maxiter":2000,
-										"path":null,
-										"verbose":false
+									"x":"N","xerr":null,"y":"sample.array.information","yerr":"sample.array.information.error",
+									"settings":{
+										"func":"lstsq","intercept":true,"parameters":null,
+										"bootstrap":{"size":5,"random":"gaussian","seed":123},
+										"preprocess":"log10.log10",
+										"postprocess":"exp10.exp10",
+										"kwargs":{
+											"process":true,"standardize":true,
+											"metric":"lstsq",
+											"optimizer":"cg",
+											"iterations":3,
+											"eps":{"value":1e-20},
+											"value":{"value":1},
+											"uncertainty":true,
+											"alpha":1e-4,"beta":1e-6,
+											"c1":1e-2,"c2":1e-1,"maxiter":2000,
+											"path":null,
+											"verbose":false
+										}
 									}
 								}
 							}

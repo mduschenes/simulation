@@ -90,6 +90,20 @@
                                 "type": "value"
                             }
                         },
+                        "ax.bar.color.errorbar": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis_r",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "values": null,
+                                "type": "value"
+                            }
+                        },
                         "ax.bar.alpha": {
                             "@N@": [
                                 0.5
@@ -236,7 +250,7 @@
                             ],
                             "size": 45
                         },
-                        "ax.legend.set_label": false,
+                        "ax.legend.set_label": true,
                         "style.share.ax.legend": true,
                         "style.share.ax.set_title": "top",
                         "style.share.ax.set_xlabel": "bottom",
@@ -310,6 +324,20 @@
                             }
                         },
                         "ax.bar.color": {
+                            "@N@": {
+                                "value": {
+                                    "value": null,
+                                    "color": "viridis_r",
+                                    "values": [],
+                                    "norm": null,
+                                    "scale": "linear",
+                                    "alpha": 1
+                                },
+                                "values": null,
+                                "type": "value"
+                            }
+                        },
+                        "ax.bar.color.errorbar": {
                             "@N@": {
                                 "value": {
                                     "value": null,
@@ -490,7 +518,7 @@
                             ],
                             "size": 45
                         },
-                        "ax.legend.set_label": false,
+                        "ax.legend.set_label": true,
                         "style.share.ax.legend": true,
                         "style.share.ax.set_title": "top",
                         "style.share.ax.set_xlabel": "bottom",

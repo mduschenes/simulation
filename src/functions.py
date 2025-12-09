@@ -97,7 +97,7 @@ def func_stat_bootstrap(data,func=None,x=None,y=None,xerr=None,yerr=None,**kwarg
 
 	return data
 
-def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,**settings):
+def func_func_fit(data,function=None,x=None,y=None,xerr=None,yerr=None,settings=None,**kwargs):
 
 	keys = dict(zip(['x','y','xerr','yerr'],[f'{x}',f'{y}',f'{x}.error',f'{y}.error']))
 
@@ -798,102 +798,7 @@ def func_divergence_func_err(data):
 	out = 0*np.array(data['M'])
 	return out
 
-
-def func_fit_histogram(args,kwargs,data,*arguments,function=None,**keywords):
-
-	def process(args,kwargs,data):
-
-		x,y,xerr,yerr = args
-
-		indices = (y != 0) & (~is_nan(y)) if y is not None else None
-
-		if not indices.any():
-			return x,y,xerr,yerr
-
-		x = x[indices] if x is not None else None
-		y = y[indices] if y is not None else None
-		xerr = xerr[indices] if xerr is not None else None
-		yerr = yerr[indices] if yerr is not None else None
-
-		# window = lambda size: np.ones(size)/size
-		# options = dict(mode='same')
-		# size = max(10,len(y)//100)
-		# y = np.convolve(y,window(size),**options)
-
-		data['dim'] = data['D']**data['N']
-
-		return x,y,xerr,yerr
-
-	x,y,xerr,yerr = process(args,kwargs,data)
-
-	func = lambda parameters,x: parameters[0]*data['dim']*np.exp(-parameters[1]*data['dim']*x)
-	delta = lambda parameters,x: np.array([np.exp(-parameters[1]*d*x),-x*parameters[0]*d*np.exp(-parameters[1]*d*x)])
-
-	model = scipy.optimize.leastsq
-	objective = lambda parameters,x,y,func=func,delta=delta: np.abs(func(parameters,x)-y)
-	error = lambda parameters,x,y,err,func=func,delta=delta: np.einsum('i...,j...,ij->...',*[delta(parameters,x)]*2,err)
-	parameters = [1,1]
-	options = dict(full_output=True)
-
-	if len(x)>1 and len(y)>1:
-		parameters,err,info,msg,code = model(objective,parameters,(x,y),**options)
-	else:
-		parameters,err,info,msg,code = parameters,None,None,None,None
-
-	x = x
-	y = func(parameters,x)
-	xerr = None
-	yerr = None#error(parameters,x,y,err)
-
-	# x,y,xerr,yerr = x[::10 if len(x)>10*10 else 1],y[::10 if len(y)>10*10 else 1],xerr,yerr
-
-	attr = 'errorbar'
-	kwarg = 'label'
-	if kwargs.get(attr) and kwargs[attr].get(kwarg):
-		options = {
-			'texify':dict(usetex=True),
-			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
-			}
-		string = ''
-		for prop in ['set_%sscale'%(axes) for axes in AXES]:
-			if not kwargs.get(prop):
-				continue
-			values = [value for value in search(kwargs.get(prop)) if value]
-			if (len(set(value.get('value') for value in values)) == 1) or not any(value.get('value') not in [None,'linear'] or value.get('obj') not in [None] for value in values):
-				continue
-			values = [value.get('value') for value in values if value.get('obj')==kwargs[attr].get('obj')]
-			if not values:
-				continue
-			string = 'Linear' if all(value=='linear' for value in values) else 'Log'
-			string = '~(\\textrm{%s})'%(string)
-			break
-
-		strings = '\n'.join([
-				texify('%s = %s'%(
-				[r'\alpha',r'\beta'][i],
-				scinotation(parameters[i],error=err[i][i] if err is not None else None,**options['scinotation'])),
-				**options['texify']
-				)
-			for i in range(len(parameters))])
-		# kwargs[attr][kwarg] = ('%s%s'%(kwargs[attr][kwarg],string) + '\n' + strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
-		# kwargs[attr][kwarg] = strings
-		kwargs[attr][kwarg] = '%s%s%s%s'%(DELIMITER,kwargs[attr][kwarg].replace('$',''),DELIMITER,strings) if isinstance(kwargs[attr].get(kwarg),str) else strings
-
-	attr = 'legend'
-	kwarg = 'set_title'
-	if kwargs.get(attr):
-		for value in search(kwargs[attr]):
-			if not value or not value.get(kwarg):
-				continue
-			string = 'P(p) = \\alpha D^{N} e^{-\\beta D^{N} p}'
-			# value[kwarg] = '%s ~:~ %s'%(value[kwarg],string) if isinstance(value.get(kwarg),str) and not value.get(kwarg).replace('$','').endswith(string) else value[kwarg]
-			value[kwarg] = '%s'%(string) if string else '' #if isinstance(value.get(kwarg),str) and not value.get(kwarg).replace('$','').endswith(string) else value[kwarg]
-			value[kwarg] = texify(value[kwarg],**options['texify'])
-
-	return x,y,xerr,yerr
-
-
-def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
+def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,**keywords):
 
 	def function(data,*args,function=function,**kwargs):
 		return measurement(data,*args,function=function,**kwargs)
@@ -904,11 +809,28 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
 		x,y,xerr,yerr = args
 
-		x = info.data
-		func = info.func
+		def func(parameters,x,info=info):
+			info.env = parameters
+			return info.func(x)
+		objective = lambda parameters,x,y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
 
-		x = x
-		y = func(x)
+		model = scipy.optimize.leastsq
+		parameters = info.env
+		options = dict()
+
+		indices = y>epsilon()
+		x,y = x[indices],y[indices]
+
+		parameters,status = model(objective,parameters,(x,y),**options)
+
+		x = info.data
+		y = func(parameters,x)
+
+		# x = info.data
+		# func = info.func
+
+		# x = x
+		# y = func(x)
 
 		x = np.array(x)
 		y = np.array(y)
@@ -922,14 +844,13 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 
 	attr = 'errorbar'
 	kwarg = 'label'
-	if kwargs.get(attr) and kwargs[attr].get(kwarg):
-		options = {
-			'texify':dict(usetex=True),
-			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
-			}
-		string = '$p^{ls-1}(1-p)^{(d-l)s-1}$'
-		string = texify(string,**options['texify'])
-		kwargs[attr][kwarg] = string
+	options = {
+		'texify':dict(usetex=True),
+		'scinotation':dict(decimals=3,scilimits=[0,1],one=False,strip=True)
+		}
+	string = '$%s$'%(scinotation(info.env,**options['scinotation']))
+	string = texify(string,**options['texify'])
+	kwargs[attr][kwarg] = string
 
 	attr = 'legend'
 	kwarg = 'set_title'
@@ -937,7 +858,11 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,**keywords):
 		for value in search(kwargs[attr]):
 			if not value or not value.get(kwarg):
 				continue
-			string = 'P(p)'
+			options = {
+				'texify':dict(usetex=True),
+				'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
+				}
+			string = 's ~:~ P(p) \\sim p^{s-1}(1-p)^{(d-1)s-1}'
 			value[kwarg] = '%s'%(string) if string else ''
 			value[kwarg] = texify(value[kwarg],**options['texify'])
 
