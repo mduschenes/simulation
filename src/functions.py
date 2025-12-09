@@ -809,28 +809,56 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,
 
 		x,y,xerr,yerr = args
 
-		def func(parameters,x,info=info):
-			info.env = parameters
-			return info.func(x)
-		objective = lambda parameters,x,y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
+		if settings is not None:
 
-		model = scipy.optimize.leastsq
-		parameters = info.env
-		options = dict()
+			def func(parameters,x,info=info):
+				info.env = parameters
+				return info.func(x)
+			objective = lambda parameters,x,y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
 
-		indices = y>epsilon()
-		x,y = x[indices],y[indices]
+			model = scipy.optimize.leastsq
+			parameters = info.env
+			options = dict()
 
-		parameters,status = model(objective,parameters,(x,y),**options)
+			indices = y>epsilon()
+			x,y = x[indices],y[indices]
 
-		x = info.data
-		y = func(parameters,x)
+			parameters,status = model(objective,parameters,(x,y),**options)
 
-		# x = info.data
-		# func = info.func
+			x = info.data
+			y = func(parameters,x)
 
-		# x = x
-		# y = func(x)
+			attr = 'errorbar'
+			kwarg = 'label'
+			options = {
+				'texify':dict(usetex=True),
+				'scinotation':dict(decimals=3,scilimits=[0,1],one=False,strip=True)
+				}
+			string = '$%s$'%(scinotation(info.env,**options['scinotation']))
+			string = texify(string,**options['texify'])
+			kwargs[attr][kwarg] = string
+
+			attr = 'legend'
+			kwarg = 'set_title'
+			if kwargs.get(attr):
+				for value in search(kwargs[attr]):
+					if not value or not value.get(kwarg):
+						continue
+					options = {
+						'texify':dict(usetex=True),
+						'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
+						}
+					string = 's ~:~ P(p) \\sim p^{s-1}(1-p)^{(d-1)s-1}'
+					value[kwarg] = '%s'%(string) if string else ''
+					value[kwarg] = texify(value[kwarg],**options['texify'])
+
+		else:
+
+			x = info.data
+			func = info.func
+
+			x = x
+			y = func(x)
 
 		x = np.array(x)
 		y = np.array(y)
@@ -841,30 +869,6 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,
 		return x,y,xerr,yerr
 
 	x,y,xerr,yerr = process(args,kwargs,data)
-
-	attr = 'errorbar'
-	kwarg = 'label'
-	options = {
-		'texify':dict(usetex=True),
-		'scinotation':dict(decimals=3,scilimits=[0,1],one=False,strip=True)
-		}
-	string = '$%s$'%(scinotation(info.env,**options['scinotation']))
-	string = texify(string,**options['texify'])
-	kwargs[attr][kwarg] = string
-
-	attr = 'legend'
-	kwarg = 'set_title'
-	if kwargs.get(attr):
-		for value in search(kwargs[attr]):
-			if not value or not value.get(kwarg):
-				continue
-			options = {
-				'texify':dict(usetex=True),
-				'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
-				}
-			string = 's ~:~ P(p) \\sim p^{s-1}(1-p)^{(d-1)s-1}'
-			value[kwarg] = '%s'%(string) if string else ''
-			value[kwarg] = texify(value[kwarg],**options['texify'])
 
 	return x,y,xerr,yerr
 

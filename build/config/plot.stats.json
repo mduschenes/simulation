@@ -105,8 +105,8 @@
 									"path":null,
 									"verbose":false
 								}
-							}
-
+							},
+							"settings":null
 						}
 					},
 					"alpha": {
@@ -500,28 +500,7 @@
 						"function": {
 							"func": "src.functions.func_sample_function",
 							"args": [],
-							"kwargs": {
-								"function":"state",
-								"settings":{
-									"func":"lstsq","intercept":true,"parameters":null,
-									"bootstrap":{"size":5,"random":"gaussian","seed":123},
-									"preprocess":"log10.log10",
-									"postprocess":"exp10.exp10",
-									"kwargs":{
-										"process":true,"standardize":true,
-										"metric":"lstsq",
-										"optimizer":"cg",
-										"iterations":3,
-										"eps":{"value":1e-20},
-										"value":{"value":1},
-										"uncertainty":true,
-										"alpha":1e-4,"beta":1e-6,
-										"c1":1e-2,"c2":1e-1,"maxiter":2000,
-										"path":null,
-										"verbose":false
-									}
-								}
-							}
+							"kwargs": {"function":"state"},
 						},
 						"application": "agg",
 						"analysis": {},
@@ -554,7 +533,29 @@
 					"function.errorbar": {
 						"func": "src.functions.func_plot_histogram",
 						"args": [],
-						"kwargs" : {"function":"state"}
+						"kwargs" : {
+							"function":"state",
+							"settings":{
+								"func":"lstsq","intercept":true,"parameters":null,
+								"bootstrap":{"size":5,"random":"gaussian","seed":123},
+								"preprocess":"log10.log10",
+								"postprocess":"exp10.exp10",
+								"kwargs":{
+									"process":true,"standardize":true,
+									"metric":"lstsq",
+									"optimizer":"cg",
+									"iterations":3,
+									"eps":{"value":1e-20},
+									"value":{"value":1},
+									"uncertainty":true,
+									"alpha":1e-4,"beta":1e-6,
+									"c1":1e-2,"c2":1e-1,"maxiter":2000,
+									"path":null,
+									"verbose":false
+								}
+							},
+							"settings":null
+						}
 					},
 					"alpha": {
 						"@M@": [
