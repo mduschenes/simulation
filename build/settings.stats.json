@@ -125,8 +125,11 @@
 	"seed":123,
 	"string":"module",
 	"measure":{"string":"povm","operator":"tetrad","D":2,"seed":null,"architecture":"tensor","options":{}},
-	"configuration":{},
-	"options":{}		
+	"configuration":{
+		"key":null,
+		"options":{"layout":"brickwork","attribute":[{"where":"ij","unitary":true},{"where":"i","unitary":false},{"where":"j","unitary":false}]}
+		},
+	"options":{"scheme":"svd"}
 },
 "model":{
 	"data":{
@@ -174,7 +177,7 @@
 	"seed":null,
 	"key":null,
 	"instance":null,
-	"cwd":"data/${TASK}",
+	"cwd":"data",
 	"path":"data.hdf5",
 	"lock":true,
 	"backup":true,
@@ -262,6 +265,9 @@
 		"key":"key","instance":"instance","timestamp":"timestamp",
 		"seed":"seed","seeding":"seeding",
 		"noise.parameters":"noise.parameters",
+		"unitary":"unitary",
+		"noise":"noise",
+		"psi":"psi",
 		"operator":"measure.operator",
 		"S":"options.S",
 		"scheme":"options.scheme",		
@@ -362,6 +368,9 @@
 		"key":"key","instance":"instance","timestamp":"timestamp",
 		"seed":"seed","seeding":"seeding",
 		"noise.parameters":"noise.parameters",
+		"unitary":"unitary",
+		"noise":"noise",
+		"psi":"psi",
 		"operator":"measure.operator",
 		"S":"options.S",
 		"scheme":"options.scheme",		

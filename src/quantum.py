@@ -10048,7 +10048,7 @@ class Callback(System):
 			'discord.quantum','discord.classical','discord.renyi',
 			'spectrum.quantum','spectrum.classical',
 			'rank.quantum','rank.classical',
-			'noise.parameters',
+			'noise.parameters','unitary','noise','psi',
 			]
 
 		if attributes is None:
@@ -10143,7 +10143,7 @@ class Callback(System):
 
 		attributes = {attr:self.attributes[attr]
 			for attr in self.attributes
-			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters']
+			if hasattrs(model,self.attributes[attr],delimiter=delim) or hasattrs(optimizer,self.attributes[attr],delimiter=delim) or attr in ['noise.parameters','unitary','noise','psi']
 			}
 		attr = list(attributes)[0] if attributes else None
 
@@ -10268,6 +10268,43 @@ class Callback(System):
 					value = [model.parameters() for model in value if not model.unitary and not model.hermitian]
 
 					value = value[0] if value else None
+
+				elif attr in ['unitary']:
+
+					value = 'model'
+					if hasattr(model,value):
+						value = getattr(model,value)
+						value = [model for i in value for model in value[i]]
+					else:
+						value = model.data
+						value = [value[i] for i in value]
+
+					value = [model.operator if model.operator is None else model.operator[0] if isinstance(model.operator,iterables) and len(model.operator) else model.operator for model in value if model.unitary]
+
+					value = value[0] if value else None
+
+				elif attr in ['noise']:
+
+					value = 'model'
+					if hasattr(model,value):
+						value = getattr(model,value)
+						value = [model for i in value for model in value[i]]
+					else:
+						value = model.data
+						value = [value[i] for i in value]
+
+					value = [model.operator if model.operator is None else model.operator[0] if isinstance(model.operator,iterables) and len(model.operator) else model.operator for model in value if not model.unitary and not model.hermitian]
+
+					value = value[0] if value else None
+
+				elif attr in ['psi']:
+
+					value = 'state'
+					if hasattr(model,value):
+						value = getattr(model,value)
+						value = (value.operator if value.operator is None else value.operator[0] if isinstance(value.operator,iterables) and len(value.operator) else value.operator)  if value is not None else None
+					else:
+						value = None
 
 				elif hasattrs(model,attributes[attr],delimiter=delim):
 
