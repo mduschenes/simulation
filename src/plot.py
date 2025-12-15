@@ -2282,6 +2282,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
 					nullkwargs.extend([prop])
 
+				prop = 'density'
+				if kwargs[attr].get(prop) is not None:
+					value,values,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+					value,scale = set_scale(value,values=values,scale=scale,base=base)
+					y = value
+
 				prop = 'width'
 				if kwargs[attr].get(prop) is True:
 
@@ -2318,12 +2324,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
 
 					kwargs[attr][prop] = width
-
-				prop = 'density'
-				if kwargs[attr].get(prop) is not None:
-					value,values,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					value,scale = set_scale(value,values=values,scale=scale,base=base)
-					y = value
 
 				y = inplace(y.astype(float),y==0,nan)
 
