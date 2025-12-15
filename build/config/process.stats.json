@@ -559,7 +559,7 @@
 						"ax.set_title.label": "N",
 						"ax.set_xlabel.xlabel": "$\\textrm{Depth} ~~ M$",
 						"ax.set_xlabel.size": 45,
-						"ax.set_ylabel.ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{p_{\\textrm{Data}}-p_{\\textrm{Theory}}}$",
+						"ax.set_ylabel.ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{\\mathcal{D}-P}$",
 						"ax.set_ylabel.size": 45,
 						"ax.set_ylabel.y": null,
 						"ax.set_xscale": {
@@ -915,7 +915,7 @@
 						"ax.errorbar.plots":false,
 						"ax.set_xlabel.xlabel": "$\\textrm{Depth} ~~ M$",
 						"ax.set_xlabel.size": 36,
-						"ax.set_ylabel.ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$",
+						"ax.set_ylabel.ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(P_{\\textrm{Data}},P_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$",
 						"ax.set_ylabel.size": 36,
 						"ax.set_ylabel.y": null,
 						"ax.set_xscale": {

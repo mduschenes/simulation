@@ -1167,7 +1167,7 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{p_{\\textrm{Data}}-p_{\\textrm{Theory}}}$"
+				"ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{\\mathcal{D}-P}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
@@ -1710,7 +1710,7 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$"
+				"ylabel": "$\\textrm{Empirical Cross-Entropy} ~~ \\mathcal{S}(P_{\\textrm{Data}},P_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Size} ~~ 1/N$"
@@ -2189,7 +2189,7 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$"
+				"ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(P_{\\textrm{Data}},P_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"
