@@ -1800,6 +1800,7 @@ def apply(data,plots,processes,verbose=None):
 			properties[name] = properties.get(name,{})
 			functions[name] = functions.get(name,{})
 
+			label = {attr:label[attr] for attr in natsorted(set(label))}
 			dependent = [keys[name][axes] for axes in sorted(set([*dimensions[-1:],*statistics]),key=lambda i:[*dimensions[-1:],*statistics].index(i)) if keys[name][axes] in attributes and axes not in dimensions[:-1] and not any(keys[name][ax]==keys[name][axes] for ax in dimensions[:-1] if ax != axes and axes.startswith(ax))]
 			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in attributes  and (keys[name][axes] not in dependent or all(keys[name][ax]==keys[name][axes] for ax in statistics if ax != axes and ax.startswith(axes))) and dtypes.get(keys[name][axes]) not in ['array']]
 			labels = [attr for attr in label if (attr in attributes) and ((not isinstance(label[attr],str)) or ((((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))))]
@@ -2926,7 +2927,7 @@ def plotter(plots,processes,verbose=None):
 
 			logger.log(info,"Configuring : %s %s"%(subinstance,
 				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
-				for attr in sorted(set(attr
+				for attr in natsorted(set(attr
 					for prop in information[instance][subinstance]
 					for data in search(plots[instance][subinstance][obj][prop])
 					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
