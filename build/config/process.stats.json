@@ -53,14 +53,6 @@
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ D^{2N}\\cdot p$",
 						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ p$",
-						"ax.set_ylabel.scinotation": {
-							"scilimits": [
-								1,
-								2
-							],
-							"decimals": 1,
-							"strip": true
-						},
 						"ax.bar.label.wrapper": {
 							"x":{
 								"func": "src.functions.func_sample_wrapper_x",
@@ -250,6 +242,14 @@
 								0.0001,
 								1.0
 							],
+							"scinotation": {
+								"scilimits": [
+									1,
+									2
+								],
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 45
 						},
 						"ax.legend.set_label": true,
@@ -562,22 +562,6 @@
 						"ax.set_ylabel.ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{p_{\\textrm{Data}}-p_{\\textrm{Theory}}}$",
 						"ax.set_ylabel.size": 45,
 						"ax.set_ylabel.y": null,
-						"ax.set_xticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
-						"ax.set_yticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
 						"ax.set_xscale": {
 							"value": "log",
 							"base": 2
@@ -598,6 +582,45 @@
 							"labels": [
 								1e0,1e2,1e4,1e6
 							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									2
+								],
+								"integral":true,
+								"decimals": 1,
+								"strip": true
+							},
+							"size": 45
+						},
+						"ax.set_xscale": {
+							"value": "linear"
+						},
+						"ax.set_xlim": {
+							"xmin": -4,
+							"xmax": 36
+						},
+						"ax.set_xnbins": {
+							"nbins": 5
+						},
+						"ax.set_xticks": {
+							"ticks": [
+								0,8,16,24,32
+							]
+						},
+						"ax.set_xticklabels": {
+							"labels": [
+								0,8,16,24,32
+							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									2
+								],
+								"integral":true,
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 45
 						},
 						"ax.set_yscale": {
@@ -628,6 +651,45 @@
 								0.0001,
 								1.0
 							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									0
+								],
+								"decimals": 1,
+								"integral":true,
+								"strip": true
+							},
+							"size": 45
+						},
+						"ax.set_yscale": {
+							"value": "linear"
+						},
+						"ax.set_ylim": {
+							"ymin": -0.1,
+							"ymax": 1.1
+						},
+						"ax.set_ynbins": {
+							"nbins": 5
+						},
+						"ax.set_yticks": {
+							"ticks": [
+								0,0.2,0.4,0.6,0.8,1
+							]
+						},
+						"ax.set_yticklabels": {
+							"labels": [
+								0,0.2,0.4,0.6,0.8,1
+							],
+							"scinotation": {
+								"scilimits": [
+									-2,
+									0
+								],
+								"decimals": 2,
+								"integral":null,
+								"strip": true
+							},
 							"size": 45
 						},
 						"ax.set_colorbar.set_label.label": "noise.parameters",
@@ -711,22 +773,6 @@
 						"ax.set_ylabel.ylabel": "\\textrm{Empirical Cross-Entropy} ~~ ~-~\\sum_{p \\sim \\mathcal{D}} ~\\log{P(p)}~/~\\textrm{log}(\\abs{\\mathcal{D}}\\cdot D^{N~\\!,~\\!2 N})",
 						"ax.set_ylabel.size": 36,
 						"ax.set_ylabel.y": null,
-						"ax.set_xticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
-						"ax.set_yticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
 						"ax.set_xscale": {
 							"value": "log",
 							"base": 2
@@ -753,6 +799,14 @@
 								"4",
 								"2"
 							],
+							"scinotation": {
+								"scilimits": [
+									1,
+									1
+								],
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 36
 						},
 						"ax.set_yscale": {
@@ -775,6 +829,14 @@
 							"labels": [
 								1e-2,1e-1,1e0
 							],
+							"scinotation": {
+								"scilimits": [
+									1,
+									1
+								],
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 36
 						},
 						"ax.set_colorbar.set_label.label": "noise.parameters",
@@ -856,22 +918,6 @@
 						"ax.set_ylabel.ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(p_{\\textrm{Data}},p_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$",
 						"ax.set_ylabel.size": 36,
 						"ax.set_ylabel.y": null,
-						"ax.set_xticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
-						"ax.set_yticklabels.scinotation": {
-							"scilimits": [
-								1,
-								1
-							],
-							"decimals": 1,
-							"strip": true
-						},
 						"ax.set_xscale": {
 							"value": "log",
 							"base": 2
@@ -892,6 +938,14 @@
 							"labels": [
 								1e0,1e2,1e4,1e6
 							],
+							"scinotation": {
+								"scilimits": [
+									1,
+									1
+								],
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 36
 						},
 						"ax.set_yscale": {
@@ -922,6 +976,14 @@
 								0.0001,
 								1.0
 							],
+							"scinotation": {
+								"scilimits": [
+									1,
+									1
+								],
+								"decimals": 1,
+								"strip": true
+							},
 							"size": 36
 						},
 					   "ax.set_colorbar.set_label.label": "noise.parameters",
