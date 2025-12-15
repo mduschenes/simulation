@@ -940,7 +940,14 @@
 						"function": {
 							"func": "src.functions.func_stats_function",
 							"args": [],
-							"kwargs": {"function":"state","x":"sample.state.log.x","y":"y","xerr":null,"yerr":null}
+							"kwargs": {
+								"function":"state",
+								"x":"sample.state.log.x","y":"y","xerr":null,"yerr":null,
+								"settings":{
+									"func":"distance",
+									"func":"cumulative"
+								}
+							}
 						},
 						"analysis": {},
 						"application": "agg",
@@ -1043,7 +1050,14 @@
 						"function": {
 							"func": "src.functions.func_stats_function",
 							"args": [],
-							"kwargs": {"function":"array","x":"sample.array.log.x","y":"y","xerr":null,"yerr":null}
+							"kwargs": {
+								"function":"array",
+								"x":"sample.array.log.x","y":"y","xerr":null,"yerr":null,
+								"settings":{
+									"func":"distance",
+									"func":"cumulative"
+								}
+							}
 						},
 						"analysis": {},
 						"application": "agg",

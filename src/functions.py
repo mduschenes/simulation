@@ -585,6 +585,8 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 			}
 		return measurement(data,*args,function=function,**kwargs)
 
+	settings = {} if settings is None else settings
+
 	funcs = {}
 
 	attr = 'x'
@@ -603,11 +605,14 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		Y = info.func(X)
 		data = data[attr][key]
 
-		# data,Y = data/sum(data),Y/sum(Y)
-		# data = (1/2)*sum(abs(data-Y))
-
-		data,Y = cumsum(data/sum(data))/size,cumsum(Y/sum(Y))/size
-		data = max(abs(data-Y))
+		if settings.get('func') is None:
+			data = (1/2)*sum(abs((data/sum(data))-(Y/sum(Y))))
+		elif settings.get('func') in ['distance']:
+			data = (1/2)*sum(abs(data/sum(data)-Y/sum(Y)))
+		elif settings.get('func') in ['cumulative']:
+			data = max(abs(cumsum(data/sum(data))/size-cumsum(Y/sum(Y))/size))
+		else:
+			data = (1/2)*sum(abs((data/sum(data))-(Y/sum(Y))))
 
 		data = data.item()
 
