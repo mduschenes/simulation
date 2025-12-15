@@ -13337,7 +13337,7 @@ def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,**kwargs)
 	Args:
 		a (array): array of data
 		bins (int,iterable): bins of data, default 100
-		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		range (iterable): range of data
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
 		weights (iterable): weight of data
@@ -13354,6 +13354,8 @@ def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,**kwargs)
 
 	y,x = np.histogram(asarray(a),bins=bins,range=range,weights=weights,**options)
 
+	x,y = array(x),array(y)
+
 	x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
 
 	return x,y
@@ -13363,7 +13365,7 @@ def bin(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	Get histogram bins of array
 	Args:
 		x (array,int): array of data
-		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		range (iterable): range of data
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
 		weights (iterable): weight of data
@@ -13376,8 +13378,8 @@ def bin(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
 		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
 
 	n = len(x)
+	range = bounds(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
 	bins = zeros(n+1)
-	range = [0,1] if range is None else range
 
 	bins = inplace(bins,n,range[-1])
 
@@ -13396,7 +13398,7 @@ def point(bins=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	Get histogram points of array
 	Args:
 		bins (array,int): array of data
-		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		range (iterable): range of data
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
 		weights (iterable): weight of data
@@ -13406,21 +13408,21 @@ def point(bins=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	'''
 
 	if bins is None or isinstance(bins,integers):
-		bins = 100 if bins is None else bins
-		bins += 1
+		bins = (100 if bins is None else bins)+1
+		base = 10 if base is None else base
+		range = bounds(bins,range=range,scale=scale,base=base,weights=weights,**kwargs)
 		if scale is None or scale in ['linear']:
-			base = 10 if base is None else base
-			range = [0,1] if range is None else range
-			bins = linspace(*range,bins)[:]
+			range = [i for i in range] if range is not None else None
+			func,options = linspace,dict()
 		elif scale in ['log','symlog']:
-			base = 10 if base is None else base
-			range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
-			bins = logspace(*range,bins,base=base)
+			range = [log(i)/log(base) for i in range] if range is not None else None
+			func,options = logspace,dict(base=base)
+		bins = func(*range,bins,**options)
 
 	if scale is None or scale in ['linear']:
-		x = array((bins[:-1]+bins[1:])/2)
+		x = (bins[:-1]+bins[1:])/2
 	elif scale in ['log','symlog']:
-		x = array((bins[:-1]*bins[1:])**(1/2))
+		x = (bins[:-1]*bins[1:])**(1/2)
 
 	return x
 
@@ -13430,13 +13432,13 @@ def interval(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	Get histogram intervals of array
 	Args:
 		x (array,int): array of data
-		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		range (iterable): range of data
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
 		weights (iterable): weight of data
 		kwargs (dict): Additional keyword arguments
 	Returns:
-		intervals (array): bins
+		intervals (array): intervals
 	'''
 
 	if x is None or isinstance(x,integers):
@@ -13451,6 +13453,34 @@ def interval(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
 
 	return intervals
 
+
+def bounds(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram bounds of array
+	Args:
+		x (array,int): array of data
+		range (iterable): range of data
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		range (array): bins
+	'''
+
+	if x is None or isinstance(x,integers) or len(x) < 2:
+		base = 10 if base is None else base
+		if scale is None or scale in ['linear']:
+			range = [0,1] if range is None else range
+		elif scale in ['log','symlog']:
+			range = [base**(-20),base**(0)] if range is None else range
+	elif len(x)>1:
+		if scale is None or scale in ['linear']:
+			range = [(3/2)*x[0]-(1/2)*x[1],(3/2)*x[-1]-(1/2)*x[-2]]
+		elif scale in ['log','symlog']:
+			range = [(x[0]**(3/2))/(x[1]**(1/2)),(x[-1]**(3/2))/(x[-2]**(1/2))]
+
+	return range
 
 def bloch(state,path=None):
 	'''

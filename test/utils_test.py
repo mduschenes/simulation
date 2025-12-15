@@ -1692,27 +1692,27 @@ def test_network(path=None,tol=None):
 
 def test_histogram(path=None,tol=None):
 
-	from src.utils import histogram,bin,point,interval,linspace,logspace,log,rand,cumsum,difference,addition
+	from src.utils import histogram,bin,point,interval,bounds,linspace,logspace,log,rand,cumsum,difference,addition
 
 	def _bin(bins,range=None,scale=None,base=None,**kwargs):
 		if bins is None or isinstance(bins,integers):
-			bins = 100 if bins is None else bins
-			bins += 1
+			bins = (100 if bins is None else bins)+1
+			base = 10 if base is None else base
 			if scale is None or scale in ['linear']:
-				base = 10 if base is None else base
 				range = [0,1] if range is None else range
-				bins = linspace(*range,bins)[:]
+				func,options = linspace,dict()
 			elif scale in ['log','symlog']:
 				base = 10 if base is None else base
 				range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
-				bins = logspace(*range,bins,base=base)
+				func,options = logspace,dict(base=base)
+			bins = func(*range,bins,**options)
 		return bins
 
-	n = 1000
+	n = 10
 	scale = 'log'
 	base = 10
 	density = 1
-	range = [0,1] if scale is None or scale in ['linear'] else [1e-20,1] if scale in ['log','symlog'] else None
+	range = [0,1] if scale is None or scale in ['linear'] else [base**(-10),base**(0)] if scale in ['log','symlog'] else None
 	kwargs = dict(density=density)
 
 	a = rand(n,bounds=range)
@@ -1720,6 +1720,8 @@ def test_histogram(path=None,tol=None):
 	bins = bin(n,range=range,scale=scale,base=base,**kwargs)
 
 	intervals = (bins[1:]-bins[:-1]) if scale is None or scale in ['linear'] else (bins[1:]-bins[:-1]) if scale in ['log','symlog'] else None
+
+	bound = [range[0],range[-1]]
 
 	x,y = histogram(a,bins=bins,range=range,scale=scale,base=base,**kwargs)
 
@@ -1741,7 +1743,9 @@ def test_histogram(path=None,tol=None):
 
 	assert allclose(intervals,interval(x,range=range,scale=scale,base=base,**kwargs))
 
-	assert allclose(u[0],0) and allclose(u[-1],1)
+	assert all(allclose(i,j) for i,j in zip(bound,bounds(x,range=range,scale=scale,base=base,**kwargs)))
+
+	assert allclose(u[-1],1)
 
 	assert allclose(u,_u)
 
