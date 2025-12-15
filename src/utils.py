@@ -13442,7 +13442,12 @@ def interval(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	if x is None or isinstance(x,integers):
 		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
 
-	intervals = difference(bin(x,range=range,scale=scale,base=base,weights=weights,**kwargs))
+	x = bin(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	if scale is None or scale in ['linear']:
+		intervals = x[1:]-x[:-1]
+	elif scale in ['log','symlog']:
+		intervals = x[1:]-x[:-1]
 
 	return intervals
 

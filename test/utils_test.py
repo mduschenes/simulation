@@ -1712,16 +1712,14 @@ def test_histogram(path=None,tol=None):
 	scale = 'log'
 	base = 10
 	density = 1
+	range = [0,1] if scale is None or scale in ['linear'] else [1e-20,1] if scale in ['log','symlog'] else None
 	kwargs = dict(density=density)
-
-	if scale is None or scale in ['linear']:
-		range = [0,1]
-	elif scale in ['log','symlog']:
-		range = [1e-20,1]
 
 	a = rand(n,bounds=range)
 
 	bins = bin(n,range=range,scale=scale,base=base,**kwargs)
+
+	intervals = (bins[1:]-bins[:-1]) if scale is None or scale in ['linear'] else (bins[1:]-bins[:-1]) if scale in ['log','symlog'] else None
 
 	x,y = histogram(a,bins=bins,range=range,scale=scale,base=base,**kwargs)
 
@@ -1741,7 +1739,7 @@ def test_histogram(path=None,tol=None):
 
 	assert allclose(bins,bin(x,range=range,scale=scale,base=base,**kwargs))
 
-	assert allclose(difference(bins),interval(x,range=range,scale=scale,base=base,**kwargs))
+	assert allclose(intervals,interval(x,range=range,scale=scale,base=base,**kwargs))
 
 	assert allclose(u[0],0) and allclose(u[-1],1)
 
