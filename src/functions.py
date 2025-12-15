@@ -294,17 +294,6 @@ def func_sample_process_xerr(data,values,metadata,properties,*args,**kwargs):
 def func_sample_process_yerr(data,values,metadata,properties,*args,**kwargs):
 	return data
 
-def func_sample_wrapper_x(data,*args,function=None,**kwargs):
-
-	def function(data,*args,function=function,**kwargs):
-		return measurement(data,*args,function=function,**kwargs)
-
-	info = function(data)
-
-	data = data['x']*info.size
-
-	return data
-
 def func_sample_function(data,*args,function=None,**kwargs):
 
 	def parse(attr,data):
@@ -351,6 +340,17 @@ def func_sample_function(data,*args,function=None,**kwargs):
 	funcs = {attr:parse(attr,funcs[attr](attr,data)) for attr in funcs if getter(data,attr,delimiter=delim) is not None}
 
 	setter(data,funcs,delimiter=delim,default=True)
+
+	return data
+
+def func_sample_wrapper_x(data,*args,function=None,**kwargs):
+
+	def function(data,*args,function=function,**kwargs):
+		return measurement(data,*args,function=function,**kwargs)
+
+	info = function(data)
+
+	data = data['x']*info.size
 
 	return data
 
@@ -484,6 +484,143 @@ def func_information_function(data,*args,function=None,**kwargs):
 		data = abs(data)
 		data = sqrt(data/(size*info.size))/log(size)
 		return data
+	if attr:
+		funcs[attr] = func
+
+	funcs = {attr:parse(attr,[funcs[attr](attr,key,data) for key in keys]) for attr in funcs if getter(data,attr,delimiter=delim) is not None} if keys is not None else {}
+
+	setter(data,funcs,delimiter=delim,default=True)
+
+	return data
+
+def func_stats_x(data,*args,**kwargs):
+	data = data.iloc[0]
+	return data
+
+def func_stats_y(data,*args,**kwargs):
+	data = sum(np.array(i) for i in data)
+	return data
+
+def func_stats_xerr(data,*args,**kwargs):
+	data = None
+	return data
+
+def func_stats_yerr(data,*args,**kwargs):
+	data = None
+	return data
+
+def func_stats_process_x(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if not isinstance(data,iterables) else data
+	for key,i in zip(keys,data):
+		if key not in values:
+			values[key] = i
+		else:
+			values[key] = i
+	data = values
+	return data
+
+def func_stats_process_y(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if not isinstance(data,iterables) else data
+	for key,i in zip(keys,data):
+		if key not in values:
+			values[key] = i
+		else:
+			values[key] += i
+	data = values
+	return data
+
+def func_stats_process_xerr(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if not isinstance(data,iterables) else data
+	for key,i in zip(keys,data):
+		if key not in values:
+			values[key] = i
+		else:
+			values[key] = i
+	data = values
+	return data
+
+def func_stats_process_yerr(data,values,metadata,properties,*args,**kwargs):
+	keys = metadata['x']
+	values = {} if not isinstance(values,dict) else values
+	data = [data for key in keys] if not isinstance(data,iterables) else data
+	for key,i in zip(keys,data):
+		if key not in values:
+			values[key] = i
+		else:
+			values[key] = i
+	data = values
+	return data
+
+def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=None,settings=None,**kwargs):
+
+	keys = data['y']
+	keys = list(keys) if isinstance(keys,dict) else range(len(keys)) if keys is not None else None
+	keys = natsorted(keys) if keys is not None else None
+
+	def parse(attr,data):
+		nulls = {'y':nan}
+		if data is None:
+			data = None
+		elif all(i is None for i in data):
+			data = None
+		if data is not None and attr in nulls:
+			data = np.array(data)
+			data[(is_naninf(data))|(data<epsilon(data.dtype))] = nulls[attr]
+		elif isinstance(data,iterables):
+			data = np.array(data)
+		return data
+
+	def function(attr,key,data,*args,function=function,**kwargs):
+		data = {attr:data[attr] if not isinstance(data[attr],dict) or key not in data[attr] else data[attr][key] for attr in data}
+		data = {
+			**({attr:data[attr] for attr in data if attr in ALL} if any(attr in ALL for attr in data) else {}),
+			**({attr:data[OTHER][attr] for attr in data[OTHER] if attr not in ALL} if (OTHER in data) else {}),
+			**({data[OTHER][attr][OTHER]:data[attr] for attr in data[OTHER] if attr in ALL and attr in data and data.get(attr) is not None} if (OTHER in data) else {}),
+			}
+		return measurement(data,*args,function=function,**kwargs)
+
+	funcs = {}
+
+	attr = 'x'
+	def func(attr,key,data):
+		data = data[attr][key]
+		return data
+	funcs[attr] = func
+
+	attr = 'y'
+	def func(attr,key,data):
+		if None in data[attr][key]:
+			return 0
+		info,size = function(attr,key,data),data[attr][key].size
+
+		X = array(data[x][key] if x in ALL else data[OTHER][x])
+		Y = info.func(X)
+		data = data[attr][key]
+
+		data,Y = data/sum(data),Y/sum(Y)
+		data = (1/2)*sum(abs(data-Y))
+		data = data.item()
+
+		return data
+	funcs[attr] = func
+
+	attr = 'xerr'
+	def func(attr,key,data):
+		data = data[attr][key]
+		return data
+	funcs[attr] = func
+
+	attr = 'yerr'
+	def func(attr,key,data):
+		data = data[attr][key]
+		return data
+
 	if attr:
 		funcs[attr] = func
 
