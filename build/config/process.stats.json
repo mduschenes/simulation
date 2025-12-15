@@ -559,7 +559,8 @@
 						"ax.set_title.label": "N",
 						"ax.set_xlabel.xlabel": "$\\textrm{Depth} ~~ M$",
 						"ax.set_xlabel.size": 45,
-						"ax.set_ylabel.ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{\\mathcal{D}-P}$",
+						"ax.set_ylabel.ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{S-P}$",
+						"ax.set_ylabel.ylabel": "$\\textrm{Cumulative Distance} ~~ \\max{~\\abs{\\Phi_{S}-\\Phi_{P}}}$",
 						"ax.set_ylabel.size": 45,
 						"ax.set_ylabel.y": null,
 						"ax.set_xscale": {
@@ -688,6 +689,43 @@
 								],
 								"decimals": 2,
 								"integral":null,
+								"strip": true
+							},
+							"size": 45
+						},
+						"ax.set_yscale": {
+							"value": "log",
+							"base": 10
+						},
+						"ax.set_ylim": {
+							"ymin": 5e-7,
+							"ymax": 2.0
+						},
+						"ax.set_ynbins": {
+							"nbins": 4
+						},
+						"ax.set_yticks": {
+							"ticks": [
+								1e-6,
+								1e-4,
+								1e-2,
+								1e0
+							]
+						},
+						"ax.set_yticklabels": {
+							"labels": [
+								1e-6,
+								1e-4,
+								1e-2,
+								1e0
+							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									0
+								],
+								"decimals": 1,
+								"integral":true,
 								"strip": true
 							},
 							"size": 45

@@ -607,7 +607,7 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		# data = (1/2)*sum(abs(data-Y))
 
 		data,Y = cumsum(data/sum(data))/size,cumsum(Y/sum(Y))/size
-		data = sum(abs(data-Y))
+		data = max(abs(data-Y))
 
 		data = data.item()
 
