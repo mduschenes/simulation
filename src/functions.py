@@ -610,8 +610,7 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		elif settings.get('func') in ['distance']:
 			data = (1/2)*sum(abs(data/sum(data)-Y/sum(Y)))
 		elif settings.get('func') in ['cumulative']:
-			# data = max(abs(cumsum(data/sum(data))/size-cumsum(Y/sum(Y))/size))
-			data = max(abs(cumsum(data)/size-info.function(X)))
+			data = max(abs((cumsum(data)/sum(data))-info.function(X)))
 		else:
 			data = (1/2)*sum(abs((data/sum(data))-(Y/sum(Y))))
 

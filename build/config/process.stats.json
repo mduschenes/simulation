@@ -244,11 +244,14 @@
 							],
 							"scinotation": {
 								"scilimits": [
-									1,
-									2
+									0,
+									0
 								],
 								"decimals": 1,
-								"strip": true
+								"base":10,
+								"strip":true,
+								"usebase":true,
+								"strings":false
 							},
 							"size": 45
 						},
@@ -519,6 +522,17 @@
 								0.0001,
 								1.0
 							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									0
+								],
+								"decimals": 1,
+								"base":10,
+								"strip":true,
+								"usebase":true,
+								"strings":false
+							},
 							"size": 45
 						},
 						"ax.legend.set_label": true,
