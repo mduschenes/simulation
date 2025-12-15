@@ -24,7 +24,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std,cumsum
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper
 from src.utils import orng as rng
@@ -603,8 +603,12 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		Y = info.func(X)
 		data = data[attr][key]
 
-		data,Y = data/sum(data),Y/sum(Y)
-		data = (1/2)*sum(abs(data-Y))
+		# data,Y = data/sum(data),Y/sum(Y)
+		# data = (1/2)*sum(abs(data-Y))
+
+		data,Y = cumsum(data/sum(data))/size,cumsum(Y/sum(Y))/size
+		data = sum(abs(data-Y))
+
 		data = data.item()
 
 		return data
