@@ -602,19 +602,21 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		info,size = function(attr,key,data),data[attr][key].size
 
 		X = array(data[x][key] if x in ALL else data[OTHER][x])
-		Y = info.func(X)
+		Y = None
 		data = data[attr][key]
 
-		if settings.get('func') is None:
-			data = (1/2)*sum(abs((data/sum(data))-(Y/sum(Y))))
-		elif settings.get('func') in ['distance']:
-			data = (1/2)*sum(abs(data/sum(data)-Y/sum(Y)))
+		if settings.get('func') is None or settings.get('func') in ['distance']:
+			Y = info.func(X)
+			data,Y = data/sum(data),Y/sum(Y)
+			data = (1/2)*sum(abs(data-Y))
 		elif settings.get('func') in ['cumulative']:
-			data = max(abs((cumsum(data)/sum(data))-info.function(X)))
+			Y = info.function(X)
+			data,Y = data/sum(data),Y
+			data = max(abs((cumsum(data)-Y)))
 		else:
-			data = (1/2)*sum(abs((data/sum(data))-(Y/sum(Y))))
+			data = None
 
-		data = data.item()
+		data = data.item() if data is not None else None
 
 		return data
 	funcs[attr] = func
@@ -660,7 +662,10 @@ def func_information(data,*args,**kwargs):
 	data = information(func,data)
 
 	key = [None,'error']
-	value = [*mean(data,axis=-1)],[*mean(data**2,axis=-1)]
+	value = mean(data,axis=-1),mean(data**2,axis=-1)
+
+	key = [i for i in key]
+	value = [[*i] if i.ndim>0 else i for i in value]
 
 	data = dict(zip(key,value))
 

@@ -494,6 +494,93 @@ def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	return np.allclose(a,b,rtol,atol,equal_nan)	
 
 
+def bin(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram bins of array
+	Args:
+		x (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		bins (array): bins
+	'''
+
+	if x is None or isinstance(x,int):
+		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	n = len(x)
+	bins = np.zeros(n+1)
+	range = [0,1] if range is None else range
+
+	bins = inplace(bins,n,range[-1])
+
+	if scale is None or scale in ['linear']:
+		for i,z in enumerate(x):
+			bins = inplace(bins,n-1-i,(2*x[n-1-i]) - (bins[n-i]))
+	elif scale in ['log','symlog']:
+		for i,z in enumerate(x):
+			bins = inplace(bins,n-1-i,(x[n-1-i]**2)/(bins[n-i]))
+
+	return bins
+
+
+def point(bins=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram points of array
+	Args:
+		bins (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (array): points
+	'''
+
+	if bins is None or isinstance(bins,int):
+		bins = 100 if bins is None else bins
+		bins += 1
+		if scale is None or scale in ['linear']:
+			base = 10 if base is None else base
+			range = [0,1] if range is None else range
+			bins = np.linspace(*range,bins)[:]
+		elif scale in ['log','symlog']:
+			base = 10 if base is None else base
+			range = [np.log(i)/np.log(base) for i in ([1e-20,1e0] if range is None else range)]
+			bins = np.logspace(*range,bins,base=base)
+
+	if scale is None or scale in ['linear']:
+		x = np.array((bins[:-1]+bins[1:])/2)
+	elif scale in ['log','symlog']:
+		x = np.array((bins[:-1]*bins[1:])**(1/2))
+
+	return x
+
+
+def interval(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram intervals of array
+	Args:
+		x (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		intervals (array): bins
+	'''
+
+	if x is None or isinstance(x,int):
+		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	intervals = np.diff(bin(x,range=range,scale=scale,base=base,weights=weights,**kwargs))
+
+	return intervals
 
 
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
@@ -884,19 +971,34 @@ def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 	return err
 
 
-def set_scale(value,scale=None,**kwargs):
+def set_scale(value,values=None,scale=None,base=None,**kwargs):
 	'''
 	Set scale of value
 	Args:
 		value (array): value
+		values (array): values
 		scale (str,array): scale of value, allowed strings in ['probability','maximum']
+		base (str,iterable[str]): base of value
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		value (array): value
 		scale (array): scale of value
 	'''
 
+	if value is None:
+		return value,scale
+
 	value = inplace(value.astype(float),is_naninfs(value),0)
+
+	base = base[0] if isinstance(base,list) and base else base if base in ['linear','log','symlog'] else None
+
+	options = dict(
+		range=[0,1] if base is None or base in ['linear'] else [1e-20,1] if base in ['log','symlog'] else None,
+		scale=base,
+		base=10
+		)
+
+	values = interval(values,**options) if values is not None else 1
 
 	if scale is None:
 		scale = 1
@@ -904,12 +1006,15 @@ def set_scale(value,scale=None,**kwargs):
 		scale = scale
 	elif scale in ['probability'] or scale.startswith('probability'):
 		scale = (1 if scale in ['probability'] else float(scale.split(separator)[-1]))*np.sum(np.abs(value))
+		scale *= np.abs(values)
 	elif scale in ['maximum'] or scale.startswith('maximum'):
 		scale = (1 if scale in ['maximum'] else float(scale.split(separator)[-1]))*np.max(np.abs(value))
 	else:
 		scale = 1
 
 	value = np.exp(np.log(value)-np.log(scale))
+
+	value /= np.max(np.abs(value))
 
 	value = inplace(value.astype(float),value==0,nan)
 
@@ -1929,8 +2034,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'density'
 				subattr = 'y'
 				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
-					value = kwargs[attr][subattr]
-					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					value,values,scale,base = kwargs[attr].get('y'),kwargs[attr].get('x'),kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+					value,scale = set_scale(value,values=values,scale=scale,base=base)
 					kwargs[attr][subattr] = value
 
 				props = '%s'
@@ -1995,8 +2100,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'density'
 				subattr = 'y'
 				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
-					value = kwargs[attr][subattr]
-					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					value,values,scale,base = kwargs[attr].get('y'),kwargs[attr].get('x'),kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+					value,scale = set_scale(value,values=values,scale=scale,base=base)
 					kwargs[attr][subattr] = value
 
 				props = '%s'
@@ -2099,8 +2204,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						y,x,plot = objs
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
-							value = y
-							value,scale = set_scale(value,scale=kwargs[attr][prop])
+							value,values,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+							value,scale = set_scale(value,values=values,scale=scale,base=base)
 							for patch in plot.patches:
 								patch.set_height(patch.get_height()/scale)
 							plot.datavalues = plot.datavalues/scale
@@ -2211,8 +2316,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				prop = 'density'
 				if kwargs[attr].get(prop) is not None:
-					value = y
-					value,scale = set_scale(value,scale=kwargs[attr][prop])
+					value,values,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
+					value,scale = set_scale(value,values=values,scale=scale,base=base)
 					y = value
 
 				y = inplace(y.astype(float),y==0,nan)

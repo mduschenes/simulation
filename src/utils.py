@@ -13331,7 +13331,7 @@ def projector(i,shape):
 	return projector
 
 
-def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,density=None,**kwargs):
+def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,**kwargs):
 	'''
 	Get histogram of array
 	Args:
@@ -13341,11 +13341,68 @@ def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,density=N
 		scale (str): scale of data, allowed strings in ['linear','log','symlog']
 		base (str): base of scale of data
 		weights (iterable): weight of data
-		density (bool): normalization of data
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		x (array): bins
 		y (array): counts
+	'''
+
+	if bins is None or isinstance(bins,integers):
+		bins = bin(bins,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	options = {key:kwargs.get(key,value) for key,value in dict(density=None).items()}
+
+	y,x = np.histogram(asarray(a),bins=bins,range=range,weights=weights,**options)
+
+	x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	return x,y
+
+def bin(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram bins of array
+	Args:
+		x (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		bins (array): bins
+	'''
+
+	if x is None or isinstance(x,integers):
+		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	n = len(x)
+	bins = zeros(n+1)
+	range = [0,1] if range is None else range
+
+	bins = inplace(bins,n,range[-1])
+
+	if scale is None or scale in ['linear']:
+		for i,z in enumerate(x):
+			bins = inplace(bins,n-1-i,(2*x[n-1-i]) - (bins[n-i]))
+	elif scale in ['log','symlog']:
+		for i,z in enumerate(x):
+			bins = inplace(bins,n-1-i,(x[n-1-i]**2)/(bins[n-i]))
+
+	return bins
+
+
+def point(bins=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram points of array
+	Args:
+		bins (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		x (array): points
 	'''
 
 	if bins is None or isinstance(bins,integers):
@@ -13360,14 +13417,35 @@ def histogram(a,bins=None,range=None,scale=None,base=None,weights=None,density=N
 			range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
 			bins = logspace(*range,bins,base=base)
 
-	y,x = np.histogram(asarray(a),bins=bins,range=range,weights=weights,density=density)
-
 	if scale is None or scale in ['linear']:
-		x = array((x[:-1]+x[1:])/2)
+		x = array((bins[:-1]+bins[1:])/2)
 	elif scale in ['log','symlog']:
-		x = array((x[:-1]*x[1:])**(1/2))
+		x = array((bins[:-1]*bins[1:])**(1/2))
 
-	return x,y
+	return x
+
+
+def interval(x=None,range=None,scale=None,base=None,weights=None,**kwargs):
+	'''
+	Get histogram intervals of array
+	Args:
+		x (array,int): array of data
+		range (iterable): range of data, default [0,1] (linear) or [1e-20,1e0] (log)
+		scale (str): scale of data, allowed strings in ['linear','log','symlog']
+		base (str): base of scale of data
+		weights (iterable): weight of data
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		intervals (array): bins
+	'''
+
+	if x is None or isinstance(x,integers):
+		x = point(x,range=range,scale=scale,base=base,weights=weights,**kwargs)
+
+	intervals = difference(bin(x,range=range,scale=scale,base=base,weights=weights,**kwargs))
+
+	return intervals
+
 
 def bloch(state,path=None):
 	'''

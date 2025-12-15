@@ -1689,13 +1689,76 @@ def test_network(path=None,tol=None):
 	return
 
 
+
+def test_histogram(path=None,tol=None):
+
+	from src.utils import histogram,bin,point,interval,linspace,logspace,log,rand,cumsum,difference,addition
+
+	def _bin(bins,range=None,scale=None,base=None,**kwargs):
+		if bins is None or isinstance(bins,integers):
+			bins = 100 if bins is None else bins
+			bins += 1
+			if scale is None or scale in ['linear']:
+				base = 10 if base is None else base
+				range = [0,1] if range is None else range
+				bins = linspace(*range,bins)[:]
+			elif scale in ['log','symlog']:
+				base = 10 if base is None else base
+				range = [log(i)/log(base) for i in ([1e-20,1e0] if range is None else range)]
+				bins = logspace(*range,bins,base=base)
+		return bins
+
+	n = 1000
+	scale = 'log'
+	base = 10
+	density = 1
+	kwargs = dict(density=density)
+
+	if scale is None or scale in ['linear']:
+		range = [0,1]
+	elif scale in ['log','symlog']:
+		range = [1e-20,1]
+
+	a = rand(n,bounds=range)
+
+	bins = bin(n,range=range,scale=scale,base=base,**kwargs)
+
+	x,y = histogram(a,bins=bins,range=range,scale=scale,base=base,**kwargs)
+
+	z = interval(x,range=range,scale=scale,base=base,**kwargs) if density else 1/addition(y)
+
+	u = cumsum(y*z)
+
+	_x,_y = histogram(a,bins=bins,range=range,scale=scale,base=base)
+
+	_z = 1/addition(_y)
+
+	_u = cumsum(_y*_z)
+
+	assert allclose(bins,_bin(n,range=range,scale=scale,base=base,**kwargs))
+
+	assert allclose(x,point(bins,range=range,scale=scale,base=base,**kwargs))
+
+	assert allclose(bins,bin(x,range=range,scale=scale,base=base,**kwargs))
+
+	assert allclose(difference(bins),interval(x,range=range,scale=scale,base=base,**kwargs))
+
+	assert allclose(u[0],0) and allclose(u[-1],1)
+
+	assert allclose(u,_u)
+
+	print('Passed')
+
+	return
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_getter(path,tol)
 	# test_setter(path,tol)
 	# test_popper(path,tol)
-	test_updater(path,tol)
+	# test_updater(path,tol)
 	# test_sizer(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
@@ -1719,3 +1782,4 @@ if __name__ == '__main__':
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)
+	test_histogram(path,tol)

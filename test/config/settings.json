@@ -103,6 +103,9 @@
 		"N":"N","M":"N","d":"d","D":"state.D",
 		"noise.parameters":"noise.parameters",
 		"objective":"measure.infidelity_classical",
+		"unitary":"unitary",
+		"noise":"noise",
+		"psi":"psi",
 		"operator":"measure.operator",
 		"iteration":"iteration"
 		}
