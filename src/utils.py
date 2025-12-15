@@ -353,6 +353,18 @@ def progress(*args,**kwargs):
 	options = dict(file=sys.stdout)
 	return tqdm(*args,**{**kwargs,**options})
 
+def getattrs(obj,attr,default=None,delimiter=delim):
+	if isinstance(attr,(str,*iterables)):
+		attrs = attr.split(delimiter) if isinstance(attr,str) else attr
+		for attr in attrs:
+			try:
+				obj = getattr(obj,attr)
+			except:
+				obj = default
+				break
+	else:
+		obj = default
+	return obj
 
 # Libraries
 if backend in ['jax','jax.autograd','quimb']:
@@ -7608,19 +7620,21 @@ def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 
 	return func
 
-def probability(x,function,*args,**kwargs):
+def distribution(x,function,*args,**kwargs):
 	'''
 	Probability distribution
 	Args:
 		x (array): probability data
-		function (str): probability function
+		function (str,iterable[str],callable): probability function
 		args (iterable): Positional arguments
 		kwargs (dict): Keyword arguments
 	Returns:
 		x (array): probability data
 	'''
-	return getattr(sp.stats,function).pdf(x,*args,**kwargs) if isinstance(function,str) else function(x,*args,**kwargs)
-
+	obj = sp.stats
+	default = lambda x,*args,**kwargs:x
+	obj = getattrs(obj,function,default=default) if not callable(function) else function
+	return obj(x,*args,**kwargs)
 
 def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
 	'''

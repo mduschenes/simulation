@@ -16,7 +16,7 @@ from src.utils import tensor,matrix,network,mps,contexts
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reduce,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel,logprod
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,exp10,binom,probability
+from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,exp10,binom,distribution
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary,is_naninf
 from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype,anything,allthing
@@ -112,7 +112,8 @@ def measurement(data,*args,function=None,**kwargs):
 
 	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else 1
 
-	info.func = lambda x,info,*args,**kwargs: probability(x=x*info.scale,function='beta',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
+	info.func = lambda x,info,*args,**kwargs: distribution(x=x*info.scale,function='beta.pdf',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
+	info.function = lambda x,info,*args,**kwargs: distribution(x=x*info.scale,function='beta.cdf',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
 
 	for key in info:
 		if callable(info[key]):
