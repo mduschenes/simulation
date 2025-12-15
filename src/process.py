@@ -2926,13 +2926,13 @@ def plotter(plots,processes,verbose=None):
 
 			logger.log(info,"Configuring : %s %s"%(subinstance,
 				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
-				for attr in set(attr
+				for attr in sorted(set(attr
 					for prop in information[instance][subinstance]
 					for data in search(plots[instance][subinstance][obj][prop])
 					if ((data) and (OTHER in data) and (OTHER in data[OTHER]) and (OTHER in data[OTHER][OTHER]))
 					for attr in data[OTHER][OTHER][OTHER]
 					if ((attr in metadata[instance][subinstance]) and not isinstance(metadata[instance][subinstance][attr],iterables) or (len(metadata[instance][subinstance])>1))
-					)
+					))
 				}))
 
 			for prop in information[instance][subinstance]:
