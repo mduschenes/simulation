@@ -5,9 +5,18 @@ source ~/.bashrc
 path=${1}
 type=${2:-log}
 indices=(${3:-0 4 3 2 1})
-
-options=()
-process=()
+string="$(echo ${indices[@]} | sed 's/ /./g')"
+case ${type} in
+	log)
+		label=""
+		;;
+	scale)
+		label="scale."
+		;;
+	*)
+		label=""
+		;;
+esac
 
 for index in ${indices[@]}
 do
@@ -20,60 +29,14 @@ do
 			;;
 	esac
 
-	case ${type} in
-		log)
-			options=()
-			process=()
+	options=()
 
-			options+=(
-				-i \
-				-e "s/\(\"noise.parameters\"\:\ \)\[.*\]/\1[${strings[0]}]/" \
-				-e "s/\(\"fig.savefig.fname\"\:\).*/\1\"M.noise.${strings[1]}\",/" \
-				${path}/process.json
-			)
-
-			for variable in array state
-			do
-				process+=(pdfmerge)
-				name=${path}/plot/plot.sample.${variable}.M.noise.parameters.M.noise
-				string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
-				for i in ${indices[@]}
-				do
-					process+=("${name}.${i}.pdf");
-				done
-				process+=";"
-			done
-
-			;;
-		scale)
-			options=()
-			process=()
-
-			options+=(
-				-i \
-				-e "s/\(\"noise.parameters\"\:\ \)\[.*\]/\1[${strings[0]}]/" \
-				-e "s/\(\"fig.savefig.fname\"\:\).*/\1\"scale.M.noise.${strings[1]}\",/" \
-				${path}/process.json
-			)
-
-			for variable in array state
-			do
-				process+=(pdfmerge)
-				name=${path}/plot/plot.sample.${variable}.M.noise.parameters.scale.M.noise
-				string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
-				for i in ${indices[@]}
-				do
-					process+=("${name}.${i}.pdf");
-				done
-				process+=";"
-			done
-
-			;;
-		*)
-			;;
-	esac
-
-	continue
+	options+=(
+		-i \
+		-e "s/\(\"noise.parameters\"\:\ \)\[.*\]/\1[${strings[0]}]/" \
+		-e "s/\(\"fig.savefig.fname\"\:\).*/\1\"${label}M.noise.${strings[1]}\",/" \
+		${path}/process.json
+	)
 
 	if [[ ! -s ${options} ]]
 	then
@@ -82,15 +45,33 @@ do
 		exe=./process.py
 		args=(${path})
 
-		${exe} ${args[@]}
+		echo ${exe} ${args[@]}
 	fi
 
 done
 
 
+process=()
+
+for variable in array state
+do
+	process+=(${path}/plot/plot.sample.${variable}.M.noise.parameters.${label}M.noise)
+done
+
 if [[ ! -s ${process} ]]
 then
-	${process[@]}
+
+	for name in ${process[@]}
+	do
+		cmd=()
+		cmd+=(pdfmerge)
+		cmd+=("${name}.${string}.pdf")
+		for i in ${indices[@]}
+		do
+			cmd+=("${name}.${i}.pdf");
+		done
+		echo ${cmd[@]}
+	done
 fi
 
 # from src.utils import array,flatten,is_naninf
