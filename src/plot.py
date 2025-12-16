@@ -1005,7 +1005,7 @@ def set_err(err=None,value=None,scale=None,base=None,**kwargs):
 	return err
 
 
-def set_scale(value,values=None,scales=None,scale=None,base=None,**kwargs):
+def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwargs):
 	'''
 	Set scale of value
 	Args:
@@ -1014,6 +1014,7 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,**kwargs):
 		scales (str,array): scaling of value, allowed strings in ['probability','maximum']
 		scale (str,iterable[str]): scale of value
 		base (str,iterable[str]): base of value
+		data (dict): Additional options data
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		value (array): value
@@ -1026,12 +1027,14 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,**kwargs):
 	value = inplace(value.astype(float),is_naninfs(value),0)
 
 	scale = scale[0] if isinstance(scale,list) and scale else scale if scale in ['linear','log','symlog'] else None
+	range = None
 	base = base[0] if isinstance(base,list) else base if base is not None else None
+	data = {**dict(),**({} if not isinstance(data,dict) else data)}
 
 	options = dict(
-		range=None,
-		scale=scale,
-		base=10
+		range=data.get('range',range),
+		scale=data.get('scale',scale),
+		base=data.get('base',base)
 		)
 
 	values = interval(values,**options) if values is not None else 1
@@ -1041,8 +1044,7 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,**kwargs):
 	elif not isinstance(scales,str):
 		scale = scales
 	elif scale in ['probability'] or scale.startswith('probability'):
-		scale = (1 if scales in ['probability'] else float(scales.split(separator)[-1]))*np.sum(np.abs(value))
-		scale *= np.abs(values)
+		scale = (1 if scales in ['probability'] else float(scales.split(separator)[-1]))*np.sum(np.abs(value))*np.abs(values)
 	elif scales in ['maximum'] or scales.startswith('maximum'):
 		scale = (1 if scales in ['maximum'] else float(scales.split(separator)[-1]))*np.max(np.abs(value))
 	else:
@@ -1050,7 +1052,7 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,**kwargs):
 
 	value = np.exp(np.log(value)-np.log(scale))
 
-	value /= np.max(np.abs(value))
+	value /= np.sum(np.abs(value))
 
 	value = inplace(value.astype(float),value==0,nan)
 
@@ -2071,7 +2073,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattr = 'y'
 				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
 					value,values,scales,scale,base = kwargs[attr].get('y'),kwargs[attr].get('x'),kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],[i[-1].get('base') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base)
+					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base,data=data)
 					kwargs[attr][subattr] = value
 
 				props = '%s'
@@ -2137,7 +2139,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattr = 'y'
 				if kwargs[attr].get(prop) is not None and kwargs[attr].get(subattr) is not None:
 					value,values,scales,scale,base = kwargs[attr].get('y'),kwargs[attr].get('x'),kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],[i[-1].get('base') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base)
+					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base,data=data)
 					kwargs[attr][subattr] = value
 
 				props = '%s'
@@ -2241,7 +2243,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,x,plot)
 						for i,(y,x,plot) in enumerate(zip(y,x,plot)):
 							value,values,scales,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],[i[-1].get('base') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-							value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base)
+							value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base,data=data)
 							for patch in plot.patches:
 								patch.set_height(patch.get_height()/scale)
 							plot.datavalues = plot.datavalues/scale
@@ -2262,6 +2264,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								**(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {}),
 								**{kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]},
 								**{kwarg:kwargs[instance].get(kwarg)[i] if isinstance(kwargs[instance].get(kwarg),list) else kwargs[instance].get(kwarg) for kwarg in ['label'] if kwarg in kwargs[instance]},
+								**{kwarg:kwargs[instance].get(kwarg) for kwarg in ['data'] if kwarg in kwargs[instance] and kwarg not in (kwargs.get(attr,{}) if kwargs.get(attr) is not None else {})},
 								},
 							}
 							}
@@ -2316,7 +2319,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop = 'density'
 				if kwargs[attr].get(prop) is not None:
 					value,values,scales,scale,base = y,x,kwargs[attr].get('density'),[i[-1].get('value') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')],[i[-1].get('base') for i in search(kwargs.get('set_%sscale'%('x')),returns=True) if i is not None and i[-1] is not None and kwargs[attr].get('obj')==i[-1].get('obj')]
-					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base)
+					value,scale = set_scale(value,values=values,scales=scales,scale=scale,base=base,data=data)
 					y = value
 
 				prop = 'width'
@@ -2375,6 +2378,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								**(copy(kwargs.get(attr,{})) if kwargs.get(attr) is not None else {}),
 								**{kwarg:plots[attr][kwarg][i] if isinstance(plots[attr][kwarg],list) else plots[attr][kwarg] for kwarg in plots[attr]},
 								**{kwarg:kwargs[instance].get(kwarg)[i] if isinstance(kwargs[instance].get(kwarg),list) else kwargs[instance].get(kwarg) for kwarg in ['label'] if kwarg in kwargs[instance]},
+								**{kwarg:kwargs[instance].get(kwarg) for kwarg in ['data'] if kwarg in kwargs[instance] and kwarg not in (kwargs.get(attr,{}) if kwargs.get(attr) is not None else {})},
 								},
 							}
 							}

@@ -4140,7 +4140,10 @@ def plotter(plots,processes,verbose=None):
 					value = {label: data[OTHER][label] if label in data[OTHER] else data[OTHER][OTHER][OTHER][label] 
 							for label in values[prop] if label is not None and (label in data[OTHER] or label in data[OTHER][OTHER][OTHER])}
 					
-					data[attr] = value
+					if not isinstance(data.get(attr),dict):
+						data[attr] = {}
+
+					data[attr].update(value)
 
 
 			# set function
