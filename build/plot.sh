@@ -45,7 +45,7 @@ do
 		exe=./process.py
 		args=(${path})
 
-		echo ${exe} ${args[@]}
+		${exe} ${args[@]}
 	fi
 
 done
@@ -70,7 +70,7 @@ then
 		do
 			cmd+=("${name}.${i}.pdf");
 		done
-		echo ${cmd[@]}
+		${cmd[@]}
 	done
 fi
 
