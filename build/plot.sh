@@ -32,13 +32,18 @@ do
 				${path}/process.json
 			)
 
-			process+=(pdfmerge)
-			name=${path}/plot/plot.sample.array.M.noise.parameters.M.noise
-			string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
-			for i in ${indices[@]}
+			for variable in array state
 			do
-				process+=("${name}.${i}.pdf");
+				process+=(pdfmerge)
+				name=${path}/plot/plot.sample.${variable}.M.noise.parameters.M.noise
+				string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
+				for i in ${indices[@]}
+				do
+					process+=("${name}.${i}.pdf");
+				done
+				process+=";"
 			done
+
 			;;
 		scale)
 			options=()
@@ -51,13 +56,18 @@ do
 				${path}/process.json
 			)
 
-			process+=(pdfmerge)
-			name=${path}/plot/plot.sample.array.M.noise.parameters.scale.M.noise
-			string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
-			for i in ${indices[@]}
+			for variable in array state
 			do
-				process+=("${name}.${i}.pdf");
+				process+=(pdfmerge)
+				name=${path}/plot/plot.sample.${variable}.M.noise.parameters.scale.M.noise
+				string="$(echo ${indices[@]} | sed 's/ /./g')"; process+=("${name}.${string}.pdf");
+				for i in ${indices[@]}
+				do
+					process+=("${name}.${i}.pdf");
+				done
+				process+=";"
 			done
+
 			;;
 		*)
 			;;
