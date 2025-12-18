@@ -65,7 +65,11 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {
 			'D': max(model.D for model in models),
 			'N': max(model.N for model in models),
+			'M': model.M if model is not None else None,
 			'noise.parameters':[model.parameters() for model in models if not model.unitary and not model.hermitian][0] if model else None,
+			'unitary':[model.operator if model.operator is None else model.operator[0] if isinstance(model.operator,iterables) and len(model.operator) else model.operator for model in models if model.unitary][0] if model else None,
+			'noise':[model.operator if model.operator is None else model.operator[0] if isinstance(model.operator,iterables) and len(model.operator) else model.operator for model in models if not model.unitary and not model.hermitian][0] if model else None,
+			'psi': model.state.operator if model is not None else None,
 			'operator': model.measure.operator if model is not None else None,
 			}
 
@@ -76,44 +80,60 @@ def measurement(data,*args,function=None,**kwargs):
 
 	if function is None:
 		info.dimension = data['D']
+		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = 1 if data['noise.parameters'] is not None else 1
+		info.env = 1 if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = 1
+		info.name = 'beta'
 	elif function in ['array']:
 		info.dimension = data['D']
+		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(2*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N']) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
+		info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = data['D']**(1*data['N'])
+		info.name = 'beta'
 	elif function in ['state']:
 		info.dimension = data['D']
+		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
 		info.env = data['D']**(1*data['N']) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = 1
+		info.name = 'beta'
 	else:
 		info.dimension = data['D']
+		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = 1 if data['noise.parameters'] is not None else 1
+		info.env = 1 if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.env = 1
 		info.locality = 1
 		info.scale = 1
+		info.name = 'beta'
 
 	info.data = logspace(
-		(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-5)/log(info.dimension),
+		max(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-5,log(info.environment/info.dim),-32)/log(info.dimension),
 		(-log(info.scale))/log(info.dimension),
 		num=1000,base=info.dimension
 		)
-
 	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else 1
+	info.parameters = dict(
+		a=(info.locality*info.env),
+		b=((info.dim-info.locality)*info.env),
+		loc=info.environment/info.dim,
+		scale=1/(info.scale/(1-info.environment)),
+		)
 
-	info.func = lambda x,info,*args,**kwargs: distribution(x=x*info.scale,function='beta.pdf',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
-	info.function = lambda x,info,*args,**kwargs: distribution(x=x*info.scale,function='beta.cdf',a=(info.locality*info.env),b=((info.dim-info.locality)*info.env))
+	info.transform = lambda x,info,*args,**kwargs: x
+	info.transformation = lambda x,info,*args,**kwargs: x
+
+	info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
+	info.function = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
 
 	for key in info:
 		if callable(info[key]):

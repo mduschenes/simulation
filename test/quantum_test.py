@@ -3193,6 +3193,121 @@ def test_class(*args,**kwargs):
 	return
 
 
+def test_measurement(*args,**kwargs):
+
+	from src.utils import addition,absolute,maximum,minimum,permute,separ,epsilon
+	from src.quantum import measurement
+
+	import matplotlib
+	import matplotlib.pyplot as plt
+
+	def plot(x,y,xerr=None,yerr=None,index=None,fig=None,axes=None,options=None,**kwargs):
+
+		def setup(options):
+
+			options = {} if options is None else options
+			for option in options:
+				if option in ['color','ecolor']:
+					if isinstance(options[option],str):
+						value = options[option].split(separ) if options[option].count(separ) else (options[option],0.5)
+						value = getattr(plt.cm,str(value[0]))(float(value[1]))
+				else:
+					value = options[option]
+				options[option] = value
+
+			settings = {}
+			settings['path'] = options.pop('path') if options.get('path') else None
+			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else 'config/plot.mplstyle'
+
+			return options,settings
+
+		options,settings = setup(options)
+
+		i = y>0*epsilon()
+		x,y = x[i],y[i]#/addition(y[i])
+
+		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+			fig,axes = plt.subplots(1,len(arguments['M'])) if fig is None or axes is None else (fig,axes)
+
+			ax = axes[index['M']]
+
+			ax.errorbar(x,y,yerr,xerr,**options)
+
+			ax.set_title(label='$\\textrm{Depth}~k = %d$'%(arguments['M'][index['M']]),size=45)
+			ax.set_xlabel(xlabel="$\\textrm{Probability}~p$",size=45)
+
+			if index['M'] == 0:
+				ax.set_ylabel(ylabel='$\\textrm{Size}~n = %d$'%(arguments['N'][index['N']]),size=45)
+
+			ax.set_xscale(value="log",base=4)
+			ax.set_yscale(value="log",base=10)
+			ax.set_xlim(xmin=2**(-2*23),xmax=2**(-2*1))
+			ax.set_ylim(ymin=5e-17,ymax=2e8)
+			ax.set_xticks(ticks=[2**(-2*i) for i in [22,18,14,10,6,2]])
+			ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2$' if i not in [0] else '$1$' for i in [22,18,14,10,6,2]],size=45)
+			ax.set_yticks(ticks=[10**(-i) for i in [16,12,8,4,0,-4,-8]])
+			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,12,8,4,0,-4,-8]],size=45)
+			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+			ax.grid(visible=True)
+
+			if index['M'] == (len(arguments['M'])-1):
+				ax.legend(
+					title="$\\textrm{Noise}~\\gamma$",
+					loc="lower left",
+					ncol=1,
+					title_fontsize=45,
+					prop={"size":45},
+					markerscale=2,
+					handlelength=4
+				)
+
+			if settings.get('path'):
+				fig.set_size_inches(w=75,h=24)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname=settings.get('path'))
+
+		return fig,axes
+
+
+	fig,axes = None,None
+
+	arguments = {'N':[8],'M':[0,1,2,4,8,16],'noise.parameters':[0,1e-4,1e-3,1e-2,1e-1],}
+
+	for argument in permute(arguments):
+		args = {'N':8,'D':2,'M':0,'noise.parameters':0,'unitary':'haar','noise':'depolarize','psi':'haar','operator':'tetrad',**argument}
+		function = 'array'
+
+		index = {attr:arguments[attr].index(argument[attr]) for attr in argument}
+		options = dict(
+			path='examples/measurement/plot.pdf',mplstyle=None,
+			label='$10^{-%s}$'%((('%e'%(argument['noise.parameters'])).split('e')[-1])[-1]) if argument['noise.parameters'] != 0 else '$0$',
+			color='viridis_%f'%((index['noise.parameters']+1)/(len(arguments['noise.parameters'])+1)),alpha=0.8,
+			marker='o',linestyle=':',
+			markersize=9,
+			linewidth=4,
+			elinewidth=4,
+			capsize=5
+		)
+
+		info = measurement(args,function=function)
+
+		x = info.data
+		func = info.func
+		y = func(x)
+
+		data = dict(x=x,y=y)
+		fig,axes = plot(**data,fig=fig,axes=axes,index=index,options=options)
+
+		print(args,{attr:info[attr] for attr in info if not isinstance(info[attr],iterables) and not callable(info[attr])},minimum(y),maximum(y))
+
+	return
+
 if __name__ == "__main__":
 
 	arguments = {"path":"config/settings.json","tol":5e-8}
@@ -3217,6 +3332,7 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
 	# test_module(*args,**args)
-	test_calculate(*args,**args)
+	# test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
+	test_measurement(*args,**args)

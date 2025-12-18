@@ -132,7 +132,6 @@ def test_err(path=None,tol=None):
 
 def test_fit(path=None,tol=None):
 
-
 	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 		def setup(options):

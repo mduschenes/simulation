@@ -1011,7 +1011,7 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwa
 	Args:
 		value (array): value
 		values (array): values
-		scales (str,array): scaling of value, allowed strings in ['probability','maximum']
+		scales (str,array): scaling of value, allowed strings in ['probability','maximum','scale']
 		scale (str,iterable[str]): scale of value
 		base (str,iterable[str]): base of value
 		data (dict): Additional options data
@@ -1047,12 +1047,14 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwa
 		scale = (1 if scales in ['probability'] else float(scales.split(separator)[-1]))*np.sum(np.abs(value))*np.abs(values)
 	elif scales in ['maximum'] or scales.startswith('maximum'):
 		scale = (1 if scales in ['maximum'] else float(scales.split(separator)[-1]))*np.max(np.abs(value))
+	elif scales in ['scale'] or scales.startswith('scale'):
+		scale = (1 if scales in ['scale'] else float(scales.split(separator)[-1]))
 	else:
 		scale = 1
 
 	value = np.exp(np.log(value)-np.log(scale))
 
-	value /= np.sum(np.abs(value))
+	# value /= np.max(np.abs(value))
 
 	value = inplace(value.astype(float),value==0,nan)
 
