@@ -1026,15 +1026,13 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwa
 
 	value = inplace(value.astype(float),is_naninfs(value),0)
 
-	scale = scale[0] if isinstance(scale,list) and scale else scale if scale in ['linear','log','symlog'] else None
-	range = None
-	base = base[0] if isinstance(base,list) else base if base is not None else None
-	data = {**dict(),**({} if not isinstance(data,dict) else data)}
+	data = {**{},**({} if not isinstance(data,dict) else data)}
+	data = {**data,**{key:val for key,val in {'plot':{}}.items() if data.get(key) is None}}
 
 	options = dict(
-		range=data.get('range',range),
-		scale=data.get('scale',scale),
-		base=data.get('base',base)
+		scale=data.get('plot',{}).get('scale',scale[0] if isinstance(scale,list) and scale else scale if scale in ['linear','log','symlog'] else None),
+		range=data.get('plot',{}).get('range',None),
+		base=data.get('plot',{}).get('base',base[0] if isinstance(base,list) else base if base is not None else None),
 		)
 
 	values = interval(values,**options) if values is not None else 1
@@ -1043,7 +1041,7 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwa
 		scale = 1
 	elif not isinstance(scales,str):
 		scale = scales
-	elif scale in ['probability'] or scale.startswith('probability'):
+	elif scales in ['probability'] or scales.startswith('probability'):
 		scale = (1 if scales in ['probability'] else float(scales.split(separator)[-1]))*np.sum(np.abs(value))*np.abs(values)
 	elif scales in ['maximum'] or scales.startswith('maximum'):
 		scale = (1 if scales in ['maximum'] else float(scales.split(separator)[-1]))*np.max(np.abs(value))
@@ -1054,7 +1052,8 @@ def set_scale(value,values=None,scales=None,scale=None,base=None,data=None,**kwa
 
 	value = np.exp(np.log(value)-np.log(scale))
 
-	# value /= np.max(np.abs(value))
+	if data.get('plot',{}).get('density'):
+		value /= np.sum(np.abs(data))
 
 	value = inplace(value.astype(float),value==0,nan)
 

@@ -77,7 +77,7 @@
 						"indexing": null,
 						"slice": null
 					},
-					"data": {"base":10},
+					"data": {"plot":{"base":10}},
 					"obj": null,
 					"plots": [
 						"errorbar"
@@ -521,7 +521,7 @@
 						"indexing": null,
 						"slice": null
 					},
-					"data": {"base":10},
+					"data": {"plot":{"base":10}},
 					"obj": null,
 					"plots": [
 						"errorbar"

@@ -101,7 +101,7 @@ def measurement(data,*args,function=None,**kwargs):
 		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
 		info.dim = data['D']**(1*data['N'])
-		info.env = data['D']**(1*data['N']) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
+		info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 		info.locality = 1
 		info.scale = 1
 		info.name = 'beta'
