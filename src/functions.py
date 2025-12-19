@@ -26,7 +26,7 @@ for PATH in PATHS:
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
 from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std,cumsum
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
-from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper
+from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper,interval
 from src.utils import orng as rng
 from src.utils import arrays,scalars,dataframes,iterables,numbers,integers,floats,nonzero,delim,nan,pi
 
@@ -586,6 +586,7 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		return measurement(data,*args,function=function,**kwargs)
 
 	settings = {} if settings is None else settings
+	settings = {**settings,**{setting:default for setting,default in {'func':None,'options':{}}.items() if settings.get(setting) is None}}
 
 	funcs = {}
 
@@ -605,14 +606,14 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		Y = None
 		data = data[attr][key]
 
-		if settings.get('func') is None or settings.get('func') in ['distance']:
+		if settings['func'] is None or settings['func'] in ['distance']:
 			Y = info.func(X)
-			data,Y = data/sum(data),Y/sum(Y)
-			data = (1/2)*sum(abs(data-Y))
-		elif settings.get('func') in ['cumulative']:
+			data,Y = data/sum(data)/interval(X,**settings['options']),Y
+			data = (1/2)*addition(absolute(data-Y))
+		elif settings['func'] in ['cumulative']:
 			Y = info.function(X)
-			data,Y = data/sum(data),Y
-			data = max(abs((cumsum(data)-Y)))
+			data,Y = data/addition(data),Y
+			data = maximum(absolute((cumsum(data)-Y)))
 		else:
 			data = None
 

@@ -568,6 +568,7 @@
 						"N": null
 					},
 					"kwargs": {
+						"fig.savefig.fname":"distance",
 						"fig.savefig.fname":"cumulative",
 						"ax.errorbar.label.labels": {"noise.parameters":null},
 						"ax.errorbar.label.scinotation": {

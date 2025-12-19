@@ -946,8 +946,8 @@
 								"function":"state",
 								"x":"sample.state.log.x","y":"y","xerr":null,"yerr":null,
 								"settings":{
-									"func":"distance",
-									"func":"cumulative"
+									"func":"cumulative",
+									"options":{"base":10,"scale":"log","range":[1e-20,1e0]}
 								}
 							}
 						},
@@ -1056,8 +1056,8 @@
 								"function":"array",
 								"x":"sample.array.log.x","y":"y","xerr":null,"yerr":null,
 								"settings":{
-									"func":"distance",
-									"func":"cumulative"
+									"func":"cumulative",
+									"options":{"base":10,"scale":"log","range":[1e-20,1e0]}
 								}
 							}
 						},
@@ -1183,7 +1183,6 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Variational Distance} ~~ \\frac{1}{2}~\\abs{S-P}$",
 				"ylabel": "$\\textrm{Cumulative Distance} ~~ \\max{~\\abs{\\Phi_{S}-\\Phi_{P}}}$"
 			},
 			"set_xlabel": {
