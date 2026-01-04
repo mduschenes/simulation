@@ -24,7 +24,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,dataframe,zeros,rand,random,randint,linspace,logspace,seeded,finfo,texify,scinotation,histogram,entropy,information
-from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,integral,kernel,mean,std,cumsum
+from src.utils import addition,multiply,divide,power,matmul,sqrt,floor,exp,log,log10,absolute,maximum,minimum,sort,mean,std,cumsum
 from src.utils import to_tuple,is_nan,is_naninf,asscalar
 from src.utils import grouper,conditions,flatten,concatenate,inplace,partial,epsilon,bootstrapper,interval
 from src.utils import orng as rng

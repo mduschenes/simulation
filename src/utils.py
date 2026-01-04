@@ -7580,16 +7580,17 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 	return func
 
-def integral(func,bounds=None):
+def integral(func,bounds=None,**kwargs):
 	'''
 	Integrate function
 	Args:
 		func (callable): function to integrate
 		bounds (iterable): bounds to integrate
+		kwargs (dict): Keyword arguments
 	Returns:
 		data (array): integral of function
 	'''
-	return osp.integrate.quad(func,*bounds)[0]
+	return osp.integrate.quad(func,*bounds,**kwargs)[0]
 
 def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 	'''

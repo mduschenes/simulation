@@ -1000,47 +1000,6 @@ class Basis(Dict):
 		return data
 
 	# POVM
-	@classmethod
-	@decorator
-	def pauli(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
-
-		if kwargs.ndim is None or kwargs.ndim < 2:
-			kwargs.ndim = 2
-
-		data = (1/(kwargs.D**2-1))*array([
-				cls.zero(*args,**kwargs),
-				cls.plus(*args,**kwargs),
-				cls.plusi(*args,**kwargs),
-			   (cls.one(*args,**kwargs)+
-				cls.minus(*args,**kwargs)+
-				cls.minusi(*args,**kwargs)),
-			],dtype=kwargs.dtype)
-
-		return data
-
-
-	@classmethod
-	@decorator
-	def tetrad(cls,*args,**kwargs):
-		kwargs = Dictionary(**kwargs)
-
-		if kwargs.ndim is None or kwargs.ndim < 2:
-			kwargs.ndim = 2
-
-		data = (1/(kwargs.D**2))*array([
-			sum(i*operator(*args,**kwargs)
-				for i,operator in
-				zip(parameters,(cls.I,cls.X,cls.Y,cls.Z)))
-			for parameters in [
-			(1,0,0,1),
-			(1,2*sqrt(2)/3,0,-1/3),
-			(1,-sqrt(2)/3,sqrt(2/3),-1/3),
-			(1,-sqrt(2)/3,-sqrt(2/3),-1/3)
-			]
-			],dtype=kwargs.dtype)
-
-		return data
 
 	@classmethod
 	@decorator
@@ -1060,6 +1019,47 @@ class Basis(Dict):
 		data = getattr(cls,data)(*args,**kwargs)
 
 		data = array([dot(unitary,dot(i,dagger(unitary))) for i in data])
+
+		return data
+
+	@classmethod
+	@decorator
+	def pauli(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+
+		data = (1/(kwargs.D**2-1))*array([
+				cls.zero(*args,**kwargs),
+				cls.plus(*args,**kwargs),
+				cls.plusi(*args,**kwargs),
+			   (cls.one(*args,**kwargs)+
+				cls.minus(*args,**kwargs)+
+				cls.minusi(*args,**kwargs)),
+			],dtype=kwargs.dtype)
+
+		return data
+
+tyi	@classmethod
+	@decorator
+	def tetrad(cls,*args,**kwargs):
+		kwargs = Dictionary(**kwargs)
+
+		if kwargs.ndim is None or kwargs.ndim < 2:
+			kwargs.ndim = 2
+
+		data = (1/(kwargs.D**2))*array([
+			sum(i*operator(*args,**kwargs)
+				for i,operator in
+				zip(parameters,(cls.I,cls.X,cls.Y,cls.Z)))
+			for parameters in [
+			(1,0,0,1),
+			(1,2*sqrt(2)/3,0,-1/3),
+			(1,-sqrt(2)/3,sqrt(2/3),-1/3),
+			(1,-sqrt(2)/3,-sqrt(2/3),-1/3)
+			]
+			],dtype=kwargs.dtype)
 
 		return data
 

@@ -1689,6 +1689,41 @@ def test_network(path=None,tol=None):
 	return
 
 
+def test_distribution(path=None,tol=None):
+
+	from src.utils import integral,binom,gammaln,exp,log,array,rand,dagger,eig,rank,det,trace,product,addition
+
+	q = 2
+	n = 4
+	d = q**n
+	s = d
+	l = 1
+
+	u = rand(shape=(l,l),random='haar',key=123,dtype='complex')
+	w = rand(shape=(l),random='rand',key=123,dtype='float') if l>1 else 1
+	v = dagger(u)
+	a = u*w@v
+
+	parse = lambda obj: obj.real
+	eigs = eig(a,compute_v=False,hermitian=True)
+	constant = exp(-gammaln(l*s)-gammaln((d-l)*s)+gammaln(d*s))/exp(addition(log(eigs)))**s
+	parameters = array([addition(eigs**(-i)) for i in [1,2]])/l
+	bounds = [min(eigs),max(eigs)] if l==d else [0,max(eigs)]
+	options = dict(limit=1000,epsabs=1e-16, epsrel=1e-16)
+
+	func = lambda x: (x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
+	func = lambda x: (x**(l*s-1))*((1-x)**(((d-l)*s-1)))
+
+	function = constant*integral(func,bounds,**options)
+
+	for key,val in dict(
+			rank=rank(a),trace=trace(a),det=det(a),eig=eigs,
+			constant=constant,parameters=parameters,
+			integral=function
+			).items():
+		print(key,parse(val))
+
+	return
 
 def test_histogram(path=None,tol=None):
 
@@ -1784,4 +1819,5 @@ if __name__ == '__main__':
 	# test_jax(path,tol)
 	# test_tensor(path,tol)
 	# test_network(path,tol)
-	test_histogram(path,tol)
+	test_distribution(path,tol)
+	# test_histogram(path,tol)
