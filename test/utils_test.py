@@ -1691,37 +1691,47 @@ def test_network(path=None,tol=None):
 
 def test_distribution(path=None,tol=None):
 
-	from src.utils import integral,binom,gammaln,exp,log,array,rand,dagger,eig,rank,det,trace,product,addition
+	from src.utils import integral,binom,gammaln,exp,log,array,rand,dagger,eig,nonzero,rank,det,trace,product,addition,real,arrays,iterables
 
 	q = 2
-	n = 4
+	n = 6
 	d = q**n
-	s = d
-	l = 1
+	s = d//2
+	l = 2
 
-	u = rand(shape=(l,l),random='haar',key=123,dtype='complex')
-	w = rand(shape=(l),random='rand',key=123,dtype='float') if l>1 else 1
-	v = dagger(u)
-	a = u*w@v
+	# a = rand(shape=(l),random='rand' if l>1 else 'rand',key=123456789,dtype='float')
 
-	parse = lambda obj: obj.real
-	eigs = eig(a,compute_v=False,hermitian=True)
-	constant = exp(-gammaln(l*s)-gammaln((d-l)*s)+gammaln(d*s))/exp(addition(log(eigs)))**s
-	parameters = array([addition(eigs**(-i)) for i in [1,2]])/l
-	bounds = [min(eigs),max(eigs)] if l==d else [0,max(eigs)]
-	options = dict(limit=1000,epsabs=1e-16, epsrel=1e-16)
+	# parse = lambda obj: obj.real if isinstance(obj,arrays) else [parse(i) for i in obj] if isinstance(obj,iterables) else obj
+	# constant = float(exp(gammaln(d*s)-gammaln(l*s)-gammaln((d-l)*s))/product(a)**s)
+	# parameters = [float(addition(a**(-i))/l) for i in [1,2]]
+	# bounds = [float(min(a)) if l==d else 0,float(max(a))]
+	# options = dict()
 
-	func = lambda x: (x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
-	func = lambda x: (x**(l*s-1))*((1-x)**(((d-l)*s-1)))
+	# func = lambda x: constant*(x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
+	# function = integral(func,bounds,**options)
 
-	function = constant*integral(func,bounds,**options)
+	from math import prod
+	from mpmath import log,log1p,exp,gamma,loggamma,binomial
+	from mpmath import quad as integral
+
+	a = [1.433244e-3,5.432420e-2,7.343422e-1][:l]
+
+	constant = loggamma(d*s) - loggamma(l*s) - loggamma((d-l)*s) - s*sum(log(i) for i in a)
+	parameters = [sum(i**(-j) for i in a)/l for j in [1,2]]
+	bounds = [min(a) if l==d else 0,max(a)]
+	options = dict()
+
+	func = lambda x: exp(constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[0]*x+parameters[1]*x**2)*(x<bounds[-1]))
+	function = integral(func,bounds,**options)
 
 	for key,val in dict(
-			rank=rank(a),trace=trace(a),det=det(a),eig=eigs,
-			constant=constant,parameters=parameters,
+			n=n,
+			a=a,
+			rank=len(a),trace=sum(a),det=prod(a),
+			constant=constant,bounds=bounds,parameters=parameters,
 			integral=function
 			).items():
-		print(key,parse(val))
+		print(key,val)
 
 	return
 

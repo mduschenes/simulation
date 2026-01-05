@@ -92,6 +92,7 @@ if backend in ['jax','jax.autograd','quimb']:
 	from jax.tree_util import tree_map as tree_map
 
 	import opt_einsum
+	import mpmath
 
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
@@ -120,6 +121,7 @@ elif backend in ['autograd']:
 	import autograd.scipy.linalg
 
 	import opt_einsum
+	import mpmath
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -176,6 +178,7 @@ elif backend in ['numpy']:
 	import scipy.special as spsp
 
 	import opt_einsum
+	import mpmath
 
 	mapper = map
 
@@ -7580,27 +7583,31 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 	return func
 
-def integral(func,bounds=None,**kwargs):
+def integral(func,bounds=None,**options):
 	'''
 	Integrate function
 	Args:
 		func (callable): function to integrate
 		bounds (iterable): bounds to integrate
-		kwargs (dict): Keyword arguments
+		options (dict): Keyword arguments
 	Returns:
 		data (array): integral of function
 	'''
-	return osp.integrate.quad(func,*bounds,**kwargs)[0]
+
+	# integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
+	integrate = lambda func: float(mpmath.quad(func,bounds,**options))
+
+	return integrate(func)
 
 def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 	'''
 	Kernel function
 	Args:
-		data (array): data to kernel
-		func (callable): function to kernel
-		grad (callable): function to kernel
-		func (callable): function to kernel
-		bounds (iterable): bounds to integrate
+		data (array): data of kernel
+		func (callable): function of kernel
+		grad (callable): gradient of kernel
+		hess (callable): hessian of kernel
+		bounds (iterable): bounds of kernel
 		scale (int,float): scale of kernel
 	Returns:
 		func (callable): kernel function
@@ -7612,9 +7619,9 @@ def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 	function = lambda x,mu=mu,sigma=sigma: (1/sqrt(2*pi*sigma**2)*exp(-(1/2)*(((x-mu)/sigma)**2)))
 
 	scale = ((
-		integrate(lambda x: function(x)**2,bounds)[0]/
-		integrate(lambda x: function(x)*(x**2),bounds)[0]/
-		integrate(lambda x: hess(x)**2,bounds)[0]
+		integral(lambda x: function(x)**2,bounds)[0]/
+		integral(lambda x: function(x)*(x**2),bounds)[0]/
+		integral(lambda x: hess(x)**2,bounds)[0]
 		)/size)**(1/5)
 
 	func = osp.stats.gaussian_kde(data,scale).evaluate
