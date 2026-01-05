@@ -1691,47 +1691,65 @@ def test_network(path=None,tol=None):
 
 def test_distribution(path=None,tol=None):
 
-	from src.utils import integral,binom,gammaln,exp,log,array,rand,dagger,eig,nonzero,rank,det,trace,product,addition,real,arrays,iterables
+	from src.utils import permute
 
-	q = 2
-	n = 6
-	d = q**n
-	s = d//2
-	l = 2
+	settings = dict(
+		l = [1,2],
+		n = [4,5,6],
+		q = [2],
+		d = [lambda n,q:q**n],
+		s = [lambda n,q: (q**n)//2],
+		)
 
-	# a = rand(shape=(l),random='rand' if l>1 else 'rand',key=123456789,dtype='float')
+	for setting in permute(settings):
 
-	# parse = lambda obj: obj.real if isinstance(obj,arrays) else [parse(i) for i in obj] if isinstance(obj,iterables) else obj
-	# constant = float(exp(gammaln(d*s)-gammaln(l*s)-gammaln((d-l)*s))/product(a)**s)
-	# parameters = [float(addition(a**(-i))/l) for i in [1,2]]
-	# bounds = [float(min(a)) if l==d else 0,float(max(a))]
-	# options = dict()
+		n = setting['n']
+		l = setting['l']
+		q = setting['q']
+		d = setting['d'](n,q)
+		s = setting['s'](n,q)
 
-	# func = lambda x: constant*(x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
-	# function = integral(func,bounds,**options)
+		# from src.utils import array,rand
+		# from src.utils import eig,nonzero,rank,det,trace,dagger
+		# from src.utils import product,addition,exp,log
+		# from src.utils import arrays,iterables,real,imag
+		# from src.utils import integral,binom,gammaln
 
-	from math import prod
-	from mpmath import log,log1p,exp,gamma,loggamma,binomial
-	from mpmath import quad as integral
+		# a = rand(shape=(l),random='rand' if l>1 else 'rand',key=123456789,dtype='float')
 
-	a = [1.433244e-3,5.432420e-2,7.343422e-1][:l]
+		# parse = lambda obj: obj.real if isinstance(obj,arrays) else [parse(i) for i in obj] if isinstance(obj,iterables) else obj
+		# constant = float(exp(gammaln(d*s)-gammaln(l*s)-gammaln((d-l)*s))/product(a)**s)
+		# parameters = [float(addition(a**(-i))/l) for i in [1,2]]
+		# bounds = [float(min(a)) if l==d else 0,float(max(a))]
+		# options = dict()
 
-	constant = loggamma(d*s) - loggamma(l*s) - loggamma((d-l)*s) - s*sum(log(i) for i in a)
-	parameters = [sum(i**(-j) for i in a)/l for j in [1,2]]
-	bounds = [min(a) if l==d else 0,max(a)]
-	options = dict()
+		# func = lambda x: constant*(x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
+		# function = integral(func,bounds,**options)
 
-	func = lambda x: exp(constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[0]*x+parameters[1]*x**2)*(x<bounds[-1]))
-	function = integral(func,bounds,**options)
+		from math import prod
+		from mpmath import log,log1p,exp,gamma,loggamma,binomial,re
+		from mpmath import quad as integral
 
-	for key,val in dict(
-			n=n,
-			a=a,
-			rank=len(a),trace=sum(a),det=prod(a),
-			constant=constant,bounds=bounds,parameters=parameters,
-			integral=function
-			).items():
-		print(key,val)
+		a = [1.433244e-3,5.432420e-2,7.343422e-1][:l]
+
+		constant = (loggamma(d*s) - loggamma(l*s) - loggamma((d-l)*s) - s*sum(log(i) for i in a)) if l==1 else (-s*sum(log(i) for i in a))
+		parameters = [sum(i**(-j) for i in a)/l for j in [1,2]]
+		bounds = [min(a) if l==d else 0,max(a)]
+		options = dict()
+
+		func = lambda x: exp(constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[0]*x+parameters[1]*x**2))
+		function = float(re(integral(func,bounds,**options)))
+
+		strings = dict(
+				n=n,l=l,
+				# a=a,
+				# rank=len(a),trace=sum(a),det=prod(a),
+				# constant=constant,bounds=bounds,parameters=parameters,
+				integral=function
+				)
+		print(strings)
+		# for key,val in strings.items():
+		# 	print(key,val)
 
 	return
 
