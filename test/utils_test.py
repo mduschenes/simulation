@@ -1691,11 +1691,33 @@ def test_network(path=None,tol=None):
 
 def test_distribution(path=None,tol=None):
 
+	import mpmath
+	from mpmath import appellf1
+	from mpmath import log
+
+	# Set the precision (optional, but good for complex calculations)
+
+	s = 256
+	a = 1*s
+	b1 = -2*s
+	b2 = b1
+	c = a+1
+	x = s*(1 + 1j)
+	y = x.conjugate()
+
+	result = log(appellf1(a, b1, b2, c, x, y))
+	print(abs(result))
+	print(result.real)
+	print(result.imag/result.real)
+
+	exit()
+
+
 	from src.utils import permute
 
 	settings = dict(
-		l = [1,2],
-		n = [4,5,6],
+		l = [2],
+		n = [4],
 		q = [2],
 		d = [lambda n,q:q**n],
 		s = [lambda n,q: (q**n)//2],
@@ -1727,18 +1749,46 @@ def test_distribution(path=None,tol=None):
 		# function = integral(func,bounds,**options)
 
 		from math import prod
-		from mpmath import log,log1p,exp,gamma,loggamma,binomial,re
+		from mpmath import log,log1p,exp,sqrt,gamma,loggamma,binomial
+		from mpmath import appellf1
 		from mpmath import quad as integral
+		from mpmath import re
+
+		# from src.utils import array,rand
+		# from src.utils import eig,nonzero,rank,det,trace,dagger
+		# from src.utils import product,addition,exp,log
+		# from src.utils import arrays,iterables,real,imag
+		# from src.utils import integral,binom,gammaln
+
+		from numpy import log,log1p,exp,sqrt
+		from scipy.special import gammaln as loggamma
+		from scipy.integrate import quad as integral
+		from sympy import appellf1
 
 		a = [1.433244e-3,5.432420e-2,7.343422e-1][:l]
 
-		constant = (loggamma(d*s) - loggamma(l*s) - loggamma((d-l)*s) - s*sum(log(i) for i in a)) if l==1 else (-s*sum(log(i) for i in a))
-		parameters = [sum(i**(-j) for i in a)/l for j in [1,2]]
+
+		parameters = [sum(i**(-j) for i in a)/l for j in [0,1,2]]
+		parameter = (parameters[1]/parameters[2])*(1+1j*sqrt((parameters[2]/(parameters[1]**2))-1))
+
+		print(appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,max(a)/parameter,max(a)/parameter.conjugate()))
+
+		constant = (
+			-log(l*s) + ((d-l)*s-1)*log(abs(parameter))
+			+ log(
+				((max(a)**(l*s))*appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,max(a)/parameter,max(a)/parameter.conjugate())) +
+				((min(a)**(l*s))*appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,min(a)/parameter,min(a)/parameter.conjugate()))
+				)
+			) if l>1 else (-loggamma(d*s) + loggamma(l*s) + loggamma((d-l)*s) + s*sum(log(i) for i in a))
+
+		print(constant)
+
 		bounds = [min(a) if l==d else 0,max(a)]
 		options = dict()
 
-		func = lambda x: exp(constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[0]*x+parameters[1]*x**2))
-		function = float(re(integral(func,bounds,**options)))
+		func = lambda x: exp(-constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[1]*x+parameters[2]*x**2))
+		# function = float(re(integral(func,bounds,**options)))
+		function = float(integral(func,*bounds,**options)[0])
 
 		strings = dict(
 				n=n,l=l,
@@ -1819,7 +1869,7 @@ def test_histogram(path=None,tol=None):
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
-	tol = 5e-8 
+	tol = 5e-8
 	# test_getter(path,tol)
 	# test_setter(path,tol)
 	# test_popper(path,tol)
@@ -1829,10 +1879,10 @@ if __name__ == '__main__':
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
-	# test_expmi()	
+	# test_expmi()
 	# test_rand(path,tol)
 	# test_gradient_expm(path,tol)
-	# test_shuffle(path,tol)	
+	# test_shuffle(path,tol)
 	# test_contract(path,tol)
 	# test_concatenate(path,tol)
 	# test_reshape(path,tol)
