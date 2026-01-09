@@ -1691,36 +1691,15 @@ def test_network(path=None,tol=None):
 
 def test_distribution(path=None,tol=None):
 
-	import mpmath
-	from mpmath import appellf1
-	from mpmath import log
-
-	# Set the precision (optional, but good for complex calculations)
-
-	s = 256
-	a = 1*s
-	b1 = -2*s
-	b2 = b1
-	c = a+1
-	x = s*(1 + 1j)
-	y = x.conjugate()
-
-	result = log(appellf1(a, b1, b2, c, x, y))
-	print(abs(result))
-	print(result.real)
-	print(result.imag/result.real)
-
-	exit()
-
-
 	from src.utils import permute
 
 	settings = dict(
 		l = [2],
-		n = [4],
+		n = [4,6,8,10],
 		q = [2],
-		d = [lambda n,q:q**n],
-		s = [lambda n,q: (q**n)//2],
+		k = [2,4,8,16,32],
+		d = [lambda n,q,k:q**n],
+		s = [lambda n,q,k: k+1],
 		)
 
 	for setting in permute(settings):
@@ -1728,8 +1707,9 @@ def test_distribution(path=None,tol=None):
 		n = setting['n']
 		l = setting['l']
 		q = setting['q']
-		d = setting['d'](n,q)
-		s = setting['s'](n,q)
+		k = setting['k']
+		d = setting['d'](n,q,k)
+		s = setting['s'](n,q,k)
 
 		# from src.utils import array,rand
 		# from src.utils import eig,nonzero,rank,det,trace,dagger
@@ -1749,57 +1729,33 @@ def test_distribution(path=None,tol=None):
 		# function = integral(func,bounds,**options)
 
 		from math import prod
-		from mpmath import log,log1p,exp,sqrt,gamma,loggamma,binomial
-		from mpmath import appellf1
+		from mpmath import log,log1p,exp,sqrt
 		from mpmath import quad as integral
+		from mpmath import appellf1,gamma,loggamma,binomial
 		from mpmath import re
 
-		# from src.utils import array,rand
-		# from src.utils import eig,nonzero,rank,det,trace,dagger
-		# from src.utils import product,addition,exp,log
-		# from src.utils import arrays,iterables,real,imag
-		# from src.utils import integral,binom,gammaln
+		a = [0,1/(3*d),1/(2*d),1/d][:l+1]
+		u,v = min(a),max(a)
+		z = [(i-u)/(v-u) for i in a if i>u] if len(a)>1 else a
+		l = len(z)
 
-		from numpy import log,log1p,exp,sqrt
-		from scipy.special import gammaln as loggamma
-		from scipy.integrate import quad as integral
-		from sympy import appellf1
-
-		a = [1.433244e-3,5.432420e-2,7.343422e-1][:l]
-
-
-		parameters = [sum(i**(-j) for i in a)/l for j in [0,1,2]]
+		parameters = [sum(i**(-j) for i in z)/l for j in [0,1,2]]
 		parameter = (parameters[1]/parameters[2])*(1+1j*sqrt((parameters[2]/(parameters[1]**2))-1))
+		bounds = [0,1]
+		options = {}
 
-		print(appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,max(a)/parameter,max(a)/parameter.conjugate()))
+		func = lambda x: exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[1]*x+parameters[2]*x**2))
 
-		constant = (
-			-log(l*s) + ((d-l)*s-1)*log(abs(parameter))
-			+ log(
-				((max(a)**(l*s))*appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,max(a)/parameter,max(a)/parameter.conjugate())) +
-				((min(a)**(l*s))*appellf1(l*s,1-(((d-l)*s)+1)/2,1-(((d-l)*s)+1)/2,l*s+1,min(a)/parameter,min(a)/parameter.conjugate()))
-				)
-			) if l>1 else (-loggamma(d*s) + loggamma(l*s) + loggamma((d-l)*s) + s*sum(log(i) for i in a))
-
-		print(constant)
-
-		bounds = [min(a) if l==d else 0,max(a)]
-		options = dict()
-
-		func = lambda x: exp(-constant + (l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[1]*x+parameters[2]*x**2))
-		# function = float(re(integral(func,bounds,**options)))
-		function = float(integral(func,*bounds,**options)[0])
+		function = float(re(integral(func,bounds,**options)))
+		# function = appellf1(l*s,-(((d-l)*s)-1)/2,-(((d-l)*s)-1)/2,l*s+1,1/parameter,1/parameter.conjugate())
 
 		strings = dict(
-				n=n,l=l,
-				# a=a,
-				# rank=len(a),trace=sum(a),det=prod(a),
-				# constant=constant,bounds=bounds,parameters=parameters,
+				n=n,l=l,k=k,
+				parameters=parameters,
 				integral=function
 				)
 		print(strings)
-		# for key,val in strings.items():
-		# 	print(key,val)
+
 
 	return
 
