@@ -4,7 +4,7 @@
 import os,sys,itertools,ast,operator
 from copy import deepcopy as copy
 from string import ascii_lowercase,ascii_uppercase,digits as ascii_digits
-from math import prod,comb
+from math import prod,factorial,comb
 
 import inspect
 import typing
@@ -5066,7 +5066,7 @@ if backend in ['jax','quimb']:
 				return out
 
 		if mesh is not None:
-			out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+			out = array([out.reshape(-1) for out in meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
 		else:
 			out = func(key,shape,bounds,dtype)
 
@@ -5480,7 +5480,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 				return out
 
 		if mesh is not None:
-			out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+			out = array([out.reshape(-1) for out in meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
 		else:
 			out = func(key,shape,bounds,dtype)
 
@@ -6885,7 +6885,22 @@ def nansqrt(a):
 	return np.sqrt(a)
 
 
-def factorial(n,exact=True):
+def multinomial(n):
+	'''
+	Compute multinomial function: n!
+	Args:
+		n (int,float,iterable[int,float]): Number to compute multinomial
+	Returns:
+		n (int,float): Factorial of n
+	'''
+	if isinstance(n,int):
+		return factorial(n)
+	elif len(n) == 1:
+		return 1
+	else:
+		return comb(sum(n),n[-1])*multinomial(n[:-1])
+
+def gamma(n,exact=True):
 	'''
 	Compute factorial function: n!
 	Args:
@@ -6982,7 +6997,7 @@ elif backend in ['autograd','numpy']:
 
 		out = addition(a**ord,axis=axis)**(1/ord)
 
-		return out		
+		return out
 
 
 @jit
@@ -7082,7 +7097,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 	elif isinstance(data,arrays):
 
 		if d < k:
-			
+
 			def function(data,state,*args,**kwargs):
 				return data
 
@@ -7091,7 +7106,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 			if state is None:
 
 				if not local and not tensor:
-				
+
 					subscripts = (
 						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]]),
@@ -7134,7 +7149,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 					einsummation = einsummand(subscripts,*shapes)
-					
+
 					def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(transform(data),state)
 
@@ -7164,9 +7179,9 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 							(*string,*[letters[j] for j in ['i','k'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
-					
+
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(data),state)
 
@@ -7186,7 +7201,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(data),shuffler(state)))
 
@@ -7200,7 +7215,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(data),state)
 
@@ -7210,18 +7225,18 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
-							)	
+							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(data),state)
 
 				elif s == 2:
 
 					if not local and not tensor:
-						
+
 						subscripts = (
 							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
@@ -7231,7 +7246,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(data),state,conjugate(transform(data)))
 
@@ -7252,7 +7267,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 
 						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(data),shuffler(state),conjugate(transform(data))))
 
@@ -7267,7 +7282,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(data),state,conjugate(transform(data)))
 
@@ -7278,7 +7293,7 @@ def contraction(data=None,state=None,where=None,attributes=None,local=None,tenso
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
-							)	
+							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
@@ -7368,7 +7383,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 	elif isinstance(data,arrays):
 
 		if d < k:
-			
+
 			def function(grad,data,state,*args,**kwargs):
 				return data
 
@@ -7377,16 +7392,16 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 			if state is None:
 
 				if not local and not tensor:
-				
+
 					subscripts = (
 						(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 						(*string,*[letters[j] for j in ['j','k'][:s]]),
 						(*string,*[letters[j] for j in ['i','k'][:s]]),
 						)
 					shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
-					
+
 					einsummation = einsummand(subscripts,*shapes)
-					
+
 					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(grad,state)
 
@@ -7406,7 +7421,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 					shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
 					_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
-					
+
 					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return _shuffler(einsummation(transform(grad),shuffler(state)))
 
@@ -7420,7 +7435,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 					shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 					einsummation = einsummand(subscripts,*shapes)
-					
+
 					def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 						return einsummation(transform(grad),state)
 
@@ -7450,9 +7465,9 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 							(*string,*[letters[j] for j in ['i','k'][:s]]),
 							)
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s))
-					
+
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(grad),state)
 
@@ -7472,7 +7487,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return _shuffler(einsummation(transform(grad),shuffler(state)))
 
@@ -7486,7 +7501,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(grad),state)
 
@@ -7496,18 +7511,18 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 							(*strings,*[letters[j].format(i) for j in ['i','j'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j].format(i) for j in ['i','k'][:s] for i in range(N)]),
-							)	
+							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							return einsummation(transform(grad),state)
 
 				elif s == 2:
 
 					if not local and not tensor:
-						
+
 						subscripts = (
 							(*strings,*[letters[j] for j in ['i','j'][:k][slices]]),
 							(*string,*[letters[j] for j in ['j','k'][:s]]),
@@ -7517,7 +7532,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = ((*shape,*[prod(D[i] for i in range(N) if i in where)]*k),(*samples,*[prod(D[i] for i in range(N))]*s),(*shape,*[prod(D[i] for i in range(N) if i in where)]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
@@ -7539,7 +7554,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 						shuffler = shuffle(state,shape=shape,axes=axes,transform=True,execute=False)
 						_shuffler = shuffle(state,shape=shape,axes=axes,transform=False,execute=False)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							grad = _shuffler(einsummation(transform(grad),shuffler(state),conjugate(transform(data))))
 							return grad + dagger(grad)
@@ -7555,7 +7570,7 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
@@ -7567,11 +7582,11 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 							(*string,*[letters[j].format(i) for j in ['j','k'][:s] for i in range(N)]),
 							(*strings,*[letters[j].format(i) for j in ['l','k'][:k][slices] for i in range(N) if i in where]),
 							(*string,*[letters[j if j=='i' and i in where else 'j' if j=='i' else j if j=='l' and i in where else 'k'].format(i) for j in ['i','l'][:s] for i in range(N)]),
-							)	
+							)
 						shapes = ((*shape,*[D[i] for i in range(N) if i in where]*k),(*samples,*[D[i] for i in range(N)]*s),(*shape,*[D[i] for i in range(N) if i in where]*k))
 
 						einsummation = einsummand(subscripts,*shapes)
-						
+
 						def function(grad,data,state,*args,where=where,local=local,tensor=tensor,conj=conj,transform=transform,subscripts=subscripts,einsummation=einsummation,shuffler=shuffler,_shuffler=_shuffler,**kwargs):
 							grad = einsummation(transform(grad),state,conjugate(transform(data)))
 							return grad + dagger(grad)
@@ -7650,9 +7665,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	Args:
 		metric (str,callable): Type of metric, or function with signature
 		shapes (iterable[tuple[int]]): Shapes of Operators
-		label (array,callable): Label			
+		label (array,callable): Label
 		weights (array): Weights
-		optimize (bool,str,iterable): Contraction type			
+		optimize (bool,str,iterable): Contraction type
 		returns (bool): Return metric gradients
 	Returns:
 		func (callable): Metric function with signature func(*operands,label,weights)
@@ -7668,12 +7683,12 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		size = 1
 		ndim = None
 		shape = [size]
-	
+
 	if callable(metric):
 		metric = metric
 		func = jit(metric)
 		grad = jit(gradient(metric))
-		# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
+		# grad = gradient(func,mode='fwd',holomorphic=True,move=True)
 		grad_analytical = jit(gradient(metric))
 
 	elif metric is None:
@@ -7695,7 +7710,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 			return out/2
 
 		def wrapper_grad(out,*operands,shape=shape):
-			return out/2	
+			return out/2
 
 	elif metric in ['mse']:
 		func = mse
@@ -7705,7 +7720,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 			return out/prod(shape)/2
 
 		def wrapper_grad(out,*operands,shape=shape):
-			return out/prod(shape)/2					
+			return out/prod(shape)/2
 
 	elif metric in ['norm']:
 
@@ -7714,7 +7729,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 		def wrapper_func(out,*operands,shape=shape):
 			return out/shape[-1]/2
-		
+
 		def wrapper_grad(out,*operands,shape=shape):
 			return out/shape[-1]/2
 
@@ -7824,22 +7839,22 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		def func(*operands,func=func,label=label,weights=weights):
 			return func(*operands[:1],label,weights,*operands[1:])
 		def grad(*operands,func=grad,label=label,weights=weights):
-			return func(*operands[:1],label,weights,*operands[1:])				
+			return func(*operands[:1],label,weights,*operands[1:])
 		def grad_analytical(*operands,func=grad_analytical,label=label,weights=weights):
 			return func(*operands[:1],label,weights,*operands[1:])
-	
+
 	elif (label is not None):
 
 		if callable(label):
 			label = label()
 
 		if label is not None and metric in ['abs2','real']:
-			label = conjugate(label)	
+			label = conjugate(label)
 
 		def func(*operands,func=func,label=label):
 			return func(*operands[:1],label,*operands[1:])
 		def grad(*operands,func=grad,label=label):
-			return func(*operands[:1],label,*operands[1:])				
+			return func(*operands[:1],label,*operands[1:])
 		def grad_analytical(*operands,func=grad_analytical,label=label):
 			return func(*operands[:1],label,*operands[1:])
 
@@ -7850,7 +7865,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		def func(*operands,func=func,weights=weights):
 			return func(*operands[:2],weights,*operands[2:])
 		def grad(*operands,func=grad,weights=weights):
-			return func(*operands[:2],weights,*operands[2:])				
+			return func(*operands[:2],weights,*operands[2:])
 		def grad_analytical(*operands,func=grad_analytical,weights=weights):
 			return func(*operands[:2],weights,*operands[2:])
 
@@ -7870,11 +7885,11 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		shape (int,iterable[int]): Shape of arrays
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -7885,7 +7900,7 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -7906,13 +7921,13 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 						[*[letters['i'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],],
-						]					
+						]
 				elif len(shape[2]) == 2:
 					subscripts = [
 						[*[letters['i'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]							
+						]
 				else:
 					subscripts = [
 						[*[letters['i'].format(i) for i in range(size)],],
@@ -7922,73 +7937,73 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 				subscripts = [
 					[*[letters['i'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],],
-					]				
+					]
 		elif ndim == 2:
 			if length == 2:
 				subscripts = [
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 			elif length == 3:
 				if len(shape[2]) == 1:
 					subscripts = [
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],],
-						]					
+						]
 				elif len(shape[2]) == 2:
 					subscripts = [
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
-						]										
+						]
 				else:
 					subscripts = [
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]					
+						]
 			else:
 				subscripts = [
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 		else:
 			if length == 2:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 			elif length == 3:
 				if len(shape[2]) == 1:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['j'].format(i) for i in range(size)],],
-						]					
+						]
 				elif len(shape[2]) == 2:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
-						]										
+						]
 				else:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]					
+						]
 			else:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]	
-	
+					]
+
 		if length == 2:
 			shapes = (shapes[0],shapes[1])
 		elif length == 3:
 			shapes = (shapes[0],shapes[1],shapes[2])
 		else:
 			shapes = (shapes[0],shapes[1])
-	
+
 	else:
 		if ndim == 1:
 			if length == 2:
@@ -7997,7 +8012,7 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 				if len(shapes[2]) == 1:
 					subscripts = 'i,i,i->'
 				elif len(shapes[2]) == 2:
-					subscripts = 'i,j,ij->'			
+					subscripts = 'i,j,ij->'
 				else:
 					subscripts = 'i,i->'
 			else:
@@ -8007,9 +8022,9 @@ def mse(*operands,shape=None,optimize=True,wrapper=None):
 				subscripts = 'ij,ij->'
 			elif length == 3:
 				if len(shapes[2]) == 1:
-					subscripts = 'ij,ij,j->'			
+					subscripts = 'ij,ij,j->'
 				elif len(shapes[2]) == 2:
-					subscripts = 'ij,ik,jk->'			
+					subscripts = 'ij,ik,jk->'
 				else:
 					subscripts = 'ij,ij->'
 			else:
@@ -8056,12 +8071,12 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate gradient of square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8072,7 +8087,7 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8099,7 +8114,7 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]			
+						]
 				else:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],],
@@ -8109,65 +8124,65 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],],
-					]				
+					]
 		elif ndim == 2:
 			if length == 3:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 			elif length == 4:
 				if len(shape[2]) == 1:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],],
-						]						
+						]
 				elif len(shape[2]) == 2:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
-						]					
+						]
 				else:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]										
+						]
 			else:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]														
+					]
 		else:
 			if length == 3:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 			elif length == 4:
 				if len(shape[2]) == 1:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],],
-						]						
+						]
 				elif len(shape[2]) == 2:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
 						[*[letters['j'].format(i) for i in range(size)],*[letters['k'].format(i) for i in range(size)],],
-						]						
+						]
 				else:
 					subscripts = [
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 						[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-						]										
+						]
 			else:
 				subscripts = [
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
 					[*ellipses,*[letters['i'].format(i) for i in range(size)],*[letters['j'].format(i) for i in range(size)],],
-					]					
+					]
 
 		if length == 3:
 			shapes = (shapes[2],shapes[1])
@@ -8184,7 +8199,7 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 				if len(shapes[2]) == 1:
 					subscripts = '...i,i,i->'
 				elif len(shapes[2]) == 2:
-					subscripts = '...i,j,ij->'			
+					subscripts = '...i,j,ij->'
 				else:
 					subscripts = '...i,i->'
 			else:
@@ -8194,9 +8209,9 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 				subscripts = '...ij,ij->'
 			elif length == 4:
 				if len(shapes[2]) == 1:
-					subscripts = '...ij,ij,j->'			
+					subscripts = '...ij,ij,j->'
 				elif len(shapes[2]) == 2:
-					subscripts = '...ij,ik,jk->'			
+					subscripts = '...ij,ik,jk->'
 				else:
 					subscripts = '...ij,ij->'
 			else:
@@ -8234,7 +8249,7 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 	elif length == 4:
 		@jit
 		def func(*operands):
-			out = operands[0]-operands[1]			
+			out = operands[0]-operands[1]
 			out = 2*real(einsummation(operands[3],conjugate(out),operands[2])/
 				   einsummation(operands[1],conjugate(operands[1]))
 				   )
@@ -8245,7 +8260,7 @@ def gradient_mse(*operands,shape=None,optimize=True,wrapper=None):
 			out = operands[0]-operands[1]
 			out = 2*real(einsummation(operands[2],conjugate(out))/
 				   einsummation(operands[1],conjugate(operands[1])))
-			return wrapper(out,*operands)			
+			return wrapper(out,*operands)
 
 	if isarray:
 		out = func(*operands)
@@ -8259,12 +8274,12 @@ def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)		
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8275,7 +8290,7 @@ def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8284,7 +8299,7 @@ def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*[letters['i'].format(i) for i in range(size)],],
 				]
@@ -8315,7 +8330,7 @@ def inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	def func(*operands):
 		out = einsummation(abs2(operands[0]-conjugate(operands[1])))
 		return wrapper(out,*operands)
-	
+
 	if isarray:
 		out = func(*operands)
 	else:
@@ -8328,12 +8343,12 @@ def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8344,7 +8359,7 @@ def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8353,7 +8368,7 @@ def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8388,7 +8403,7 @@ def gradient_inner_norm(*operands,shape=None,optimize=True,wrapper=None):
 		out = conjugate(operands[0])-operands[1]
 		out = 2*real(einsummation(operands[2],out))
 		return wrapper(out,*operands)
-	
+
 	if isarray:
 		out = func(*operands)
 	else:
@@ -8402,12 +8417,12 @@ def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate absolute square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8418,7 +8433,7 @@ def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8427,7 +8442,7 @@ def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8452,7 +8467,7 @@ def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 			subscripts = 'ij,ij->'
 		else:
 			subscripts = '...ij,...ij->...'
-		
+
 		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
@@ -8461,7 +8476,7 @@ def inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	def func(*operands):
 		out = abs2(einsummation(*operands[:2]))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
 		return wrapper(out,*operands)
-	
+
 	if isarray:
 		out = func(*operands)
 	else:
@@ -8476,12 +8491,12 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate gradient of absolute square of inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8492,7 +8507,7 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8501,7 +8516,7 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts_func = [
 				[*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8526,7 +8541,7 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 			subscripts_func = 'ij,ij->'
 		else:
 			subscripts_func = '...ij,...ij->...'
-		
+
 		shapes_func = (shapes[0],shapes[1])
 
 	einsummation_func = einsummand(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
@@ -8534,7 +8549,7 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts_grad = [
 				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8559,7 +8574,7 @@ def gradient_inner_abs2(*operands,shape=None,optimize=True,wrapper=None):
 			subscripts_grad = '...ij,ij->...'
 		else:
 			subscripts_grad = '...ij,...ij->...'
-		
+
 		shapes_grad = (shapes[2],shapes[1])
 
 	einsummation_grad = einsummand(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
@@ -8582,12 +8597,12 @@ def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8598,7 +8613,7 @@ def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8607,7 +8622,7 @@ def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8632,7 +8647,7 @@ def inner_real(*operands,shape=None,optimize=True,wrapper=None):
 			subscripts = 'ij,ij->'
 		else:
 			subscripts = '...ij,...ij->...'
-		
+
 		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
@@ -8655,12 +8670,12 @@ def gradient_inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate gradient of real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8671,7 +8686,7 @@ def gradient_inner_real(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8680,7 +8695,7 @@ def gradient_inner_real(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8728,12 +8743,12 @@ def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
+	'''
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
@@ -8744,7 +8759,7 @@ def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8753,7 +8768,7 @@ def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8778,7 +8793,7 @@ def inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 			subscripts = 'ij,ij->'
 		else:
 			subscripts = '...ij,...ij->...'
-		
+
 		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsummand(subscripts,*shapes,optimize=optimize,wrapper=None)
@@ -8801,9 +8816,9 @@ def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	Calculate gradient of imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		shape (int,iterable[int]): Shape of arrays		
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		shape (int,iterable[int]): Shape of arrays
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''
@@ -8817,7 +8832,7 @@ def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 
 	shape = shapes if shape is None else [(shape,)]*len(operands) if isinstance(shape,integers) else [tuple(shape)]*len(operands) if not all(isinstance(i,iterables) for i in shape) else [tuple(i) for i in shape]
 	tensor = any(i!=j for i,j in zip(shape,shapes))
-	
+
 	ndim = min(len(i) for i in shape if i is not None) if tensor else min(len(shape) for shape in shapes if shape is not None)
 	length = len([shape for shape in shapes if shape is not None])
 	size = max((len(i) for i in shapes[:2]),default=0)//ndim
@@ -8826,7 +8841,7 @@ def gradient_inner_imag(*operands,shape=None,optimize=True,wrapper=None):
 	ellipses = ['...']
 
 	if tensor:
-		if ndim == 1:	
+		if ndim == 1:
 			subscripts = [
 				[*ellipses,*[letters['i'].format(i) for i in range(size)],],
 				[*[letters['i'].format(i) for i in range(size)],],
@@ -8879,7 +8894,7 @@ def dot(a,b,axes=1):
 		axes (int,iterable[int]): Axes to calculate dot product
 	Returns:
 		out (array): Dot product
-	'''	
+	'''
 	return np.tensordot(a,b,axes=axes)
 
 @jit
@@ -8891,7 +8906,7 @@ def out(a,b):
 		b (array): Array to calculate outer product
 	Returns:
 		out (array): Outer product
-	'''	
+	'''
 	return np.outer(a,b)
 
 @jit
@@ -8921,7 +8936,7 @@ def inner(a,b):
 		b (array): Array to calculate inner product
 	Returns:
 		out (array): Inner product
-	'''	
+	'''
 	return np.inner(conjugate(transpose(a)),b)
 
 @jit
@@ -8933,7 +8948,7 @@ def outer(a,b):
 		b (array): Array to calculate outer product
 	Returns:
 		out (array): Outer product
-	'''	
+	'''
 	return np.outer(a,conjugate(transpose(b)))
 
 @jit
@@ -8978,7 +8993,7 @@ def multiplication(a):
 			out = out*b
 		else:
 			out = out.multiply(b)
-	
+
 	return out
 
 @jit
@@ -8999,7 +9014,7 @@ def addition(a,axis=None):
 	Add list of arrays elementwise
 	Args:
 		a (iterable): Arrays to add
-		axis (int): axis to perform addition		
+		axis (int): axis to perform addition
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
@@ -9060,7 +9075,7 @@ def conditions(booleans,op):
 	Compute multiple conditions with boolean operator
 	Args:
 		booleans (iterable[bool]): Boolean conditions
-		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne','in'] 
+		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne','in']
 	Returns:
 		out (bool): Boolean of conditions
 	'''
@@ -9089,14 +9104,14 @@ def conditions(booleans,op):
 	ops = [updates.get(op,op) for op in ops]
 
 	op = ops[0] if ops else None
-	
+
 	if op is None:
 		out = None
 	elif op in ['or']:
 		out = False
 	elif op in ['and','lt','gt','eq','le','ge','ne']:
 		out = True
-	elif op in ['in']:		
+	elif op in ['in']:
 		out = booleans[0]
 		ops = ops[1:]
 		booleans = booleans[1:]
@@ -9104,11 +9119,11 @@ def conditions(booleans,op):
 	for op,boolean in zip(ops,booleans):
 		if boolean is None:
 			continue
-		
+
 		func = funcs.get(op,funcs[None])
-		
+
 		out = func(out,boolean)
-	
+
 	return out
 
 
@@ -9120,10 +9135,10 @@ def matmul(a,b,dtype=None):
 	Args:
 		a (array): Array to calculate matrix product
 		b (array): Array to calculate matrix product
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Matrix product
-	'''	
+	'''
 	return np.matmul(a,b,dtype=dtype)
 
 @jit
@@ -9132,7 +9147,7 @@ def multi_matmul(a,dtype=None):
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0]
 	Args:
 		a (iterable): Arrays to compute product of arrays
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
@@ -9144,7 +9159,7 @@ def multi_dot(a,dtype=None):
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0] with optimized ordering of products
 	Args:
 		a (iterable): Arrays to compute product of arrays
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
@@ -9172,7 +9187,7 @@ def vtensordot(a,b,axis=0):
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
-		axis (int,iterable): axis to perform tensordot 
+		axis (int,iterable): axis to perform tensordot
 	Returns:
 		out (array): Dot product of array along axis
 	'''
@@ -9185,7 +9200,7 @@ def tensordot(a,b,axis=0):
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
-		axis (int,iterable): axis to perform tensordot 
+		axis (int,iterable): axis to perform tensordot
 	Returns:
 		out (array): Dot product of array along axis
 	'''
@@ -9195,7 +9210,7 @@ def tensordot(a,b,axis=0):
 @jit
 def tensorproduct(a,b):
 	'''
-	Tensor (kronecker) product of arrays a and b	
+	Tensor (kronecker) product of arrays a and b
 	Args:
 		a (array): Array to tensorproduct
 		b (array): Array to tensorproduct
@@ -9218,7 +9233,7 @@ def tensorprod(a):
 	for i in range(1,len(a)):
 		out = tensorproduct(out,a[i])
 	return out
-	# return forloop(1,len(a),lambda i,out: tensorproduct(out,a[i]),a[0])	
+	# return forloop(1,len(a),lambda i,out: tensorproduct(out,a[i]),a[0])
 
 @jit
 def vtensorprod(a):
@@ -9247,7 +9262,7 @@ def ntensorprod(a,n):
 	for i in range(1,n):
 		out = _tensorpod(out,a)
 	return out
-	# return forloop(1,n,lambda i,out: tensorproduct(out,a),a)	
+	# return forloop(1,n,lambda i,out: tensorproduct(out,a),a)
 
 @jit
 def vntensorprod(a,n):
@@ -9275,8 +9290,8 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 	Args:
 		subscripts (str): operations to perform for summation
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)	
+		optimize (bool,str,iterable): Contraction type
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)
 	Returns:
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
@@ -9320,7 +9335,7 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 			elif len(subscripts)==len(operands):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
-					return func(*operands)			
+					return func(*operands)
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
@@ -9332,7 +9347,7 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return wrapper(func(*operands),*operands)
-			elif len(subscripts)==len(operands):				
+			elif len(subscripts)==len(operands):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)),*operands)
@@ -9346,14 +9361,14 @@ def einsummand(subscripts,*operands,optimize=True,wrapper=None):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
 					return func(*operands)
-			elif len(subscripts)==len(operands):				
+			elif len(subscripts)==len(operands):
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
-					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)))			
+					return wrapper(func(*(j for i in zip(operands,subscripts) for j in i)))
 			else:
 				@jit
 				def einsummation(*operands,func=func,wrapper=wrapper):
-					return func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1])		
+					return func(*(j for i in zip(operands,subscripts[:-1]) for j in i),subscripts[-1])
 
 
 	if isarray:
@@ -9366,7 +9381,7 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	'''
 	Get optimal summation path of axis of shapes
 	Args:
-		subscripts (str): operations to perform for summation	
+		subscripts (str): operations to perform for summation
 		shapes (iterable): Shapes of arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
 	Returns:
@@ -9401,7 +9416,7 @@ def distance(a,b):
 		b (array): Object b
 	Returns:
 		out (array): Distance between objects a,b
-	'''	
+	'''
 	return norm(a-b,ord=2)
 
 
@@ -9439,7 +9454,7 @@ elif backend in ['autograd','numpy']:
 		# TODO merge slicing for different numpy backends (jax vs autograd)
 
 		# return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
-		return a[start:start+size]		
+		return a[start:start+size]
 
 
 
@@ -9454,7 +9469,7 @@ def slice_size(*slices):
 	'''
 	slices = slice_merge(*slices)
 	size = (slices.stop-slices.start)//(slices.step if slices.step is not None else 1)
-	return size	
+	return size
 
 def slice_merge(*slices):
 	'''
@@ -9517,13 +9532,13 @@ def slice_slice(*slices,index=None):
 			sliced.append(slices[i])
 		else:
 			submerged = slice_merge(*slices[:i])
-			
+
 			start = submerged.stop + slices[i].start
 			stop = submerged.stop + slices[i].stop
 			step = slices[i].step
-			
+
 			subsliced = slice(start,stop,step)
-			
+
 			sliced.append(subsliced)
 
 	if isint:
@@ -9564,14 +9579,14 @@ def _len_(obj):
 			start = obj.start
 			stop = obj.stop
 			step = obj.step
-			
+
 			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
 			step = 1 if step is None else step
 
 			length = (stop-start)//step
 		else:
 			length = len(obj)
-	
+
 	return length
 
 
@@ -9590,7 +9605,7 @@ def _max_(obj):
 			start = obj.start
 			stop = obj.stop
 			step = obj.step
-			
+
 			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
 
 			step = 1 if step is None else step
@@ -9598,7 +9613,7 @@ def _max_(obj):
 			maximum = stop-step
 		else:
 			maximum = max(obj)
-	
+
 	return maximum
 
 
@@ -9617,14 +9632,14 @@ def _min_(obj):
 			start = obj.start
 			stop = obj.stop
 			step = obj.step
-			
+
 			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
 			step = 1 if step is None else step
 
 			minimum = start
 		else:
 			minimum = min(obj)
-	
+
 	return minimum
 
 
@@ -9644,14 +9659,14 @@ def _iter_(obj):
 			start = obj.start
 			stop = obj.stop
 			step = obj.step
-			
+
 			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
 			step = 1 if step is None else step
 
 			iterator = range(start,stop,step)
 		else:
 			iterator = obj
-	
+
 	return iterator
 
 
@@ -9683,7 +9698,7 @@ def commutator(a,b):
 		b (array): Array to calculate commutator
 	Returns:
 		out (array): commutator
-	'''	
+	'''
 	return tensordot(a,b,1) - tensordot(b,a,1)
 
 
@@ -9696,7 +9711,7 @@ def commutes(a,b):
 		b (array): Array to calculate commutator
 	Returns:
 		commutes (bool): Boolean of a and b commuting
-	'''	
+	'''
 	return bool(~(anything(commutator(a,b))))
 
 @jit
@@ -9708,7 +9723,7 @@ def anticommutator(a,b):
 		b (array): Array to calculate anticommutator
 	Returns:
 		out (array): anticommutator
-	'''	
+	'''
 	return tensordot(a,b,1) + tensordot(b,a,1)
 
 
@@ -9721,7 +9736,7 @@ def anticommutes(a,b):
 		b (array): Array to calculate anticommutator
 	Returns:
 		commutes (bool): Boolean of a and b anticommuting
-	'''	
+	'''
 	return bool(~(anything(anticommutator(a,b))))
 
 
@@ -9734,7 +9749,7 @@ def trace(a,axis=(0,1)):
 		axis (iterable): Axes to compute trace with respect to
 	Returns:
 		out (array): Trace of array
-	'''	  
+	'''
 	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
 
@@ -9746,7 +9761,7 @@ def det(a,**kwargs):
 		a (array): Array to calculate determinant
 	Returns:
 		out (array): Determinant of array
-	'''	  
+	'''
 	return np.linalg.det(a)
 
 
@@ -9758,7 +9773,7 @@ def condition_number(a,**kwargs):
 		a (array): Array to calculate condition number
 	Returns:
 		out (array): Condition number of array
-	'''	  
+	'''
 	return np.linalg.cond(a)
 
 
@@ -9772,7 +9787,7 @@ def rank(a,tol=None,hermitian=False):
 		hermitian (bool): Whether array is hermitian
 	Returns:
 		out (array): Size of array
-	'''		
+	'''
 	return np.linalg.matrix_rank(a,tol=tol)
 
 
@@ -9784,7 +9799,7 @@ def absolute(a):
 		a (array): Array to calculate absolute value
 	Returns:
 		out (array): Absolute value of array
-	'''	
+	'''
 	return np.abs(a)
 
 @jit
@@ -9795,7 +9810,7 @@ def abs2(a):
 		a (array): Array to calculate absolute value
 	Returns:
 		out (array): Absolute value squared of array
-	'''	
+	'''
 	return absolute(a)**2
 
 @jit
@@ -9806,7 +9821,7 @@ def real(a):
 		a (array): Array to calculate real value
 	Returns:
 		out (array): Real value of array
-	'''	
+	'''
 	return np.real(a)
 
 
@@ -9818,7 +9833,7 @@ def imag(a):
 		a (array): Array to calculate imaginary value
 	Returns:
 		out (array): Imaginary value of array
-	'''	
+	'''
 	return np.imag(a)
 
 @jit
@@ -9829,7 +9844,7 @@ def cmplx(a):
 		a (array): Array to make complex
 	Returns:
 		out (array): Complex array
-	'''		
+	'''
 	return a + 0*1j
 
 @jit
@@ -9840,7 +9855,7 @@ def pstv(a):
 		a (array): Array to make positive
 	Returns:
 		out (array): positive array
-	'''		
+	'''
 	return a + 0.
 
 def transpose(a,axes=None):
@@ -9851,7 +9866,7 @@ def transpose(a,axes=None):
 		axes (iterable[int]): Order of axis to permute
 	Returns:
 		out (array): Transpose
-	'''	
+	'''
 	return np.transpose(a,axes=axes)
 
 
@@ -9863,7 +9878,7 @@ def conjugate(a):
 		a (array): Array to calculate conjugate
 	Returns:
 		out (array): Conjugate
-	'''	
+	'''
 	return np.conj(a)
 
 @jit
@@ -9875,7 +9890,7 @@ def dagger(a):
 		conj (bool): Conjugate of array
 	Returns:
 		out (array): Conjugate transpose
-	'''	
+	'''
 	return conjugate(transpose(a,(*range(a.ndim//2,a.ndim),*range(a.ndim//2))))
 
 @jit
@@ -9908,7 +9923,7 @@ def reciprocal(a):
 		a (array): Array to compute reciprocal
 	Returns:
 		out (array): Reciprocal of array
-	'''	
+	'''
 	s = a == 0
 	return (1 - s)/(a + s)
 
@@ -9918,7 +9933,7 @@ def sqrtm(a,hermitian=False):
 	Calculate matrix square-root of array a
 	Args:
 		a (array): Array to compute square root
-		hermitian (bool): Whether array is Hermitian						
+		hermitian (bool): Whether array is Hermitian
 	Returns:
 		out (array): Square root of array
 	'''
@@ -9987,6 +10002,17 @@ def log(a):
 	return np.log(a)
 
 
+@jit
+def log1p(a):
+	'''
+	Calculate log + 1 of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Base + of array
+	'''
+	return np.log1p(a)
+
 # @jit
 def logm(a):
 	'''
@@ -10027,7 +10053,7 @@ def power(a,b,dtype=None):
 	Args:
 		a (array): Array to power
 		b (int): Power
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Power of array
 	'''
@@ -10040,7 +10066,7 @@ def matrix_power(a,n,dtype=None):
 	Args:
 		a (array): Array to power
 		n (int): Power
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Matrix power of array
 	'''
@@ -10058,7 +10084,7 @@ def _expm(x,A,I,n=2):
 		n (int): Number of eigenvalues of matrix
 	Returns:
 		out (array): Matrix exponential of A of shape (n,n)
-	'''	
+	'''
 	return cosh(x)*I + sinh(x)*A
 
 
@@ -10067,12 +10093,12 @@ def expm(x,A,I):
 	'''
 	Calculate matrix exponential of parameters times data
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape (n,n)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10094,18 +10120,18 @@ def gradient_expm(x,A,I):
 	'''
 	Calculate gradient of matrix exponential of parameters times data
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 	Returns:
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
-	'''			
+	'''
 
 	m = x.shape[0]
 	d = A.shape[0]
 
 	subscripts = 'ij,jk,kl->il'
-	shapes = (I.shape,I.shape,I.shape)	
+	shapes = (I.shape,I.shape,I.shape)
 	einsummation = einsum
 
 	def grad(i):
@@ -10113,7 +10139,7 @@ def gradient_expm(x,A,I):
 		z = slicing(x,i,m-i)
 		U = expm(y,A,I)
 		V = expm(z,roll(A,-(i%d)),I)
-		return einsummation(subscripts,V,A[i%d],U)		
+		return einsummation(subscripts,V,A[i%d],U)
 
 	return array([grad(i) for i in range(m)])
 
@@ -10122,13 +10148,13 @@ def expmc(x,A,I,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with constant matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10149,13 +10175,13 @@ def expmv(x,A,I,v):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with vector
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10175,13 +10201,13 @@ def expmm(x,A,I,v):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10201,14 +10227,14 @@ def expmvc(x,A,I,v,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with vector, and constant matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10219,7 +10245,7 @@ def expmvc(x,A,I,v,B):
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
-		return einsummation(subscripts,B,U,out)		
+		return einsummation(subscripts,B,U,out)
 
 	return forloop(0,m//d,func,v)
 
@@ -10229,14 +10255,14 @@ def expmmc(x,A,I,v,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10256,14 +10282,14 @@ def expmmn(x,A,I,v,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10284,7 +10310,7 @@ def expmmcn(x,A,I,v,B,C):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
 	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
@@ -10292,7 +10318,7 @@ def expmmcn(x,A,I,v,B,C):
 		C (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
-	'''		
+	'''
 	m = x.shape[0]
 	d = A.shape[0]
 
@@ -10314,7 +10340,7 @@ def expmat(a,dtype=None):
 	Calculate matrix exponential of array a
 	Args:
 		a (array): Array to compute matrix exponential
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Matrix exponential of array
 	'''
@@ -10495,7 +10521,7 @@ def argmax(a,axis=None):
 	Calculate index of maximum of array a
 	Args:
 		a (array): Array to compute maximum
-		axis (int): Axis to compute maximum		
+		axis (int): Axis to compute maximum
 	Returns:
 		out (int): Index of maximum of array a
 	'''
@@ -10671,7 +10697,7 @@ def shift(iterable,shift,axis=None):
 		axis (int,iterable[int]): Axis to shift along
 	Returns:
 		out (iterable): Shifted iterable
-	'''	
+	'''
 	shift = shift % len(iterable)
 	return iterable[-shift:] + iterable[:-shift]
 
@@ -10681,7 +10707,7 @@ def cumsum(a,axis=None,dtype=None):
 	Args:
 		a (array): iterable to sum
 		axis (int) : axis to sum
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Summed iterable
 	'''
@@ -10771,16 +10797,17 @@ def mod(a,b):
 		return mod(real(a),b) + 1j*mod(imag(a),b)
 
 # @partial(jit,static_argnums=(1,))
-def unique(a,axis=None):
+def unique(a,axis=None,**kwargs):
 	'''
 	Find unique elements of array
 	Args:
 		a (array): Array to search for unique elements
 		axis (int): Axis to search for unique elements
+		kwargs (dict): Additional keyword arguments for unique
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return onp.unique(a,axis=axis)
+	return onp.unique(a,axis=axis,**kwargs)
 
 def uniqueobjs(a,axis=None):
 	'''
@@ -10822,7 +10849,7 @@ def repeats(a,repeats,axis):
 	if isinstance(repeats,integers):
 		repeats = (repeats,)
 	if isinstance(axis,integers):
-		axis = (axis,)		
+		axis = (axis,)
 	a = expand_dims(a,range(a.ndim,max(axis)+1))
 	for rep,ax in zip(repeats,axis):
 		a = repeat(a,rep,ax)
@@ -10913,15 +10940,38 @@ def permutations(*iterables,repeat=None):
 	Returns:
 		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
 	'''
-	
+
 	if all(isinstance(i,integers) for i in iterables):
 		iterables = (range(i) for i in iterables)
-	
+
 	if repeat is None:
 		repeat = 1
 
 	return itertools.product(*iterables,repeat=repeat)
 
+def products(n,k):
+	'''
+	Get products of n objects into k groups
+	Args:
+		n (int): number of objects
+		k (int): number of groups
+	Yields:
+		p (iterable[int]): product of length n with objects from k groups
+	'''
+	for p in itertools.product(range(k),repeat=n):
+		yield p
+
+def partitions(n,k):
+	'''
+	Get partitions of n objects into k groups
+	Args:
+		n (int): number of objects
+		k (int): number of groups
+	Yields:
+		p (iterable[int]): partition of length k with number of objects per group
+	'''
+	for i in itertools.combinations(range(n+k-1), k-1):
+		yield [y-x-1 for x,y in zip((-1,)+i, i+(n+k-1,))]
 
 def powerset(iterable):
 	'''
@@ -10977,7 +11027,7 @@ def sortby(iterable,key=None,options=None):
 	Returns:
 		iterable (dict): Sorted iterable keys
 	'''
-	
+
 	key = load(key) if isinstance(key,str) else key if callable(key) else None
 
 	key = layout if not callable(key) else key
@@ -11124,19 +11174,19 @@ def moveaxis(a,source,destination):
 def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 	'''
 	Split and swap, and group axis
-	
+
 	Array has shape, up to reordering of axis,
 		shape: (*(dimension_ij for j in range(n)) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and axes are grouped by n components
 		axes: [[i,j,...],...,[k,l,...]] for i,j,k,l,... in [n]
-	
+
 	If transform: array gets split with shape to
 		shape -> (*(dimension_ij for j in range(n) for i in range(ndim)),*(dimensions_i for i in range(ndims)))
 	and grouped with axes to
 		shape -> (*(prod(dimension_ij for j in axis) for axis in axes for i in range(ndim) ),*(dimensions_i for i in range(ndims)))
-	
+
 	If not transform, shape is assumed to be previously split and grouped, and is reverse grouped and split
-	
+
 	Example:
 		shape(a) = (s,xyz,uvw) with shape = {1:(x,y,z),2:(u,v,w),0:s}, axes = ((2,0))
 		parse(axes,shape):
@@ -11147,7 +11197,7 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 			ndims: 1
 			n: 2
 			sort: [1,2,0]
-		
+
 		transform: (s,xyz,uvw) ->
 			split.func-> (xyz,uvw,s)
 			split.reshape-> (x,y,z,u,v,w,s)
@@ -11163,20 +11213,20 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 			split.transpose-> (x,y,z,u,v,w,s)
 			split.reshape-> (xyz,uvw,s)
 			split.func-> (s,xyz,uvw)
-										
+
 
 	Args:
 		a (array): array to reshape into subspaces
-		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-		shape (dict[int,iterable[int] or int],iterable[int]): shape of array of form 
+		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+		shape (dict[int,iterable[int] or int],iterable[int]): shape of array of form
 				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}
-					for ndim composite axes of n dimensions shape = ((dimension_ij for j in [n]) for i in [ndim]), 
-					where each dimension j has n components i with size dimension_ij, 
-					and remaining ndims non-composite axes of dimension shapes = (dimensions_i for i in [ndims]), 
-					such that up to rearrangements according of axis_i ordering, the array has properties 
+					for ndim composite axes of n dimensions shape = ((dimension_ij for j in [n]) for i in [ndim]),
+					where each dimension j has n components i with size dimension_ij,
+					and remaining ndims non-composite axes of dimension shapes = (dimensions_i for i in [ndims]),
+					such that up to rearrangements according of axis_i ordering, the array has properties
 					shape: (*(prod(dimension_ij for j in [n]) for i in [ndim]),*(dimensions_i for i in [ndims]),
 					size: prod(shape)*prod(shapes),
-					ndim: len(shape)+len(shapes)		
+					ndim: len(shape)+len(shapes)
 				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		transform (bool): transform of array options
 			True,None: split and swap and group axes
@@ -11190,12 +11240,12 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 		'''
 		Parse axes and shape
 		Args:
-			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-			shape (dict[int,iterable[int] or int]): shape of array of form 
-				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}	
-				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
+			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+			shape (dict[int,iterable[int] or int]): shape of array of form
+				dict: {axis_i: (dimension_ij for j in [n]) for i in [ndim], axis_i: dimensions_i for i in [ndims]}
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		Returns:
-			axes (iterable[iterable[int]]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
+			axes (iterable[iterable[int]]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
 			shape (dict[int,iterable[int]]): dimension of composite axis of form {axis_i: (dimension_ij for j in [n]) for i in [ndim]}
 			shapes (dict[int,int]): dimension of non-composite axis of form {axis_i: dimensions_i for i in [ndims]}
 			ndim (int): number of axis of composite space
@@ -11224,7 +11274,7 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 		axes = [[i] if isinstance(i,integers) else [*i] for i in axes] if axes is not None else [[i] for i in range(n)]
 		axes = [sorted(set(axis),key=lambda i: axis.index(i)) for axis in axes if axis]
 		axes = [*[[i for i in axis if i in range(n)] for axis in axes],*[[i] for i in range(n) if all(i not in axis for axis in axes)]]
-	
+
 		axes = [*[[i for i in axis] for axis in axes]]
 		shape = {**{axis:shape[axis] for axis in shape}}
 		shapes = {**{axis:shapes[axis] for axis in shapes}}
@@ -11293,9 +11343,9 @@ def shuffle(a=None,axes=None,shape=None,transform=None,execute=True):
 	if transform is None or transform is True:
 
 		return group(split(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
-		
+
 	elif transform is False:
-		
+
 		return _split(_group(a,axes,shape,shapes,ndim,ndims,n,sort),axes,shape,shapes,ndim,ndims,n,sort)
 
 def swap(a=None,axes=None,shape=None,execute=True):
@@ -11303,10 +11353,10 @@ def swap(a=None,axes=None,shape=None,execute=True):
 	Swap axes of array
 	Args:
 		a (array): array to reshape into subspaces
-		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-		shape (dict[int,iterable[int] or int]): shape of array of form 
-			dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
-			iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
+		axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+		shape (dict[int,iterable[int] or int]): shape of array of form
+			dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}
+			iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		execute (bool): Execute transforms or return function with precomputed axes and shapes
 	Returns:
 		a (array): shuffled array
@@ -11319,19 +11369,19 @@ def swap(a=None,axes=None,shape=None,execute=True):
 		and will be permuted to composite axis ordering
 			(0,1,...i,..,j,...,k,...)
 		Args:
-			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-			shape (dict[int,iterable[int] or int]): shape of array of form 
-				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
-				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
+			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+			shape (dict[int,iterable[int] or int]): shape of array of form
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		Returns:
-			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-			shape (dict[int,iterable[int] or int]): shape of array of form 
-				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
-				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
-			_axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]		
-			_shape (dict[int,iterable[int] or int]): shape of array of form 
-				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}	
-				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d				
+			axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+			shape (dict[int,iterable[int] or int]): shape of array of form
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
+			_axes (iterable[iterable[int] or int]): order of n composite subspaces axis to permute and group ((i,j,...),(l,m,...),...) , i,j,l,m in [n]
+			_shape (dict[int,iterable[int] or int]): shape of array of form
+				dict: {axis_i: (shape_ij for j in [n]) for i in [ndim], axis_i: shapes_i for i in [ndims]}
+				iterable[int]: (d,n,ndim) for uniform ndim axes of n composite dimensions of dimension d
 		'''
 
 		# TODO: Allow inverse permutations of axes for grouped axes
@@ -11351,7 +11401,7 @@ def swap(a=None,axes=None,shape=None,execute=True):
 		axes,_axes = ([[axes.index(i)] if i in axes else [len(axes)+[i for i in range(n) if i not in axes].index(i)] for i in range(n)],
 					  [[i] for i in range(n)])
 
-		return axes,shape,_axes,_shape	
+		return axes,shape,_axes,_shape
 
 	axes,shape,_axes,_shape = permute(axes,shape)
 	transform = True
@@ -11390,7 +11440,7 @@ def bounding(bounds,dtype=None):
 	Set bounds of data
 	Args:
 		bounds (iterable[object]): Bounds of data
-		dtype (datatype): Datatype of array		
+		dtype (datatype): Datatype of array
 	Returns:
 		bounds (iterable[object]): Bounds of data
 	'''
@@ -11412,8 +11462,8 @@ def edging(data,constants=None,dtype=None,**kwargs):
 	Set edges of data
 	Args:
 		data (array): Array of data
-		constants (dict[int,dict[int,object]]): Dictionary of axis of data with indices and values of constants to set 
-		dtype (datatype): Datatype of array			
+		constants (dict[int,dict[int,object]]): Dictionary of axis of data with indices and values of constants to set
+		dtype (datatype): Datatype of array
 		kwargs (dict): Additional keyword arguments for data
 	Returns:
 		data (array): Array of data
@@ -11444,8 +11494,19 @@ def mesh(shape):
 	'''
 	integer = isinstance(shape,int)
 	shape = [shape] if integer else shape
-	data = reshape(transpose(np.meshgrid([arange(i) for i in shape])),(-1,len(shape)) if integer else -1)
+	data = reshape(transpose(meshgrid([arange(i) for i in shape])),(-1,len(shape)) if integer else -1)
 	return data
+
+def meshgrid(*arrays,**kwargs):
+	'''
+	Get meshgrid with arrays
+	Args:
+		arrays (iterable[array]): arrays
+		kwargs (dict): Additional keyword arguments for meshgrid
+	Returns:
+		data (array): Mesh with arrays
+	'''
+	return np.meshgrid(*arrays,**kwargs)
 
 def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	'''

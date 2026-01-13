@@ -1691,6 +1691,282 @@ def test_network(path=None,tol=None):
 
 def test_distribution(path=None,tol=None):
 
+	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
+
+		import matplotlib
+		import matplotlib.pyplot as plt
+
+		def setup(options):
+
+			options = {} if options is None else options
+			for option in options:
+				if option in ['color','ecolor']:
+					if isinstance(options[option],str):
+						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
+				else:
+					value = options[option]
+				options[option] = value
+
+			settings = {}
+			settings['path'] = options.pop('path') if options.get('path') else None
+			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else 'config/plot.mplstyle'
+
+			return options,settings
+
+		options,settings = setup(options)
+
+		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+			fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
+
+			ax.errorbar(x,y,yerr,xerr,**options)
+
+			ax.set_xlabel(xlabel="$x$",size=45)
+			ax.set_ylabel(ylabel="$f(x)$",size=45)
+
+			# ax.set_xscale(value="linear")
+			# ax.set_yscale(value="linear")
+			# ax.set_xlim(xmin=-0.1,xmax=1.1)
+			# ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
+			# ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+			# ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+			# ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+			# ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+			ax.set_xscale(value="log",base=4)
+			ax.set_yscale(value="log",base=10)
+			ax.set_xlim(xmin=2**(-2*23),xmax=2**(1*1))
+			ax.set_ylim(ymin=5e-17,ymax=2e8)
+			ax.set_xticks(ticks=[2**(-2*i) for i in [22,18,14,10,6,2,0]])
+			ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2$' if i not in [0] else '$1$' for i in [22,18,14,10,6,2,0]],size=45)
+			ax.set_yticks(ticks=[10**(-i) for i in [16,12,8,4,0,-4,-8]])
+			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,12,8,4,0,-4,-8]],size=45)
+			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+
+			ax.grid(visible=True)
+
+			handles,labels = ax.get_legend_handles_labels()
+			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+			for handle,label in zip(handles,labels):
+				handle[0].set_linewidth(12)
+
+			ax.legend(
+				handles,labels,
+				title="$\\textrm{Regime}$",
+				loc="upper left",
+				ncol=1,
+				title_fontsize=45,
+				prop={"size":45},
+				markerscale=6,
+				handlelength=4
+			)
+
+			if settings.get('path'):
+				fig.set_size_inches(w=24,h=24)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname=settings.get('path'))
+
+		return fig,ax
+
+	from src.utils import array,asscalar,meshgrid,linspace,logspace,inplace,partial
+	from src.utils import exp,log,log1p
+	from src.utils import sqrt,real,nan,is_naninf
+	from src.utils import nonzero,unique,sort,minimum,maximum,minimums,maximums
+	from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial
+	from src.quantum import Basis as basis
+
+	from mpmath import exp,log,log1p
+	from mpmath import quad as integral,linspace as space,mpmathify
+
+	D = 2
+	N = 4
+	S = 32
+
+	attr = 'pauli'
+	options = dict(D=2)
+	data = real(eig(getattr(basis,attr)(**options)))
+
+	options = dict(start=-15,stop=0,num=1000)
+	x = logspace(**options)
+
+	def func(x,u,v,p,c,a,b,l,s,d):
+		# from mpmath import exp,log,log1p
+		x = exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p) - log(c))
+		return x
+
+	def function(x,u,v,p,c,a,b,l,s,d):
+		from src.utils import exp,log,log1p
+		x = exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p) - log(c))
+		return x
+
+	y = 0
+	options = dict(axis=-1)
+	eps = 1e-25
+	bounds = space(0,1,100)
+	boundaries = [1,0]
+	for index in partitions(N,D**2):
+		w = multinomial(index)/D**(2*N)
+		z = tensorprod([obj for i,j in enumerate(index) for obj in [data[i]]*j])
+		u,v = maximums(eps,product(minimum(z,**options))),maximums(eps,product(maximum(z,**options)))
+		z = (z-u)/(v-u)
+		z = z[z>eps]
+		l,s,d = z.size,S,D**N
+
+		a = addition(1/z)/l
+		b = addition(1/z**2)/l
+		# e = (c*(c+2))/(c*(c+2) + 1),2*(l*s-1)/((d-l)*s-1)
+		c = 1
+		p = 1
+		o = dict(u=u,v=v,p=p,c=c,a=a,b=b,l=l,s=s,d=d)
+
+		o.update({i:asscalar(j) for i,j in o.items()})
+		f = partial(func,**o)
+		p = integral(f,bounds)
+		# p = max(f(asscalar(i)) for i in x)
+
+		# o.update({i:j for i,j in dict(p=p,c=c).items()})
+		# f = partial(func,**o)
+		# p = integral(f,bounds)
+
+		o.update({i:j for i,j in dict(p=p).items()})
+		f = partial(func,**o)
+		p = integral(f,bounds)
+
+		w = w*(1/(v-u))*function((x-u)/(v-u),**{i:float(j) for i,j in o.items()})
+		w = inplace(w,(x<u)+(x>v)+is_naninf(x),0)
+
+		y += w
+
+		print(index,p)
+
+		boundaries = [min(boundaries[0],u),max(boundaries[-1],v)]
+
+	i = (x>=boundaries[0])*(x<=boundaries[-1])
+	x,y = x[i],y[i]
+
+
+	fig,ax = None,None
+	options = dict(
+		path='examples/distribution/plot.pdf',mplstyle=None,
+		label='$\\textrm{Pauli}$',
+		color='viridis_%f'%(0.5),
+		marker='',
+		linestyle=':',
+		markersize=9,
+		linewidth=4,
+		alpha=0.8,
+	)
+
+	fig,ax = plot(x,y,fig=fig,ax=ax,options=options)
+
+
+	exit()
+
+
+
+	s = 1000
+	n = 6
+	d = 2**n
+	x = logspace(-20,0,s)
+	a = [2/d,2/d,2,2*d]
+	b = [1,1-1/d,8/9+1/d,1-1/d**2]
+	c = [1,1/d,1/d,1/d]
+	d = [d,1,1,1]
+	opts = [
+		dict(
+			label='$\\# = 2$',
+			color='k',
+			marker='',
+			linestyle='-',
+			),
+		dict(
+			label='$\\frac{l}{d} \\to 0$',
+			color='viridis_%f'%(0.25),
+			marker='',
+			linestyle=':',
+			),
+		dict(
+			label='$\\frac{l}{d} \\to \\frac{1}{2}$',
+			color='viridis_%f'%(0.5),
+			marker='',
+			linestyle=':',
+			),
+		dict(
+			label='$\\frac{l}{d} \\to 1$',
+			color='viridis_%f'%(0.75),
+			marker='',
+			linestyle=':',
+			),
+		]
+	func = lambda x,a,b,c,d: ((x**a)*(1-2*b*((x/c)) + b*((x/c)**2)))**d
+
+	fig,ax = None,None
+	options = dict(
+		path='examples/distribution/plot.pdf',mplstyle=None,
+		markersize=9,
+		linewidth=4,
+		alpha=0.8,
+	)
+
+	for index,(a,b,c,d,opts) in enumerate(zip(a,b,c,d,opts)):
+
+		y = func(x,a,b,c,d)
+
+		fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,**opts})
+
+	exit()
+
+	# d = 2**6
+	# s = d//2
+	# l = 1
+	# c = (l*s-1)/((d-l)*s-1)
+	# n = 10
+	# a = logspace(log10(2*c),log10(2/c),n)
+	# b = logspace(20,0,n)
+	# a,b = meshgrid(a,b)
+	# i = (a*(a+2)) > (1/(1-b))
+	# f = lambda a,b,s: 1 - (b*((a+1)/(a+2))*((2*((((a+1)/(a+2))-1)*(1+s*sqrt(1-((1/b)*((a*(a+2))/((a*(a+2))+1))))))) + ((1/b)*((a+1)/(a+2))*((a*(a+2))/((a*(a+2))+1)))))
+
+	# print(a)
+	# print(b)
+
+	# x,y = f(a,b,1),f(a,b,-1)
+
+
+	# print(i)
+	# # x,y = inplace(x,i,nan),inplace(y,i,nan)
+
+	# exit()
+
+
+
+	# fig,axes = None,None
+	# index = None
+	# options = dict(
+	# 	path='examples/measurement/plot.pdf',mplstyle=None,
+	# 	label='$10^{-%s}$'%((('%e'%(argument['noise.parameters'])).split('e')[-1])[-1]) if argument['noise.parameters'] != 0 else '$0$',
+	# 	color='viridis_%f'%((index['noise.parameters']+1)/(len(arguments['noise.parameters'])+1)),alpha=0.8,
+	# 	marker='o',linestyle=':',
+	# 	markersize=9,
+	# 	linewidth=4,
+	# 	elinewidth=4,
+	# 	capsize=5
+	# )
+
+
+	# data = dict(x=x,y=y)
+	# fig,axes = plot(**data,fig=fig,axes=axes,index=index,options=options)
+
+
+
+
+
 	from src.utils import permute
 
 	settings = dict(
@@ -1701,6 +1977,7 @@ def test_distribution(path=None,tol=None):
 		d = [lambda n,q,k:q**n],
 		s = [lambda n,q,k: k+1],
 		)
+
 
 	for setting in permute(settings):
 

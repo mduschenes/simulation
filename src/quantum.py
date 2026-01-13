@@ -1041,7 +1041,7 @@ class Basis(Dict):
 
 		return data
 
-tyi	@classmethod
+	@classmethod
 	@decorator
 	def tetrad(cls,*args,**kwargs):
 		kwargs = Dictionary(**kwargs)

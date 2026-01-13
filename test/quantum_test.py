@@ -3210,7 +3210,7 @@ def test_measurement(*args,**kwargs):
 				if option in ['color','ecolor']:
 					if isinstance(options[option],str):
 						value = options[option].split(separ) if options[option].count(separ) else (options[option],0.5)
-						value = getattr(plt.cm,str(value[0]))(float(value[1]))
+						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
 				else:
 					value = options[option]
 				options[option] = value
