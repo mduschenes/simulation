@@ -1785,8 +1785,8 @@ def test_distribution(path=None,tol=None):
 	from mpmath import quad as integral,linspace as space,mpmathify
 
 	D = 2
-	N = 4
-	S = 32
+	N = 3
+	S = 3
 
 	attr = 'pauli'
 	options = dict(D=2)
@@ -1795,25 +1795,31 @@ def test_distribution(path=None,tol=None):
 	options = dict(start=-15,stop=0,num=1000)
 	x = logspace(**options)
 
-	def func(x,u,v,p,c,a,b,l,s,d):
+	def func(x,u,v,w,p,a,b,l,s,d):
 		# from mpmath import exp,log,log1p
-		x = exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p) - log(c))
+		x = min(max(x,u),v)
+		x = (x-u)/(v-u)
+		x = w*(1/(v-u))*exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p))
 		return x
 
-	def function(x,u,v,p,c,a,b,l,s,d):
+	def function(x,u,v,w,p,a,b,l,s,d):
 		from src.utils import exp,log,log1p
-		x = exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p) - log(c))
+		x = inplace(x,x<u,u)
+		x = inplace(x,x>v,u)
+		x = (x-u)/(v-u)
+		x = w*(1/(v-u))*exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p))
 		return x
 
 	y = 0
-	options = dict(axis=-1)
+	opts = dict(axis=-1)
 	eps = 1e-25
 	bounds = space(0,1,100)
 	boundaries = [1,0]
+	options = {}
 	for index in partitions(N,D**2):
 		w = multinomial(index)/D**(2*N)
 		z = tensorprod([obj for i,j in enumerate(index) for obj in [data[i]]*j])
-		u,v = maximums(eps,product(minimum(z,**options))),maximums(eps,product(maximum(z,**options)))
+		u,v = maximums(eps,product(minimum(z,**opts))),maximums(eps,product(maximum(z,**opts)))
 		z = (z-u)/(v-u)
 		z = z[z>eps]
 		l,s,d = z.size,S,D**N
@@ -1821,40 +1827,42 @@ def test_distribution(path=None,tol=None):
 		a = addition(1/z)/l
 		b = addition(1/z**2)/l
 		# e = (c*(c+2))/(c*(c+2) + 1),2*(l*s-1)/((d-l)*s-1)
-		c = 1
-		p = 1
-		o = dict(u=u,v=v,p=p,c=c,a=a,b=b,l=l,s=s,d=d)
+		o = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d)
 
 		o.update({i:asscalar(j) for i,j in o.items()})
 		f = partial(func,**o)
 		p = integral(f,bounds)
 		# p = max(f(asscalar(i)) for i in x)
 
-		# o.update({i:j for i,j in dict(p=p,c=c).items()})
-		# f = partial(func,**o)
-		# p = integral(f,bounds)
-
 		o.update({i:j for i,j in dict(p=p).items()})
 		f = partial(func,**o)
-		p = integral(f,bounds)
+		q = integral(f,bounds)
+		# q = p
 
-		w = w*(1/(v-u))*function((x-u)/(v-u),**{i:float(j) for i,j in o.items()})
-		w = inplace(w,(x<u)+(x>v)+is_naninf(x),0)
+		o.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
 
-		y += w
+		z = function(x,**{i:float(o[i]) for i in o})
 
-		print(index,p)
+		y += z
 
-		boundaries = [min(boundaries[0],u),max(boundaries[-1],v)]
+		print(index,q)
 
-	i = (x>=boundaries[0])*(x<=boundaries[-1])
-	x,y = x[i],y[i]
+		if not options:
+			for i in o:
+				options[i] = []
+		for i in o:
+			options[i].append(float(o[i]))
+
+	options = array([options[i] for i in options]).T
+
+
+
 
 
 	fig,ax = None,None
 	options = dict(
 		path='examples/distribution/plot.pdf',mplstyle=None,
-		label='$\\textrm{Pauli}$',
+		label='$\\textrm{%s}$'%(attr.capitalize()),
 		color='viridis_%f'%(0.5),
 		marker='',
 		linestyle=':',

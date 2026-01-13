@@ -8,7 +8,7 @@ from math import prod,factorial,comb
 
 import inspect
 import typing
-from functools import partial,wraps,reduce
+from functools import partial,wraps
 from natsort import natsorted
 import random
 from random import choices,sample as samples
@@ -967,6 +967,46 @@ elif backend in ['autograd','numpy']:
 		# return jax.lax.switch(index,funcs,*args,**kwargs)
 		return funcs[index](*args,**kwargs)
 
+if backend in ['jax','jax.autograd','quimb']:
+
+	def reduce(operands,init,func,*args,**kwargs):
+		'''
+		Reduce operands with function
+		Args:
+			operands (array): operands to reduce with function
+			init (array): initial value
+			func (callable): function
+			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
+		Returns:
+			out (object): Return of function
+		'''
+
+		# TODO merge reduce for different numpy backends (jax vs autograd)
+
+		return jax.lax.reduce(operands,init,func)
+
+elif backend in ['autograd','numpy']:
+
+	def reduce(operands,init,func,*args,**kwargs):
+		'''
+		Reduce operands with function
+		Args:
+			operands (array): operands to reduce with function
+			init (array): initial value
+			func (callable): function
+			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
+		Returns:
+			out (object): Return of function
+		'''
+
+		# TODO merge reduce for different numpy backends (jax vs autograd)
+
+		out = init
+		for operand in operands:
+			out = func(out,operands)
+		return out
 
 if backend in ['jax','jax.autograd','quimb']:
 
@@ -3482,14 +3522,14 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 							if index == 0:
 								if i > 0:
 									objects[index] = addition(state[i-1],0)
-									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(0,i))),0),(-1,state[i].shape[0]))
+									# objects[index] = reshape(addition(reduction(dot,(state[j] for j in range(0,i))),0),(-1,state[i].shape[0]))
 								else:
 									objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
 									# objects[index] = ones((1,*state[i].shape[:1]),dtype=state[i].dtype)
 							elif index == (len(objects)-1):
 								if i < (N-1):
 									objects[index] = addition(state[i+1],-1)
-									# objects[index] = reshape(addition(reduce(dot,(state[j] for j in range(i+1,N))),-1),(state[i].shape[-1],-1))
+									# objects[index] = reshape(addition(reduction(dot,(state[j] for j in range(i+1,N))),-1),(state[i].shape[-1],-1))
 								else:
 									objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
 									# objects[index] = ones((*state[i].shape[-1:],1),dtype=state[i].dtype)
@@ -3512,7 +3552,7 @@ if backend in ['jax','jax.autograd','autograd','numpy','quimb']:
 
 					try:
 						a,z = data,dot(u,v)
-						x,y = reduce(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduce(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
+						x,y = reduction(dot,(state[i] for i in state if i < min(where))) if min(where) > 0 else ones((1,1)),reduction(dot,(state[i] for i in state if i > max(where))) if max(where) < (N-1) else ones((1,1))
 						z = dot(x,dot(z,y))
 						a = dot(x,dot(a,y))
 						debug('diff',allclose(z,a),addition(abs2(z-a)))
@@ -4028,7 +4068,7 @@ if backend in ['quimb']:
 		return obj
 
 
-	def reduce_quimb(obj,where=None,**kwargs):
+	def reduction_quimb(obj,where=None,**kwargs):
 		'''
 		Reduce object
 		Args:
@@ -5677,7 +5717,7 @@ def timestamp(format=None,time=None):
 
 	return timestamp
 
-def reduce(func,data,*args,**kwargs):
+def reduction(func,data,*args,**kwargs):
 	return getattr(np,func).reduce(data,*args,**kwargs)
 
 @jit
