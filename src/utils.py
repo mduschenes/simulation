@@ -969,13 +969,14 @@ elif backend in ['autograd','numpy']:
 
 if backend in ['jax','jax.autograd','quimb']:
 
-	def reduce(operands,init,func,*args,**kwargs):
+	def reduce(operands,init,func,axis,*args,**kwargs):
 		'''
 		Reduce operands with function
 		Args:
 			operands (array): operands to reduce with function
 			init (array): initial value
 			func (callable): function
+			axis (int,iterable[int]): axis to reduce operands
 			args (tuple): Arguments for function
 			kwargs (dict): Keyword arguments for function
 		Returns:
@@ -984,17 +985,18 @@ if backend in ['jax','jax.autograd','quimb']:
 
 		# TODO merge reduce for different numpy backends (jax vs autograd)
 
-		return jax.lax.reduce(operands,init,func)
+		return jax.lax.reduce(operands,init,func,axis)
 
 elif backend in ['autograd','numpy']:
 
-	def reduce(operands,init,func,*args,**kwargs):
+	def reduce(operands,init,func,axis,*args,**kwargs):
 		'''
 		Reduce operands with function
 		Args:
 			operands (array): operands to reduce with function
 			init (array): initial value
 			func (callable): function
+			axis (int,iterable[int]): axis to reduce operands
 			args (tuple): Arguments for function
 			kwargs (dict): Keyword arguments for function
 		Returns:

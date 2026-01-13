@@ -1858,7 +1858,6 @@ def test_distribution(path=None,tol=None):
 
 
 
-
 	fig,ax = None,None
 	options = dict(
 		path='examples/distribution/plot.pdf',mplstyle=None,
