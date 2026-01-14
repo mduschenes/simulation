@@ -1774,89 +1774,154 @@ def test_distribution(path=None,tol=None):
 
 		return fig,ax
 
-	from src.utils import array,asscalar,meshgrid,linspace,logspace,inplace,partial
+	from src.utils import array,asscalar,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,allclose
 	from src.utils import exp,log,log1p
 	from src.utils import sqrt,real,nan,is_naninf
-	from src.utils import nonzero,unique,sort,minimum,maximum,minimums,maximums
-	from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial
+	from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
+	from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial,permute
 	from src.quantum import Basis as basis
 
+	from src.io import load,dump,exists,join,split
+
 	from mpmath import exp,log,log1p
-	from mpmath import quad as integral,linspace as space,mpmathify
+	from mpmath import quad as integral,linspace as linearspace,mpmathify
 
-	D = 2
-	N = 3
-	S = 3
+	settings = dict(
+		# attr=['tetrad','pauli'],
+		attr=['pauli'],
+		D=[2],
+		# N=[2,3,4,5,6],
+		N=[3],
+		# M=[0,2,4,8,16,32],
+		M=[8],
+		)
 
-	attr = 'pauli'
-	options = dict(D=2)
-	data = real(eig(getattr(basis,attr)(**options)))
+	options = dict(
+		file = (lambda settings={},options={}: 'data.hdf5'),
+		folder = (lambda settings={},options={}: 'scratch/probability/distribution'),
+		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
+		io = (lambda settings={},options={}: dict(rw='a')),
+		do = (lambda settings={},options={}: not exists(options['path'](settings,options))),
+		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
+		eps    = (lambda settings={},options={}: 1e-20),
+		bounds = (lambda settings={},options={}: linearspace(0,1,100)),
+		)
 
-	options = dict(start=-15,stop=0,num=1000)
-	x = logspace(**options)
+	x = logspace(start=-20,stop=0,num=10000)
 
-	def func(x,u,v,w,p,a,b,l,s,d):
+	def func(x,parameters):
 		# from mpmath import exp,log,log1p
-		x = min(max(x,u),v)
-		x = (x-u)/(v-u)
-		x = w*(1/(v-u))*exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p))
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = x if ((x>=0)*(x<=1)) else 0
+		x = parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]))
 		return x
 
-	def function(x,u,v,w,p,a,b,l,s,d):
+	def function(parameters,x):
 		from src.utils import exp,log,log1p
-		x = inplace(x,x<u,u)
-		x = inplace(x,x>v,u)
-		x = (x-u)/(v-u)
-		x = w*(1/(v-u))*exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*a*x + b*x**2) - log(p))
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = where(x>1,where(x<0,x,0),0)
+		x = parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]))
 		return x
 
-	y = 0
-	opts = dict(axis=-1)
-	eps = 1e-25
-	bounds = space(0,1,100)
-	boundaries = [1,0]
-	options = {}
-	for index in partitions(N,D**2):
-		w = multinomial(index)/D**(2*N)
-		z = tensorprod([obj for i,j in enumerate(index) for obj in [data[i]]*j])
-		u,v = maximums(eps,product(minimum(z,**opts))),maximums(eps,product(maximum(z,**opts)))
-		z = (z-u)/(v-u)
-		z = z[z>eps]
-		l,s,d = z.size,S,D**N
+	for setting in permute(settings):
 
-		a = addition(1/z)/l
-		b = addition(1/z**2)/l
-		# e = (c*(c+2))/(c*(c+2) + 1),2*(l*s-1)/((d-l)*s-1)
-		o = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d)
+		print(setting)
 
-		o.update({i:asscalar(j) for i,j in o.items()})
-		f = partial(func,**o)
-		p = integral(f,bounds)
-		# p = max(f(asscalar(i)) for i in x)
+		attr = setting['attr']
+		D = setting['D']
+		N = setting['N']
+		M = setting['M']
+		path = options['path'](setting,options)
+		eps = options['eps'](setting,options)
+		bounds = options['bounds'](setting,options)
+		io = options['io'](setting,options)
+		key = options['key'](setting,options)
 
-		o.update({i:j for i,j in dict(p=p).items()})
-		f = partial(func,**o)
-		q = integral(f,bounds)
-		# q = p
+		do = options['do'](setting,options)
 
-		o.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+		if not do:
+			continue
 
-		z = function(x,**{i:float(o[i]) for i in o})
+		operator = real(eig(getattr(basis,attr)(D=D)))
+		parameters = []
+		y = 0
 
-		y += z
+		for index in partitions(N,D**2):
+			z = tensorprod([obj for i,j in enumerate(index) for obj in [operator[i]]*j])
+			u,v = maximums(eps,product(minimum(z,axis=-1))),maximums(eps,product(maximum(z,axis=-1)))
+			z = (z[(z>u)*(z<=v)]-u)/(v-u)
 
-		print(index,q)
+			a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
+			l,s,d = z.size,M+1,D**N
+			w = multinomial(index)/D**(2*N)
 
-		if not options:
-			for i in o:
-				options[i] = []
-		for i in o:
-			options[i].append(float(o[i]))
+			params = {}
 
-	options = array([options[i] for i in options]).T
+			params.update(dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d))
+
+			params.update(dict())
+			f = partial(func,parameters=[params[i] for i in params])
+			p = integral(f,bounds)
+
+			params.update(dict(p=p))
+			f = partial(func,parameters=[params[i] for i in params])
+			q = integral(f,bounds)
+
+			params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+
+			y += function(parameters=[float(params[i]) for i in params],x=x)
+
+			print(index,q)
+
+			parameters = array([*parameters,[float(params[i]) for i in params]])
+
+			data = {key:dict(parameters=parameters,y=y,x=x)}
+			dump(data,path,**io)
+
+	for setting in permute(settings):
+
+		path = options['path'](setting,options)
+		key = options['key'](setting,options)
+		data = load(path)
+
+		parameters = data[key]['parameters']
+		y = data[key]['y']
+		x = data[key]['x']
+
+		def f(x):
+			f = lambda y,parameters: y+function(parameters,x)
+			y = 0*x
+			y = scan(parameters,y,f)
+			return y
 
 
+		z = f(x)
 
+		print(allclose(z,y))
+		exit()
+
+		# def i(x):
+		# 	bounds = linearspace(0,x,100)
+		# 	y = integrate(f,bounds)
+		# 	y = 0*x
+		# 	f = lambda y,parameters: integral(y+function(parameters,x),bounds)
+		# 	y = scan(parameters,y,f)
+		# 	return y
+
+		# parameters = [[mpmathify(float(i)) for i in params] for params in parameters]
+		# def f(x):
+		# 	y = 0
+		# 	for params in parameters:
+		# 		y += func(x,params)
+		# 	return y
+
+		# w = []
+		# for i in x:
+		# 	w.append(integral(f,[0,float(i)]))
+		# 	print(w[-1])
+		# print(w)
+
+	exit()
 
 	fig,ax = None,None
 	options = dict(

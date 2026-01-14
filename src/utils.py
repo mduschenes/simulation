@@ -64,7 +64,7 @@ assert backend in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,backend,BACKENDS)
 
 
 if backend in ['jax','jax.autograd','quimb']:
-	
+
 	environ = {
 		'JAX_PLATFORMS':'',
 		'JAX_PLATFORM_NAME':'',
@@ -969,14 +969,13 @@ elif backend in ['autograd','numpy']:
 
 if backend in ['jax','jax.autograd','quimb']:
 
-	def reduce(operands,init,func,axis,*args,**kwargs):
+	def reduce(operands,init,func,*args,**kwargs):
 		'''
 		Reduce operands with function
 		Args:
 			operands (array): operands to reduce with function
 			init (array): initial value
 			func (callable): function
-			axis (int,iterable[int]): axis to reduce operands
 			args (tuple): Arguments for function
 			kwargs (dict): Keyword arguments for function
 		Returns:
@@ -985,18 +984,63 @@ if backend in ['jax','jax.autograd','quimb']:
 
 		# TODO merge reduce for different numpy backends (jax vs autograd)
 
-		return jax.lax.reduce(operands,init,func,axis)
+		return jax.lax.reduce(operands,init,func)
 
 elif backend in ['autograd','numpy']:
 
-	def reduce(operands,init,func,axis,*args,**kwargs):
+	def reduce(operands,init,func,*args,**kwargs):
 		'''
 		Reduce operands with function
 		Args:
 			operands (array): operands to reduce with function
 			init (array): initial value
 			func (callable): function
-			axis (int,iterable[int]): axis to reduce operands
+			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
+		Returns:
+			out (object): Return of function
+		'''
+
+		# TODO merge reduce for different numpy backends (jax vs autograd)
+
+		out = init
+		for operand in operands:
+			out = func(out,operands)
+		return out
+
+
+if backend in ['jax','jax.autograd','quimb']:
+
+	def scan(operands,init,func,*args,**kwargs):
+		'''
+		Scan operands with function
+		Args:
+			operands (array): operands to reduce with function
+			init (array): initial value
+			func (callable): function
+			args (tuple): Arguments for function
+			kwargs (dict): Keyword arguments for function
+		Returns:
+			out (object): Return of function
+		'''
+
+		# TODO merge reduce for different numpy backends (jax vs autograd)
+
+		def function(y,x):
+			y = func(y,x)
+			return y,y
+
+		return jax.lax.scan(function,init,operands)[0]
+
+elif backend in ['autograd','numpy']:
+
+	def scan(operands,init,func,*args,**kwargs):
+		'''
+		Reduce operands with function
+		Args:
+			operands (array): operands to reduce with function
+			init (array): initial value
+			func (callable): function
 			args (tuple): Arguments for function
 			kwargs (dict): Keyword arguments for function
 		Returns:
@@ -10667,8 +10711,6 @@ def argsort(a,axis=0):
 	'''
 	return np.argsort(a,axis)
 
-
-@partial(jit,static_argnums=(1,))
 def concatenate(a,axis=0):
 	'''
 	Concatenate iterables along axis
@@ -10680,6 +10722,16 @@ def concatenate(a,axis=0):
 	'''
 	return np.concatenate(a,axis)
 
+def stack(a,axis=0):
+	'''
+	Stack iterables along axis
+	Args:
+		a (iterable): Iterables to stack
+		axis (int): Axis to stack arrays
+	Returns:
+		out (iterable): stacked arrays row-wise
+	'''
+	return np.stack(a,axis)
 
 @jit
 def hstack(a):
