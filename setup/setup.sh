@@ -16,10 +16,15 @@ fi
 
 mkdir -p ${envs}
 
+source ${envs}/../etc/profile.d/conda.sh
+
 conda deactivate
 conda remove --name ${env} --all
+
 conda create --prefix ${envs}/${env}
 conda activate ${env}
+
+conda info --envs
 
 conda install --channel ${channel} --file ${requirements}
 

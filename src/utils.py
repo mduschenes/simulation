@@ -72,7 +72,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		'JAX_ENABLE_X64':True,
 		'JAX_DISABLE_JIT':False,
 		'JAX_TRACEBACK_FILTERING':'off',
-		'TF_CPP_MIN_LOG_LEVEL':5,
+		'TF_CPP_MIN_LOG_LEVEL':1000,
 		# "XLA_FLAGS":(
 		# 	"--xla_cpu_multi_thread_eigen=false "
 		# 	"intra_op_parallelism_threads=1"),
@@ -94,6 +94,9 @@ if backend in ['jax','jax.autograd','quimb']:
 	import opt_einsum
 	import mpmath
 
+	from jax.scipy.integrate import trapezoid as integrater
+	from quadax import quadts as integrater
+
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
 
@@ -103,6 +106,7 @@ if backend in ['jax','jax.autograd','quimb']:
 		'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 		'jax_enable_x64': True,
 		'jax_disable_jit':False,
+		'jax_logging_level':'CRITICAL',
 		}
 	for name in config:
 		if config[name] is None:
@@ -873,6 +877,80 @@ elif backend in ['autograd','numpy']:
 
 		return pfunc
 
+
+if backend in ['jax','jax.autograd','quimb']:
+
+	def callback(func,shape,dtype):
+		'''
+		Callback function
+		Args:
+			func (callable): Function to callback
+			shape (iterable[int]): Shape of function output
+			dtype (datatype): Datatype of function output
+		Returns:
+			func (callable): Callback function
+		'''
+		shape_dtype = jax.ShapeDtypeStruct(shape=shape,dtype=dtype)
+		options = dict()
+		return lambda *args,func=func,shape_dtype=shape_dtype,options=options,**kwargs: jax.pure_callback(func,shape_dtype,*args,**{**kwargs,**options})
+
+	def vectorize(func):
+		'''
+		Vectorize function
+		Args:
+			func (callable): Function to callback
+		Returns:
+			func (callable): Callback function
+		'''
+		return np.vectorize(func)
+
+	def vtype(a,dtype):
+		'''
+		Variable return type
+		Args:
+			a (array): Variable
+			dtype (datatype): Type
+		Returns:
+			a (array): Variable
+		'''
+		return a.astype(np.result_type(dtype,a.dtype))
+
+elif backend in ['autograd','numpy']:
+
+	def callback(func,shape,dtype):
+		'''
+		Callback function
+		Args:
+			func (callable): Function to callback
+			shape (iterable[int]): Shape of function output
+			dtype (datatype): Datatype of function output
+		Returns:
+			func (callable): Callback function
+		'''
+		shape_dtype = (shape,dtype)
+		options = dict()
+		return lambda *args,func=func,shape_dtype=shape_dtype,options=options,**kwargs: func(*args,**kwargs)
+
+	def vectorize(func):
+		'''
+		Vectorize function
+		Args:
+			func (callable): Function to callback
+		Returns:
+			func (callable): Callback function
+		'''
+		return np.vectorize(func)
+
+	def vtype(a,dtype):
+		'''
+		Variable return type
+		Args:
+			a (array): Variable
+			dtype (datatype): Type
+		Returns:
+			a (array): Variable
+		'''
+		return a
 
 if backend in ['jax','jax.autograd','quimb']:
 
@@ -7684,21 +7762,36 @@ def gradient_contraction(data=None,state=None,where=None,attributes=None,local=N
 
 	return func
 
-def integral(func,bounds=None,**options):
+def integral(func,bounds=None,weights=None,method=None,**options):
 	'''
 	Integrate function
 	Args:
 		func (callable): function to integrate
 		bounds (iterable): bounds to integrate
+		weights (iterable[array],int): weights to integrate
+		method (str): method of integration
 		options (dict): Keyword arguments
 	Returns:
 		data (array): integral of function
 	'''
 
-	# integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
-	integrate = lambda func: float(mpmath.quad(func,bounds,**options))
+	y, info = integrater(func,bounds,**options)
 
-	return integrate(func)
+	return y
+
+	# bounds = [0,1] if bounds is None else bounds
+	# weights = 100 if weights is None else weights
+	# method = {'tanh_sinh':tanh_sinh}.get(method, tanh_sinh)
+
+	# y = 0
+	# for i in range(len(bounds)-1):
+	# 	bound = bounds[i:i+2]
+	# 	t,x,dx = method(*bound,weights) if isinstance(weights,integers) else weights
+	# 	y += trapezoid(func(x)*dx,t)
+	# return y
+	# integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
+	# integrate = lambda func: float(mpmath.quad(func,bounds,**options))
+	# return integrate(func)
 
 def kernel(data,func=None,grad=None,hess=None,bounds=None,scale=None):
 	'''
@@ -10502,6 +10595,26 @@ def tanh(a):
 	return np.tanh(a)
 
 
+def tanh_sinh(a,b,n):
+	'''
+	Calculate tanh_sinh of array a,b,n
+	Args:
+		a (array): Array to compute tanh_sinh
+		b (array): Array to compute tanh_sinh
+		n (array): Array to compute tanh_sinh
+	Returns:
+		t (array): Points to compute tanh_sinh
+		x (array): Points to compute tanh_sinh
+		dx (array): Points to compute tanh_sinh
+	'''
+	u = 100
+	v = pi/2
+	t = linspace(-u,u,n)
+	x = ((b+a)/2) + ((b-a)/2)*tanh(v*sinh(t))
+	dx = ((b-a)/2)*(v*cosh(t))/(cosh(v*sinh(t))**2)
+	return t,x,dx
+
+
 @jit
 def arcsin(a):
 	'''
@@ -11610,9 +11723,9 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		shape (int,iterable[int]): Size or shape of array
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
-		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
-		dtype (datatype): Datatype of array	
-		kwargs (dict): Additional keyword arguments for padding	
+		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','constant','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+		dtype (datatype): Datatype of array
+		kwargs (dict): Additional keyword arguments for padding
 	Returns:
 		data (array): Padded array
 	'''
@@ -11636,7 +11749,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	data = data.reshape((*data.shape,*(1,)*diff))
 
 	for axis in range(ndim-diff,ndim):
-		data = repeat(data,shape[axis],axis)	
+		data = repeat(data,shape[axis],axis)
 
 	data = take(data,shape,range(ndim))
 
@@ -11648,7 +11761,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		for axis in range(ndim-1,-1,-1):
 			if diff[axis] > 0:
 
-				reshape[axis] = diff[axis] 
+				reshape[axis] = diff[axis]
 				pad = rand(reshape,key=key,bounds=bounds,random=random)
 				reshape[axis] = shape[axis]
 
@@ -11657,7 +11770,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 
 				data = array([*data,*pad])
 
-				data = moveaxis(data,ax,axis)	
+				data = moveaxis(data,ax,axis)
 
 	return data
 
@@ -11694,7 +11807,7 @@ def allthing(a):
 	Returns:
 		out (bool): Array all of a is True
 	'''
-	return a.all()	
+	return a.all()
 
 def anything(a):
 	'''
@@ -11704,7 +11817,7 @@ def anything(a):
 	Returns:
 		out (bool): Array any of a is True
 	'''
-	return a.any()	
+	return a.any()
 
 # @partial(jit,static_argnums=(2,3,4,))
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
@@ -11719,7 +11832,7 @@ def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	Returns:
 		out (bool): Boolean of whether a and b are all close
 	'''
-	return np.allclose(a,b,rtol,atol,equal_nan)	
+	return np.allclose(a,b,rtol,atol,equal_nan)
 
 
 @partial(jit,static_argnums=(2,3,4,))
@@ -11735,7 +11848,7 @@ def isclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	Returns:
 		out (array): Boolean of whether a and b are close
 	'''
-	return np.isclose(a,b,rtol,atol,equal_nan)	
+	return np.isclose(a,b,rtol,atol,equal_nan)
 
 
 def is_equal(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
@@ -11746,7 +11859,7 @@ def is_equal(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 		b (object): object to be tested
 		rtol (float): Relative tolerance of arrays
 		atol (float): Absolute tolerance of arrays
-		equal_nan (bool): Compare nan's as equal		
+		equal_nan (bool): Compare nan's as equal
 	Returns:
 		out (bool): whether objects are equals
 	'''
@@ -11775,7 +11888,7 @@ def is_diag(a):
 		a (array): Possible diagonal array of shape (n,n)
 	Returns:
 		out (bool): whether object is iterable
-	'''	
+	'''
 	n,m = a.shape
 	assert n == m
 	return ~anything(reshape(ravel(a)[:-1],(n-1,m+1))[:,1:])
@@ -12291,7 +12404,7 @@ def accumulate(iterable,initial=None):
 
 def copier(key,value,_copy):
 	'''
-	Copy value based on associated key 
+	Copy value based on associated key
 
 	Args:
 		key (string): key associated with value to be copied
@@ -12319,7 +12432,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 
 	Returns:
 		List of dictionaries with all combinations of lists of values in dictionary
-	'''		
+	'''
 	def indexer(keys,values,_groups):
 		'''
 		Get lists of values for each group of keys in _groups
@@ -12336,7 +12449,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 		values = [[values[j] for j in i ] for i in inds]
 		return _groups,values
 
-	def zipper(keys,values,_copy): 
+	def zipper(keys,values,_copy):
 		'''
 		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
 		'''
@@ -12346,10 +12459,10 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 		'''
 		Zip keys of dictionary of list, and values of dictionary as list
 		'''
-		keys, values = zip(*dictionary.items())	
+		keys, values = zip(*dictionary.items())
 		return keys,values
 
-	def permuter(dictionaries): 
+	def permuter(dictionaries):
 		'''
 		Get all list of dictionaries of all permutations of sub-dictionaries
 		'''
@@ -12383,7 +12496,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 
 	# Retain ordering of keys in dictionary
 	keys_ordered = keys
-	
+
 	# Get groups of keys based on _groups and get lists of values for each group
 	keys,values = indexer(keys,values,_groups)
 
@@ -12443,7 +12556,7 @@ def interp(x,y,**kwargs):
 			bounds (iterable[object]): Bounds on points
 	Returns:
 		func (callable): Interpolation function with signature func(x,*args,**kwargs)
-	'''	
+	'''
 
 	def _interpolate(x,y,**kwargs):
 		n = len(x)
@@ -12501,7 +12614,7 @@ def interpolate(x,y,_x,**kwargs):
 				bounds (iterable[object]): Bounds on points
 	Returns:
 		out (array): Interpolated values at new points
-	'''		
+	'''
 	is1d = (y.ndim == 1)
 
 	if is1d:
@@ -12524,7 +12637,7 @@ def piecewises(func,shape,include=None,**kwargs):
 		func (callable,iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
 		shape (iterable[int]): Piecewise parameters shape
 		include (bool): Include piecewise indices of coefficients
-		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+		kwargs (dict[str,object]): Additional keyword arguments for fitting
 	Returns:
 		func (callable): Piecewise function with signature func(x,*args,**kwargs)
 		funcs (iterable[callable]): Piecewise functions with signature func(x,*args,**kwargs)
@@ -12549,7 +12662,7 @@ def piecewises(func,shape,include=None,**kwargs):
 		function,conditions = piecewise(func,bounds)
 
 		return function(x,parameters)
-	
+
 	if include:
 		return func,funcs,indices
 	else:
@@ -12595,7 +12708,7 @@ def piecewise(func,bounds=None,**kwargs):
 		else:
 			r = x
 		conditions = [(
-			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) &
 			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
 			)
 			for i in range(n)]
@@ -12614,14 +12727,14 @@ def extrema(x,y,_x=None,**kwargs):
 	Args:
 		x (array): Interpolation points
 		y (array): Interpolation values
-		_x (array): New points		
+		_x (array): New points
 		kwargs (dict): Additional keyword arguments for interpolation
 			kind (int): Order of interpolation
 			smooth (int,float): Smoothness of fit
 			der (int): order of derivative to estimate
 	Returns:
 		indices (array): Indices of extreme points
-	'''	
+	'''
 
 	defaults = {'kind':1,'smooth':0,'der':2}
 
@@ -12644,7 +12757,7 @@ def heaviside(a):
 		a (array): Array to calculate heaviside
 	Returns:
 		out (array): Heaviside
-	'''		
+	'''
 	return np.heaviside(a,0)
 
 
@@ -12657,7 +12770,7 @@ def sigmoid(a,scale=1):
 		scale (float): scale of sigmoid
 	Returns:
 		out (array): Sigmoid
-	'''		
+	'''
 	return (tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
@@ -12724,7 +12837,7 @@ def replace(iterable,elements):
 		elements (dict): New and old elements
 	Returns:
 		iterable (iterable): Updated iterable
-	'''	
+	'''
 
 	# Recursively find where nested iterable elements exist, and replace or append in-place with replacement elements
 	oldtype = type(iterable)
@@ -12759,7 +12872,7 @@ def to_eval(a,represent=True):
 	Convert string to python object
 	Args:
 		a (str): Object to convert to python object
-		represent (bool): Representation of objects		
+		represent (bool): Representation of objects
 	Returns:
 		object (object): Python object representation of string
 	'''
@@ -12782,7 +12895,7 @@ def to_repr(a,represent=True):
 	Convert python object to string representation
 	Args:
 		a (object): Object to convert to string representation
-		represent (bool): Representation of objects				
+		represent (bool): Representation of objects
 	Returns:
 		string (str): String representation of Python object
 	'''
@@ -12840,7 +12953,7 @@ def to_list(a,dtype=None,**kwargs):
 	Returns:
 		out (list): List representation of iterable
 	'''
-	
+
 	try:
 		return a.tolist()
 	except:
@@ -12983,7 +13096,7 @@ def to_key_value(string,delimiter='=',default=None,**kwargs):
 		kwargs (dict): Additional keyword formatting options
 	Returns:
 		key (str): Key of string
-		value (int,float,bool,None): Value of string 
+		value (int,float,bool,None): Value of string
 	'''
 	if not isinstance(string,str):
 		key = string
@@ -13024,7 +13137,7 @@ def to_index(position,shape):
 		shape (iterable[int]): Dimensions of positions
 	Returns:
 		index (int): Linear index
-	'''	
+	'''
 	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
 	return index
 
@@ -13126,7 +13239,7 @@ def scinotation(number,decimals=1,scilimits=[-1,1],base=10,order=20,zero=True,on
 				r' \cdot ' if ((one or (float(flt) != 1.0)) and ((int(exp)!=0) or (scilimits[0] == scilimits[1]))) else '',
 				'%d^{%s}'%(base,exp) if ((int(exp)!=0) or (scilimits[0] == scilimits[1])) else ''
 				)
-	
+
 		if error is not None and not isinstance(error,str):
 			value = '%0.*e'%(decimals-1,error)
 			value = value.split('e')
@@ -13269,7 +13382,7 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 	Returns:
 		padded (iterable[str]): Padded strings
 	'''
-	
+
 	def justifier(string,padding,length,justification):
 		padded = '%s%s%s'
 		if justification in ['left']:
@@ -13284,10 +13397,10 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 		else:
 			padded = string
 		return padded
-	
+
 	# Default padded
 	padded = strings
-	
+
 	# Check if string in strings
 	if len(strings) == 0 or all(string is None for string in strings):
 		return padded
@@ -13298,20 +13411,20 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 		strings = [[string] if string is not None else None for string in strings]
 	else:
 		strings = [string.split(delimiter) if string is not None else None for string in strings]
-	
+
 	# Get size: Min number of delimited substrings per string in strings
 	# Get length: Max length of delimited substring per string in strings
 	size = min(len(string) for string in strings if string is not None)
 	length = [max(len(string[i]) for string in strings if string is not None)
 			for i in range(size)]
-	
+
 	# Get justified delimited substrings based on length difference to length
 	strings = [[justifier(string[i],padding,length[i] - len(string[i]),justification) for i in range(size)] if string is not None else None
 				for string in strings]
-	
+
 	# Join delimited substrings per string in strings
 	padded = [delimiter.join(string) if string is not None else None for string in strings]
-	
+
 	return padded
 
 
@@ -13321,16 +13434,16 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	Args:
 		data (array,str): data array or random type or path to load data
 		shape (iterable): shape of data
-		random (str,dict,callable): random type of initialization, 
-			dictionary of attributes {'interpolation' (dict): keyword arguments for interp(), 'size' (int): Number of interpolation points via shape[-1]//size}, or 
-			allowed strings in ['uniform','ones','zeros','random','pad'], or 
+		random (str,dict,callable): random type of initialization,
+			dictionary of attributes {'interpolation' (dict): keyword arguments for interp(), 'size' (int): Number of interpolation points via shape[-1]//size}, or
+			allowed strings in ['uniform','ones','zeros','random','pad'], or
 			callable function with signature random(data,shape,bounds,random,dtype,**kwargs)
 		bounds (iterable[object]): bounds of data
-		dtype (str,datatype): data type of data		
+		dtype (str,datatype): data type of data
 		kwargs (dict): Additional keyword arguments for initialization
 	Returns:
 		data (array): data
-	'''	
+	'''
 
 	default = None
 	if data is None:
@@ -13369,7 +13482,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	elif data is not None and shape is not None and random is None:
 		data = data
 		shape = shape
-		random = default		
+		random = default
 	elif data is None and shape is None and random is not None:
 		data = data
 		shape = ()
@@ -13403,13 +13516,13 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 			data = rand(shape,bounds=bounds,dtype=dtype,**kwargs)
 
 	elif isinstance(random,str):
-		
+
 		if random in ['uniform']:
 			data = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
-		
+
 		elif random in ['ones']:
 			data = ones(shape,dtype=dtype)
-		
+
 		elif random in ['zeros']:
 			data = zeros(shape,dtype=dtype)
 
@@ -13446,13 +13559,13 @@ def nester(iterable,keys,func=None):
 
 	if func is None:
 		return
-	
+
 	for key in iterable:
 		if keys is None or key in keys:
 			iterable[key] = func(iterable[key])
 		elif isinstance(iterable[key],type(iterable)):
 			iterable[key] = nester(iterable[key],keys,func=func)
-	
+
 	return iterable
 
 
@@ -13464,7 +13577,7 @@ def funcpath(func):
 	Returns:
 		path (str): Path of function
 	'''
-	
+
 	try:
 		path = func.__code__.co_filename
 	except:
@@ -13655,7 +13768,7 @@ def bloch(state,path=None):
 		fig (matplotlib.figure): Figure of plots
 		ax (matplotlib.axes): Axes of plots
 	'''
-	
+
 	def coordinates(state):
 		'''
 		Convert state vector to Bloch vector
@@ -13722,6 +13835,5 @@ def bloch(state,path=None):
 	return fig,ax
 
 
-
-from src.io import load,dump,exists
 from src.system import layout,Dictionary
+from src.io import load,dump,exists

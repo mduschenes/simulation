@@ -1718,65 +1718,74 @@ def test_distribution(path=None,tol=None):
 
 		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
 
-			fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
+			fig,axes = plt.subplots(2,1) if fig is None or ax is None else (fig,ax)
 
-			ax.errorbar(x,y,yerr,xerr,**options)
+			for index,ax in enumerate(axes):
 
-			ax.set_xlabel(xlabel="$x$",size=45)
-			ax.set_ylabel(ylabel="$f(x)$",size=45)
+				ax.errorbar(x,y,yerr,xerr,**options)
 
-			# ax.set_xscale(value="linear")
-			# ax.set_yscale(value="linear")
-			# ax.set_xlim(xmin=-0.1,xmax=1.1)
-			# ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
-			# ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
-			# ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-			# ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
-			# ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+				ax.set_xlabel(xlabel="$x$",size=60)
+				ax.set_ylabel(ylabel="$f(x)$",size=60)
 
-			ax.set_xscale(value="log",base=4)
-			ax.set_yscale(value="log",base=10)
-			ax.set_xlim(xmin=2**(-2*23),xmax=2**(1*1))
-			ax.set_ylim(ymin=5e-17,ymax=2e8)
-			ax.set_xticks(ticks=[2**(-2*i) for i in [22,18,14,10,6,2,0]])
-			ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2$' if i not in [0] else '$1$' for i in [22,18,14,10,6,2,0]],size=45)
-			ax.set_yticks(ticks=[10**(-i) for i in [16,12,8,4,0,-4,-8]])
-			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,12,8,4,0,-4,-8]],size=45)
-			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
-			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
-			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+				if index == 0:
+
+					ax.set_xscale(value="linear")
+					ax.set_yscale(value="log",base=10)
+					ax.set_xlim(xmin=-0.1,xmax=1.1)
+					ax.set_ylim(ymin=1e-21,ymax=1e21)
+					ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
+					ax.set_xticklabels(labels=['$%s$'%(str(i)) if i not in [0,1] else '$1$' if i not in [0] else '$0$' for i in [0,0.2,0.4,0.6,0.8,1]],size=60)
+					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+
+				elif index == 1:
+
+					ax.set_xscale(value="log",base=10)
+					ax.set_yscale(value="log",base=10)
+					ax.set_xlim(xmin=1e-22,xmax=1e2)
+					ax.set_ylim(ymin=1e-21,ymax=1e21)
+					ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
+					ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
+					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+
+				ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+				ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+				ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+				ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
 
 
-			ax.grid(visible=True)
+				ax.grid(visible=True)
 
 			handles,labels = ax.get_legend_handles_labels()
 			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
 			for handle,label in zip(handles,labels):
 				handle[0].set_linewidth(12)
 
-			ax.legend(
+			legend = ax.legend(
 				handles,labels,
-				title="$\\textrm{Regime}$",
-				loc="upper left",
-				ncol=1,
-				title_fontsize=45,
-				prop={"size":45},
+				# title="$$",
+				loc="lower left",
+				ncol=2,
+				title_fontsize=50,
+				prop={"size":50},
 				markerscale=6,
-				handlelength=4
+				handlelength=2.5
 			)
 
 			if settings.get('path'):
-				fig.set_size_inches(w=24,h=24)
+				fig.set_size_inches(w=36,h=36)
 				fig.subplots_adjust()
 				fig.tight_layout()
 				fig.savefig(fname=settings.get('path'))
 
+			ax = axes
+
 		return fig,ax
 
-	from src.utils import array,asscalar,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,allclose
+	from src.utils import array,asscalar,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype
 	from src.utils import exp,log,log1p
-	from src.utils import sqrt,real,nan,is_naninf
+	from src.utils import sqrt,log10,real,nan,is_naninf
 	from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
 	from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial,permute
 	from src.quantum import Basis as basis
@@ -1786,28 +1795,100 @@ def test_distribution(path=None,tol=None):
 	from mpmath import exp,log,log1p
 	from mpmath import quad as integral,linspace as linearspace,mpmathify
 
-	settings = dict(
-		# attr=['tetrad','pauli'],
-		attr=['pauli'],
-		D=[2],
-		# N=[2,3,4,5,6],
-		N=[3],
-		# M=[0,2,4,8,16,32],
-		M=[8],
-		)
+	from src.utils import integral as integrate
 
+	def func(x,parameters):
+		def functional(x,parameters,functions):
+			x = (x-parameters['u'])/(parameters['v']-parameters['u'])
+			x = functions['x'](x)
+			x = parameters['w']*(1/(parameters['v']-parameters['u']))*functions['exp'](parameters['d']*(parameters['a']*functions['log'](x) + functions['log1p'](-2*parameters['b']*(x/parameters['c']) + parameters['b']*(x/parameters['c'])**2) - functions['log'](parameters['p'])))
+			return x
+		from mpmath import exp,log,log1p
+		functions = dict(exp=exp,log=log,log1p=log1p,x=lambda x:x if ((x>=0)*(x<=1)) else 0)
+		func = partial(functional,parameters=parameters,functions=functions)
+
+		from src.utils import exp,log,log1p
+		functions = dict(exp=exp,log=log,log1p=log1p,x=lambda x:where(x<1,where(x>0,x,0),0))
+		function = partial(functional,parameters=parameters,functions=functions)
+
+		parameters['p'] = float(integral(func,linearspace(0,1,100)))
+
+		y = function(x,parameters=parameters)
+
+		return y
+
+
+	settings = [
+		{'u':0,'v':1,'w':1,'p':1,'a':0,'b':1,'c':1,'d':2,
+			'options': dict(
+				label='$\\alpha = 1 ~,~\\beta = 0$',
+				color='k',
+				marker='',
+				linestyle='-',
+				),
+		},
+		{'u':0,'v':1,'w':1,'p':1,'a':2*((1)*2-1)/((10-1)*2-1),'b':1-((1-(2*((1)*2-1)/((10-1)*2-1)*((2*((1)*2-1)/((10-1)*2-1)) + 2))/(((2*((1)*2-1)/((10-1)*2-1)*((2*((1)*2-1)/((10-1)*2-1)) + 2)))+1))/1000),'c':1,'d':((10-1)*2-1)/2,
+			'options': dict(
+				label='$\\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < \\alpha < 1 ~,~\\beta \\to 0$',
+				color='viridis_%f'%(0.1),
+				marker='',
+				linestyle='-',
+				),
+		},
+		{'u':0,'v':1,'w':1,'p':1,'a':2*((1)*2-1)/((10-1)*2-1),'b':1/5,'c':1,'d':((10-1)*2-1)/2,
+			'options': dict(
+				label='$\\alpha < \\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < 1 ~,~\\beta \\to 0$',
+				color='viridis_%f'%(0.25),
+				marker='',
+				linestyle='-',
+				),
+		},
+		{'u':0,'v':1,'w':1,'p':1,'a':2*((9)*2-1)/((10-9)*2-1),'b':1/5,'c':1,'d':((10-9)*2-1)/2,
+			'options': dict(
+				label='$\\alpha < \\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < 1 ~,~\\beta \\to \\infty$',
+				color='viridis_%f'%(0.5),
+				marker='',
+				linestyle='-',
+				),
+		},
+		{'u':0,'v':1,'w':1,'p':1,'a':2*((9)*2-1)/((10-9)*2-1),'b': 1-((1-(2*((9)*2-1)/((10-9)*2-1)*((2*((9)*2-1)/((10-9)*2-1)) + 2))/(((2*((9)*2-1)/((10-9)*2-1)*((2*((9)*2-1)/((10-9)*2-1)) + 2)))+1))/1000),'c':1,'d':((10-9)*2-1)/2,
+			'options': dict(
+				label='$\\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < \\alpha < 1 ~,~\\beta \\to \\infty$',
+				color='viridis_%f'%(0.75),
+				marker='',
+				linestyle='-',
+				),
+		},
+	]
+
+	x = logspace(start=-20,stop=0,num=100000)
+
+	fig,ax = None,None
 	options = dict(
-		file = (lambda settings={},options={}: 'data.hdf5'),
-		folder = (lambda settings={},options={}: 'scratch/probability/distribution'),
-		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
-		io = (lambda settings={},options={}: dict(rw='a')),
-		do = (lambda settings={},options={}: not exists(options['path'](settings,options))),
-		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
-		eps    = (lambda settings={},options={}: 1e-20),
-		bounds = (lambda settings={},options={}: linearspace(0,1,100)),
-		)
+		path='scratch/probability/distribution/plot.distribution.pdf',mplstyle=None,
+		markersize=9,
+		linewidth=16,
+		alpha=0.8,
+	)
 
-	x = logspace(start=-20,stop=0,num=10000)
+	for parameters in settings:
+
+		y = func(x,parameters)
+
+		fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,**parameters['options']})
+
+	y = sum(func((x-(i/len(settings)))/(1-(i/len(settings))),parameters) for i,parameters in enumerate(settings))/len(settings)
+
+	fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,** dict(
+				label='$\\sum \\alpha ~,~ \\beta $',
+				color='viridis_%f'%(0.9),
+				marker='',
+				linestyle='-',
+				)})
+
+
+	exit()
+
 
 	def func(x,parameters):
 		# from mpmath import exp,log,log1p
@@ -1819,9 +1900,34 @@ def test_distribution(path=None,tol=None):
 	def function(parameters,x):
 		from src.utils import exp,log,log1p
 		x = (x-parameters[0])/(parameters[1]-parameters[0])
-		x = where(x>1,where(x<0,x,0),0)
+		x = where(x<1,where(x>0,x,0),0)
 		x = parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]))
 		return x
+
+
+	settings = dict(
+		# attr=['tetrad','pauli'],
+		attr=['pauli'],
+		D=[2],
+		# N=[2,3,4,5,6],
+		N=[6],
+		# M=[0,2,4,8,16,32],
+		M=[32],
+		)
+
+	options = dict(
+		file = (lambda settings={},options={}: 'data.hdf5'),
+		folder = (lambda settings={},options={}: 'scratch/probability/distribution'),
+		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
+		io = (lambda settings={},options={}: dict(rw='a')),
+		do = (lambda settings={},options={}: True or not exists(options['path'](settings,options))),
+		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
+		eps    = (lambda settings={},options={}: 1e-20),
+		bounds = (lambda settings={},options={}: linearspace(0,1,100)),
+		)
+
+	x = logspace(start=-20,stop=0,num=100000)
+
 
 	for setting in permute(settings):
 
@@ -1867,17 +1973,26 @@ def test_distribution(path=None,tol=None):
 			f = partial(func,parameters=[params[i] for i in params])
 			q = integral(f,bounds)
 
+			ff = lambda x,parameters=array([float(params[i]) for i in params]):function(parameters,x)
+			# pp = integrate(ff,logspace(-20,0,100),**dict(epsabs=1e-16,epsrel=1e-16,order=101,max_ninter=1000))
+			pp = integrate(ff,linspace(0,1,100),**dict(epsabs=1e-16,epsrel=1e-16,order=101,max_ninter=1000))
+			dd = abs(float(q)-pp)
+			kk = 2*((l*s)-1)/((d-l)*s-1)
+			ss = (kk*(kk+2)/((kk*(kk+2))+1))/(a**2/b)
+
 			params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
 
 			y += function(parameters=[float(params[i]) for i in params],x=x)
 
-			print(index,q)
+			if (dd>1e-12) or (ss > 1):
+				print(func(1,[float(j) for i,j in dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d).items()]),l,dd,ss)
 
 			parameters = array([*parameters,[float(params[i]) for i in params]])
 
 			data = {key:dict(parameters=parameters,y=y,x=x)}
 			dump(data,path,**io)
 
+	exit()
 	for setting in permute(settings):
 
 		path = options['path'](setting,options)
@@ -1889,15 +2004,60 @@ def test_distribution(path=None,tol=None):
 		x = data[key]['x']
 
 		def f(x):
-			f = lambda y,parameters: y+function(parameters,x)
+			func = lambda y,parameters: y+function(parameters,x)
 			y = 0*x
-			y = scan(parameters,y,f)
+			y = scan(parameters,y,func)
 			return y
 
+		from src.utils import integral
+
+		def i(x):
+			def func(x,z):
+				return f(z*x)/z
+			# func = lambda x,z: float(f(float(z)*x)/float(z))
+			# bounds = linearspace(0,1,10)
+			bounds = [0,1]
+
+			def func(x):
+				return f(x)
+
+			# z = z.astype(jnp.result_type(float, z.dtype))
+			# function = callback(lambda z: float(vtype(integral(partial(func,z=asscalar(vtype(z,float))),bounds),float)),shape=(),dtype=float)
+			# function = callback(lambda z: integral(partial(func,z=z),bounds),shape=(),dtype=float)
+			# function = lambda z: integral(partial(func,z=z),bounds)
+			function = lambda z,l=minimum(x): integral(func,linspace(l,z,100),weights=10000,method='sinh_tanh')
+			# function = lambda x: vtype(integral(partial(func,z=mpmathify(vtype(x,float))),bounds),float)
+			y = vmap(function)(x)
+			# function = lambda x: float(integral(lambda x,z=x:func(z*x)/z,linearspace(0,1,100)))
+			# y = vectorize(function)(x)
+			return y
 
 		z = f(x)
-
 		print(allclose(z,y))
+
+		x = logspace(log10(minimum(parameters[:,0])),log10(maximum(parameters[:,1])),10)
+
+
+		# from src.utils import pi,linspace,tanh,sinh
+		# n = 10000
+		# a = minimum(x)
+		# b = maximum(x)
+		# u = 3
+		# v = pi/2
+		# t = linspace(-u,u,n)
+		# x = ((b+a)/2) + ((b-a)/2)*tanh(v*sinh(t))
+		# print(x)
+		# exit()
+
+
+
+
+		z = i(x)
+
+		print(parameters)
+		print(x)
+		print(z)
+
 		exit()
 
 		# def i(x):
@@ -1921,189 +2081,19 @@ def test_distribution(path=None,tol=None):
 		# 	print(w[-1])
 		# print(w)
 
-	exit()
-
 	fig,ax = None,None
 	options = dict(
 		path='examples/distribution/plot.pdf',mplstyle=None,
 		label='$\\textrm{%s}$'%(attr.capitalize()),
 		color='viridis_%f'%(0.5),
 		marker='',
-		linestyle=':',
+		linestyle='-',
 		markersize=9,
 		linewidth=4,
 		alpha=0.8,
 	)
 
 	fig,ax = plot(x,y,fig=fig,ax=ax,options=options)
-
-
-	exit()
-
-
-
-	s = 1000
-	n = 6
-	d = 2**n
-	x = logspace(-20,0,s)
-	a = [2/d,2/d,2,2*d]
-	b = [1,1-1/d,8/9+1/d,1-1/d**2]
-	c = [1,1/d,1/d,1/d]
-	d = [d,1,1,1]
-	opts = [
-		dict(
-			label='$\\# = 2$',
-			color='k',
-			marker='',
-			linestyle='-',
-			),
-		dict(
-			label='$\\frac{l}{d} \\to 0$',
-			color='viridis_%f'%(0.25),
-			marker='',
-			linestyle=':',
-			),
-		dict(
-			label='$\\frac{l}{d} \\to \\frac{1}{2}$',
-			color='viridis_%f'%(0.5),
-			marker='',
-			linestyle=':',
-			),
-		dict(
-			label='$\\frac{l}{d} \\to 1$',
-			color='viridis_%f'%(0.75),
-			marker='',
-			linestyle=':',
-			),
-		]
-	func = lambda x,a,b,c,d: ((x**a)*(1-2*b*((x/c)) + b*((x/c)**2)))**d
-
-	fig,ax = None,None
-	options = dict(
-		path='examples/distribution/plot.pdf',mplstyle=None,
-		markersize=9,
-		linewidth=4,
-		alpha=0.8,
-	)
-
-	for index,(a,b,c,d,opts) in enumerate(zip(a,b,c,d,opts)):
-
-		y = func(x,a,b,c,d)
-
-		fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,**opts})
-
-	exit()
-
-	# d = 2**6
-	# s = d//2
-	# l = 1
-	# c = (l*s-1)/((d-l)*s-1)
-	# n = 10
-	# a = logspace(log10(2*c),log10(2/c),n)
-	# b = logspace(20,0,n)
-	# a,b = meshgrid(a,b)
-	# i = (a*(a+2)) > (1/(1-b))
-	# f = lambda a,b,s: 1 - (b*((a+1)/(a+2))*((2*((((a+1)/(a+2))-1)*(1+s*sqrt(1-((1/b)*((a*(a+2))/((a*(a+2))+1))))))) + ((1/b)*((a+1)/(a+2))*((a*(a+2))/((a*(a+2))+1)))))
-
-	# print(a)
-	# print(b)
-
-	# x,y = f(a,b,1),f(a,b,-1)
-
-
-	# print(i)
-	# # x,y = inplace(x,i,nan),inplace(y,i,nan)
-
-	# exit()
-
-
-
-	# fig,axes = None,None
-	# index = None
-	# options = dict(
-	# 	path='examples/measurement/plot.pdf',mplstyle=None,
-	# 	label='$10^{-%s}$'%((('%e'%(argument['noise.parameters'])).split('e')[-1])[-1]) if argument['noise.parameters'] != 0 else '$0$',
-	# 	color='viridis_%f'%((index['noise.parameters']+1)/(len(arguments['noise.parameters'])+1)),alpha=0.8,
-	# 	marker='o',linestyle=':',
-	# 	markersize=9,
-	# 	linewidth=4,
-	# 	elinewidth=4,
-	# 	capsize=5
-	# )
-
-
-	# data = dict(x=x,y=y)
-	# fig,axes = plot(**data,fig=fig,axes=axes,index=index,options=options)
-
-
-
-
-
-	from src.utils import permute
-
-	settings = dict(
-		l = [2],
-		n = [4,6,8,10],
-		q = [2],
-		k = [2,4,8,16,32],
-		d = [lambda n,q,k:q**n],
-		s = [lambda n,q,k: k+1],
-		)
-
-
-	for setting in permute(settings):
-
-		n = setting['n']
-		l = setting['l']
-		q = setting['q']
-		k = setting['k']
-		d = setting['d'](n,q,k)
-		s = setting['s'](n,q,k)
-
-		# from src.utils import array,rand
-		# from src.utils import eig,nonzero,rank,det,trace,dagger
-		# from src.utils import product,addition,exp,log
-		# from src.utils import arrays,iterables,real,imag
-		# from src.utils import integral,binom,gammaln
-
-		# a = rand(shape=(l),random='rand' if l>1 else 'rand',key=123456789,dtype='float')
-
-		# parse = lambda obj: obj.real if isinstance(obj,arrays) else [parse(i) for i in obj] if isinstance(obj,iterables) else obj
-		# constant = float(exp(gammaln(d*s)-gammaln(l*s)-gammaln((d-l)*s))/product(a)**s)
-		# parameters = [float(addition(a**(-i))/l) for i in [1,2]]
-		# bounds = [float(min(a)) if l==d else 0,float(max(a))]
-		# options = dict()
-
-		# func = lambda x: constant*(x**(l*s-1))*((1-2*parameters[0]*x+parameters[1]*x**2)**(((d-l)*s-1)/2))
-		# function = integral(func,bounds,**options)
-
-		from math import prod
-		from mpmath import log,log1p,exp,sqrt
-		from mpmath import quad as integral
-		from mpmath import appellf1,gamma,loggamma,binomial
-		from mpmath import re
-
-		a = [0,1/(3*d),1/(2*d),1/d][:l+1]
-		u,v = min(a),max(a)
-		z = [(i-u)/(v-u) for i in a if i>u] if len(a)>1 else a
-		l = len(z)
-
-		parameters = [sum(i**(-j) for i in z)/l for j in [0,1,2]]
-		parameter = (parameters[1]/parameters[2])*(1+1j*sqrt((parameters[2]/(parameters[1]**2))-1))
-		bounds = [0,1]
-		options = {}
-
-		func = lambda x: exp((l*s-1)*log(x) + (((d-l)*s-1)/2)*log1p(-2*parameters[1]*x+parameters[2]*x**2))
-
-		function = float(re(integral(func,bounds,**options)))
-		# function = appellf1(l*s,-(((d-l)*s)-1)/2,-(((d-l)*s)-1)/2,l*s+1,1/parameter,1/parameter.conjugate())
-
-		strings = dict(
-				n=n,l=l,k=k,
-				parameters=parameters,
-				integral=function
-				)
-		print(strings)
 
 
 	return

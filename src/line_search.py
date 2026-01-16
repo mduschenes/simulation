@@ -51,6 +51,7 @@ if BACKEND in ['jax','jax.autograd','quimb']:
 		'jax_cuda_visible_devices':os.environ.get('JAX_CUDA_VISIBLE_DEVICES'),
 		'jax_enable_x64': True,
 		'jax_disable_jit':False,
+		'jax_logging_level':'CRITICAL',
 		}
 	for name in config:
 		if config[name] is None:
