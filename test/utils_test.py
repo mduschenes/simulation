@@ -1919,7 +1919,7 @@ def test_distribution(path=None,tol=None):
 		file = (lambda settings={},options={}: 'data.hdf5'),
 		folder = (lambda settings={},options={}: 'scratch/probability/distribution'),
 		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
-		io = (lambda settings={},options={}: dict(rw='a')),
+		io = (lambda settings={},options={}: dict(wr='a')),
 		do = (lambda settings={},options={}: True or not exists(options['path'](settings,options))),
 		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		eps    = (lambda settings={},options={}: 1e-20),
