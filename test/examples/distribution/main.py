@@ -335,9 +335,9 @@ def run(settings,options,*args,**kwargs):
 				params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
 
 				if number == 0:
-					logger(f'#/{len(list(partitions(N,D**2)))}'+'\t'+'\t'.join([f'{i:8}' for i in ['a','b','c','p','q']]))
+					logger(f'#/{len(list(partitions(N,D**2)))}'+'\t'+'\t'.join([f'{i:8}' for i in ['c','p','q']]))
 				with workdps(8):
-					logger(f'{number}'+'\t'+'\t'.join([f'{i}' if i != 1 else f'{i}' for i in [a,b,c,p,q]]))
+					logger(f'{number}'+'\t'+'\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
 
 				parameters = array([*parameters,[float(min(params[i],sys.float_info.max)) for i in params]])
 
