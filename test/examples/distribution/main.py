@@ -340,8 +340,6 @@ def run(settings,options,*args,**kwargs):
 
 def process(settings,options,*args,**kwargs):
 
-	return
-
 	for setting in permute(settings):
 
 		attr = setting['attr']
