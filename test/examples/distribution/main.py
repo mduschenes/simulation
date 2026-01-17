@@ -15,7 +15,7 @@ os.environ['NUMPY_BACKEND'] = 'JAX'
 
 from src.utils import array,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype,copy
 from src.utils import exp,log,log1p
-from src.utils import log10,real,nan,is_naninf
+from src.utils import log10,real,nan,is_naninf,epsilon
 from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
 from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial,permute
 from src.utils import integral as integrate
@@ -42,77 +42,6 @@ def function(parameters,x,exp=exp,log=log,log1p=log1p):
 	x = (x-parameters[0])/(parameters[1]-parameters[0])
 	x = where((x>0)*(x<=1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 	return x
-
-def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
-
-	def setup(options):
-
-		options = {} if options is None else options
-		for option in options:
-			if option in ['color','ecolor']:
-				if isinstance(options[option],str):
-					value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
-					value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
-			else:
-				value = options[option]
-			options[option] = value
-
-		settings = {}
-		settings['path'] = options.pop('path') if options.get('path') else None
-		settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
-
-		return options,settings
-
-	options,settings = setup(options)
-
-	with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
-
-		fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
-
-		ax.errorbar(x,y,yerr,xerr,**options)
-
-		ax.set_xlabel(xlabel="$x$",size=60)
-		ax.set_ylabel(ylabel="$f(x)$",size=60)
-
-		ax.set_xscale(value="log",base=10)
-		ax.set_yscale(value="log",base=10)
-		ax.set_xlim(xmin=1e-22,xmax=1e2)
-		ax.set_ylim(ymin=1e-21,ymax=1e21)
-		ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
-		ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
-		ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-		ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
-
-		ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
-		ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-		ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
-		ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
-
-		ax.grid(visible=True)
-
-		handles,labels = ax.get_legend_handles_labels()
-		handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
-		for handle,label in zip(handles,labels):
-			handle[0].set_linewidth(12)
-
-		legend = ax.legend(
-			handles,labels,
-			title="$M$",
-			loc="upper right",
-			ncol=1,
-			title_fontsize=50,
-			prop={"size":50},
-			markerscale=6,
-			handlelength=2.5
-		)
-
-		if settings.get('path'):
-			fig.set_size_inches(w=36,h=36)
-			fig.subplots_adjust()
-			fig.tight_layout()
-			fig.savefig(fname=settings.get('path'))
-
-	return fig,ax
 
 def draw(*args,**kwargs):
 
@@ -369,8 +298,6 @@ def run(settings,options,*args,**kwargs):
 
 		operator = real(eig(getattr(basis,attr)(D=D)))
 		parameters = []
-		# y = 0
-		# x = logspace(start=-20,stop=0,num=100000)
 
 		for number,partition in enumerate(partitions(N,D**2)):
 
@@ -378,7 +305,9 @@ def run(settings,options,*args,**kwargs):
 
 				z = tensorprod([obj for i,j in enumerate(partition) for obj in [operator[i]]*j])
 				u,v = asscalar(product(minimum(z,axis=-1))),asscalar(product(maximum(z,axis=-1)))
-				z = (z[(z>u)*(z<=v)]-u)/(v-u)
+
+				z = (z-u)/(v-u)
+				z = z[(z>eps)*(z<=1)]
 
 				a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
 				l,s,d = z.size,M+1,D**N
@@ -406,29 +335,19 @@ def run(settings,options,*args,**kwargs):
 				params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
 
 				if number == 0:
-					logger(f'#/{len(list(partitions(N,D**2)))}'+'\t'+'\t'.join([f'{i:8}' for i in ['c','p','q']]))
+					logger(f'#/{len(list(partitions(N,D**2)))}'+'\t'+'\t'.join([f'{i:8}' for i in ['a','b','c','p','q']]))
 				with workdps(8):
-					logger(f'{number}'+'\t'+'\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
+					logger(f'{number}'+'\t'+'\t'.join([f'{i}' if i != 1 else f'{i}' for i in [a,b,c,p,q]]))
 
 				parameters = array([*parameters,[float(min(params[i],sys.float_info.max)) for i in params]])
 
-				# x = [1e-6,1e-3,1e-1,0.5,0.75,1]
-				# y = array([float(func(x=i,parameters=[params[i] for i in params])) for i in x])
-				# z = array([float(function(x=i,parameters=[float(params[i]) for i in params])) for i in x])
-				# print(allclose(y,z))
-
-				# y += function(parameters=[float(params[i]) for i in params],x=x)
-
 			except Exception as exception:
-
+				print('----')
 				logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 
 
-		data = {key:dict(
-			parameters=parameters,
-			# y=y,
-			# x=x,
-			)}
+		data = {key:dict(parameters=parameters)}
+
 		dump(data,path,**io)
 
 
@@ -537,14 +456,14 @@ def process(settings,options,*args,**kwargs):
 
 		logger = options['logger'](setting,options)
 
-		do = not options['do'](setting,options)
+		data = load(path)
+
+		do = ((data is not None) and (data.get(key) is not None) and (data[key].get('parameters') is not None))
 
 		if not do:
 			continue
 
 		logger(setting)
-
-		data = load(path)
 
 		parameters = data[key]['parameters']
 
@@ -569,6 +488,31 @@ def process(settings,options,*args,**kwargs):
 
 	return
 
+def setup(settings,options,*args,**kwargs):
+
+	boolean = options['boolean'](settings,options)
+	logger = options['logger'](settings,options)
+
+	logger(boolean)
+
+	if boolean.get('run'):
+
+		run(settings,options,*args,**kwargs)
+
+	if boolean.get('process'):
+
+		process(settings,options,*args,**kwargs)
+
+	if boolean.get('analyse'):
+
+		draw(settings,options,*args,**kwargs)
+
+	if boolean.get('draw'):
+
+		draw(settings,options,*args,**kwargs)
+
+	return
+
 def main(*args,**kwargs):
 
 	settings = dict(
@@ -585,13 +529,19 @@ def main(*args,**kwargs):
 		)
 
 	options = dict(
+		boolean = (lambda settings={},options={}: {
+			'run':1,
+			'process':0,
+			'analyse':0,
+			'draw':0
+			}),
 		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={}: dict(wr='a')),
-		do     = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
+		do     = (lambda settings={},options={}: True or (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
 		key    = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
-		eps    = (lambda settings={},options={}: 1e-20),
+		eps    = (lambda settings={},options={}: epsilon()),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
-		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
+		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','test.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(
 			path=join(options['path'](settings,options),'plot','plot.process.{attr}.N.{N}.pdf'.format(**settings)),
@@ -603,12 +553,18 @@ def main(*args,**kwargs):
 			)
 		)
 
-	# run(settings,options,*args,**kwargs)
+	args = ()
 
-	process(settings,options,*args,**kwargs)
+	kwargs = {}
 
-	# draw(*args,**kwargs)
+	setup(settings,options,*args,**kwargs)
+
+	return
 
 if __name__ == '__main__':
 
-	main()
+	args = ()
+
+	kwargs = {}
+
+	main(*args,**kwargs)
