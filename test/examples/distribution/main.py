@@ -531,17 +531,17 @@ def main(*args,**kwargs):
 	options = dict(
 		boolean = (lambda settings={},options={}: {
 			'run':1,
-			'process':0,
+			'process':1,
 			'analyse':0,
 			'draw':0
 			}),
 		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={}: dict(wr='a')),
-		do     = (lambda settings={},options={}: True or (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
+		do     = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
 		key    = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		eps    = (lambda settings={},options={}: epsilon()),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
-		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','test.hdf5')),
+		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(
 			path=join(options['path'](settings,options),'plot','plot.process.{attr}.N.{N}.pdf'.format(**settings)),
