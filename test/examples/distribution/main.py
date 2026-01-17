@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 os.environ['NUMPY_BACKEND'] = 'JAX'
 
-from src.utils import array,asscalar,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype
+from src.utils import array,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype,copy
 from src.utils import exp,log,log1p
 from src.utils import log10,real,nan,is_naninf
 from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
@@ -60,7 +60,7 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 		settings = {}
 		settings['path'] = options.pop('path') if options.get('path') else None
-		settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else 'config/plot.mplstyle'
+		settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
 
 		return options,settings
 
@@ -68,44 +68,28 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 	with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
 
-		fig,axes = plt.subplots(2,1) if fig is None or ax is None else (fig,ax)
+		fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
 
-		for index,ax in enumerate(axes):
+		ax.errorbar(x,y,yerr,xerr,**options)
 
-			ax.errorbar(x,y,yerr,xerr,**options)
+		ax.set_xlabel(xlabel="$x$",size=60)
+		ax.set_ylabel(ylabel="$f(x)$",size=60)
 
-			ax.set_xlabel(xlabel="$x$",size=60)
-			ax.set_ylabel(ylabel="$f(x)$",size=60)
+		ax.set_xscale(value="log",base=10)
+		ax.set_yscale(value="log",base=10)
+		ax.set_xlim(xmin=1e-22,xmax=1e2)
+		ax.set_ylim(ymin=1e-21,ymax=1e21)
+		ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
+		ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
+		ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+		ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
 
-			if index == 0:
+		ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+		ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+		ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+		ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
 
-				ax.set_xscale(value="linear")
-				ax.set_yscale(value="log",base=10)
-				ax.set_xlim(xmin=-0.1,xmax=1.1)
-				ax.set_ylim(ymin=1e-21,ymax=1e21)
-				ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
-				ax.set_xticklabels(labels=['$%s$'%(str(i)) if i not in [0,1] else '$1$' if i not in [0] else '$0$' for i in [0,0.2,0.4,0.6,0.8,1]],size=60)
-				ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-				ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
-
-			elif index == 1:
-
-				ax.set_xscale(value="log",base=10)
-				ax.set_yscale(value="log",base=10)
-				ax.set_xlim(xmin=1e-22,xmax=1e2)
-				ax.set_ylim(ymin=1e-21,ymax=1e21)
-				ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
-				ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
-				ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-				ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
-
-			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
-			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
-			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
-
-
-			ax.grid(visible=True)
+		ax.grid(visible=True)
 
 		handles,labels = ax.get_legend_handles_labels()
 		handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
@@ -114,9 +98,9 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 		legend = ax.legend(
 			handles,labels,
-			# title="$$",
-			loc="lower left",
-			ncol=2,
+			title="$M$",
+			loc="upper right",
+			ncol=1,
 			title_fontsize=50,
 			prop={"size":50},
 			markerscale=6,
@@ -129,11 +113,98 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 			fig.tight_layout()
 			fig.savefig(fname=settings.get('path'))
 
-		ax = axes
-
 	return fig,ax
 
 def draw(*args,**kwargs):
+
+	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
+
+		def setup(options):
+
+			options = {} if options is None else options
+			for option in options:
+				if option in ['color','ecolor']:
+					if isinstance(options[option],str):
+						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
+				else:
+					value = options[option]
+				options[option] = value
+
+			settings = {}
+			settings['path'] = options.pop('path') if options.get('path') else None
+			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
+
+			return options,settings
+
+		options,settings = setup(options)
+
+		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+			fig,axes = plt.subplots(2,1) if fig is None or ax is None else (fig,ax)
+
+			for index,ax in enumerate(axes):
+
+				ax.errorbar(x,y,yerr,xerr,**options)
+
+				ax.set_xlabel(xlabel="$x$",size=60)
+				ax.set_ylabel(ylabel="$f(x)$",size=60)
+
+				if index == 0:
+
+					ax.set_xscale(value="linear")
+					ax.set_yscale(value="log",base=10)
+					ax.set_xlim(xmin=-0.1,xmax=1.1)
+					ax.set_ylim(ymin=1e-21,ymax=1e21)
+					ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
+					ax.set_xticklabels(labels=['$%s$'%(str(i)) if i not in [0,1] else '$1$' if i not in [0] else '$0$' for i in [0,0.2,0.4,0.6,0.8,1]],size=60)
+					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+
+				elif index == 1:
+
+					ax.set_xscale(value="log",base=10)
+					ax.set_yscale(value="log",base=10)
+					ax.set_xlim(xmin=1e-22,xmax=1e2)
+					ax.set_ylim(ymin=1e-21,ymax=1e21)
+					ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
+					ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
+					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+
+				ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+				ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+				ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+				ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+
+				ax.grid(visible=True)
+
+			handles,labels = ax.get_legend_handles_labels()
+			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+			for handle,label in zip(handles,labels):
+				handle[0].set_linewidth(12)
+
+			legend = ax.legend(
+				handles,labels,
+				# title="$$",
+				loc="lower left",
+				ncol=2,
+				title_fontsize=50,
+				prop={"size":50},
+				markerscale=6,
+				handlelength=2.5
+			)
+
+			if settings.get('path'):
+				fig.set_size_inches(w=36,h=36)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname=settings.get('path'))
+
+			ax = axes
+
+		return fig,ax
 
 	def func(x,parameters):
 
@@ -227,36 +298,60 @@ def draw(*args,**kwargs):
 
 	return
 
+def analyse(settings,options,*args,**kwargs):
+
+	# def f(x):
+	# 	func = lambda y,parameters: y+function(parameters,x)
+	# 	y = 0*x
+	# 	y = scan(parameters,y,func)
+	# 	return y
+
+
+	# def i(x):
+	# 	def func(x,z):
+	# 		return f(z*x)/z
+	# 	# func = lambda x,z: float(f(float(z)*x)/float(z))
+	# 	# bounds = linearspace(0,1,10)
+	# 	bounds = [0,1]
+
+	# 	def func(x):
+	# 		return f(x)
+
+	# 	# z = z.astype(jnp.result_type(float, z.dtype))
+	# 	# function = callback(lambda z: float(vtype(integral(partial(func,z=asscalar(vtype(z,float))),bounds),float)),shape=(),dtype=float)
+	# 	# function = callback(lambda z: integral(partial(func,z=z),bounds),shape=(),dtype=float)
+	# 	# function = lambda z: integral(partial(func,z=z),bounds)
+	# 	function = lambda z,l=minimum(x): integrate(func,linspace(l,z,100),weights=10000,method='sinh_tanh')
+	# 	# function = lambda x: vtype(integral(partial(func,z=mpmathify(vtype(x,float))),bounds),float)
+	# 	y = vmap(function)(x)
+	# 	# function = lambda x: float(integral(lambda x,z=x:func(z*x)/z,linearspace(0,1,100)))
+	# 	# y = vectorize(function)(x)
+	# 	return y
+
+	# z = f(x)
+	# print(allclose(z,y))
+
+	# x = logspace(log10(minimum(parameters[:,0])),log10(maximum(parameters[:,1])),10)
+
+	# z = i(x)
+
+	# print(parameters)
+	# print(x)
+	# print(z)
+
+	return
+
 def run(settings,options,*args,**kwargs):
 
-	settings = dict(
-		# attr=['tetrad','pauli'],
-		attr=['pauli'],
-		D=[2],
-		N=[2,3,4,5,6,7,8],
-		M=[0,2,4,8,16,32],
-		# N=[4],
-		# M=[32],
-		)
+	permutations = permute(settings)
 
-	options = dict(
-		file = (lambda settings={},options={}: 'data.hdf5'),
-		folder = (lambda settings={},options={}: 'data'),
-		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
-		io = (lambda settings={},options={}: dict(wr='a')),
-		do = (lambda settings={},options={}: (not exists(options['path'](settings,options))) or (options['key'](settings,options) not in load(options['path'](settings,options)))),
-		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
-		eps    = (lambda settings={},options={}: 1e-20),
-		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
-		)
-
-	for setting in permute(settings):
+	for index,setting in enumerate(permutations):
 
 		attr = setting['attr']
 		D = setting['D']
 		N = setting['N']
 		M = setting['M']
-		path = options['path'](setting,options)
+		path = options['data'](setting,options)
 		eps = options['eps'](setting,options)
 		bounds = options['bounds'](setting,options)
 		io = options['io'](setting,options)
@@ -274,17 +369,17 @@ def run(settings,options,*args,**kwargs):
 		# y = 0
 		# x = logspace(start=-20,stop=0,num=100000)
 
-		for number,index in enumerate(partitions(N,D**2)):
+		for number,partition in enumerate(partitions(N,D**2)):
 
 			try:
 
-				z = tensorprod([obj for i,j in enumerate(index) for obj in [operator[i]]*j])
+				z = tensorprod([obj for i,j in enumerate(partition) for obj in [operator[i]]*j])
 				u,v = asscalar(product(minimum(z,axis=-1))),asscalar(product(maximum(z,axis=-1)))
 				z = (z[(z>u)*(z<=v)]-u)/(v-u)
 
 				a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
 				l,s,d = z.size,M+1,D**N
-				w = multinomial(index)/D**(2*N)
+				w = multinomial(partition)/D**(2*N)
 
 				alpha = ((a**2)/(b)) if (b>0) else 1
 				beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
@@ -336,32 +431,117 @@ def run(settings,options,*args,**kwargs):
 
 	return
 
+def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
+	def setup(options):
+
+		options = {} if options is None else options
+		for option in options:
+			if option in ['color','ecolor']:
+				if isinstance(options[option],str):
+					value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+					value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
+			else:
+				value = options[option]
+			options[option] = value
+
+		settings = {}
+		settings['path'] = options.pop('path') if options.get('path') else None
+		settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
+
+		return options,settings
+
+	options,settings = setup(options)
+
+	with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+		fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
+
+		ax.errorbar(x,y,yerr,xerr,**options)
+
+		ax.set_xlabel(xlabel="$p$",size=60)
+		ax.set_ylabel(ylabel="$P(p)$",size=60)
+
+		# ax.set_xscale(value="log",base=10)
+		# ax.set_yscale(value="log",base=10)
+		# ax.set_xlim(xmin=1e-22,xmax=1e2)
+		# ax.set_ylim(ymin=1e-21,ymax=1e21)
+		# ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
+		# ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
+		# ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
+		# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+
+		# ax.set_xscale(value="log",base=4)
+		# ax.set_yscale(value="log",base=10)
+		# ax.set_xlim(xmin=2**(-11),xmax=2**(2))
+		# ax.set_ylim(ymin=1e-129,ymax=1e9)
+		# ax.set_xticks(ticks=[2**(-2*i) for i in [10,8,6,4,2,0]])
+		# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [10,8,6,4,2,0]],size=60)
+		# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+		# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+
+		ax.set_xscale(value="log",base=4)
+		ax.set_yscale(value="log",base=10)
+		ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
+		ax.set_ylim(ymin=1e-129,ymax=1e9)
+		ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
+		ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=60)
+		ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+		ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+
+		ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+		ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+		ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+		ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+		ax.grid(visible=True)
+
+		handles,labels = ax.get_legend_handles_labels()
+		handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+		for handle,label in zip(handles,labels):
+			handle[0].set_linewidth(12)
+
+		legend = ax.legend(
+			handles,labels,
+			title="$M$",
+			loc="upper right",
+			ncol=1,
+			title_fontsize=50,
+			prop={"size":50},
+			markerscale=6,
+			handlelength=2.5
+		)
+
+		if settings.get('path'):
+			fig.set_size_inches(w=48,h=30)
+			fig.subplots_adjust()
+			fig.tight_layout()
+			fig.savefig(fname=settings.get('path'))
+
+	return fig,ax
 
 def process(settings,options,*args,**kwargs):
 
-	for setting in permute(settings):
+	fig,ax = None,None
 
-		attr = setting['attr']
-		D = setting['D']
-		N = setting['N']
-		M = setting['M']
-		path = options['path'](setting,options)
-		eps = options['eps'](setting,options)
-		bounds = options['bounds'](setting,options)
-		io = options['io'](setting,options)
+	permutations = permute(settings)
+
+	for index,setting in enumerate(permutations):
+
+		path = options['data'](setting,options)
 		key = options['key'](setting,options)
+		plots = options['plot'](setting,options)
 
 		do = not options['do'](setting,options)
 
 		if not do:
 			continue
 
+		logger(setting)
+
 		data = load(path)
 
 		parameters = data[key]['parameters']
-		y = data[key]['y']
-		x = data[key]['x']
 
 		def f(x):
 			func = lambda y,parameters: y+function(parameters,x)
@@ -369,38 +549,18 @@ def process(settings,options,*args,**kwargs):
 			y = scan(parameters,y,func)
 			return y
 
+		x = logspace(start=-20,stop=0,num=10000)
 
-		def i(x):
-			def func(x,z):
-				return f(z*x)/z
-			# func = lambda x,z: float(f(float(z)*x)/float(z))
-			# bounds = linearspace(0,1,10)
-			bounds = [0,1]
+		y = f(x)
 
-			def func(x):
-				return f(x)
+		opts = dict(
+			label='$%s$'%('~,~'.join(['{value}'.format(key=key,value=setting[key]) for key in ['M']])),
+			color='viridis_%f'%((index+1)/(len(permutations)+1)),
+			marker='',
+			linestyle='-',
+			)
 
-			# z = z.astype(jnp.result_type(float, z.dtype))
-			# function = callback(lambda z: float(vtype(integral(partial(func,z=asscalar(vtype(z,float))),bounds),float)),shape=(),dtype=float)
-			# function = callback(lambda z: integral(partial(func,z=z),bounds),shape=(),dtype=float)
-			# function = lambda z: integral(partial(func,z=z),bounds)
-			function = lambda z,l=minimum(x): integrate(func,linspace(l,z,100),weights=10000,method='sinh_tanh')
-			# function = lambda x: vtype(integral(partial(func,z=mpmathify(vtype(x,float))),bounds),float)
-			y = vmap(function)(x)
-			# function = lambda x: float(integral(lambda x,z=x:func(z*x)/z,linearspace(0,1,100)))
-			# y = vectorize(function)(x)
-			return y
-
-		z = f(x)
-		print(allclose(z,y))
-
-		x = logspace(log10(minimum(parameters[:,0])),log10(maximum(parameters[:,1])),10)
-
-		z = i(x)
-
-		print(parameters)
-		print(x)
-		print(z)
+		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
 
 	return
 
@@ -408,23 +568,33 @@ def main(*args,**kwargs):
 
 	settings = dict(
 		# attr=['tetrad','pauli'],
-		attr=['pauli'],
+		# attr=['pauli'],
+		attr=['tetrad'],
 		D=[2],
-		N=[2,3,4,5,6,7,8],
-		M=[0,2,4,8,16,32],
+		# N=[2,3,4,5,6,7,8],
+		# M=[0,2,4,8,16,32],
 		# N=[4],
 		# M=[32],
+		N=[3],
+		M=[0,2,4,8,16,32],
 		)
 
 	options = dict(
-		file = (lambda settings={},options={}: 'data.hdf5'),
-		folder = (lambda settings={},options={}: '~/scratch/probability/distribution/data'),
-		path   = (lambda settings={},options={}: join(options['folder'](settings,options),options['file'](settings,options))),
+		path = (lambda settings={},options={}: '~/scratch/probability/distribution'),
 		io = (lambda settings={},options={}: dict(wr='a')),
-		do = (lambda settings={},options={}: (not exists(options['path'](settings,options))) or (options['key'](settings,options) not in load(options['path'](settings,options)))),
+		do = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
 		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		eps    = (lambda settings={},options={}: 1e-20),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
+		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
+		plot =  (lambda settings={},options={}: dict(
+			path=join(options['path'](settings,options),'plot','plot.process.{attr}.N.{N}.pdf'.format(**settings)),
+			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
+			markersize=9,
+			linewidth=16,
+			alpha=0.8,
+				)
+			)
 		)
 
 	# run(settings,options,*args,**kwargs)
