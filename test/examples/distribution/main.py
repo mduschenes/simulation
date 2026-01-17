@@ -25,7 +25,6 @@ from src.quantum import Basis as basis
 from src.io import load,dump,exists,join,split
 
 from src.logger import Logger
-logger = Logger(file='data/log.log',verbose='info')
 
 from mpmath import quad as integral,linspace as linearspace,mpmathify,workdps,sqrt
 
@@ -351,11 +350,15 @@ def run(settings,options,*args,**kwargs):
 		D = setting['D']
 		N = setting['N']
 		M = setting['M']
+
 		path = options['data'](setting,options)
+		key = options['key'](setting,options)
+		io = options['io'](setting,options)
+
+		logger = options['logger'](setting,options)
+
 		eps = options['eps'](setting,options)
 		bounds = options['bounds'](setting,options)
-		io = options['io'](setting,options)
-		key = options['key'](setting,options)
 
 		do = options['do'](setting,options)
 
@@ -532,6 +535,8 @@ def process(settings,options,*args,**kwargs):
 		key = options['key'](setting,options)
 		plots = options['plot'](setting,options)
 
+		logger = options['logger'](setting,options)
+
 		do = not options['do'](setting,options)
 
 		if not do:
@@ -580,14 +585,15 @@ def main(*args,**kwargs):
 		)
 
 	options = dict(
-		path = (lambda settings={},options={}: '~/scratch/probability/distribution'),
-		io = (lambda settings={},options={}: dict(wr='a')),
-		do = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
-		key = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
+		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
+		io     = (lambda settings={},options={}: dict(wr='a')),
+		do     = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
+		key    = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		eps    = (lambda settings={},options={}: 1e-20),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
-		plot =  (lambda settings={},options={}: dict(
+		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
+		plot   =  (lambda settings={},options={}: dict(
 			path=join(options['path'](settings,options),'plot','plot.process.{attr}.N.{N}.pdf'.format(**settings)),
 			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
 			markersize=9,
