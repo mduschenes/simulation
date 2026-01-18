@@ -536,7 +536,7 @@ def main(*args,**kwargs):
 
 	options = dict(
 		boolean = (lambda settings={},options={}: {
-			'run':0,
+			'run':1,
 			'process':1,
 			'analyse':0,
 			'draw':0
