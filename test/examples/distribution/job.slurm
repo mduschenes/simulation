@@ -2,8 +2,8 @@
 
 #SBATCH --account=def-rgmelko
 #SBATCH --job-name=distribution
-#SBATCH --output=data/%x.%A.stdout
-#SBATCH --error=data/%x.%A.stderr
+#SBATCH --output=/home/mduschen/scratch/probability/distribution/log/%x.%A.stdout
+#SBATCH --error=/home/mduschen/scratch/probability/distribution/log/%x.%A.stderr
 
 ##SBATCH --partition=cpu
 #SBATCH --time=6:00:00
