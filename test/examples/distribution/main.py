@@ -444,14 +444,15 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
 def process(settings,options,*args,**kwargs):
 
-	fig,ax = None,None
-
 	permutations = permute(settings)
+
+	fig,ax = {},{}
 
 	for index,setting in enumerate(permutations):
 
 		path = options['data'](setting,options)
 		key = options['key'](setting,options)
+		attrs = options['attrs'](setting,options)
 		plots = options['plot'](setting,options)
 
 		logger = options['logger'](setting,options)
@@ -467,6 +468,11 @@ def process(settings,options,*args,**kwargs):
 
 		parameters = data[key]['parameters']
 
+		attr = tuple(setting[attr] for attr in attrs)
+
+		if (attr not in fig) or (attr not in ax):
+			fig[attr],ax[attr] = None,None
+
 		def f(x):
 			func = lambda y,parameters: y+function(parameters,x)
 			y = 0*x
@@ -479,12 +485,12 @@ def process(settings,options,*args,**kwargs):
 
 		opts = dict(
 			label='$%s$'%('~,~'.join(['{value}'.format(key=key,value=setting[key]) for key in ['M']])),
-			color='viridis_%f'%((index+1)/(len(permutations)+1)),
+			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
 			marker='',
 			linestyle='-',
 			)
 
-		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
+		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
 
 	return
 
@@ -516,21 +522,21 @@ def setup(settings,options,*args,**kwargs):
 def main(*args,**kwargs):
 
 	settings = dict(
-		# attr=['tetrad','pauli'],
 		# attr=['pauli'],
-		attr=['tetrad'],
+		# attr=['tetrad'],
+		attr=['tetrad','pauli'],
 		D=[2],
 		# N=[2,3,4,5,6,7,8],
 		# M=[0,2,4,8,16,32],
-		# N=[4],
-		# M=[32],
-		N=[3],
+		# N=[3],
+		# M=[0,2,4,8,16,32],
+		N=[2,3,4,5,6,7,8],
 		M=[0,2,4,8,16,32],
 		)
 
 	options = dict(
 		boolean = (lambda settings={},options={}: {
-			'run':1,
+			'run':0,
 			'process':1,
 			'analyse':0,
 			'draw':0
@@ -539,12 +545,13 @@ def main(*args,**kwargs):
 		io     = (lambda settings={},options={}: dict(wr='a')),
 		do     = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
 		key    = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
+		attrs  = (lambda settings={},options={}: ('attr','N')),
 		eps    = (lambda settings={},options={}: 1e-12),#epsilon()),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(
-			path=join(options['path'](settings,options),'plot','plot.process.{attr}.N.{N}.pdf'.format(**settings)),
+			path=join(options['path'](settings,options),'plot','plot.process.%s.pdf'%('.'.join([str(i) for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]]))),
 			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
 			markersize=9,
 			linewidth=16,
