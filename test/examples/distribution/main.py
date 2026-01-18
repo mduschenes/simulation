@@ -322,7 +322,7 @@ def run(settings,options,*args,**kwargs):
 				params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
 
 				c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
-				c = c if (c!=0) else 1
+				c = c if (abs(c)>eps) else 1
 
 				params.update(dict(c=c))
 				f = partial(func,parameters=[params[i] for i in params])
@@ -539,7 +539,7 @@ def main(*args,**kwargs):
 		io     = (lambda settings={},options={}: dict(wr='a')),
 		do     = (lambda settings={},options={}: (not exists(options['data'](settings,options))) or (options['key'](settings,options) not in load(options['data'](settings,options)))),
 		key    = (lambda settings={},options={}: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
-		eps    = (lambda settings={},options={}: epsilon()),
+		eps    = (lambda settings={},options={}: 1e-12),#epsilon()),
 		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
