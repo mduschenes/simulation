@@ -24,7 +24,6 @@ module purge &>/dev/null 2>&1
 module load python hdf5 &>/dev/null 2>&1
 source ${HOME}/envs/test/bin/activate &>/dev/null 2>&1
 
-path=/home/${USER}/files/uw/research/code/tensor/code/test/distribution_test.py
-# path=/home/${USER}/code/tensor/test/distribution_test.py
+path=main.py
 
-python ${path}
+./${path}
