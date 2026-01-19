@@ -92,10 +92,6 @@ if backend in ['jax','jax.autograd','quimb']:
 	from jax.tree_util import tree_map as tree_map
 
 	import opt_einsum
-	import mpmath
-
-	from jax.scipy.integrate import trapezoid as integrater
-	from quadax import quadts as integrater
 
 	import absl.logging
 	absl.logging.set_verbosity(absl.logging.INFO)
@@ -125,7 +121,6 @@ elif backend in ['autograd']:
 	import autograd.scipy.linalg
 
 	import opt_einsum
-	import mpmath
 
 	def tree_map(func,*trees,is_leaf=None,**kwargs):
 		'''
@@ -182,7 +177,6 @@ elif backend in ['numpy']:
 	import scipy.special as spsp
 
 	import opt_einsum
-	import mpmath
 
 	mapper = map
 
@@ -7775,9 +7769,16 @@ def integral(func,bounds=None,weights=None,method=None,**options):
 		data (array): integral of function
 	'''
 
-	y, info = integrater(func,bounds,**options)
+	integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
 
-	return y
+	return integrate(func)
+
+
+	# from quadax import quadts as integrate
+	# y, info = integrate(func,bounds,**options)
+	# return y
+
+	# from jax.scipy.integrate import trapezoid as integrate
 
 	# bounds = [0,1] if bounds is None else bounds
 	# weights = 100 if weights is None else weights

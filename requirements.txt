@@ -9,7 +9,6 @@ pytest
 typing
 filelock
 natsort
-mpmath
 braceexpand
 joblib
 parallel

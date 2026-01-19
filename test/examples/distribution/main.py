@@ -17,7 +17,7 @@ from src.utils import array,asscalar,tensorprod,concatenate,meshgrid,linspace,lo
 from src.utils import exp,log,log1p
 from src.utils import log10,real,nan,is_naninf,epsilon
 from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
-from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial,permute
+from src.utils import eig,product,addition,permutations,partitions,products,comb,factorial,multinomial,permute,distribution
 from src.utils import integral as integrate
 
 from src.quantum import Basis as basis
@@ -30,6 +30,7 @@ from mpmath import quad as integral,linspace as linearspace,mpmathify,workdps,sq
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.patheffects
 
 from mpmath import exp,log,log1p
 def func(x,parameters,exp=exp,log=log,log1p=log1p):
@@ -203,7 +204,8 @@ def draw(*args,**kwargs):
 
 	fig,ax = None,None
 	options = dict(
-		path='scratch/probability/distribution/plot.distribution.pdf',mplstyle=None,
+		path=join('~/scratch/probability/distribution','plot','plot.distribution.pdf'),
+		mplstyle=join('~/scratch/probability/distribution','plot','plot.mplstyle'),
 		markersize=9,
 		linewidth=16,
 		alpha=0.8,
@@ -488,6 +490,39 @@ def process(settings,options,*args,**kwargs):
 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
 			marker='',
 			linestyle='-',
+			)
+
+		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
+
+
+
+		parameters = parameters[0]
+
+		def f(x):
+			from src.utils import
+			params = dict(
+				function='beta.pdf',
+				a=(parameters[6]*parameters[7]),
+				b=((parameters[8]-parameters[6])*parameters[7]),
+				loc=0,
+				scale=1/(parameters[8]),
+				)
+
+			y = distribution(x,**params)
+
+			return y
+
+		x = x
+		y = f(x)
+
+		opts = dict(
+			label=None,
+			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+			marker='',
+			linestyle='--',
+			alpha=1,
+			zorder=100,
+			path_effects=[matplotlib.patheffects.Stroke(linewidth=20,foreground='k'),matplotlib.patheffects.Normal()],
 			)
 
 		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})

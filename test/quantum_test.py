@@ -3277,7 +3277,7 @@ def test_measurement(*args,**kwargs):
 
 	fig,axes = None,None
 
-	arguments = {'N':[8],'M':[0,1,2,4,8,16],'noise.parameters':[0,1e-4,1e-3,1e-2,1e-1],}
+	arguments = {'N':[8],'M':[0,1,2,4,8,16],'noise.parameters':[0,1e-4,1e-3,1e-2,1e-1],'operator':['pauli']}
 
 	for argument in permute(arguments):
 		args = {'N':8,'D':2,'M':0,'noise.parameters':0,'unitary':'haar','noise':'depolarize','psi':'haar','operator':'tetrad',**argument}
@@ -3285,7 +3285,7 @@ def test_measurement(*args,**kwargs):
 
 		index = {attr:arguments[attr].index(argument[attr]) for attr in argument}
 		options = dict(
-			path='examples/measurement/plot.pdf',mplstyle=None,
+			path='/home/mduschen/scratch/probability/distribution/plot/plot.measurement.%s.pdf'%('.'.join([str(i) for attr in ['operator','N'] for i in [attr,argument[attr]]])),mplstyle=None,
 			label='$10^{-%s}$'%((('%e'%(argument['noise.parameters'])).split('e')[-1])[-1]) if argument['noise.parameters'] != 0 else '$0$',
 			color='viridis_%f'%((index['noise.parameters']+1)/(len(arguments['noise.parameters'])+1)),alpha=0.8,
 			marker='o',linestyle=':',
