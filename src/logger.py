@@ -63,7 +63,7 @@ def config(name=None,conf=None,file=None,write=None,**kwargs):
 
 	if not existing:
 		if write:
-			source = os.path.join(os.path.abspath(os.path.dirname(__file__)),os.path.basename(default))
+			source = os.path.join(os.path.abspath(os.path.dirname(__file__)),'config',os.path.basename(default))
 			destination = os.path.join(os.path.abspath(os.path.dirname(conf)) if conf is not None else os.getcwd(),delim.join([os.path.basename(default),ext]))
 			directory = os.path.abspath(os.path.dirname(destination))
 			if directory not in ['',None] and not os.path.exists(directory):
@@ -71,7 +71,7 @@ def config(name=None,conf=None,file=None,write=None,**kwargs):
 			shutil.copy2(source,destination)
 			conf = destination
 		else:
-			conf = os.path.join(os.path.abspath(os.path.dirname(__file__)),os.path.basename(default))
+			conf = os.path.join(os.path.abspath(os.path.dirname(__file__)),'config',os.path.basename(default))
 	elif isinstance(conf,str):
 		if write:
 			source = conf

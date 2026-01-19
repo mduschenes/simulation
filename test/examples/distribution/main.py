@@ -499,7 +499,7 @@ def process(settings,options,*args,**kwargs):
 		parameters = parameters[0]
 
 		def f(x):
-			from src.utils import
+
 			params = dict(
 				function='beta.pdf',
 				a=(parameters[6]*parameters[7]),

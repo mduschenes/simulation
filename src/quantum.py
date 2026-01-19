@@ -10,13 +10,13 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entanglement,purity,similarity,divergence
+from src.utils import jit,partial,wraps,copy,debug,vmap,vfunc,scan,where,switch,forloop,cond,slicing,gradient,hessian,fisher,entanglement,purity,similarity,divergence,integral
 from src.utils import array,empty,identity,ones,zeros,rand,random,haar,choice,arange,logspace,linspace
 from src.utils import tensor,matrix,network,mps,contexts
 from src.utils import contraction,gradient_contraction
 from src.utils import inplace,reshape,transpose,tensorprod,conjugate,dagger,einsum,einsummand,dot,dots,inner,outer,trace,norm,eig,svd,diag,inv,sqrtm,addition,product,ravel,logprod
 from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,shift,sort,relsort,prod,product
-from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,sin,cos,exp,exp10,binom,distribution
+from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,log1p,sin,cos,exp,exp10,binom,distribution
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary,is_naninf
 from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype,anything,allthing
@@ -76,6 +76,70 @@ def measurement(data,*args,function=None,**kwargs):
 	elif isinstance(data,dataframes):
 		data = {attr:data[attr].iloc[0] for attr in data}
 
+	data.update({
+		'operator': {'povm':'tetrad'}.get(data.get('operator')[0] if (isinstance(data.get('operator'),iterables) and len(data.get('operator'))) else data.get('operator')),
+		})
+
+	data.update({
+		'path': os.path.join(os.path.dirname(os.path.abspath(__file__)),'config','data.hdf5'),
+		'key': ['operator.{operator}.N.{N}.M.{M}'.format(**data),'parameters']
+		})
+
+	functions = Dictionary()
+
+	def func(parameters,x,functions=None):
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = where((x>0)*(x<=1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
+		return x
+	def wrapper(func):
+		return func
+	functions.parameters = wrapper(func)
+
+	def func(y,parameters,x=None,functions=None):
+		return y + functions.parameters(parameters,x)
+	def wrapper(func):
+		return func
+	functions.x = wrapper(func)
+
+	def func(z,info,functions=None):
+		return z*integral(lambda x,z=z,info=info:info.func(x/z,info=info))
+	def wrapper(func):
+		return vmap(func)
+	functions.y = wrapper(func)
+
+	for name in functions:
+		functions[name] = partial(functions[name],functions=functions)
+
+	def func(x,info,*args,**kwargs):
+
+		parameters = info.parameters
+		init = 0*x
+		func = partial(info.functions.x,x=info.transform(x))
+
+		y = scan(parameters,init,func)
+
+		y = info.transformation(y)
+
+		return y
+
+	def functional(x,info,*args,**kwargs):
+
+		func = info.functions.y
+
+		y = func(x,info)
+
+		y = info.transformation(y)
+
+		return y
+
+	parameters = load(data['path'])
+	if parameters is not None:
+		for key in data['key']:
+			if key not in parameters:
+				parameters = None
+				break
+			parameters = parameters[key]
+
 	info = Dictionary()
 
 	if function is None:
@@ -87,16 +151,99 @@ def measurement(data,*args,function=None,**kwargs):
 		info.locality = 1
 		info.scale = 1
 		info.name = 'beta'
+
+		info.functions = functions
+
+		info.data = logspace(
+			start=log(1e-20)/log(info.dimension),
+			stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+			num=10000,
+			base=info.dimension,
+			)
+
+		info.parameters = dict(
+			a=(info.locality*info.env),
+			b=((info.dim-info.locality)*info.env),
+			loc=info.environment/info.dim,
+			scale=(1-info.environment)/(info.scale),
+			)
+
+		info.transform = lambda x,info,*args,**kwargs: x
+		info.transformation = lambda x,info,*args,**kwargs: x
+
+		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
+		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+
 	elif function in ['array']:
-		info.dimension = data['D']
-		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
-		info.size = data['D']**(2*data['N'])
-		info.dim = data['D']**(1*data['N'])
-		info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
-		info.locality = 1
-		info.scale = data['D']**(1*data['N'])
-		info.name = 'beta'
+
+		if ((data['operator'] in ['tetrad']) or (parameters is None)):
+
+			info.dimension = data['D']
+			info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
+			info.size = data['D']**(2*data['N'])
+			info.dim = data['D']**(1*data['N'])
+			info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
+			info.locality = 1
+			info.scale = data['D']**(1*data['N'])
+			info.name = 'beta'
+
+			info.functions = functions
+
+			info.data = logspace(
+				start=log(1e-20)/log(info.dimension),
+				stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+				num=10000,
+				base=info.dimension,
+				)
+
+			info.parameters = dict(
+				a=(info.locality*info.env),
+				b=((info.dim-info.locality)*info.env),
+				loc=info.environment/info.dim,
+				scale=(1-info.environment)/(info.scale),
+				)
+
+			info.transform = lambda x,info,*args,**kwargs: x
+			info.transformation = lambda x,info,*args,**kwargs: x
+
+			info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
+			info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+
+		elif ((data['operator'] in ['pauli']) and (parameters is not None)):
+
+			info.dimension = data['D']
+			info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
+			info.size = data['D']**(2*data['N'])
+			info.dim = data['D']**(1*data['N'])
+			info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
+			info.locality = 1
+			info.scale = 1
+			info.name = 'hypergeometric'
+
+			info.functions = functions
+
+			info.data = logspace(
+				start=log(1e-20)/log(info.dimension),
+				stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+				num=10000,
+				base=info.dimension,
+				)
+
+			info.parameters = parameters
+
+			info.transform = lambda x,info,*args,**kwargs: (x-(info.environment/info.dim))/(1-info.environment)
+			info.transformation = lambda x,info,*args,**kwargs: x/(1-info.environment)
+
+			info.func = lambda x,info,*args,**kwargs: func(x,info,*args,**kwargs)
+			info.functional = lambda x,info,*args,**kwargs: functional(x,info,*args,**kwargs)
+
+		else:
+
+			raise NotImplementedError(f"Not Implemented {data}")
+
+
 	elif function in ['state']:
+
 		info.dimension = data['D']
 		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
@@ -105,35 +252,32 @@ def measurement(data,*args,function=None,**kwargs):
 		info.locality = 1
 		info.scale = 1
 		info.name = 'beta'
+
+		info.functions = functions
+
+		info.data = logspace(
+			start=log(1e-20)/log(info.dimension),
+			stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+			num=10000,
+			base=info.dimension,
+			)
+
+		info.parameters = dict(
+			a=(info.locality*info.env),
+			b=((info.dim-info.locality)*info.env),
+			loc=info.environment/info.dim,
+			scale=(1-info.environment)/(info.scale),
+			)
+
+		info.transform = lambda x,info,*args,**kwargs: x
+		info.transformation = lambda x,info,*args,**kwargs: x
+
+		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
+		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+
 	else:
-		info.dimension = data['D']
-		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
-		info.size = data['D']**(1*data['N'])
-		info.dim = data['D']**(1*data['N'])
-		info.env = 1 if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
-		info.env = 1
-		info.locality = 1
-		info.scale = 1
-		info.name = 'beta'
 
-	info.data = logspace(
-		max(log(info.locality*info.env-1)-log(info.dim*info.env-2)-log(info.scale)-5,log(info.environment/info.dim),-32)/log(info.dimension),
-		(-log(info.scale))/log(info.dimension),
-		num=1000,base=info.dimension
-		)
-	info.constant = (info.locality*info.env)*binom(info.dim*info.env-1,info.locality*info.env) if memory(info.dim*info.env) else 1
-	info.parameters = dict(
-		a=(info.locality*info.env),
-		b=((info.dim-info.locality)*info.env),
-		loc=info.environment/info.dim,
-		scale=1/(info.scale/(1-info.environment)),
-		)
-
-	info.transform = lambda x,info,*args,**kwargs: x
-	info.transformation = lambda x,info,*args,**kwargs: x
-
-	info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
-	info.function = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+		raise NotImplementedError(f"Not Implemented {function}")
 
 	for key in info:
 		if callable(info[key]):

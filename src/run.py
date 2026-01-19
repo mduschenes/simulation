@@ -406,7 +406,7 @@ def run(settings,device=None,job=None,path=None,env=None,execute=False,verbose=N
 		kwargs = {}
 		
 		path = path
-		exe = join(split(cmd,directory=True),job)
+		exe = join(split(cmd,directory=True),'config',job)
 		flags = []
 		cmd = []
 		options = []

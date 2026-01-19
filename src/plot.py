@@ -61,9 +61,9 @@ PLOTS = ['plot','scatter','errorbar','hist','bar','fill_between','axvline','axhl
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
 PATHS = {
-	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
-	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
-	'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
+	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'config','plot.json'),
+	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'config','plot.mplstyle'),
+	'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'config','plot.notex.mplstyle'),
 	}
 
 scalars = (int,np.integer,float,np.floating,str,type(None))

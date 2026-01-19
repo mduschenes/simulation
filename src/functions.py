@@ -611,7 +611,7 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 			data,Y = data/sum(data)/interval(X,**settings['options']),Y
 			data = (1/2)*addition(absolute(data-Y))
 		elif settings['func'] in ['cumulative']:
-			Y = info.function(X)
+			Y = info.functional(X)
 			data,Y = data/addition(data),Y
 			data = maximum(absolute((cumsum(data)-Y)))
 		else:

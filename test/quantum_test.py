@@ -3224,7 +3224,7 @@ def test_measurement(*args,**kwargs):
 		options,settings = setup(options)
 
 		i = y>0*epsilon()
-		x,y = x[i],y[i]#/addition(y[i])
+		x,y = x[i],y[i]
 
 		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
 
@@ -3277,9 +3277,10 @@ def test_measurement(*args,**kwargs):
 
 	fig,axes = None,None
 
-	arguments = {'N':[8],'M':[0,1,2,4,8,16],'noise.parameters':[0,1e-4,1e-3,1e-2,1e-1],'operator':['pauli']}
+	arguments = {'N':[4],'M':[0,2,4,8,16,32],'noise.parameters':[0,1e-4,1e-3,1e-2,1e-1],'operator':['pauli']}
 
 	for argument in permute(arguments):
+
 		args = {'N':8,'D':2,'M':0,'noise.parameters':0,'unitary':'haar','noise':'depolarize','psi':'haar','operator':'tetrad',**argument}
 		function = 'array'
 
@@ -3332,7 +3333,7 @@ if __name__ == "__main__":
 	# test_grad(*args,**args)
 	# test_model(*args,**args)
 	# test_module(*args,**args)
-	# test_calculate(*args,**args)
+	test_calculate(*args,**args)
 	# test_mps(*args,**args)
 	# test_class(*args,**args)
-	test_measurement(*args,**args)
+	# test_measurement(*args,**args)
