@@ -2925,8 +2925,10 @@ def plotter(plots,processes,verbose=None):
 
 			values = {}
 
+			parser = lambda obj: int(obj) if isinstance(obj,integers) else float(obj) if isinstance(obj,floats) else obj
+
 			logger.log(info,"Configuring : %s %s"%(subinstance,
-				{attr:natsorted(metadata[instance][subinstance][attr]) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else metadata[instance][subinstance][attr]
+				{attr:list(map(parser,natsorted(metadata[instance][subinstance][attr]))) if isinstance(metadata[instance][subinstance][attr],iterables) and all(isinstance(i,scalars) for i in metadata[instance][subinstance][attr]) else parser(metadata[instance][subinstance][attr])
 				for attr in natsorted(set(attr
 					for prop in information[instance][subinstance]
 					for data in search(plots[instance][subinstance][obj][prop])

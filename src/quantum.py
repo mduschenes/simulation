@@ -47,6 +47,8 @@ def measurement(data,*args,function=None,**kwargs):
 		info (dict): Measurement info
 	'''
 
+	info = Dictionary()
+
 	cls = (Module,Objects,Object)
 	if isinstance(data,cls):
 		if isinstance(data,Module):
@@ -87,28 +89,29 @@ def measurement(data,*args,function=None,**kwargs):
 
 	functions = Dictionary()
 
-	def func(parameters,x,functions=None):
+	def func(parameters,x,info=None,functions=None):
 		x = (x-parameters[0])/(parameters[1]-parameters[0])
 		x = where((x>0)*(x<=1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 		return x
 	def wrapper(func):
 		return func
-	functions.parameters = wrapper(func)
+	functions.parameters = func,wrapper
 
-	def func(y,parameters,x=None,functions=None):
+	def func(y,parameters,x=None,info=None,functions=None):
 		return y + functions.parameters(parameters,x)
 	def wrapper(func):
 		return func
-	functions.x = wrapper(func)
+	functions.x = func,wrapper
 
-	def func(z,info,functions=None):
-		return z*integral(lambda x,z=z,info=info:info.func(x/z,info=info))
+	def func(z,info=None,functions=None):
+		return z*integral(lambda x,z=z,info=info:info.func(x/z,info=info),linspace(0,1,10))
 	def wrapper(func):
 		return vmap(func)
-	functions.y = wrapper(func)
+	functions.y = func,wrapper
 
 	for name in functions:
-		functions[name] = partial(functions[name],functions=functions)
+		func,wrapper = functions[name]
+		functions[name] = wrapper(partial(func,info=info,functions=functions))
 
 	def func(x,info,*args,**kwargs):
 
@@ -126,7 +129,7 @@ def measurement(data,*args,function=None,**kwargs):
 
 		func = info.functions.y
 
-		y = func(x,info)
+		y = func(x)
 
 		y = info.transformation(y)
 
@@ -139,8 +142,6 @@ def measurement(data,*args,function=None,**kwargs):
 				parameters = None
 				break
 			parameters = parameters[key]
-
-	info = Dictionary()
 
 	if function is None:
 		info.dimension = data['D']

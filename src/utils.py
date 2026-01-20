@@ -7772,14 +7772,13 @@ def integral(func,bounds=None,weights=None,method=None,**options):
 		data (array): integral of function
 	'''
 
-	integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
+	from quadax import quadts as integrate
+	y, info = integrate(func,bounds,**options)
+	return y
 
-	return integrate(func)
+	# integrate = lambda func: osp.integrate.quad(func,*bounds,**options)[0]
 
-
-	# from quadax import quadts as integrate
-	# y, info = integrate(func,bounds,**options)
-	# return y
+	# return integrate(func)
 
 	# from jax.scipy.integrate import trapezoid as integrate
 
