@@ -56,7 +56,10 @@ if BACKEND in ['jax','jax.autograd','quimb']:
 	for name in config:
 		if config[name] is None:
 			continue
-		jax.config.update(name,config[name])
+		try:
+			jax.config.update(name,config[name])
+		except AttributeError:
+			pass
 
 elif BACKEND in ['autograd']:
 

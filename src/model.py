@@ -47,7 +47,10 @@ config = {
 for name in config:
 	if config[name] is None:
 		continue
-	jax.config.update(name,config[name])
+	try:
+		jax.config.update(name,config[name])
+	except AttributeError:
+		pass
 
 import jax.numpy as np
 

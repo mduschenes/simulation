@@ -152,6 +152,8 @@ def measurement(data,*args,function=None,**kwargs):
 		info.scale = 1
 		info.name = 'beta'
 
+		info.string = f'function.{function}.operator.{data['operator']}.name.{info.name}.noise.parameters.{data['noise.parameters']}'
+
 		info.functions = functions
 
 		info.data = logspace(
@@ -187,6 +189,8 @@ def measurement(data,*args,function=None,**kwargs):
 			info.scale = data['D']**(1*data['N'])
 			info.name = 'beta'
 
+			info.string = f'function.{function}.operator.{data['operator']}.name.{info.name}.noise.parameters.{data['noise.parameters']}'
+
 			info.functions = functions
 
 			info.data = logspace(
@@ -219,6 +223,8 @@ def measurement(data,*args,function=None,**kwargs):
 			info.locality = 1
 			info.scale = 1
 			info.name = 'hypergeometric'
+
+			info.string = f'function.{function}.operator.{data['operator']}.name.{info.name}.noise.parameters.{data['noise.parameters']}'
 
 			info.functions = functions
 
