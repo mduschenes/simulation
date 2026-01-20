@@ -79,7 +79,7 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {attr:data[attr].iloc[0] for attr in data}
 
 	data.update({
-		'operator': {'povm':'tetrad'}.get(data.get('operator')[0] if (isinstance(data.get('operator'),iterables) and len(data.get('operator'))) else data.get('operator')),
+		'operator': {'povm':'tetrad','tetrad':'tetrad','pauli':'pauli',None:None}.get(data.get('operator')[0] if (isinstance(data.get('operator'),iterables) and len(data.get('operator'))) else data.get('operator')),
 		})
 
 	data.update({
