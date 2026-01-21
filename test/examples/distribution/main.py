@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 os.environ['NUMPY_BACKEND'] = 'JAX'
 
-from src.utils import array,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype,copy
+from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype,copy
 from src.utils import exp,log,log1p
 from src.utils import log10,real,nan,is_naninf,epsilon
 from src.utils import where,nonzero,unique,sort,minimum,maximum,minimums,maximums
@@ -341,7 +341,7 @@ def run(settings,options,*args,**kwargs):
 				with workdps(8):
 					logger(f'{number}'+'\t'+'\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
 
-				parameters = array([*parameters,[float(min(params[i],sys.float_info.max)) for i in params]])
+				parameters = array([*parameters,[float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params]])
 
 			except Exception as exception:
 				print('----')
@@ -529,6 +529,224 @@ def process(settings,options,*args,**kwargs):
 
 	return
 
+def test(settings,options,*args,**kwargs):
+
+	from src.utils import array,asscalar
+	from src.utils import addition,minimum,maximum
+	from src.utils import sqrt
+
+
+	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
+
+		def setup(options):
+
+			options = {} if options is None else options
+			for option in options:
+				if option in ['color','ecolor']:
+					if isinstance(options[option],str):
+						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
+				else:
+					value = options[option]
+				options[option] = value
+
+			settings = {}
+			settings['path'] = options.pop('path') if options.get('path') else None
+			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
+
+			return options,settings
+
+		options,settings = setup(options)
+
+		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+			fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
+
+			ax.errorbar(x,y,yerr,xerr,**options)
+
+			ax.set_xlabel(xlabel="$x$",size=60)
+			ax.set_ylabel(ylabel="$f(x)$",size=60)
+
+			ax.set_xscale(value="log",base=10)
+			ax.set_yscale(value="log",base=10)
+			ax.set_xlim(xmin=1e-5,xmax=1e1)
+			ax.set_ylim(ymin=1e-17,ymax=1e5)
+			ax.set_xticks(ticks=[1e-4,1e-3,1e-2,1e-1,1])
+			ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [4,3,2,1,0]],size=60)
+			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4])
+			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,12,8,4,0,-4]],size=60)
+
+			# ax.set_xscale(value="log",base=4)
+			# ax.set_yscale(value="log",base=10)
+			# ax.set_xlim(xmin=2**(-11),xmax=2**(2))
+			# ax.set_ylim(ymin=1e-129,ymax=1e9)
+			# ax.set_xticks(ticks=[2**(-2*i) for i in [10,8,6,4,2,0]])
+			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [10,8,6,4,2,0]],size=60)
+			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+
+			# ax.set_xscale(value="log",base=4)
+			# ax.set_yscale(value="log",base=10)
+			# ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
+			# ax.set_ylim(ymin=1e-129,ymax=1e9)
+			# ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
+			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=60)
+			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0,1] else '$10$' if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+
+			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+			ax.grid(visible=True)
+
+			handles,labels = ax.get_legend_handles_labels()
+			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+			for handle,label in zip(handles,labels):
+				handle[0].set_linewidth(12)
+
+			# legend = ax.legend(
+			# 	handles,labels,
+			# 	title="$$",
+			# 	loc="upper right",
+			# 	ncol=1,
+			# 	title_fontsize=50,
+			# 	prop={"size":50},
+			# 	markerscale=6,
+			# 	handlelength=2.5
+			# )
+
+			if settings.get('path'):
+				fig.set_size_inches(w=48,h=30)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname=settings.get('path'))
+
+		return fig,ax
+
+
+	setting = dict(
+		attr='test',
+		D=2,
+		N=3,
+		M=7,
+		)
+
+	path = options['data'](setting,options)
+	key = options['key'](setting,options)
+	attrs = options['attrs'](setting,options)
+	plots = options['plot'](setting,options)
+
+	eps = options['eps'](setting,options)
+	bounds = options['bounds'](setting,options)
+
+	logger = options['logger'](setting,options)
+
+	fig,ax = None,None
+
+	d = setting['D']**setting['N']
+	s = setting['M']+1
+	l = [2,3,1,2]
+	o = [2.3433e-4,5.4553e-2,7.8291e-2,1.2954e-1]
+	n = len(o)
+
+	from mpmath import exp,log,log1p
+	def func(x,parameters,exp=exp,log=log,log1p=log1p):
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = (parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))) if ((x>=0)*(x<=1)) else 0
+		return x
+
+	from src.utils import exp,log,log1p
+	def function(parameters,x,exp=exp,log=log,log1p=log1p):
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = where((x>0)*(x<=1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
+		return x
+
+	from src.utils import exp,log,log1p,sign,factorial,comb
+	def functional(parameters,x,exp=exp,log=log,log1p=log1p):
+		y = 0
+		y = sum(
+			sum(
+			((o[i])**(d-l[i]+k-1))*sign(o[i]-x)*
+			((-1)**k)*
+			factorial(d-1)/
+			(2*factorial(d-l[i]+k-1)*factorial(l[i]-k-1))*
+			sum()
+			)
+			for i in range(n))
+		y = where((x>max(o))*(x<=min(o)),y,0)
+		return y
+
+
+	z = array([k for i in range(n) for k in [o[i]]*l[i]])
+	u,v = asscalar(minimum(z)),asscalar(maximum(z))
+
+	z = (z-u)/(v-u)
+	z = z[(z>eps)*(z<=1)]
+
+	a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
+	l,s,d = z.size,s,d
+	w = 1
+
+	alpha = ((a**2)/(b)) if (b>0) else 1
+	beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
+	gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
+	delta = (a/b) if (b>0) else 0
+	optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
+
+	params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
+
+	c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
+	c = c if (abs(c)>eps) else 1
+
+	params.update(dict(c=c))
+	f = partial(func,parameters=[params[i] for i in params])
+	p = integral(f,bounds)
+
+	params.update(dict(p=p))
+	f = partial(func,parameters=[params[i] for i in params])
+	q = integral(f,bounds)
+
+	params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+
+	with workdps(8):
+		logger('\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
+
+
+	parameters = array([float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params])
+
+	x = logspace(start=-20,stop=0,num=100000)
+
+	y = function(parameters,x)
+
+	opts = dict(
+		label='$\\textrm{Analytical}$',
+		color='viridis_%f'%(0.5),
+		marker='',
+		linestyle='-',
+		)
+
+	fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
+
+
+	y = functional(parameters,x)
+
+	opts = dict(
+		label='$\\textrm{Theory}$',
+		color='viridis_%f'%(0.25),
+		marker='',
+		linestyle='--',
+		)
+
+	fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
+
+
+
+	return
+
+
+
 def setup(settings,options,*args,**kwargs):
 
 	boolean = options['boolean'](settings,options)
@@ -547,6 +765,11 @@ def setup(settings,options,*args,**kwargs):
 	if boolean.get('analyse'):
 
 		draw(settings,options,*args,**kwargs)
+
+
+	if boolean.get('test'):
+
+		test(settings,options,*args,**kwargs)
 
 	if boolean.get('draw'):
 
@@ -571,9 +794,10 @@ def main(*args,**kwargs):
 
 	options = dict(
 		boolean = (lambda settings={},options={}: {
-			'run':1,
-			'process':1,
+			'run':0,
+			'process':0,
 			'analyse':0,
+			'test':1,
 			'draw':0
 			}),
 		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
