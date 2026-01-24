@@ -7082,7 +7082,7 @@ def gammaln(n,exact=True):
 	Returns:
 		n (int,float): gammaln of n
 	'''
-	return ospsp.gammaln(n)
+	return spsp.gammaln(n)
 
 
 def binom(n,k,exact=False):
@@ -7095,7 +7095,7 @@ def binom(n,k,exact=False):
 	Returns:
 		n (int,float): binomial of n,k
 	'''
-	return onp.exp(gammaln(n+1,exact=exact)-gammaln(n-k+1,exact=exact)-gammaln(k+1,exact=exact)) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
+	return exp(gammaln(n+1,exact=exact)-gammaln(n-k+1,exact=exact)-gammaln(k+1,exact=exact)) # exp(gammaln(n+1)-gammaln(k+1)-gammaln(n-k+1))
 
 def logprod(a,b):
 	'''
