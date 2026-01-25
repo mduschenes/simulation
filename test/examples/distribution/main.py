@@ -47,6 +47,7 @@ def function(parameters,x,exp=exp,log=log,log1p=log1p):
 from src.utils import exp,log,log1p
 def functional(parameters,x,exp=exp,log=log,log1p=log1p):
 	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
+	z,l,w = z[l>0],l[l>0],w[l>0]
 	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
 	y = sum((w[i]*(sign(z[i]-x)**((d-l[i]+k)%2))*exp((d-l[i]+k-1)*log(abs(z[i]-x)))) for i in range(n) if ((w[i]!=0) and (l[i]!=0)) for k in range(l[i]))
 	y = where((x>u)*(x<v),y,0)
@@ -527,8 +528,6 @@ def process(settings,options,*args,**kwargs):
 
 		y = f(x)
 
-		print(y[y>0])
-
 		opts = dict(
 			label='$%s$'%('~,~'.join(['{value}'.format(key=key,value=setting[key]) for key in ['M']])),
 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
@@ -537,7 +536,6 @@ def process(settings,options,*args,**kwargs):
 			)
 
 		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
-
 
 
 		# parameters = parameters[0]
@@ -673,99 +671,158 @@ def test(settings,options,*args,**kwargs):
 
 
 	setting = dict(
-		attr='test',
+		attr='test.pauli',
 		D=2,
 		N=3,
 		M=0,
 		)
 
-	path = options['data'](setting,options)
-	key = options['key'](setting,options)
-	attrs = options['attrs'](setting,options)
-	plots = options['plot'](setting,options)
-
-	eps = options['eps'](setting,options)
-	bounds = options['bounds'](setting,options)
-
-	logger = options['logger'](setting,options)
-
 	fig,ax = None,None
 
 	d = setting['D']**setting['N']
 	s = setting['M']+1
-	o = {2.3433e-2:1,5.4553e-2:1,7.8291e-2:1,1.2954e-2:1,2.8291e-2:1,6.2954e-2:1,7.8291e-3:1,5.2954e-2:1}
+	# o = {2.3433e-2:1,5.4553e-2:1,7.8291e-2:1,1.2954e-2:1,2.8291e-2:1,6.2954e-2:1,7.8291e-3:1,5.2954e-2:1}
+	o = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1,1.2954e-2:1}
+	o = {1:5,0:3}
 
-	z = array([k for i in o for k in [i]*o[i]])
-	u,v = asscalar(minimum(z)),asscalar(maximum(z))
+	z = array([k for i in o for k in [i]*(o[i]*s)])
 
-	z = (z-u)/(v-u)
-	z = z[(z>eps)*(z<=1)]
 
-	a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
+	logger = options['logger'](setting,options)
 
-	l,s,d = z.size,s,d
-	w = (1/(v-u)) if v>u else 1
+	plots = options['plot'](setting,options)
 
-	alpha = ((a**2)/(b)) if (b>0) else 1
-	beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
-	gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
-	delta = (a/b) if (b>0) else 0
-	optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
+	attribute = options['attribute'](setting,options)
+	eps = options['eps'](setting,options)
+	bounds = options['bounds'](setting,options)
 
-	params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
+	logger(setting)
 
-	c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
-	c = c if (abs(c)>eps) else 1
+	try:
 
-	params.update(dict(c=c))
-	f = partial(func,parameters=[params[i] for i in params])
-	p = integral(f,bounds)
+		if attribute['func']() in ['func']:
 
-	params.update(dict(p=p))
-	f = partial(func,parameters=[params[i] for i in params])
-	q = integral(f,bounds)
+			u,v = asscalar(minimum(z)),asscalar(maximum(z))
 
-	params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+			z = (z-u)/(v-u)
+			z = z[(z>eps)*(z<=1)]
 
-	with workdps(8):
-		logger('\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
+			a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
+			l,s,d = z.size,M+1,D**N
+			w = multinomial(partition)/D**(2*N)
 
-	parameters = array([float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params])
+			alpha = ((a**2)/(b)) if (b>0) else 1
+			beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
+			gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
+			delta = (a/b) if (b>0) else 0
+			optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
+
+			params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
+
+			c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
+			c = c if (abs(c)>eps) else 1
+
+			params.update(dict(c=c))
+			f = partial(func,parameters=[params[i] for i in params])
+			p = integral(f,bounds)
+
+			params.update(dict(p=p))
+			f = partial(func,parameters=[params[i] for i in params])
+			q = integral(f,bounds)
+
+			params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+
+			parameters = [float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params]
+
+		elif attribute['func']() in ['functional']:
+
+			opts = dict(return_counts=True)
+			z,l = unique(z,**opts)
+			n,d = len(z),addition(l)
+			w = [1]*n
+
+			w = array([
+				(
+				((-1)**(k))*
+				exp(
+				log(w[i])+
+				gammaln(d-1)-
+				log(2)-
+				gammaln(d-l[i]+k)-
+				gammaln(l[i]-k)
+				)
+				+
+				sum(
+				(
+				exp(
+				sum(
+				(
+				gammaln(l[j]+p[j])-
+				gammaln(p[j]+1)-
+				gammaln(l[j])-
+				(l[j]+p[j])*log(abs(z[i]-z[j]))
+				)
+				for j in range(n)
+				if ((j!=i) and (l[j]>0))
+				)
+				)
+				*
+				prod(
+				(
+				sign(z[i]-z[j])**((l[j]+p[j])%2)
+				)
+				for j in range(n)
+				if ((j!=i) and (l[j]>0))
+				)
+				)
+				for p in permutations(k+1,repeat=n)
+				if ((p[i]==0) and all(((l[j]>0)or(p[j]==0)) for j in range(n)) and (sum(p)==k))
+				)
+				) if ((w[i]>0) and (l[i]>0)) else 0
+				for i in range(n)
+				for k in range(l[i])
+				])
+
+			parameters = [z,l,w]
+
+	except Exception as exception:
+
+		logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+
+
+	if attribute['func']() in ['func']:
+
+		parameters = array(parameters)
+
+		f = function
+
+		opts = dict(
+			label='$\\textrm{Analytical}$',
+			color='viridis_%f'%(0.5),
+			marker='',
+			linestyle='-',
+			)
+
+	elif attribute['func']() in ['functional']:
+
+		n = max(len(i) for i in parameters)
+		parameters = array([[*i,*[0]*(n-len(i))] for i in parameters])
+
+		f = functional
+
+		opts = dict(
+			label='$\\textrm{Theory}$',
+			color='viridis_%f'%(0.25),
+			marker='',
+			linestyle='--',
+			)
+
 
 	x = logspace(start=-20,stop=0,num=1000)
 
-	y = function(parameters,x)
-
-	print(y[y>0])
-
-	opts = dict(
-		label='$\\textrm{Analytical}$',
-		color='viridis_%f'%(0.5),
-		marker='',
-		linestyle='-',
-		)
+	y = f(parameters,x)
 
 	fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
-
-
-
-	parameters = array([[i for i in o],[o[i] for i in o]])
-
-	x = logspace(start=-20,stop=0,num=1000)
-
-	y = functional(parameters,x)
-
-	print(y[y>0])
-
-	opts = dict(
-		label='$\\textrm{Theory}$',
-		color='viridis_%f'%(0.25),
-		marker='',
-		linestyle='--',
-		)
-
-	fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
-
 
 	return
 
@@ -816,8 +873,8 @@ def main(*args,**kwargs):
 	options = dict(
 		boolean = (lambda settings={},options={}: {
 			'run':0,
-			'process':1,
-			'test':0,
+			'process':0,
+			'test':1,
 			'draw':0
 			}),
 		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
@@ -835,7 +892,7 @@ def main(*args,**kwargs):
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(
-			path=join(options['path'](settings,options),'plot','plot.process.%s.pdf'%('.'.join([str(i) for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]]))),
+			path=join(options['path'](settings,options),'plot','plot.test.%s.pdf'%('.'.join([str(i) for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]]))),
 			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
 			markersize=9,
 			linewidth=16,
