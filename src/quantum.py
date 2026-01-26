@@ -104,7 +104,7 @@ def measurement(data,*args,function=None,**kwargs):
 	functions.x = func,wrapper
 
 	def func(z,info=None,functions=None):
-		return z*integral(lambda x,z=z,info=info:info.func(x/z,info=info),linspace(0,1,10))
+		return z*integral(lambda x,z=z,info=info:info.func(z*x,info=info),linspace(0,1,10))
 	def wrapper(func):
 		return vmap(func)
 	functions.y = func,wrapper

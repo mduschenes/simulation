@@ -44,6 +44,15 @@ def function(parameters,x,exp=exp,log=log,log1p=log1p):
 	x = where((x>0)*(x<1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 	return x
 
+from src.utils import exp,log,log1p
+def functions(parameters,x,exp=exp,log=log,log1p=log1p):
+	bounds = logspace(-20,0,50)
+	@vmap
+	def f(z):
+		return z*integrate(lambda x,z=z:function(parameters,z*x),bounds)
+	y = f(x)
+	return y
+
 def parameterization(z,d=None,s=None,w=None):
 
 	if z is None:
@@ -776,7 +785,7 @@ def test(settings,options,*args,**kwargs):
 		w = 1
 
 		z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
-		z = {1:d//2}; z= {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+		z = {1:3}; z= {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 		# z = {(i+1)/d:1 for i in range(d)}; z= {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 
 		z = array([j for i in z for j in [i]*z[i]])
