@@ -44,13 +44,26 @@ def function(parameters,x,exp=exp,log=log,log1p=log1p):
 	x = where((x>0)*(x<1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 	return x
 
-from src.utils import exp,log,log1p
-def functions(parameters,x,exp=exp,log=log,log1p=log1p):
+def functions(parameters,x):
+	func = lambda y,parameters: y+function(parameters,x)
+	y = 0*x
+	y = scan(parameters,y,func)
+	return y
+
+def Function(parameters,x):
 	bounds = logspace(-20,0,50)
 	@vmap
-	def f(z):
+	def func(z):
 		return z*integrate(lambda x,z=z:function(parameters,z*x),bounds)
-	y = f(x)
+	y = func(x)
+	return y
+
+def Functions(parameters,x):
+	bounds = logspace(-20,0,50)
+	@vmap
+	def func(z):
+		return z*integrate(lambda x,z=z:functions(parameters,z*x),bounds)
+	y = func(x)
 	return y
 
 def parameterization(z,d=None,s=None,w=None):
@@ -100,7 +113,10 @@ def parameterization(z,d=None,s=None,w=None):
 
 	parameters = [float(max(min(params,fltmax),fltmin)) for params in parameters]
 
+	parameters = array(parameters)
+
 	return parameters
+
 
 from src.utils import exp,log,log1p
 def functional(parameters,x,exp=exp,log=log,log1p=log1p):
@@ -129,8 +145,15 @@ def functional(parameters,x,exp=exp,log=log,log1p=log1p):
 
 	return y
 
+def functionals(parameters,x):
+	func = lambda y,parameters: y+functional(parameters,x)
+	y = 0*x
+	for params in parameters:
+		y = func(y,params)
+	return y
+
 from src.utils import exp,log,log1p
-def functionals(parameters,x,exp=exp,log=log,log1p=log1p):
+def Functional(parameters,x,exp=exp,log=log,log1p=log1p):
 
 	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
 
@@ -156,6 +179,13 @@ def functionals(parameters,x,exp=exp,log=log,log1p=log1p):
 
 	y = where((x>=v),1,where((x<=u),0,y))
 
+	return y
+
+def Functionals(parameters,x):
+	func = lambda y,parameters: y+Functional(parameters,x)
+	y = 0*x
+	for params in parameters:
+		y = func(y,params)
 	return y
 
 def parameterizations(z,d=None,s=None,w=None):
@@ -188,7 +218,7 @@ def parameterizations(z,d=None,s=None,w=None):
 
 	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
 
-	w = array([
+	w = [
 		(
 		(1/2)*((-1)**(t%2))*
 		exp(log(w[i])+factorial(l[i],t))
@@ -207,197 +237,17 @@ def parameterizations(z,d=None,s=None,w=None):
 		)
 		for i in range(n)
 		for t in range(l[i])
-		])
+		]
 
-	parameters = [z,l,w]
+	params = [z,l,w]
+
+	parameters = [i for i in params]
+
+	parameters = [[*i,*[0]*(max(len(i) for i in parameters)-len(i))] for i in parameters]
+
+	parameters = array(parameters)
 
 	return parameters
-
-
-
-def draw(*args,**kwargs):
-
-	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
-
-		def setup(options):
-
-			options = {} if options is None else options
-			for option in options:
-				if option in ['color','ecolor']:
-					if isinstance(options[option],str):
-						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
-						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
-				else:
-					value = options[option]
-				options[option] = value
-
-			settings = {}
-			settings['path'] = options.pop('path') if options.get('path') else None
-			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
-
-			return options,settings
-
-		options,settings = setup(options)
-
-		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
-
-			fig,axes = plt.subplots(2,1) if fig is None or ax is None else (fig,ax)
-
-			for index,ax in enumerate(axes):
-
-				ax.errorbar(x,y,yerr,xerr,**options)
-
-				ax.set_xlabel(xlabel="$x$",size=60)
-				ax.set_ylabel(ylabel="$f(x)$",size=60)
-
-				if index == 0:
-
-					ax.set_xscale(value="linear")
-					ax.set_yscale(value="log",base=10)
-					ax.set_xlim(xmin=-0.1,xmax=1.1)
-					ax.set_ylim(ymin=1e-21,ymax=1e21)
-					ax.set_xticks(ticks=[0,0.2,0.4,0.6,0.8,1])
-					ax.set_xticklabels(labels=['$%s$'%(str(i)) if i not in [0,1] else f'${i}$' for i in [0,0.2,0.4,0.6,0.8,1]],size=60)
-					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
-
-				elif index == 1:
-
-					ax.set_xscale(value="log",base=10)
-					ax.set_yscale(value="log",base=10)
-					ax.set_xlim(xmin=1e-22,xmax=1e2)
-					ax.set_ylim(ymin=1e-21,ymax=1e21)
-					ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
-					ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
-					ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-					ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
-
-				ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
-				ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-				ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
-				ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
-
-
-				ax.grid(visible=True)
-
-			handles,labels = ax.get_legend_handles_labels()
-			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
-			for handle,label in zip(handles,labels):
-				handle[0].set_linewidth(12)
-
-			legend = ax.legend(
-				handles,labels,
-				# title="$$",
-				loc="lower left",
-				ncol=2,
-				title_fontsize=50,
-				prop={"size":50},
-				markerscale=6,
-				handlelength=2.5
-			)
-
-			if settings.get('path'):
-				fig.set_size_inches(w=36,h=36)
-				fig.subplots_adjust()
-				fig.tight_layout()
-				fig.savefig(fname=settings.get('path'))
-
-			ax = axes
-
-		return fig,ax
-
-	def f(x,parameters):
-
-		def f(x,parameters,functions):
-			x = (x-parameters['u'])/(parameters['v']-parameters['u'])
-			x = functions['x'](x)
-			x = parameters['w']*(1/(parameters['v']-parameters['u']))*functions['exp'](parameters['d']*(parameters['a']*functions['log'](x) + functions['log1p'](-2*parameters['b']*(x/parameters['c']) + parameters['b']*(x/parameters['c'])**2) - functions['log'](parameters['p'])))
-			return x
-
-		from mpmath import exp,log,log1p
-		functions = dict(exp=exp,log=log,log1p=log1p,x=lambda x:x if ((x>=0)*(x<=1)) else 0)
-		func = partial(f,parameters=parameters,functions=functions)
-
-		from src.utils import exp,log,log1p
-		functions = dict(exp=exp,log=log,log1p=log1p,x=lambda x:where(x<1,where(x>0,x,0),0))
-		function = partial(f,parameters=parameters,functions=functions)
-
-		parameters['p'] = float(integral(func,linearspace(0,1,100)))
-
-		y = function(x,parameters=parameters)
-
-		return y
-
-	settings = [
-		{'u':0,'v':1,'w':1,'p':1,'a':0,'b':1,'c':1,'d':2,
-			'options': dict(
-				label='$\\alpha = 1 ~,~\\beta = 0$',
-				color='black',
-				marker='',
-				linestyle='-',
-				),
-		},
-		{'u':0,'v':1,'w':1,'p':1,'a':2*((1)*2-1)/((10-1)*2-1),'b':1-((1-(2*((1)*2-1)/((10-1)*2-1)*((2*((1)*2-1)/((10-1)*2-1)) + 2))/(((2*((1)*2-1)/((10-1)*2-1)*((2*((1)*2-1)/((10-1)*2-1)) + 2)))+1))/1000),'c':1,'d':((10-1)*2-1)/2,
-			'options': dict(
-				label='$\\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < \\alpha < 1 ~,~\\beta \\to 0$',
-				color='viridis_%f'%(0.1),
-				marker='',
-				linestyle='-',
-				),
-		},
-		{'u':0,'v':1,'w':1,'p':1,'a':2*((1)*2-1)/((10-1)*2-1),'b':1/5,'c':1,'d':((10-1)*2-1)/2,
-			'options': dict(
-				label='$\\alpha < \\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < 1 ~,~\\beta \\to 0$',
-				color='viridis_%f'%(0.25),
-				marker='',
-				linestyle='-',
-				),
-		},
-		{'u':0,'v':1,'w':1,'p':1,'a':2*((9)*2-1)/((10-9)*2-1),'b':1/5,'c':1,'d':((10-9)*2-1)/2,
-			'options': dict(
-				label='$\\alpha < \\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < 1 ~,~\\beta \\to \\infty$',
-				color='viridis_%f'%(0.5),
-				marker='',
-				linestyle='-',
-				),
-		},
-		{'u':0,'v':1,'w':1,'p':1,'a':2*((9)*2-1)/((10-9)*2-1),'b': 1-((1-(2*((9)*2-1)/((10-9)*2-1)*((2*((9)*2-1)/((10-9)*2-1)) + 2))/(((2*((9)*2-1)/((10-9)*2-1)*((2*((9)*2-1)/((10-9)*2-1)) + 2)))+1))/1000),'c':1,'d':((10-9)*2-1)/2,
-			'options': dict(
-				label='$\\frac{\\beta(\\beta+2)}{\\beta(\\beta+2)+1} < \\alpha < 1 ~,~\\beta \\to \\infty$',
-				color='viridis_%f'%(0.75),
-				marker='',
-				linestyle='-',
-				),
-		},
-	]
-
-	x = logspace(start=-20,stop=0,num=100000)
-
-	fig,ax = None,None
-	options = dict(
-		path=join('~/scratch/probability/distribution','plot','plot.distribution.pdf'),
-		mplstyle=join('~/scratch/probability/distribution','plot','plot.mplstyle'),
-		markersize=9,
-		linewidth=16,
-		alpha=0.8,
-	)
-
-	for parameters in settings:
-
-		y = f(x,parameters)
-
-		fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,**parameters['options']})
-
-	y = sum(f((x-(i/len(settings)))/(1-(i/len(settings))),parameters) for i,parameters in enumerate(settings))/len(settings)
-
-	fig,ax = plot(x,y,fig=fig,ax=ax,options={**options,** dict(
-				label='$\\sum \\alpha ~,~ \\beta $',
-				color='viridis_%f'%(0.9),
-				marker='',
-				linestyle='-',
-				)})
-
-	return
 
 def run(settings,options,*args,**kwargs):
 
@@ -474,7 +324,6 @@ def run(settings,options,*args,**kwargs):
 		data = {key:dict(parameters=parameters)}
 
 		dump(data,path,**io)
-
 
 	return
 
@@ -599,23 +448,15 @@ def process(settings,options,*args,**kwargs):
 
 		if attribute['func']() in ['func']:
 
-			def f(x):
-				func = lambda y,parameters: y+function(parameters,x)
-				y = 0*x
-				y = scan(parameters,y,func)
-				return y
+			func = functions
+
 		elif attribute['func']() in ['functional']:
 
-			def f(x):
-				func = lambda y,parameters: y+functional(parameters,x)
-				y = 0*x
-				for params in parameters:
-					y = func(y,params)
-				return y
+			func = functionals
 
 		x = logspace(start=-20,stop=0,num=100)
 
-		y = f(x)
+		y = func(x)
 
 		opts = dict(
 			label='$%s$'%('~,~'.join(['{value}'.format(key=key,value=setting[key]) for key in ['M']])),
@@ -625,38 +466,6 @@ def process(settings,options,*args,**kwargs):
 			)
 
 		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
-
-
-		# parameters = parameters[0]
-
-		# def f(x):
-
-		# 	params = dict(
-		# 		function='beta.pdf',
-		# 		a=(parameters[6]*parameters[7]),
-		# 		b=((parameters[8]-parameters[6])*parameters[7]),
-		# 		loc=0,
-		# 		scale=1/(parameters[8]),
-		# 		)
-
-		# 	y = distribution(x,**params)
-
-		# 	return y
-
-		# x = x
-		# y = f(x)
-
-		# opts = dict(
-		# 	label=None,
-		# 	color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-		# 	marker='',
-		# 	linestyle='--',
-		# 	alpha=1,
-		# 	zorder=100,
-		# 	path_effects=[matplotlib.patheffects.Stroke(linewidth=20,foreground='black'),matplotlib.patheffects.Normal()],
-		# 	)
-
-		# fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
 
 	return
 
@@ -762,7 +571,7 @@ def test(settings,options,*args,**kwargs):
 	settings = dict(
 		attr=['test.pauli','pauli'],
 		D=[2],
-		N=[3],
+		N=[4],
 		M=[0],
 		)
 
@@ -810,7 +619,7 @@ def test(settings,options,*args,**kwargs):
 
 		if attribute['func']() in ['func']:
 
-			func = function
+			func = Function
 
 			opts = dict(
 				label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
@@ -823,7 +632,7 @@ def test(settings,options,*args,**kwargs):
 
 		elif attribute['func']() in ['functional']:
 
-			func = functional
+			func = Functional
 
 			opts = dict(
 				label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
@@ -863,10 +672,6 @@ def setup(settings,options,*args,**kwargs):
 
 		test(settings,options,*args,**kwargs)
 
-	if boolean.get('draw'):
-
-		draw(settings,options,*args,**kwargs)
-
 	return
 
 def main(*args,**kwargs):
@@ -891,7 +696,6 @@ def main(*args,**kwargs):
 			'run':0,
 			'process':0,
 			'test':1,
-			'draw':0
 			}),
 		path   = (lambda settings={},options={}: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={}: dict(wr='a')),
