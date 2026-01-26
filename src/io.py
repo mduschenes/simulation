@@ -19,7 +19,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,concatenate,padding,slicer
+from src.utils import array,concatenate,padder,slicer
 from src.utils import to_repr,to_eval
 from src.utils import returnargs,isinstances
 from src.utils import arrays,scalars,iterables,nan,delim
@@ -1244,7 +1244,7 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 
 					shape = tuple((max(tmp[index].shape[i] for index in tmp) for i in range(min(tmp[index].ndim for index in tmp))))
 
-					tmp = {index: padding(tmp[index],shape=shape,random='zeros',dtype=tmp[index].dtype) for index in tmp}
+					tmp = {index: padder(tmp[index],shape=shape,random='zeros',dtype=tmp[index].dtype) for index in tmp}
 
 					indices = {i:(index,indices[index].index(i)) for index in indices for i in indices[index]}
 					indices = [indices[i] for i in range(len(indices))]

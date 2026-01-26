@@ -13,11 +13,11 @@ for PATH in PATHS:
 
 os.environ['NUMPY_BACKEND'] = 'JAX'
 
-from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,vectorize,allclose,vtype,copy
-from src.utils import exp,log,log1p
+from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,vectorize,allclose,vtype,copy,padding
+from src.utils import exp,log,log1p,sign,gammaln
 from src.utils import nan,fltmin,fltmax,delim,epsilon,iterables
-from src.utils import where,sign,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
-from src.utils import eig,addition,prod,permutations,partitions,gammaln,multinomial,permute,distribution
+from src.utils import where,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
+from src.utils import eig,addition,prod,permutations,partitions,multinomial,permute,distribution
 from src.utils import integral as integrate
 
 from src.quantum import Basis as basis
@@ -32,14 +32,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patheffects
 
-from mpmath import exp,log,log1p
-def func(x,parameters,exp=exp,log=log,log1p=log1p):
-	x = (x-parameters[0])/(parameters[1]-parameters[0])
-	x = (parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))) if ((x>0)*(x<1)) else 0
-	return x
-
-from src.utils import exp,log,log1p
-def function(parameters,x,exp=exp,log=log,log1p=log1p):
+def function(parameters,x):
 	x = (x-parameters[0])/(parameters[1]-parameters[0])
 	x = where((x>0)*(x<1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 	return x
@@ -66,7 +59,13 @@ def Functions(parameters,x):
 	y = func(x)
 	return y
 
-def parameterization(z,d=None,s=None,w=None):
+def parameter(z,d=None,s=None,w=None):
+
+	from mpmath import exp,log,log1p
+	def func(x,parameters):
+		x = (x-parameters[0])/(parameters[1]-parameters[0])
+		x = (parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))) if ((x>0)*(x<1)) else 0
+		return x
 
 	if z is None:
 		parameters = None
@@ -118,8 +117,33 @@ def parameterization(z,d=None,s=None,w=None):
 	return parameters
 
 
-from src.utils import exp,log,log1p
-def functional(parameters,x,exp=exp,log=log,log1p=log1p):
+def functional(parameters,x):
+
+	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
+
+	i = (l>0)
+	z,l = z[i],l[i]
+	w = w
+
+	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
+
+	y = sum(
+		(
+		sign(w[sum(l[:i])+t])
+		*
+		sign(z[i]-x)**((d-l[i]+t)%2)
+		*
+		exp((d-l[i]+t-1)*log(abs(z[i]-x)) + log(abs(w[sum(l[:i])+t])))
+		)
+		for i in range(n)
+		for t in range(l[i])
+		)
+
+	y = where((x>u)*(x<=v),y,0)
+
+	return y
+
+def functional(parameters,x):
 
 	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
 
@@ -152,8 +176,7 @@ def functionals(parameters,x):
 		y = func(y,params)
 	return y
 
-from src.utils import exp,log,log1p
-def Functional(parameters,x,exp=exp,log=log,log1p=log1p):
+def Functional(parameters,x):
 
 	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
 
@@ -190,6 +213,8 @@ def Functionals(parameters,x):
 
 def parameterizations(z,d=None,s=None,w=None):
 
+	from src.utils import exp,log,log1p,sign,gammaln
+
 	@cache
 	def factorial(l,t):
 		return gammaln(d)-gammaln(d-l+t)-gammaln(l-t)
@@ -218,7 +243,7 @@ def parameterizations(z,d=None,s=None,w=None):
 
 	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
 
-	w = [
+	w = array([
 		(
 		(1/2)*((-1)**(t%2))*
 		exp(log(w[i])+factorial(l[i],t))
@@ -237,27 +262,19 @@ def parameterizations(z,d=None,s=None,w=None):
 		)
 		for i in range(n)
 		for t in range(l[i])
-		]
+		])
 
 	params = [z,l,w]
 
 	parameters = [i for i in params]
 
-	parameters = [[*i,*[0]*(max(len(i) for i in parameters)-len(i))] for i in parameters]
+	parameters = padding(parameters)
 
 	parameters = array(parameters)
 
 	return parameters
 
 def run(settings,options,*args,**kwargs):
-
-	@cache
-	def factorial(l,t):
-		return gammaln(d)-log(2)-gammaln(d-l+t)-gammaln(l-t)
-
-	@cache
-	def factorials(l,p):
-		return gammaln(l+p)-gammaln(p+1)-gammaln(l)
 
 	for index,setting in enumerate(permute(settings)):
 
@@ -297,7 +314,7 @@ def run(settings,options,*args,**kwargs):
 
 				if attribute['func']() in ['func']:
 
-					params = parameterization
+					params = parameter
 
 				elif attribute['func']() in ['functional']:
 
@@ -319,7 +336,7 @@ def run(settings,options,*args,**kwargs):
 
 		elif attribute['func']() in ['functional']:
 
-			parameters = array([[[*i,*[0]*(max(len(i) for params in parameters for i in params)-len(i))] for i in params] for params in parameters])
+			parameters = padding(parameters)
 
 		data = {key:dict(parameters=parameters)}
 
@@ -363,9 +380,9 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 		# ax.set_xlim(xmin=1e-22,xmax=1e2)
 		# ax.set_ylim(ymin=1e-21,ymax=1e21)
 		# ax.set_xticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1])
-		# ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [20,16,12,8,4,0]],size=60)
+		# ax.set_xticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-20,-16,-12,-8,-4,0]],size=60)
 		# ax.set_yticks(ticks=[1e-20,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e20])
-		# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [20,16,12,8,4,0,-4,-8,-12,-16,-20]],size=60)
+		# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-20,-16,-12,-8,-4,0,4,8,12,16,20]],size=60)
 
 		# ax.set_xscale(value="log",base=4)
 		# ax.set_yscale(value="log",base=10)
@@ -374,16 +391,16 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 		# ax.set_xticks(ticks=[2**(-2*i) for i in [10,8,6,4,2,0]])
 		# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [10,8,6,4,2,0]],size=60)
 		# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
-		# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+		# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,-0,4,8]],size=60)
 
 		ax.set_xscale(value="log",base=4)
 		ax.set_yscale(value="log",base=10)
 		ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
-		ax.set_ylim(ymin=1e-129,ymax=1e9)
+		ax.set_ylim(ymin=1e-129,ymax=1e129)
 		ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
 		ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=60)
-		ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
-		ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+		ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16,1e32,1e64,1e128])
+		ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,0,4,8,12,16,32,64,128]],size=60)
 
 		ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
 		ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
@@ -409,7 +426,7 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 		)
 
 		if settings.get('path'):
-			fig.set_size_inches(w=48,h=30)
+			fig.set_size_inches(w=48,h=48)
 			fig.subplots_adjust()
 			fig.tight_layout()
 			fig.savefig(fname=settings.get('path'))
@@ -456,7 +473,7 @@ def process(settings,options,*args,**kwargs):
 
 		x = logspace(start=-20,stop=0,num=100)
 
-		y = func(x)
+		y = func(parameters,x)
 
 		opts = dict(
 			label='$%s$'%('~,~'.join(['{value}'.format(key=key,value=setting[key]) for key in ['M']])),
@@ -470,13 +487,6 @@ def process(settings,options,*args,**kwargs):
 	return
 
 def test(settings,options,*args,**kwargs):
-
-	from src.utils import array,asscalar
-	from src.utils import addition,minimum,maximum
-	from src.utils import prod
-
-	from mpmath import sqrt
-
 
 	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
@@ -514,9 +524,9 @@ def test(settings,options,*args,**kwargs):
 			ax.set_xlim(xmin=1e-5,xmax=1e1)
 			ax.set_ylim(ymin=1e-17,ymax=1e17)
 			ax.set_xticks(ticks=[1e-4,1e-3,1e-2,1e-1,1])
-			ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [4,3,2,1,0]],size=60)
+			ax.set_xticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-4,-3,-2,-1,0]],size=60)
 			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16])
-			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [16,12,8,4,0,-4,-8,-12,-16]],size=60)
+			ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-16,-12,-8,-4,0,4,8,12,16]],size=60)
 
 			# ax.set_xscale(value="log",base=4)
 			# ax.set_yscale(value="log",base=10)
@@ -525,7 +535,7 @@ def test(settings,options,*args,**kwargs):
 			# ax.set_xticks(ticks=[2**(-2*i) for i in [10,8,6,4,2,0]])
 			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [10,8,6,4,2,0]],size=60)
 			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
-			# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,0,4,8]],size=60)
 
 			# ax.set_xscale(value="log",base=4)
 			# ax.set_yscale(value="log",base=10)
@@ -534,7 +544,7 @@ def test(settings,options,*args,**kwargs):
 			# ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
 			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=60)
 			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
-			# ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [128,64,32,16,12,8,4,0,-4,-8]],size=60)
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,0,4,8]],size=60)
 
 			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
 			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
@@ -605,7 +615,7 @@ def test(settings,options,*args,**kwargs):
 
 			if attribute['func']() in ['func']:
 
-				func = parameterization
+				func = parameter
 
 			elif attribute['func']() in ['functional']:
 
@@ -619,7 +629,7 @@ def test(settings,options,*args,**kwargs):
 
 		if attribute['func']() in ['func']:
 
-			func = Function
+			func = function
 
 			opts = dict(
 				label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
@@ -632,7 +642,7 @@ def test(settings,options,*args,**kwargs):
 
 		elif attribute['func']() in ['functional']:
 
-			func = Functional
+			func = functional
 
 			opts = dict(
 				label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
@@ -687,8 +697,9 @@ def main(*args,**kwargs):
 		# M=[0,2,4,8,16,32],
 		# N=[3],
 		# M=[0,2,4,8,16,32],
-		N=[2,3,4],
-		M=[0,2,4,8,16,32],
+		N=[4],
+		# M=[0,2,4,8,16,32],
+		M=[0],
 		)
 
 	options = dict(
@@ -710,7 +721,7 @@ def main(*args,**kwargs):
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(
-			path=join(options['path'](settings,options),'plot','plot.test.%s.pdf'%('.'.join([str(i) for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]]))),
+			path=join(options['path'](settings,options),'plot','plot.distribution.%s.pdf'%('.'.join([str(i) for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]]))),
 			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
 			markersize=9,
 			linewidth=16,

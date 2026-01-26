@@ -11724,7 +11724,7 @@ def meshgrid(*arrays,**kwargs):
 	'''
 	return np.meshgrid(*arrays,**kwargs)
 
-def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
+def padder(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	'''
 	Ensure array is shape and pad with values
 	Args:
@@ -11783,6 +11783,27 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 
 	return data
 
+def padding(data,value=None):
+	'''
+	Ensure data is shape and pad with values
+	Args:
+		data (array): Array to be padded
+		value (array): Value to pad
+	Returns:
+		data (array): Padded array
+	'''
+
+	value = 0 if value is None else value
+
+	axis = -1
+	size = max(i.shape[axis] for i in data)
+	ndim = min(i.ndim for i in data)
+	shape = tuple(max(i.shape[j] for i in data) for j in range(ndim) if j != (axis if axis>=0 else ndim+axis))
+
+
+	data = stack(tuple(concatenate((i,value*ones((*shape,size-i.shape[axis])))) if (i.shape[axis]<size) else i for i in data))
+
+	return data
 
 def isinstances(obj,instances,reverse=False,args=(),kwargs={}):
 	'''
@@ -13380,7 +13401,7 @@ def uncertainty_propagation(x,y,xerr,yerr,operation):
 	return out,err
 
 
-def padder(strings,padding=' ',delimiter=None,justification='left'):
+def pads(strings,padding=' ',delimiter=None,justification='left'):
 	'''
 	Pad strings to all be length of largest string (or substring within string)
 	Args:
@@ -13536,7 +13557,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 			data = zeros(shape,dtype=dtype)
 
 		elif random in ['pad']:
-			data = padding(data,shape,random=random,bounds=bounds,dtype=dtype,**kwargs)
+			data = padder(data,shape,random=random,bounds=bounds,dtype=dtype,**kwargs)
 
 		else:
 			data = rand(shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
