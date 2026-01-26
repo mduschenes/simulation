@@ -13,11 +13,11 @@ for PATH in PATHS:
 
 os.environ['NUMPY_BACKEND'] = 'JAX'
 
-from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,scan,vmap,callback,vectorize,allclose,vtype,copy
+from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,vectorize,allclose,vtype,copy
 from src.utils import exp,log,log1p
-from src.utils import log10,real,nan,is_naninf,epsilon,delim
-from src.utils import where,nonzero,sign,unique,sort,minimum,maximum,minimums,maximums
-from src.utils import eig,addition,prod,permutations,partitions,comb,factorial,gammaln,multinomial,permute,distribution
+from src.utils import nan,fltmin,fltmax,delim,epsilon,iterables
+from src.utils import where,sign,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
+from src.utils import eig,addition,prod,permutations,partitions,gammaln,multinomial,permute,distribution
 from src.utils import integral as integrate
 
 from src.quantum import Basis as basis
@@ -35,23 +35,176 @@ import matplotlib.patheffects
 from mpmath import exp,log,log1p
 def func(x,parameters,exp=exp,log=log,log1p=log1p):
 	x = (x-parameters[0])/(parameters[1]-parameters[0])
-	x = (parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))) if ((x>=0)*(x<=1)) else 0
+	x = (parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))) if ((x>0)*(x<1)) else 0
 	return x
 
 from src.utils import exp,log,log1p
 def function(parameters,x,exp=exp,log=log,log1p=log1p):
 	x = (x-parameters[0])/(parameters[1]-parameters[0])
-	x = where((x>0)*(x<=1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
+	x = where((x>0)*(x<1),(parameters[2]*(1/(parameters[1]-parameters[0]))*exp((parameters[6]*parameters[7]-1)*log(x) + (((parameters[8]-parameters[6])*parameters[7]-1)/2)*log1p(-2*parameters[4]*x + parameters[5]*x**2) - log(parameters[3]) - log(parameters[9]))),0)
 	return x
+
+def parameterization(z,d=None,s=None,w=None):
+
+	if z is None:
+		parameters = None
+		return parameters
+
+	d = len(z) if d is None else d
+	s = 1 if s is None else s
+	w = 1 if w is None else w
+
+	eps = 1e-12
+	bounds = list(map(lambda i:10**i,linearspace(-32,0,1000,endpoint=False)))
+
+	u,v = asscalar(minimum(z)),asscalar(maximum(z))
+
+	z = (z-u)/(v-u)
+	z = z[(z>eps)*(z<=1)]
+
+	a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
+	l,s,d = z.size,s,d
+	w = w
+
+	alpha = ((a**2)/(b)) if (b>0) else 1
+	beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
+	gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
+	delta = (a/b) if (b>0) else 0
+	optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
+
+	params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
+
+	c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
+	c = c if (abs(c)>eps) else 1
+
+	params.update(dict(c=c))
+	f = partial(func,parameters=[params[i] for i in params])
+	p = integral(f,bounds)
+
+	params.update(dict(p=p))
+	f = partial(func,parameters=[params[i] for i in params])
+	q = integral(f,bounds)
+
+	params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
+
+	parameters = [params[i] for i in params]
+
+	parameters = [float(max(min(params,fltmax),fltmin)) for params in parameters]
+
+	return parameters
 
 from src.utils import exp,log,log1p
 def functional(parameters,x,exp=exp,log=log,log1p=log1p):
+
 	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
-	z,l,w = z[l>0],l[l>0],w[l>0]
+
+	i = (l>0)
+	z,l = z[i],l[i]
+	w = w
+
 	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
-	y = sum((w[i]*(sign(z[i]-x)**((d-l[i]+k)%2))*exp((d-l[i]+k-1)*log(abs(z[i]-x)))) for i in range(n) if ((w[i]!=0) and (l[i]!=0)) for k in range(l[i]))
-	y = where((x>u)*(x<v),y,0)
+
+	y = sum(
+		(
+		sign(w[sum(l[:i])+t])
+		*
+		sign(z[i]-x)**((d-l[i]+t)%2)
+		*
+		exp((d-l[i]+t-1)*log(abs(z[i]-x)) + log(abs(w[sum(l[:i])+t])))
+		)
+		for i in range(n)
+		for t in range(l[i])
+		)
+
+	y = where((x>u)*(x<=v),y,0)
+
 	return y
+
+from src.utils import exp,log,log1p
+def functionals(parameters,x,exp=exp,log=log,log1p=log1p):
+
+	z,l,w = parameters[0].astype(float),parameters[1].astype(int),parameters[2].astype(float)
+
+	i = (l>0)
+	z,l = z[i],l[i]
+	w = w
+
+	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
+
+	y = sum(
+		(
+		sign(w[sum(l[:i])+t])
+		*
+		(
+		(-(sign(z[i]-x)**((d-l[i]+t+1)%2))*exp((d-l[i]+t)*log(abs(z[i]-x)) + log(abs(w[sum(l[:i])+t])) - log(d-l[i]+t)))
+		+
+		( (sign(z[i]-u)**((d-l[i]+t)%2))*exp((d-l[i]+t)*log(abs(z[i]-u)) + log(abs(w[sum(l[:i])+t])) - log(d-l[i]+t)))
+		)
+		)
+		for i in range(n)
+		for t in range(l[i])
+		)
+
+	y = where((x>=v),1,where((x<=u),0,y))
+
+	return y
+
+def parameterizations(z,d=None,s=None,w=None):
+
+	@cache
+	def factorial(l,t):
+		return gammaln(d)-gammaln(d-l+t)-gammaln(l-t)
+
+	@cache
+	def factorials(l,t):
+		return gammaln(l+t)-gammaln(t+1)-gammaln(l)
+
+	if z is None:
+		parameters = None
+		return parameters
+
+	d = 1 if d is None else d
+	s = 1 if s is None else s
+	w = 1 if w is None else w
+
+	eps = 1e-12
+
+	z,l = unique(z,return_counts=True)
+
+	i = (l>0)
+	z,l = z[i],l[i]
+	w = [w]*len(z) if not isinstance(w,iterables) else w
+
+	l *= s
+
+	n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
+
+	w = array([
+		(
+		(1/2)*((-1)**(t%2))*
+		exp(log(w[i])+factorial(l[i],t))
+		*
+		sum(
+		(
+		exp(sum(factorials(l[j],p[j])-((l[j]+p[j])*log(abs(z[i]-z[j])))
+			for j in range(n) if (j!=i)))
+		*
+		prod(sign(z[i]-z[j])**((l[j]+p[j])%2)
+			for j in range(n) if (j!=i))
+		)
+		for p in permutations(t+1,repeat=n)
+		if ((p[i]==0) and (sum(p)==t))
+		)
+		)
+		for i in range(n)
+		for t in range(l[i])
+		])
+
+	parameters = [z,l,w]
+
+	return parameters
+
+
 
 def draw(*args,**kwargs):
 
@@ -170,7 +323,7 @@ def draw(*args,**kwargs):
 		{'u':0,'v':1,'w':1,'p':1,'a':0,'b':1,'c':1,'d':2,
 			'options': dict(
 				label='$\\alpha = 1 ~,~\\beta = 0$',
-				color='k',
+				color='black',
 				marker='',
 				linestyle='-',
 				),
@@ -239,6 +392,14 @@ def draw(*args,**kwargs):
 
 def run(settings,options,*args,**kwargs):
 
+	@cache
+	def factorial(l,t):
+		return gammaln(d)-log(2)-gammaln(d-l+t)-gammaln(l-t)
+
+	@cache
+	def factorials(l,p):
+		return gammaln(l+p)-gammaln(p+1)-gammaln(l)
+
 	for index,setting in enumerate(permute(settings)):
 
 		attr = setting['attr']
@@ -250,11 +411,8 @@ def run(settings,options,*args,**kwargs):
 		key = options['key'](setting,options)
 		io = options['io'](setting,options)
 
-		logger = options['logger'](setting,options)
-
 		attribute = options['attribute'](setting,options)
-		eps = options['eps'](setting,options)
-		bounds = options['bounds'](setting,options)
+		logger = options['logger'](setting,options)
 
 		do = options['do'](setting,options)
 
@@ -273,104 +431,28 @@ def run(settings,options,*args,**kwargs):
 
 				z = tensorprod([obj for i,j in enumerate(partition) for obj in [data[i]]*j])
 
+				z = where(z>epsilon(),z,0)
+				d = D**N
+				s = M+1
+				w = multinomial(partition)/d
+
 				if attribute['func']() in ['func']:
 
-					u,v = asscalar(minimum(z)),asscalar(maximum(z))
-
-					z = (z-u)/(v-u)
-					z = z[(z>eps)*(z<=1)]
-
-					a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
-					l,s,d = z.size,M+1,D**N
-					w = multinomial(partition)/D**(2*N)
-
-					alpha = ((a**2)/(b)) if (b>0) else 1
-					beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
-					gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
-					delta = (a/b) if (b>0) else 0
-					optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
-
-					params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
-
-					c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
-					c = c if (abs(c)>eps) else 1
-
-					params.update(dict(c=c))
-					f = partial(func,parameters=[params[i] for i in params])
-					p = integral(f,bounds)
-
-					params.update(dict(p=p))
-					f = partial(func,parameters=[params[i] for i in params])
-					q = integral(f,bounds)
-
-					params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
-
-					if number == 0:
-						logger(f'#/{len(list(partitions(N,D**2)))}'+'\t'+'\t'.join([f'{i:8}' for i in ['c','p','q']]))
-					with workdps(8):
-						logger(f'{number}'+'\t'+'\t\t'.join([f'{i}' if i != 1 else f'{i}' for i in [c,p,q]]))
-
-					parameters.append([float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params])
+					params = parameterization
 
 				elif attribute['func']() in ['functional']:
 
-					z = where(z>eps,z,0)
+					params = parameterizations
 
-					opts = dict(return_counts=True)
-					z,l = unique(z,**opts)
-					n,d = len(z),addition(l)
-					w = [multinomial(partition)/D**(2*N)]*n
+				params = params(z,d=d,s=s,w=w)
 
-					w = array([
-						(
-						((-1)**(k))*
-						exp(
-						log(w[i])+
-						gammaln(d-1)-
-						log(2)-
-						gammaln(d-l[i]+k)-
-						gammaln(l[i]-k)
-						)
-						+
-						sum(
-						(
-						exp(
-						sum(
-						(
-						gammaln(l[j]+p[j])-
-						gammaln(p[j]+1)-
-						gammaln(l[j])-
-						(l[j]+p[j])*log(abs(z[i]-z[j]))
-						)
-						for j in range(n)
-						if ((j!=i) and (l[j]>0))
-						)
-						)
-						*
-						prod(
-						(
-						sign(z[i]-z[j])**((l[j]+p[j])%2)
-						)
-						for j in range(n)
-						if ((j!=i) and (l[j]>0))
-						)
-						)
-						for p in permutations(k+1,repeat=n)
-						if ((p[i]==0) and all(((l[j]>0)or(p[j]==0)) for j in range(n)) and (sum(p)==k))
-						)
-						) if ((w[i]>0) and (l[i]>0)) else 0
-						for i in range(n)
-						for k in range(l[i])
-						])
+				parameters.append(params)
 
-					logger(f'{number}'+'\t'+'\t'.join([f'{i}' for i in [z,l,w]]))
-
-					parameters.append([z,l,w])
+				logger(f'{number}'+'\t'+'\t'.join([f'{i}' for i in params]))
 
 			except Exception as exception:
 
 				logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-
 
 		if attribute['func']() in ['func']:
 
@@ -378,8 +460,7 @@ def run(settings,options,*args,**kwargs):
 
 		elif attribute['func']() in ['functional']:
 
-			n = max(len(i) for params in parameters for i in params)
-			parameters = array([[[*i,*[0]*(n-len(i))] for i in params] for params in parameters])
+			parameters = array([[[*i,*[0]*(max(len(i) for params in parameters for i in params)-len(i))] for i in params] for params in parameters])
 
 		data = {key:dict(parameters=parameters)}
 
@@ -489,7 +570,6 @@ def process(settings,options,*args,**kwargs):
 		plots = options['plot'](setting,options)
 
 		attribute = options['attribute'](setting,options)
-
 		logger = options['logger'](setting,options)
 
 		data = load(path)
@@ -564,7 +644,7 @@ def process(settings,options,*args,**kwargs):
 		# 	linestyle='--',
 		# 	alpha=1,
 		# 	zorder=100,
-		# 	path_effects=[matplotlib.patheffects.Stroke(linewidth=20,foreground='k'),matplotlib.patheffects.Normal()],
+		# 	path_effects=[matplotlib.patheffects.Stroke(linewidth=20,foreground='black'),matplotlib.patheffects.Normal()],
 		# 	)
 
 		# fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**opts})
@@ -614,11 +694,11 @@ def test(settings,options,*args,**kwargs):
 			ax.set_xscale(value="log",base=10)
 			ax.set_yscale(value="log",base=10)
 			ax.set_xlim(xmin=1e-5,xmax=1e1)
-			ax.set_ylim(ymin=1e-17,ymax=1e5)
+			ax.set_ylim(ymin=1e-17,ymax=1e17)
 			ax.set_xticks(ticks=[1e-4,1e-3,1e-2,1e-1,1])
 			ax.set_xticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [4,3,2,1,0]],size=60)
-			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4])
-			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [16,12,8,4,0,-4]],size=60)
+			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16])
+			ax.set_yticklabels(labels=['$10^{%d}$'%(-i) if i not in [0] else '$1$' for i in [16,12,8,4,0,-4,-8,-12,-16]],size=60)
 
 			# ax.set_xscale(value="log",base=4)
 			# ax.set_yscale(value="log",base=10)
@@ -652,7 +732,7 @@ def test(settings,options,*args,**kwargs):
 
 			legend = ax.legend(
 				handles,labels,
-				# title="$$",
+				title="$k$",
 				loc="upper right",
 				ncol=1,
 				title_fontsize=50,
@@ -670,159 +750,86 @@ def test(settings,options,*args,**kwargs):
 		return fig,ax
 
 
-	setting = dict(
-		attr='test.pauli',
-		D=2,
-		N=3,
-		M=0,
+	settings = dict(
+		attr=['test.pauli','pauli'],
+		D=[2],
+		N=[3],
+		M=[0],
 		)
 
 	fig,ax = None,None
 
-	d = setting['D']**setting['N']
-	s = setting['M']+1
-	# o = {2.3433e-2:1,5.4553e-2:1,7.8291e-2:1,1.2954e-2:1,2.8291e-2:1,6.2954e-2:1,7.8291e-3:1,5.2954e-2:1}
-	o = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1,1.2954e-2:1}
-	o = {1:5,0:3}
+	for index,setting in enumerate(permute(settings)):
 
-	z = array([k for i in o for k in [i]*(o[i]*s)])
+		attr = setting['attr']
+		D = setting['D']
+		N = setting['N']
+		M = setting['M']
 
+		path = options['path'](setting,options)
+		plots = options['plot'](setting,options)
+		attribute = options['attribute'](setting,options)
+		logger = options['logger'](setting,options)
 
-	logger = options['logger'](setting,options)
+		d = D**N
+		s = M+1
+		w = 1
 
-	plots = options['plot'](setting,options)
+		z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+		z = {1:d//2}; z= {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+		# z = {(i+1)/d:1 for i in range(d)}; z= {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 
-	attribute = options['attribute'](setting,options)
-	eps = options['eps'](setting,options)
-	bounds = options['bounds'](setting,options)
+		z = array([j for i in z for j in [i]*z[i]])
 
-	logger(setting)
+		logger(setting)
 
-	try:
+		try:
+
+			if attribute['func']() in ['func']:
+
+				func = parameterization
+
+			elif attribute['func']() in ['functional']:
+
+				func = parameterizations
+
+			parameters = func(z,d=d,s=s,w=w)
+
+		except Exception as exception:
+
+			logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
 
 		if attribute['func']() in ['func']:
 
-			u,v = asscalar(minimum(z)),asscalar(maximum(z))
+			func = function
 
-			z = (z-u)/(v-u)
-			z = z[(z>eps)*(z<=1)]
-
-			a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
-			l,s,d = z.size,M+1,D**N
-			w = multinomial(partition)/D**(2*N)
-
-			alpha = ((a**2)/(b)) if (b>0) else 1
-			beta = (2*((l*s)-1)/((d-l)*s-1)) if (((d-l)*s-1)>0) else 0
-			gamma = ((beta*(beta+2))/((beta*(beta+2))+1)/alpha) if (alpha>0) else 0
-			delta = (a/b) if (b>0) else 0
-			optima = [1,*((delta*((beta+1)/(beta+2))*(1+sign*sqrt(1-gamma))) for sign in [1,-1])] if gamma <= 1 else [1]
-
-			params = dict(u=0,v=1,w=1,p=1,a=a,b=b,l=l,s=s,d=d,c=1)
-
-			c = max(func(i,parameters=[params[i] for i in params]) for i in optima)
-			c = c if (abs(c)>eps) else 1
-
-			params.update(dict(c=c))
-			f = partial(func,parameters=[params[i] for i in params])
-			p = integral(f,bounds)
-
-			params.update(dict(p=p))
-			f = partial(func,parameters=[params[i] for i in params])
-			q = integral(f,bounds)
-
-			params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
-
-			parameters = [float(max(min(params[i],sys.float_info.max),sys.float_info.min)) for i in params]
+			opts = dict(
+				label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
+				color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+				marker='',
+				linestyle='-',
+				alpha=0.5,
+				path=join(path,'plot','plot.test.%s.pdf'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]]))),
+				)
 
 		elif attribute['func']() in ['functional']:
 
-			opts = dict(return_counts=True)
-			z,l = unique(z,**opts)
-			n,d = len(z),addition(l)
-			w = [1]*n
+			func = functional
 
-			w = array([
-				(
-				((-1)**(k))*
-				exp(
-				log(w[i])+
-				gammaln(d-1)-
-				log(2)-
-				gammaln(d-l[i]+k)-
-				gammaln(l[i]-k)
+			opts = dict(
+				label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
+				color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+				marker='',
+				linestyle='--',
+				alpha=0.8,
+				path=join(path,'plot','plot.test.%s.pdf'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]]))),
 				)
-				+
-				sum(
-				(
-				exp(
-				sum(
-				(
-				gammaln(l[j]+p[j])-
-				gammaln(p[j]+1)-
-				gammaln(l[j])-
-				(l[j]+p[j])*log(abs(z[i]-z[j]))
-				)
-				for j in range(n)
-				if ((j!=i) and (l[j]>0))
-				)
-				)
-				*
-				prod(
-				(
-				sign(z[i]-z[j])**((l[j]+p[j])%2)
-				)
-				for j in range(n)
-				if ((j!=i) and (l[j]>0))
-				)
-				)
-				for p in permutations(k+1,repeat=n)
-				if ((p[i]==0) and all(((l[j]>0)or(p[j]==0)) for j in range(n)) and (sum(p)==k))
-				)
-				) if ((w[i]>0) and (l[i]>0)) else 0
-				for i in range(n)
-				for k in range(l[i])
-				])
 
-			parameters = [z,l,w]
+		x = logspace(start=-20,stop=0,num=1000)
 
-	except Exception as exception:
+		y = func(parameters,x)
 
-		logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
-
-
-	if attribute['func']() in ['func']:
-
-		parameters = array(parameters)
-
-		f = function
-
-		opts = dict(
-			label='$\\textrm{Analytical}$',
-			color='viridis_%f'%(0.5),
-			marker='',
-			linestyle='-',
-			)
-
-	elif attribute['func']() in ['functional']:
-
-		n = max(len(i) for i in parameters)
-		parameters = array([[*i,*[0]*(n-len(i))] for i in parameters])
-
-		f = functional
-
-		opts = dict(
-			label='$\\textrm{Theory}$',
-			color='viridis_%f'%(0.25),
-			marker='',
-			linestyle='--',
-			)
-
-
-	x = logspace(start=-20,stop=0,num=1000)
-
-	y = f(parameters,x)
-
-	fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
+		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**opts})
 
 	return
 
@@ -887,8 +894,6 @@ def main(*args,**kwargs):
 			**{i:dict(func=lambda attr=i:'functional',data=lambda attr=i:real(eig(getattr(basis,attr.split(delim)[-1])(D=settings['D'])))) for i in ['test.tetrad','test.pauli']},
 			}.get(settings['attr'])
 			),
-		eps    = (lambda settings={},options={}: 1e-12),#epsilon()),
-		bounds = (lambda settings={},options={}: linearspace(0,1,500)),
 		data   = (lambda settings={},options={}: join(options['path'](settings,options),'data','data.hdf5')),
 		logger = (lambda settings={},options={}: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={}: dict(

@@ -8,7 +8,7 @@ from math import prod,factorial,comb
 
 import inspect
 import typing
-from functools import partial,wraps
+from functools import partial,wraps,cache
 from natsort import natsorted
 import random
 from random import choices,sample as samples
@@ -235,9 +235,11 @@ if backend in ['jax','jax.autograd','quimb']:
 
 	pi = np.pi
 	e = np.exp(1)
-
 	nan = np.nan
 	inf = np.inf
+	fltmin = sys.float_info.min
+	fltmax = sys.float_info.max
+
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer,)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating,)
 	complexes = (np.complex64,np.complex128,)
@@ -283,9 +285,11 @@ elif backend in ['autograd']:
 
 	pi = np.pi
 	e = np.exp(1)
-
 	nan = np.nan
 	inf = np.inf
+	fltmin = sys.float_info.min
+	fltmax = sys.float_info.max
+
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	complexes = (np.complex64,np.complex128,)
@@ -322,9 +326,11 @@ elif backend in ['numpy']:
 
 	pi = np.pi
 	e = np.exp(1)
-
 	nan = np.nan
 	inf = np.inf
+	fltmin = sys.float_info.min
+	fltmax = sys.float_info.max
+
 	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
 	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
 	complexes = (np.complex64,np.complex128,)
