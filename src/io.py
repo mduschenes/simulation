@@ -1331,7 +1331,7 @@ def _load(path,wr,ext,options=None,transform=None,execute=None,verbose=None,**kw
 		data = path.readlines(**options)
 	elif ext in ['pickle','pkl']:
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
-		options = kwargs
+		options = {}
 		data = pickle.load(path,**options)
 	elif ext in ['json']:
 		options = {'cls':decode_json,'object_hook':serialize_json,**kwargs}
@@ -1520,7 +1520,7 @@ def _dump(data,path,wr,ext,options=None,transform=None,execute=None,verbose=None
 		options = {}
 		path.dumplines(data,**options)
 	elif ext in ['pickle','pkl']:
-		options = {**dict(protocol=pickle.HIGHEST_PROTOCOL),**kwargs}
+		options = {**dict(protocol=pickle.HIGHEST_PROTOCOL),**{}}
 		pickleable(data,callables=kwargs.pop('callables',True))
 		pickle.dump(data,path,**options)
 	elif ext in ['json']:

@@ -262,6 +262,7 @@ if backend in ['jax','jax.autograd','quimb']:
 	separ = '_'
 	blank = ''
 
+	base = 10
 
 	def debug(*obj,**objs):
 		strings = {}
@@ -312,6 +313,8 @@ elif backend in ['autograd']:
 	separ = '_'
 	blank = ''
 
+	base = 10
+
 	def debug(*args,**kwargs):
 		print(*args,**kwargs)
 		return
@@ -352,6 +355,8 @@ elif backend in ['numpy']:
 	delim = '.'
 	separ = '_'
 	blank = ''
+
+	base = 10
 
 	def debug(*args,**kwargs):
 		print(*args,**kwargs)
@@ -10535,6 +10540,19 @@ def expmat(a,dtype=None):
 	return sp.linalg.expm(a,dtype=dtype)
 
 
+def exponentiate(a,base=None):
+	'''
+	Exponentiate iterable
+	Args:
+		a (iterable): Iterable to exponentiate
+		base (int,float): Base of exponential
+	Returns:
+		a (iterable): Exponential of iterable
+	'''
+	base = 10 if base is None else base
+	return list(map(lambda i:base**i,a))
+
+
 @jit
 def sin(a):
 	'''
@@ -11783,23 +11801,24 @@ def padder(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 
 	return data
 
-def padding(data,value=None):
+def padding(data,value=None,size=None):
 	'''
 	Ensure data is shape and pad with values
 	Args:
 		data (array): Array to be padded
 		value (array): Value to pad
+		size (int): Size to pad
 	Returns:
 		data (array): Padded array
 	'''
 
 	value = 0 if value is None else value
+	size = None if size is None else size
 
 	axis = -1
-	size = max(i.shape[axis] for i in data)
+	size = max(i.shape[axis] for i in data) if size is None else size
 	ndim = min(i.ndim for i in data)
 	shape = tuple(max(i.shape[j] for i in data) for j in range(ndim) if j != (axis if axis>=0 else ndim+axis))
-
 
 	data = stack(tuple(concatenate((i,value*ones((*shape,size-i.shape[axis])))) if (i.shape[axis]<size) else i for i in data))
 
