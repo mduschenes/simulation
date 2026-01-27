@@ -30,6 +30,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patheffects
 
+from natsort import natsorted
+
 import mpmath as mp
 mp.dps = 100
 
@@ -78,13 +80,14 @@ def parameterize(z,d=None,s=None,w=None):
 	s = 1 if s is None else s
 	w = 1 if w is None else w
 
-	eps = 1e-12
+	eps = 0
 	args,kwargs = tuple((-32,0,50,)),dict(endpoint=True)
 	bounds = exponentiate(linspace(*args,**kwargs))
 
 	u,v = asscalar(minimum(z)),asscalar(maximum(z))
 
 	z = (z-u)/(v-u)
+
 	z = z[(z>eps)*(z<=1)]
 
 	a,b = asscalar(addition(1/z)/z.size),asscalar(addition(1/z**2)/z.size)
@@ -131,6 +134,10 @@ if vectorize:
 
 		n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
 
+		z = (z-u)/(v-u)
+
+		x = (x-u)/(v-u)
+
 		y = sum(
 			(
 			sign(w[sum(l[:i])+t])
@@ -143,7 +150,7 @@ if vectorize:
 			for t in range(l[i])
 		)
 
-		y = where((x>u)*(x<v),y,0)
+		y = where((x>0)*(x<1),y,0)
 
 		return y
 
@@ -225,7 +232,7 @@ if vectorize:
 		s = 1 if s is None else s
 		w = 1 if w is None else w
 
-		eps = 1e-12
+		eps = 0
 		opts = dict(return_counts=True)
 
 		z,l = unique(z,**opts)
@@ -236,9 +243,14 @@ if vectorize:
 
 		n,d,u,v = z.size,addition(l),minimum(z),maximum(z)
 
+		z = (z-u)/(v-u)
+
 		w = array([
 			(
-			(1/2)*((-1)**(t%2))*sign(w[i])*
+			(1/2)*((-1)**(t%2))*sign(w[i])
+			*
+			(1/(v-u))
+			*
 			exp(log(abs(w[i]))+factorial(l[i],t))
 			*
 			sum(
@@ -257,6 +269,8 @@ if vectorize:
 			for t in range(l[i])
 		])
 
+		z = (v-u)*z + u
+
 		params = [z,l,w]
 
 		parameters = params
@@ -272,6 +286,10 @@ else:
 		z,l,w = parameters
 
 		n,d,u,v = len(z),sum(l),min(z),max(z)
+
+		z = [(z[i]-u)/(v-u) for i in range(n)]
+
+		x = [(y-u)/(v-u) for y in x]
 
 		y = [sum(
 			(
@@ -305,6 +323,10 @@ else:
 		z,l,w = parameters
 
 		n,d,u,v = len(z),sum(l),min(z),max(z)
+
+		z = [(z[i]-u)/(v-u) for i in range(n)]
+
+		x = [(y-u)/(v-u) for y in x]
 
 		y = [sum(
 			(
@@ -353,7 +375,7 @@ else:
 		s = 1 if s is None else s
 		w = 1 if w is None else w
 
-		eps = 1e-12
+		eps = 0
 
 		z = list(map(lambda i: float(asscalar(i)),z))
 
@@ -365,10 +387,15 @@ else:
 
 		n,d,u,v = len(z),sum(l),min(z),max(z)
 
+		z = [(z[i]-u)/(v-u) for i in range(n)]
+
 		w = [
 			(
-			(1/2)*((-1)**(t%2))*
+			(1/2)*((-1)**(t%2))
+			*
 			w[i]
+			*
+			(1/(v-u))
 			*
 			factorial(l[i],t)
 			*
@@ -387,6 +414,8 @@ else:
 			for i in range(n)
 			for t in range(l[i])
 			]
+
+		z = [(z[i]-u)/(v-u) for i in range(n)]
 
 		params = [z,l,w]
 
@@ -432,10 +461,9 @@ def run(settings,options,*args,**kwargs):
 
 				z = attribute['func'](data=z)
 
-				z = where(z>epsilon(),z,0)
 				d = D**N
 				s = M+1
-				w = multinomial(partition)/d
+				w = multinomial(partition)/(d**2)
 
 				if attribute['method']() in ['func']:
 
@@ -561,12 +589,14 @@ def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 		handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
 		for handle,label in zip(handles,labels):
 			handle[0].set_linewidth(12)
+		indices = [labels.index(label) for label in natsorted(labels)]
+		handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
 
 		legend = ax.legend(
 			handles,labels,
 			title="$k$",
 			loc="upper right",
-			ncol=1,
+			ncol=3,
 			title_fontsize=50,
 			prop={"size":50},
 			markerscale=6,
@@ -609,78 +639,118 @@ def process(settings,options,*args,**kwargs):
 
 		parameters = data[key]['parameters']
 
-		attr = tuple(setting[attr] for attr in attrs)
+		attr = tuple(setting[attr] if not isinstance(setting[attr],str) else setting[attr].split(delim)[-1] for attr in attrs)
 
 		args,kwargs = tuple((-32,0,1000,)),dict(endpoint=True)
 
 		if (attr not in fig) or (attr not in ax):
 			fig[attr],ax[attr] = None,None
 
-		if vectorize:
+		# if vectorize:
 
-			if attribute['method']() in ['func']:
+		# 	if attribute['method']() in ['func']:
 
-				x = logspace(*args,**kwargs)
+		# 		x = logspace(*args,**kwargs)
 
-				func = {'pdf':functions,'cdf':Functions}[method]
+		# 		func = {'pdf':functions,'cdf':Functions}[method]
 
-				plts = dict(
-					label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='-',
-					)
+		# 		plts = dict(
+		# 			label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='-',
+		# 			alpha=0.5,
+		# 			)
 
-			elif attribute['method']() in ['functional']:
+		# 	elif attribute['method']() in ['functional']:
 
-				x = logspace(*args,**kwargs)
+		# 		x = logspace(*args,**kwargs)
 
-				func = {'pdf':functionals,'cdf':Functionals}[method]
+		# 		func = {'pdf':functionals,'cdf':Functionals}[method]
 
-				plts = dict(
-					label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='--',
-					)
+		# 		plts = dict(
+		# 			label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='--',
+		# 			alpha=0.8,
+		# 			)
 
-		else:
+		# else:
 
-			if attribute['method']() in ['func']:
+		# 	if attribute['method']() in ['func']:
 
-				x = logspace(*args,**kwargs)
+		# 		x = logspace(*args,**kwargs)
 
-				func = {'pdf':functions,'cdf':Functions}[method]
+		# 		func = {'pdf':functions,'cdf':Functions}[method]
 
-				plts = dict(
-					label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='-',
-					)
+		# 		plts = dict(
+		# 			label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='-',
+		# 			alpha=0.5,
+		# 			)
 
-			elif attribute['method']() in ['functional']:
+		# 	elif attribute['method']() in ['functional']:
 
-				from mpmath import linspace
+		# 		from mpmath import linspace
 
-				x = exponentiate(linspace(*args,**kwargs))
+		# 		x = exponentiate(linspace(*args,**kwargs))
 
-				func = {'pdf':functionals,'cdf':Functionals}[method]
+		# 		func = {'pdf':functionals,'cdf':Functionals}[method]
 
-				plts = dict(
-					label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='--',
-					)
+		# 		plts = dict(
+		# 			label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='--',
+		# 			alpha=0.8,
+		# 			)
 
-		y = func(parameters,x)
 
-		x,y = array([float(max(min(i,fltmax),fltmin)) for i in x]),array([float(max(min(i,fltmax),fltmin)) for i in y])
+		# y = func(parameters,x)
 
-		x,y = x[y>=0],y[y>=0]
+		# x,y = array([float(max(min(i,fltmax),fltmin)) for i in x]),array([float(max(min(i,fltmax),fltmin)) for i in y])
 
-		fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**plts})
+		# x,y = x[y>=0],y[y>=0]
+
+		# fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**plts})
+
+
+
+		if attribute['method']() in ['func']:
+
+			d = setting['D']**setting['N']
+			s = setting['M']+1
+			l = 1
+			m = setting['M']
+			parameters = setting['parameters']
+
+			parameters = 1 - ((1-parameters)**(m))
+
+			params = dict(
+				a = l*s,
+				b = (d-l)*s,
+				loc = parameters/d/d,
+				scale = 1/(1-parameters),
+			)
+
+			plts = dict(
+				label='$\\textrm{Distribution}~:~{%s}$'%(setting['M']),
+				color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+				marker='',
+				linestyle=':',
+				alpha=1,
+				)
+
+			opts = dict(function=f'beta.{method}',**params)
+
+			x = logspace(*args,**kwargs)
+
+			y = distribution(x,**opts)
+
+			fig[attr],ax[attr] = plot(x,y,fig=fig[attr],ax=ax[attr],options={**plots,**plts})
 
 	return
 
@@ -755,12 +825,14 @@ def test(settings,options,*args,**kwargs):
 			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
 			for handle,label in zip(handles,labels):
 				handle[0].set_linewidth(12)
+			indices = [labels.index(label) for label in natsorted(labels)]
+			handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
 
 			legend = ax.legend(
 				handles,labels,
 				title="$k$",
 				loc="upper right",
-				ncol=1,
+				ncol=2,
 				title_fontsize=50,
 				prop={"size":50},
 				markerscale=6,
@@ -781,6 +853,7 @@ def test(settings,options,*args,**kwargs):
 		D=[2],
 		N=[4],
 		M=[0],
+		parameters=[0],
 		)
 
 	fig,ax = None,None
@@ -920,7 +993,6 @@ def test(settings,options,*args,**kwargs):
 
 		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
 
-
 	plts = dict(
 		label='$\\textrm{Distribution}~:~{%s}$'%(setting['M']),
 		color='viridis_%f'%((settings['M'].index(setting['M']))/(len(settings['M'])+1)),
@@ -980,7 +1052,7 @@ def main(*args,**kwargs):
 	attribute['data'] = func
 
 	def func(settings,options,data,*args,**kwargs):
-		parameters = 1e-4
+		parameters = settings['parameters']
 		parameters = 1 - ((1-parameters)**(settings['M']))
 		obj = (1-parameters)*data + parameters*addition(data)/data.size
 		return obj
@@ -994,8 +1066,8 @@ def main(*args,**kwargs):
 		# attr=['pauli'],
 		# attr=['tetrad'],
 		# attr=['tetrad','pauli'],
-		attr=['test.pauli','test.tetrad'],
-		# attr=['test.pauli'],
+		# attr=['test.pauli','test.tetrad'],
+		attr=['test.tetrad','tetrad'],
 		D=[2],
 		# N=[2,3,4,5,6,7,8],
 		# M=[0,2,4,8,16,32],
@@ -1003,7 +1075,9 @@ def main(*args,**kwargs):
 		# M=[0,2,4,8,16,32],
 		N=[2],
 		# M=[0,2,4,8,16,32],
-		M=[0,2,4,8,16,32],
+		# M=[0,2,4,8,16,32],
+		M=[0,2,4],
+		parameters=[1e-3],
 		)
 
 	options = dict(
@@ -1014,7 +1088,7 @@ def main(*args,**kwargs):
 			}),
 		path   = (lambda settings={},options={},keywords=keywords: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={},keywords=keywords: dict(wr='a',default={})),
-		do     = (lambda settings={},options={},keywords=keywords: (not exists(options['data'](settings,options))) or (load(options['data'](settings,options),**options['io'](settings,options)) is None) or (options['key'](settings,options) not in load(options['data'](settings,options),**options['io'](settings,options)))),
+		do     = (lambda settings={},options={},keywords=keywords: True or (not exists(options['data'](settings,options))) or (load(options['data'](settings,options),**options['io'](settings,options)) is None) or (options['key'](settings,options) not in load(options['data'](settings,options),**options['io'](settings,options)))),
 		key    = (lambda settings={},options={},keywords=keywords: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		attrs  = (lambda settings={},options={},keywords=keywords: ('attr','N')),
 		method  = (lambda settings={},options={},keywords=keywords: 'pdf'),
