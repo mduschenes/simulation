@@ -15,7 +15,7 @@ os.environ['NUMPY_BACKEND'] = 'JAX'
 
 from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,allclose,vtype,copy,exponentiate
 from src.utils import exp,log,log1p,sign,gammaln
-from src.utils import nan,fltmin,fltmax,delim,epsilon,iterables
+from src.utils import pi,nan,fltmin,fltmax,delim,epsilon,iterables
 from src.utils import where,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
 from src.utils import eig,addition,prod,permutations,partitions,multinomial,permute,distribution
 from src.utils import integral
@@ -116,6 +116,87 @@ def parameterize(z,d=None,s=None,w=None):
 	params.update({i:j for i,j in dict(p=p,u=u,v=v,w=w).items()})
 
 	parameters = [float(max(min(params[i],fltmax),fltmin)) for i in params]
+
+	return parameters
+
+
+
+import sympy as sp
+from sympy.combinatorics.named_groups import SymmetricGroup
+def _function(parameters,x):
+
+	def trace(x,z,p):
+		return addition((1-(x[:,None]/z[None,:]))**p,axis=-1)
+
+	z,(d,l,u,v,w) = parameters[:-5],parameters[-5:]
+
+	z,d,l,u,v,w = z.astype(float),int(d),int(l),float(u),float(v),float(w)
+
+	x = (x-u)/(v-u)
+
+	t = d-l-1
+
+	if t>0:
+		G = list(SymmetricGroup(t).generate_schreier_sims())
+		y = 0
+		for g in G:
+			k = [len(p) for p in g.full_cyclic_form]
+			k = {p:k.count(p) for p in set(k)}
+			y += prod(trace(x,z,p)**k[p] for p in k)
+	else:
+		y = exp(gammaln(l+t)-gammaln(l))
+
+	y *= sign(w)*exp(log(abs(w))-log(v-u)+(gammaln(d)-gammaln(l)-gammaln(d-l))-(gammaln(l+t)-gammaln(l))-sum(log(z))+(l-1)*log(x))
+
+	return y
+
+def _functions(parameters,x):
+	func = lambda y,parameters: y+_function(parameters,x)
+	y = 0*x
+	for params in parameters:
+		y = func(y,params)
+	return y
+
+def _Function(parameters,x):
+	bounds = logspace(-20,0,50)
+	@vmap
+	def func(z):
+		return z*integral(lambda x,z=z:_function(parameters,z*x),bounds)
+	y = func(x)
+	return y
+
+def _Functions(parameters,x):
+	bounds = logspace(-20,0,50)
+	@vmap
+	def func(z):
+		return z*integral(lambda x,z=z:_functions(parameters,z*x),bounds)
+	y = func(x)
+	return y
+
+def _parameterize(z,d=None,s=None,w=None):
+
+	if z is None:
+		parameters = None
+		return parameters
+
+	d = len(z) if d is None else d
+	s = 1 if s is None else s
+	w = 1 if w is None else w
+
+	eps = 0
+
+	u,v = asscalar(minimum(z)),asscalar(maximum(z))
+
+	z = (z-u)/(v-u)
+
+	z = z[(z>eps)*(z<=1)]
+
+	l,s,d = z.size,s,d
+	w = w
+
+	params = [*z,d,l,u,v,w]
+
+	parameters = [i for i in params]
 
 	return parameters
 
@@ -473,6 +554,10 @@ def run(settings,options,*args,**kwargs):
 
 					params = parameterization
 
+				elif attribute['method']() in ['_func']:
+
+					params = _parameterize
+
 				params = params(z,d=d,s=s,w=w)
 
 				parameters.append(params)
@@ -496,6 +581,12 @@ def run(settings,options,*args,**kwargs):
 				parameters = [[[*i,*[0]*(size-len(i))] for i in params] for params in parameters]
 				parameters = array(parameters)
 
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
 		else:
 
 			if attribute['method']() in ['func']:
@@ -509,6 +600,12 @@ def run(settings,options,*args,**kwargs):
 				size = max(len(i) for params in parameters for i in params)
 				parameters = [params for params in parameters]
 				parameters = parameters
+
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
 
 		value = {key:dict(parameters=parameters)}
 
@@ -676,6 +773,20 @@ def process(settings,options,*args,**kwargs):
 		# 			alpha=0.8,
 		# 			)
 
+		# 	elif attribute['method']() in ['_func']:
+
+		# 		x = logspace(*args,**kwargs)
+
+		# 		func = {'pdf':_functions,'cdf':_Functions}[method]
+
+		# 		plts = dict(
+		# 			label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='-',
+		# 			alpha=0.25,
+		# 			)
+
 		# else:
 
 		# 	if attribute['method']() in ['func']:
@@ -706,6 +817,20 @@ def process(settings,options,*args,**kwargs):
 		# 			marker='',
 		# 			linestyle='--',
 		# 			alpha=0.8,
+		# 			)
+
+		# 	elif attribute['method']() in ['_func']:
+
+		# 		x = logspace(*args,**kwargs)
+
+		# 		func = {'pdf':_functions,'cdf':_Functions}[method]
+
+		# 		plts = dict(
+		# 			label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+		# 			color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+		# 			marker='',
+		# 			linestyle='-',
+		# 			alpha=0.5,
 		# 			)
 
 
@@ -849,9 +974,9 @@ def test(settings,options,*args,**kwargs):
 
 
 	settings = dict(
-		attr=['test.pauli','pauli'],
+		attr=['test.pauli','check.pauli','pauli'],
 		D=[2],
-		N=[4],
+		N=[3],
 		M=[0],
 		parameters=[0],
 		)
@@ -878,7 +1003,7 @@ def test(settings,options,*args,**kwargs):
 		s = M+1
 		w = 1
 
-		l = 3
+		l = d//2
 		# z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 		z = {1:l}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 		# z = {(i+1)/d:1 for i in range(d)}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
@@ -898,6 +1023,10 @@ def test(settings,options,*args,**kwargs):
 			elif attribute['method']() in ['functional']:
 
 				func = parameterization
+
+			elif attribute['method']() in ['_func']:
+
+				func = _parameterize
 
 			params = func(z,d=d,s=s,w=w)
 
@@ -947,6 +1076,26 @@ def test(settings,options,*args,**kwargs):
 					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':_functions,'cdf':_Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+					color='black',
+					marker='o',
+					linestyle='-',
+					markersize=45,
+					alpha=0.25,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
 		else:
 
 			if attribute['method']() in ['func']:
@@ -986,6 +1135,26 @@ def test(settings,options,*args,**kwargs):
 					marker='',
 					linestyle='--',
 					alpha=0.8,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':_functions,'cdf':_Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+					color='black',
+					marker='o',
+					linestyle='-',
+					markersize=45,
+					alpha=0.25,
 					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
@@ -1041,13 +1210,17 @@ def main(*args,**kwargs):
 
 	def func(settings,options,*args,**kwargs):
 		attr = settings['attr']
-		obj = {**{attr:'func' for attr in ['tetrad','pauli']},**{attr:'functional' for attr in ['test.tetrad','test.pauli']}}[attr]
+		obj = {
+			**{attr:'func' for attr in ['tetrad','pauli']},
+			**{attr:'functional' for attr in ['test.tetrad','test.pauli']},
+			**{attr:'_func' for attr in ['check.tetrad','check.pauli']},
+			}[attr]
 		return obj
 	attribute['method'] = func
 
 	def func(settings,options,*args,**kwargs):
-		attr = settings['attr']
-		obj = real(eig(getattr(basis,attr.split(delim)[-1])(D=settings['D'])))
+		attr = settings['attr'].split(delim)[-1]
+		obj = real(eig(getattr(basis,attr)(D=settings['D'])))
 		return obj
 	attribute['data'] = func
 
@@ -1082,9 +1255,9 @@ def main(*args,**kwargs):
 
 	options = dict(
 		boolean = (lambda settings={},options={},keywords=keywords: {
-			'run':1,
-			'process':1,
-			'test':0,
+			'run':0,
+			'process':0,
+			'test':1,
 			}),
 		path   = (lambda settings={},options={},keywords=keywords: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={},keywords=keywords: dict(wr='a',default={})),
