@@ -2129,7 +2129,6 @@ def apply(data,plots,processes,verbose=None):
 								value[other][destination] = obj
 
 					functions[name][key] = function
-					print(name,key,function)
 
 					setter(plots,{key:value},delimiter=delim,default=True)
 
