@@ -3978,11 +3978,13 @@ def plotter(plots,processes,verbose=None):
 
 					if data.get(attr%(axes)) is None:
 						if axes in AXES:
-							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if OTHER in data]
-
+							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if plots[instance][subinstance][obj].get(prop) for data in search(plots[instance][subinstance][obj][prop]) if (data and OTHER in data)]
 							data[attr%(axes)] = data[attr%(axes)][0] if data[attr%(axes)] else None
 						elif attr%(axes) not in data:
 							continue
+
+					elif isinstance(data.get(attr%(axes)),bool) and (not data.get(attr%(axes))):
+						data[attr%(axes)] = None
 
 					if isinstance(data[attr%(axes)],list):
 						if not all(isinstance(i,list) for i in data[attr%(axes)]):
@@ -4028,6 +4030,7 @@ def plotter(plots,processes,verbose=None):
 						data[attr%(axes)] = data[attr%(axes)]
 
 					data[attr%(axes)] = texify(data[attr%(axes)],**options['texify'])
+
 
 			# Set ticks
 			attrs = ['set_%slim']

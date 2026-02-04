@@ -3,100 +3,138 @@
 source ~/.bashrc tensor
 
 path=${1}
-types=(${2:-log})
-types=(${2:-stats})
-indices=(${3:-0 4 3 2 1})
-indices=(${3:-4 6})
-string="$(echo ${indices[@]} | sed 's/ /./g')"
 
+name=${2:-all}
 
-for type in ${types[@]}
+case ${name} in
+	test)
+		types=(stats)
+		indices=("4 6")
+		;;
+	exit)
+		types=(sample)
+		indices=("1")
+		types=(stats)
+		indices=("6")
+		;;
+	sample)
+		types=(sample)
+		indices=("1")
+		;;
+	stats)
+		types=(stats)
+		indices=("4 6")
+		;;
+	all|*)
+		types=(stats sample)
+		indices=("4 6" "1")
+		;;
+esac
+
+for count in ${!types[@]}
 do
 
-	case ${type} in
-		log)
-			label=""
-			;;
-		scale)
-			label="scale."
-			;;
-		stats)
-			label=""
-			;;
-		*)
-			label=""
-			;;
-	esac
+	type=${types[${count}]}
 
+	indexes=(${indices[${count}]})
 
+	folder=${path}
+	file=${folder}/process.json
+	bkp=${file}.bkp
+	ext=json
 
-	for number in ${!indices[@]}
+	echo Process: ${type} ${indexes[@]} ${path}
+
+	for number in ${!indexes[@]}
 	do
-		index=${indices[${number}]}
 
-		case ${type} in
-			log|scale)
-				case ${index} in
-					0)
-						strings=(${index} ${index})
-						;;
-					*)
-						strings=(1e-${index} ${index})
-						;;
-				esac
-				;;
-			stats)
-				case ${index} in
-					0)
-						strings=(${index} ${index})
-						;;
-					*)
-						strings=(${index} ${index})
-						;;
-				esac
-				;;
-			*)
-				string=""
-				;;
-		esac
-
-
-		folder=${path}
-		file=${folder}/process.json
-		bkp=${file}.bkp
-		ext=json
+		index=${indexes[${number}]}
 
 		options=()
 
-
 		case ${type} in
-			log|scale)
-
+			sample)
 				options+=(
 					-i \
-					-e "s/\(\"fig.savefig.fname\"\:\).*/\1\"${label}${strings[1]}\",/" \
-					-e "s/\(\"noise.parameters\"\:\ \)\[.*\]/\1[${strings[0]}]/" \
+					-e "s/\(\"load\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"dump\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+					-e "s/\(size\":\) 45/\1 240/" \
 				)
-				;;
-			stats)
-
-				options+=(
-					-i \
-					-e "s/\(\"fig.savefig.fname\"\:\"tetrad[^.]*\)[^\"]*\",/\1.${label}${strings[1]}\",/" \
-					-e "s/\(\"N\"\:\ \)null\(.*\)/\1[${strings[0]}]\2/" \
-					-e "s/\(\"ax.set_title.label\": \).*/\1 null,/" \
-					-e "s/\(size\":\) 45/\1 120/" \
-				)
-
-				case ${number} in
+				case ${index} in
 					0)
 						options+=(
-							-e "s/\(\"style.share.ax.legend\"\).*,/\1: true,/" \
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
 						)
 						;;
 					*)
 						options+=(
-							-e "s/\(\"style.share.ax.legend\"\).*,/\1: false,/" \
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
+						)
+						;;
+				esac
+				;;
+			stats)
+				options+=(
+					-i \
+					-e "s/\(\"load\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"dump\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+					-e "s/\(\"N\":\ \)null\(.*\)/\1[${index}]\2/" \
+					-e "s/\(\"ax.set_title.label\":\).*/\1 null,/" \
+					-e "s/\(size\":\) 45/\1 120/" \
+				)
+				case ${index} in
+					4)
+						options+=(
+							-e "s/\(\"style.share.ax.legend\":\).*,/\1 true,/" \
+						)
+						;;
+					*)
+						options+=(
+							-e "s/\(\"style.share.ax.legend\":\).*,/\1 false,/" \
+						)
+						;;
+				esac
+				;;
+			log)
+				options+=(
+					-i \
+					-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+					)
+				case ${index} in
+					0)
+						options+=(
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
+						)
+						;;
+					*)
+						options+=(
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
+						)
+						;;
+				esac
+				;;
+			scale)
+				options+=(
+					-i \
+					-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+					)
+				case ${index} in
+					0)
+						options+=(
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
+						)
+						;;
+					*)
+						options+=(
+							-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
 						)
 						;;
 				esac
@@ -113,6 +151,8 @@ do
 
 			sed "${options[@]}" ${file}
 
+			[[ ${name} == exit ]] && exit 0
+
 			exe=./process.py
 			args=(${path})
 
@@ -125,42 +165,17 @@ do
 	done
 
 
-	process=()
+	processes=()
 
 	case ${type} in
-		log|scale)
-			for variable in array state
+		sample|stats)
+
+			for number in ${!indexes[@]}
 			do
-				folder=${path}/plot
-				file=plot.sample.${variable}.M.noise.parameters.${label}M.noise
-				ext=pdf
-				process+=(${folder}/${file})
-			done
-
-			if [[ ! -s ${process} ]]
-			then
-
-				for name in ${process[@]}
-				do
-					cmd=()
-					cmd+=(pdfmerge)
-					cmd+=("${name}.${string}.${ext}")
-					for i in ${indices[@]}
-					do
-						cmd+=("${name}.${i}.${ext}");
-					done
-					${cmd[@]}
-				done
-			fi
-			;;
-		stats)
-
-			for number in ${!indices[@]}
-			do
-				index=${indices[${number}]}
+				index=${indexes[${number}]}
 
 				folder=${path}/plot
-				file=plot.stats.array.state.M.noise.parameters.N.tetrad
+				file=
 				ext=pdf
 
 				folders=../../notes/paper/figures
@@ -169,17 +184,41 @@ do
 
 				options=(-rfv)
 
-				case ${number} in
-					0)
-						files+=(${file}.${index})
+				case ${type} in
+					sample)
+						file=plot.sample.array.M.noise.parameters.N.tetrad
+						case ${index} in
+							*)
+								for i in 0 2 1
+								do
+									files+=(${file}.${i})
+								done
+								;;
+							*)
+								;;
+						esac
+						;;
+					stats)
+						file=plot.stats.array.state.M.noise.parameters.N.tetrad
+						case ${index} in
+							4)
+								for i in 4
+								do
+									files+=(${file}.${i})
+								done
+								;;
+							*)
+								for i in 6 8 10
+								do
+									files+=(${file}.${i})
+								done
+								;;
+							*)
+								;;
+						esac
 						;;
 					*)
-						for i in 6 8 10
-						do
-							files+=(${file}.${i})
-						done
-						;;
-					*)
+						continue
 						;;
 				esac
 
@@ -189,7 +228,77 @@ do
 				done
 
 			done
+			;;
+		log)
+			for variable in array state
+			do
+				folder=${path}/plot
+				file=plot.sample.${variable}.M.noise.parameters.M.noise
+				ext=pdf
+				processes+=(${folder}/${file})
 
+				string="$(echo ${indexes[@]} | sed 's/ /./g')"
+
+			done
+
+			if [[ ! -s ${processes} ]]
+			then
+
+				for process in ${processes[@]}
+				do
+					cmd=()
+					cmd+=(pdfmerge)
+					cmd+=("${process}.${string}.${ext}")
+					for i in ${indexes[@]}
+					do
+						cmd+=("${process}.${i}.${ext}");
+					done
+					${cmd[@]}
+				done
+			fi
+			;;
+		scale)
+			for variable in array state
+			do
+				folder=${path}/plot
+				file=plot.sample.${variable}.M.noise.parameters.scale.M.noise
+				ext=pdf
+				processes+=(${folder}/${file})
+
+				string="$(echo ${indexes[@]} | sed 's/ /./g')"
+
+			done
+
+			if [[ ! -s ${processes} ]]
+			then
+
+				for process in ${processes[@]}
+				do
+					cmd=()
+					cmd+=(pdfmerge)
+					cmd+=("${process}.${string}.${ext}")
+					for i in ${indexes[@]}
+					do
+						cmd+=("${process}.${i}.${ext}");
+					done
+					${cmd[@]}
+				done
+			fi
+			;;
+		*)
+			;;
+	esac
+
+done
+
+
+for count in ${!types[@]}
+do
+
+	type=${types[${count}]}
+
+	case ${type} in
+		sample|stats)
 
 			folder=../../notes/paper
 			file=main.tex
@@ -203,42 +312,12 @@ do
 
 			cd -
 
+			break
 			;;
 		*)
 			;;
 	esac
-
-	# from src.utils import array,flatten,is_naninf
-	# from src.io import load,dump,exists
-
-	# if not exists(path):
-	# 	merge(data,path,*args,**kwargs)
-
-	# options = dict(wrapper='df',verbose=True)
-	# data = load(path,**options)
-
-	# print(data.shape,[*data.columns])
-
-	# keys = {key:['%s'%(key),'%s.error'%(key)] for key in ['sample.array.information','sample.state.information']}
-	# by = ['N','M','noise.parameters']
-	# options = dict(as_index=False,dropna=False)
-	# def func(data):
-	# 	data = array([*flatten(data)])
-	# 	return data
-
-	# data = data.groupby(by=by,**options)
-
-	# for groups in data.groups:
-
-	# 	print(dict(zip(by,groups)))
-
-	# 	group = data.get_group(groups)
-
-	# 	for key in keys:
-	# 		for i in keys[key]:
-	# 			value = func(group[i])
-	# 			print(i,i[is_naninf(i)].shape)
-	# 			print(i)
-	# 			print()
-
 done
+
+
+

@@ -1,5 +1,5 @@
 {
-	"sample.array.M.noise.parameters": {
+	"sample.array.M.noise.parameters.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 32,
@@ -77,7 +77,7 @@
 						"indexing": null,
 						"slice": null
 					},
-					"data": {"plot":{"base":10}},
+					"data": {"plot": {"base": 10}},
 					"obj": null,
 					"plots": [
 						"errorbar"
@@ -88,21 +88,21 @@
 						"args": [],
 						"kwargs" : {
 							"function": "array",
-							"settings":{
-								"kwargs":{
-									"process":false,"standardize":false,
-									"optimizer":"cg",
-									"iterations":100,
-									"eps":{"value":1e-20},
-									"value":{"value":1},
-									"uncertainty":true,
-									"alpha":1e-4,"beta":1e-6,
-									"c1":1e-2,"c2":1e-1,"maxiter":2000,
-									"path":null,
-									"verbose":false
+							"settings": {
+								"kwargs": {
+									"process": false,"standardize": false,
+									"optimizer": "cg",
+									"iterations": 100,
+									"eps": {"value": 1e-20},
+									"value": {"value": 1},
+									"uncertainty": true,
+									"alpha": 1e-4,"beta": 1e-6,
+									"c1": 1e-2,"c2": 1e-1,"maxiter": 2000,
+									"path": null,
+									"verbose": false
 								}
 							},
-							"settings":null
+							"settings": null
 						}
 					},
 					"alpha": {
@@ -223,14 +223,14 @@
 					"size": 36
 				},
 				"ax.yaxis.set_tick_params": {
-					"pad": 5
+					"pad": 20
 				},
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
-					"pad":5,
-					"size": 10,
-					"length": 8,
+					"pad": 20,
+					"size": 30,
+					"length": 30,
 					"width": 1
 				}
 			},
@@ -339,7 +339,7 @@
 				{
 					"axis": "y",
 					"which": "major",
-					"pad": 10,
+					"pad": 20,
 					"length": 8,
 					"width": 1
 				},
@@ -352,7 +352,7 @@
 				{
 					"axis": "x",
 					"which": "major",
-					"pad": 10,
+					"pad": 30,
 					"length": 8,
 					"width": 1
 				},
@@ -443,7 +443,7 @@
 			}
 		}
 	},
-	"sample.state.M.noise.parameters": {
+	"sample.state.M.noise.parameters.N": {
 		"fig": {
 			"set_size_inches": {
 				"w": 32,
@@ -521,7 +521,7 @@
 						"indexing": null,
 						"slice": null
 					},
-					"data": {"plot":{"base":10}},
+					"data": {"plot": {"base": 10}},
 					"obj": null,
 					"plots": [
 						"errorbar"
@@ -532,21 +532,21 @@
 						"args": [],
 						"kwargs" : {
 							"function": "state",
-							"settings":{
-								"kwargs":{
-									"process":false,"standardize":false,
-									"optimizer":"cg",
-									"iterations":100,
-									"eps":{"value":1e-20},
-									"value":{"value":1},
-									"uncertainty":true,
-									"alpha":1e-4,"beta":1e-6,
-									"c1":1e-2,"c2":1e-1,"maxiter":2000,
-									"path":null,
-									"verbose":false
+							"settings": {
+								"kwargs": {
+									"process": false,"standardize": false,
+									"optimizer": "cg",
+									"iterations": 100,
+									"eps": {"value": 1e-20},
+									"value": {"value": 1},
+									"uncertainty": true,
+									"alpha": 1e-4,"beta": 1e-6,
+									"c1": 1e-2,"c2": 1e-1,"maxiter": 2000,
+									"path": null,
+									"verbose": false
 								}
 							},
-							"settings":null
+							"settings": null
 						}
 					},
 					"alpha": {
@@ -667,12 +667,12 @@
 					"size": 36
 				},
 				"ax.yaxis.set_tick_params": {
-					"pad": 5
+					"pad": 20
 				},
 				"ax.tick_params": {
 					"labelsize": 36,
 					"which": "major",
-					"pad":5,
+					"pad": 20,
 					"size": 10,
 					"length": 8,
 					"width": 1
@@ -783,7 +783,7 @@
 				{
 					"axis": "y",
 					"which": "major",
-					"pad": 10,
+					"pad": 20,
 					"length": 8,
 					"width": 1
 				},
@@ -796,7 +796,7 @@
 				{
 					"axis": "x",
 					"which": "major",
-					"pad": 10,
+					"pad": 30,
 					"length": 8,
 					"width": 1
 				},
@@ -943,11 +943,11 @@
 							"func": "src.functions.func_stats_function",
 							"args": [],
 							"kwargs": {
-								"function":"state",
-								"x":"sample.state.log.x","y":"y","xerr":null,"yerr":null,
-								"settings":{
-									"func":"cumulative",
-									"options":{"base":10,"scale":"log","range":[1e-20,1e0]}
+								"function": "state",
+								"x": "sample.state.log.x","y": "y","xerr": null,"yerr": null,
+								"settings": {
+									"func": "cumulative",
+									"options": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
@@ -963,7 +963,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"noise.parameters":"\\textrm{PVM}"},
+							"label": {"noise.parameters": "\\textrm{PVM}"},
 							"include": {
 								"noise.parameters": null
 							},
@@ -1053,11 +1053,11 @@
 							"func": "src.functions.func_stats_function",
 							"args": [],
 							"kwargs": {
-								"function":"array",
-								"x":"sample.array.log.x","y":"y","xerr":null,"yerr":null,
-								"settings":{
-									"func":"cumulative",
-									"options":{"base":10,"scale":"log","range":[1e-20,1e0]}
+								"function": "array",
+								"x": "sample.array.log.x","y": "y","xerr": null,"yerr": null,
+								"settings": {
+									"func": "cumulative",
+									"options": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
@@ -1073,7 +1073,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"noise.parameters":"\\textrm{SIC-POVM}"},
+							"label": {"noise.parameters": "\\textrm{SIC-POVM}"},
 							"include": {
 								"noise.parameters": null
 							},
@@ -1286,7 +1286,7 @@
 				{
 					"axis": "x",
 					"which": "major",
-					"pad": 20,
+					"pad": 30,
 					"length": 8,
 					"width": 1
 				},
@@ -1450,7 +1450,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"M":"\\textrm{PVM}"},
+							"label": {"M": "\\textrm{PVM}"},
 							"include": {
 								"M": null
 							},
@@ -1591,7 +1591,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"M":"\\textrm{SIC-POVM}"},
+							"label": {"M": "\\textrm{SIC-POVM}"},
 							"include": {
 								"M": null
 							},
@@ -1953,28 +1953,28 @@
 						"process": {},
 						"analysis": {
 							"sample.state.information.error": {
-								"func":"src.functions.func_func_fit",
-								"args":[],
-								"kwargs":{
+								"func": "src.functions.func_func_fit",
+								"args": [],
+								"kwargs": {
 									"function": "state",
-									"x":"N","xerr":null,"y":"sample.state.information","yerr":"sample.state.information.error",
-									"settings":{
-										"func":"lstsq","intercept":true,"parameters":null,
-										"bootstrap":{"size":5,"random":"gaussian","seed":123},
-										"preprocess":"log10.log10",
-										"postprocess":"exp10.exp10",
-										"kwargs":{
-											"process":true,"standardize":true,
-											"metric":"lstsq",
-											"optimizer":"cg",
-											"iterations":3,
-											"eps":{"value":1e-20},
-											"value":{"value":1},
-											"uncertainty":true,
-											"alpha":1e-4,"beta":1e-6,
-											"c1":1e-2,"c2":1e-1,"maxiter":2000,
-											"path":null,
-											"verbose":false
+									"x": "N","xerr": null,"y": "sample.state.information","yerr": "sample.state.information.error",
+									"settings": {
+										"func": "lstsq","intercept": true,"parameters": null,
+										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
+										"preprocess": "log10.log10",
+										"postprocess": "exp10.exp10",
+										"kwargs": {
+											"process": true,"standardize": true,
+											"metric": "lstsq",
+											"optimizer": "cg",
+											"iterations": 3,
+											"eps": {"value": 1e-20},
+											"value": {"value": 1},
+											"uncertainty": true,
+											"alpha": 1e-4,"beta": 1e-6,
+											"c1": 1e-2,"c2": 1e-1,"maxiter": 2000,
+											"path": null,
+											"verbose": false
 										}
 									}
 								}
@@ -1992,7 +1992,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"noise.parameters":"\\textrm{PVM}"},
+							"label": {"noise.parameters": "\\textrm{PVM}"},
 							"include": {
 								"noise.parameters": null
 							},
@@ -2058,28 +2058,28 @@
 						"process": {},
 						"analysis": {
 							"sample.array.information.error": {
-								"func":"src.functions.func_func_fit",
-								"args":[],
-								"kwargs":{
+								"func": "src.functions.func_func_fit",
+								"args": [],
+								"kwargs": {
 									"function": "array",
-									"x":"N","xerr":null,"y":"sample.array.information","yerr":"sample.array.information.error",
-									"settings":{
-										"func":"lstsq","intercept":true,"parameters":null,
-										"bootstrap":{"size":5,"random":"gaussian","seed":123},
-										"preprocess":"log10.log10",
-										"postprocess":"exp10.exp10",
-										"kwargs":{
-											"process":true,"standardize":true,
-											"metric":"lstsq",
-											"optimizer":"cg",
-											"iterations":3,
-											"eps":{"value":1e-20},
-											"value":{"value":1},
-											"uncertainty":true,
-											"alpha":1e-4,"beta":1e-6,
-											"c1":1e-2,"c2":1e-1,"maxiter":2000,
-											"path":null,
-											"verbose":false
+									"x": "N","xerr": null,"y": "sample.array.information","yerr": "sample.array.information.error",
+									"settings": {
+										"func": "lstsq","intercept": true,"parameters": null,
+										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
+										"preprocess": "log10.log10",
+										"postprocess": "exp10.exp10",
+										"kwargs": {
+											"process": true,"standardize": true,
+											"metric": "lstsq",
+											"optimizer": "cg",
+											"iterations": 3,
+											"eps": {"value": 1e-20},
+											"value": {"value": 1},
+											"uncertainty": true,
+											"alpha": 1e-4,"beta": 1e-6,
+											"c1": 1e-2,"c2": 1e-1,"maxiter": 2000,
+											"path": null,
+											"verbose": false
 										}
 									}
 								}
@@ -2097,7 +2097,7 @@
 							"one": false
 						},
 						"legend": {
-							"label": {"noise.parameters":"\\textrm{SIC-POVM}"},
+							"label": {"noise.parameters": "\\textrm{SIC-POVM}"},
 							"include": {
 								"noise.parameters": null
 							},

@@ -3,7 +3,7 @@
 	"dump": 1,
 	"tmp": "merge",
 	"chunk": null,
-	"transform":null,
+	"transform": null,
 	"plot": 1,
 	"process": 1,
 	"postprocess": 0,
@@ -11,8 +11,8 @@
 	"usetex": 1,
 	"useval": 1,
 	"instance": {
-		"sample.array.M.noise.parameters": 1,
-		"sample.state.M.noise.parameters": 1,
+		"sample.array.M.noise.parameters.N": 1,
+		"sample.state.M.noise.parameters.N": 1,
 		"stats.array.state.M.noise.parameters.N": 1,
 		"information.array.state.N.M.noise.parameters": 0,
 		"information.array.state.M.noise.parameters": 0
@@ -20,7 +20,7 @@
 	"configuration": [
 		[
 			[
-				"sample.array.M.noise.parameters"
+				"sample.array.M.noise.parameters.N"
 			],
 			[
 				{
@@ -35,29 +35,22 @@
 						"noise.parameters": [1e-2]
 					},
 					"kwargs": {
-						"fig.set_size_inches": {
-							"w": 43,
-							"h": 43
-						},
+						"fig.savefig.fname": "scale",
+						"fig.savefig.fname": "tetrad",
+						"fig.subplots_adjust": {"wspace": 0.1,"hspace": 0.1},
 						"fig.set_size_inches": {
 							"w": 90,
-							"h": 45
+							"h": 30
 						},
-						"fig.subplots_adjust": {
-							"wspace": 0.3,
-							"hspace": 0.3
-						},
-						"fig.savefig.fname":"scale.M.noise",
-						"fig.savefig.fname":"scale.M.noise",
 						"ax.set_title.label": "M",
-						"ax.set_ylabel.ylabel": "noise.parameters",
+						"ax.set_ylabel.ylabel": "$\\textrm{Distribution}~~P_{\\mathcal{P}\\gamma}^{(k)}(p)$",
 						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ D^{2N}\\cdot p$",
-						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ p$",
+						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ -\\log_{q^{2}}(p)$",
 						"ax.bar.label.wrapper": {
-							"x":{
+							"x": {
 								"func": "src.functions.func_sample_wrapper_x",
 								"args": [],
-								"kwargs": {"function":"array"}
+								"kwargs": {"function": "array"}
 							}
 						},
 						"ax.bar.label.wrapper": null,
@@ -124,12 +117,12 @@
 						"ax.set_colorbar.share": true,
 						"ax.set_colorbar.location": "right",
 						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
+						"ax.set_colorbar.fraction": 0.15,
+						"ax.set_colorbar.shrink": 1,
+						"ax.set_colorbar.aspect": 40,
+						"ax.set_colorbar.pad": 0.02,
 						"ax.set_colorbar.anchor": [
-							10,
+							1.25,
 							0.5
 						],
 						"ax.set_colorbar.set_ticks.ticks": 5,
@@ -176,7 +169,7 @@
 						},
 						"ax.set_xlim": {
 							"xmin": 1e-17,
-							"xmax":1e5
+							"xmax": 1e5
 						},
 						"ax.set_xnbins": {
 							"nbins": 6
@@ -198,7 +191,7 @@
 						},
 						"ax.set_xlim": {
 							"xmin": 1e-24,
-							"xmax":1e0
+							"xmax": 1e0
 						},
 						"ax.set_xnbins": {
 							"nbins": 6
@@ -211,6 +204,28 @@
 						"ax.set_xticklabels": {
 							"labels": [
 								"2^{-2 \\cdot 22}","2^{-2 \\cdot 18}","2^{-2 \\cdot 14}","2^{-2 \\cdot 10}","2^{-2 \\cdot 6}","2^{-2 \\cdot 2}"
+							],
+							"size": 45
+						},
+						"ax.set_xscale": {
+							"value": "log",
+							"base": 4
+						},
+						"ax.set_xlim": {
+							"xmin": 1e-13,
+							"xmax": 1e-1
+						},
+						"ax.set_xnbins": {
+							"nbins": 6
+						},
+						"ax.set_xticks": {
+							"ticks": [
+								1e-12,1e-10,1e-8,1e-6,1e-4,1e-2
+							]
+						},
+						"ax.set_xticklabels": {
+							"labels": [
+								"12","10","8","6","4","2"
 							],
 							"size": 45
 						},
@@ -252,22 +267,22 @@
 									0
 								],
 								"decimals": 1,
-								"base":10,
-								"strip":true,
-								"usebase":true,
-								"strings":false
+								"base": 10,
+								"strip": true,
+								"usebase": true,
+								"strings": false
 							},
 							"size": 45
 						},
 						"ax.legend.set_label": true,
 						"style.share.ax.legend": true,
 						"style.share.ax.set_title": "top",
-						"style.share.ax.set_xlabel": "bottom",
+						"style.share.ax.set_xlabel": "bottom_centre",
 						"style.share.ax.set_xticks": true,
 						"style.share.ax.set_xticklabels": true,
 						"style.share.ax.set_ylabel": "left",
 						"style.share.ax.set_yticks": true,
-						"style.share.ax.set_yticklabels": true,
+						"style.share.ax.set_yticklabels": "left",
 						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				}
@@ -275,7 +290,7 @@
 		],
 		[
 			[
-				"sample.state.M.noise.parameters"
+				"sample.state.M.noise.parameters.N"
 			],
 			[
 				{
@@ -290,20 +305,13 @@
 						"noise.parameters": [1e-2]
 					},
 					"kwargs": {
+						"fig.savefig.fname": "scale",
+						"fig.savefig.fname": "state",
+						"fig.subplots_adjust": {"wspace": 0.3,"hspace": 0.3},
 						"fig.set_size_inches": {
-							"w": 43,
-							"h": 43
+							"w": 45,
+							"h": 20
 						},
-						"fig.set_size_inches": {
-							"w": 90,
-							"h": 45
-						},
-						"fig.subplots_adjust": {
-							"wspace": 0.3,
-							"hspace": 0.3
-						},
-						"fig.savefig.fname":"scale.M.noise",
-						"fig.savefig.fname":"scale.M.noise",
 						"ax.set_title.label": "M",
 						"ax.set_ylabel.ylabel": "noise.parameters",
 						"ax.set_xlabel.xlabel": "$\\textrm{Probability}~~ D^{N}\\cdot p$",
@@ -317,10 +325,10 @@
 							"strip": true
 						},
 						"ax.bar.label.wrapper": {
-							"x":{
+							"x": {
 								"func": "src.functions.func_sample_wrapper_x",
 								"args": [],
-								"kwargs": {"function":"state"}
+								"kwargs": {"function": "state"}
 							}
 						},
 						"ax.bar.label.wrapper": null,
@@ -387,12 +395,12 @@
 						"ax.set_colorbar.share": true,
 						"ax.set_colorbar.location": "right",
 						"ax.set_colorbar.orientation": "vertical",
-						"ax.set_colorbar.fraction": 0.02,
-						"ax.set_colorbar.size": "1.5%",
-						"ax.set_colorbar.pad": 0.5,
-						"ax.set_colorbar.aspect": 62,
+						"ax.set_colorbar.fraction": 0.15,
+						"ax.set_colorbar.shrink": 1,
+						"ax.set_colorbar.aspect": 40,
+						"ax.set_colorbar.pad": 0.02,
 						"ax.set_colorbar.anchor": [
-							10,
+							1.25,
 							0.5
 						],
 						"ax.set_colorbar.set_ticks.ticks": 5,
@@ -438,7 +446,7 @@
 						},
 						"ax.set_xlim": {
 							"xmin": -0.5,
-							"xmax":4.5
+							"xmax": 4.5
 						},
 						"ax.set_xnbins": {
 							"nbins": 9
@@ -460,7 +468,7 @@
 						},
 						"ax.set_xlim": {
 							"xmin": 1e-17,
-							"xmax":1e5
+							"xmax": 1e5
 						},
 						"ax.set_xnbins": {
 							"nbins": 6
@@ -482,7 +490,7 @@
 						},
 						"ax.set_xlim": {
 							"xmin": 1e-24,
-							"xmax":1e0
+							"xmax": 1e0
 						},
 						"ax.set_xnbins": {
 							"nbins": 6
@@ -536,10 +544,10 @@
 									0
 								],
 								"decimals": 1,
-								"base":10,
-								"strip":true,
-								"usebase":true,
-								"strings":false
+								"base": 10,
+								"strip": true,
+								"usebase": true,
+								"strings": false
 							},
 							"size": 45
 						},
@@ -568,8 +576,13 @@
 						"N": null
 					},
 					"kwargs": {
-						"fig.savefig.fname":"tetrad",
-						"ax.errorbar.label.labels": {"noise.parameters":null},
+						"fig.savefig.fname": "tetrad",
+						"fig.subplots_adjust": {"wspace": 0.5,"hspace": 0.1},
+						"fig.set_size_inches": {
+							"w": 45,
+							"h": 20
+						},
+						"ax.errorbar.label.labels": {"noise.parameters": null},
 						"ax.errorbar.label.scinotation": {
 							"scilimits": [
 								0,
@@ -578,14 +591,14 @@
 							"decimals": 0,
 							"one": false
 						},
-						"ax.errorbar.plots":false,
+						"ax.errorbar.plots": false,
 						"ax.set_title.label": "N",
 						"ax.set_title.size": 45,
 						"ax.set_xlabel.xlabel": "M",
 						"ax.set_xlabel.size": 45,
 						"ax.set_ylabel.ylabel": "$\\textrm{Kolmogorov–Smirnov} ~~ \\mathcal{L}_{\\mathcal{P}\\gamma}^{(k)}$",
 						"ax.set_ylabel.size": 45,
-						"ax.set_ylabel.y": null,
+						"ax.set_ylabel.y": 0.45,
 						"ax.set_xscale": {
 							"value": "log",
 							"base": 2
@@ -611,7 +624,7 @@
 									0,
 									2
 								],
-								"integral":true,
+								"integral": true,
 								"decimals": 1,
 								"strip": true
 							},
@@ -641,7 +654,7 @@
 									0,
 									2
 								],
-								"integral":true,
+								"integral": true,
 								"decimals": 1,
 								"strip": true
 							},
@@ -681,7 +694,7 @@
 									0
 								],
 								"decimals": 1,
-								"integral":true,
+								"integral": true,
 								"strip": true
 							},
 							"size": 45
@@ -711,7 +724,7 @@
 									0
 								],
 								"decimals": 2,
-								"integral":null,
+								"integral": null,
 								"strip": true
 							},
 							"size": 45
@@ -748,7 +761,7 @@
 									0
 								],
 								"decimals": 1,
-								"integral":true,
+								"integral": true,
 								"strip": true
 							},
 							"size": 45
@@ -772,10 +785,16 @@
 							"decimals": 0,
 							"one": false
 						},
+						"ax.legend.ncol": 2,
+						"ax.legend.set_color": "gray",
+						"ax.legend.markerscale": 2,
+						"ax.legend.handlelength": 3,
+						"ax.legend.framealpha": 0.8,
+						"ax.legend.set_alpha": 0.6,
 						"ax.legend.loc": "lower right",
-						"ax.legend.title_fontsize": 45,
-						"ax.legend.fontsize": 45,
-						"ax.legend.prop.size": 45,
+						"ax.legend.title_fontsize": 85,
+						"ax.legend.fontsize": 85,
+						"ax.legend.prop.size": 85,
 						"ax.legend.scinotation": {
 							"scilimits": [
 								0,
@@ -784,6 +803,7 @@
 							"decimals": 0,
 							"one": false
 						},
+						"style.share.ax.legend": "bottom_right",
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_ylabel": "middle_left",
 						"style.share.ax.set_xlabel": "bottom",
@@ -791,13 +811,7 @@
 						"style.share.ax.set_xticks": true,
 						"style.share.ax.set_yticklabels": true,
 						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right",
-						"style.share.ax.legend": "bottom_right",
-						"fig.subplots_adjust":{"wspace":0.5,"hspace":0.1},
-						"fig.set_size_inches": {
-							"w": 45,
-							"h": 20
-						}
+						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				},
 				{
@@ -815,9 +829,14 @@
 				{
 					"position": "col",
 					"value": {
-						"M":null
+						"M": null
 					},
 					"kwargs": {
+						"fig.subplots_adjust": {"wspace": 0.5,"hspace": 0.1},
+						"fig.set_size_inches": {
+							"w": 45,
+							"h": 20
+						},
 						"ax.errorbar.label.labels": {},
 						"ax.errorbar.label.scinotation": {
 							"scilimits": [
@@ -931,6 +950,7 @@
 							"decimals": 0,
 							"one": false
 						},
+						"style.share.ax.legend": "bottom_right",
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_ylabel": "middle_left",
 						"style.share.ax.set_xlabel": "bottom",
@@ -938,13 +958,7 @@
 						"style.share.ax.set_xticks": true,
 						"style.share.ax.set_yticklabels": true,
 						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right",
-						"style.share.ax.legend": "bottom_right",
-						"fig.subplots_adjust":{"wspace":0.5,"hspace":0.1},
-						"fig.set_size_inches": {
-							"w": 45,
-							"h": 20
-						}
+						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				},
 				{
@@ -964,7 +978,12 @@
 					"value": {
 					},
 					"kwargs": {
-						"ax.errorbar.label.labels": {"noise.parameters":null},
+						"fig.subplots_adjust": {"wspace": 0.5,"hspace": 0.1},
+						"fig.set_size_inches": {
+							"w": 45,
+							"h": 20
+						},
+						"ax.errorbar.label.labels": {"noise.parameters": null},
 						"ax.errorbar.label.scinotation": {
 							"scilimits": [
 								0,
@@ -973,7 +992,7 @@
 							"decimals": 0,
 							"one": false
 						},
-						"ax.errorbar.plots":false,
+						"ax.errorbar.plots": false,
 						"ax.set_xlabel.xlabel": "$\\textrm{Depth} ~~ k$",
 						"ax.set_xlabel.size": 36,
 						"ax.set_ylabel.ylabel": "$\\textrm{Empirical Cross-Entropy}_{N \\to \\infty} ~~ \\mathcal{S}(P_{\\textrm{Data}},P_{\\textrm{Theory}})/\\textrm{log}(S\\cdot D^{N,2N})$",
@@ -1078,6 +1097,7 @@
 							"decimals": 0,
 							"one": false
 						},
+						"style.share.ax.legend": "bottom_right",
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_ylabel": "middle_left",
 						"style.share.ax.set_xlabel": "bottom",
@@ -1085,13 +1105,7 @@
 						"style.share.ax.set_xticks": true,
 						"style.share.ax.set_yticklabels": true,
 						"style.share.ax.set_xticklabels": true,
-						"style.share.ax.set_colorbar": "bottom_right",
-						"style.share.ax.legend": "bottom_right",
-						"fig.subplots_adjust":{"wspace":0.5,"hspace":0.1},
-						"fig.set_size_inches": {
-							"w": 45,
-							"h": 20
-						}
+						"style.share.ax.set_colorbar": "bottom_right"
 					}
 				},
 				{
@@ -1108,16 +1122,16 @@
 		"cyclic": "periodic"
 	},
 	"replacements": {
-		"sample.array.M.noise.parameters": {
-			"ax.errorbar":"ax.bar",
-			"ax.bar":"ax.bar"
+		"sample.array.M.noise.parameters.N": {
+			"ax.errorbar": "ax.bar",
+			"ax.bar": "ax.bar"
 		},
-		"sample.state.M.noise.parameters": {
-			"ax.errorbar":"ax.bar",
-			"ax.bar":"ax.bar"
+		"sample.state.M.noise.parameters.N": {
+			"ax.errorbar": "ax.bar",
+			"ax.bar": "ax.bar"
 		}
 	},
-	"replacements":null,
+	"replacements": null,
 	"texify": {
 		"iteration": "\\textrm{Iteration}",
 		"objective": "\\textrm{Infidelity}",
