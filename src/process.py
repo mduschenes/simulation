@@ -4015,6 +4015,17 @@ def plotter(plots,processes,verbose=None):
 						separator = '~,~'
 						data[attr%(axes)] = separator.join(["%s = %s"%(texify(string,**options['texify']),texify(scinotation(objs.get(string),**options['scinotation']),**options['texify'])) if string in objs else string for string in data[attr%(axes)]])
 
+					else:
+
+						options = {attr: (data.get(attr,dict()) if (isinstance(data.get(attr),dict) and ((attr in ['texify'] and all(option in [attr] for option in data.get(attr))) or (attr not in ['texify']))) else
+									{'texify':data.get(attr)} if (isinstance(data.get(attr),dict) and ((attr in ['texify']))) else
+									default)
+							for attr,default in {
+								'texify':dict(usetex=usetex),
+								'scinotation':dict(decimals=1,scilimits=[0,4],one=False,strip=False)}.items()
+							}
+
+						data[attr%(axes)] = data[attr%(axes)]
 
 					data[attr%(axes)] = texify(data[attr%(axes)],**options['texify'])
 
