@@ -592,6 +592,8 @@
 							"one": false
 						},
 						"ax.errorbar.plots": false,
+						"ax.errorbar.markersize": 36,
+						"ax.errorbar.linewidth": 20,
 						"ax.set_title.label": "N",
 						"ax.set_title.size": 45,
 						"ax.set_xlabel.xlabel": "M",
@@ -766,6 +768,45 @@
 							},
 							"size": 45
 						},
+						"ax.set_yscale": {
+							"value": "log",
+							"base": 10
+						},
+						"ax.set_ylim": {
+							"ymin": 5e-5,
+							"ymax": 2e0
+						},
+						"ax.set_ynbins": {
+							"nbins": 5
+						},
+						"ax.set_yticks": {
+							"ticks": [
+								1e-4,
+								1e-3,
+								1e-2,
+								1e-1,
+								1e0
+							]
+						},
+						"ax.set_yticklabels": {
+							"labels": [
+								1e-4,
+								1e-3,
+								1e-2,
+								1e-1,
+								1e0
+							],
+							"scinotation": {
+								"scilimits": [
+									0,
+									0
+								],
+								"decimals": 1,
+								"integral": true,
+								"strip": true
+							},
+							"size": 45
+						},
 						"ax.set_colorbar.set_label.label": "noise.parameters",
 						"ax.set_colorbar.set_label.size": 45,
 						"ax.set_colorbar.fraction": 0.15,
@@ -787,7 +828,7 @@
 						},
 						"ax.legend.ncol": 2,
 						"ax.legend.set_color": "gray",
-						"ax.legend.markerscale": 2,
+						"ax.legend.markerscale": 1.5,
 						"ax.legend.handlelength": 3,
 						"ax.legend.framealpha": 0.8,
 						"ax.legend.set_alpha": 0.6,
