@@ -1,33 +1,35 @@
-#!/usr/bin/bash -i
-
-source ~/.bashrc tensor
+#!/usr/bin/bash
 
 path=${1}
 
 name=${2:-all}
 
+device=${3:-local}
+
 case ${name} in
 	test)
-		types=(stats)
-		indices=("4 6")
+		types=()
+		indices=()
 		;;
 	exit)
-		types=(sample)
-		indices=("1")
-		types=(stats)
-		indices=("6")
+		types=()
+		indices=()
 		;;
 	sample)
 		types=(sample)
-		indices=("1")
+		indices=("0 4 3 2 1")
 		;;
 	stats)
 		types=(stats)
-		indices=("4 6")
+		indices=("4 6 8 10")
 		;;
-	all|*)
+	all)
 		types=(stats sample)
-		indices=("4 6" "1")
+		indices=("4 6 8 10" "0 4 3 2 1")
+		;;
+	*)
+		types=()
+		indices=()
 		;;
 esac
 
@@ -43,7 +45,16 @@ do
 	bkp=${file}.bkp
 	ext=json
 
-	echo Process: ${type} ${indexes[@]} ${path}
+	for string in tetrad pauli
+	do
+		[[ ${path} =~ "*${string}*" ]] && break
+	done
+
+	[[ -f ${bkp} ]] && mv ${bkp} ${file}
+
+	echo Process: ${path} ::: ${type} ${indexes[@]} ${string}
+
+	continue
 
 	for number in ${!indexes[@]}
 	do
@@ -61,8 +72,10 @@ do
 					-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
 					-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
 					-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
-					-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+					-e "s/\(\"fig.savefig.fname\":\).*,/\1 \"${string}.${index}\",/" \
+					-e "s/\(\"ax.bar.plots\":\).*,/\1 false,/" \
 					-e "s/\(size\":\) 45/\1 240/" \
+					-e "s/\(\"M\":\) null/\1 [2,8,32]/" \
 				)
 				case ${index} in
 					0)
@@ -164,9 +177,6 @@ do
 
 	done
 
-
-	processes=()
-
 	case ${type} in
 		sample|stats)
 
@@ -186,7 +196,7 @@ do
 
 				case ${type} in
 					sample)
-						file=plot.sample.array.M.noise.parameters.N.tetrad
+						file=plot.sample.array.M.noise.parameters.N.${string}
 						case ${index} in
 							*)
 								for i in 0 2 1
@@ -199,7 +209,7 @@ do
 						esac
 						;;
 					stats)
-						file=plot.stats.array.state.M.noise.parameters.N.tetrad
+						file=plot.stats.array.state.M.noise.parameters.N.${string}
 						case ${index} in
 							4)
 								for i in 4
@@ -222,14 +232,23 @@ do
 						;;
 				esac
 
-				for i in ${files[@]}
-				do
-					cp ${options[@]} ${folder}/${file}.${index}.${ext} ${folders}/${i}.${exts}
-				done
-
+				case ${device} in
+					local)
+						for i in ${files[@]}
+						do
+							cp ${options[@]} ${folder}/${file}.${index}.${ext} ${folders}/${i}.${exts}
+						done
+						;;
+					slurm)
+						;;
+					*)
+						;;
+				esac
 			done
 			;;
-		log)
+		log|scale)
+
+			processes=()
 			for variable in array state
 			do
 				folder=${path}/plot
@@ -243,46 +262,23 @@ do
 
 			if [[ ! -s ${processes} ]]
 			then
-
-				for process in ${processes[@]}
-				do
-					cmd=()
-					cmd+=(pdfmerge)
-					cmd+=("${process}.${string}.${ext}")
-					for i in ${indexes[@]}
-					do
-						cmd+=("${process}.${i}.${ext}");
-					done
-					${cmd[@]}
-				done
-			fi
-			;;
-		scale)
-			for variable in array state
-			do
-				folder=${path}/plot
-				file=plot.sample.${variable}.M.noise.parameters.scale.M.noise
-				ext=pdf
-				processes+=(${folder}/${file})
-
-				string="$(echo ${indexes[@]} | sed 's/ /./g')"
-
-			done
-
-			if [[ ! -s ${processes} ]]
-			then
-
-				for process in ${processes[@]}
-				do
-					cmd=()
-					cmd+=(pdfmerge)
-					cmd+=("${process}.${string}.${ext}")
-					for i in ${indexes[@]}
-					do
-						cmd+=("${process}.${i}.${ext}");
-					done
-					${cmd[@]}
-				done
+				case ${device} in
+					local)
+						for process in ${processes[@]}
+						do
+							options=()
+							for i in ${indexes[@]}
+							do
+								options+=("${process}.${i}.${ext}");
+							done
+							pdftk ${options[@]} cat output ${process}.${string}.${ext}
+						done
+						;;
+					slurm)
+						;;
+					*)
+						;;
+				esac
 			fi
 			;;
 		*)
@@ -301,23 +297,29 @@ do
 		sample|stats)
 
 			folder=../../notes/paper
-			file=main.tex
+			file=main
 			ext=tex
 
-			options=(--options quiet)
+			options=()
 
-			cd ${folder}
+			case ${device} in
+				local)
+					cd ${folder}
 
-			complatex ${options[@]} ${file}
+					latexmk ${options[@]} ${file} &>/dev/null
+					latexmk -c ${options[@]} ${file} &>/dev/null
 
-			cd -
+					cd -
 
-			break
+					break
+				;;
+				slurm)
+					;;
+				*)
+					;;
+			esac
 			;;
 		*)
 			;;
 	esac
 done
-
-
-
