@@ -47,7 +47,8 @@ do
 
 	for string in tetrad pauli
 	do
-		[[ ${path} =~ "*${string}*" ]] && break
+		[[ ${path} =~ .*${string}.* ]] && break
+		string=
 	done
 
 	[[ -f ${bkp} ]] && mv ${bkp} ${file}
@@ -71,7 +72,6 @@ do
 					-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
 					-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
 					-e "s/\(\"fig.savefig.fname\":\).*,/\1 \"${string}.${index}\",/" \
-					-e "s/\(\"ax.bar.plots\":\).*,/\1 false,/" \
 					-e "s/\(size\":\) 45/\1 240/" \
 					-e "s/\(\"M\":\) null/\1 [2,8,32]/" \
 				)
@@ -87,6 +87,23 @@ do
 						)
 						;;
 				esac
+
+				case ${string} in
+					tetrad)
+						options+=(
+							-e "s/\(\"ax.bar.plots\":\).*,/\1 \"errorbar\",/" \
+						)
+						;;
+					pauli)
+						options+=(
+							-e "s/\(\"ax.bar.plots\":\).*,/\1 false,/" \
+						)
+						;;
+					*)
+						options+=()
+						;;
+				esac
+
 				;;
 			stats)
 				options+=(
@@ -113,6 +130,22 @@ do
 						)
 						;;
 				esac
+
+				case ${string} in
+					tetrad)
+						options+=(
+						)
+						;;
+					pauli)
+						options+=(
+						)
+						;;
+					*)
+						options+=(
+						)
+						;;
+				esac
+
 				;;
 			log)
 				options+=(
