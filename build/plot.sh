@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 path=${1}
 
@@ -52,9 +52,7 @@ do
 
 	[[ -f ${bkp} ]] && mv ${bkp} ${file}
 
-	echo Process: ${path} ::: ${type} ${indexes[@]} ${string}
-
-	continue
+	echo Process: ${path} ::: ${string} ${type} ${indexes[@]}
 
 	for number in ${!indexes[@]}
 	do
@@ -164,7 +162,7 @@ do
 
 			sed "${options[@]}" ${file}
 
-			[[ ${name} == exit ]] && exit 0
+			[[ ${name} == exit ]] && exit
 
 			exe=./process.py
 			args=(${path})
@@ -256,7 +254,7 @@ do
 				ext=pdf
 				processes+=(${folder}/${file})
 
-				string="$(echo ${indexes[@]} | sed 's/ /./g')"
+				strings="$(echo ${indexes[@]} | sed 's/ /./g')"
 
 			done
 
@@ -271,7 +269,7 @@ do
 							do
 								options+=("${process}.${i}.${ext}");
 							done
-							pdftk ${options[@]} cat output ${process}.${string}.${ext}
+							pdftk ${options[@]} cat output ${process}.${strings}.${ext}
 						done
 						;;
 					slurm)
