@@ -899,7 +899,9 @@ def test(settings,options,*args,**kwargs):
 			settings = {}
 			settings['path'] = options.pop('path') if options.get('path') else None
 			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
-			settings['fontsize'] = 140
+			settings['fontsize'] = 200
+			settings['legend.fontsize'] = 110
+			settings['n'] = options.pop('n') if options.get('n') else None
 
 			return options,settings
 
@@ -911,8 +913,8 @@ def test(settings,options,*args,**kwargs):
 
 			ax.errorbar(x,y,yerr,xerr,**options)
 
-			ax.set_xlabel(xlabel="$x$",size=settings['fontsize'])
-			ax.set_ylabel(ylabel="$P(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$",size=settings['fontsize'])
+			ax.set_xlabel(xlabel="$x/d$",size=settings['fontsize'])
+			ax.set_ylabel(ylabel="$P(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$",size=settings['fontsize'])# ~~\\to~~ P_{\\gamma} = \\frac{1}{1-\\gamma}P(\\frac{x-\\gamma/d}{1-\\gamma})$",size=settings['fontsize'])
 
 			# ax.set_xscale(value="log",base=10)
 			# ax.set_yscale(value="log",base=10)
@@ -946,24 +948,22 @@ def test(settings,options,*args,**kwargs):
 			ax.set_yscale(value="log",base=10)
 			ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
 			ax.set_ylim(ymin=1e-17,ymax=1e9)
-			ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
-			ax.set_xticklabels(labels=['$2^{-%d}$'%(2*i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=settings['fontsize'])
+			ax.set_xticks(ticks=[2**(-2*i) for i in [16,12,8,4,0]])
+			ax.set_xticklabels(labels=['$10^{%d}$'%(8-2*i) if (8-2*i) not in [0] else '$1$' for i in [16,12,8,4,0]],size=settings['fontsize'])
 			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
 			ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-16,-12,-8,-4,0,4,8]],size=settings['fontsize'])
 
 
 			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":30})
 			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
-			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":30})
+			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":50})
 			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
 
 			ax.grid(visible=True)
 
+			if (settings.get('n') is not None) and (len(ax.get_legend_handles_labels()[1]) == settings['n']):
 
-			l = len(ax.get_legend_handles_labels()[1])
-			n = len(set([i.replace('$','').split('~,~')[0] for i in ax.get_legend_handles_labels()[1]]))
-
-			if (n>1) and (l>6) and ((l//n)*n == l):
+				n = len(set([i.replace('$','').split('~,~')[0] for i in ax.get_legend_handles_labels()[1]]))
 
 				opts = dict(location='right',fraction=0.15,shrink=1,aspect=40,pad=0.02,anchor=(1.25,0.5))
 
@@ -984,41 +984,40 @@ def test(settings,options,*args,**kwargs):
 				cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
 
 				handles,labels = ax.get_legend_handles_labels()
-				handles,labels = [handles[i] for i in range(0,len(handles),n)],[labels[i] for i in range(0,len(handles),n)]
 				handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
 				for i,(handle,label) in enumerate(zip(handles,labels)):
-					handle[0].set_linewidth(12)
-					handle[0].set_color('gray')
-					labels[i] = '$%s$'%(labels[i].replace('$','').split('~,~')[-1])
-				indices = range(min(len(handles),len(labels)))
+					handle[0].set_linewidth(16)
+					# handle[0].set_color('gray')
+					labels[i] = '$%s~,~%s$'%(labels[i].replace('$','').split('~,~')[1],('10^{%s}'%(labels[i].replace('$','').split('~,~')[2]) if int(labels[i].replace('$','').split('~,~')[2]) != 0 else '0'))
+				indices = [i[len(i)//2] for i in [[i for i,obj in enumerate(labels) if obj==label] for label in natsorted(set(labels))]]
 				handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
 
 				legend = ax.legend(
 					handles,labels,
-					title="$l ~,~ s = k+1$",
-					loc="upper right",
-					ncol=2,
-					title_fontsize=settings['fontsize']-16,
-					prop={"size":settings['fontsize']-16},
+					title="$l ~,~ \\gamma ~:~ s_{k} = k+1 ~,~ \\gamma_{k} = 1 - (1-\\gamma)^{k}$",
+					loc="upper center",
+					ncol=4,
+					title_fontsize=settings['legend.fontsize'],
+					prop={"size":settings['legend.fontsize']},
 					markerscale=6,
 					handlelength=3
 				)
 
 			else:
-
-				handles,labels = ax.get_legend_handles_labels()
-				handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
-				for handle,label in zip(handles,labels):
-					handle[0].set_linewidth(12)
-				indices = [labels.index(label) for label in natsorted(labels)]
-				handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
+				pass
+				# handles,labels = ax.get_legend_handles_labels()
+				# handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+				# for handle,label in zip(handles,labels):
+				# 	handle[0].set_linewidth(12)
+				# indices = [labels.index(label) for label in natsorted(labels)]
+				# handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
 
 
 			if settings.get('path'):
-				fig.set_size_inches(w=55,h=36)
+				fig.set_size_inches(w=65,h=45)
 				fig.subplots_adjust()
 				fig.tight_layout()
-				fig.savefig(fname=settings.get('path'),bbox_inches="tight",pad_inches=0.4)
+				fig.savefig(fname=settings.get('path'),bbox_inches="tight",pad_inches=0.5)
 
 		return fig,ax
 
@@ -1027,10 +1026,10 @@ def test(settings,options,*args,**kwargs):
 		# attr=['test.pauli','check.pauli','pauli'],
 		attr=['distribution'],
 		D=[2],
-		N=[2,4,8],
-		L=[1,1/2],
+		N=[8],
+		L=[1,(1,2)],
+		parameters=[0,-2],
 		M=[0,2,4,8,16,32],
-		parameters=[0],
 		)
 
 	fig,ax = None,None
@@ -1042,6 +1041,7 @@ def test(settings,options,*args,**kwargs):
 		N = setting['N']
 		M = setting['M']
 		L = setting['L']
+		parameters = setting['parameters']
 
 		method = options['method'](setting,options)
 		attribute = options['attribute'](setting,options)
@@ -1056,7 +1056,7 @@ def test(settings,options,*args,**kwargs):
 		s = M+1
 		w = 1
 
-		l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else 1
+		l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
 		# z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 		z = {1:l}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 		# z = {(i+1)/d:1 for i in range(d)}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
@@ -1237,22 +1237,51 @@ def test(settings,options,*args,**kwargs):
 
 			plts = dict(
 				# label='$\\textrm{Distribution}~:~{%s}$'%(setting['M']),
-				label='$%s~,~%s$'%(setting['M'],{1:'1',1/2:'d/2',3/4:'3d/4',-1:'d-1'}[L]),
-				color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-				marker='',
-				linestyle={1:'-',1/2:'--',3/4:':',-1:':'}[L],
-				linewidth={1:20,1/2:16,3/4:16,-1:16}[L],
+				label='$%s~,~%s~,~%s$'%(
+					setting['M'],
+					'%s'%(str(L)) if (isinstance(L,int) and (L>=0)) else 'd%s'%(str(L)) if (isinstance(L,int) and (L<0)) else '%sd'%(str(L)) if isinstance(L,float) else '%sd/%s'%(str(L[0]) if L[0]!=1 else '',str(L[-1])) if isinstance(L,tuple) else str(1),
+					setting['parameters'],
+					),
+				color='%s_%f'%('viridis' if setting['L'] == 1 else 'magma',(settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+				marker='' if setting['parameters']==0 else '',
+				markersize=None if setting['parameters']==0 else 10,
+				linestyle='-' if (setting['parameters']==0) else '--' if (isinstance(setting['L'],int)) else '--',
+				linewidth=20 if (isinstance(setting['L'],int)) else 16,
 				alpha=0.8,
-				path=join(path,'plot','plot.distribution.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+				path=join(path,'plot','plot.distribution.%s.L.1.d'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+				n=prod(len(settings[i]) for i in settings if i not in ['N']),
 				)
 
-			opts = dict(function=f'beta.{method}',a=l*s,b=(d-l)*s)
+			def func(x,settings):
+
+				D = setting['D']
+				N = setting['N']
+				M = setting['M']
+				L = setting['L']
+				parameters = setting['parameters']
+
+				d = D**N
+				s = M+1
+				l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
+				parameters = 1 - ((1-((10**parameters) if (parameters != 0) else 0))**M)
+				constant = 1
+
+				u,v = 0,constant
+				a,b = 1-parameters,parameters*constant/d
+
+				options = dict(function='beta.pdf',a=l*s,b=(d-l)*s,loc=a*u+b,scale=a*(v-u))
+
+				y = distribution(x,**options)
+
+				# y = where((x>(a*u+b))*(x<(a*v+b)),y,0)
+
+				return y
 
 			x = logspace(*args,**kwargs)
 
-			y = distribution(x,**opts)
+			y = func(x,setting)
 
-			fig,ax = (None,None) if ((M == 0) and (L==1)) else (fig,ax)
+			fig,ax = (None,None) if all(settings[i].index(setting[i]) == 0 for i in ['M','L','parameters']) else (fig,ax)
 
 		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
 

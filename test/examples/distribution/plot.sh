@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-run=${1}
+run=${1:-1}
 
 path=../../../../notes/paper
 
