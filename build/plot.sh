@@ -4,7 +4,7 @@ path=${1}
 
 name=${2:-all}
 
-device=${3:-local}
+device=${3:-${HOSTNAME}}
 
 case ${name} in
 	test)
@@ -30,6 +30,20 @@ case ${name} in
 	*)
 		types=()
 		indices=()
+		;;
+esac
+
+case ${device} in
+	local)
+		if [[ ${path} =~ ~/mnt/.* ]]
+		then
+			device=cluster
+		else
+			device=${device}
+		fi
+		;;
+	*)
+		device=slurm
 		;;
 esac
 
@@ -147,6 +161,9 @@ do
 				esac
 
 				;;
+			cluster)
+				options=()
+				;;
 			log)
 				options+=(
 					-i \
@@ -188,23 +205,26 @@ do
 				;;
 		esac
 
-		if [[ ! -s ${options} ]]
-		then
+		case ${device} in
 
-			cp ${file} ${bkp}
+			local|slurm)
 
-			sed "${options[@]}" ${file}
+				cp ${file} ${bkp}
 
-			[[ ${name} == exit ]] && exit
+				sed "${options[@]}" ${file}
 
-			exe=./process.py
-			args=(${path})
+				[[ ${name} == exit ]] && exit
 
-			${exe} ${args[@]}
+				exe=./process.py
+				args=(${path})
 
-			mv ${bkp} ${file}
+				${exe} ${args[@]}
 
-		fi
+				mv ${bkp} ${file}
+				;;
+			*)
+				;;
+		esac
 
 	done
 
@@ -230,31 +250,15 @@ do
 						file=plot.sample.array.M.noise.parameters.N.${string}
 						case ${index} in
 							*)
-								for i in 0 2 1
-								do
-									files+=(${file}.${i})
-								done
-								;;
-							*)
+								files+=(${file}.${index})
 								;;
 						esac
 						;;
 					stats)
 						file=plot.stats.array.state.M.noise.parameters.N.${string}
 						case ${index} in
-							4)
-								for i in 4
-								do
-									files+=(${file}.${i})
-								done
-								;;
 							*)
-								for i in 6 8 10
-								do
-									files+=(${file}.${i})
-								done
-								;;
-							*)
+								files+=(${file}.${index})
 								;;
 						esac
 						;;
@@ -264,7 +268,7 @@ do
 				esac
 
 				case ${device} in
-					local)
+					local|cluster)
 						for i in ${files[@]}
 						do
 							cp ${options[@]} ${folder}/${file}.${index}.${ext} ${folders}/${i}.${exts}
@@ -305,6 +309,8 @@ do
 							pdftk ${options[@]} cat output ${process}.${strings}.${ext}
 						done
 						;;
+					cluster)
+						;;
 					slurm)
 						;;
 					*)
@@ -334,7 +340,7 @@ do
 			options=()
 
 			case ${device} in
-				local)
+				local|cluster)
 					cd ${folder}
 
 					latexmk ${options[@]} ${file} &>/dev/null
