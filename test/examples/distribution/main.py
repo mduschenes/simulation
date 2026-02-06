@@ -1269,7 +1269,13 @@ def test(settings,options,*args,**kwargs):
 				u,v = 0,constant
 				a,b = 1-parameters,parameters*constant/d
 
-				options = dict(function='beta.pdf',a=l*s,b=(d-l)*s,loc=a*u+b,scale=a*(v-u))
+				options = dict(
+					function='beta.pdf',
+					a=l*s,
+					b=(d-l)*s,
+					loc=a*u+b,
+					scale=a*(v-u)
+					)
 
 				y = distribution(x,**options)
 

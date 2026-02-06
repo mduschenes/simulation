@@ -160,8 +160,8 @@ def measurement(data,*args,function=None,**kwargs):
 		info.functions = functions
 
 		info.data = logspace(
-			start=log(1e-20)/log(info.dimension),
-			stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+			start=log(1e-32)/log(info.dimension),
+			stop=log((1-info.environment)*info.scale)/log(info.dimension),
 			num=10000,
 			base=info.dimension,
 			)
@@ -170,7 +170,7 @@ def measurement(data,*args,function=None,**kwargs):
 			a=(info.locality*info.env),
 			b=((info.dim-info.locality)*info.env),
 			loc=info.environment/info.dim,
-			scale=(1-info.environment)/(info.scale),
+			scale=(1-info.environment)*info.scale,
 			)
 
 		info.transform = lambda x,info,*args,**kwargs: x
@@ -189,7 +189,7 @@ def measurement(data,*args,function=None,**kwargs):
 			info.dim = data['D']**(1*data['N'])
 			info.env = (data['M']+1) if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 1
 			info.locality = 1
-			info.scale = data['D']**(1*data['N'])
+			info.scale = 1/(data['D']**(1*data['N']))
 			info.name = 'beta'
 
 			info.function = function
@@ -199,8 +199,8 @@ def measurement(data,*args,function=None,**kwargs):
 			info.functions = functions
 
 			info.data = logspace(
-				start=log(1e-20)/log(info.dimension),
-				stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+				start=log(1e-32)/log(info.dimension),
+				stop=log((1-info.environment)*info.scale)/log(info.dimension),
 				num=10000,
 				base=info.dimension,
 				)
@@ -208,8 +208,8 @@ def measurement(data,*args,function=None,**kwargs):
 			info.parameters = dict(
 				a=(info.locality*info.env),
 				b=((info.dim-info.locality)*info.env),
-				loc=info.environment/info.dim,
-				scale=(1-info.environment)/(info.scale),
+				loc=info.environment*info.scale/info.dim,
+				scale=(1-info.environment)*info.scale,
 				)
 
 			info.transform = lambda x,info,*args,**kwargs: x
@@ -236,8 +236,8 @@ def measurement(data,*args,function=None,**kwargs):
 			info.functions = functions
 
 			info.data = logspace(
-				start=log(1e-20)/log(info.dimension),
-				stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+				start=log(1e-32)/log(info.dimension),
+				stop=log((1-info.environment)*info.scale)/log(info.dimension),
 				num=10000,
 				base=info.dimension,
 				)
@@ -273,8 +273,8 @@ def measurement(data,*args,function=None,**kwargs):
 		info.functions = functions
 
 		info.data = logspace(
-			start=log(1e-20)/log(info.dimension),
-			stop=log((1-info.environment)/(info.scale))/log(info.dimension),
+			start=log(1e-32)/log(info.dimension),
+			stop=log((1-info.environment)*info.scale)/log(info.dimension),
 			num=10000,
 			base=info.dimension,
 			)
@@ -283,7 +283,7 @@ def measurement(data,*args,function=None,**kwargs):
 			a=(info.locality*info.env),
 			b=((info.dim-info.locality)*info.env),
 			loc=info.environment/info.dim,
-			scale=(1-info.environment)/(info.scale),
+			scale=(1-info.environment)*info.scale,
 			)
 
 		info.transform = lambda x,info,*args,**kwargs: x
