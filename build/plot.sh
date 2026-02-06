@@ -329,7 +329,7 @@ do
 
 			folder=../../notes/paper
 			file=main
-			ext=tex
+			ext=pdf
 
 			options=()
 
@@ -339,6 +339,8 @@ do
 
 					latexmk ${options[@]} ${file} &>/dev/null
 					latexmk -c ${options[@]} ${file} &>/dev/null
+
+					qpdfview ${file}.${ext} --unique & >/dev/null 2>&1
 
 					cd -
 

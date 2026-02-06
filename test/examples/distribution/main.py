@@ -1029,7 +1029,7 @@ def test(settings,options,*args,**kwargs):
 		D=[2],
 		N=[2,4,8],
 		L=[1,1/2],
-		M=[0,2,4,6,16,32],
+		M=[0,2,4,8,16,32],
 		parameters=[0],
 		)
 
