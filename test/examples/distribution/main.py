@@ -128,25 +128,46 @@ def _function(parameters,x):
 	def trace(x,z,p):
 		return addition((1-(x[:,None]/z[None,:]))**p,axis=-1)
 
-	z,(d,l,u,v,w) = parameters[:-5],parameters[-5:]
+	n = 2
+	k = 4
 
-	z,d,l,u,v,w = z.astype(float),int(d),int(l),float(u),float(v),float(w)
+	z,l,(d,u,v,w) = parameters[:-k-n],parameters[-k-n:-k],parameters[-k:]
 
-	x = (x-u)/(v-u)
+	z,l,d,u,v,w = z.astype(float),l.astype(int),int(d),float(u),float(v),float(w)
 
-	t = d-l-1
+	n = len(l)
 
-	if t>0:
-		G = list(SymmetricGroup(t).generate_schreier_sims())
-		y = 0
-		for g in G:
-			k = [len(p) for p in g.full_cyclic_form]
-			k = {p:k.count(p) for p in set(k)}
-			y += prod(trace(x,z,p)**k[p] for p in k)
-	else:
-		y = exp(gammaln(l+t)-gammaln(l))
+	l = [int(i) for i in l]
 
-	y *= sign(w)*exp(log(abs(w))-log(v-u)+(gammaln(d)-gammaln(l)-gammaln(d-l))-(gammaln(l+t)-gammaln(l))-sum(log(z))+(l-1)*log(x))
+	z = [z[sum(l[:i]):sum(l[:i+1])] for i in range(n)]
+
+	y = 0
+
+	for i,(z,l) in enumerate(zip(z,l)):
+
+		if i == 0:
+			x = (x-u)/(v-u)
+		else:
+			x = (v-x)/(v-u)
+
+		t = d-l-1
+
+		s = 0
+
+		if t>0:
+			G = list(SymmetricGroup(t).generate_schreier_sims())
+			for g in G:
+				k = [len(p) for p in g.full_cyclic_form]
+				k = {p:k.count(p) for p in set(k)}
+				s += prod(trace(x,z,p)**k[p] for p in k)
+		else:
+			s += exp(gammaln(l+t)-gammaln(l))
+
+		s *= sign(w)*exp(log(abs(w))+(gammaln(d)-gammaln(l)-gammaln(d-l))-(gammaln(l+t)-gammaln(l))-sum(log(z))+(l-1)*log(x))
+
+		y += s
+
+	y /= n
 
 	return y
 
@@ -187,14 +208,14 @@ def _parameterize(z,d=None,s=None,w=None):
 
 	u,v = asscalar(minimum(z)),asscalar(maximum(z))
 
-	z = (z-u)/(v-u)
+	z = (z-u)/(v-u),(v-z)/(v-u)
 
-	z = z[(z>eps)*(z<=1)]
+	z = [i[(i>eps)*(i<=1)] for i in z]
 
-	l,s,d = z.size,s,d
+	l,s,d = [i.size for i in z],s,d
 	w = w
 
-	params = [*z,d,l,u,v,w]
+	params = [*[j for i in z for j in i],*l,d,u,v,w]
 
 	parameters = [i for i in params]
 
@@ -880,7 +901,313 @@ def process(settings,options,*args,**kwargs):
 
 	return
 
+
 def test(settings,options,*args,**kwargs):
+
+	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
+
+		def setup(options):
+
+			options = {} if options is None else options
+			for option in options:
+				if option in ['color','ecolor']:
+					if isinstance(options[option],str):
+						value = options[option].split('_') if options[option].count('_') else (options[option],0.5)
+						value = getattr(plt.cm,str(value[0]))(float(value[1])) if hasattr(plt.cm,value[0]) else value[0]
+				else:
+					value = options[option]
+				options[option] = value
+
+			settings = {}
+			settings['path'] = options.pop('path') if options.get('path') else None
+			settings['mplstyle'] = options.pop('mplstyle') if options.get('mplstyle') else None
+
+			return options,settings
+
+		options,settings = setup(options)
+
+		with matplotlib.style.context(settings.get('mplstyle')) if settings.get('mplstyle') else context(settings.get('mplstyle')):
+
+			fig,ax = plt.subplots() if fig is None or ax is None else (fig,ax)
+
+			ax.errorbar(x,y,yerr,xerr,**options)
+
+			ax.set_xlabel(xlabel="$x$",size=60)
+			ax.set_ylabel(ylabel="$f(x)$",size=60)
+
+			ax.set_xscale(value="log",base=10)
+			ax.set_yscale(value="log",base=10)
+			ax.set_xlim(xmin=1e-5,xmax=1e1)
+			ax.set_ylim(ymin=1e-17,ymax=1e17)
+			ax.set_xticks(ticks=[1e-4,1e-3,1e-2,1e-1,1])
+			ax.set_xticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-4,-3,-2,-1,0]],size=60)
+			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4,1e8,1e12,1e16])
+			ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-16,-12,-8,-4,0,4,8,12,16]],size=60)
+
+			# ax.set_xscale(value="log",base=4)
+			# ax.set_yscale(value="log",base=10)
+			# ax.set_xlim(xmin=2**(-11),xmax=2**(2))
+			# ax.set_ylim(ymin=1e-129,ymax=1e9)
+			# ax.set_xticks(ticks=[2**(-2*i) for i in [10,8,6,4,2,0]])
+			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [10,8,6,4,2,0]],size=60)
+			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,0,4,8]],size=60)
+
+			# ax.set_xscale(value="log",base=4)
+			# ax.set_yscale(value="log",base=10)
+			# ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
+			# ax.set_ylim(ymin=1e-129,ymax=1e9)
+			# ax.set_xticks(ticks=[2**(-2*i) for i in [16,14,12,10,8,6,4,2,0]])
+			# ax.set_xticklabels(labels=['$2^{-2\\cdot%d}$'%(i) if i not in [0,1] else '$2^{-2}$' if i in [1] else '$1$' for i in [16,14,12,10,8,6,4,2,0]],size=60)
+			# ax.set_yticks(ticks=[1e-128,1e-64,1e-32,1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
+			# ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-128,-64,-32,-16,-12,-8,-4,0,4,8]],size=60)
+
+			ax.tick_params(**{"axis":"y","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"y","which":"minor","length":4,"width":0})
+			ax.tick_params(**{"axis":"x","which":"major","length":6,"width":1,"pad":10})
+			ax.tick_params(**{"axis":"x","which":"minor","length":4,"width":0})
+
+			ax.grid(visible=True)
+
+			handles,labels = ax.get_legend_handles_labels()
+			handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
+			for handle,label in zip(handles,labels):
+				handle[0].set_linewidth(12)
+			indices = [labels.index(label) for label in natsorted(labels)]
+			handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
+
+			legend = ax.legend(
+				handles,labels,
+				title="$k$",
+				loc="upper right",
+				ncol=2,
+				title_fontsize=50,
+				prop={"size":50},
+				markerscale=1.5,
+				handlelength=2.5
+			)
+
+			if settings.get('path'):
+				fig.set_size_inches(w=48,h=30)
+				fig.subplots_adjust()
+				fig.tight_layout()
+				fig.savefig(fname=settings.get('path'))
+
+		return fig,ax
+
+
+	settings = dict(
+		attr=['test.pauli','check.pauli'],
+		D=[2],
+		N=[3],
+		M=[0],
+		L=[2],
+		parameters=[0],
+		)
+
+	fig,ax = None,None
+
+	for index,setting in enumerate(permute(settings)):
+
+		attr = setting['attr']
+		D = setting['D']
+		N = setting['N']
+		M = setting['M']
+		L = setting['L']
+
+		method = options['method'](setting,options)
+		attribute = options['attribute'](setting,options)
+
+		path = options['path'](setting,options)
+		plots = options['plot'](setting,options)
+		logger = options['logger'](setting,options)
+
+		args,kwargs = tuple((-32,0,1000,)),dict(endpoint=False)
+
+		d = D**N
+		s = M+1
+		w = 1
+
+		l = L
+		z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+		# z = {1:l}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+		# z = {(i+1)/d:1 for i in range(d)}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+
+		z = array([j for i in z for j in [i]*z[i]])
+
+		logger(setting)
+
+		parameters = []
+
+		try:
+
+			if attribute['method']() in ['func']:
+
+				func = parameterize
+
+			elif attribute['method']() in ['functional']:
+
+				func = parameterization
+
+			elif attribute['method']() in ['_func']:
+
+				func = _parameterize
+
+			params = func(z,d=d,s=s,w=w)
+
+			parameters.append(params)
+
+		except Exception as exception:
+
+			logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+
+		if vectorize:
+
+			if attribute['method']() in ['func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':functions,'cdf':Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Incorrect}~:~{%s}$'%(setting['M']),
+					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+					marker='',
+					linestyle='-',
+					alpha=0.5,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+			elif attribute['method']() in ['functional']:
+
+				size = max(len(i) for params in parameters for i in params)
+				parameters = [[[*i,*[0]*(size-len(i))] for i in params] for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':functionals,'cdf':Functionals}[method]
+
+				plts = dict(
+					label='$\\textrm{Zanardi}~:~{%s}$'%(setting['M']),
+					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+					marker='',
+					linestyle='--',
+					alpha=0.8,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':_functions,'cdf':_Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Matt}~:~{%s}$'%(setting['M']),
+					color='black',
+					marker='o',
+					linestyle='-',
+					markersize=45,
+					alpha=0.25,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+		else:
+
+			if attribute['method']() in ['func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':functions,'cdf':Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Incorrect}~:~{%s}$'%(setting['M']),
+					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+					marker='',
+					linestyle='-',
+					alpha=0.5,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+			elif attribute['method']() in ['functional']:
+
+				from mpmath import linspace
+
+				size = max(len(i) for params in parameters for i in params)
+				parameters = [params for params in parameters]
+				parameters = parameters
+
+				x = exponentiate(linspace(*args,**kwargs))
+
+				func = {'pdf':functionals,'cdf':Functionals}[method]
+
+				plts = dict(
+					label='$\\textrm{Zanardi}~:~{%s}$'%(setting['M']),
+					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+					marker='',
+					linestyle='--',
+					alpha=0.8,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+			elif attribute['method']() in ['_func']:
+
+				size = max(len(params) for params in parameters)
+				parameters = [params for params in parameters]
+				parameters = array(parameters)
+
+				x = logspace(*args,**kwargs)
+
+				func = {'pdf':_functions,'cdf':_Functions}[method]
+
+				plts = dict(
+					label='$\\textrm{Matt}~:~{%s}$'%(setting['M']),
+					color='black',
+					marker='o',
+					linestyle='-',
+					markersize=45,
+					alpha=0.25,
+					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					)
+
+		y = func(parameters,x)
+
+		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
+
+	# plts = dict(
+	# 	label='$\\textrm{Beta}~:~{%s}$'%(setting['M']),
+	# 	color='viridis_%f'%((settings['M'].index(setting['M']))/(len(settings['M'])+1)),
+	# 	marker='',
+	# 	linestyle=':',
+	# 	alpha=1,
+	# 	path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+	# 	)
+
+	# opts = dict(function=f'beta.{method}',a=l*s,b=(d-l)*s)
+
+	# x = logspace(*args,**kwargs)
+
+	# y = distribution(x,**opts)
+
+	# fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
+
+	return
+
+
+def draw(settings,options,*args,**kwargs):
 
 	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
@@ -1314,6 +1641,10 @@ def setup(settings,options,*args,**kwargs):
 
 		test(settings,options,*args,**kwargs)
 
+	if boolean.get('draw'):
+
+		draw(settings,options,*args,**kwargs)
+
 	return
 
 def main(*args,**kwargs):
@@ -1359,12 +1690,12 @@ def main(*args,**kwargs):
 		# M=[0,2,4,8,16,32],
 		# N=[3],
 		# M=[0,2,4,8,16,32],
-		N=[2],
+		N=[3],
 		# M=[0,2,4,8,16,32],
 		# M=[0,2,4,8,16,32],
-		M=[0,2,4],
+		M=[0],
 		L=[1],
-		parameters=[1e-3],
+		parameters=[0],
 		)
 
 	options = dict(
@@ -1372,6 +1703,7 @@ def main(*args,**kwargs):
 			'run':0,
 			'process':0,
 			'test':1,
+			'draw':0,
 			}),
 		path   = (lambda settings={},options={},keywords=keywords: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={},keywords=keywords: dict(wr='a',default={})),
@@ -1380,10 +1712,10 @@ def main(*args,**kwargs):
 		attrs  = (lambda settings={},options={},keywords=keywords: ('attr','N')),
 		method  = (lambda settings={},options={},keywords=keywords: 'pdf'),
 		attribute = (lambda settings={},options={},keywords=keywords:{attr:partial(keywords['attribute'][attr],settings=settings,options=options) for attr in keywords['attribute']}),
-		data   = (lambda settings={},options={},keywords=keywords: join(options['path'](settings,options),'data','data',ext='hdf5' if vectorize else 'pkl')),
+		data   = (lambda settings={},options={},keywords=keywords: join(options['path'](settings,options),'data','test',ext='hdf5' if vectorize else 'pkl')),
 		logger = (lambda settings={},options={},keywords=keywords: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
 		plot   =  (lambda settings={},options={},keywords=keywords: dict(
-			path=join(options['path'](settings,options),'plot','plot.distribution.%s'%('.'.join([str(i) if not isinstance(i,str) else i.split(delim)[-1] for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]])),ext='pdf'),
+			path=join(options['path'](settings,options),'plot','plot.test.%s'%('.'.join([str(i) if not isinstance(i,str) else i.split(delim)[-1] for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]])),ext='pdf'),
 			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
 			markersize=9,
 			linewidth=16,
