@@ -1321,7 +1321,7 @@ def draw(settings,options,*args,**kwargs):
 
 				legend = ax.legend(
 					handles,labels,
-					title="$l ~,~ \\gamma ~:~ s_{k} = k+1 ~,~ \\gamma_{k} = 1 - (1-\\gamma)^{k}$",
+					title="$l ~,~ \\gamma$",
 					loc="upper center",
 					ncol=4,
 					title_fontsize=settings['legend.fontsize'],
@@ -1670,7 +1670,7 @@ def main(*args,**kwargs):
 
 	def func(settings,options,data,*args,**kwargs):
 		parameters = settings['parameters']
-		parameters = 1 - ((1-parameters)**(settings['M']))
+		# parameters = 1 - ((1-parameters)**(settings['M']))
 		obj = (1-parameters)*data + parameters*addition(data)/data.size
 		return obj
 	attribute['func'] = func
@@ -1702,8 +1702,8 @@ def main(*args,**kwargs):
 		boolean = (lambda settings={},options={},keywords=keywords: {
 			'run':0,
 			'process':0,
-			'test':1,
-			'draw':0,
+			'test':0,
+			'draw':1,
 			}),
 		path   = (lambda settings={},options={},keywords=keywords: '~/scratch/probability/distribution'),
 		io     = (lambda settings={},options={},keywords=keywords: dict(wr='a',default={})),
