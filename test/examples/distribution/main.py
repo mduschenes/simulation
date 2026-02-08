@@ -1240,7 +1240,7 @@ def draw(settings,options,*args,**kwargs):
 
 			ax.errorbar(x,y,yerr,xerr,**options)
 
-			ax.set_xlabel(xlabel="$x/d$",size=settings['fontsize'])
+			ax.set_xlabel(xlabel="$x/(1/d)$",size=settings['fontsize'])
 			ax.set_ylabel(ylabel="$P(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$",size=settings['fontsize'])# ~~\\to~~ P_{\\gamma} = \\frac{1}{1-\\gamma}P(\\frac{x-\\gamma/d}{1-\\gamma})$",size=settings['fontsize'])
 
 			# ax.set_xscale(value="log",base=10)
