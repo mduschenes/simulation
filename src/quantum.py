@@ -27,6 +27,8 @@ from src.run import setup
 
 from src.io import load,dump,join,split,exists
 
+from src.fit import minimize
+
 from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
@@ -79,6 +81,7 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {attr:data[attr].iloc[0] for attr in data}
 
 	data.update({
+		'function': function,
 		'operator': {'povm':'tetrad','tetrad':'tetrad','pauli':'pauli',None:None}.get(data.get('operator')[0] if (isinstance(data.get('operator'),iterables) and len(data.get('operator'))) else data.get('operator')),
 		})
 
@@ -109,13 +112,53 @@ def measurement(data,*args,function=None,**kwargs):
 		return vmap(func)
 	functions.y = func,wrapper
 
+	def func(x,y,info,*args,settings=None,**kwargs):
+		def functional(parameters,x,info=info):
+			info.environment,info.env = parameters
+			return info.func(x)
+
+		# indices = y>epsilon()
+		# x,y = array(x[indices]),array(y[indices])
+		# parameters = array([float(info.env)])
+
+		# objective = lambda parameters,x=x,y=y,func=func: addition(absolute(func(parameters,x)-y)**2)/addition(absolute(y)**2)
+		# options = {**dict(func=objective,parameters=parameters),**settings}
+
+		# func,y,parameters,yerr,cov,other = fit(x,y,**options)
+
+		# dump(
+		# 	data={
+		# 	'.'.join([str(i) for i in ['sample',info.system['N'],info.system['M'],info.system['noise.parameters'],info.system['function']]]):
+		# 	{'x':x,'y':y}
+		# 	},
+		# 	path='data.hdf5',
+		# 	wr='a'
+		# 	)
+
+		indices = (y>epsilon())*(~is_naninf(y))
+		x,y = x[indices],y[indices]
+
+		parameters = [info.environment,info.env]
+
+		model = minimize
+		objective = lambda parameters,x,y=y,func=func: addition(absolute(functional(parameters,x)-y)**2)/addition(absolute(y)**2)
+		options = dict()
+
+		status = model(objective,parameters,(x,y),**options)
+
+		return
+	def wrapper(func):
+		return func
+	functions.model = func,wrapper
+
+
 	for name in functions:
 		func,wrapper = functions[name]
 		functions[name] = wrapper(partial(func,info=info,functions=functions))
 
 	def func(x,info,*args,**kwargs):
 
-		parameters = info.parameters
+		parameters = info.parameters(x,info,*args,**kwargs)
 		init = 0*x
 		func = partial(info.functions.x,x=info.transform(x))
 
@@ -144,6 +187,8 @@ def measurement(data,*args,function=None,**kwargs):
 			parameters = parameters[key]
 
 	if function is None:
+
+		info.system = data
 		info.dimension = data['D']
 		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
@@ -166,7 +211,7 @@ def measurement(data,*args,function=None,**kwargs):
 			base=info.dimension,
 			)
 
-		info.parameters = dict(
+		info.parameters = lambda x,info,*args,**kwargs: dict(
 			a=(info.locality*info.env),
 			b=((info.dim-info.locality)*info.env),
 			loc=info.environment/info.dim,
@@ -176,13 +221,14 @@ def measurement(data,*args,function=None,**kwargs):
 		info.transform = lambda x,info,*args,**kwargs: x
 		info.transformation = lambda x,info,*args,**kwargs: x
 
-		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
-		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters(x,info,*args,**kwargs)))
+		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters(x,info,*args,**kwargs)))
 
 	elif function in ['array']:
 
 		if ((data['operator'] in ['tetrad']) or (parameters is None)):
 
+			info.system = data
 			info.dimension = data['D']
 			info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 			info.size = data['D']**(2*data['N'])
@@ -205,7 +251,7 @@ def measurement(data,*args,function=None,**kwargs):
 				base=info.dimension,
 				)
 
-			info.parameters = dict(
+			info.parameters = lambda x,info,*args,**kwargs: dict(
 				a=(info.locality*info.env),
 				b=((info.dim-info.locality)*info.env),
 				loc=info.environment*info.scale/info.dim,
@@ -215,11 +261,12 @@ def measurement(data,*args,function=None,**kwargs):
 			info.transform = lambda x,info,*args,**kwargs: x
 			info.transformation = lambda x,info,*args,**kwargs: x
 
-			info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
-			info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+			info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters(x,info,*args,**kwargs)))
+			info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters(x,info,*args,**kwargs)))
 
 		elif ((data['operator'] in ['pauli']) and (parameters is not None)):
 
+			info.system = data
 			info.dimension = data['D']
 			info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 			info.size = data['D']**(2*data['N'])
@@ -242,7 +289,7 @@ def measurement(data,*args,function=None,**kwargs):
 				base=info.dimension,
 				)
 
-			info.parameters = parameters
+			info.parameters = lambda x,info,*args,parameters=parameters,**kwargs: parameters
 
 			info.transform = lambda x,info,*args,**kwargs: (x-(info.environment/info.dim))/(1-info.environment)
 			info.transformation = lambda x,info,*args,**kwargs: x/(1-info.environment)
@@ -257,6 +304,7 @@ def measurement(data,*args,function=None,**kwargs):
 
 	elif function in ['state']:
 
+		info.system = data
 		info.dimension = data['D']
 		info.environment = data['noise.parameters'] if ((data['noise.parameters'] is not None) and (isinstance(data['noise.parameters'],numbers) and data['noise.parameters'] != 0)) else 0
 		info.size = data['D']**(1*data['N'])
@@ -279,7 +327,7 @@ def measurement(data,*args,function=None,**kwargs):
 			base=info.dimension,
 			)
 
-		info.parameters = dict(
+		info.parameters = lambda x,info,*args,**kwargs: dict(
 			a=(info.locality*info.env),
 			b=((info.dim-info.locality)*info.env),
 			loc=info.environment/info.dim,
@@ -289,15 +337,15 @@ def measurement(data,*args,function=None,**kwargs):
 		info.transform = lambda x,info,*args,**kwargs: x
 		info.transformation = lambda x,info,*args,**kwargs: x
 
-		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters))
-		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters))
+		info.func = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.pdf',**info.parameters(x,info,*args,**kwargs)))
+		info.functional = lambda x,info,*args,**kwargs: info.transformation(distribution(x=info.transform(x),function=f'{info.name}.cdf',**info.parameters(x,info,*args,**kwargs)))
 
 	else:
 
 		raise NotImplementedError(f"Not Implemented {function}")
 
 	for key in info:
-		if callable(info[key]):
+		if callable(info[key]) and (key not in ['parameters']):
 			info[key] = partial(info[key],info=info)
 
 	return info

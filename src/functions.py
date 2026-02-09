@@ -10,7 +10,6 @@ import numpy as np
 import scipy as sp
 import scipy.stats
 import scipy.special
-import scipy.optimize
 import scipy.integrate
 import pandas as pd
 from pandas.api.types import is_float_dtype
@@ -607,11 +606,19 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		data = data[attr][key]
 
 		if settings['func'] is None or settings['func'] in ['distance']:
+			Y = data/sum(data)/interval(X,**settings['options'])
+
+			info.functions.model(X,Y,settings=settings)
 			Y = info.func(X)
+
 			data,Y = data/sum(data)/interval(X,**settings['options']),Y
 			data = (1/2)*addition(absolute(data-Y))
 		elif settings['func'] in ['cumulative']:
+			Y = data/sum(data)/interval(X,**settings['options'])
+
+			info.functions.model(X,Y,settings=settings)
 			Y = info.functional(X)
+
 			data,Y = data/addition(data),Y
 			data = maximum(absolute((cumsum(data)-Y))+absolute(difference(Y,append=Y[-1]+Y[-1]-Y[-2])))
 		else:
@@ -963,55 +970,34 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,
 
 		if settings is not None:
 
-			def func(parameters,x,info=info):
-				info.env = parameters
-				return info.func(x)
-
-			# indices = y>epsilon()
-			# x,y = array(x[indices]),array(y[indices])
-			# parameters = array([float(info.env)])
-
-			# objective = lambda parameters,x=x,y=y,func=func: addition(absolute(func(parameters,x)-y)**2)/addition(absolute(y)**2)
-			# options = {**dict(func=objective,parameters=parameters),**settings}
-
-			# func,y,parameters,yerr,cov,other = fit(x,y,**options)
-
-			indices = y>epsilon()
-			x,y = x[indices],y[indices]
-			parameters = info.env
-
-			model = scipy.optimize.leastsq
-			objective = lambda parameters,x,y=y,func=func: np.sum(np.abs(func(parameters,x)-y)**2)/np.sum(np.abs(y)**2)
-			options = dict()
-
-			parameters,status = model(objective,parameters,(x,y),**options)
+			info.functions.model(x,y,settings=settings)
 
 			x = info.data
-			y = func(parameters,x)
+			y = info.func(x)
 
-			attr = 'errorbar'
-			kwarg = 'label'
-			options = {
-				'texify':dict(usetex=True),
-				'scinotation':dict(decimals=3,scilimits=[0,1],one=False,strip=True)
-				}
-			string = '$%s$'%(scinotation(info.env,**options['scinotation']))
-			string = texify(string,**options['texify'])
-			kwargs[attr][kwarg] = string
+			# attr = 'errorbar'
+			# kwarg = 'label'
+			# options = {
+			# 	'texify':dict(usetex=True),
+			# 	'scinotation':dict(decimals=3,scilimits=[0,1],one=False,strip=True)
+			# 	}
+			# string = ['%s = %s'%(j,scinotation(i,**options['scinotation'])) for i,j in zip([info.environment,info.env],['\\tilde{\\gamma}','\\tilde{s}'])]
+			# string = '\n'.join([texify(i,**options['texify']) for i in string])
+			# kwargs[attr][kwarg] = string
 
-			attr = 'legend'
-			kwarg = 'set_title'
-			if kwargs.get(attr):
-				for value in search(kwargs[attr]):
-					if not value or not value.get(kwarg):
-						continue
-					options = {
-						'texify':dict(usetex=True),
-						'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
-						}
-					string = 's ~:~ P(p) \\sim p^{s-1}(1-p)^{(d-1)s-1}'
-					value[kwarg] = '%s'%(string) if string else ''
-					value[kwarg] = texify(value[kwarg],**options['texify'])
+			# attr = 'legend'
+			# kwarg = 'set_title'
+			# if kwargs.get(attr):
+			# 	for value in search(kwargs[attr]):
+			# 		if not value or not value.get(kwarg):
+			# 			continue
+			# 		options = {
+			# 			'texify':dict(usetex=True),
+			# 			'scinotation':dict(decimals=3,scilimits=[0,0],one=False,strip=True)
+			# 			}
+			# 		string = None
+			# 		value[kwarg] = '%s'%(string) if string else '' if string is not None else None
+			# 		value[kwarg] = texify(value[kwarg],**options['texify']) if value[kwarg] is not None else None
 
 		else:
 

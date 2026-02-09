@@ -5,6 +5,10 @@ import os,sys,itertools,warnings,traceback
 
 import matplotlib.pyplot as plt
 
+import scipy
+import scipy.optimize
+minimize = scipy.optimize.minimize
+
 warnings.filterwarnings('ignore')
 
 # Import user modules

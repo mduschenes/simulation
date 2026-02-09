@@ -88,6 +88,7 @@
 						"args": [],
 						"kwargs" : {
 							"function": "array",
+							"settings": null,
 							"settings": {
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -101,8 +102,7 @@
 									"path": null,
 									"verbose": false
 								}
-							},
-							"settings": null
+							}
 						}
 					},
 					"alpha": {
@@ -532,6 +532,7 @@
 						"args": [],
 						"kwargs" : {
 							"function": "state",
+							"settings": null,
 							"settings": {
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -545,8 +546,7 @@
 									"path": null,
 									"verbose": false
 								}
-							},
-							"settings": null
+							}
 						}
 					},
 					"alpha": {
@@ -1183,7 +1183,7 @@
 				}
 			},
 			"set_ylabel": {
-				"ylabel": "$\\textrm{Cumulative Distance} ~~ \\max{~\\abs{\\Phi_{S}-\\Phi_{P}}}$"
+				"ylabel": "$\\textrm{Cumulative Distance} ~~ \\max{~\\abs{\\tilde{F}-F}}$"
 			},
 			"set_xlabel": {
 				"xlabel": "$\\textrm{Depth} ~~ M$"

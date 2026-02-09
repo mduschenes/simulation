@@ -1240,8 +1240,8 @@ def draw(settings,options,*args,**kwargs):
 
 			ax.errorbar(x,y,yerr,xerr,**options)
 
-			ax.set_xlabel(xlabel="$x/(1/d)$",size=settings['fontsize'])
-			ax.set_ylabel(ylabel="$P(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$",size=settings['fontsize'])# ~~\\to~~ P_{\\gamma} = \\frac{1}{1-\\gamma}P(\\frac{x-\\gamma/d}{1-\\gamma})$",size=settings['fontsize'])
+			ax.set_xlabel(xlabel="$\\textrm{Expectation Value}~~x/(1/d)$",size=settings['fontsize'])
+			ax.set_ylabel(ylabel="$P_{\\Pi}(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$",size=settings['fontsize'])# ~~\\to~~ P_{\\gamma} = \\frac{1}{1-\\gamma}P(\\frac{x-\\gamma/d}{1-\\gamma})$",size=settings['fontsize'])
 
 			# ax.set_xscale(value="log",base=10)
 			# ax.set_yscale(value="log",base=10)
@@ -1303,7 +1303,7 @@ def draw(settings,options,*args,**kwargs):
 				opts = {**dict(cmap=cmap,orientation='vertical')}
 				cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
 
-				cbar.ax.set_ylabel(ylabel="$k$",size=settings['fontsize'])
+				cbar.ax.set_ylabel(ylabel="$\\textrm{Depth}~~k$",size=settings['fontsize'])
 				cbar.ax.set_yticks(ticks=[(i)/(n-1) for i in range(n)])
 				cbar.ax.set_yticklabels(labels=['$%s$'%(i.replace('$','').split('~,~')[0]) for i in ax.get_legend_handles_labels()[1][:n]],size=settings['fontsize'])
 
@@ -1321,7 +1321,7 @@ def draw(settings,options,*args,**kwargs):
 
 				legend = ax.legend(
 					handles,labels,
-					title="$l ~,~ \\gamma$",
+					title="$\\textrm{Rank}~~l ~,~ \\textrm{Noise}~~\\gamma$",
 					loc="upper center",
 					ncol=4,
 					title_fontsize=settings['legend.fontsize'],

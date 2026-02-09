@@ -76,6 +76,7 @@
 								"type": "value"
 							}
 						},
+						"ax.bar.color.errorbar": "black",
 						"ax.bar.color.errorbar": {
 							"@N@": {
 								"value": {
@@ -90,7 +91,6 @@
 								"type": "value"
 							}
 						},
-						"ax.bar.color.errorbar": "black",
 						"ax.bar.alpha": {
 							"@N@": [
 								0.5
@@ -275,6 +275,7 @@
 							"size": 45
 						},
 						"ax.legend.set_label": true,
+						"ax.legend.ncol": 2,
 						"style.share.ax.legend": true,
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_xlabel": "bottom_centre",
@@ -354,6 +355,7 @@
 								"type": "value"
 							}
 						},
+						"ax.bar.color.errorbar": "black",
 						"ax.bar.color.errorbar": {
 							"@N@": {
 								"value": {
@@ -368,7 +370,6 @@
 								"type": "value"
 							}
 						},
-						"ax.bar.color.errorbar": "black",
 						"ax.bar.alpha": {
 							"@N@": [
 								0.5
@@ -552,6 +553,7 @@
 							"size": 45
 						},
 						"ax.legend.set_label": true,
+						"ax.legend.ncol": 2,
 						"style.share.ax.legend": true,
 						"style.share.ax.set_title": "top",
 						"style.share.ax.set_xlabel": "bottom",
