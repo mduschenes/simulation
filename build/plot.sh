@@ -12,8 +12,8 @@ case ${name} in
 		indices=()
 		;;
 	exit)
-		types=(process)
-		indices=("null")
+		types=()
+		indices=()
 		;;
 	process)
 		types=(process)
