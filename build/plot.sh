@@ -86,7 +86,7 @@ do
 			[[ -f ${path}/${file}.${bkp} ]] && mv ${path}/${file}.${bkp} ${path}/${file}
 		done
 
-		echo Process: ${path} ::: ${variable} ${type} ${indexes[@]}
+		echo Process: ${path} ::: String: ${string}    ,    Variable: ${variable}    ,    Type: ${type}    ,    Indexes: ${indexes[@]}
 
 		for number in ${!indexes[@]}
 		do
