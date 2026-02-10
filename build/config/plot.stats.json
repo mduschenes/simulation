@@ -55,7 +55,8 @@
 							"kwargs": {"function": "array"}
 						},
 						"application": "agg",
-						"analysis": {},
+						"analysis": {"sample": 0.5},
+						"settings": {"seed": 123},
 						"wrapper": {},
 						"scinotation": {
 							"scilimits": [
@@ -91,7 +92,8 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+								"settings": {"sample": 0.5},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -501,7 +503,8 @@
 							"kwargs": {"function": "state"}
 						},
 						"application": "agg",
-						"analysis": {},
+						"analysis": {"sample": 0.5},
+						"settings": {"seed": 123},
 						"wrapper": {},
 						"scinotation": {
 							"scilimits": [
@@ -537,7 +540,8 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+								"settings": {"sample": 0.5},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -952,12 +956,14 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+									"settings": {"sample": 0.5},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
-						"analysis": {},
+						"analysis": {"sample": 0.5},
+						"settings": {"seed": 123},
 						"application": "agg",
 						"wrapper": {},
 						"scinotation": {
@@ -1064,12 +1070,14 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+									"settings": {"sample": 0.5},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
-						"analysis": {},
+						"analysis": {"sample": 0.5},
+						"settings": {"seed": 123},
 						"application": "agg",
 						"wrapper": {},
 						"scinotation": {
@@ -1971,8 +1979,9 @@
 										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
 										"preprocess": "log10.log10",
 										"postprocess": "exp10.exp10",
-										"path":null,
-										"options":{},
+										"path": null,
+										"options": {},
+										"settings": {"sample": 0.5},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",
@@ -2078,8 +2087,9 @@
 										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
 										"preprocess": "log10.log10",
 										"postprocess": "exp10.exp10",
-										"path":null,
-										"options":{},
+										"path": null,
+										"options": {},
+										"settings": {"sample": 0.5},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",

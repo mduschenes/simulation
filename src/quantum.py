@@ -136,9 +136,6 @@ def measurement(data,*args,function=None,**kwargs):
 
 		settings = {} if settings is None else settings
 
-		system = {key:info.system[key] for key in info.system if key in ['D','N','M','noise.parameters','unitary','noise','psi','operator','function']}
-		key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
-
 		indices = (y>epsilon())*(~is_naninf(y))
 		x,y = x[indices],y[indices]
 
@@ -150,17 +147,23 @@ def measurement(data,*args,function=None,**kwargs):
 
 		status = model(objective,parameters,(x,y),**options)
 
-		print({
-			**{key:str(system[key]) for key in system},
-			**{'parameters':list(parameterize())},
-			**{'fun':status.fun}
-			})
 
-		dump(
-			data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize())}},
-			path=settings.get('path'),
-			wr='a'
-			)
+		if settings.get('path') is not None:
+
+			system = {key:settings['settings'].get(key,info.system.get(key)) for key in ['D','N','M','noise.parameters','unitary','noise','psi','operator','function','sample']}
+			key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
+
+			print({
+				**{key:str(system[key]) for key in system},
+				**{'parameters':list(parameterize())},
+				**{'fun':status.fun}
+				})
+
+			dump(
+				data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize())}},
+				path=settings.get('path'),
+				wr='a'
+				)
 
 		return
 	def wrapper(func):

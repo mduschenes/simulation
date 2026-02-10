@@ -656,9 +656,12 @@ def find(dictionary,verbose=None):
 				'analysis':{
 					# 'zscore':[{'objective':0.5}],
 					# 'quantile':{'objective':None}
+					# 'slice':{'value':[...]},
 					# 'parse':[{'__path__':'*','M':"<600<"}]
+					# 'sample':{'value':100,'seed':123}
 					# 'abs':['alpha'],
 					# 'func':{"MN":"functions.py.MN"},
+					# 'seed':123
 					},
 				'shape':None,
 					#{'shape': {'row':[],'col':[],'axis':[],'axes':[]},'reshape':[],'transpose':[]},
@@ -669,6 +672,7 @@ def find(dictionary,verbose=None):
 				'process':None,
 				'function':None,
 				'wrapper':{},
+				'settings':None,
 				'texify':{},
 				'valify': {},
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
@@ -924,14 +928,15 @@ def parse(key,value,data,verbose=None):
 	return out
 
 
-def analyse(data,analyses=None,verbose=None):
+def analyse(data,analyses=None,settings=None,verbose=None):
 	'''
 	Analyse data, cleaning data, removing outliers etc
 	Args:
 		data (dataframe): data of attributes
 		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form
 			{analysis:[({attr:value},kwargs)]},
-			allowed analysis strings in ['zscore','quantile','slice','parse','abs','log','log10','log2','replace','func']
+			allowed analysis strings in ['zscore','quantile','slice','parse','sample','abs','log','log10','log2','replace','func']
+		settings (dict): Additional keyword arguments
 		verbose (bool): Verbosity
 	Returns:
 		out (dataframe): Analysed data
@@ -942,6 +947,8 @@ def analyse(data,analyses=None,verbose=None):
 	default = True
 
 	out = default
+
+	settings = {**{key: analyses.pop(key,value) for key,value in dict(seed=None).items()},**(settings if isinstance(settings,dict) else {})}
 
 	if analyses is not None:
 
@@ -994,6 +1001,14 @@ def analyse(data,analyses=None,verbose=None):
 					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
 					out = [function(attr,value[attr],out,verbose=verbose) for attr in attrs]
 					out = conditions(out,op='and')
+					return out
+			elif analysis in ['sample']:
+				def func(attrs,data):
+					value = attrs.get('value')
+					seed =  attrs.get('seed',settings.get('seed'))
+					slices = slice(None,None) if value is None or isinstance(value,floats) else slice(value) if isinstance(value,integers) else slice(*value)
+					sample = dict(frac=value if isinstance(value,floats) else 1,random_state=seed)
+					out = data.sample(**sample)[slices]
 					return out
 			elif analysis in ['abs','log','log10','log2']:
 				def func(attrs,data):
@@ -1062,6 +1077,8 @@ def analyse(data,analyses=None,verbose=None):
 				args = [{i:{}} for i in analyses[analysis]]
 			elif isinstance(analyses[analysis],str):
 				args = [{analyses[analysis]:{}}]
+			elif isinstance(analyses[analysis],(scalars)):
+				args = [dict(value=analyses[analysis])]
 			else:
 				args = []
 
@@ -1072,6 +1089,8 @@ def analyse(data,analyses=None,verbose=None):
 					value = func(attrs,data)
 					value = value.to_numpy() if not isinstance(value,bool) else value
 					out = conditions([out,value],op='and')
+				elif analysis in ['sample']:
+					data = func(attrs,data)
 				elif analysis in ['abs','log','log10','log2','replace','func']:
 					data = func(attrs,data)
 				elif func is not None:
@@ -1663,6 +1682,7 @@ def apply(data,plots,processes,verbose=None):
 			process = keys[name][other].get('process',{})
 			function = keys[name][other].get('function',{})
 			wrappers = keys[name][other].get('wrapper',{})
+			settings = keys[name][other].get('settings',{})
 			args = keys[name][other].get('args',None)
 			kwargs = keys[name][other].get('kwargs',None)
 
@@ -1820,6 +1840,11 @@ def apply(data,plots,processes,verbose=None):
 			options = dict(as_index=False,dropna=False)
 			groups = data[boolean].groupby(by=by,**options)
 
+			if analyses:
+				options = dict(as_index=False,dropna=False)
+				groups = groups.apply(analyse,analyses=analyses,settings=settings,verbose=verbose).reset_index(drop=True)
+				groups = groups.groupby(by=by,**options)
+
 			properties[name] = properties.get(name,{})
 			variables = independent
 			func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
@@ -1842,11 +1867,6 @@ def apply(data,plots,processes,verbose=None):
 							NDIM=max((properties[name][prop][grouping].ndim,properties[name][prop][grouping].NDIM)) if properties[name][prop][grouping].NDIM is not None else properties[name][prop][grouping].ndim,
 							))
 				props.append(prop)
-
-			if analyses:
-				options = dict(as_index=False,dropna=False)
-				groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
-				groups = groups.groupby(by=by,**options)
 
 			if (
 				(not all(attr in groups.get_group(group) for group in groups.groups for attr in attributes)) and
@@ -4153,8 +4173,14 @@ def plotter(plots,processes,verbose=None):
 					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER) or not data[OTHER][OTHER].get(OTHER):
 						continue
 
-					value = {label: data[OTHER][label] if label in data[OTHER] else data[OTHER][OTHER][OTHER][label] 
-							for label in values[prop] if label is not None and (label in data[OTHER] or label in data[OTHER][OTHER][OTHER])}
+					value = {}
+
+					if data.get(OTHER):
+						value.update({label: data[OTHER][label] if label in data[OTHER] else data[OTHER][OTHER][OTHER][label]
+								for label in values[prop] if label is not None and (label in data[OTHER] or label in data[OTHER][OTHER][OTHER])})
+
+					if data[OTHER].get(OTHER):
+						value.update(dict(settings={attr:data[OTHER][OTHER][label][attr] for label in data[OTHER][OTHER] if isinstance(data[OTHER][OTHER][label],dict) for attr in data[OTHER][OTHER][label] if attr not in values[prop]}))
 					
 					if not isinstance(data.get(attr),dict):
 						data[attr] = {}
