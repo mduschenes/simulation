@@ -244,16 +244,23 @@ do
 				do
 					cp ${path}/${file} ${path}/${file}.${bkp}
 
+					flags=
 					case ${file} in
 						process.json)
-							sed "${options[@]}" ${path}/${file}
+							flags="${options[@]}"
 							;;
 						plot.json)
-							sed "${settings[@]}" ${path}/${file}
+							flags="${options[@]}"
 							;;
 						*)
+							continue
 							;;
 					esac
+
+					[[ -z "${flags}" ]] && continue
+
+					sed "${flags}" ${path}/${file}
+
 				done
 
 				[[ ${name} == exit ]] && exit
@@ -344,7 +351,7 @@ do
 
 			done
 
-			if [[ ! -s ${processes} ]]
+			if [[ ! -z ${processes} ]]
 			then
 				case ${device} in
 					local)
@@ -387,7 +394,7 @@ do
 
 			string=$(grep -o "\"sample\": [0-9.0-9]*" ${path}/${file}.${ext} | head -n1 | awk '{ print $2 }')
 
-			if [[ -s ${string} ]]
+			if [[ ! -z ${string} ]]
 			then
 				mkdir -p ${folder}
 				cp -rfv ${path}/${file}.${ext} ${folder}/${file}.${string}.${ext}
