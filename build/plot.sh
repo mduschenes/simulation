@@ -396,12 +396,18 @@ do
 				file=plot
 				ext=json
 
+				files=data
+				exts=hdf5
+
+				options=(-rfv)
+
+
 				data=$(grep -o "\"sample\": [0-9.0-9]*" ${path}/${file}.${ext} | head -n1 | awk '{ print $2 }')
 
-				if [[ ! -z ${data} ]]
+				if [[ ! -z ${data} ]] && [[ -f ${path}/${files}.${exts} ]]
 				then
 					mkdir -p ${folder}
-					cp -rfv ${path}/${file}.${ext} ${folder}/${file}.${data}.${ext}
+					cp ${options[@]} ${path}/${files}.${exts} ${folder}/${files}.${data}.${exts}
 				fi
 
 				;;
