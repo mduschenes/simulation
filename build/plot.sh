@@ -12,8 +12,12 @@ case ${name} in
 		indices=()
 		;;
 	exit)
-		types=()
-		indices=()
+		types=(process)
+		indices=("null")
+		;;
+	process)
+		types=(process)
+		indices=("null")
 		;;
 	sample)
 		types=(sample)
@@ -55,8 +59,8 @@ do
 	indexes=(${indices[${count}]})
 
 	folder=${path}
-	file=${folder}/process.json
-	bkp=${file}.bkp
+	files=(process.json plot.json)
+	bkp=bkp
 	ext=json
 
 	for string in tetrad pauli
@@ -65,7 +69,10 @@ do
 		string=
 	done
 
-	[[ -f ${bkp} ]] && mv ${bkp} ${file}
+	for file in ${files[@]}
+	do
+		[[ -f ${path}/${file}.${bkp} ]] && mv ${path}/${file}.${bkp} ${file}
+	done
 
 	echo Process: ${path} ::: ${string} ${type} ${indexes[@]}
 
@@ -75,8 +82,24 @@ do
 		index=${indexes[${number}]}
 
 		options=()
+		settings=()
 
 		case ${type} in
+			process)
+				options+=(
+					-i \
+					-e "s/\(\"load\":\) [^{]*,$/\1 0,/" \
+					-e "s/\(\"dump\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"plot\":\) [0|1],$/\1 0,/" \
+					-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
+					-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+				)
+				settings+=(
+					-i \
+					-e "s/\({\"sample\":\) [^}]*}/\1 1.0}/" \
+				)
+				;;
 			sample)
 				options+=(
 					-i \
@@ -117,6 +140,8 @@ do
 						options+=()
 						;;
 				esac
+
+				settings+=()
 
 				;;
 			stats)
@@ -160,9 +185,8 @@ do
 						;;
 				esac
 
-				;;
-			cluster)
-				options=()
+				settings+=()
+
 				;;
 			log)
 				options+=(
@@ -181,6 +205,9 @@ do
 						)
 						;;
 				esac
+
+				settings+=()
+
 				;;
 			scale)
 				options+=(
@@ -199,9 +226,13 @@ do
 						)
 						;;
 				esac
+
+				settings+=()
+
 				;;
 			*)
 				options+=()
+				settings+=()
 				;;
 		esac
 
@@ -209,9 +240,21 @@ do
 
 			local|slurm)
 
-				cp ${file} ${bkp}
+				for file in ${files[@]}
+				do
+					cp ${path}/${file} ${path}/${file}.${bkp}
 
-				sed "${options[@]}" ${file}
+					case ${file} in
+						process.json)
+							sed "${options[@]}" ${path}/${file}
+							;;
+						plot.json)
+							sed "${settings[@]}" ${path}/${file}
+							;;
+						*)
+							;;
+					esac
+				done
 
 				[[ ${name} == exit ]] && exit
 
@@ -220,7 +263,10 @@ do
 
 				${exe} ${args[@]}
 
-				mv ${bkp} ${file}
+				for file in ${files[@]}
+				do
+					mv ${path}/${file}.${bkp} ${path}/${file}
+				done
 				;;
 			*)
 				;;
@@ -229,7 +275,7 @@ do
 	done
 
 	case ${type} in
-		sample|stats)
+		process|sample|stats)
 
 			for number in ${!indexes[@]}
 			do
@@ -246,6 +292,9 @@ do
 				options=(-rfv)
 
 				case ${type} in
+					process)
+						files=()
+						;;
 					sample)
 						file=plot.sample.array.M.noise.parameters.N.${string}
 						case ${index} in
@@ -331,6 +380,16 @@ do
 	type=${types[${count}]}
 
 	case ${type} in
+		process)
+			folder=${path}/sample
+			file=plot
+			ext=json
+
+			string=$(grep -o "\"sample\": [0-9.0-9]*" ${path}/${file}.${ext} | head -n1 | awk '{ print $2 }')
+
+			[[ -s ${string} ]] && mkdir -p ${folder} && cp -rfv ${path}/${file}.${ext} ${folder}/${file}.${string}.${ext}
+
+			;;
 		sample|stats)
 
 			folder=../../notes/paper

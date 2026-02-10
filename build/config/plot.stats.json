@@ -55,7 +55,7 @@
 							"kwargs": {"function": "array"}
 						},
 						"application": "agg",
-						"analysis": {"sample": 0.5},
+						"analysis": {"sample": 1.0},
 						"settings": {"seed": 123},
 						"wrapper": {},
 						"scinotation": {
@@ -93,7 +93,7 @@
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
 								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
-								"settings": {"sample": 0.5},
+								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -503,7 +503,7 @@
 							"kwargs": {"function": "state"}
 						},
 						"application": "agg",
-						"analysis": {"sample": 0.5},
+						"analysis": {"sample": 1.0},
 						"settings": {"seed": 123},
 						"wrapper": {},
 						"scinotation": {
@@ -541,7 +541,7 @@
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
 								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
-								"settings": {"sample": 0.5},
+								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -957,12 +957,12 @@
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
 									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
-									"settings": {"sample": 0.5},
+									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
-						"analysis": {"sample": 0.5},
+						"analysis": {"sample": 1.0},
 						"settings": {"seed": 123},
 						"application": "agg",
 						"wrapper": {},
@@ -1071,12 +1071,12 @@
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
 									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
-									"settings": {"sample": 0.5},
+									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
-						"analysis": {"sample": 0.5},
+						"analysis": {"sample": 1.0},
 						"settings": {"seed": 123},
 						"application": "agg",
 						"wrapper": {},
@@ -1981,7 +1981,7 @@
 										"postprocess": "exp10.exp10",
 										"path": null,
 										"options": {},
-										"settings": {"sample": 0.5},
+										"settings": {"sample": 1.0},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",
@@ -2089,7 +2089,7 @@
 										"postprocess": "exp10.exp10",
 										"path": null,
 										"options": {},
-										"settings": {"sample": 0.5},
+										"settings": {"sample": 1.0},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",
