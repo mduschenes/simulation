@@ -153,8 +153,10 @@ do
 							;;
 					esac
 
-					settings+=()
-
+					settings+=(
+						-i \
+						-e "s/\({\"sample\":\) [^}]*}/\1 ${string}}/" \
+					)
 					;;
 				stats)
 					options+=(
@@ -197,8 +199,10 @@ do
 							;;
 					esac
 
-					settings+=()
-
+					settings+=(
+						-i \
+						-e "s/\({\"sample\":\) [^}]*}/\1 ${string}}/" \
+					)
 					;;
 				log)
 					options+=(
@@ -392,24 +396,6 @@ do
 
 		case ${type} in
 			process)
-				folder=${path}/sample
-				file=plot
-				ext=json
-
-				files=data
-				exts=hdf5
-
-				options=(-rfv)
-
-
-				data=$(grep -o "\"sample\": [0-9.0-9]*" ${path}/${file}.${ext} | head -n1 | awk '{ print $2 }')
-
-				if [[ ! -z ${data} ]] && [[ -f ${path}/${files}.${exts} ]]
-				then
-					mkdir -p ${folder}
-					cp ${options[@]} ${path}/${files}.${exts} ${folder}/${files}.${data}.${exts}
-				fi
-
 				;;
 			sample|stats)
 
@@ -442,4 +428,31 @@ do
 				;;
 		esac
 	done
+
+	case ${name} in
+		process)
+			folder=${path}/sample
+			file=
+			ext=
+
+			files=(data.json plot)
+			exts=
+
+			options=(-rfv)
+
+			data=${string}
+
+			for file in ${files[@]}
+			do
+				if [[ -f ${path}/${file} ]] || [[ -d ${path}/${file} ]]
+				then
+					mkdir -p ${folder}/${data}
+					cp ${options[@]} ${path}/${file} ${folder}/${data}/
+				fi
+			done
+			;;
+		*)
+			;;
+	esac
+
 done
