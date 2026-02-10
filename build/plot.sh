@@ -387,7 +387,11 @@ do
 
 			string=$(grep -o "\"sample\": [0-9.0-9]*" ${path}/${file}.${ext} | head -n1 | awk '{ print $2 }')
 
-			[[ -s ${string} ]] && mkdir -p ${folder} && cp -rfv ${path}/${file}.${ext} ${folder}/${file}.${string}.${ext}
+			if [[ -s ${string} ]]
+			then
+				mkdir -p ${folder}
+				cp -rfv ${path}/${file}.${ext} ${folder}/${file}.${string}.${ext}
+			fi
 
 			;;
 		sample|stats)
