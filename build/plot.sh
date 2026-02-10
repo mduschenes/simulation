@@ -71,7 +71,7 @@ do
 
 	for file in ${files[@]}
 	do
-		[[ -f ${path}/${file}.${bkp} ]] && mv ${path}/${file}.${bkp} ${file}
+		[[ -f ${path}/${file}.${bkp} ]] && mv ${path}/${file}.${bkp} ${path}/${file}
 	done
 
 	echo Process: ${path} ::: ${string} ${type} ${indexes[@]}
@@ -244,22 +244,22 @@ do
 				do
 					cp ${path}/${file} ${path}/${file}.${bkp}
 
-					flags=
+					flags=()
 					case ${file} in
 						process.json)
-							flags="${options[@]}"
+							flags+=("${options[@]}")
 							;;
 						plot.json)
-							flags="${options[@]}"
+							flags+=("${settings[@]}")
 							;;
 						*)
 							continue
 							;;
 					esac
 
-					[[ -z "${flags}" ]] && continue
+					[[ -z "${flags[@]}" ]] && continue
 
-					sed "${flags}" ${path}/${file}
+					sed "${flags[@]}" ${path}/${file}
 
 				done
 
