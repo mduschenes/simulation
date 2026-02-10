@@ -153,7 +153,7 @@ def measurement(data,*args,function=None,**kwargs):
 		print({
 			**{key:str(system[key]) for key in system},
 			**{'parameters':list(parameterize())},
-			**{'fun':status.func}
+			**{'fun':status.fun}
 			})
 
 		dump(
