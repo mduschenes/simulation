@@ -19,7 +19,7 @@ case ${name} in
 		;;
 	process)
 		types=(process stats sample)
-		indices=("" "4 6 8 10" "0 4 3 2 1")
+		indices=("null" "4 6 8 10" "0 4 3 2 1")
 		strings=(1.0 0.5 0.25)
 		;;
 	sample)
