@@ -32,7 +32,7 @@
 				{
 					"position": "row",
 					"value": {
-						"noise.parameters": [1e-2]
+						"noise.parameters": [null]
 					},
 					"kwargs": {
 						"fig.savefig.fname": "scale",
@@ -76,7 +76,6 @@
 								"type": "value"
 							}
 						},
-						"ax.bar.color.errorbar": "black",
 						"ax.bar.color.errorbar": {
 							"@N@": {
 								"value": {
@@ -91,6 +90,7 @@
 								"type": "value"
 							}
 						},
+						"ax.bar.color.errorbar": "black",
 						"ax.bar.alpha": {
 							"@N@": [
 								0.5
@@ -303,7 +303,7 @@
 				{
 					"position": "row",
 					"value": {
-						"noise.parameters": [1e-2]
+						"noise.parameters": [null]
 					},
 					"kwargs": {
 						"fig.savefig.fname": "scale",
@@ -355,7 +355,6 @@
 								"type": "value"
 							}
 						},
-						"ax.bar.color.errorbar": "black",
 						"ax.bar.color.errorbar": {
 							"@N@": {
 								"value": {
@@ -370,6 +369,7 @@
 								"type": "value"
 							}
 						},
+						"ax.bar.color.errorbar": "black",
 						"ax.bar.alpha": {
 							"@N@": [
 								0.5

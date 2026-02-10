@@ -585,7 +585,7 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		return measurement(data,*args,function=function,**kwargs)
 
 	settings = {} if settings is None else settings
-	settings = {**settings,**{setting:default for setting,default in {'func':None,'options':{}}.items() if settings.get(setting) is None}}
+	settings = {**settings,**{setting:default for setting,default in {'func':None,'data':{}}.items() if settings.get(setting) is None}}
 
 	funcs = {}
 
@@ -606,17 +606,17 @@ def func_stats_function(data,*args,function=None,x=None,y=None,xerr=None,yerr=No
 		data = data[attr][key]
 
 		if settings['func'] is None or settings['func'] in ['distance']:
-			Y = data/sum(data)/interval(X,**settings['options'])
+			Y = data/sum(data)/interval(X,**settings['data'])
 
-			info.functions.model(X,Y,settings=settings)
+			info.functions.model(X,Y,settings=settings,name='stats')
 			Y = info.func(X)
 
-			data,Y = data/sum(data)/interval(X,**settings['options']),Y
+			data,Y = data/sum(data)/interval(X,**settings['data']),Y
 			data = (1/2)*addition(absolute(data-Y))
 		elif settings['func'] in ['cumulative']:
-			Y = data/sum(data)/interval(X,**settings['options'])
+			Y = data/sum(data)/interval(X,**settings['data'])
 
-			info.functions.model(X,Y,settings=settings)
+			info.functions.model(X,Y,settings=settings,name='stats')
 			Y = info.functional(X)
 
 			data,Y = data/addition(data),Y
@@ -970,7 +970,7 @@ def func_plot_histogram(args,kwargs,data,*arguments,function=None,settings=None,
 
 		if settings is not None:
 
-			info.functions.model(x,y,settings=settings)
+			info.functions.model(x,y,settings=settings,name='sample')
 
 			x = info.data
 			y = info.func(x)

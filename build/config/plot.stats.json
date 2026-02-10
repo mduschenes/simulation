@@ -90,6 +90,8 @@
 							"function": "array",
 							"settings": null,
 							"settings": {
+								"path": "~/code/tensor/src/config/data.hdf5",
+								"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -534,6 +536,8 @@
 							"function": "state",
 							"settings": null,
 							"settings": {
+								"path": "~/code/tensor/src/config/data.hdf5",
+								"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
 								"kwargs": {
 									"process": false,"standardize": false,
 									"optimizer": "cg",
@@ -947,7 +951,9 @@
 								"x": "sample.state.log.x","y": "y","xerr": null,"yerr": null,
 								"settings": {
 									"func": "cumulative",
-									"options": {"base": 10,"scale": "log","range": [1e-20,1e0]}
+									"path": "~/code/tensor/src/config/data.hdf5",
+									"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
@@ -1057,7 +1063,9 @@
 								"x": "sample.array.log.x","y": "y","xerr": null,"yerr": null,
 								"settings": {
 									"func": "cumulative",
-									"options": {"base": 10,"scale": "log","range": [1e-20,1e0]}
+									"path": "~/code/tensor/src/config/data.hdf5",
+									"options":{"method":null,"tol":1e-8,"bounds":[[0,1],[1,null]],"options":{"maxiter":10000}},
+									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
 							}
 						},
@@ -1963,6 +1971,8 @@
 										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
 										"preprocess": "log10.log10",
 										"postprocess": "exp10.exp10",
+										"path":null,
+										"options":{},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",
@@ -2068,6 +2078,8 @@
 										"bootstrap": {"size": 5,"random": "gaussian","seed": 123},
 										"preprocess": "log10.log10",
 										"postprocess": "exp10.exp10",
+										"path":null,
+										"options":{},
 										"kwargs": {
 											"process": true,"standardize": true,
 											"metric": "lstsq",

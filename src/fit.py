@@ -35,7 +35,7 @@ debug = 0
 
 class cov(Covariance):pass
 
-def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,bootstrap=None,kwargs={}):
+def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,bootstrap=None,options=None,kwargs={}):
 	'''
 	Fit of data
 	Args:
@@ -53,6 +53,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		intercept (bool,iterable[bool]): Include intercept in fit
 		bounds (iterable[object]): piecewise domains
 		bootstrap (dict): bootstrap fits
+		options (dict[str,object],iterable[dict[str,object]]): Additional keyword arguments for fitting
 		kwargs (dict[str,object],iterable[dict[str,object]]): Additional keyword arguments for fitting
 	Returns:
 		_func (callable): Fit function in postprocessed frame with signature func(parameters,x)
@@ -65,24 +66,24 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	if bootstrap is not None:
 
-		options = {key:bootstrap.get(key,value) for key,value in dict(scale=yerr).items()}
-		bootstrap.update(options)
+		opts = {key:bootstrap.get(key,value) for key,value in dict(scale=yerr).items()}
+		bootstrap.update(opts)
 
 		y = bootstrapper(y,**bootstrap).T
 		yerr = yerr #diag(yerr)[...,None] if yerr is not None and yerr.ndim == 1 else yerr[...,None] if yerr is not None and yerr.ndim == 2 else None
 		size = y.shape[-1]
-		options = dict(axis=-1,ddof=size>1)
+		opts = dict(axis=-1,ddof=size>1)
 
-		_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,kwargs=kwargs)
+		_func,_y,_parameters,_yerr,_covariance,_other = fit(x,y,_x=_x,_y=_y,func=func,preprocess=preprocess,postprocess=postprocess,xerr=xerr,yerr=yerr,parameters=parameters,covariance=covariance,intercept=intercept,bounds=bounds,bootstrap=None,options=options,kwargs=kwargs)
 
 		_x = x if _x is None else  _x
 		_y = _func(_parameters,_x)
 
-		_y,_yerr = nanmean(_y,**options),nansem(_y,**options)
+		_y,_yerr = nanmean(_y,**opts),nansem(_y,**opts)
 		_func = _func if _func is not None else None
-		_parameters = nanmean(_parameters,**options) if _parameters is not None else None
-		_covariance = nanmean(_covariance,**options) if _covariance is not None else None
-		_other = {stat:nanmean(_other[stat],**options) if _other[stat] is not None else None for stat in _other} if _other is not None else None
+		_parameters = nanmean(_parameters,**opts) if _parameters is not None else None
+		_covariance = nanmean(_covariance,**opts) if _covariance is not None else None
+		_other = {stat:nanmean(_other[stat],**opts) if _other[stat] is not None else None for stat in _other} if _other is not None else None
 
 		return _func,_y,_parameters,_yerr,_covariance,_other
 
@@ -145,7 +146,8 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			parameters=parameters[i] if parameters is not None else parameters,
 			covariance=covariance[i] if covariance is not None else covariance,
 			intercept=intercept[i] if intercept is not None else intercept,
-			**(kwargs[i] if kwargs is not None and kwargs[i] is not None else {})
+			options=options,
+			kwargs=(kwargs[i] if kwargs is not None and kwargs[i] is not None else {}),
 			)
 
 		_func[i] = returns[0]
@@ -160,7 +162,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	return _func,_y,_parameters,_yerr,_covariance,_other
 
-def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,**kwargs):
+def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,options=None,kwargs={}):
 	'''
 	Fit of data
 	Args:
@@ -176,6 +178,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		parameters (array): Model parameters in preprocessed frame
 		covariance (array): Model parameters error in preprocessed frame
 		intercept (bool): Include intercept in fit
+		options (dict[str,object]): Additional keyword arguments for fitting
 		kwargs (dict[str,object]): Additional keyword arguments for fitting
 	Returns:
 		_func (callable): Fit function in postprocesed framed with signature func(parameters,x)

@@ -2187,15 +2187,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				dim = 2
 
+				keywords = dict()
+
 				prop = 'label'
 				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
 					nullkwargs.extend([prop])
 
 				subattrs = 'set_%sscale'
 				for axes in AXES[:dim]:
-					
+
 					subattr = subattrs%(axes)
-					
+
 					if not kwargs.get(subattr):
 						continue
 
@@ -2225,7 +2227,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									stop=min((i for i in (
 										max((j for i in value['lim'] for j in (i.get('%smax'%(axes)),) if j is not None),default=None),
 										max((j for i in value['ticks'] if i.get('ticks') is not None for j in i.get('ticks',[]) if j is not None),default=None))
-										if i is not None),default=None),			
+										if i is not None),default=None),
 									num=kwargs[attr].get(prop) if kwargs[attr].get(prop) is not None else 100,
 									base=base if base is not None else 10,
 									)
@@ -2250,11 +2252,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							plot.datavalues = plot.datavalues/scale
 							y /= scale
 						return
-					
+
 					value = False
 					kwargs[attr][prop] = value
 
-				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs,keywords=keywords):
 					y,x,plot = objs[-1]['obj']
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
@@ -2303,15 +2305,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in [*AXES,'height']],*[]])
 
-				call = len(args)>0	
+				call = len(args)>0
 
 			elif attr in ['bar']:
-			
+
 				dim = 2
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in [*AXES[:dim]]])
 
 				x,y = args
+
+				keywords = dict(x=x.copy(),transform=(lambda x,y: x,y))
 
 				prop = 'label'
 				if isinstance(kwargs[attr].get(prop),list) and all(i is None for i in kwargs[attr].get(prop)):
@@ -2331,18 +2335,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					scale = kwargs[attr].get('scale')
 					base = kwargs[attr].get('base')
 
+					width = None
+
+					transform = lambda x,y: (x,y)
+
 					if scale is None or scale in ['linear']:
 						z = np.array([*(2*x[:1]-x[1:2]),*x,*(2*x[-2:-1]-x[-1:])])
 						w = 1/(size+2*length)
-						
+
 						diff = np.diff(z[:-1])
-						
+
 						if size > 1:
 							step = diff*(-1/2 + (count+length)*w)
 							x += step
-						
+
 						width = diff*w
-					
+
+						transform = lambda x,y: (x,y)
+
 					elif scale in ['log','symlog']:
 
 						z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-2:-1]**2/x[-1:])])/np.log(base)
@@ -2350,13 +2360,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						w = 1/(size+2*length)
 
 						diff = np.diff(z[:-1])
-						
+
 						if size > 1:
 							step = base**(diff*(-1/2 + (count+length)*w))
 							x *= step
 							z = np.array([*np.log(x[:1]**2/x[1:2]),*np.log(x),*np.log(x[-1:]**2/x[-2:-1])])/np.log(base)
 
 						width = base**(z[1:-1]*(1-w/2) + z[2:]*(w/2)) - base**(z[:-2]*(w/2) + z[1:-1]*(1-w/2))
+
+						transform = lambda x,y: (x,y)
+
+					keywords.update(dict(transform=transform))
 
 					kwargs[attr][prop] = width
 
@@ -2367,9 +2381,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					value,color,values,colors,norm = set_color(**kwargs[attr][prop])
 					kwargs[attr][prop] = color
 
-				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs):
+				def func(obj,attr,instance,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs,keywords=keywords):
 					plot = objs[-1]['obj']
-					x,y = np.array([i.get_x()+{'center':i.get_width()//2,'xy':0,None:0}.get(i.rotation_point,0) for i in plot.patches]),np.array([i.get_y()+i.get_height() for i in plot.patches])
+					x = keywords.get('x',np.array([i.get_x()+{'center':i.get_width()/2,'xy':i.get_width()/2,None:0}.get(i.rotation_point,0) for i in plot.patches]))
+					y = keywords.get('y',np.array([i.get_y()+i.get_height() for i in plot.patches]))
 					y,x,plot = ([y],[x],[plot]) if not isinstance(plot,list) else (y,[x]*len(plot),plot)
 					for i,(y,x,plot) in enumerate(zip(y,x,plot)):
 
@@ -2393,6 +2408,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						if callable(function):
 							x,y,xerr,yerr = function(args=(x,y,xerr,yerr),kwargs=kwds,data=data)
+
+						x,y = keywords.get('transform',(lambda x,y: (x,y)))(x,y)
 
 						kwds[attr]['x'] = x
 						kwds[attr]['y'] = y

@@ -19,7 +19,7 @@ from src.utils import maximum,minimum,argmax,argmin,nonzero,difference,unique,sh
 from src.utils import real,imag,absolute,abs2,mod,sign,reciprocal,sqr,sqrt,log,log10,log1p,sin,cos,exp,exp10,binom,distribution
 from src.utils import insertion,shuffle,swap,groupby,sortby,union,intersection,accumulate,interleaver,splitter,seeder,rng
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary,is_naninf
-from src.utils import backend,pi,e,nan,null,delim,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype,anything,allthing
+from src.utils import backend,pi,e,nan,null,delim,separ,dataframes,arrays,tensors,objects,nulls,scalars,numbers,integers,floats,strings,iterables,dicts,symbols,character,epsilon,datatype,anything,allthing
 
 from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
@@ -33,8 +33,6 @@ from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
 
-delim = '.'
-separ = '_'
 memory = lambda size,limit=2**20:size<limit if isinstance(size,numbers) else allthing(size<limit)
 
 def measurement(data,*args,function=None,**kwargs):
@@ -81,8 +79,11 @@ def measurement(data,*args,function=None,**kwargs):
 		data = {attr:data[attr].iloc[0] for attr in data}
 
 	data.update({
-		'function': function,
 		'operator': {'povm':'tetrad','tetrad':'tetrad','pauli':'pauli',None:None}.get(data.get('operator')[0] if (isinstance(data.get('operator'),iterables) and len(data.get('operator'))) else data.get('operator')),
+		})
+
+	data.update({
+		'function': function,
 		})
 
 	data.update({
@@ -112,10 +113,17 @@ def measurement(data,*args,function=None,**kwargs):
 		return vmap(func)
 	functions.y = func,wrapper
 
-	def func(x,y,info,*args,settings=None,**kwargs):
-		def functional(parameters,x,info=info):
-			info.environment,info.env = parameters
+	def func(x,y,info,*args,settings=None,name=None,**kwargs):
+
+		keys = ['environment','env']
+
+		def functional(parameters,x,info=info,keys=keys):
+			for key,value in zip(keys,parameters):
+				setattr(info,key,value)
 			return info.func(x)
+
+		def parameterize(info=info,keys=keys):
+			return array([getattr(info,key) for key in keys])
 
 		# indices = y>epsilon()
 		# x,y = array(x[indices]),array(y[indices])
@@ -126,25 +134,33 @@ def measurement(data,*args,function=None,**kwargs):
 
 		# func,y,parameters,yerr,cov,other = fit(x,y,**options)
 
-		# dump(
-		# 	data={
-		# 	'.'.join([str(i) for i in ['sample',info.system['N'],info.system['M'],info.system['noise.parameters'],info.system['function']]]):
-		# 	{'x':x,'y':y}
-		# 	},
-		# 	path='data.hdf5',
-		# 	wr='a'
-		# 	)
+		settings = {} if settings is None else settings
+
+		system = {key:info.system[key] for key in info.system if key in ['D','N','M','noise.parameters','unitary','noise','psi','operator','function']}
+		key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
 
 		indices = (y>epsilon())*(~is_naninf(y))
 		x,y = x[indices],y[indices]
 
-		parameters = [info.environment,info.env]
+		parameters = parameterize()
 
 		model = minimize
 		objective = lambda parameters,x,y=y,func=func: addition(absolute(functional(parameters,x)-y)**2)/addition(absolute(y)**2)
-		options = dict()
+		options = dict(**settings.get('options'))
 
 		status = model(objective,parameters,(x,y),**options)
+
+		print({
+			**{key:str(system[key]) for key in system},
+			**{'parameters':list(parameterize())},
+			**{'fun':status.func}
+			})
+
+		dump(
+			data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize())}},
+			path=settings.get('path'),
+			wr='a'
+			)
 
 		return
 	def wrapper(func):
