@@ -142,7 +142,7 @@ def measurement(data,*args,function=None,**kwargs):
 		parameters = parameterize()
 
 		model = minimize
-		objective = lambda parameters,x,y=y,func=func: addition(absolute(functional(parameters,x)-y)**2)/addition(absolute(y)**2)
+		objective = lambda parameters,x,y=y,func=func: (addition(absolute(functional(parameters,x)-y)**2)/addition(absolute(y)**2)/y.size)
 		options = dict(**settings.get('options'))
 
 		status = model(objective,parameters,(x,y),**options)
