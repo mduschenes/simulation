@@ -172,9 +172,12 @@ def exists(path):
 	'''
 
 	try:
-		exists = os.path.exists(path)
+		exists = os.path.exists(os.path.abspath(os.path.expandvars(os.path.expanduser(path))))
 	except:
-		exists = False
+		try:
+			exists = os.path.exists(path)
+		except:
+			exists = False
 
 	return exists
 
@@ -1168,6 +1171,10 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		elif wrapper in ['df']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
+
+				iterates = kwargs.get('iterates',{})
+				iterates = {attr:iterates[attr] for attr in iterates} if isinstance(iterates,dict) else {attr:True for attr in iterates} if isinstance(iterates,iterables) else {}
+
 				def tensor(data):
 					return iterable(data) and (data.ndim>1) and any(isinstance(i,arrays) for i in data)
 				def iterable(data):
@@ -1175,17 +1182,23 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 				def scalar(data):
 					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1
 				def function(path,data):
-					iterate = len(set(len(data[attr]) for attr in data if iterable(data[attr]))) > 1
 					for attr in data:
 						if tensor(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
-						elif iterate and iterable(data[attr]):
-							data[attr] = [tuple(data[attr])]
+						elif iterates.get(attr):
+							if tensor(data[attr]):
+								data[attr] = [tuple(i) for i in data[attr]]
+							elif iterable(data[attr]):
+								data[attr] = [tuple(data[attr])]
+							elif scalar(data[attr]):
+								data[attr] = [(data[attr],)]
 					return data
+
 				try:
 					data = pd.concat((pd.DataFrame(function(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
-				except Exception as exception:
+				except:
 					data = default
+
 				return data
 		elif wrapper in ['pd']:
 			def wrapper(data):
