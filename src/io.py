@@ -1168,18 +1168,19 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 		elif wrapper in ['df']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
+				def tensor(data):
+					return iterable(data) and (data.ndim>1) and any(isinstance(i,arrays) for i in data)
 				def iterable(data):
-					return not isinstance(data,scalars) and getattr(data,'size',len(data)) > 1 and data.ndim>1 and any(isinstance(i,arrays) for i in data)
+					return (not isinstance(data,scalars)) and (getattr(data,'size',len(data)) > 1)
 				def scalar(data):
 					return isinstance(data,scalars) or getattr(data,'size',len(data)) <= 1
 				def function(path,data):
-					# iterate = len(set(len(data[attr]) for attr in data if not scalar(data[attr])))==1
+					iterate = len(set(len(data[attr]) for attr in data if iterable(data[attr]))) > 1
 					for attr in data:
-						if iterable(data[attr]):
+						if tensor(data[attr]):
 							data[attr] = [tuple(i) for i in data[attr]]
-							# data[attr] = [tuple(i) if ((not iterate) or not scalar(i)) else i for i in data[attr]]
-					# length = max([len(data[attr]) if not scalar(data[attr]) else 1 for attr in data],default=0)
-					# data['__path__'] = [path]*length
+						elif iterate and iterable(data[attr]):
+							data[attr] = [tuple(data[attr])]
 					return data
 				try:
 					data = pd.concat((pd.DataFrame(function(path,obj)) for path in data if data[path] for obj in ([data[path]] if any(not isinstance(data[path][attr],dict) for attr in data[path]) else (data[path][attr] for attr in data[path]))),**options) #.convert_dtypes()
@@ -1261,10 +1262,10 @@ def load(path,wr='r',default=None,delimiter=delimiter,chunk=None,wrapper=None,fu
 	for wrapper in wrappers:
 		data = wrapper(data)
 
-	if isinstance(args['path'],str) and (any(((i in [None]) or (isinstances(i,dict,reverse=True))) for i in args['wrapper'])):
+	if isinstance(data,dict) and (isinstance(args['path'],str) and (any(((i in [None]) or (isinstances(i,dict,reverse=True))) for i in args['wrapper']))):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (any(((i in [None])) for i in args['wrapper'])):
+	elif isinstance(data,dict) and (not isinstance(args['path'],dict) and (any(((i in [None])) for i in args['wrapper']))):
 		data = [data[name] for name in data]
 	else:
 		pass

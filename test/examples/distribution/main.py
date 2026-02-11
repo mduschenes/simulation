@@ -1770,9 +1770,40 @@ def plot(settings,options,*args,**kwargs):
 
 	path = '~/code/tensor/src/config/data.hdf5'
 
-	data = load(path,wrapper='df')
+	def wrapper(data):
+		keys = {'none':None}
+		for key in keys:
+			data[data==key] = keys[key]
+		return data
 
-	print(data)
+	data = load(path,wrapper=['df',wrapper])
+
+	by = ['N','M','noise.parameters','function','operator','sample']
+	def boolean(data):
+		keys = {'operator':['tetrad'],'function':['array']}
+		boolean = True
+		for key in keys:
+			boolean = boolean & data[key].isin(keys[key])
+		return boolean
+	options = dict(as_index=False,dropna=False)
+
+	groups = data[boolean(data)].groupby(by=by,**options)
+
+	def func(obj):
+		if obj.dtype in ['object'] and obj.dtype.kind in ['O']:
+			obj = array([[*i] for i in obj])
+			obj = obj.mean()
+		elif obj.dtype in ['object'] and obj.dtype.kind in ['S']:
+			print(obj)
+			exit()
+		else:
+			obj = obj.iloc[0]
+		return obj
+
+	for group in groups.groups:
+		print(dict(zip(by,group)),groups.get_group(group).shape)
+		data = groups.get_group(group).apply(func)
+		print(data)
 
 	exit()
 

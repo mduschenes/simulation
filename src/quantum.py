@@ -150,7 +150,14 @@ def measurement(data,*args,function=None,**kwargs):
 
 		if settings.get('path') is not None:
 
-			system = {key:settings['settings'].get(key,info.system.get(key)) for key in ['D','N','M','noise.parameters','unitary','noise','psi','operator','function','sample']}
+			system = {key:settings['settings'].get(key,info.system.get(key,value))
+				for key,value in {
+					'D':None,'N':None,'M':None,'noise.parameters':None,
+					'unitary':None,'noise':None,'psi':None,'operator':None,
+					'function':None,'sample':None,
+					'name':name,
+					}.items()
+					}
 			key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
 
 			print({

@@ -92,7 +92,7 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+								"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.999999999],[1,null]],"options": {"maxiter": 10000}},
 								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -540,7 +540,7 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+								"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.999999999],[1,null]],"options": {"maxiter": 10000}},
 								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -956,7 +956,7 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+									"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.999999999],[1,null]],"options": {"maxiter": 10000}},
 									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
@@ -1070,7 +1070,7 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options": {"method": null,"tol": 1e-8,"bounds": [[0,0.5],[1,null]],"options": {"maxiter": 10000}},
+									"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.999999999],[1,null]],"options": {"maxiter": 10000}},
 									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
