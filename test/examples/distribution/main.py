@@ -1825,7 +1825,7 @@ def plot(settings,options,*args,**kwargs):
 					sort = ['N','operator']
 					),
 				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
+				boolean = lambda data: data['M'].isin([2,4,16,32]) & data['N'].isin([10]),
 				options = dict(
 					groupby=dict(as_index=False,dropna=False)
 					),
@@ -1842,7 +1842,7 @@ def plot(settings,options,*args,**kwargs):
 					sort = ['N','operator']
 					),
 				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
+				boolean = lambda data: data['M'].isin([2,4,16,32]) & data['N'].isin([10]),
 				options = dict(
 					groupby=dict(as_index=False,dropna=False)
 					),
@@ -1859,7 +1859,7 @@ def plot(settings,options,*args,**kwargs):
 			# 		sort = ['sample','operator']
 			# 		),
 			# 	data = ['noise','env'],
-			# 	boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
+			# 	boolean = lambda data: data['M'].isin([2,4,16,32]) & data['sample'].isin([1.0]),
 			# 	options = dict(
 			# 		groupby=dict(as_index=False,dropna=False)
 			# 		),
@@ -1876,7 +1876,7 @@ def plot(settings,options,*args,**kwargs):
 			# 		sort = ['sample','operator']
 			# 		),
 			# 	data = ['noise','env'],
-			# 	boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
+			# 	boolean = lambda data: data['M'].isin([2,4,16,32]) & data['sample'].isin([1.0]),
 			# 	options = dict(
 			# 		groupby=dict(as_index=False,dropna=False)
 			# 		),
@@ -2014,10 +2014,10 @@ def plot(settings,options,*args,**kwargs):
 										'set_xticks':{'ticks':[0,2,4,8,16,32]},
 										'set_xticklabels':{'labels':['$%d$'%(i) for i in [0,2,4,8,16,32]],'size':options['options']['font']['text']},
 
-										'set_yscale':{'value':'linear','base':10},
-										'set_ylim':{'ymin':-2,'ymax':34},
-										'set_yticks':{'ticks':[0,2,4,8,16,32]},
-										'set_yticklabels':{'labels':['$%d$'%(i) for i in [0,2,4,8,16,32]],'size':options['options']['font']['text']},
+										'set_yscale':{'value':'log','base':2},
+										'set_ylim':{'ymin':0.5,'ymax':1500},
+										'set_yticks':{'ticks':[1,4,16,64,256,1024]},
+										'set_yticklabels':{'labels':['$2^{%d}$'%(i) if i!=0 else '$1$' for i in [0,2,4,6,8,10]],'size':options['options']['font']['text']},
 										},
 									('noise.parameters','noise'):
 										{
@@ -2046,10 +2046,10 @@ def plot(settings,options,*args,**kwargs):
 										'set_xticks':{'ticks':[1e-4,1e-3,1e-2,1e-1,1e0]},
 										'set_xticklabels':{'labels':['$10^{%d}$'%(i) if i!=0 else '$1$' for i in [-4,-3,-2,-1,0]],'size':options['options']['font']['text']},
 
-										'set_yscale':{'value':'linear','base':10},
-										'set_ylim':{'ymin':-2,'ymax':130},
-										'set_yticks':{'ticks':[0,2,4,8,16,32,64,128]},
-										'set_yticklabels':{'labels':['$%d$'%(i) for i in [0,2,4,8,16,32,64,128]],'size':options['options']['font']['text']},
+										'set_yscale':{'value':'log','base':2},
+										'set_ylim':{'ymin':0.5,'ymax':1500},
+										'set_yticks':{'ticks':[1,4,16,64,256,1024]},
+										'set_yticklabels':{'labels':['$2^{%d}$'%(i) if i!=0 else '$1$' for i in [0,2,4,6,8,10]],'size':options['options']['font']['text']},
 										},
 									}.get((setting.variables.x,setting.data[number]),{})
 									),

@@ -167,7 +167,7 @@ def measurement(data,*args,function=None,**kwargs):
 				})
 
 			dump(
-				data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize())}},
+				data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize(),objective=status.fun)}},
 				path=settings.get('path'),
 				wr='a'
 				)
