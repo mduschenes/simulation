@@ -2113,7 +2113,12 @@ def plot(settings,options,*args,**kwargs):
 								**({
 								(True,'sample'):{
 									'title': '$\\textrm{Samples}~~m$',
-									'loc': {'noise':'lower right','env':'upper left'}.get(setting.data[number],'upper right'),
+									'loc': {
+										('M','noise'):'lower right',
+										('M','env'):'upper right',
+										('noise.parameters','noise'):'lower right',
+										('noise.parameters','env'):'upper left',
+										}.get((setting.variables.x,setting.data[number]),'upper right'),
 									'ncol':1,
 									'title_fontsize': options['options']['font']['legend'],
 									'prop':{'size': options['options']['font']['legend'],},
@@ -2125,7 +2130,12 @@ def plot(settings,options,*args,**kwargs):
 									},
 								(True,'N'):{
 									'title': '$\\textrm{Size}~~n$',
-									'loc':'upper right',
+									'loc': {
+										('M','noise'):'lower right',
+										('M','env'):'upper left',
+										('noise.parameters','noise'):'lower right',
+										('noise.parameters','env'):'upper left',
+										}.get((setting.variables.x,setting.data[number]),'upper right'),
 									'ncol':1,
 									'title_fontsize': options['options']['font']['legend'],
 									'prop':{'size': options['options']['font']['legend'],},
