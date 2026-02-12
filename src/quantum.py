@@ -142,13 +142,16 @@ def measurement(data,*args,function=None,**kwargs):
 		parameters = parameterize()
 
 		model = minimize
-		objective = lambda parameters,x,y=y,func=func: (addition(absolute(functional(parameters,x)-y)**2)/addition(absolute(y)**2)/y.size)
+		func = functional
+		objective = lambda parameters,x,y=y,func=func: (addition(absolute(func(parameters,x)-y)**2)/addition(absolute(y)**2)/y.size)
 		options = dict(**settings.get('options'))
 
 		status = model(objective,parameters,(x,y),**options)
 
-
 		if settings.get('path') is not None:
+
+			from src.logger import Logger
+			logger = Logger(file=join(split(settings.get('path'),directory=True),'log.log'),verbose='info')
 
 			system = {key:settings['settings'].get(key,info.system.get(key,value))
 				for key,value in {
@@ -160,11 +163,18 @@ def measurement(data,*args,function=None,**kwargs):
 					}
 			key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
 
-			print({
-				**{key:str(system[key]) for key in system},
-				**{'parameters':list(parameterize())},
-				**{'fun':status.fun}
-				})
+			logger(
+				msg='\t'.join(['%s: %s'%(
+					key,value if isinstance(value,str) else int(value) if isinstance(value,int) else float(value) if isinstance(value,float) else value)
+					for key,value in
+					{
+					**{key:system[key]  for key in ['N','M','noise.parameters','function']},
+					**{'parameters':list(map(float,parameterize()))},
+					**{'fun':status.fun,'success':status.success,'message':status.message}
+					}.items()
+					]),
+				verbose=True
+				)
 
 			dump(
 				data={key:{**system,**dict(x=x,y=y,xerr=None,yerr=None,parameters=parameterize(),objective=status.fun)}},

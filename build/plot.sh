@@ -100,39 +100,40 @@ do
 				process)
 					options+=(
 						-i \
-						-e "s/\(\"load\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"dump\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"plot\":\) [0|1],$/\1 0,/" \
-						-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
+						-e "s%\(\"load\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"dump\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"plot\":\) [0|1],$%\1 0,%" \
+						-e "s%\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$%\1 0,%" \
 					)
 					settings+=(
 						-i \
-						-e "s/\({\"sample\":\) [^}]*}/\1 ${string}}/" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
 				sample)
 					options+=(
 						-i \
-						-e "s/\(\"load\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"dump\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"fig.savefig.fname\":\).*,/\1 \"${variable}.${index}\",/" \
-						-e "s/\(size\":\) 45/\1 240/" \
-						-e "s/\(\"M\":\) null/\1 [2,8,32]/" \
+						-e "s%\(\"load\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"dump\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"fig.savefig.fname\":\).*,%\1 \"${variable}.${index}\",%" \
+						-e "s%\(size\":\) 45%\1 240%" \
+						-e "s%\(\"M\":\) null%\1 [2,8,32]%" \
 					)
 					case ${index} in
 						0)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[${index}]%" \
 							)
 							;;
 						*)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[1e-${index}]%" \
 							)
 							;;
 					esac
@@ -140,12 +141,12 @@ do
 					case ${variable} in
 						tetrad)
 							options+=(
-								-e "s/\(\"ax.bar.plots\":\).*,/\1 \"errorbar\",/" \
+								-e "s%\(\"ax.bar.plots\":\).*,%\1 \"errorbar\",%" \
 							)
 							;;
 						pauli)
 							options+=(
-								-e "s/\(\"ax.bar.plots\":\).*,/\1 false,/" \
+								-e "s%\(\"ax.bar.plots\":\).*,%\1 false,%" \
 							)
 							;;
 						*)
@@ -155,31 +156,32 @@ do
 
 					settings+=(
 						-i \
-						-e "s/\({\"sample\":\) [^}]*}/\1 ${string}}/" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
 				stats)
 					options+=(
 						-i \
-						-e "s/\(\"load\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"dump\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$/\1 1,/" \
-						-e "s/\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$/\1 0,/" \
-						-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
-						-e "s/\(\"N\":\ \)null\(.*\)/\1[${index}]\2/" \
-						-e "s/\(\"ax.set_title.label\":\).*/\1 null,/" \
-						-e "s/\(size\":\) 45/\1 120/" \
+						-e "s%\(\"load\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"dump\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"stats.array.state.M.noise.parameters.N\":\) [^{]*,$%\1 1,%" \
+						-e "s%\(\"sample.array.M.noise.parameters.N\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"sample.state.M.noise.parameters.N\":\) [^{]*,$%\1 0,%" \
+						-e "s%\(\"fig.savefig.fname\": \"[^\"]*\)\",%\1.${index}\",%" \
+						-e "s%\(\"N\":\ \)null\(.*\)%\1[${index}]\2%" \
+						-e "s%\(\"ax.set_title.label\":\).*%\1 null,%" \
+						-e "s%\(size\":\) 45%\1 120%" \
 					)
 					case ${index} in
 						4)
 							options+=(
-								-e "s/\(\"style.share.ax.legend\":\).*,/\1 true,/" \
+								-e "s%\(\"style.share.ax.legend\":\).*,%\1 true,%" \
 							)
 							;;
 						*)
 							options+=(
-								-e "s/\(\"style.share.ax.legend\":\).*,/\1 false,/" \
+								-e "s%\(\"style.share.ax.legend\":\).*,%\1 false,%" \
 							)
 							;;
 					esac
@@ -201,23 +203,24 @@ do
 
 					settings+=(
 						-i \
-						-e "s/\({\"sample\":\) [^}]*}/\1 ${string}}/" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
 				log)
 					options+=(
 						-i \
-						-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+						-e "s%\(\"fig.savefig.fname\": \"[^\"]*\)\",%\1.${index}\",%" \
 						)
 					case ${index} in
 						0)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[${index}]%" \
 							)
 							;;
 						*)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[1e-${index}]%" \
 							)
 							;;
 					esac
@@ -228,17 +231,17 @@ do
 				scale)
 					options+=(
 						-i \
-						-e "s/\(\"fig.savefig.fname\": \"[^\"]*\)\",/\1.${index}\",/" \
+						-e "s%\(\"fig.savefig.fname\": \"[^\"]*\)\",%\1.${index}\",%" \
 						)
 					case ${index} in
 						0)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[${index}]%" \
 							)
 							;;
 						*)
 							options+=(
-								-e "s/\(\"noise.parameters\":\ \)\[.*\]/\1[1e-${index}]/" \
+								-e "s%\(\"noise.parameters\":\ \)\[.*\]%\1[1e-${index}]%" \
 							)
 							;;
 					esac
@@ -276,7 +279,6 @@ do
 						[[ -z "${flags[@]}" ]] && continue
 
 						sed "${flags[@]}" ${path}/${file}
-
 					done
 
 					[[ ${name} == exit ]] && exit
@@ -298,7 +300,7 @@ do
 		done
 
 		case ${type} in
-			process|sample|stats)
+			sample|stats)
 
 				for number in ${!indexes[@]}
 				do
@@ -315,9 +317,6 @@ do
 					options=(-rfv)
 
 					case ${type} in
-						process)
-							files=()
-							;;
 						sample|stats)
 							file=plot.${type}.array.M.noise.parameters.N.${variable}
 							case ${index} in
@@ -356,7 +355,6 @@ do
 					processes+=(${folder}/${file})
 
 					data="$(echo ${indexes[@]} | sed 's/ /./g')"
-
 				done
 
 				if [[ ! -z ${processes} ]]
@@ -440,7 +438,7 @@ do
 
 			options=(-rfv)
 
-			data=${string}
+			data=sample/${string}
 
 			for file in ${files[@]}
 			do
@@ -450,6 +448,24 @@ do
 					cp ${options[@]} ${path}/${file} ${folder}/${data}/
 				fi
 			done
+
+
+			files=(process.json plot.json)
+			exts=
+
+			options=(-rfv)
+
+			data=plot
+
+			for file in ${files[@]}
+			do
+				if [[ -f ${path}/${file} ]] || [[ -d ${path}/${file} ]]
+				then
+					mkdir -p ${folder}/${data}
+					cp ${options[@]} ${path}/${file} ${folder}/${data}/
+				fi
+			done
+
 			;;
 		*)
 			;;
