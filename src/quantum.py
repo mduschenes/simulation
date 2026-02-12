@@ -164,13 +164,17 @@ def measurement(data,*args,function=None,**kwargs):
 			key = separ.join([*([str(name)] if name is not None else []),separ.join([str(i) for key in system for i in [key,system[key]]])])
 
 			logger(
-				msg='\t'.join(['%s: %s'%(
-					key,value if isinstance(value,str) else int(value) if isinstance(value,int) else float(value) if isinstance(value,float) else value)
+				msg='\t'.join(['%s: %s%s'%(
+					key,
+					value if isinstance(value,str) else int(value) if isinstance(value,int) else float(value) if isinstance(value,float) else value,
+					'\t' if key in ['parameters','func'] else ''
+					)
 					for key,value in
 					{
 					**{key:system[key]  for key in ['N','M','noise.parameters','function']},
 					**{'parameters':list(map(float,parameterize()))},
-					**{'fun':status.fun,'success':status.success,'message':status.message}
+					**{'func':status.fun},
+					**({'success':status.success,'message':status.message} if status.success != 1 else {}),
 					}.items()
 					]),
 				verbose=True
@@ -241,7 +245,7 @@ def measurement(data,*args,function=None,**kwargs):
 		info.functions = functions
 
 		info.data = logspace(
-			start=log(1e-32)/log(info.dimension),
+			start=log(1e-64)/log(info.dimension),
 			stop=log((1-info.environment)*info.scale)/log(info.dimension),
 			num=10000,
 			base=info.dimension,
@@ -281,7 +285,7 @@ def measurement(data,*args,function=None,**kwargs):
 			info.functions = functions
 
 			info.data = logspace(
-				start=log(1e-32)/log(info.dimension),
+				start=log(1e-64)/log(info.dimension),
 				stop=log((1-info.environment)*info.scale)/log(info.dimension),
 				num=10000,
 				base=info.dimension,
@@ -319,7 +323,7 @@ def measurement(data,*args,function=None,**kwargs):
 			info.functions = functions
 
 			info.data = logspace(
-				start=log(1e-32)/log(info.dimension),
+				start=log(1e-64)/log(info.dimension),
 				stop=log((1-info.environment)*info.scale)/log(info.dimension),
 				num=10000,
 				base=info.dimension,
@@ -357,7 +361,7 @@ def measurement(data,*args,function=None,**kwargs):
 		info.functions = functions
 
 		info.data = logspace(
-			start=log(1e-32)/log(info.dimension),
+			start=log(1e-64)/log(info.dimension),
 			stop=log((1-info.environment)*info.scale)/log(info.dimension),
 			num=10000,
 			base=info.dimension,

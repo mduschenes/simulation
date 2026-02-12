@@ -30,7 +30,7 @@ case ${name} in
 	stats)
 		types=(stats)
 		indices=("4 6 8 10")
-		strings=()
+		strings=("")
 		;;
 	all)
 		types=(stats sample)
@@ -109,7 +109,7 @@ do
 					)
 					settings+=(
 						-i \
-						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string:-null}}%" \
 						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
@@ -156,7 +156,7 @@ do
 
 					settings+=(
 						-i \
-						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string:-null}}%" \
 						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
@@ -203,7 +203,7 @@ do
 
 					settings+=(
 						-i \
-						-e "s%\({\"sample\":\) [^}]*}%\1 ${string}}%" \
+						-e "s%\({\"sample\":\) [^}]*}%\1 ${string:-null}}%" \
 						-e "s%\(\"path\":\) .*/\([^\"]*\)\",%\1 \"${path}/sample/data/\2\",%" \
 					)
 					;;
@@ -433,7 +433,7 @@ do
 			file=
 			ext=
 
-			files=(data.json plot)
+			files=(data.json process.json plot.json plot.mplstyle plot)
 			exts=
 
 			options=(-rfv)
@@ -449,22 +449,22 @@ do
 				fi
 			done
 
-
-			files=(process.json plot.json plot.mplstyle)
+			files=(plot.mplstyle)
 			exts=
 
 			options=(-rfv)
 
-			data=plot
+			data=data
 
 			for file in ${files[@]}
 			do
 				if [[ -f ${path}/${file} ]] || [[ -d ${path}/${file} ]]
 				then
-					mkdir -p ${folder}/${data}
-					cp ${options[@]} ${path}/${file} ${folder}/${data}/
+						mkdir -p ${folder}/${data}
+						cp ${options[@]} ${path}/${file} ${folder}/${data}/
 				fi
 			done
+
 
 			;;
 		*)

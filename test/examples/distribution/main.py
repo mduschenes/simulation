@@ -1635,10 +1635,10 @@ def plot(settings,options,*args,**kwargs):
 
 		ext = 'hdf5'
 
-		default = join('data','stats',root=path,ext=ext)
+		default = join('data.tmp',root=path,ext=ext)
 		opts = dict(wrapper='pd')
 
-		path = join('data','data',root=path,ext=ext)
+		path = join('data',root=path,ext=ext)
 
 		if exists(default):
 			path = default
@@ -1936,7 +1936,7 @@ def plot(settings,options,*args,**kwargs):
 
 							'options': {
 								**options['options'],
-								**{'mplstyle': join(options['options']['path'],'plot',ext='mplstyle'),}
+								**{'mplstyle': join(path,'plot',ext='mplstyle'),}
 								},
 
 							'ax':{
