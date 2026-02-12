@@ -92,7 +92,7 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options": {"method": "L-BFGS-B","tol": 1e-16,"bounds": [[0,0.99999999],[1,1048576]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-16,"ftol": 1e-16,"gtol": 1e-16}},
+								"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.99999999],[1,null]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-8,"ftol": 1e-16,"gtol": 1e-16}},
 								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -540,7 +540,7 @@
 							"settings": null,
 							"settings": {
 								"path": "~/code/tensor/src/config/data.hdf5",
-								"options": {"method": "L-BFGS-B","tol": 1e-16,"bounds": [[0,0.99999999],[1,1048576]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-16,"ftol": 1e-16,"gtol": 1e-16}},
+								"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.99999999],[1,null]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-8,"ftol": 1e-16,"gtol": 1e-16}},
 								"settings": {"sample": 1.0},
 								"kwargs": {
 									"process": false,"standardize": false,
@@ -956,7 +956,7 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options": {"method": "L-BFGS-B","tol": 1e-16,"bounds": [[0,0.99999999],[1,1048576]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-16,"ftol": 1e-16,"gtol": 1e-16}},
+									"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.99999999],[1,null]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-8,"ftol": 1e-16,"gtol": 1e-16}},
 									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}
@@ -1070,7 +1070,7 @@
 								"settings": {
 									"func": "cumulative",
 									"path": "~/code/tensor/src/config/data.hdf5",
-									"options": {"method": "L-BFGS-B","tol": 1e-16,"bounds": [[0,0.99999999],[1,1048576]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-16,"ftol": 1e-16,"gtol": 1e-16}},
+									"options": {"method": null,"tol": 1e-16,"bounds": [[0,0.99999999],[1,null]],"options": {"maxiter": 1000,"maxls": 64,"eps":1e-8,"ftol": 1e-16,"gtol": 1e-16}},
 									"settings": {"sample": 1.0},
 									"data": {"base": 10,"scale": "log","range": [1e-20,1e0]}
 								}

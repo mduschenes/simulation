@@ -450,7 +450,7 @@ do
 			done
 
 
-			files=(process.json plot.json)
+			files=(process.json plot.json plot.mplstyle)
 			exts=
 
 			options=(-rfv)

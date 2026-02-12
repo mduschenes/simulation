@@ -1825,7 +1825,7 @@ def plot(settings,options,*args,**kwargs):
 					sort = ['N','operator']
 					),
 				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,16,32]) & data['N'].isin([10]),
+				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
 				options = dict(
 					groupby=dict(as_index=False,dropna=False)
 					),
@@ -1842,7 +1842,7 @@ def plot(settings,options,*args,**kwargs):
 					sort = ['N','operator']
 					),
 				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,16,32]) & data['N'].isin([10]),
+				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
 				options = dict(
 					groupby=dict(as_index=False,dropna=False)
 					),
@@ -1850,40 +1850,40 @@ def plot(settings,options,*args,**kwargs):
 				ax = {},
 				index = lambda number=None,group=None,groupby=None,**kwargs:None,
 				),
-			# Dict(
-			# 	variables = dict(
-			# 		x = 'M',
-			# 		y = 'parameters',
-			# 		colorbar = 'noise.parameters',
-			# 		legend = 'N',
-			# 		sort = ['sample','operator']
-			# 		),
-			# 	data = ['noise','env'],
-			# 	boolean = lambda data: data['M'].isin([2,4,16,32]) & data['sample'].isin([1.0]),
-			# 	options = dict(
-			# 		groupby=dict(as_index=False,dropna=False)
-			# 		),
-			# 	fig = {},
-			# 	ax = {},
-			# 	index = lambda index=None,group=None,groupby=None,**kwargs:None,
-			# 	),
-			# Dict(
-			# 	variables = dict(
-			# 		x = 'noise.parameters',
-			# 		y = 'parameters',
-			# 		colorbar = 'M',
-			# 		legend = 'N',
-			# 		sort = ['sample','operator']
-			# 		),
-			# 	data = ['noise','env'],
-			# 	boolean = lambda data: data['M'].isin([2,4,16,32]) & data['sample'].isin([1.0]),
-			# 	options = dict(
-			# 		groupby=dict(as_index=False,dropna=False)
-			# 		),
-			# 	fig = {},
-			# 	ax = {},
-			# 	index = lambda number=None,group=None,groupby=None,**kwargs:None,
-			# 	),
+			Dict(
+				variables = dict(
+					x = 'M',
+					y = 'parameters',
+					colorbar = 'noise.parameters',
+					legend = 'N',
+					sort = ['sample','operator']
+					),
+				data = ['noise','env'],
+				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
+				options = dict(
+					groupby=dict(as_index=False,dropna=False)
+					),
+				fig = {},
+				ax = {},
+				index = lambda index=None,group=None,groupby=None,**kwargs:None,
+				),
+			Dict(
+				variables = dict(
+					x = 'noise.parameters',
+					y = 'parameters',
+					colorbar = 'M',
+					legend = 'N',
+					sort = ['sample','operator']
+					),
+				data = ['noise','env'],
+				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
+				options = dict(
+					groupby=dict(as_index=False,dropna=False)
+					),
+				fig = {},
+				ax = {},
+				index = lambda number=None,group=None,groupby=None,**kwargs:None,
+				),
 			]
 
 		for setting in settings:
@@ -1957,24 +1957,31 @@ def plot(settings,options,*args,**kwargs):
 
 									**([
 										{
-										'marker': 'o'
+										'marker': 'o',
+										'alpha':0.8,
+
 										},
 										{
-										'marker': '^'
+										'marker': '^',
+										'alpha':0.6,
 										},
 										{
-										'marker': 's'
+										'marker': 's',
+										'alpha':0.5,
 										},
 										{
-										'marker': 'P'
+										'marker': 'P',
+										'alpha':0.4,
 										},
 										{
-										'marker': 'h'
+										'marker': 'h',
+										'alpha':0.3,
 										},
 										{
-										'marker': 'x'
+										'marker': 'x',
+										'alpha':0.2,
 										},
-										][groupings[setting.variables.legend].index(grouping[setting.variables.legend])]
+										][len(groupings[setting.variables.legend])-1-groupings[setting.variables.legend].index(grouping[setting.variables.legend])]
 										),
 
 									'color':'%s_%s'%(
@@ -1983,7 +1990,6 @@ def plot(settings,options,*args,**kwargs):
 									'markersize':60,
 									'linestyle':'--',
 									'linewidth':30,
-									'alpha':0.5,
 									},
 
 								**({
@@ -2114,7 +2120,6 @@ def plot(settings,options,*args,**kwargs):
 									'markerscale':1.25,
 									'handlelength':3,
 									'framealpha':1,
-									'set_alpha':{'alpha':0.5},
 									'set_color':{'color':'gray'},
 									'set_linewidth':{'w':16},
 									},
@@ -2127,7 +2132,6 @@ def plot(settings,options,*args,**kwargs):
 									'markerscale':1.25,
 									'handlelength':3,
 									'framealpha':1,
-									'set_alpha':{'alpha':0.5},
 									'set_color':{'color':'gray'},
 									'set_linewidth':{'w':16},
 									},
