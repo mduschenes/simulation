@@ -1817,6 +1817,7 @@ def plot(settings,options,*args,**kwargs):
 
 		settings = [
 			Dict(
+				name = 'M.parameters.noise.parameters.sample',
 				variables = dict(
 					x = 'M',
 					y = 'parameters',
@@ -1834,6 +1835,7 @@ def plot(settings,options,*args,**kwargs):
 				index = lambda index=None,group=None,groupby=None,**kwargs:None,
 				),
 			Dict(
+				name = 'noise.parameters.parameters.M.sample',
 				variables = dict(
 					x = 'noise.parameters',
 					y = 'parameters',
@@ -1851,6 +1853,7 @@ def plot(settings,options,*args,**kwargs):
 				index = lambda number=None,group=None,groupby=None,**kwargs:None,
 				),
 			Dict(
+				name = 'M.parameters.noise.parameters.N',
 				variables = dict(
 					x = 'M',
 					y = 'parameters',
@@ -1868,6 +1871,7 @@ def plot(settings,options,*args,**kwargs):
 				index = lambda index=None,group=None,groupby=None,**kwargs:None,
 				),
 			Dict(
+				name = 'noise.parameters.parameters.M.N',
 				variables = dict(
 					x = 'noise.parameters',
 					y = 'parameters',
@@ -1886,7 +1890,12 @@ def plot(settings,options,*args,**kwargs):
 				),
 			]
 
+		names = ['noise.parameters.parameters.M.sample']
+
 		for setting in settings:
+
+			if setting.name not in names:
+				continue
 
 			bys = [attr for attr in setting.variables.sort if attr in data]
 			groupbys = data[setting.boolean(data)].groupby(by=bys,**setting.options.groupby)
@@ -1926,6 +1935,7 @@ def plot(settings,options,*args,**kwargs):
 							'options':{
 								'path':join(path,'plot'),
 								'font':{'text':200,'legend':200,'colorbar':200},
+								'font':{'text':120,'legend':85,'colorbar':120},
 								'color':{'plot':'viridis','colorbar':'viridis'},
 								'layout':[],
 								},
@@ -2151,7 +2161,9 @@ def plot(settings,options,*args,**kwargs):
 
 							'fig':{
 								'set_size_inches':{'w':65,'h':45},
+								'set_size_inches':{'w':45,'h':20},
 								'subplots_adjust':{},
+								'subplots_adjust': {'wspace': 0.5,'hspace': 0.1},
 								'tight_layout':{},
 								'savefig':{
 									'fname':join(
@@ -2167,7 +2179,8 @@ def plot(settings,options,*args,**kwargs):
 											]),
 										ext='pdf'),
 									'bbox_inches':'tight',
-									'pad_inches':0.5
+									'pad_inches':0.5,
+									'pad_inches':0.2,
 									},
 							}
 						})
