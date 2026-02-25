@@ -28,7 +28,7 @@ def main(*args,**kwargs):
 	n = int(args[0] if len(args)>0 else 5)
 	d = int(args[1] if len(args)>1 else 2)
 
-	directory = '~/scratch/nmf/data'
+	directory = 'data/data'
 	file = 'data'
 	mplstyle = 'config/plot.mplstyle'
 	path = join(directory,file,ext='pkl')
@@ -44,10 +44,10 @@ def main(*args,**kwargs):
 
 	kwargs = {
 		'method':[
-			# 'mu',
-			# 'kl',
+			'mu',
+			'kl',
 			# 'hals'
-			('mu','hals','kl','hals')
+			# ('mu','hals','kl','hals')
 			],
 		'initialize':[
 			# 'rand',
@@ -56,16 +56,18 @@ def main(*args,**kwargs):
 			'nndsvdr',
 			],
 		'metric':[
-			# 'norm',
+			'norm',
 			'div',
+			'norm',
 			# 'abs',
 			],
 		'size':[None],
 		'eps':[0],
 		'iters':[
+			1e2
 			# 1e1,
 			# 1e3,5e1			
-			[1e3,1e3,1e3,1e3],
+			# [1e3,1e3,1e3,1e3],
 			],
 		'parameters':[0],
 		'seed':[i for i in seed],
@@ -87,8 +89,14 @@ def main(*args,**kwargs):
 		return any(options==data[i]['options'] for i in data)
 
 	def filters(kwargs):
-		if kwargs['method'] in ['hals'] and kwargs['iters'] >= 1000:
-			return False
+
+		return not any([
+			(kwargs['method'] in ['mu']) and (kwargs['metric'] in ['div']),
+			(kwargs['method'] in ['kl']) and (kwargs['metric'] in ['norm']),
+			(kwargs['method'] in ['hals']) and (kwargs['metric'] in ['div']),
+			(kwargs['method'] in ['hals']) and (kwargs['iters'] >= 1000)
+			]
+			)
 
 		return True
 
@@ -100,12 +108,10 @@ def main(*args,**kwargs):
 		plot = 1,
 		)
 
-
 	if booleans['load']:
 		data = load(path,default={})
 	else:
 		data = {}
-
 
 	if booleans['run']:
 
@@ -222,8 +228,11 @@ def main(*args,**kwargs):
 	if booleans['plot']:
 
 		print('Plot',path)
-		
+
 		data = load(path)
+
+		if data is None:
+			return
 
 		attrs = {
 			**{attr:dict(
@@ -231,36 +240,38 @@ def main(*args,**kwargs):
 				y=attr,
 				label=['function','method','metric','seed'])
 			for attr in set(i for index in data for i in data[index] 
-				if i not in ['options'] and i in ['error','rank'])
+				if i not in ['options'] and i in ['error','rank','time'])
 			},
 		}
+
 		def texify(string,default=None):
 
 			texify = {
-				'method':'$\\textnormal{Method}$',
+				'method':'$\\textnormal{NMF Algorithm}$',
 				'initialize':'$\\textnormal{Initialize}$',
-				'metric':'$\\textnormal{Metric}$',
+				'metric':'$\\textnormal{Objective}$',
 				'seed':'$\\textnormal{Seed}$',
-				'function':'$\\textnormal{Function}$',
+				'function':'$\\textnormal{NMF Algorithm Method}$',
 				'iteration':'$\\textnormal{Iteration}$',
-				'error':'$\\textnormal{Error}~\\mathcal{L}(A,UV)$',
-				'rank':'$\\textnormal{Rank}~~~\\textrm{max}\\left\\{\\textrm{rank}(U),\\textrm{rank}(V)\\right\\}$',
+				'error':'$\\textnormal{Objective}~\\mathcal{L}(A,UV)$',
+				'rank':'$\\textnormal{Rank}~~~\\textnormal{max}\\left\\{\\textnormal{rank}(U),\\textnormal{rank}(V)\\right\\}$',
+				'rank':'$\\textnormal{Time}~~~[s]$',
 				'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
 				'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
 				'nmf':'$\\textnormal{NMF}$',
-				'nmf.marginal':'$\\textnormal{Marginal-NMF}$',
-				'nmf.joint':'$\\textnormal{Joint-NMF}$',
+				**{i:'$\\textnormal{Marginal}$' for i in ['nmf.marginal','pnmf']},
+				**{i:'$\\textnormal{Marginal},$'+'\n'+'$\\textnormal{Joint}$' for i in ['nmf.joint','xnmf']},
 				'mu':'$\\textnormal{MU}$',
 				'kl':'$\\textnormal{KL}$',
-				'hals':'$\\textnormal{H-ALS}$',
+				'hals':'$\\textnormal{HALS}$',
 				'gd':'$\\textnormal{GD}$',
 				'kld':'$\\textnormal{KL-GD}$',
-				('norm','nmf.marginal'):'$\\norm{A-UV}/\\norm{A}',
-				('norm','nmf.joint'):'$\\norm{A-UV}/\\norm{A}',
-				('abs','nmf.marginal'):'$\\norm{X_{\\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta}}/\\norm{A}',
-				('abs','nmf.joint'):'$\\norm{X_{x \\alpha}\\abs{A_{\\alpha\\mu\\nu\\beta}-U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}}Y_{\\beta y}}/\\norm{A}',
-				('div','nmf.marginal'):'$\\mathcal{D}(A,UV)',
-				('div','nmf.joint'):'$\\mathcal{D}(A,UV)',
+				**{('norm',i):'$\\textnormal{Norm}$' for i in ['nmf.marginal','pnmf']},
+				**{('norm',i):'$\\textnormal{Norm}$' for i in ['nmf.joint','xnmf']},
+				**{('abs',i):'$\\textnormal{Abs}$' for i in ['nmf.marginal','pnmf']},
+				**{('abs',i):'$\\textnormal{Abs}$' for i in ['nmf.joint','xnmf']},
+				**{('div',i):'$\\textnormal{KL}' for i in ['nmf.marginal','pnmf']},
+				**{('div',i):'$\\textnormal{KL}' for i in ['nmf.joint','xnmf']},
 				}
 
 			if string in texify:
@@ -276,7 +287,9 @@ def main(*args,**kwargs):
 
 				fig,ax = plt.subplots()
 
-				def boolean(data,index=None,wrapper=None):
+				def boolean(data,index=None,wrapper=None,attr=None,):
+					if attr in ['time']:
+						return slice(None,None,5)
 					if index is None:
 						size = max(len(data[i][attrs[attr]['y']]) for i in data)	
 					else:
@@ -288,6 +301,12 @@ def main(*args,**kwargs):
 					return indices
 
 				def filters(index,data):
+					return not any([
+						(data[index]['options']['method'] in ['mu']) and (data[index]['options']['metric'] in ['div']),
+						(data[index]['options']['method'] in ['kl']) and (data[index]['options']['metric'] in ['norm']),
+						(data[index]['options']['method'] in ['hals']) and (data[index]['options']['metric'] in ['div']),
+						]
+						)
 					return True
 
 				values = {index:data[index] for index in data if filters(index,data)}					
@@ -295,17 +314,21 @@ def main(*args,**kwargs):
 				options = dict()
 				indices = sorted(list(set(values[i]['options'][attrs[attr]['label'][-1]] for i in values)),key=lambda i:[values[i]['options'][attrs[attr]['label'][-1]] for i in values].index(i))
 				
-				x = {index:values[index][attrs[attr]['x']][boolean(values,index=index)] for index in values}
-				y = {index:values[index][attrs[attr]['y']][boolean(values,index=index)] for index in values}
+				x = {index:values[index][attrs[attr]['x']][boolean(values,index=index,attr=attr)] for index in values}
+				y = {index:values[index][attrs[attr]['y']][boolean(values,index=index,attr=attr)] for index in values}
+
+				# index = list(values)[0]
+				# print(data[index]['options'])
+				# exit()
 
 				options = {index:{**options,**dict(
-					label='$%s$'%('~,~'.join(str(texify(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attrs[attr]['label'][:-1]).replace('$','')),
-					color=plt.get_cmap({'nmf.marginal':'viridis','nmf.joint':'magma'}.get(values[index]['options']['function']))((indices.index(values[index]['options'][attrs[attr]['label'][-1]])+1)/(len(indices)+1)),
+					label='$%s$'%('~,~'.join(str(texify(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attrs[attr]['label'][:-1] if label not in ['metric'] and label in ['method']).replace('$','')),
+					color=plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(values[index]['options']['function']))((indices.index(values[index]['options'][attrs[attr]['label'][-1]])+1)/(len(indices)+1)),
 					alpha=0.6,
 					# marker={'norm':'o','abs':'s','div':'^'}.get(values[index]['options']['metric']),
 					# linestyle={'mu':'-','kl':'--','hals':':'}.get(values[index]['options']['method']),
 					marker={'mu':'o','kl':'s','hals':'^',('kl','hals'):'d'}.get(values[index]['options']['method']),
-					linestyle={'norm':'-','div':'--','abs':':'}.get(values[index]['options']['metric']),
+					linestyle={'norm':'-','div':'-','abs':':'}.get(values[index]['options']['metric']),
 					markersize=8,
 					linewidth=3
 					)} for index in values}
@@ -317,18 +340,29 @@ def main(*args,**kwargs):
 				number = 6
 				functions = sorted(set(values[i]['options']['function'] for i in values))
 				for i,function in enumerate(functions):
-					colors = [plt.get_cmap({'nmf.marginal':'viridis','nmf.joint':'magma'}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
-					if len(functions)>1:
-						opts = {**options,**dict(pad=options['pad']+i*0.065)}
-						cax,opts = fig.add_axes([
-							ax.get_position().x1+opts['pad'],
-							ax.get_position().y0,
-							0.01,
-							(ax.get_position().y1-ax.get_position().y0)*1.1075
-							]),dict()
-					else:
-						opts = {**options,**dict(pad=0.1)}
-						cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
+					colors = [plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
+					# if len(functions)>1:
+					# 	opts = {**options,**dict(pad=options['pad']+i*0.065)}
+					# 	cax,opts = fig.add_axes([
+					# 		ax.get_position().x1+opts['pad'],
+					# 		ax.get_position().y0,
+					# 		0.01,
+					# 		(ax.get_position().y1-ax.get_position().y0)*1.1075
+					# 		]),dict()
+					# else:
+					# 	opts = {**options,**dict(pad=0.1)}
+					# 	cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
+
+					# options = {option:kwargs[attr].get(option) for option in ['location','fraction','shrink','aspect','pad','anchor','panchor'] if option in kwargs[attr]}
+
+					# opts = {**options,**dict(pad=0.1)}
+					# cax,opts = make_axes_locatable(cax).append_axes(**opts),dict()
+
+					# opts = {**dict(location='right',fraction=0.15,shrink=1.05 if i==0 else 1,aspect=50,pad=0.2)}
+					# cax,opts = matplotlib.colorbar.make_axes([ax for ax in fig.axes],**opts)
+					opts = {**dict(position='right',size='3%' if i == 0 else '1.5%',pad={0:0.05,1:1}[i])}
+					print(opts)
+					cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
 
 					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
 					opts = {**opts,**dict(cmap=cmap,orientation='vertical')}
@@ -338,23 +372,23 @@ def main(*args,**kwargs):
 						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
 						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
 					else:
-						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
-						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])						
-						# cbar.ax.set_yticks(ticks=[])
-						# cbar.ax.set_yticklabels(labels=[])
+						# cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						# cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticks(ticks=[])
+						cbar.ax.set_yticklabels(labels=[])
 
-					if len(functions)>1:
+					if (i==(len(functions)-1)) and (len(functions)>1):
 						cbar.ax.set_xlabel(xlabel=texify(function))
 
 
 				options = dict()
-				ax.set_title(label="$%s$"%(" ~,~ ".join(["%s = %s"%(i,j) for i,j in [
-					("N",max((values[index]['options'].get('n') for index in values if values[index]['options'].get('n')),default=None)),
-					("D",max((values[index]['options'].get('d') for index in values if values[index]['options'].get('d')),default=None)),
-					# ("L",max((values[index]['options'].get('locality') for index in values if values[index]['options'].get('locality')),default=None)),
-					("A","(D^{N/2},D,D,D^{N/2})"),
-					] if i and j])
-					),**options)
+				# ax.set_title(label="$%s$"%(" ~,~ ".join(["%s = %s"%(i,j) for i,j in [
+				# 	("N",max((values[index]['options'].get('n') for index in values if values[index]['options'].get('n')),default=None)),
+				# 	("D",max((values[index]['options'].get('d') for index in values if values[index]['options'].get('d')),default=None)),
+				# 	# ("L",max((values[index]['options'].get('locality') for index in values if values[index]['options'].get('locality')),default=None)),
+				# 	("A","(D^{N/2},D,D,D^{N/2})"),
+				# 	] if i and j])
+				# 	),**options)
 				ax.set_xlabel(xlabel=texify(attrs[attr]['x']),**options)
 				ax.set_ylabel(ylabel=texify(attrs[attr]['y']),**options)
 
@@ -381,18 +415,26 @@ def main(*args,**kwargs):
 					ax.set_yticks(ticks=[i for i in range(options['y'][0]-1,options['y'][-1]+1,2)])
 					ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
 					ax.set_yscale(value='linear')									
+				elif attr in ['time']:
+					options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=None)
+					number = 6
+					ax.set_xlim(xmin=(min(max(1,int(options['x'][0]*0.1)),-int(options['x'][-1]*0.05))),xmax=(max(int(options['x'][-1]*1.1),1)))
+					ax.set_xticks(ticks=range(options['x'][0],options['x'][-1],max(1,(options['x'][-1]-options['x'][0])//number)))
+					ax.tick_params(**{"axis":"x","which":"minor","length":0,"width":0})
+					ax.set_xscale(value='linear')
+					ax.set_ylim(ymin=1e-7,ymax=1e3)
+					ax.set_yticks(ticks=[1e-6,1e-4,1e-2,1e0,1e2])
+					ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i != 0 else '$1$' for i in [-6,-4,-2,0,2]])
+					ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
+					ax.set_yscale(value='log')
 
 				options = dict(
 					title=(
-						'$%s ~:~ %s$'%(
-						'~,~'.join(texify(label,label) for label in attrs[attr]['label'][:-1]).replace('$',''),
-						{
-							'nmf.marginal':'$A_{\\mu\\nu} = X_{\\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta} \\approx X_{\\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta} = U_{\\mu\\gamma}V_{\\gamma\\nu}$'.replace('$',''),
-							'nmf.joint':'$A_{x \\mu\\nu y} = X_{x \\alpha}A_{\\alpha\\mu\\nu\\beta}Y_{\\beta y} \\approx X_{x \\alpha}U_{\\alpha\\mu\\gamma}V_{\\gamma\\nu\\beta}Y_{\\beta y} = U_{x \\mu\\gamma}V_{\\gamma\\nu y}$'.replace('$','')
-						}.get(values[index]['options']['function'])
+						'$%s$'%(
+						'~,~'.join(texify(label,label) for label in attrs[attr]['label'][:-1] if label not in ['metric'] and label in ['method']).replace('$',''),
 						)),
 					ncol=1,
-					loc=(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
+					loc= 'upper right',#(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
 					)
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
@@ -402,13 +444,13 @@ def main(*args,**kwargs):
 					)
 				indexes,unique = [[i for i,label in enumerate(labels) if label==value] for value in sorted(set(labels),key=lambda i:labels.index(i))],[len([j for j in labels if j==i])//2 for i in sorted(set(labels),key=lambda i:labels.index(i))]
 				handles,labels = [copy(handles[i[j]]) for i,j in zip(indexes,unique)],[labels[i[j]] for i,j in zip(indexes,unique)]
-				# for handle in handles:
-				# 	handle.set_color('gray')
+				for handle in handles:
+					handle.set_color('gray')
 				leg = ax.legend(handles,labels,**options)
 
 				options = dict(
-					w=43.5,
-					h=14
+					w=18,
+					h=12
 					)
 				fig.set_size_inches(**options)
 				fig.subplots_adjust()

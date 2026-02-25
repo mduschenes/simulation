@@ -6208,7 +6208,7 @@ def nndsvd(a=None,u=None,v=None,size=None,eps=None):
 	eps = epsilon(a.dtype) if eps is None else eps
 	slices = slice(None)
 
-	debug('svd',size,s.min()/s.max())
+	# debug('svd',size,s.min()/s.max())
 
 	u,v,s = u[:,:size],v[:size,:],s[:size]
 
@@ -6613,6 +6613,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 
 
 		functions = {}
+		processes = {}
 
 		if method in ['hals']:
 			def function(x):
@@ -6620,7 +6621,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 		else:
 			def function(x):
 				return x['iteration']
-		functions['iteration'] = function
+		def process(attr,stats):
+			return
+		attr = 'iteration'
+		functions[attr] = function
+		processes[attr] = process
 
 		if metric is None or metric in ['norm']:
 			if architecture is None:
@@ -6658,7 +6663,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 					return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
 			else:
 				raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
-		functions['error'] = function
+		def process(attr,stats):
+			return
+		attr = 'error'
+		functions[attr] = function
+		processes[attr] = process
 
 		if architecture is None:
 			def function(x):
@@ -6680,7 +6689,26 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 						)
 		else:
 			raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
-		functions['rank'] = function
+		def process(attr,stats):
+			return
+		attr = 'rank'
+		functions[attr] = function
+		processes[attr] = process
+
+		import time
+		def function(x):
+			return time.process_time_ns()
+		def process(attr,stats):
+			print(stats[attr][-1]-stats[attr][-2])
+			exit()
+			stats[attr] = (stats[attr]-stats[attr][0])/1
+			stats[attr] = inplace(stats[attr],0,nan)
+			print(stats[attr])
+			exit()
+			return
+		attr = 'time'
+		functions[attr] = function
+		processes[attr] = process
 
 		if architecture is None:
 			length = size
@@ -6770,9 +6798,10 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 
 		for attr in stats:
 			stats[attr] = stats[attr][~is_nan(stats[attr])]
+			processes[attr](attr,stats)
 
 		try:
-			debug(method,{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats})
+			debug({**dict(method=method),**{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats}})
 		except:
 			pass
 
@@ -6801,7 +6830,7 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 
 		return u,v,stats
 
-	debug(dict(method=method,architecture=architecture,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
+	# debug(dict(method=method,architecture=architecture,initialize=initialize,metric=metric,size=size,eps=eps,iters=iters))
 
 	u,v = init(a,u=u,v=v,data=data,size=size,eps=eps,iters=iters,parameters=parameters,method=method,initialize=initialize,metric=metric,architecture=architecture,stats=stats,**kwargs)
 
