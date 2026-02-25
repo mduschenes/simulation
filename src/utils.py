@@ -6613,7 +6613,6 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 
 
 		functions = {}
-		processes = {}
 
 		if method in ['hals']:
 			def function(x):
@@ -6621,11 +6620,8 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 		else:
 			def function(x):
 				return x['iteration']
-		def process(attr,stats):
-			return
 		attr = 'iteration'
 		functions[attr] = function
-		processes[attr] = process
 
 		if metric is None or metric in ['norm']:
 			if architecture is None:
@@ -6663,11 +6659,8 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 					return absolute(-addition(x['a']*log(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])*reciprocal(x['a']))))
 			else:
 				raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
-		def process(attr,stats):
-			return
 		attr = 'error'
 		functions[attr] = function
-		processes[attr] = process
 
 		if architecture is None:
 			def function(x):
@@ -6689,26 +6682,33 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 						)
 		else:
 			raise NotImplementedError("Metric %s Not Implemented for Architecture %s"%(metric,architecture))
-		def process(attr,stats):
-			return
 		attr = 'rank'
 		functions[attr] = function
-		processes[attr] = process
 
-		import time
-		def function(x):
-			return time.process_time_ns()
-		def process(attr,stats):
-			print(stats[attr][-1]-stats[attr][-2])
-			exit()
-			stats[attr] = (stats[attr]-stats[attr][0])/1
-			stats[attr] = inplace(stats[attr],0,nan)
-			print(stats[attr])
-			exit()
-			return
-		attr = 'time'
-		functions[attr] = function
-		processes[attr] = process
+		def preprocess(x):
+
+			if not stats:
+				x = statistics(x)
+
+			attr = 'time'
+			if attr not in x['stats']:
+				import time
+				x['stats'][attr] = nan*ones(min(len(x['stats'][attr]) for attr in x['stats']))
+				x['stats'][attr] = inplace(x['stats'][attr],slice(None,None),time.perf_counter_ns())
+			return x
+
+		def postprocess(x):
+			for attr in x['stats']:
+				x['stats'][attr] = x['stats'][attr][~is_nan(x['stats'][attr])]
+
+			attr = 'time'
+			if attr in x['stats']:
+				import time
+				x['stats'][attr] = inplace(x['stats'][attr],-1,time.perf_counter_ns())
+				x['stats'][attr] = (x['stats'][attr]-x['stats'][attr][0])/1e9
+				x['stats'][attr] = inplace(x['stats'][attr],0,nan)
+
+			return x
 
 		if architecture is None:
 			length = size
@@ -6781,10 +6781,11 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 		func = jit(decorator(func))
 		loop = partial(whileloop,condition,func)
 
-		if not stats:
-			x = statistics(x)
+		x = preprocess(x)
 
 		x = loop(x)
+
+		x = postprocess(x)
 
 		u,v,stats = x['u'],x['v'],x['stats']
 
@@ -6796,12 +6797,8 @@ def nmf(a,u=None,v=None,data=None,size=None,eps=None,iters=None,parameters=None,
 			z = reciprocal(sqrt(absolute(addition(dot(dot(x['x'],dot(x['u'],x['v'])),x['y'])))))
 		u,v = u*z,v*z
 
-		for attr in stats:
-			stats[attr] = stats[attr][~is_nan(stats[attr])]
-			processes[attr](attr,stats)
-
 		try:
-			debug({**dict(method=method),**{attr:(stats[attr][number].item(),stats[attr][-1].item()) for attr in stats}})
+			print({**dict(method=method),**{attr:(stats[attr][0].item(),stats[attr][-1].item()) for attr in stats}})
 		except:
 			pass
 

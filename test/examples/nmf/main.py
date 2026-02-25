@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import array,ones,zeros,rand,random,stochastic
 from src.utils import addition,abs2,log10,reciprocal,einsum,reshape,dot,dotr,dotl,condition_number
-from src.utils import copy,seeder,delim
+from src.utils import copy,seeder,delim,scinotation
 from src.utils import nmf
 
 from src.iterables import permuter,setter,getter
@@ -25,20 +25,23 @@ from random import choices,seed	as seeds
 
 def main(*args,**kwargs):
 
-	n = int(args[0] if len(args)>0 else 5)
-	d = int(args[1] if len(args)>1 else 2)
+	n = kwargs.get('n',int(args[0]) if len(args)>0 else 6)
+	d = kwargs.get('d',int(args[1]) if len(args)>1 else 2)
+	x = kwargs.get('x',int(args[2]) if len(args)>1 else None)
 
 	directory = 'data/data'
-	file = 'data'
+	file = f'data.n.{n}.x.{x}'
 	mplstyle = 'config/plot.mplstyle'
 	path = join(directory,file,ext='pkl')
 
-	d = d**2
 	length = n//2 + n%2
 	locality = 2
 
+	d = d**2
+	x = (d**((length))) if x is None else x
+
 	seed = 123
-	size = 1
+	size = 5
 	seeds(seed)
 	seed = choices(range(int(2**32)),k=int(size))
 
@@ -46,7 +49,7 @@ def main(*args,**kwargs):
 		'method':[
 			'mu',
 			'kl',
-			# 'hals'
+			'hals'
 			# ('mu','hals','kl','hals')
 			],
 		'initialize':[
@@ -58,11 +61,11 @@ def main(*args,**kwargs):
 		'metric':[
 			'norm',
 			'div',
-			'norm',
+			# 'norm',
 			# 'abs',
 			],
 		'size':[None],
-		'eps':[0],
+		'eps':[1e-14],
 		'iters':[
 			1e2
 			# 1e1,
@@ -75,14 +78,14 @@ def main(*args,**kwargs):
 			'nmf.marginal',
 			'nmf.joint',
 			],
-		'n':[n],'d':[d],'locality':[locality],'length':[length],
-		'shapes':[[
-			[d**(length),d,d**(length+1)],
-			[d**(length+1),d,d**(length)],
-			[d**(locality)]*(2),
-			[d**(length-length+1),d**(length)],
-			[d**(length),d**(length-length+1)]
-			]]
+		'n':[n],'d':[d],'x':[x],'locality':[locality],'length':[length],
+		'shapes':[{
+			'u':[min(d**(n//2),x),d,min(d**(n//2),x**2)],
+			'v':[min(d**(n//2),x**2),d,min(d**(n//2),x)],
+			'w':[d**(locality)]*(2),
+			'x':[d**(length),min(d**(n//2),x)],
+			'y':[min(d**(n//2),x),d**(n-length-locality)],
+			}]
 		}
 
 	def boolean(index,data,options,opts):
@@ -100,6 +103,13 @@ def main(*args,**kwargs):
 
 		return True
 
+
+	booleans = dict(
+		run = 1,
+		load = 0,
+		dump = 1,
+		plot = 1,
+		)
 
 	booleans = dict(
 		run = 1,
@@ -144,6 +154,7 @@ def main(*args,**kwargs):
 				opts = dict(
 					n = options.pop('n'),
 					d = options.pop('d'),
+					x = options.pop('x'),
 					length = options.pop('length'),
 					locality = options.pop('locality'),
 					shapes = options.pop('shapes'),
@@ -153,8 +164,8 @@ def main(*args,**kwargs):
 
 				if opts['function'] in ['nmf.marginal']:
 
-					u,v,w = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
-					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
+					u,v,w = random(opts['shapes']['u'],key=opts['keys'][0]),random(opts['shapes']['v'],key=opts['keys'][1]),reshape(stochastic(opts['shapes']['w'],key=opts['keys'][2]),(d,)*(2*locality))
+					x,y = random(opts['shapes']['x'],key=opts['keys'][-2]),random(opts['shapes']['y'],key=opts['keys'][-1])
 					
 					x,y = addition(x,0),addition(y,-1)
 					
@@ -171,8 +182,8 @@ def main(*args,**kwargs):
 
 				elif opts['function'] in ['nmf.joint']:
 				
-					u,v,w = random(opts['shapes'][0],key=opts['keys'][0]),random(opts['shapes'][1],key=opts['keys'][1]),reshape(stochastic(opts['shapes'][2],key=opts['keys'][2]),(d,)*(2*locality))
-					x,y = random(opts['shapes'][-2],key=opts['keys'][-2]),random(opts['shapes'][-1],key=opts['keys'][-1])
+					u,v,w = random(opts['shapes']['u'],key=opts['keys'][0]),random(opts['shapes']['v'],key=opts['keys'][1]),reshape(stochastic(opts['shapes']['w'],key=opts['keys'][2]),(d,)*(2*locality))
+					x,y = random(opts['shapes']['x'],key=opts['keys'][-2]),random(opts['shapes']['y'],key=opts['keys'][-1])
 					
 					p,q = addition(x,range(0,x.ndim-1)),addition(y,range(1,y.ndim))
 					x,y = dotr(x,reciprocal(p)),dotl(y,reciprocal(q))
@@ -240,7 +251,7 @@ def main(*args,**kwargs):
 				y=attr,
 				label=['function','method','metric','seed'])
 			for attr in set(i for index in data for i in data[index] 
-				if i not in ['options'] and i in ['error','rank','time'])
+				if i not in ['options'] and i in ['error'])
 			},
 		}
 
@@ -259,8 +270,8 @@ def main(*args,**kwargs):
 				'cond.u':'$\\textnormal{Condition Number}~\\kappa(U)$',
 				'cond.v':'$\\textnormal{Condition Number}~\\kappa(V)$',
 				'nmf':'$\\textnormal{NMF}$',
-				**{i:'$\\textnormal{Marginal}$' for i in ['nmf.marginal','pnmf']},
-				**{i:'$\\textnormal{Marginal},$'+'\n'+'$\\textnormal{Joint}$' for i in ['nmf.joint','xnmf']},
+				# **{i:'$\\textcolor[HTML]{22A884}{\\textnormal{Marginal}}~,~\\textcolor[HTML]{EA4F88}{\\textnormal{Joint}}$' for i in ['nmf.marginal','pnmf']},
+				**{i:'$\\textcolor[HTML]{22A884}{\\textnormal{Marginal}}~,~\\textcolor[HTML]{EA4F88}{\\textnormal{Joint}}$' for i in ['nmf.joint','xnmf']},
 				'mu':'$\\textnormal{MU}$',
 				'kl':'$\\textnormal{KL}$',
 				'hals':'$\\textnormal{HALS}$',
@@ -288,13 +299,11 @@ def main(*args,**kwargs):
 				fig,ax = plt.subplots()
 
 				def boolean(data,index=None,wrapper=None,attr=None,):
-					if attr in ['time']:
-						return slice(None,None,5)
 					if index is None:
 						size = max(len(data[i][attrs[attr]['y']]) for i in data)	
 					else:
 						size = len(data[index][attrs[attr]['y']])
-					step = max(20,(size//100)) 
+					step = 4
 					indices = slice(0,size,step if step < size else 1)
 					if wrapper is not None:
 						indices = wrapper(indices.start,int(data[index]['options']['iters']),int(data[index]['options']['iters'])//size)
@@ -309,21 +318,40 @@ def main(*args,**kwargs):
 						)
 					return True
 
+				def statistics(data):
+
+					stats = {}
+
+					key = 'indices'
+					value = sorted(list(set(data[i]['options'][attrs[attr]['label'][-1]] for i in data)),key=lambda i:[data[i]['options'][attrs[attr]['label'][-1]] for i in data].index(i))
+					stats[key] = value
+
+					key = 'time'
+					value = ['metric','method','function']
+					value = [dict(zip(value,i)) for i in set(tuple(data[i]['options'][option] for option in value) for i in data)]
+					value = sorted(value,key=lambda i:['nmf.marginal','nmf.joint'].index(i['function']))
+					value = [{**val,**dict(data=[data[i][key][-1] for i in data if all(data[i]['options'][option]==val[option] for option in val)])} for val in value]
+					value = [{**val,**dict(data=sum(val['data'])/len(val['data']))} for val in value]
+					value = [[val['data'] for val in value if all(val[option]==data[i]['options'][option] for option in val if option not in ['function','data'])] for i in data]
+					stats[key] =  value
+
+					return stats
+
 				values = {index:data[index] for index in data if filters(index,data)}					
 
 				options = dict()
-				indices = sorted(list(set(values[i]['options'][attrs[attr]['label'][-1]] for i in values)),key=lambda i:[values[i]['options'][attrs[attr]['label'][-1]] for i in values].index(i))
-				
+
+				stats = statistics(values)
+
 				x = {index:values[index][attrs[attr]['x']][boolean(values,index=index,attr=attr)] for index in values}
 				y = {index:values[index][attrs[attr]['y']][boolean(values,index=index,attr=attr)] for index in values}
 
-				# index = list(values)[0]
-				# print(data[index]['options'])
-				# exit()
-
 				options = {index:{**options,**dict(
-					label='$%s$'%('~,~'.join(str(texify(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attrs[attr]['label'][:-1] if label not in ['metric'] and label in ['method']).replace('$','')),
-					color=plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(values[index]['options']['function']))((indices.index(values[index]['options'][attrs[attr]['label'][-1]])+1)/(len(indices)+1)),
+					label='$%s~~~%s$'%(
+						'~,~'.join(str(texify(values[index]['options'][label] if label not in ['metric'] else (values[index]['options'][label],values[index]['options']['function']),values[index]['options'][label])) for label in attrs[attr]['label'][:-1] if label not in ['metric'] and label in ['method']).replace('$',''),
+						'~,~'.join(scinotation(i,scilimits=[-2,3],decimals=4,zero=True,strip=False) for i in stats['time'][index]),
+						),
+					color=plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(values[index]['options']['function']))((stats['indices'].index(values[index]['options'][attrs[attr]['label'][-1]])+1)/(len(stats['indices'])+1)),
 					alpha=0.6,
 					# marker={'norm':'o','abs':'s','div':'^'}.get(values[index]['options']['metric']),
 					# linestyle={'mu':'-','kl':'--','hals':':'}.get(values[index]['options']['method']),
@@ -338,9 +366,9 @@ def main(*args,**kwargs):
 
 				options = dict(position='right',size="3%",pad=-0.545535)
 				number = 6
-				functions = sorted(set(values[i]['options']['function'] for i in values))
+				functions = sorted(set(values[i]['options']['function'] for i in values),key=lambda i:['nmf.marginal','nmf.joint'].index(i))
 				for i,function in enumerate(functions):
-					colors = [plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(function))((i+1)/(len(indices)+3)) for i in range(len(indices)+2)]
+					colors = [plt.get_cmap({**{i:'viridis' for i in ['nmf.marginal','pnmf']},**{i:'magma' for i in ['nmf.joint','xnmf']}}.get(function))((i+1)/(len(stats['indices'])+3)) for i in range(len(stats['indices'])+2)]
 					# if len(functions)>1:
 					# 	opts = {**options,**dict(pad=options['pad']+i*0.065)}
 					# 	cax,opts = fig.add_axes([
@@ -360,8 +388,7 @@ def main(*args,**kwargs):
 
 					# opts = {**dict(location='right',fraction=0.15,shrink=1.05 if i==0 else 1,aspect=50,pad=0.2)}
 					# cax,opts = matplotlib.colorbar.make_axes([ax for ax in fig.axes],**opts)
-					opts = {**dict(position='right',size='3%' if i == 0 else '1.5%',pad={0:0.05,1:1}[i])}
-					print(opts)
+					opts = {**dict(position='right',size='6%' if i == 0 else '3%',pad=2)}
 					cax,opts = make_axes_locatable(ax).append_axes(**opts),dict()
 
 					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
@@ -369,16 +396,16 @@ def main(*args,**kwargs):
 					cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
 					if i == (len(functions)-1):
 						cbar.ax.set_ylabel(ylabel=texify(attrs[attr]['label'][-1],attrs[attr]['label'][-1]))
-						cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
-						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
+						cbar.ax.set_yticks(ticks=[(i+1)/(len(stats['indices'])+1) for i,obj in enumerate(stats['indices'])][::max(1,len(stats['indices'])//number)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(stats['indices'])][::max(1,len(stats['indices'])//number)])
 					else:
-						# cbar.ax.set_yticks(ticks=[(i+1)/(len(indices)+1) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
-						# cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(indices)][::max(1,len(indices)//number)])
-						cbar.ax.set_yticks(ticks=[])
-						cbar.ax.set_yticklabels(labels=[])
+						# cbar.ax.set_yticks(ticks=[(i+1)/(len(stats['indices'])+1) for i,obj in enumerate(stats['indices'])][::max(1,len(stats['indices'])//number)])
+						# cbar.ax.set_yticklabels(labels=['$%s$'%(i) for i,obj in enumerate(stats['indices'])][::max(1,len(stats['indices'])//number)])
+						cbar.ax.set_yticks(ticks=[0])
+						cbar.ax.set_yticklabels(labels=[texify(function)])
 
 					if (i==(len(functions)-1)) and (len(functions)>1):
-						cbar.ax.set_xlabel(xlabel=texify(function))
+						cbar.ax.set_xlabel(xlabel=texify(function),x=-0.8)
 
 
 				options = dict()
@@ -404,6 +431,7 @@ def main(*args,**kwargs):
 					ax.set_yticks(ticks=[10**(i) for i in range(options['y'][0]-1,options['y'][-1]+1,2)])
 					ax.tick_params(**{"axis":"y","which":"minor","length":0,"width":0})
 					ax.set_yscale(value='log')
+					ax.grid(visible=True)
 				elif attr in ['rank']:
 					options = dict(x=[int(min(min((x[index])) for index in x)),int(max(max((x[index])) for index in x))],y=[int(min(min((y[index])) for index in y)),int(max(max((y[index])) for index in y))])
 					number = 6
@@ -430,11 +458,12 @@ def main(*args,**kwargs):
 
 				options = dict(
 					title=(
-						'$%s$'%(
+						'$%s~,~%s$'%(
 						'~,~'.join(texify(label,label) for label in attrs[attr]['label'][:-1] if label not in ['metric'] and label in ['method']).replace('$',''),
+						'\\textnormal{Time}~~[s]',
 						)),
 					ncol=1,
-					loc= 'upper right',#(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
+					loc= 'lower right',#(1.4175,0.1685) if len(functions)>1 else (1.1,0.45),
 					)
 				handles_labels = [getattr(axes,'get_legend_handles_labels')() for axes in ax.get_figure().axes]
 				handles,labels = [sum(i, []) for i in zip(*handles_labels)]
@@ -455,7 +484,14 @@ def main(*args,**kwargs):
 				fig.set_size_inches(**options)
 				fig.subplots_adjust()
 				fig.tight_layout()
-				options = dict(fname=join(directory,'%s.%s.%s'%(file,attrs[attr]['x'],attrs[attr]['y']),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
+				options = dict(fname=join(
+					directory,
+					'%s.%s.%s.%s'%(
+						file,
+						attrs[attr]['x'],
+						attrs[attr]['y'],
+						'.'.join([i for label in ['n','x'] for i in [label,str(min(values[i]['options'][label] for i in values))]]),
+						),ext='pdf'),bbox_inches='tight',pad_inches=0.2)
 				fig.savefig(**options)
 
 	return
@@ -468,4 +504,9 @@ if __name__ == '__main__':
 	args.extend(sys.argv[1:])
 	kwargs.update({})
 
-	main(*args,**kwargs)
+	settings = {'n':[6],'d':[2],'x':[2,4,8,16,32,64,128]}
+	for setting in permuter(settings):
+
+		kwargs.update(setting)
+
+		main(*args,**kwargs)
