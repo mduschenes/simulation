@@ -15,7 +15,7 @@ from src.utils import copy,seeder,delim,scinotation
 from src.utils import nmf
 
 from src.iterables import permuter,setter,getter
-from src.io import load,dump,join,exists
+from src.io import load,dump,join,split,exists
 
 import jax
 import matplotlib
@@ -25,14 +25,17 @@ from random import choices,seed	as seeds
 
 def main(*args,**kwargs):
 
-	n = kwargs.get('n',int(args[0]) if len(args)>0 else 6)
-	d = kwargs.get('d',int(args[1]) if len(args)>1 else 2)
-	x = kwargs.get('x',int(args[2]) if len(args)>1 else None)
+	path = kwargs.get('path',str(args[0]) if len(args)>0 else None)
 
-	directory = 'data/data'
-	file = f'data.n.{n}.x.{x}'
-	mplstyle = 'config/plot.mplstyle'
-	path = join(directory,file,ext='pkl')
+	n = kwargs.get('n',int(args[1]) if len(args)>1 else 6)
+	d = kwargs.get('d',int(args[2]) if len(args)>2 else 2)
+	x = kwargs.get('x',int(args[3]) if len(args)>3 else None)
+
+	print(path)
+
+	mplstyle = join(path,'plot',ext='mplstyle')
+
+	path = join(path,f'data.n.{n}.x.{x}',ext='pkl')
 
 	length = n//2 + n%2 -1
 	locality = 2
@@ -500,13 +503,14 @@ def main(*args,**kwargs):
 				fig.subplots_adjust()
 				fig.tight_layout()
 				options = dict(fname=join(
-					directory,
+					split(path,directory=True),
 					'%s.%s.%s.%s'%(
-						file.replace('data','plot').split('.')[0],
+						'plot',
 						attrs[attr]['x'],
 						attrs[attr]['y'],
-						'.'.join(file.replace('data','plot').split('.')[1:]),
+						'.'.join(split(path,directory_file=True).split('.')[1:]),
 						),ext='pdf'),bbox_inches='tight',pad_inches=0.6)
+				print(options)
 				fig.savefig(**options)
 
 	return
@@ -516,10 +520,10 @@ if __name__ == '__main__':
 	args = []
 	kwargs = {}
 
-	args.extend(sys.argv[1:])
+	args.extend([])
 	kwargs.update({})
 
-	settings = {'n':[6],'d':[2],'x':[2,4,8,16,32,64]}
+	settings = {'path':sys.argv[1:2] if sys.argv[1:] else ['~/scratch/nmf'],'n':[6],'d':[2],'x':[2,4,8,16,32,64]}
 	for setting in permuter(settings):
 
 		kwargs.update(setting)
