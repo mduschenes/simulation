@@ -523,7 +523,7 @@ if __name__ == '__main__':
 	args.extend([])
 	kwargs.update({})
 
-	settings = {'path':sys.argv[1:2] if sys.argv[1:] else ['~/scratch/nmf'],'n':[6],'d':[2],'x':[2,4,8,16,32,64]}
+	settings = {'path':sys.argv[1:2] if sys.argv[1:] else ['~/scratch/nmf/nmf'],'n':[6],'d':[2],'x':[2,4,8,16,32,64]}
 	for setting in permuter(settings):
 
 		kwargs.update(setting)
