@@ -279,7 +279,7 @@ Any files stored as attribute-iterable format, i.e) `.hdf5` or `.json` files may
 
 Under `build`, please run
 ```sh
-python processor.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.json> <path/to/plots>
+python process.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
 An example plot for operator entanglement scaling is
 <!-- <object data="https://github.com/mduschenes/tensor/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">

@@ -6,7 +6,7 @@ import itertools,functools,warnings,traceback
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','.','..','../../..']
+PATHS = ['','.','..','../../..','/home/mduschen/code/tensor']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -1084,7 +1084,7 @@ def test(settings,options,*args,**kwargs):
 					marker='',
 					linestyle='-',
 					alpha=0.5,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 			elif attribute['method']() in ['functional']:
@@ -1103,7 +1103,7 @@ def test(settings,options,*args,**kwargs):
 					marker='',
 					linestyle='--',
 					alpha=0.8,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 			elif attribute['method']() in ['_func']:
@@ -1123,7 +1123,7 @@ def test(settings,options,*args,**kwargs):
 					linestyle='-',
 					markersize=45,
 					alpha=0.25,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 		else:
@@ -1144,7 +1144,7 @@ def test(settings,options,*args,**kwargs):
 					marker='',
 					linestyle='-',
 					alpha=0.5,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 			elif attribute['method']() in ['functional']:
@@ -1165,7 +1165,7 @@ def test(settings,options,*args,**kwargs):
 					marker='',
 					linestyle='--',
 					alpha=0.8,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 			elif attribute['method']() in ['_func']:
@@ -1185,7 +1185,7 @@ def test(settings,options,*args,**kwargs):
 					linestyle='-',
 					markersize=45,
 					alpha=0.25,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 					)
 
 		y = func(parameters,x)
@@ -1198,7 +1198,7 @@ def test(settings,options,*args,**kwargs):
 	# 	marker='',
 	# 	linestyle=':',
 	# 	alpha=1,
-	# 	path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+	# 	path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 	# 	)
 
 	# opts = dict(function=f'beta.{method}',a=l*s,b=(d-l)*s)
@@ -1212,10 +1212,7 @@ def test(settings,options,*args,**kwargs):
 	return
 
 
-
-
-
-def draw(settings,options,*args,**kwargs):
+def plot(settings,options,*args,**kwargs):
 
 	def plot(x,y,xerr=None,yerr=None,fig=None,ax=None,options=None,**kwargs):
 
@@ -1369,843 +1366,294 @@ def draw(settings,options,*args,**kwargs):
 
 	fig,ax = None,None
 
-	for index,setting in enumerate(permute(settings)):
+	data = {}
+	file = join(options['path'](settings,options),'data',ext='hdf5')
 
-		attr = setting['attr']
-		D = setting['D']
-		N = setting['N']
-		M = setting['M']
-		L = setting['L']
-		parameters = setting['parameters']
+	if not exists(file):
 
-		method = options['method'](setting,options)
-		attribute = options['attribute'](setting,options)
+		for index,setting in enumerate(permute(settings)):
 
-		path = options['path'](setting,options)
-		plots = options['plot'](setting,options)
-		logger = options['logger'](setting,options)
+			attr = setting['attr']
+			D = setting['D']
+			N = setting['N']
+			M = setting['M']
+			L = setting['L']
+			parameters = setting['parameters']
 
-		args,kwargs = tuple((-32,0,1000,)),dict(endpoint=False)
+			method = options['method'](setting,options)
+			attribute = options['attribute'](setting,options)
 
-		d = D**N
-		s = M+1
-		w = 1
+			path = options['path'](setting,options)
+			plots = options['plot'](setting,options)
+			logger = options['logger'](setting,options)
 
-		l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
-		# z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
-		z = {1:l}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
-		# z = {(i+1)/d:1 for i in range(d)}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+			args,kwargs = tuple((-32,0,1000,)),dict(endpoint=False)
 
-		z = array([j for i in z for j in [i]*z[i]])
+			d = D**N
+			s = M+1
+			w = 1
 
-		logger(setting)
+			l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
+			# z = {2.3433e-2:3,5.4553e-2:3,7.8291e-2:1}; z = {**z,**{1.2954e-2:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+			z = {1:l}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
+			# z = {(i+1)/d:1 for i in range(d)}; z = {**z,**{0:d-sum(z[i] for i in z)}}; z = {i:z[i] for i in z if z[i]>0}
 
-		parameters = []
+			z = array([j for i in z for j in [i]*z[i]])
 
-		try:
+			logger(setting)
 
-			if attribute['method']() in ['func']:
+			parameters = []
 
-				func = parameterize
+			try:
 
-			elif attribute['method']() in ['functional']:
+				if attribute['method']() in ['func']:
 
-				func = parameterization
+					func = parameterize
 
-			elif attribute['method']() in ['_func']:
+				elif attribute['method']() in ['functional']:
 
-				func = _parameterize
+					func = parameterization
+
+				elif attribute['method']() in ['_func']:
+
+					func = _parameterize
+
+				else:
+
+					func = None
+
+				params = func(z,d=d,s=s,w=w) if func is not None else None
+
+				parameters.append(params)
+
+			except Exception as exception:
+
+				logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+
+			if vectorize:
+
+				if attribute['method']() in ['func']:
+
+					size = max(len(params) for params in parameters)
+					parameters = [params for params in parameters]
+					parameters = array(parameters)
+
+					x = logspace(*args,**kwargs)
+
+					func = {'pdf':functions,'cdf':Functions}[method]
+
+					plts = dict(
+						label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
+						color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+						marker='',
+						linestyle='-',
+						alpha=0.5,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
+
+				elif attribute['method']() in ['functional']:
+
+					size = max(len(i) for params in parameters for i in params)
+					parameters = [[[*i,*[0]*(size-len(i))] for i in params] for params in parameters]
+					parameters = array(parameters)
+
+					x = logspace(*args,**kwargs)
+
+					func = {'pdf':functionals,'cdf':Functionals}[method]
+
+					plts = dict(
+						label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
+						color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+						marker='',
+						linestyle='--',
+						alpha=0.8,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
+
+				elif attribute['method']() in ['_func']:
+
+					size = max(len(params) for params in parameters)
+					parameters = [params for params in parameters]
+					parameters = array(parameters)
+
+					x = logspace(*args,**kwargs)
+
+					func = {'pdf':_functions,'cdf':_Functions}[method]
+
+					plts = dict(
+						label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+						color='black',
+						marker='o',
+						linestyle='-',
+						markersize=45,
+						alpha=0.25,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
+
+				else:
+
+					parameters = None
+					x = None
+					func = None
+					plts = None
 
 			else:
 
-				func = None
+				if attribute['method']() in ['func']:
 
-			params = func(z,d=d,s=s,w=w) if func is not None else None
+					size = max(len(params) for params in parameters)
+					parameters = [params for params in parameters]
+					parameters = array(parameters)
 
-			parameters.append(params)
+					x = logspace(*args,**kwargs)
 
-		except Exception as exception:
+					func = {'pdf':functions,'cdf':Functions}[method]
 
-			logger('Exception:\n%r\n%r'%(exception,traceback.format_exc()))
+					plts = dict(
+						label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
+						color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+						marker='',
+						linestyle='-',
+						alpha=0.5,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
 
-		if vectorize:
+				elif attribute['method']() in ['functional']:
 
-			if attribute['method']() in ['func']:
+					from mpmath import linspace
 
-				size = max(len(params) for params in parameters)
-				parameters = [params for params in parameters]
-				parameters = array(parameters)
+					size = max(len(i) for params in parameters for i in params)
+					parameters = [params for params in parameters]
+					parameters = parameters
 
-				x = logspace(*args,**kwargs)
+					x = exponentiate(linspace(*args,**kwargs))
 
-				func = {'pdf':functions,'cdf':Functions}[method]
+					func = {'pdf':functionals,'cdf':Functionals}[method]
+
+					plts = dict(
+						label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
+						color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+						marker='',
+						linestyle='--',
+						alpha=0.8,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
+
+				elif attribute['method']() in ['_func']:
+
+					size = max(len(params) for params in parameters)
+					parameters = [params for params in parameters]
+					parameters = array(parameters)
+
+					x = logspace(*args,**kwargs)
+
+					func = {'pdf':_functions,'cdf':_Functions}[method]
+
+					plts = dict(
+						label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
+						color='black',
+						marker='o',
+						linestyle='-',
+						markersize=45,
+						alpha=0.25,
+						path=join(path,'plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+						)
+
+				else:
+
+					parameters = None
+					x = None
+					func = None
+					plts = None
+
+			if attribute['method']() not in ['distribution']:
+
+				y = func(parameters,x)
+
+			else:
 
 				plts = dict(
-					label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='-',
-					alpha=0.5,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-					)
-
-			elif attribute['method']() in ['functional']:
-
-				size = max(len(i) for params in parameters for i in params)
-				parameters = [[[*i,*[0]*(size-len(i))] for i in params] for params in parameters]
-				parameters = array(parameters)
-
-				x = logspace(*args,**kwargs)
-
-				func = {'pdf':functionals,'cdf':Functionals}[method]
-
-				plts = dict(
-					label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='--',
+					# label='$\\textrm{Distribution}~:~{%s}$'%(setting['M']),
+					label='$%s~,~%s~,~%s$'%(
+						setting['M'],
+						'%s'%(str(L)) if (isinstance(L,int) and (L>=0)) else 'd%s'%(str(L)) if (isinstance(L,int) and (L<0)) else '%sd'%(str(L)) if isinstance(L,float) else '%sd/%s'%(str(L[0]) if L[0]!=1 else '',str(L[-1])) if isinstance(L,tuple) else str(1),
+						setting['parameters'],
+						),
+					color='%s_%f'%('viridis' if setting['L'] == 1 else 'magma',(settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+					marker='' if setting['parameters']==0 else '',
+					markersize=None if setting['parameters']==0 else 10,
+					linestyle='-' if (setting['parameters']==0) else '--' if (isinstance(setting['L'],int)) else '--',
+					linewidth=20 if (isinstance(setting['L'],int)) else 16,
 					alpha=0.8,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					path=join(path,'plot.distribution.%s.L.1.d'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
+					n=prod(len(settings[i]) for i in settings if i not in ['N']),
 					)
 
-			elif attribute['method']() in ['_func']:
+				def func(x,settings):
 
-				size = max(len(params) for params in parameters)
-				parameters = [params for params in parameters]
-				parameters = array(parameters)
+					D = setting['D']
+					N = setting['N']
+					M = setting['M']
+					L = setting['L']
+					parameters = setting['parameters']
+
+					d = D**N
+					s = M+1
+					l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
+					parameters = 1 - ((1-((10**parameters) if (parameters != 0) else 0))**M)
+					constant = 1
+
+					u,v = 0,constant
+					a,b = 1-parameters,parameters*constant/d
+
+					options = dict(
+						function='beta.pdf',
+						a=l*s,
+						b=(d-l)*s,
+						loc=a*u+b,
+						scale=a*(v-u)
+						)
+
+					y = distribution(x,**options)
+
+					# y = where((x>(a*u+b))*(x<(a*v+b)),y,0)
+
+					return y
 
 				x = logspace(*args,**kwargs)
 
-				func = {'pdf':_functions,'cdf':_Functions}[method]
+				y = func(x,setting)
 
-				plts = dict(
-					label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
-					color='black',
-					marker='o',
-					linestyle='-',
-					markersize=45,
-					alpha=0.25,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-					)
+				plts = {**plots,**plts}
 
-			else:
+				key = str(index)
+				value = dict(x=x,y=y,options=plts)
+				data[key] = value
 
-				parameters = None
-				x = None
-				func = None
-				plts = None
+				dump(data,file)
 
-		else:
+				fig,ax = (None,None) if all(settings[i].index(setting[i]) == 0 for i in ['M','L','parameters']) else (fig,ax)
 
-			if attribute['method']() in ['func']:
+			fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
 
-				size = max(len(params) for params in parameters)
-				parameters = [params for params in parameters]
-				parameters = array(parameters)
+	else:
 
-				x = logspace(*args,**kwargs)
-
-				func = {'pdf':functions,'cdf':Functions}[method]
-
-				plts = dict(
-					label='$\\textrm{Conjecture}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='-',
-					alpha=0.5,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-					)
-
-			elif attribute['method']() in ['functional']:
-
-				from mpmath import linspace
-
-				size = max(len(i) for params in parameters for i in params)
-				parameters = [params for params in parameters]
-				parameters = parameters
-
-				x = exponentiate(linspace(*args,**kwargs))
-
-				func = {'pdf':functionals,'cdf':Functionals}[method]
-
-				plts = dict(
-					label='$\\textrm{Analytical}~:~{%s}$'%(setting['M']),
-					color='viridis_%f'%((settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-					marker='',
-					linestyle='--',
-					alpha=0.8,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-					)
-
-			elif attribute['method']() in ['_func']:
-
-				size = max(len(params) for params in parameters)
-				parameters = [params for params in parameters]
-				parameters = array(parameters)
-
-				x = logspace(*args,**kwargs)
-
-				func = {'pdf':_functions,'cdf':_Functions}[method]
-
-				plts = dict(
-					label='$\\textrm{Symmetry}~:~{%s}$'%(setting['M']),
-					color='black',
-					marker='o',
-					linestyle='-',
-					markersize=45,
-					alpha=0.25,
-					path=join(path,'plot','plot.test.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-					)
-
-			else:
-
-				parameters = None
-				x = None
-				func = None
-				plts = None
-
-		if attribute['method']() not in ['distribution']:
-
-			y = func(parameters,x)
-
-		else:
-
-			plts = dict(
-				# label='$\\textrm{Distribution}~:~{%s}$'%(setting['M']),
-				label='$%s~,~%s~,~%s$'%(
-					setting['M'],
-					'%s'%(str(L)) if (isinstance(L,int) and (L>=0)) else 'd%s'%(str(L)) if (isinstance(L,int) and (L<0)) else '%sd'%(str(L)) if isinstance(L,float) else '%sd/%s'%(str(L[0]) if L[0]!=1 else '',str(L[-1])) if isinstance(L,tuple) else str(1),
-					setting['parameters'],
-					),
-				color='%s_%f'%('viridis' if setting['L'] == 1 else 'magma',(settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-				marker='' if setting['parameters']==0 else '',
-				markersize=None if setting['parameters']==0 else 10,
-				linestyle='-' if (setting['parameters']==0) else '--' if (isinstance(setting['L'],int)) else '--',
-				linewidth=20 if (isinstance(setting['L'],int)) else 16,
-				alpha=0.8,
-				path=join(path,'plot','plot.distribution.%s.L.1.d'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
-				n=prod(len(settings[i]) for i in settings if i not in ['N']),
-				)
-
-			def func(x,settings):
-
-				D = setting['D']
-				N = setting['N']
-				M = setting['M']
-				L = setting['L']
-				parameters = setting['parameters']
-
-				d = D**N
-				s = M+1
-				l = L if (isinstance(L,int) and (L>=0)) else d+L if (isinstance(L,int) and (L<0)) else int(L*d) if isinstance(L,float) else int(L[0]*d/L[-1]) if isinstance(L,tuple) else 1
-				parameters = 1 - ((1-((10**parameters) if (parameters != 0) else 0))**M)
-				constant = 1
-
-				u,v = 0,constant
-				a,b = 1-parameters,parameters*constant/d
-
-				options = dict(
-					function='beta.pdf',
-					a=l*s,
-					b=(d-l)*s,
-					loc=a*u+b,
-					scale=a*(v-u)
-					)
-
-				y = distribution(x,**options)
-
-				# y = where((x>(a*u+b))*(x<(a*v+b)),y,0)
-
-				return y
-
-			x = logspace(*args,**kwargs)
-
-			y = func(x,setting)
-
-			fig,ax = (None,None) if all(settings[i].index(setting[i]) == 0 for i in ['M','L','parameters']) else (fig,ax)
-
-		fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**plts})
-
-	return
-
-
-def plot(settings,options,*args,**kwargs):
-
-	def setup(path=None,**kwargs):
-
-		ext = 'hdf5'
-
-		default = join('data.tmp',root=path,ext=ext)
-		opts = dict(wrapper='pd')
-
-		path = join('data',root=path,ext=ext)
-
-		if exists(default):
-			path = default
-			data = load(path,**opts)
-			return data
-
-		def wrapper(data):
-			keys = {'none':None}
-			for key in keys:
-				for attr in data:
-					if all(isinstance(i,str) for i in data[attr]):
-						data[attr][data[attr]==key] = keys[key]
-			return data
-
-		data = load(path,wrapper=['df',wrapper],iterates=['x','y','parameters'])
-
-		if data is None:
-			return data
-
-		attrs = [attr for attr in data]
-
-		def boolean(data):
-			keys = {'function':['array']}
-			boolean = True
-			for key in keys:
-				boolean = boolean & data[key].isin(keys[key])
-			return boolean
-
-		by = ['N','M','noise.parameters','function','operator','sample']
-
-		options = dict(as_index=False,dropna=False)
-
-		data = data[boolean(data)].groupby(by=by,**options)
-
-		def func(data):
-			if data.dtype in ['object'] and all(isinstance(i,tuple) for i in data):
-				data = tuple(array([[*i] for i in data]).mean(axis=0))
-			elif data.dtype in ['object'] and all(isinstance(i,str) for i in data):
-				data = data.iloc[0]
-			else:
-				data = data.iloc[0]
-			return data
-
-		agg = {attr:func for attr in attrs}
-		options = dict()
-
-		data = data.agg(agg,**options)
-
-		path = default
-		dump(data,path,**opts)
-
-		data = load(path,**opts)
-
-		return data
-
-	def plot(options,fig=None,ax=None,index=None):
-
-		def setter(obj,key,value):
-			def func(obj,key,value):
-				value = copy(value)
-				options = []
-				if key in ['plot']:
-					options = ['x','y']
-				elif key in ['errorbar']:
-					options = ['x','y','yerr','xerr']
-				elif key in ['set_xscale','set_yscale']:
-					if value.get('value') in ['linear']:
-						value.pop('base');
-
-				args = [value.get(i) for i in options]
-				kwargs = {option:value[option] for option in value if option not in options}
-
-				for option in kwargs:
-					if option in ['color','ecolor']:
-						try:
-							kwargs[option] = plt.get_cmap(kwargs[option].split(separ)[0])(float(kwargs[option].split(separ)[1]))
-						except:
-							if isinstance(kwargs[option],(str,list,tuple,*arrays)):
-								kwargs[option] = kwargs[option]
-							else:
-								kwargs[option] = None
-
-						keyword = 'alpha'
-						if kwargs.get(keyword) is not None:
-							if isinstance(kwargs[option],(list,tuple)):
-								kwargs[option] = list(kwargs[option])
-								kwargs[option][-1] = kwargs[keyword]
-							elif isinstance(kwargs[option],arrays):
-								kwargs[option][:,-1] = kwargs[keyword]
-
-				return args,kwargs
-
-			if isinstance(value,dict):
-				args,kwargs = func(obj,key,value)
-				getattr(obj,key)(*args,**kwargs)
-			elif isinstance(value,list):
-				for val in value:
-					args,kwargs = func(obj,key,val)
-					getattr(obj,key)(*args,**kwargs)
+		def parse(data):
+			for key in data:
+				if isinstance(data[key],dict):
+					parse(data[key])
+				else:
+					if isinstance(data[key],str) and (data[key] == 'none'):
+						data[key] = None
 			return
 
-		options = copy(options)
+		data = load(file)
 
-		with matplotlib.style.context(options['options'].get('mplstyle')) if options['options'].get('mplstyle') else context(options['options'].get('mplstyle')):
+		parse(data)
 
-			figs,axes = plt.subplots(*options['options']['layout']) if ((fig is None) or (ax is None)) else (fig,ax)
-
-			fig = figs
-			ax = axes.flatten()[index%axes.size] if (isinstance(axes,arrays) and index is not None) else axes
-
-
-			attr = 'ax'
-			obj = ax
-
-			if isinstance(options.get(attr),dict) and len(options.get(attr)):
-				for key in options[attr]:
-					setter(obj,key,options[attr][key])
-
-
-			attr = 'colorbar'
-
-			if isinstance(options.get(attr),dict) and len(options.get(attr)):
-
-				try:
-					options[attr]['cmap']['colors'] = [plt.get_cmap(i.split(separ)[0])(float(i.split(separ)[1])) for i in options[attr]['cmap']['colors']]
-				except:
-					options[attr]['cmap']['colors'] = [i for i in options[attr]['cmap']['colors']]
-
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list(**options[attr]['cmap'])
-
-				cax,opts = matplotlib.colorbar.make_axes([ax for ax in fig.axes],**options[attr]['cax'])
-
-				cbar = matplotlib.colorbar.ColorbarBase(cax,cmap=cmap,**options[attr]['cbar'])
-
-				obj = cbar.ax
-				for key in options[attr]['ax']:
-					setter(obj,key,options[attr]['ax'][key])
-
-
-			attr = 'legend'
-			obj = ax
-
-			if isinstance(options.get(attr),dict) and len(options.get(attr)):
-
-				handles,labels = obj.get_legend_handles_labels()
-				handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
-				keywords = {keyword:options[attr].pop(keyword) for keyword in ['set_linewidth','set_alpha','set_color'] if keyword in options[attr]}
-				for i,(handle,label) in enumerate(zip(handles,labels)):
-					for keyword in keywords:
-						setter(handle[0],keyword,keywords[keyword])
-
-				indices = range(min(len(handles),len(labels)))
-				handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
-
-				legend = obj.legend(handles,labels,**options[attr])
-
-
-			attr = 'fig'
-			obj = fig
-
-			if isinstance(options.get(attr),dict) and len(options.get(attr)):
-				for key in options[attr]:
-					setter(obj,key,options[attr][key])
-
-		fig = figs
-		ax = axes
-
-		return fig,ax
-
-	def process(path):
-
-		data = setup(path)
-
-		if data is None:
-			return
-
-		settings = [
-			Dict(
-				name = 'M.parameters.noise.parameters.sample',
-				variables = dict(
-					x = 'M',
-					y = 'parameters',
-					colorbar = 'noise.parameters',
-					legend = 'sample',
-					sort = ['N','operator']
-					),
-				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
-				options = dict(
-					groupby=dict(as_index=False,dropna=False)
-					),
-				fig = {},
-				ax = {},
-				index = lambda index=None,group=None,groupby=None,**kwargs:None,
-				),
-			Dict(
-				name = 'noise.parameters.parameters.M.sample',
-				variables = dict(
-					x = 'noise.parameters',
-					y = 'parameters',
-					colorbar = 'M',
-					legend = 'sample',
-					sort = ['N','operator']
-					),
-				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['N'].isin([10]),
-				options = dict(
-					groupby=dict(as_index=False,dropna=False)
-					),
-				fig = {},
-				ax = {},
-				index = lambda number=None,group=None,groupby=None,**kwargs:None,
-				),
-			Dict(
-				name = 'M.parameters.noise.parameters.N',
-				variables = dict(
-					x = 'M',
-					y = 'parameters',
-					colorbar = 'noise.parameters',
-					legend = 'N',
-					sort = ['sample','operator']
-					),
-				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
-				options = dict(
-					groupby=dict(as_index=False,dropna=False)
-					),
-				fig = {},
-				ax = {},
-				index = lambda index=None,group=None,groupby=None,**kwargs:None,
-				),
-			Dict(
-				name = 'noise.parameters.parameters.M.N',
-				variables = dict(
-					x = 'noise.parameters',
-					y = 'parameters',
-					colorbar = 'M',
-					legend = 'N',
-					sort = ['sample','operator']
-					),
-				data = ['noise','env'],
-				boolean = lambda data: data['M'].isin([2,4,8,16,32]) & data['sample'].isin([1.0]),
-				options = dict(
-					groupby=dict(as_index=False,dropna=False)
-					),
-				fig = {},
-				ax = {},
-				index = lambda number=None,group=None,groupby=None,**kwargs:None,
-				),
-			]
-
-		names = ['noise.parameters.parameters.M.sample']
-
-		for setting in settings:
-
-			if setting.name not in names:
-				continue
-
-			bys = [attr for attr in setting.variables.sort if attr in data]
-			groupbys = data[setting.boolean(data)].groupby(by=bys,**setting.options.groupby)
-
-			groupoids = groupbys[bys].agg('first')
-			groupoids = {attr:groupoids[attr].unique().tolist() for attr in bys}
-
-			for groupby in groupbys.groups:
-
-				objs = groupbys.get_group(groupby)
-
-				groupoid = dict(zip(bys,groupby))
-
-				by = [attr for attr in [setting.variables.colorbar,setting.variables.legend] if attr in data]
-				groups = objs.groupby(by=by,**setting.options.groupby)
-
-				groupings = groups[by].agg('first')
-				groupings = {attr: groupings[attr].unique().tolist() for attr in by}
-
-				for group in groups.groups:
-
-					obj = groups.get_group(group)
-
-					grouping = dict(zip(by,group))
-
-					y = array([list(i) if isinstance(i,iterables) else i for i in obj[setting.variables.y]]).T
-					x = [array([i for i in obj[setting.variables.x]])]*len(y)
-
-					for number,(x,y) in enumerate(zip(x,y)):
-
-						key = (*groupby,number)
-
-						options = {}
-
-						options.update({
-
-							'options':{
-								'path':join(path,'plot'),
-								'font':{'text':200,'legend':200,'colorbar':200},
-								'font':{'text':120,'legend':85,'colorbar':120},
-								'color':{'plot':'viridis','colorbar':'viridis'},
-								'layout':[],
-								},
-
-							})
-
-						options.update({
-
-							'options': {
-								**options['options'],
-								**{'mplstyle': join(path,'plot',ext='mplstyle'),}
-								},
-
-							'ax':{
-								'errorbar': {
-									'x':x,
-									'y':y,
-
-									**({
-										(True,'sample'):{
-											'label':'$%d$'%(int(128*obj[setting.variables.legend].iloc[0])),
-											},
-										(True,'N'):{
-											'label':'$%d$'%(int(obj[setting.variables.legend].iloc[0])),
-											},
-										}.get((all((groupings[attr].index(grouping[attr])==(len(groupings[attr])-1)) for attr in [setting.variables.colorbar]),
-											setting.variables.legend),{})
-										),
-
-									**([
-										{
-										'marker': 'o',
-										'alpha':0.8,
-
-										},
-										{
-										'marker': '^',
-										'alpha':0.6,
-										},
-										{
-										'marker': 's',
-										'alpha':0.5,
-										},
-										{
-										'marker': 'P',
-										'alpha':0.4,
-										},
-										{
-										'marker': 'h',
-										'alpha':0.3,
-										},
-										{
-										'marker': 'x',
-										'alpha':0.2,
-										},
-										][len(groupings[setting.variables.legend])-1-groupings[setting.variables.legend].index(grouping[setting.variables.legend])]
-										),
-
-									'color':'%s_%s'%(
-										options['options']['color']['plot'],
-										(groupings[setting.variables.colorbar].index(grouping[setting.variables.colorbar]))/(len(groupings[setting.variables.colorbar])-1)),
-									'markersize':60,
-									'linestyle':'--',
-									'linewidth':30,
-									},
-
-								**({
-									('M','noise'):
-										{
-										'set_title':None,
-										'set_xlabel':{'xlabel':'$\\textrm{Depth}~~k$','size':options['options']['font']['text']},
-										'set_ylabel':{'ylabel':'$\\textrm{Effective Noise}~~\\tilde{\\gamma}$','size':options['options']['font']['text']},
-
-										'set_xscale':{'value':'linear','base':10},
-										'set_xlim':{'xmin':-2,'xmax':34},
-										'set_xticks':{'ticks':[0,2,4,8,16,32]},
-										'set_xticklabels':{'labels':['$%d$'%(i) for i in [0,2,4,8,16,32]],'size':options['options']['font']['text']},
-
-										'set_yscale':{'value':'log','base':10},
-										'set_ylim':{'ymin':5e-5,'ymax':2e0},
-										'set_yticks':{'ticks':[1e-4,1e-3,1e-2,1e-1,1e0]},
-										'set_yticklabels':{'labels':['$10^{%d}$'%(i) if i!=0 else '$1$' for i in [-4,-3,-2,-1,0]],'size':options['options']['font']['text']},
-										},
-									('M','env'):
-										{
-										'set_title':None,
-										'set_xlabel':{'xlabel':'$\\textrm{Depth}~~k$','size':options['options']['font']['text']},
-										'set_ylabel':{'ylabel':'$\\textrm{Effective Environment}~~\\tilde{s}$','size':options['options']['font']['text']},
-
-										'set_xscale':{'value':'linear','base':10},
-										'set_xlim':{'xmin':-2,'xmax':34},
-										'set_xticks':{'ticks':[0,2,4,8,16,32]},
-										'set_xticklabels':{'labels':['$%d$'%(i) for i in [0,2,4,8,16,32]],'size':options['options']['font']['text']},
-
-										'set_yscale':{'value':'log','base':2},
-										'set_ylim':{'ymin':0.5,'ymax':1500},
-										'set_yticks':{'ticks':[1,4,16,64,256,1024]},
-										'set_yticklabels':{'labels':['$2^{%d}$'%(i) if i!=0 else '$1$' for i in [0,2,4,6,8,10]],'size':options['options']['font']['text']},
-										},
-									('noise.parameters','noise'):
-										{
-										'set_title':None,
-										'set_xlabel':{'xlabel':'$\\textrm{Noise}~~\\gamma$','size':options['options']['font']['text']},
-										'set_ylabel':{'ylabel':'$\\textrm{Effective Noise}~~\\tilde{\\gamma}$','size':options['options']['font']['text']},
-
-										'set_xscale':{'value':'log','base':10},
-										'set_xlim':{'xmin':5e-5,'xmax':2e0},
-										'set_xticks':{'ticks':[1e-4,1e-3,1e-2,1e-1,1e0]},
-										'set_xticklabels':{'labels':['$10^{%d}$'%(i) if i!=0 else '$1$' for i in [-4,-3,-2,-1,0]],'size':options['options']['font']['text']},
-
-										'set_yscale':{'value':'log','base':10},
-										'set_ylim':{'ymin':5e-5,'ymax':2e0},
-										'set_yticks':{'ticks':[1e-4,1e-3,1e-2,1e-1,1e0]},
-										'set_yticklabels':{'labels':['$10^{%d}$'%(i) if i!=0 else '$1$' for i in [-4,-3,-2,-1,0]],'size':options['options']['font']['text']},
-										},
-									('noise.parameters','env'):
-										{
-										'set_title':None,
-										'set_xlabel':{'xlabel':'$\\textrm{Noise}~~\\gamma$','size':options['options']['font']['text']},
-										'set_ylabel':{'ylabel':'$\\textrm{Effective Environment}~~\\tilde{s}$','size':options['options']['font']['text']},
-
-										'set_xscale':{'value':'log','base':10},
-										'set_xlim':{'xmin':5e-5,'xmax':2e0},
-										'set_xticks':{'ticks':[1e-4,1e-3,1e-2,1e-1,1e0]},
-										'set_xticklabels':{'labels':['$10^{%d}$'%(i) if i!=0 else '$1$' for i in [-4,-3,-2,-1,0]],'size':options['options']['font']['text']},
-
-										'set_yscale':{'value':'log','base':2},
-										'set_ylim':{'ymin':0.5,'ymax':1500},
-										'set_yticks':{'ticks':[1,4,16,64,256,1024]},
-										'set_yticklabels':{'labels':['$2^{%d}$'%(i) if i!=0 else '$1$' for i in [0,2,4,6,8,10]],'size':options['options']['font']['text']},
-										},
-									}.get((setting.variables.x,setting.data[number]),{})
-									),
-
-								'tick_params':[
-									{'axis':'y','which':'major','length':6,'width':1,'size':15,'pad':30},
-									{'axis':'y','which':'minor','length':4,'width':0},
-									{'axis':'x','which':'major','length':6,'width':1,'size':15,'pad':50},
-									{'axis':'x','which':'minor','length':4,'width':0}
-									],
-
-								'grid':{'visible':True},
-
-								},
-
-							'colorbar': {
-								**({
-								True:{
-									'cmap': {
-										'name':None,
-										'colors':[separ.join([options['options']['color']['colorbar'],str((i)/(len(groupings[setting.variables.colorbar])-1))])
-											for i in range(len(groupings[setting.variables.colorbar]))],
-										'N':100*len(groupings[setting.variables.colorbar]),
-										},
-									'cax': {'location':'right','fraction':0.15,'shrink':1,'aspect':40,'pad':0.02,'anchor':(1.25,0.5)},
-									'cbar': {'orientation':'vertical'},
-									**({
-										'noise.parameters':{
-											'ax': {
-												'set_ylabel':{'ylabel':'$\\textrm{Noise}~~\\gamma$','size':options['options']['font']['colorbar']},
-												'set_yticks':{'ticks':[(i)/(len(groupings[setting.variables.colorbar])-1) for i in range(len(groupings[setting.variables.colorbar]))]},
-												'set_yticklabels':{'labels':['$%s$'%(scinotation(i,scilimits=[0,0],one=False,zero=True,integral=True,usetex=False)) for i in groupings[setting.variables.colorbar]],'size':options['options']['font']['colorbar']},
-												'tick_params':[
-													{'axis':'y','which':'major','length':15,'width':1,'size':15,'pad':30},
-													],
-												},
-											},
-										'M':{
-											'ax': {
-												'set_ylabel':{'ylabel':'$\\textrm{Depth}~~k$','size':options['options']['font']['colorbar']},
-												'set_yticks':{'ticks':[(i)/(len(groupings[setting.variables.colorbar])-1) for i in range(len(groupings[setting.variables.colorbar]))]},
-												'set_yticklabels':{'labels':['$%s$'%(scinotation(i,scilimits=[0,3],one=True,zero=True,integral=True,usetex=False)) for i in groupings[setting.variables.colorbar]],'size':options['options']['font']['colorbar']},
-												'tick_params':[
-													{'axis':'y','which':'major','length':15,'width':1,'size':15,'pad':30},
-													],
-												},
-											},
-										}.get(setting.variables.colorbar,{})
-									),
-									},
-								}.get(all((groupings[attr].index(grouping[attr])==(len(groupings[attr])-1)) for attr in grouping),{})
-								),
-								},
-							'legend': {
-								**({
-								(True,'sample'):{
-									'title': '$\\textrm{Samples}~~m$',
-									'loc': {
-										('M','noise'):'lower right',
-										('M','env'):'upper right',
-										('noise.parameters','noise'):'lower right',
-										('noise.parameters','env'):'upper left',
-										}.get((setting.variables.x,setting.data[number]),'upper right'),
-									'ncol':1,
-									'title_fontsize': options['options']['font']['legend'],
-									'prop':{'size': options['options']['font']['legend'],},
-									'markerscale':1.25,
-									'handlelength':3,
-									'framealpha':1,
-									'set_color':{'color':'gray'},
-									'set_linewidth':{'w':16},
-									},
-								(True,'N'):{
-									'title': '$\\textrm{Size}~~n$',
-									'loc': {
-										('M','noise'):'lower right',
-										('M','env'):'upper left',
-										('noise.parameters','noise'):'lower right',
-										('noise.parameters','env'):'upper left',
-										}.get((setting.variables.x,setting.data[number]),'upper right'),
-									'ncol':1,
-									'title_fontsize': options['options']['font']['legend'],
-									'prop':{'size': options['options']['font']['legend'],},
-									'markerscale':1.25,
-									'handlelength':3,
-									'framealpha':1,
-									'set_color':{'color':'gray'},
-									'set_linewidth':{'w':16},
-									},
-								}.get((all((groupings[attr].index(grouping[attr])==(len(groupings[attr])-1)) for attr in grouping),setting.variables.legend),{})
-								),
-								},
-
-							'fig':{
-								'set_size_inches':{'w':65,'h':45},
-								'set_size_inches':{'w':45,'h':20},
-								'subplots_adjust':{},
-								'subplots_adjust': {'wspace': 0.5,'hspace': 0.1},
-								'tight_layout':{},
-								'savefig':{
-									'fname':join(
-										options['options']['path'],
-										delim.join([
-											'plot',
-											setting.variables.x,
-											setting.variables.y,
-											setting.data[number],
-											setting.variables.colorbar,
-											setting.variables.legend,
-											delim.join([str(i) for attr in groupoid for i in [attr,groupoid[attr]]])
-											]),
-										ext='pdf'),
-									'bbox_inches':'tight',
-									'pad_inches':0.5,
-									'pad_inches':0.2,
-									},
-							}
-						})
-
-						fig,ax = setting.fig.get(key),setting.ax.get(key)
-						index = setting.index(number,group,groupby)
-
-						fig,ax = plot(options,fig=fig,ax=ax,index=index)
-
-						setting.fig[key] = fig
-						setting.ax[key] = ax
-
-						if all((groupings[attr].index(grouping[attr])==(len(groupings[attr])-1)) for attr in grouping):
-							logger(options['fig']['savefig']['fname'])
-
-		return
-
-	path = sys.argv[1] if len(sys.argv[1:]) else None
-
-	logger = Logger(file=None,verbose='info')
-
-	if path is None:
-		return
-
-	process(path)
+		for key in natsorted(data):
+			x,y,options = data[key]['x'],data[key]['y'],data[key]['options']
+			fig,ax = plot(x,y,fig=fig,ax=ax,options=options)
 
 	return
 
@@ -2229,10 +1677,6 @@ def setup(settings,options,*args,**kwargs):
 
 		test(settings,options,*args,**kwargs)
 
-	if boolean.get('draw'):
-
-		draw(settings,options,*args,**kwargs)
-
 	if boolean.get('plot'):
 
 		plot(settings,options,*args,**kwargs)
@@ -2240,6 +1684,8 @@ def setup(settings,options,*args,**kwargs):
 	return
 
 def main(*args,**kwargs):
+
+	path = str(args[0]) if len(args)>0 else '~/scratch/probability/distribution'
 
 	attribute = {}
 
@@ -2295,21 +1741,20 @@ def main(*args,**kwargs):
 			'run':0,
 			'process':0,
 			'test':0,
-			'draw':0,
 			'plot':1,
 			}),
-		path   = (lambda settings={},options={},keywords=keywords: '~/scratch/probability/distribution'),
+		path   = (lambda settings={},options={},keywords=keywords: path),
 		io     = (lambda settings={},options={},keywords=keywords: dict(wr='a',default={})),
 		do     = (lambda settings={},options={},keywords=keywords: True or (not exists(options['data'](settings,options))) or (load(options['data'](settings,options),**options['io'](settings,options)) is None) or (options['key'](settings,options) not in load(options['data'](settings,options),**options['io'](settings,options)))),
 		key    = (lambda settings={},options={},keywords=keywords: 'operator.{attr}.N.{N}.M.{M}'.format(**settings)),
 		attrs  = (lambda settings={},options={},keywords=keywords: ('attr','N')),
 		method  = (lambda settings={},options={},keywords=keywords: 'pdf'),
 		attribute = (lambda settings={},options={},keywords=keywords:{attr:partial(keywords['attribute'][attr],settings=settings,options=options) for attr in keywords['attribute']}),
-		data   = (lambda settings={},options={},keywords=keywords: join(options['path'](settings,options),'data','test',ext='hdf5' if vectorize else 'pkl')),
-		logger = (lambda settings={},options={},keywords=keywords: Logger(file=join(options['path'](settings,options),'log','log.log'),verbose='info')),
+		data   = (lambda settings={},options={},keywords=keywords: join(options['path'](settings,options),'data',ext='hdf5' if vectorize else 'pkl')),
+		logger = (lambda settings={},options={},keywords=keywords: Logger(file=None,verbose='info')),
 		plot   =  (lambda settings={},options={},keywords=keywords: dict(
 			path=join(options['path'](settings,options),'plot','plot.test.%s'%('.'.join([str(i) if not isinstance(i,str) else i.split(delim)[-1] for attr in options['attrs'](settings,options) for i in [attr,settings[attr]]])),ext='pdf'),
-			mplstyle=join(options['path'](settings,options),'plot','plot.mplstyle'),
+			mplstyle=join(options['path'](settings,options),'plot.mplstyle'),
 			markersize=9,
 			linewidth=16,
 			alpha=0.8,
@@ -2327,8 +1772,8 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	args = ()
+	args = (*sys.argv[1:],)
 
-	kwargs = {}
+	kwargs = {**{},}
 
 	main(*args,**kwargs)
