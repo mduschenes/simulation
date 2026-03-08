@@ -5,6 +5,7 @@ h5py
 pandas
 pytables
 matplotlib
+sympy
 pytest
 typing
 filelock
