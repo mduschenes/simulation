@@ -1,40 +1,6 @@
 #!/usr/bin/env python
 
-# Import python modules
 import os,sys
-import itertools,functools,warnings,traceback
-
-# Import User modules
-ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','.','..','../../..','/home/mduschen/code/tensor']
-for PATH in PATHS:
-	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
-
-
-os.environ['NUMPY_BACKEND'] = 'JAX'
-
-from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,allclose,vtype,copy,exponentiate
-from src.utils import exp,log,log1p,sign,gammaln
-from src.utils import pi,nan,fltmin,fltmax,delim,separ,epsilon,iterables,arrays
-from src.utils import where,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
-from src.utils import eig,addition,prod,permutations,partitions,multinomial,permute,distribution
-from src.utils import dataframe
-from src.utils import scinotation
-from src.utils import integral
-
-from src.iterables import Dict
-
-from src.quantum import Basis as basis
-
-from src.io import load,dump,exists,join,split
-
-from src.logger import Logger
-
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.patheffects
-
-from natsort import natsorted
 
 def setup(path=None,**kwargs):
 
@@ -340,7 +306,7 @@ def plot(path,*args,**kwargs):
 							'options':{
 								'path':join(path,'plot'),
 								'font':{'text':200,'legend':200,'colorbar':200},
-								'font':{'text':120,'legend':85,'colorbar':120},
+								'font':{'text':130,'legend':95,'colorbar':130},
 								'color':{'plot':'viridis','colorbar':'viridis'},
 								'layout':[],
 								},
@@ -534,7 +500,7 @@ def plot(path,*args,**kwargs):
 										('noise.parameters','noise'):'lower right',
 										('noise.parameters','env'):'upper left',
 										}.get((setting.variables.x,setting.data[number]),'upper right'),
-									'ncol':1,
+									'ncol':3,
 									'title_fontsize': options['options']['font']['legend'],
 									'prop':{'size': options['options']['font']['legend'],},
 									'markerscale':1.25,
@@ -628,8 +594,37 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	args = (*sys.argv[1:],)
+	build = sys.argv.pop(1) if len(sys.argv[1:]) > 1 else '~/code/tensor'
+	paths = ['.','..',os.path.dirname(os.path.abspath(__file__)),os.path.abspath(os.path.expandvars(os.path.expanduser(build)))]
+	sys.path.extend(paths)
 
-	kwargs = {**{},}
+	os.environ['NUMPY_BACKEND'] = 'JAX'
+
+	from src.utils import array,rand,asscalar,tensorprod,concatenate,meshgrid,linspace,logspace,inplace,partial,cache,scan,vmap,callback,allclose,vtype,copy,exponentiate
+	from src.utils import exp,log,log1p,sign,gammaln
+	from src.utils import pi,nan,fltmin,fltmax,delim,separ,epsilon,iterables,arrays
+	from src.utils import where,real,imag,nonzero,unique,sort,minimum,maximum,minimums,maximums
+	from src.utils import eig,addition,prod,permutations,partitions,multinomial,permute,distribution
+	from src.utils import dataframe
+	from src.utils import scinotation
+	from src.utils import integral
+
+	from src.iterables import Dict
+
+	from src.quantum import Basis as basis
+
+	from src.io import load,dump,exists,join,split
+
+	from src.logger import Logger
+
+	import matplotlib
+	import matplotlib.pyplot as plt
+	import matplotlib.patheffects
+
+	from natsort import natsorted
+
+	args = sys.argv[1:]
+
+	kwargs = {}
 
 	main(*args,**kwargs)
