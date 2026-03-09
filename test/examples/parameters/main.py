@@ -306,7 +306,7 @@ def plot(path,*args,**kwargs):
 							'options':{
 								'path':join(path,'plot'),
 								'font':{'text':200,'legend':200,'colorbar':200},
-								'font':{'text':130,'legend':95,'colorbar':130},
+								'font':{'text':140,'legend':90,'colorbar':140},
 								'color':{'plot':'viridis','colorbar':'viridis'},
 								'layout':[],
 								},
