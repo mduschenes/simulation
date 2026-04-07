@@ -3,8 +3,11 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](
-https://doi.org/10.48550/arXiv.2401.05500) , or [PRA](https://doi.org/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.10295791).
+This library is used in the preparation of the works, with associated branches:
+
+- *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](
+https://doi.org/10.48550/arXiv.2401.05500) , or [PRA](https://doi.org/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.10295791). Please refer to branch `overparameterization` for density-matrix simulation code.
+- *Distributions of Noisy Expectation Values over Sets of Measurement Operators*, found on [arXiv](https://doi.org/10.48550/arXiv.XXXXXX) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.18671768). Please refer to branch `tensor` for tensor network simulation code.
 
 ## Install
 After cloning the repository, please run 
@@ -34,6 +37,16 @@ where the default backend is `jax`, and the `numpy` backend does not offer autom
 
 ## Examples
 Examples are found in `examples`.
+
+Under `examples`, please run
+```sh
+python main.py settings.json
+```
+to run optimization of model in `settings.json`, then run
+```sh
+python plot.py .
+```
+to plot data from optimization of model.
 
 Example workflow `main.py`
 
@@ -222,6 +235,8 @@ data = {
         'value': [1e-1,1e-2,1e-3]
     }
 ```
+
+Example plotter in `plot.py`
 
 ## Run
 Under `build`, please run 
