@@ -7,7 +7,7 @@ This library is used in the preparation of the works, with associated branches:
 
 - *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](
 https://doi.org/10.48550/arXiv.2401.05500) , or [PRA](https://doi.org/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.10295791). Please refer to branch `overparameterization` for density-matrix simulation code.
-- *Distributions of Noisy Expectation Values over Sets of Measurement Operators*, found on [arXiv](https://doi.org/10.48550/arXiv.XXXXXX) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.18671768). Please refer to branch `tensor` for tensor network simulation code.
+- *Distributions of Noisy Expectation Values over Sets of Measurement Operators*, found on [arXiv](https://doi.org/10.48550/arXiv.2604.05973) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.18671768). Please refer to branch `tensor` for tensor network simulation code.
 
 ## Install
 After cloning the repository, please run 
