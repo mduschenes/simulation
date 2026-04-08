@@ -3,7 +3,8 @@ A pure JAX based quantum circuit simulator library, including tensor network and
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-This library is used in the preparation of the work *Distributions of Noisy Expectation Values over Sets of Measurement Operators*, found on [arXiv](https://doi.org/10.48550/arXiv.XXXXXX) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.18671768).
+This library is used in the preparation of the work *Distributions of Noisy Expectation Values over Sets of Measurement Operators*, found on [arXiv](
+https://doi.org/10.48550/arXiv.2604.05973) and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.18671768).
 
 ## Install
 After cloning the repository, please run 
