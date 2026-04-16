@@ -59,23 +59,45 @@ def plot(settings,options,*args,**kwargs):
 
 				n = len(set([i.replace('$','').split('~,~')[0] for i in ax.get_legend_handles_labels()[1]]))
 
-				opts = dict(location='right',fraction=0.15,shrink=1,aspect=40,pad=0.02,anchor=(1.25,0.5))
+				caxes = {cax:None for cax in ['viridis','magma']}
 
-				colors = [plt.get_cmap('viridis')((i+1)/(n+1)) for i in range(n)]
+				for color in caxes:
 
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
+					colors = [plt.get_cmap(color)((i+1)/(n+1)) for i in range(n)]
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=None,colors=colors,N=100*len(colors))
 
-				cax,opts = matplotlib.colorbar.make_axes([ax for ax in fig.axes],**opts)
+					opts = dict(location='right',fraction=0.15,shrink=1,aspect=40,pad=0.02,anchor={'viridis':(1.25,0.5),'magma':(1.5,0.5)}[color])
+					cax,opts = matplotlib.colorbar.make_axes([ax for ax in fig.axes],**opts)
 
-				opts = {**dict(cmap=cmap,orientation='vertical')}
-				cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
+					# opts = dict(position='right',size='2%',pad={'viridis':0.05,'magma':0.5}[color])
+					# cax = make_axes_locatable(ax).append_axes(**opts)
 
-				cbar.ax.set_ylabel(ylabel='$\\textrm{Depth}~~k$',size=settings['fontsize'])
-				cbar.ax.set_yticks(ticks=[(i)/(n-1) for i in range(n)])
-				cbar.ax.set_yticklabels(labels=['$%s$'%(i.replace('$','').split('~,~')[0]) for i in ax.get_legend_handles_labels()[1][:n]],size=settings['fontsize'])
+					opts = {**dict(cmap=cmap,orientation='vertical')}
+					cbar = matplotlib.colorbar.ColorbarBase(cax,**opts)
 
-				cbar.ax.yaxis.set_tick_params(pad=20)
-				cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
+					if color in ['viridis']:
+						cbar.ax.set_yticks(ticks=[(i)/(n-1) for i in range(n)])
+						cbar.ax.set_yticklabels(labels=[])
+
+						cbar.ax.yaxis.set_tick_params(pad=20)
+						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
+
+					elif color in ['magma']:
+						cbar.ax.set_ylabel(ylabel='$\\textrm{Depth}~~k$',size=settings['fontsize'])
+						cbar.ax.set_yticks(ticks=[(i)/(n-1) for i in range(n)])
+						cbar.ax.set_yticklabels(labels=['$%s$'%(i.replace('$','').split('~,~')[0]) for i in ax.get_legend_handles_labels()[1][:n]],size=settings['fontsize'])
+
+						cbar.ax.yaxis.set_tick_params(pad=20)
+						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
+
+					caxes[color] = cax
+
+				for color in caxes:
+					cax = caxes[color]
+					if color in ['viridis']:
+						cax.set_position([cax.get_position().x0 + 0.1675,cax.get_position().y0,cax.get_position().width,cax.get_position().height])
+					elif color in ['magma']:
+						cax.set_position([cax.get_position().x0 + 0,cax.get_position().y0,cax.get_position().width,cax.get_position().height])
 
 				handles,labels = ax.get_legend_handles_labels()
 				handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
@@ -256,7 +278,7 @@ def main(*args,**kwargs):
 if __name__ == '__main__':
 
 	build = sys.argv.pop(1) if len(sys.argv[1:]) > 1 else '~/code/tensor'
-	paths = ['.','..',os.path.dirname(os.path.abspath(__file__)),build]
+	paths = ['.','..',os.path.dirname(os.path.abspath(__file__)),os.path.abspath(os.path.expandvars(os.path.expanduser(build)))]
 	sys.path.extend(paths)
 
 	os.environ['NUMPY_BACKEND'] = 'JAX'
@@ -281,6 +303,7 @@ if __name__ == '__main__':
 	import matplotlib
 	import matplotlib.pyplot as plt
 	import matplotlib.patheffects
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 	from natsort import natsorted
 
