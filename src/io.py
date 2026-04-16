@@ -37,6 +37,7 @@ class cd(object):
 		path (str): Path to change to
 	'''
 	def __init__(self,path):
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path))) if path is not None else None
 		mkdir(path)
 		self.path = path
 		return
