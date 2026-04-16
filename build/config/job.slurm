@@ -1,6 +1,6 @@
 #!/bin/bash
 
-##SBATCH --account=mduschenes
+#SBATCH --account=def-rgmelko
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
