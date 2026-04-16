@@ -16,7 +16,6 @@
 "seed":{
 	"seed":39123,
 	"size":50,
-	"size":3,
 	"reset":39123,
 	"group":null,
 	"index":null
@@ -30,10 +29,6 @@
 			5,10,15,20,30,35,40,45,50,55,60,65,70,75,80,85,90,95,
 			100,200,300,400,500,600,700,800,900,
 			1000,1200,1600,2000,3000,4000,5000
-		],
-
-		"model.M":[
-			5,10,15
 		],
 
 		"model.tau":[75e0],
@@ -70,7 +65,6 @@
 		"model.data.noise.parameters.parameters":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"model.data.noise.parameters.parameters":[1e-4],
 		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],
-		"model.data.noise.parameters.parameters":[1e-14],
 		"model.data.noise.parameters.data":[1],
 		"model.data.noise.ndim":[3],
 		"model.data.noise.seed":[null],
@@ -240,7 +234,7 @@
 			"attributes":["parameters.data"],
 			"variable":false,"seed":123},
 		"noise":{
-			"operator":"amplitude","site":null,"string":"noise",
+			"operator":"dephase","site":null,"string":"noise",
 			"parameters":{"data":1,"parameters":1},
 			"ndim":3,
 			"variable":false
