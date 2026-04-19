@@ -1268,7 +1268,7 @@ def merge(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 
 	wrappers = ['merge']
 
-	wrapper = [wrapper,*wrappers] if not isinstance(wrapper,iterables) else [*wrapper,*wrappers]
+	wrapper = [*wrappers] if wrapper is None else [wrapper,*wrappers] if not isinstance(wrapper,iterables) else [*wrapper,*wrappers]
 
 	wr = wr
 	data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
