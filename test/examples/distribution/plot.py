@@ -248,6 +248,25 @@ def plot(settings,options,*args,**kwargs):
 			x,y,plots = data[key]['x'],data[key]['y'],data[key]['options']
 			fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**options['plot']})
 
+		lines = [
+			[0],[0,2],[0,2,5],[0,2,5,6],[0,2,5,6,8],[0,2,5,6,8,11],
+			[0,2,5,6,8,11,12],[0,2,5,6,8,11,12,16],[0,2,5,6,8,11,12,16,18],[0,2,5,6,8,11,12,16,18,23]
+			]
+		for number,lines in enumerate(lines):
+			for index,line in enumerate(ax.get_lines()):
+				if index not in lines:
+					line.set_visible(False)
+
+			path = join(options.get('path') if options.get('path') else None,join('.'.join([split(plots.get('name'),directory_file=True),str(number)]),ext=split(plots.get('name'),ext=True)))
+
+			fig.set_size_inches(w=65,h=45)
+			fig.subplots_adjust()
+			fig.tight_layout()
+			fig.savefig(fname=path,bbox_inches='tight',pad_inches=0.5)
+
+			for index,line in enumerate(ax.get_lines()):
+				line.set_visible(True)
+
 	return
 
 
