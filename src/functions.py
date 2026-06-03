@@ -844,6 +844,16 @@ def func_spectrum_sign(data,attr=None,eps=None):
 	data = np.array([func(i) for i in data[attr]])
 	return data
 
+def func_max_bond(data):
+	# if isinstance(data['max_bond'],scalars):
+	# 	# tmp = 'q^{n/%d}'%(data['max_bond'])
+	# 	tmp = data['max_bond']
+	# else:
+	# 	tmp = round(data['N']*np.log(data['D'])/np.log(data['max_bond'])).astype(int)
+	# 	tmp[data['max_bond'] > (data['D']**data['N'])] = 0
+	# 	tmp[(data['N']==6) & (tmp>1) & (tmp%2)] += 1
+	tmp = data['max_bond']
+	return tmp
 
 def func_MN(data):
 	return data['M']/data['N']

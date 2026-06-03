@@ -512,7 +512,6 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		}
 	setter(processes,defaults,delimiter=delim,default=False)
 
-
 	# Get paths
 	path = data if isinstance(data,str) else processes.get('path') if isinstance(processes.get('path'),str) else None
 	ext = {'merge':None}.get(processes['tmp'],'tmp')
@@ -1540,9 +1539,9 @@ def apply(data,plots,processes,verbose=None):
 	def mean_default(obj,*args,**kwargs):
 		return obj.mean()
 	def std_default(obj,*args,**kwargs):
-		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return obj.std(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 	def sem_default(obj,*args,**kwargs):
-		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return obj.sem(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 
 	def mean_obj(obj,*args,**kwargs):
 		try:
@@ -1557,7 +1556,7 @@ def apply(data,plots,processes,verbose=None):
 		try:
 			assert any(not(i,iterables) for i in obj) or (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
-			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+			obj = to_tuple(obj.std(axis=0,ddof=int(obj.shape[0]>1)))
 		except:
 			obj = np.array([list(obj)[0]])
 			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))
@@ -1566,7 +1565,7 @@ def apply(data,plots,processes,verbose=None):
 		try:
 			assert any(not(i,iterables) for i in obj) or (len(set(len(i) for i in obj))==1)
 			obj = np.array(list(obj))
-			obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+			obj = to_tuple(obj.std(axis=0,ddof=int(obj.shape[0]>1)))
 		except:
 			obj = np.array([list(obj)[0]])
 			obj = to_tuple(np.zeros(obj.shape[1:],dtype=obj.dtype))
@@ -1575,9 +1574,9 @@ def apply(data,plots,processes,verbose=None):
 	def mean_arithmetic(obj,*args,**kwargs):
 		return obj.mean()
 	def std_arithmetic(obj,*args,**kwargs):
-		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return obj.std(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 	def sem_arithmetic(obj,*args,**kwargs):
-		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return obj.sem(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 
 	def mean_geometric(obj,*args,**kwargs):
 		return exp(log(obj).mean())
@@ -1589,16 +1588,16 @@ def apply(data,plots,processes,verbose=None):
 	def mean_log(obj,*args,**kwargs):
 		return exp(log(obj).mean())
 	def std_log(obj,*args,**kwargs):
-		return exp(log(obj).std(ddof=kwargs.get('ddof',obj.shape[0]>1)))
+		return exp(log(obj).std(ddof=kwargs.get('ddof',int(obj.shape[0]>1))))
 	def sem_log(obj,*args,**kwargs):
-		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',int(obj.shape[0]>1))))
 
 	def mean_bootstrap(obj,*args,**kwargs):
 		return bootstrapper(obj,*args,**kwargs).mean()
 	def std_bootstrap(obj,*args,**kwargs):
-		return bootstrapper(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return bootstrapper(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 	def sem_bootstrap(obj,*args,**kwargs):
-		return bootstrapper(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))
+		return bootstrapper(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',int(obj.shape[0]>1)))
 
 	keys = find(plots)
 
@@ -3219,10 +3218,20 @@ def plotter(plots,processes,verbose=None):
 						if value is None:
 							continue
 						elif isinstance(value,str) and any((value.startswith(delimiter) and value.endswith(delimiter)) for delimiter in delimiters):
-							label,value = value,None
-							value = {label:value}
+							for delimiter in delimiters:
+								if value.startswith(delimiter) and value.endswith(delimiter):
+									break
+							value = value.replace(delimiter,'')
+							value = [f'{delimiter}{label}{delimiter}' for label in value.split(',')]
+							value = {label:None for label in value}
 						elif isinstance(value,dict) and any((label.startswith(delimiter) and label.endswith(delimiter)) for label in value for delimiter in delimiters):
-							value = {label: value[label] for label in value}
+							for label in list(value):
+								tmp = value.pop(label)
+								for delimiter in delimiters:
+									if label.startswith(delimiter) and label.endswith(delimiter):
+										break
+								for i in label.replace(delimiter,'').split(','):
+									value[f'{delimiter}{i}{delimiter}'] = copy(tmp)
 						else:
 							continue
 
@@ -3372,7 +3381,7 @@ def plotter(plots,processes,verbose=None):
 							value['__value__'] = [value[label]['__value__'] for label in labels][0]
 							value['__index__'] = value['__items__'].index(value['__item__']) if value['__item__'] in value['__items__'] else None
 							value['__size__'] = len(value['__items__'])
-
+							value['__key__'] = labels
 							for label in labels:
 								value.pop(label);
 
@@ -3889,7 +3898,7 @@ def plotter(plots,processes,verbose=None):
 						else:
 
 							delimiter = '__'
-							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+							if isinstance(data[attr],dict) and all(kwarg.startswith(delimiter) and kwarg.endswith(delimiter) for kwarg in data[attr]):
 
 								if not len(data[attr]):
 									data.pop(attr);
@@ -3911,9 +3920,9 @@ def plotter(plots,processes,verbose=None):
 								if isinstance(data[attr]['__value__'],str):
 									value = data[attr]['__value__']
 
-								elif isinstance(value,dict) and any(prop in value for prop in ['value','type']):
+								elif isinstance(value,dict) and any(kwarg in value for kwarg in ['value','type']):
 									defaults = {'value':None,'type':None}
-									value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
+									value.update({kwarg: value.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 
 									if value['type'] in ['value']:
 										tmp = items
@@ -3927,14 +3936,14 @@ def plotter(plots,processes,verbose=None):
 										tmp = indices
 									if isinstance(value['value'],dict):
 										if value['type'] in ['value','index','value_r','index_r']:
-											prop = 'value'
+											kwarg = 'value'
 										elif value['type'] in value['value']:
-											prop = value['type']
+											kwarg = value['type']
 										if data[attr]['__index__'] is not None:
-											value['value'][prop] = tmp[data[attr]['__index__']]
+											value['value'][kwarg] = tmp[data[attr]['__index__']]
 											value['value']['values'] = tmp
 										else:
-											value['value'][prop] = None
+											value['value'][kwarg] = None
 											value['value']['values'] = tmp
 									else:
 										if data[attr]['__index__'] is not None:
@@ -3943,10 +3952,10 @@ def plotter(plots,processes,verbose=None):
 											value['value'] = None
 
 									value = value['value']
-								elif isinstance(value,dict) and not any(prop in value for prop in ['value','type']):
+								elif isinstance(value,dict) and not any(kwarg in value for kwarg in ['value','type']):
 									value = data[attr]['__value__']
 								elif not isinstance(data[attr]['__value__'],scalars):
-									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
+									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if ((data[attr]['__index__'] is not None) and (not isinstance(data[attr]['__value__'],str))) else data[attr]['__value__']
 								else:
 									value = data[attr]['__value__']
 
@@ -3985,6 +3994,92 @@ def plotter(plots,processes,verbose=None):
 									pass
 
 						data[attr] = value
+
+			for prop in plots[instance][subinstance][obj]:
+
+				if prop in PLOTS:
+					continue
+
+				if not plots[instance][subinstance][obj].get(prop):
+					continue
+
+				for index,shape,data in search(plots[instance][subinstance][obj][prop],returns=True):
+
+					if not data:
+						continue
+
+					for attr in list(data):
+
+						if data.get(attr) is None:
+							continue
+
+						options = {}
+
+						delimiter = '__'
+						if isinstance(data[attr],dict) and all(kwarg.startswith(delimiter) and kwarg.endswith(delimiter) for kwarg in data[attr]):
+
+							if not len(data[attr]):
+								data.pop(attr);
+								continue
+
+							if attr in [string for i in ['alpha'] for string in [i,*[delim.join([i,plot]) for plot in PLOTS]]]:
+								step = 1
+							else:
+								step = 0
+
+							if all(len(i)>1 for i in data[attr]['__items__']):
+								items = [(data[attr]['__items__'].index(i)+step*1)/max(1,data[attr]['__size__']-1+step*2) for i in data[attr]['__items__']]
+							else:
+								items = [i[0] for i in data[attr]['__items__']]
+
+							value = data[attr]['__value__']
+							indices = [(data[attr]['__items__'].index(i)+step*1)/max(1,data[attr]['__size__']-1+step*2) for i in data[attr]['__items__']]
+
+							if isinstance(data[attr]['__value__'],str):
+								value = data[attr]['__value__']
+
+							elif isinstance(value,dict) and any(kwarg in value for kwarg in ['value','type']):
+								defaults = {'value':None,'type':None}
+								value.update({kwarg: value.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+
+								if value['type'] in ['value']:
+									tmp = items
+								elif value['type'] in ['value_r']:
+									tmp = items[::-1]
+								elif value['type'] in ['index']:
+									tmp = indices
+								elif value['type'] in ['index_r']:
+									tmp = indices[::-1]
+								else:
+									tmp = indices
+								if isinstance(value['value'],dict):
+									if value['type'] in ['value','index','value_r','index_r']:
+										kwarg = 'value'
+									elif value['type'] in value['value']:
+										kwarg = value['type']
+									if data[attr]['__index__'] is not None:
+										value['value'][kwarg] = tmp[data[attr]['__index__']]
+										value['value']['values'] = tmp
+									else:
+										value['value'][kwarg] = None
+										value['value']['values'] = tmp
+								else:
+									if data[attr]['__index__'] is not None:
+										value['value'] = tmp[data[attr]['__index__']]
+									else:
+										value['value'] = None
+
+								value = value['value']
+							elif isinstance(value,dict) and not any(kwarg in value for kwarg in ['value','type']):
+								value = data[attr]['__value__']
+							elif not isinstance(data[attr]['__value__'],scalars):
+								value = tuple(metadata[instance][subinstance][label] for label in data[attr]['__key__'])
+								data[attr]['__index__'] = data[attr]['__items__'].index(value) if value in data[attr]['__items__'] else None
+								value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if ((data[attr]['__index__'] is not None) and (not isinstance(data[attr]['__value__'],str))) else data[attr]['__value__']
+							else:
+								value = data[attr]['__value__']
+
+							data[attr] = value
 
 			# set title and axes label
 			prop = 'set_%slabel'
