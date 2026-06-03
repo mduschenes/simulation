@@ -22,10 +22,9 @@ from src.logger	import Logger
 logger = Logger()
 info = 100	
 debug = 100
-def logging(exception,verbose=None):
+def logging(*args,verbose=None):
 	verbose = debug if verbose is None else verbose
-	logger.log(verbose,'%r'%(exception))
-	logger.log(verbose,'%s'%(traceback.format_exc()))
+	logger.log(verbose,' , '.join(('%r'%(arg) for arg in args)))
 	return
 
 # Import user modules
@@ -51,7 +50,7 @@ VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] f
 OBJS = ['ax','fig','style']
 OBJ = 'ax'
 OTHER = 'label'
-SPECIAL = ['obj','plots','data','function']
+SPECIAL = ['obj','plots','data','function','verbose']
 NOTATION = ['texify','scinotation']
 CHILDREN = ['twin','secondary']
 WHICH = ['major','minor']
@@ -1508,6 +1507,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			plots = kwargs[attr].get('plots')
 
+			verbose = kwargs[attr].get('verbose')
+
 
 			if plots is not False:
 				plots = {} if plots is None or plots is True else {plots:{}} if isinstance(plots,str) else {plot:{} for plot in plots} if not isinstance(plots,dict) else {**plots}
@@ -2050,6 +2051,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					except Exception as exception:
 						logging(exception)
+						logging(traceback.format_exc())
 
 					return
 
@@ -3054,6 +3056,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			for kwarg in nullkwargs:
 				_kwargs_.pop(kwarg,None)
 
+			if verbose:
+				verbose = kwargs[attr] if not isinstance(verbose,(list,tuple,dict)) else verbose
+				logging(attr,{prop:kwargs[attr][prop] for prop in verbose if prop in kwargs[attr]})
 
 			if not call:	
 		
@@ -3077,6 +3082,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					_obj_ = _obj(**_kwargs_)
 				except Exception as exception:
 					logging(exception)
+					logging(traceback.format_exc())
+
 					try:
 						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
 						if _kwargs_:
@@ -3085,6 +3092,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							_obj_ = None
 					except Exception as exception:
 						logging(exception)
+						logging(traceback.format_exc())
+
 						_obj_ = None
 
 
@@ -3103,6 +3112,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					functions[plot](obj,plot,attr,objs,plots,index,indices,shape,count,counts,_kwargs,kwargs)
 				except Exception as exception:
 					logging(exception)
+					logging(traceback.format_exc())
+
 					pass
 
 			return
