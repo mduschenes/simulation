@@ -33,7 +33,4 @@ conda install --channel ${channel} --file ${requirements}
 conda activate ${env}
 conda info --envs
 
-pth=${envs}/${env}/lib/python*/site-packages/env.${env}.pth
-echo ${path} > ${pth}
-
 pytest -rA -W ignore::DeprecationWarning ${test}
