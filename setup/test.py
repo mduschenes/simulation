@@ -35,9 +35,13 @@ def test_jax(*args,**kwargs):
 		for name in environs:
 			os.environ[name] = str(environs[name])
 		import jax
-		from jax.lib import xla_bridge
 		import jax.numpy as np
-		
+
+		try:
+			from jax.lib import xla_bridge
+		except:
+			pass
+
 		configs = {
 			'jax_disable_jit':False,
 			'jax_platforms':device,
@@ -47,7 +51,11 @@ def test_jax(*args,**kwargs):
 		for name in configs:
 			jax.config.update(name,configs[name])
 
-		print(xla_bridge.get_backend().platform)
+		try:
+			print(xla_bridge.get_backend().platform)
+		except:
+			pass
+
 		print(jax.devices())
 
 		array = np.array([1,2,3])
@@ -57,7 +65,6 @@ def test_jax(*args,**kwargs):
 		return
 	
 	devices = ['cuda','gpu','cpu']
-	# devices = ['cpu','gpu',]
 	for device in devices:
 		try:
 			func(device)
