@@ -1,16 +1,39 @@
 #!/usr/bin/env bash
 
-mkdir -p ${HOME}/conda/envs
-conda deactivate
-conda remove --name env --all
-conda create --prefix ${HOME}/conda/envs/env
-conda activate env
-conda install --channel conda-forge --file requirements.txt
-pytest -rA -W ignore::DeprecationWarning test.py
+env=${1:-env}
+requirements=${2:-requirements.txt}
+path=${3:-$(realpath ..)}
+envs=${4:-${HOME}/conda/envs}
+modules=(${5:-})
+channel=${6:-conda-forge}
+test=${7:-test.py}
 
+if [ ! -z ${modules} ]
+then
+	module purge
+	module load ${modules[@]}
+fi
 
-# export LD_LIBRARY_PATH=/scratch/ssd001/pkgs/cuda-XXXX/lib64:/scratch/ssd001/pkgs/cudnn-XXXX/lib64:$LD_LIBRARY_PATH
+mkdir -p ${envs}
 
-# export XLA_FLAGS=--xla_gpu_cuda_data_dir=/scratch/ssd001/pkgs/cuda-XXXX
+source ${envs}/../etc/profile.d/conda.sh
 
-# export PATH=/scratch/ssd001/pkgs/cuda-XXXX/bin:$PATH
+for i in {1..5}; do conda deactivate; done
+conda info --envs
+
+conda remove --name ${env} --all
+
+conda create --prefix ${envs}/${env}
+
+conda activate ${env}
+conda info --envs
+
+conda install --channel ${channel} --file ${requirements}
+
+conda activate ${env}
+conda info --envs
+
+pth=${envs}/${env}/lib/python*/site-packages/env.${env}.pth
+echo ${path} > ${pth}
+
+pytest -rA -W ignore::DeprecationWarning ${test}
