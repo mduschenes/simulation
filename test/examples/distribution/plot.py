@@ -38,12 +38,12 @@ def plot(settings,options,*args,**kwargs):
 			ax.set_xlabel(xlabel='$\\textrm{Expectation Value}~~x/(1/d)$',size=settings['fontsize'])
 			ax.set_ylabel(ylabel='$P_{\\Pi}(x) ~\\sim~ x^{ls-1}~(1-x)^{(d-l)s-1}$',size=settings['fontsize'])# ~~\\to~~ P_{\\gamma} = \\frac{1}{1-\\gamma}P(\\frac{x-\\gamma/d}{1-\\gamma})$',size=settings['fontsize'])
 
-			ax.set_xscale(value='log',base=4)
+			ax.set_xscale(value='log',base=2)
 			ax.set_yscale(value='log',base=10)
-			ax.set_xlim(xmin=2**(-2*17),xmax=2**(2))
+			ax.set_xlim(xmin=2**(-2*13),xmax=2**(2))
 			ax.set_ylim(ymin=1e-17,ymax=1e9)
-			ax.set_xticks(ticks=[2**(-2*i) for i in [16,12,8,4,0]])
-			ax.set_xticklabels(labels=['$10^{%d}$'%(8-2*i) if (8-2*i) not in [0] else '$1$' for i in [16,12,8,4,0]],size=settings['fontsize'])
+			ax.set_xticks(ticks=[2**(-2*i) for i in [12,8,4,0]])
+			ax.set_xticklabels(labels=['$2^{%s%d}$'%('' if ((4-i)>=0) else '-',abs(2*(4-i))) if (8-2*i) not in [0] else '$1$' for i in [12,8,4,0]],size=settings['fontsize'])
 			ax.set_yticks(ticks=[1e-16,1e-12,1e-8,1e-4,1,1e4,1e8])
 			ax.set_yticklabels(labels=['$10^{%d}$'%(i) if i not in [0] else '$1$' for i in [-16,-12,-8,-4,0,4,8]],size=settings['fontsize'])
 
@@ -80,7 +80,10 @@ def plot(settings,options,*args,**kwargs):
 						cbar.ax.set_yticklabels(labels=[])
 
 						cbar.ax.yaxis.set_tick_params(pad=20)
-						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
+						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=35,length=35,width=6)
+
+						cbar.ax.set_xlabel(xlabel='$\\textrm{Rank}~~l$' + '\n' +"$~1~,~d/2$",size=settings['fontsize'])
+						cbar.ax.xaxis.set_label_coords(2.5,-0.03)
 
 					elif color in ['magma']:
 						cbar.ax.set_ylabel(ylabel='$\\textrm{Depth}~~k$',size=settings['fontsize'])
@@ -88,7 +91,7 @@ def plot(settings,options,*args,**kwargs):
 						cbar.ax.set_yticklabels(labels=['$%s$'%(i.replace('$','').split('~,~')[0]) for i in ax.get_legend_handles_labels()[1][:n]],size=settings['fontsize'])
 
 						cbar.ax.yaxis.set_tick_params(pad=20)
-						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=15,length=15,width=1)
+						cbar.ax.tick_params(labelsize=settings['fontsize'],which='major',pad=20,size=35,length=35,width=6)
 
 					caxes[color] = cax
 
@@ -102,19 +105,19 @@ def plot(settings,options,*args,**kwargs):
 				handles,labels = ax.get_legend_handles_labels()
 				handles,labels = [copy(handle) for handle in handles],[copy(label) for label in labels]
 				for i,(handle,label) in enumerate(zip(handles,labels)):
-					handle[0].set_linewidth(16)
-					# handle[0].set_color('gray')
-					labels[i] = '$%s~,~%s$'%(labels[i].replace('$','').split('~,~')[1],('10^{%s}'%(labels[i].replace('$','').split('~,~')[2]) if int(labels[i].replace('$','').split('~,~')[2]) != 0 else '0'))
-				indices = [i[len(i)//2] for i in [[i for i,obj in enumerate(labels) if obj==label] for label in natsorted(set(labels))]]
+					handle[0].set_linewidth(24)
+					handle[0].set_color('gray')
+					labels[i] = '$%s$'%(('10^{%s}'%(labels[i].replace('$','').split('~,~')[2]) if int(labels[i].replace('$','').split('~,~')[2]) != 0 else '0'))
+				indices = [i[len(i)//2] for i in [[i for i,obj in enumerate(labels) if obj==label] for label in natsorted(set(labels))]][:len(set(labels))//1]
 				handles,labels = [handles[i] for i in indices],[labels[i] for i in indices]
 
 				legend = ax.legend(
 					handles,labels,
-					title='$\\textrm{Rank}~~l ~,~ \\textrm{Noise}~~\\gamma$',
-					loc='upper center',
+					title='$\\textrm{Noise}~~\\gamma$',
+					loc=(0.35,0.7625),
 					ncol=4,
-					title_fontsize=settings['legend.fontsize'],
-					prop={'size':settings['legend.fontsize']},
+					title_fontsize=settings['fontsize'],
+					prop={'size':settings['fontsize']},
 					markerscale=6,
 					handlelength=3
 				)
@@ -138,7 +141,8 @@ def plot(settings,options,*args,**kwargs):
 		N=[8],
 		L=[1,(1,2)],
 		parameters=[0,-2],
-		M=[0,2,4,8,16,32],
+		# M=[0,2,4,8,16,32],
+		M=[0,2,4,8],
 		)
 
 	fig,ax = None,None
@@ -175,12 +179,13 @@ def plot(settings,options,*args,**kwargs):
 					'%s'%(str(L)) if (isinstance(L,int) and (L>=0)) else 'd%s'%(str(L)) if (isinstance(L,int) and (L<0)) else '%sd'%(str(L)) if isinstance(L,float) else '%sd/%s'%(str(L[0]) if L[0]!=1 else '',str(L[-1])) if isinstance(L,tuple) else str(1),
 					setting['parameters'],
 					),
-				color='%s_%f'%('viridis' if setting['L'] == 1 else 'magma',(settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
-				marker='' if setting['parameters']==0 else '',
+				color='%s_%f'%('viridis' if (setting['L']==1) else 'magma',(settings['M'].index(setting['M'])+1)/(len(settings['M'])+1)),
+				marker='' if (setting['parameters']==0) else '',
 				markersize=None if setting['parameters']==0 else 10,
 				linestyle='-' if (setting['parameters']==0) else '--' if (isinstance(setting['L'],int)) else '--',
 				linewidth=20 if (isinstance(setting['L'],int)) else 16,
-				alpha=0.8,
+				# alpha=0.8,
+				alpha=0.55 if (setting['parameters']==0) else 0.8,
 				name=join('plot.distribution.%s'%('.'.join([str(i) for attr in ['N'] for i in [attr,setting[attr]]])),ext='pdf'),
 				n=prod(len(settings[i]) for i in settings if i not in ['N']),
 				)
@@ -232,6 +237,7 @@ def plot(settings,options,*args,**kwargs):
 	else:
 
 		def parse(data):
+
 			for key in data:
 				if isinstance(data[key],dict):
 					parse(data[key])
@@ -249,8 +255,8 @@ def plot(settings,options,*args,**kwargs):
 			fig,ax = plot(x,y,fig=fig,ax=ax,options={**plots,**options['plot']})
 
 		lines = [
-			[0],[0,2],[0,2,5],[0,2,5,6],[0,2,5,6,8],[0,2,5,6,8,11],
-			[0,2,5,6,8,11,12],[0,2,5,6,8,11,12,16],[0,2,5,6,8,11,12,16,18],[0,2,5,6,8,11,12,16,18,23]
+			# [0],[0,2],[0,2,5],[0,2,5,6],[0,2,5,6,8],[0,2,5,6,8,11],
+			# [0,2,5,6,8,11,12],[0,2,5,6,8,11,12,16],[0,2,5,6,8,11,12,16,18],[0,2,5,6,8,11,12,16,18,23]
 			]
 		for number,lines in enumerate(lines):
 			for index,line in enumerate(ax.get_lines()):
@@ -272,7 +278,7 @@ def plot(settings,options,*args,**kwargs):
 
 def main(*args,**kwargs):
 
-	path = str(args[0]) if len(args)>0 else '~/scratch/probability/distribution'
+	path = str(args[0]) if len(args)>0 else '~/scratch/probability/distribution/data'
 
 	settings = dict()
 
