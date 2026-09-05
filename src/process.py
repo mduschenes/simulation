@@ -59,7 +59,7 @@ class GroupBy(object):
 		self.df = df
 		self.by = by
 		self.groups = ["None"]
-		self.grouper = grouper(by=by)
+		self._grouper = grouper(by=by)
 		return
 
 	def get_group(self,group):
@@ -1419,7 +1419,7 @@ def apply(keys,data,plots,processes,verbose=None):
 			properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
 
 		if analyses:
-			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False,dropna=False)
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).assign(**{attr: [group[index] for group in groups.groups] for index,attr in enumerate(by)}).reset_index(drop=True).groupby(by=by,as_index=False,dropna=False)
 
 		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -1505,7 +1505,7 @@ def apply(keys,data,plots,processes,verbose=None):
 					**{attr: grouping[attr].to_list()[0] for attr in source},
 					**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
 						{
-						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
+						'group':[i,dict(zip(groups._grouper.names,group if isinstance(group,tuple) else (group,)))],
 						'func':[j,function],
 						'label':keys[name][axes] if keys[name][axes] is not null else None
 						} 
