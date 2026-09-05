@@ -4275,8 +4275,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -5048,8 +5047,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -5389,8 +5387,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -5730,8 +5727,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -6071,8 +6067,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -6480,8 +6475,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 4,
-                    "labelsize": 50
+                    "ticks": 4
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -6969,8 +6963,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": [
@@ -7684,8 +7677,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": 5,
@@ -7965,8 +7957,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
-                    "labelsize": 50
+                    "ticks": 5
                 },
                 "set_ticklabels": {
                     "ticklabels": 5,
@@ -8246,8 +8237,7 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 6,
-                    "labelsize": 50
+                    "ticks": 6
                 },
                 "set_ticklabels": {
                     "ticklabels": [
